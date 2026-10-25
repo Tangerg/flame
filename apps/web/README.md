@@ -24,6 +24,26 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
+Appearance settings use section headings and direct label/control rows. Existing
+control labels, selected values and error feedback carry the task; the page does
+not repeat explanatory introductions or one-line descriptions. Section headings
+remain settings search terms through their existing catalog keys.
+
+`SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
+revealing that complete unit inside the clipped host when it fits; taller rows
+retain the focused control as the reading target.
+Pointer activation keeps the control at its pressed position; keyboard and
+programmatic focus retain the complete reading context.
+
+The existing appearance preference owns optional Xuan paper, cotton paper and
+fine-grain backgrounds with a retained strength from 1 to 5. The document painter
+projects a static, seamless SVG image through `--surface-texture`; shell, reading
+and settings planes consume it behind their content. Paper is off by default,
+keeps the theme's page and pane colors, and leaves control, menu and card fills intact.
+Palette themes include the material's opacity bound in their existing text and
+focus contrast calculations. Forced colors suppress the image. No texture layer
+intercepts input or selection.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of
@@ -45,6 +65,17 @@ MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a
 background dial, so the row shows canonical server status after the reread.
+Editors use direct field labels and examples without repeating the list's empty
+prompt. Required attributes follow the active transport. Timeout errors project
+the existing draft owner's parsed value: blank remains unbounded and a bound
+requires positive safe whole seconds. Inline feedback names that field and clears
+when corrected. List loading/errors and Retry remain visible during an Add draft;
+connection readiness continues to come from the server row's canonical status.
+Test and save feedback share the action group. New feedback is revealed with its
+focused action when the group fits, without moving focus or returning to a group
+the user already left.
+Configuration identifiers, commands, paths and connection values explicitly opt
+out of native capitalization, autocorrection and spelling changes at their fields.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; visual fixtures live in `visual`. The full check includes

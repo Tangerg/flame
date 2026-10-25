@@ -7,6 +7,12 @@ export function useAppearance<T>(select: (preference: AppearancePreference) => T
 export function editAppearance(): AppearanceEdit {
   return appearancePreferencePort().edit();
 }
-export { DEFAULT_ACCENT, UI_DENSITY_MODES, type UiDensity } from "@/features/theme/kit/appearance";
+export {
+  DEFAULT_ACCENT,
+  PAPER_TEXTURES,
+  UI_DENSITY_MODES,
+  type PaperTexture,
+  type UiDensity,
+} from "@/features/theme/kit/appearance";
 export { retainThemeSelection } from "@/features/theme/application/themeScheme";
 export { contributePaletteTheme } from "@/features/theme/application/paletteTheme";

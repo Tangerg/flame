@@ -12,6 +12,7 @@ import { type PluginContext } from "@/extensions/definePlugin";
 import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
 import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
+import customTheme from "@/features/theme/themes/custom-theme";
 import { contrastRatio, WCAG_AA_NON_TEXT } from "@/features/theme/kit/legibility";
 let uninstall: () => void = () => {};
 
@@ -44,6 +45,8 @@ beforeEach(() => {
     fontSmoothing: true,
     radiusScale: 1,
     motionScale: 1,
+    paperTexture: "off",
+    paperTextureStrength: 3,
   });
   uninstall();
   installAppearancePreferencePort();
@@ -57,6 +60,76 @@ async function registerSchemePair(): Promise<void> {
     ctx.contribute(COLOR_THEME, { id: "light", label: "Light", scheme: "light" });
   }, "test.schemes");
 }
+
+describe("paper texture on the reading planes", () => {
+  const texture = () => document.documentElement.style.getPropertyValue("--surface-texture");
+
+  it("starts plain and keeps the chosen strength when paper is turned off", () => {
+    expect(texture()).toBe("none");
+    expect(document.documentElement.hasAttribute("data-paper-texture")).toBe(false);
+    useAppearanceStore.getState().setPaperTexture("xuan");
+    expect(document.documentElement.dataset.paperTexture).toBe("xuan");
+    const first = texture();
+    expect(first).toContain("data:image/svg+xml,");
+    useAppearanceStore.getState().setPaperTextureStrength(5);
+    expect(texture()).not.toBe(first);
+    useAppearanceStore.getState().setPaperTexture("off");
+    expect(texture()).toBe("none");
+    expect(document.documentElement.hasAttribute("data-paper-texture")).toBe(false);
+    expect(useAppearanceStore.getState().paperTextureStrength).toBe(5);
+  });
+
+  it("changes paper and ink with the theme without tinting its neutral planes", async () => {
+    await loadPluginsForTest(flameLight, flameDark);
+    useAppearanceStore.setState({ theme: "light" });
+    const planes = ["color-bg", "color-drawer", "color-surface", "color-elevated"];
+    const readPlanes = () =>
+      planes.map((name) => document.documentElement.style.getPropertyValue(`--${name}`));
+    const plain = readPlanes();
+    const images: string[] = [];
+    for (const paperTexture of ["xuan", "cotton", "grain"] as const) {
+      useAppearanceStore.setState({ paperTexture });
+      images.push(texture());
+      expect(readPlanes()).toEqual(plain);
+    }
+    expect(new Set(images).size).toBe(3);
+    useAppearanceStore.getState().setTheme("dark");
+    expect(texture()).not.toBe(images[2]);
+    useAppearanceStore.getState().setTheme("light");
+    expect(texture()).toBe(images[2]);
+    expect(readPlanes()).toEqual(plain);
+  });
+
+  it("updates paper ink when editing a custom theme changes its scheme", async () => {
+    await loadPluginsForTest(customTheme);
+    useAppearanceStore.setState({
+      theme: "custom",
+      customTheme: { bg: "#eee7db", fg: "#232323" },
+      paperTexture: "xuan",
+    });
+    const light = texture();
+    expect(document.documentElement.classList.contains("theme-light")).toBe(true);
+    useAppearanceStore.getState().setCustomTheme({ bg: "#161616", fg: "#eeeeee" });
+    expect(document.documentElement.classList.contains("theme-dark")).toBe(true);
+    expect(texture()).not.toBe(light);
+    useAppearanceStore.getState().setCustomTheme({ bg: "#eee7db", fg: "#232323" });
+    expect(texture()).toBe(light);
+  });
+
+  it("repaints built-in reading ink as paper strength changes and restores it on Off", async () => {
+    await loadPluginsForTest(flameLight, flameDark);
+    useAppearanceStore.setState({ theme: "light", contrast: 25 });
+    const faint = () => document.documentElement.style.getPropertyValue("--color-text-faint");
+    const plain = faint();
+    useAppearanceStore.getState().setPaperTexture("xuan");
+    const medium = faint();
+    expect(medium).not.toBe(plain);
+    useAppearanceStore.getState().setPaperTextureStrength(5);
+    expect(faint()).not.toBe(medium);
+    useAppearanceStore.getState().setPaperTexture("off");
+    expect(faint()).toBe(plain);
+  });
+});
 
 describe("a theme's own neutrals are what paints", () => {
   const painted = (name: string) => document.documentElement.style.getPropertyValue(`--${name}`);

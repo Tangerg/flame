@@ -30,7 +30,7 @@ export function ShapeMotionSection() {
 
   return (
     <>
-      <SettingRow label={t("settings.density")} sub={t("settings.density.sub")} align="start">
+      <SettingRow label={t("settings.density")}>
         <Segmented
           value={density}
           options={DENSITY_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
@@ -38,7 +38,7 @@ export function ShapeMotionSection() {
           ariaLabel={t("settings.density")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.radius")} sub={t("settings.radius.sub")} align="start">
+      <SettingRow label={t("settings.radius")}>
         <Segmented
           value={radiusScale}
           options={RADIUS_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
@@ -46,7 +46,7 @@ export function ShapeMotionSection() {
           ariaLabel={t("shape.radius.aria")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.motion")} sub={t("settings.motion.sub")} align="start">
+      <SettingRow label={t("settings.motion")}>
         <Segmented
           value={motionScale}
           options={MOTION_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}

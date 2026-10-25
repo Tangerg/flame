@@ -924,6 +924,24 @@ html.theme-dark {
   background: var(--color-bg);
 }
 
+:root[data-paper-texture]
+  :is(
+    .agent-shell,
+    .agent-drawer-surface,
+    .agent-content-card,
+    .agent-context-dock,
+    .agent-workspace-view,
+    .msg-scroll-viewport
+  ) {
+  background-image: var(--surface-texture, none);
+}
+
+@media (forced-colors: active) {
+  :root {
+    --surface-texture: none !important;
+  }
+}
+
 .agent-dock-row:not([data-presentation="main"]) .agent-context-dock .agent-workspace-view {
   background: transparent;
 }

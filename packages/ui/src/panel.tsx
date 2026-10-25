@@ -35,6 +35,10 @@ const styles = stylex.create({
     flexShrink: 0,
     color: color.fg,
     backgroundColor: surface.canvas,
+    backgroundImage: {
+      default: null,
+      ":is([data-paper-texture] *)": surface.texture,
+    },
     fontFamily: "var(--font-sans)",
     lineHeight: leading.body,
     minWidth: 0,
@@ -70,6 +74,10 @@ const styles = stylex.create({
     gap: layout.contentGap,
     paddingBlock: layout.controlGap,
     backgroundColor: surface.canvas,
+    backgroundImage: {
+      default: null,
+      ":is([data-paper-texture] *)": surface.texture,
+    },
     minWidth: 0,
   },
   body: {
@@ -233,6 +241,12 @@ const styles = stylex.create({
     gap: layout.contentGap,
     minWidth: 0,
   },
+  formActionsUnit: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    gap: layout.sectionGap,
+    minWidth: 0,
+  },
   formActionGroup: { maxWidth: "100%" },
   formMainActions: { marginInlineStart: "auto", justifyContent: "flex-end" },
 });
@@ -270,6 +284,7 @@ export function Panel({
   const panelRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const pressedTarget = useRef<Element | null>(null);
   const hasControls = Boolean(controls);
   const keepBodyFocusVisible = useCallback((target: Element | null) => {
     const panel = panelRef.current;
@@ -301,15 +316,17 @@ export function Panel({
         controls?.getBoundingClientRect().bottom ?? visibleTop,
       ) + stickyHeaderHeight;
     let focusUnit = target;
-    const label = target.closest("label");
-    if (label && body.contains(label)) {
+    const readingUnit = target.closest("label, [data-focus-unit]");
+    if (readingUnit && body.contains(readingUnit)) {
       const scrollMargin =
-        Number.parseFloat(getComputedStyle(label).scrollMarginBlockStart) || 0;
+        Number.parseFloat(
+          getComputedStyle(readingUnit).scrollMarginBlockStart,
+        ) || 0;
       if (
-        label.getBoundingClientRect().height <=
+        readingUnit.getBoundingClientRect().height <=
         visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
       ) {
-        focusUnit = label;
+        focusUnit = readingUnit;
       }
     }
     const bounds = focusUnit.getBoundingClientRect();
@@ -373,7 +390,34 @@ export function Panel({
           <div
             ref={bodyRef}
             data-slot="panel-body"
-            onFocus={(event) => keepBodyFocusVisible(event.target)}
+            onPointerDownCapture={(event) => {
+              pressedTarget.current =
+                event.target instanceof Element ? event.target : null;
+            }}
+            onFocus={(event) => {
+              const pressed = pressedTarget.current;
+              pressedTarget.current = null;
+              // Scrolling before pointerup would move the control away from the
+              // pressed position and swallow the click it is activating.
+              if (
+                pressed &&
+                (event.target.contains(pressed) ||
+                  pressed
+                    .closest("label, [data-focus-proxy]")
+                    ?.contains(event.target))
+              ) {
+                return;
+              }
+              keepBodyFocusVisible(event.target);
+            }}
+            onBlurCapture={(event) => {
+              const next = event.relatedTarget;
+              if (!(
+                next instanceof Node && event.currentTarget.contains(next)
+              )) {
+                pressedTarget.current = null;
+              }
+            }}
             {...stylex.props(styles.body)}
           >
             <PanelLayoutContext value={panelLayout}>
@@ -560,28 +604,49 @@ export function FormSection({
 export function FormActions({
   label,
   auxiliaryAction,
+  feedback,
   children,
 }: {
   label: string;
   auxiliaryAction?: ReactNode;
+  feedback?: ReactNode;
   children: ReactNode;
 }) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const panelLayout = useContext(PanelLayoutContext);
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!feedback || !panelLayout || !group) return;
+    // Asynchronous results arrive without a focus event, so the retained
+    // action focus is the only signal that the reader is still here.
+    const focused = group.ownerDocument.activeElement;
+    if (group.contains(focused)) panelLayout.keepBodyFocusVisible(focused);
+  }, [feedback, panelLayout]);
   return (
-    <div role="group" aria-label={label} {...stylex.props(styles.formActions)}>
-      {auxiliaryAction && (
-        <div {...stylex.props(styles.actions, styles.formActionGroup)}>
-          {auxiliaryAction}
-        </div>
-      )}
-      <div
-        {...stylex.props(
-          styles.actions,
-          styles.formActionGroup,
-          styles.formMainActions,
+    <div
+      ref={groupRef}
+      role="group"
+      aria-label={label}
+      data-focus-unit=""
+      {...stylex.props(styles.formActionsUnit)}
+    >
+      <div {...stylex.props(styles.formActions)}>
+        {auxiliaryAction && (
+          <div {...stylex.props(styles.actions, styles.formActionGroup)}>
+            {auxiliaryAction}
+          </div>
         )}
-      >
-        {children}
+        <div
+          {...stylex.props(
+            styles.actions,
+            styles.formActionGroup,
+            styles.formMainActions,
+          )}
+        >
+          {children}
+        </div>
       </div>
+      {feedback}
     </div>
   );
 }
@@ -710,7 +775,12 @@ export function FormGroup({
 }) {
   const labelId = useId();
   return (
-    <div role="group" aria-labelledby={labelId} {...stylex.props(styles.field)}>
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      data-focus-unit=""
+      {...stylex.props(styles.field)}
+    >
       <span id={labelId} {...stylex.props(styles.fieldLabel, type.uiSm)}>
         {label}
       </span>

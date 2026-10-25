@@ -1,20 +1,35 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Usage now separates the complete report from its local source controls: Period/Refresh and read feedback, then totals, then filtering/grouping with the breakdown. Redundant helper copy is removed while empty-report controls, accounting meanings and continued writing retain their owners. Native EN, 320 px Dock, ZH 200% and an uninstrumented build qualify this task. See Usage report and source scope. Earlier Memory recovery, schedule hierarchy, contrast and branding remain delivered. The next requested feature is optional paper texture with adjustable strength.
+Updated: 2026-10-26. MCP editing now uses direct labels, explains invalid timeouts, preserves literal configuration input and reveals async feedback with the focused actions. Final native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the repair. Shared settings focus/pointer behavior, Appearance search and the stronger optional paper material remain delivered. See MCP editor clarity and literal configuration.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/usage-reading-scope-1025`. Usage report/source scope is qualified
-on frozen base `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332`; see its section below for
-implementation, checks, native tasks and limits. Implementation
-`6f89f24c0f5eb23667f7761237465aa266ba2032` is published to remote main, and
-owned evidence retirement is complete. The single publication-time fetch finds
-main at the frozen base; there is no incoming delta to revalidate. Next, implement the user's requested optional
-paper texture and strength control, preserving neutral page colors, text clarity,
-approved branding and the existing appearance preference owner.
+is on `codex/mcp-editor-clarity-1026`. MCP editor clarity, literal inputs and
+feedback visibility are qualified on frozen base
+`55e67879d29ae57168b97b3f62e9aa90902ee04b`; see that product section for ownership,
+regression counterexamples, native tasks and limits. Implementation
+`0c2f14377d24af2c9a63c44e4153a8a296105bdf` is published to remote main and exact
+owned-resource retirement is complete. The single publication-time fetch finds
+no incoming delta from the frozen base; the primary parallel checkout remains
+outside this batch.
+Shared settings focus/pointer implementation
+`d2f5659a3165328797d86549302f4843b99a2cc0` and receipt
+`55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
+Appearance labels/search implementation
+`40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
+The next observed task is JSON import: the native DE 200% dialog repeats its
+configuration-schema introduction above the labeled example editor.
+Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
+receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
+with owned resources retired. Its stronger material, palette bounds, shared
+numeric readout and Off restoration remain delivered.
+Earlier Usage report/source-scope implementation
+`6f89f24c0f5eb23667f7761237465aa266ba2032` and receipt
+`ac9d04d59c035b6817ec2b991162c423558fbf5f` are published to remote main, with
+owned evidence retired.
 Earlier Memory recovery implementation `4131befc04411529ee7e4beaaec484022972ade2`
 and receipt `dd4ffb4a8a75d2e2ca5b1ffc8e91913150a5c332` are published to
 remote main, and their owned resources are retired. The preceding
@@ -839,6 +854,448 @@ data, unrelated processes and the primary parallel checkout remain untouched.
 This documentation receipt changes no accepted product input; its publication
 is followed by fresh remote, cleanliness and preservation checks.
 
+### Appearance labels and search
+
+Appearance now presents direct label/control rows. The page introduction and
+thirteen explanatory sub-lines are removed, together with the repeated Language
+section title. The remaining Language row keeps its visible label and menu name
+in a separate existing SettingsGroup; no substitute heading, description, wrapper
+or style is added. Contrast and single-line shape controls use SettingRow's
+existing center alignment. Custom colors retains top alignment for its two named
+Background/Foreground controls and literal hex values. All real labels, options,
+preferences, asynchronous language feedback and errors retain their owners.
+
+The previous paper batch's native 18 px/200% scene exposed the excess vertical
+copy. This follows the user's explicit instruction to remove slogans, helper
+text and secondary labels, with better-writing's minimal settings language and
+better-layout's grouping/alignment guidance. Existing component/reference research
+remains applicable; no component system, motion or color behavior is introduced.
+The final native review also exposed the repeated Language heading, which is
+removed before acceptance. Shared UI, neutral planes, Orange/custom
+accents, stronger paper, readouts and font popup models otherwise stay intact.
+
+The settings registration owns discoverability. Its existing keyword list now
+includes the three visible section names, so removing the introduction cannot
+make Typography disappear from search. Language remains discoverable by its
+field label. The real settings search test covers paper fields, Theme and color,
+Typography, Interaction and Language while retaining the currently selected other
+pane. Before the keyword repair it fails **1 test** and passes **1**; the final
+scope passes. All eight catalogs delete exactly **15** obsolete keys each; every
+remaining quoted string literal is independently identical to the frozen base.
+The repository locale guard validates the resulting catalogs and callers.
+
+| Severity | Location                                                                             | Before                                                                               | After                                                                                             | Why                                                           |
+| -------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| MEDIUM   | theme/public/preferences, i18n/public/LanguageSection.tsx and settings/appearance.ts | Repeated explanations compete with controls and increase large-type reading distance | Direct rows retain names, choices and errors; existing centered alignment fits single-line labels | Settings should expose the actual decision with less scanning |
+| LOW      | settings/ui/AppearancePane.tsx:35                                                    | Language appears as both a section title and the only row label                      | A single named language row keeps the existing independent group                                  | The duplicate label adds no task identity                     |
+| MEDIUM   | settings/appearance.ts:17                                                            | Search depends on prose for a meaningful section term                                | Registered visible section names remain searchable without changing the current pane              | Removing prose must preserve navigation                       |
+
+Native Wails **v3.0.0-beta.34** qualifies the exercised settings/read/return task:
+
+- EN/light/14 px/Orange at **1440 × 900**, Xuan 3: settings content height is
+  **1015 px**, down from **1250 px** with identical controls/material. Search
+  Typography retains Appearance; all four font menus open, Escape returns to
+  their exact triggers, and body scrolling reveals lower controls. Dark theme,
+  Spacious/Comfortable density and Language open/Escape remain coherent. The
+  same Composer element **2** retains Appearance reading and continues to
+  Appearance reading continued after settings/Off/return, with zero observed
+  unhandled errors. No message is sent.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off, Cotton 3: native Left and
+  twenty View/Zoom In actions reach **200%**, **561 × 525 CSS px**, document width
+  **561**. Content height falls from **2122.5** to **1647 px**, about **22.4%**.
+  Option+Tab reaches accent, contrast, paper, strength, both fonts, both sizes,
+  smoothing, density, corners, motion and language. Both size menus open and
+  Escape returns; native Space changes smoothing off/on. Named controls remain
+  reachable in the clipped body, errors stay zero, and Actual Size restores
+  **1122 × 1051** before Quit.
+- A separate build without private observers uses DE/18 px/custom warm base,
+  purple accent and motion Off. Native Left and twenty zoom increments qualify
+  long German labels at 200%; the four paper choices wrap without losing their
+  complete names. All four font controls open and restore focus. Real language
+  selection changes Deutsch/English/Deutsch while retaining appearance values.
+  Actual Size, close/settings/close and Settings reading → Settings reading
+  continued pass. No DOM identity or computed geometry claim comes from this
+  clean build.
+
+The before geometry comes from the preceding accepted paper captures. Every
+non-Markdown input in this frozen base is identical to that accepted source;
+only Markdown receipts differ. Those capture hashes and source digest are
+retained in the private native-before evidence, so no second baseline app is
+rebuilt. An initial outer-container wheel attempt in the clean scene does not
+advance and supplies no wheel claim; accepted paths use observed native focus.
+
+The clean 200% review recorded one **MEDIUM** issue: focusing a settings
+control can leave its row label above the clipped body's top edge. The control
+is named and reachable, and the label remains available by scrolling; the whole
+row was not always revealed together. The following Settings focus and pointer
+activation section records its shared-owner repair and final qualification.
+This earlier batch qualifies direct
+labels/search and the exercised paths, not every focus-reveal case or award-level
+completion of the whole product.
+
+Baseline passes **15 files / 241 tests**. Final scope passes **17 files / 251
+tests**, including language failure feedback, theme preferences, palette bounds,
+settings search and installed-view continuity. All **16** selected Web gates and
+supported **make check-native** pass serially. The final duplicate-heading edit
+repeats those affected checks and both private asset builds; unchanged private
+Go binaries are reused. Existing nonfatal linker-target/library and chunk-size
+warnings remain. All **11** portable resource hashes are unchanged; their inputs
+and shared UI sources are unchanged, so no separate portable rebuild or full
+shared UI test run is claimed here. The unrelated Dock shorthand failure recorded
+in Paper texture remains unchanged and is not rerun for this copy/layout batch.
+No browser visual suite or performance benchmark runs.
+
+The bounded Read/Edit/Write-only Claude CLI times out after **180.85 s** with
+**15** reviewed source/catalog edits. It returns no final JSON report or turn
+count. Primary completes the remaining French catalog, search owner/regression,
+duplicate heading, documentation, complete diff review, native acceptance and
+delivery. No permission or test result is inferred from the empty CLI output.
+
+Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
+`cb774ad73b692f2a6439073e4dcf797b1f65df7231a1247034142781dae883f9`, **1,205**
+artifact hashes, **11** native construction-input hashes and **11** unchanged
+portable resources. Scoped result: **Approve** for this label/search refinement
+and exercised settings task; the focus-row finding is resolved below.
+Publication and exact resource retirement are recorded below.
+
+Delivery: implementation `40cbae863434ef53629071cfe75ccf86c46297b6` is pushed to remote
+`main` and independently matched by ls-remote before retirement. The single
+publication-time fetch finds main at the frozen base; merge is already up to
+date. Normal formatting, workspace lint and message hooks pass without changing
+accepted product bytes.
+
+All **15** recorded PIDs are dead and all **3** bundles are unregistered. Cleanup
+removes **7** new checkout output/cache paths, **6** bundle-specific Library paths
+and **3** bundle-temporary directories. The original native-check binary is
+restored. Independent checks before and after exact-root deletion preserve
+**36** output-presence baselines, **3** original file hashes and **11** unchanged
+portable resources. No exact-root or exact-bundle process matches remain.
+
+The exact private root `flame-ui-appearance-layout-1025-avFJwy` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its verified
+compressed in-memory archive retains **87** UTF-8 evidence files and **20** capture
+hashes, SHA-256
+`5b675fe19a44f8881d205e7acd4c76b677de1033a0ea6f75fdd961271b5a7d75`.
+The original native binary is excluded from text decoding and retained by its
+preservation hash. User data, the primary parallel checkout, installed
+dependencies, global caches and read-only references remain untouched. This
+receipt changes no accepted product input; publication is followed by fresh
+remote, cleanliness and preservation checks.
+
+VoiceOver speech, full OS IME, pseudo-localization, RTL/forced-colors GUI,
+other-platform GUIs, arbitrary palettes and live Runtime/provider work are not
+newly verified. Production views use canonical deterministic read fixtures;
+no Runtime mutation or saved business data is exercised. Font-menu scroll-following
+and synthetic slider dragging are not newly qualified by that earlier batch.
+Do not reopen the delivered paper material or preferences.
+
+### Settings focus and pointer activation
+
+**Behavior and ownership**
+
+At 18 px/200%, native focus could reveal a settings control while leaving its
+visible label above the clipped body. `Panel.keepBodyFocusVisible` recognized
+wrapping native labels, but `SettingRow` and `FormGroup` compose labels and
+controls in a div. Adding local scroll handlers would duplicate the shared
+geometry owner.
+
+Those existing roots now declare `data-focus-unit`. Panel selects the nearest
+native label or explicit unit and reveals the whole unit when it fits below the
+actual clipped viewport, sticky controls and disclosure header. Taller units
+retain the existing focused-control fallback. Shared scroll margins use the same
+clearance tokens. The application/group declares the reading boundary; Panel
+alone decides visibility. There is no preference, semantic label, ARIA, Runtime,
+dependency or public API change.
+
+Native pointer QA rejected the first candidate: revealing a row during pointer
+focus moved the font trigger between pointerdown and pointerup, swallowing its
+first click. Panel now retains only the pending pressed Element and consumes it
+on the next focus event. A press on that control, its child, wrapping native label
+or existing slider focus proxy leaves activation at the pressed position.
+Unrelated programmatic autofocus still reveals its own field; leaving the body
+clears an unconsumed press. Keyboard/programmatic reveal and geometry changes
+retain the existing shared path. No global modality owner, timer, retry, pointer
+capture or prevented native event is added.
+
+This follows better-accessibility's visible-focus/200% guidance and
+better-layout's complete reading groups, retaining the existing component and
+focus-model research above. The row-label finding is a reading-context problem;
+the original control itself was named and reachable. It is not presented as a
+newly measured WCAG failure or whole-product award qualification. Typography,
+spacing, colors, motion and skins stay with their existing owners.
+
+| Severity                       | Location                                              | Before                                                                                       | After                                                                               | Why                                                                |
+| ------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| MEDIUM                         | ui/settings/SettingRow.tsx; packages/ui/src/panel.tsx | Focus can expose a control without its visible label                                         | Fitting label/control units reveal together; tall units retain the control fallback | Preserve the current decision's reading context at large type/zoom |
+| MEDIUM                         | packages/ui/src/panel.tsx, FormGroup                  | Composite form groups lack the same reveal boundary                                          | Shared FormGroup declares its existing complete reading unit                        | Keep a transport choice and its group name together                |
+| HIGH, resolved before delivery | packages/ui/src/panel.tsx                             | The initial candidate moves a trigger during pointer activation and consumes the first click | Causally related pointer focus keeps the pressed position; keyboard reveal remains  | A visible menu trigger must respond to its first click             |
+
+**Regressions and checks**
+
+Baseline shared UI passes **6 files / 97 tests** plus the independent packed
+consumer; the initial Web scope passes **2 files / 10 tests**. Before the first
+repair, the new complete-unit regressions fail **6** and pass **4** across UI/Web.
+The first candidate passes shared **105** and Web **34**, but the later native
+pointer counterexample disqualifies it. New pointer regressions against that
+unchanged built candidate fail **6** and pass **12**. A temporary ambiguous test
+query is corrected before that accepted counterexample run; its failure is retained
+separately rather than counted as product evidence.
+
+Final shared UI check passes **7 files / 111 tests**, including the real built
+distribution and independent offline packed consumer. The focused Web scope
+passes **6 files / 36 tests**: settings rows/search, paper preferences, MCP form,
+installed-view continuity and installed components. Regressions cover nearest
+native/explicit groups, both clipped edges, visible/tall units, sticky clearance,
+direct/child/label/proxy presses, different autofocus and stale presses after
+leaving the body. The real SettingRow with Slider/Segmented covers both input
+causes. All **16** selected Web gates, **5** plugin gates, portable resource build
+and supported **make check-native** pass serially. All **11** portable ESM hashes
+remain identical. The final combined check/asset run takes **59.81 s**; existing
+linker-target/library and chunk-size warnings are nonfatal.
+
+The previously recorded unrelated `check:shorthand` failure in
+`apps/web/src/ui/agent/dock-catalog.tsx:14` is byte-identical to the frozen base
+and is not rerun or claimed passed here. No browser visual suite or performance
+benchmark runs. The two bounded Read/Edit/Write-only Claude CLI tasks finish in
+**27.20 s** and **29.86 s**. Primary owns the regressions, actual diff review,
+checks, native acceptance and delivery; CLI reports are not acceptance evidence.
+
+**Final native task**
+
+Real Wails **v3.0.0-beta.34** hosts serve the final production-view assets with
+isolated data directories. CUA supplies all native input. The unchanged Go hosts
+serve the rebuilt asset directories; no browser screenshot substitutes for the
+native results.
+
+- EN/light/14 px/Orange/Xuan 3: MCP Add opens the real RecordForm. Native Left
+  and twenty Zoom In actions reach **561 × 525 CSS px / 200%**, document width
+  **561**, zero observed errors. Transport changes stdio/HTTP/stdio. Tab to
+  Command and reverse Tab reveal the complete Transport group at
+  **261.796875..321.296875**, inside **237.796875..525.5**. Native labels remain
+  readable. Tab reaches Cancel; Return restores the exact Add server opener.
+  No Save or Test runs. Actual Size, settings/Appearance/return and the same
+  Composer **2** continue Focus reading to Focus reading continued, with zero
+  observed errors.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off/Cotton 3: the same native
+  200% scene qualifies **ten complete rows**, from strength through language.
+  The strength row is **261.796875..352.796875**; all later row bounds fit the
+  actual clipped viewport. All four font lists open and Escape restores their
+  triggers. Strength changes 3/4/3 and smoothing off/on by native keys. No
+  horizontal document overflow or observed errors occur. Actual Size restores
+  **1122 × 1051** before Quit.
+- A separate uninstrumented DE/18 px/custom warm base/Purple/motion Off build
+  qualifies long labels at native 200%. With the UI font label clipped and its
+  trigger still visible, the first physical click at **620,1020** opens the
+  menu without moving it first; Escape returns focus. Keyboard entry reveals
+  the full font/strength rows. A pointer press leaves the partly visible slider
+  in position; track click changes strength **3 → 4**, and Left restores **3**.
+  A CUA drag attempt leaves value **3** and is expressly **not** a successful
+  drag qualification. All four font lists open/return. Actual Size, Cmd+Comma,
+  close and Settings focus reading → Settings focus reading continued pass.
+  No DOM identity/geometry claim comes from this clean build. A fixture state
+  button only receives focus and is excluded as settings-entry evidence.
+
+Font sizes expose an expanded native combo/list, while font families expose a
+named menu; an initial overly narrow native assertion is corrected against those
+observed semantics. The first candidate's pointer failure and its subsequent
+countercheck remain retained evidence, not part of the final pass. All three
+final apps restore Actual Size and Quit.
+
+Final integrity freezes **5,777** non-Markdown source inputs, SHA-256
+`aa57e36feaab300a3d4e6ba47675031caa7a5ca2699f04d3cbf26ff7b3f46c9b`,
+**1,205** artifact hashes and **11** native construction inputs, with **11**
+unchanged portable resources. The source/artifact maps are preserved separately
+for the rejected first candidate and final input. Scoped result: **Approve** for
+the complete-unit/pointer contracts and exercised task paths.
+
+VoiceOver speech, full OS IME, RTL/forced-colors GUI, other-platform GUI, arbitrary
+palettes, successful synthetic dragging and live Runtime/provider work are not
+newly verified. Production views use deterministic canonical reads; no saved
+MCP server or business mutation occurs. Next inspect the MCP editor's repeated
+introductory/helper copy and task hierarchy, already observed at 200%, while
+preserving its explicit save-effect, validation and recovery contracts.
+
+Delivery: implementation `d2f5659a3165328797d86549302f4843b99a2cc0` is pushed to
+remote main and independently matched by `ls-remote`. The single publication-time
+fetch finds no incoming commits; merge is already up to date. Normal formatting,
+workspace lint and message hooks pass with all accepted product bytes unchanged.
+
+All **23** recorded PIDs are dead and all **3** native bundles are unregistered.
+Cleanup removes **8** new checkout output/cache paths, **6** bundle-specific
+Library paths and **3** bundle-temporary directories. The original native-check
+binary and shared UI Vitest results are restored exactly; the original cache tag
+already matches. Independent checks before and after exact-root deletion preserve
+all **36** output-presence baselines, **3** original file hashes and **11**
+unchanged portable resources. No exact-root or exact-bundle process matches remain.
+
+The exact private root `flame-ui-settings-focus-1025-z50dSP` is absent after
+UID/device/inode/birth-time, accepted-source, artifact and native-input guards.
+Its round-trip-verified compressed in-memory archive retains **124** UTF-8
+evidence files and **35** capture hashes, SHA-256
+`7ab638c9190740e6eafc13c6236bf9c0f932b015c796e61d95a5a0174b0b6c86`.
+The original native binary is retained by its preservation hash rather than text
+decoding. Primary parallel work, user data, installed dependencies, global caches
+and read-only references remain untouched. This documentation receipt changes no
+accepted product input; publication is followed by fresh remote, cleanliness and
+preservation checks.
+
+### Paper texture and reading surfaces
+
+Appearance offers Off, Xuan paper, Cotton paper and Fine grain through the existing
+Segmented control. Strength uses the shared Slider from 1 to 5 and retains its
+value across Off and restart. Existing installations start with Off and strength
+3; valid older appearance records retain their other settings. Both paper fields
+participate in settings search. New rows use labels without helper copy, and
+SettingRow no longer reserves space for an absent description.
+
+The user's paper reference defines this optional material and strength task.
+Its unrelated stickers, sunlight and tree controls are not added. After the
+user reported that the first effect was too faint, the material became visibly
+stronger at the middle setting. Xuan combines distributed fibers and grain;
+Cotton and Fine grain use distinct fixed noise fields. Existing HeroUI/Radix
+surface-role research and the better-accessibility, layout, writing, typography,
+colors and UI reviews guide the controls, reading planes and verification.
+Approved branding and artwork remain intact; no colored decorative stripe or
+new motion is added.
+
+One appearance preference owns the choice and strength. The document painter
+publishes a static seamless 512 px SVG image through --surface-texture and marks
+the root while paper is enabled. Shared Panel/sticky controls, settings rail/page,
+workspace viewport, conversation scroll viewport and the actual opaque sidebar
+face enroll at their surface owners. There is no overlay, animation, text filter,
+extra input handler or new dependency. Off removes the enrollment marker so it
+cannot mask an existing visual-style background image. Fields, menus and record
+cards retain their existing fills. Forced colors suppress the image.
+
+Grain opacity and Xuan fiber opacity have one owner in kit/paperTexture.ts.
+The same owner supplies the maximum combined opacity to the existing palette
+algorithm, which checks the painted canvas/drawer/surface bounds in addition to
+plain planes. Both built-in and public contributed palette producers update
+text, control edges and focus when paper or strength changes. The neutral plane
+colors, main text, solid accent/CTA and Off-state tokens are unchanged. Custom
+theme scheme changes repaint the material through the existing contribution
+subscription. No competing contrast state or correction layer is added.
+
+| Severity | Location                                | Before                                                                          | After                                                                        | Why                                                |
+| -------- | --------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
+| MEDIUM   | theme kit and reading surfaces          | Initial material is too faint to recognize at ordinary size                     | Middle strength visibly carries grain; Xuan also has fine distributed fibers | The requested reading material must be perceptible |
+| MEDIUM   | palette and both contribution producers | Stronger image can reduce text and focus contrast on its darkest/lightest marks | Existing derivation includes the material's bounded painted planes           | Stronger material must preserve legibility         |
+| MEDIUM   | shared settings readout                 | Fixed 28 px box wraps Contrast 100 onto two lines at large type/zoom            | Contrast and paper strength share a 3ch, nowrap readout                      | Numeric values remain readable during adjustment   |
+
+The deterministic color matrix covers **756** built-in/custom light/dark,
+material, strength, contrast and accent combinations. Ten text roles meet **4.5:1**
+and required focus/control roles meet **3:1** on all plain and bounded painted
+planes. Replacing only the original three palette owners makes the regression
+scope fail **14 tests** and pass **140**; candidate bytes are restored exactly.
+Before settings keywords were added, the real settings search regression fails
+**1** and passes **1**. All eight locales retain their original values and gain
+exactly six paper keys. This is a bounded palette matrix, not certification of
+arbitrary literal-token themes or antialiased screenshot pixels.
+
+Focused baseline passes **4 files / 39 tests**. Final theme/settings/installed
+continuity scope passes **16 files / 249 tests**. Full shared UI checks pass
+**6 files / 97 tests**, build/type/lint/format and the independent offline packed
+UI/icons consumer. Sixteen Web gates and all five plugin gates pass; all eleven
+portable ESM resources rebuild without byte changes. Supported make check-native
+passes with the existing nonfatal macOS target/library warnings. The final
+conditional-surface edit repeats shared UI, the 249-test scope, affected Web
+checks, native staging and private assets serially. An introduced formatting
+failure is corrected before those checks pass.
+
+One unchanged frozen-base guard remains failed: check:shorthand reports margin
+beside marginBottom in src/ui/agent/dock-catalog.tsx:14. The file is byte-identical
+to base; this batch neither suppresses the check nor edits that unrelated owner.
+An early variables check runs before its required dist exists; it passes after
+production bundling. Browser visual suites and performance benchmarks are not run.
+
+Actual Wails v3.0.0-beta.34 tasks qualify:
+
+- EN/light/14 px/Orange/contrast 25 at 1440 × 900: all material choices, strength
+  Home/Right/End, pointer track selection, Off/re-enable, search by Texture
+  strength, settings scroll and Light/Dark/Light adaptation. The actual sidebar
+  face and reading area carry paper. Option+Tab reaches the slider in this Mac
+  session; plain Tab advances to Interface font. The same Composer element
+  retains Paper reading 保留 and continues to Paper reading 保留 continued after
+  the settings round trip. No message is sent.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off: native Left window placement
+  and twenty View menu zoom actions reach **200%**, **561 × 525 CSS px**, with
+  document width 561 and zero observed unhandled errors. The rail stacks and
+  paper controls remain reachable. Off retains strength 3; keyboard adjustment,
+  font-menu open/Escape return and Actual Size restoration work. A settled
+  ordinary-size 18 px capture verifies Contrast 100 on one line; source nowrap
+  and native 200% geometry support the shared readout fix without claiming the
+  offscreen number was visible in the 200% capture.
+- An uninstrumented custom warm-base build, 14 px, purple accent and motion Off,
+  qualifies Xuan at 3/5, Off/re-enable, exact continued Paper work continued,
+  real Quit/relaunch and restored Fine grain/strength 5. It contains the actual
+  production chrome/font adapters and no private paper observer.
+
+CUA capture files contain JPEG bytes despite the helper's .png suffix. A fixed
+blank-region captured-image comparison gives grain variation about 0.73 for the
+initial quiet maximum, 4.59 for final Xuan 3 and 7.93 for final Xuan 5; Off regions
+retain their original uniform neutral values. These are visibility comparisons
+on lossy captures, not rendered-pixel contrast measurements. A mistaken PNG
+header dimension assumption is rejected before an invalid drag is dispatched.
+Synthetic native slider drags do not advance the value; pointer track and focused
+keyboard input do, so drag is not qualified and no speculative workaround is
+added. Font-popup wheel attempts do not advance the page; this batch makes no
+new popup scroll-following claim. VoiceOver, full OS IME, forced-colors/RTL GUI,
+other-platform GUIs, arbitrary theme combinations and live Runtime are not newly
+verified. Production components run over canonical deterministic read fixtures;
+ordinary portable ESM is independently built/checked rather than falsely claimed
+as loaded by these native scenes. No Runtime write or provider work runs.
+
+Read/Edit/Write-only Claude CLI supplies the scoped preference/control/locale
+work and three palette-owner edits. Actual runs take 120.27 s / 53 turns and
+74.86 s / 20 turns without errors or permission denials. The first run's reported
+turn count exceeds the configured 32-turn request; only its observed scope and
+results are relied on. Primary owns material rendering, review, regression
+counterexamples, native acceptance, numeric readout, Off restoration and delivery.
+
+The final conditional-surface edit is independently checked in native EN/light
+and the uninstrumented custom build: On paints the enrolled reading planes, Off
+restores their original backgrounds, and re-enable paints again. The clean final
+task confirms Texture reading before the settings round trip and Texture reading
+continued afterward. An earlier synthetic typeText probe omits CJK characters
+before that task; it supplies no exact-CJK or OS IME acceptance.
+
+Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
+`b090cf87ac820b6a2b112dd8487f4b21cf3da192890ad01247135c5f6fdedaf1`, **1,205**
+actual artifact hashes, **11** native construction inputs and all **11** unchanged
+portable resources. Native acceptance applications are quit before publication. Scoped
+result: **Approve** for the requested material, bounded legibility contracts and
+exercised reading/settings task. Publication and owned retirement follow below.
+
+Delivery: implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` is pushed to remote
+`main` and independently matched with ls-remote before retirement. The single
+publication-time fetch finds main at the frozen base; merge is already up to
+date. Normal formatting, workspace lint and commit-message hooks pass without
+changing accepted product bytes.
+
+All **49** recorded PIDs are dead and all **3** bundles are unregistered. Cleanup
+removes **8** new checkout output/cache paths, **6** bundle-specific Library paths
+and **3** bundle-temporary directories. The original native-check binary and
+shared UI Vitest results are restored exactly. Independent checks before and
+after exact-root deletion preserve **36** output-presence baselines, **3** original
+file hashes and all **11** unchanged portable resources. No exact-root or
+exact-bundle process matches remain.
+
+The exact private root `flame-ui-paper-texture-1025-roGbxy` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its
+verified compressed in-memory archive retains **218** UTF-8 evidence files and
+**60** capture hashes, SHA-256
+`bfc24e24ec6a3b2e7be484fff47884702f6972349929808e35015563f5c7381d`.
+Only the specific invalid-UTF-8 result class is excluded as binary; the original
+native binary is retained by its preservation hash. User data, the primary
+parallel checkout, installed dependencies, global caches and read-only references
+remain untouched. This receipt changes no accepted product input; publication is
+followed by fresh remote, cleanliness and preservation checks.
+
+The Appearance helper-copy refinement is qualified in Appearance labels and
+search. Retain the material, shared control behavior and neutral default. Revisit
+the pre-existing Dock shorthand failure when that owner changes. Native synthetic
+drag dispatch remains unqualified; isolate it before attributing a product defect.
+
 ### Schedule editor hierarchy
 
 New schedules begin with Title and Instructions directly in the shared dialog
@@ -1181,7 +1638,7 @@ SHA-256 `e8cc011a0cbef8b15539df7880b9b5fa73edc8881814012f4c8efa0c0d4706d0`.
 User data, the primary parallel checkout, dependencies, global caches and read-only
 references remain untouched. This receipt changes no accepted product input;
 publication is followed by fresh remote, cleanliness and preservation checks.
-The user's paper-texture request is the next product batch.
+The paper-texture request is qualified in Paper texture and reading surfaces.
 
 ### Native image save qualification
 
@@ -7510,6 +7967,152 @@ accepted source/test hashes match its blobs, with a clean owned worktree and
 zero unpushed commits at that checkpoint. The auxiliary MCP tool-data recovery
 follow-up is now qualified below. Do not repeat this resolved classification
 defect or infer a focus failure solely from pending body focus.
+
+### MCP editor clarity and literal configuration
+
+The actual frozen editor silently disables Save/Test for timeout 0 while its
+native field advertises min 0. It also repeats the list empty prompt and an
+introductory paragraph above the active editor. Existing MCPServerEdit already
+owns blank/unbounded and positive safe whole-second validation. ServerForm now
+projects that parsed value into min 1, step 1, safe maximum, aria-invalid and a
+linked field error, without another parser. Required attributes follow the active
+transport. The error retires on correction and the input keeps its identity/focus.
+
+The list's empty prompt is omitted only during Add. Loading, read failure and
+Retry remain mounted. The editor and empty state use direct labels; five unused
+intro/helper/duplicate-placeholder keys are removed from all eight catalogs.
+Exactly one timeout error key is added and the command example becomes npx;
+independent parsed-catalog comparison preserves every other value. Required
+credential preserve/replace/clear and target/origin messages remain unchanged.
+
+A first native candidate changes npx to Npx before Save. Eight literal controls
+now explicitly disable capitalization, autocorrection and spell checking:
+name, command, arguments, environment, directory, URL, authorization and headers.
+The final native stdio and case-sensitive HTTP paths preserve their input.
+Description and numeric controls keep their existing input policy.
+
+At ZH 18 px/200%, the first save-error candidate leaves part of its error below
+the viewport. Shared FormActions now has a feedback slot and declares its action
+row/result as one focus unit. Changed feedback reuses Panel's existing clipped
+viewport, sticky clearance and fit/tall reveal rule only while current focus
+remains inside the group. The passive effect runs after ancestor refs attach;
+it never focuses or scrolls back to an editor the user left. Existing pointer
+activation rules and action-row wrapping remain. ServerForm keeps its persistent
+polite Test region and conditional alert inside this slot. No command, draft,
+secret, Runtime, protocol, persistence, dependency or theme authority changes.
+
+Reference judgment uses ZCode's actual packages/ui/settings/McpServerForm,
+HeroUI's actual Form/Input docs and the previously retained Radix focus model.
+The better-writing/layout/accessibility/UI/colors reviews guide direct labels,
+field errors, actionable feedback and reuse of existing semantic roles. No new
+motion, color treatment or alternate form framework is introduced.
+
+Focused baseline passes 14 MCP files / 89 tests. New timeout/hierarchy regressions
+fail 6 and pass 14 against the original source. The native literal-input finding
+has a separate failing regression (1 failed / 20 passed). Shared action-feedback
+regressions fail 3 and pass 15 against the original package. An initial layout
+effect misses ancestor refs during parent rerender; the passive-effect repair
+passes the same assertions. Final serial checks pass:
+
+- Shared UI build/type/lint/format, 7 files / 115 tests and the independent
+  offline packed UI/icons consumer.
+- All five plugin gates and all 11 portable ESM resources, rebuilt byte-identically.
+- MCP, DataView, SettingsPage, SettingRow and installed workspace continuity:
+  19 files / 132 tests, then 16 Web type/lint/format, style/token, locale,
+  boundary/port, production bundle, variable and plugin gates.
+- Supported make check-native, private native assets and the exercised hosts.
+  The final complete check script passes in 61.34 seconds on pinned Node 22.22.1
+  and Go 1.27.3. Existing target/library/chunk warnings remain nonfatal.
+
+The unchanged base check:shorthand failure in ui/agent/dock-catalog.tsx:14 remains
+outside this task; no assertion or gate is weakened. An introduced test lint
+failure is fixed before final qualification. Browser visual suites and
+performance benchmarks are not run.
+
+Actual Wails v3.0.0-beta.34 acceptance qualifies:
+
+- EN/light/14 px/Orange at 1440 by 900: Name/Command, fractional timeout error,
+  correction, Test, scripted Save rejection, retained draft/action focus, blank
+  timeout retry and canonical Connecting row. Reopening retains npx/unbounded;
+  Cancel restores the exact Edit opener. The same Composer (identity 2) keeps
+  MCP en reading and continues to MCP en reading continued after Settings.
+  The original editor is 917.0625 CSS px tall; the new invalid-field scene is
+  667.0625 at the same viewport, including the new field error.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off, native Left and twenty native
+  View zoom actions: 200%, 561 by 525 CSS px, document width 561, zero observed
+  unhandled errors. Timeout 0's whole label/control/error fits; Up corrects it
+  to 1 without changing focus. At 15, Test and scripted Save rejection retain
+  npx and the draft. The complete actions/error group lies at 374.492 to 472.383,
+  inside the visible viewport; the primary action retains focus. Blank retry
+  saves unbounded with canonical Connecting. Edit/Cancel restores its opener;
+  Composer identity 2 continues MCP zh reading to MCP zh reading continued.
+- Uninstrumented DE/18 px/custom warm base/Purple/motion Off, native Left/200%:
+  the HTTP URL https://tools.example/Mcp?case=AbC stays literal. Localized timeout
+  feedback corrects before Test. A long scripted German save error and all
+  actions remain fully visible with Save focused. Cancel restores exact Add.
+  Escape closes JSON import to its trigger. Actual Size, Settings/Composer
+  return and MCP de reading continued succeed. This build contains production
+  chrome/font adapters and no private DOM observer; no geometry/identity or
+  unhandled-error count is claimed for it.
+
+The same clean native app reconfirms the already-delivered paper material at
+Actual Size: Xuan strength 3 visibly paints the custom reading planes and rail;
+Off restores the plain background. This is a retained-behavior check, not a new
+paper implementation or a rerun of its 756-case contrast matrix.
+
+Native acceptance uses actual production views, command/client boundaries and
+canonical in-memory MCP responses, with one scripted create failure and canonical
+status rereads. No real process, network dial, credential, live Runtime write or
+message Send occurs. The private fixture initially omits the normal MCP feature;
+the client correctly refuses Test until the private capability declaration is
+fixed. No production capability/security rule changes. A premature native Tab/type
+sequence splits a command across fields; it sends no request and is excluded.
+Fresh observed focus and corrected fields qualify the final task. Other narrow
+AX matcher/capture assumptions are corrected in the private harness. VoiceOver,
+full OS IME, forced-colors/RTL GUI, other platforms, arbitrary themes and live MCP
+execution are not newly qualified. Ordinary portable resources are separately
+built/checked; these native scenes do not claim to load their ESM.
+
+Bounded Read/Edit/Write-only Claude CLI supplies scoped form/catalog, literal-input
+and shared-feedback edits; primary owns review, regressions, native acceptance and
+delivery. The first editor task times out after 180.85 seconds and its actual
+partial diff is reviewed. The literal task exits successfully in 26.87 seconds;
+the feedback task exits successfully in 52.92 seconds. The latter raw CLI JSON is
+overwritten by a same-named runner result, so no turn count or permission-denial
+claim is inferred from that lost report. Final source and checks are independent
+of CLI self-report.
+
+Final integrity freezes 5,778 non-Markdown inputs, SHA-256
+810fc90553b35bfb9c20ca8abdd991fefe78239c7921c2df6297753a2458c218,
+1,806 actual artifact hashes and 14 native construction inputs. All remain exact
+through acceptance, and all recorded native/CLI/build processes have exited.
+Scoped result: Approve for these editor and shared feedback contracts; the
+observed JSON-import introduction is the next separate task.
+
+Delivery: implementation 0c2f14377d24af2c9a63c44e4153a8a296105bdf is pushed to
+remote main and independently matches ls-remote. The single publication fetch
+finds main at the frozen base; merge is already up to date. Normal formatting,
+workspace lint and commit-message hooks preserve the qualified product inputs.
+
+All 31 recorded PIDs are dead, all 4 bundles are unregistered and no exact-root
+or exact-bundle process matches remain. Cleanup removes 8 new checkout output
+or cache paths, 8 bundle-specific Library paths and 4 bundle temporary directories.
+It restores the original native-check binary and UI Vitest results exactly.
+Independent checks before and after exact-root removal preserve all 36 output
+presence baselines, 3 original file hashes, 11 portable resources and all source
+inputs. The three read-only reference files retain their original hashes.
+
+The exact private root flame-ui-mcp-editor-1026-c52a4h is absent after
+UID/device/inode/birth-time, source, artifact, native-input and process guards.
+Its round-trip-verified compressed in-memory archive retains 157 UTF-8 evidence
+files and 37 capture hashes, SHA-256
+04c2f2790d5264aea2589e6ae35eff3bec885497a928d7652f210d5bd24e0d3e.
+Only the specific invalid-UTF-8 result class is excluded as a preserved binary;
+that original native binary remains represented by its preservation hash.
+Installed dependencies, global caches, user data, the primary parallel checkout
+and reference repositories remain intact. This Markdown receipt changes no
+qualified product source; fresh remote, cleanliness and preservation checks
+follow publication.
 
 ### MCP tool read identity and scoped recovery
 

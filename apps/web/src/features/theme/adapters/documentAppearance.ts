@@ -14,6 +14,7 @@ import {
 import { densityCssVariables } from "@/features/theme/kit/density";
 import { productIconScaleCssVariables } from "@/lib/productIconScale";
 import { uiTypeLadderCssVariables } from "@/features/theme/kit/typeLadder";
+import { paperTextureImage } from "@/features/theme/kit/paperTexture";
 import { COLOR_THEME, VISUAL_STYLE } from "@/features/theme/public/extensionPoints";
 import { subscribeContributions } from "@/extensions/kernel";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -120,6 +121,20 @@ function applyShape(density: string, radiusScale: number, motionScale: number): 
   else root.removeAttribute("data-motion");
 }
 
+function applyPaperTexture(preference: AppearancePreference): void {
+  const root = document.documentElement;
+  if (preference.paperTexture === "off") root.removeAttribute("data-paper-texture");
+  else root.dataset.paperTexture = preference.paperTexture;
+  root.style.setProperty(
+    "--surface-texture",
+    paperTextureImage(
+      preference.paperTexture,
+      preference.paperTextureStrength,
+      resolveThemeScheme(preference.theme),
+    ),
+  );
+}
+
 export function installDocumentAppearance<T extends AppearancePreference>(
   store: UiEffectStore<T>,
 ): () => void {
@@ -135,6 +150,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     initial.fontSmoothing,
   );
   applyShape(initial.density, initial.radiusScale, initial.motionScale);
+  applyPaperTexture(initial);
 
   const unsubscribeUi = store.subscribe((state, previous) => {
     if (
@@ -148,6 +164,13 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     } else if (state.visualStyle !== previous.visualStyle) {
       applyVisualStyle(state.visualStyle);
       publishTokens();
+    }
+    if (
+      state.paperTexture !== previous.paperTexture ||
+      state.paperTextureStrength !== previous.paperTextureStrength ||
+      state.theme !== previous.theme
+    ) {
+      applyPaperTexture(state);
     }
     if (
       state.uiFont !== previous.uiFont ||
@@ -178,6 +201,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     const current = store.getState();
     applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
+    applyPaperTexture(current);
     publishTokens();
   });
 
@@ -186,6 +210,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     if (current.theme !== "system") return;
     applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
+    applyPaperTexture(current);
     publishTokens();
   });
 

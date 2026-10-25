@@ -51,11 +51,7 @@ export function McpServersPane() {
         failure={error}
         onRetry={refetch}
         skeletonCount={3}
-        empty={{
-          icon: "server",
-          title: t("mcp.empty"),
-          sub: t("mcp.empty.sub"),
-        }}
+        empty={adding ? undefined : { icon: "server", title: t("mcp.empty") }}
       >
         {(rows) => (
           <RecordGroup variant="list">

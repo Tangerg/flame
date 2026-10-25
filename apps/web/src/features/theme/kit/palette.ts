@@ -1,7 +1,9 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
-import { controlEdge, focusRing } from "@/features/theme/kit/legibility";
+import { type AppearancePreference } from "@/features/theme/kit/appearance";
+import { WCAG_AA_TEXT, controlEdge, focusRing, legibleMix } from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
+import { paperTextureBackgrounds } from "@/features/theme/kit/paperTexture";
 import { hueScale, neutralScale, solidInk, step, type Scale } from "@/features/theme/kit/scale";
 import { SCHEME_ICON, inkTracksLadder } from "@/features/theme/kit/tokens";
 interface ThemePalette {
@@ -51,6 +53,7 @@ export function paletteThemeContribution(
   theme: PaletteTheme,
   preferredAccent: string,
   contrast: number,
+  paper?: Pick<AppearancePreference, "paperTexture" | "paperTextureStrength">,
 ): ColorThemeSpec {
   const { scheme, palette } = theme;
   const background = palette.background ?? SCHEME_BASE[scheme].background;
@@ -64,8 +67,17 @@ export function paletteThemeContribution(
   const surface = step(neutral, planes.surface);
   const elevated = elevatedPlane(scheme, neutral);
   const sunken = step(neutral, planes.sunken);
-  const textPlanes = [sunken, elevated];
-  const backgrounds = [canvas, drawer, surface, elevated, sunken];
+  // Only the canvas, drawer and surface carry paper; their worst-case painted planes join the
+  // legibility checks so every ink derived below stays readable over the texture.
+  const paperPlanes = paper
+    ? paperTextureBackgrounds(paper.paperTexture, paper.paperTextureStrength, scheme, [
+        canvas,
+        drawer,
+        surface,
+      ])
+    : [];
+  const textPlanes = [sunken, elevated, ...paperPlanes];
+  const backgrounds = [canvas, drawer, surface, elevated, sunken, ...paperPlanes];
   const scale = (color: string) => hueScale(color, scheme, canvas, textPlanes);
   const accent = scale(seed);
   const status = {
@@ -77,6 +89,13 @@ export function paletteThemeContribution(
   const solid = step(accent, 9);
   const onSolid = solidInk(solid);
   const text = step(neutral, 12);
+  const restingInk = (declared: string) =>
+    inkTracksLadder(
+      scheme,
+      paperPlanes.length > 0
+        ? mixOklab(text, declared, legibleMix(text, declared, backgrounds, 0, WCAG_AA_TEXT))
+        : declared,
+    );
 
   return {
     id: theme.id,
@@ -100,9 +119,9 @@ export function paletteThemeContribution(
 
       "color-text": text,
       "color-text-bright": mixOklab(text, scheme === "dark" ? "#ffffff" : "#000000", 80),
-      "color-text-soft": inkTracksLadder(scheme, mixOklab(text, step(neutral, 11), 55)),
-      "color-text-muted": inkTracksLadder(scheme, palette.muted ?? step(neutral, 11)),
-      "color-text-faint": inkTracksLadder(scheme, step(neutral, 10)),
+      "color-text-soft": restingInk(mixOklab(text, step(neutral, 11), 55)),
+      "color-text-muted": restingInk(palette.muted ?? step(neutral, 11)),
+      "color-text-faint": restingInk(step(neutral, 10)),
 
       "color-focus-ring": focusRing(solid, text, backgrounds),
       "color-control-edge": controlEdge(text, canvas, backgrounds),

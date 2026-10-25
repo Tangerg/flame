@@ -116,7 +116,7 @@ export function AccentSection() {
   const isCustom = !accents.some((a) => a.color === accent);
 
   return (
-    <SettingRow label={t("settings.accent")} sub={t("settings.accent.sub")}>
+    <SettingRow label={t("settings.accent")}>
       <div {...stylex.props(a.swatchRow)}>
         {accents.map((swatch) => {
           const fill = solidFill(swatch.color);

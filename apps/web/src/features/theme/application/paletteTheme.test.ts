@@ -8,7 +8,32 @@ import { solidFill } from "@/features/theme/kit/scale";
 import { contributePaletteTheme } from "@/features/theme/application/paletteTheme";
 beforeEach(() => {
   installAppearancePreferencePort();
-  useAppearanceStore.setState({ accent: "#3574f0", contrast: 25 });
+  useAppearanceStore.setState({
+    accent: "#3574f0",
+    contrast: 25,
+    paperTexture: "off",
+    paperTextureStrength: 3,
+  });
+});
+
+it("updates a contributed palette for paper and strength, then restores its plain inks", async () => {
+  await contributeForTest((ctx) => {
+    contributePaletteTheme(ctx.lifetime("paper"), {
+      id: "package:paper",
+      label: "Paper",
+      scheme: "light",
+      palette: {},
+    });
+  });
+  const tokens = () => lookupExtensionByKey(COLOR_THEME, "package:paper")?.tokens;
+  const plain = tokens();
+  useAppearanceStore.getState().setPaperTexture("xuan");
+  const medium = tokens();
+  expect(medium?.["color-text-faint"]).not.toBe(plain?.["color-text-faint"]);
+  useAppearanceStore.getState().setPaperTextureStrength(5);
+  expect(tokens()?.["color-text-faint"]).not.toBe(medium?.["color-text-faint"]);
+  useAppearanceStore.getState().setPaperTexture("off");
+  expect(tokens()).toEqual(plain);
 });
 
 it("re-derives a palette theme from the current accent and contrast", async () => {

@@ -13,6 +13,12 @@ export const DEFAULT_CONTRAST = 25;
 
 export const DEFAULT_ACCENT = FLAME_ORANGE;
 
+export const PAPER_TEXTURES = ["off", "xuan", "cotton", "grain"] as const;
+
+export type PaperTexture = (typeof PAPER_TEXTURES)[number];
+
+export const DEFAULT_PAPER_TEXTURE_STRENGTH = 3;
+
 interface CustomTheme {
   bg: string;
   fg: string;
@@ -32,6 +38,8 @@ export interface AppearancePreference {
   density: UiDensity;
   radiusScale: number;
   motionScale: number;
+  paperTexture: PaperTexture;
+  paperTextureStrength: number;
 }
 
 export interface AppearanceEdit {
@@ -48,4 +56,6 @@ export interface AppearanceEdit {
   setDensity: (density: UiDensity) => void;
   setRadiusScale: (scale: number) => void;
   setMotionScale: (scale: number) => void;
+  setPaperTexture: (texture: PaperTexture) => void;
+  setPaperTextureStrength: (strength: number) => void;
 }

@@ -7,6 +7,12 @@ components use the actual shared React/UI provider context and controlled font s
 the library never chooses or persists a theme. The former HTML guest projection,
 message channel and bootstrap exports are removed.
 
+`surface.texture` reads the host's optional `--surface-texture` background image,
+with `none` as its fallback. While the host marks `data-paper-texture` on the
+document root, `Panel` and its sticky controls paint this material
+behind content; control and card skins keep their existing solid surfaces. The
+application owns paper choices, strength, theme adaptation and persistence.
+
 `ButtonPrimitive` keeps command labels outside native text selection. Dragging a
 navigation or action button cannot begin selecting the surrounding document.
 Reading content and editable fields retain their native selection behavior.
@@ -52,9 +58,19 @@ host: its canvas and sticky-control boundary extend through the complete content
 projects their height on its root, and uses it to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Body focus also respects the host's clipped viewport. A wrapping native label
-and its focused control form one reading unit when they fit below the sticky
-controls and disclosure header. Taller fields still reveal the focused control's
-beginning after native autofocus or a control-zone resize.
+or a container marked `data-focus-unit` keeps its label and focused control
+together when the complete unit fits below the sticky controls and disclosure
+header. `FormGroup` and the application's `SettingRow` declare this boundary at
+their existing roots. The nearest unit wins; taller units still reveal the
+focused control's beginning after native autofocus or a control-zone resize.
+Pointer-caused focus leaves the pressed control in place so activation can
+finish before any row reveal. The body consumes the pressed target once,
+including wrapping labels and slider focus proxies; unrelated autofocus still
+reveals its own unit. Leaving the body clears an unconsumed press.
+`FormActions.feedback` keeps asynchronous results in the same focus unit as its
+actions. A changed result reuses the Panel reveal rule only while focus remains
+inside that group; later outside focus is left alone. Oversized feedback retains
+the focused-control fallback.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.

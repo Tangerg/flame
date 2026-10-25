@@ -34,6 +34,13 @@ export const settingStyles = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
+  readout: {
+    width: "3ch",
+    textAlign: "end",
+    fontFamily: "var(--font-mono)",
+    whiteSpace: "nowrap",
+    color: color.fgMuted,
+  },
   end: { display: "flex", justifyContent: "flex-end" },
 
   label: { color: color.fg, fontWeight: weight.medium },

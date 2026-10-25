@@ -10,12 +10,17 @@ export function contributePaletteTheme(
   const initial = preference.read();
   const contribution = owner.contribute(
     COLOR_THEME,
-    paletteThemeContribution(theme, initial.accent, initial.contrast),
+    paletteThemeContribution(theme, initial.accent, initial.contrast, initial),
   );
   owner.cleanup(
     preference.subscribe((next, previous) => {
-      if (next.accent !== previous.accent || next.contrast !== previous.contrast)
-        contribution.update(paletteThemeContribution(theme, next.accent, next.contrast));
+      if (
+        next.accent !== previous.accent ||
+        next.contrast !== previous.contrast ||
+        next.paperTexture !== previous.paperTexture ||
+        next.paperTextureStrength !== previous.paperTextureStrength
+      )
+        contribution.update(paletteThemeContribution(theme, next.accent, next.contrast, next));
     }),
   );
 }

@@ -8,6 +8,7 @@ import {
   type PaletteTheme,
 } from "@/features/theme/kit/palette";
 import { solidFill } from "@/features/theme/kit/scale";
+import { paperTextureBackgrounds } from "@/features/theme/kit/paperTexture";
 const theme = (scheme: Scheme, palette: PaletteTheme["palette"] = {}): PaletteTheme => ({
   id: `test-${scheme}`,
   label: "Test",
@@ -50,6 +51,82 @@ const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
   ["custom dark", theme("dark", { background: "#0f1117", foreground: "#e6e8ee" })],
   ["custom light", theme("light", { background: "#fdf6e3", foreground: "#073642" })],
 ];
+
+describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => {
+  it("restores every plain token when paper is Off", () => {
+    expect(
+      paletteThemeContribution(subject, "#fb6e30", 25, {
+        paperTexture: "off",
+        paperTextureStrength: 5,
+      }).tokens,
+    ).toEqual(tokensOf(subject, "#fb6e30", 25));
+  });
+
+  it.each(["xuan", "cotton", "grain"] as const)(
+    "keeps text and focus readable on the strongest %s pixels",
+    (paperTexture) => {
+      for (const paperTextureStrength of [1, 3, 5]) {
+        for (const contrast of [0, 25, 100]) {
+          for (const accent of ACCENTS) {
+            const plain = tokensOf(subject, accent, contrast);
+            const t = paletteThemeContribution(subject, accent, contrast, {
+              paperTexture,
+              paperTextureStrength,
+            }).tokens!;
+            for (const name of [
+              "color-bg",
+              "color-drawer",
+              "color-surface",
+              "color-elevated",
+              "color-sunken",
+              "color-text",
+              "color-cta",
+              "color-cta-hover",
+            ])
+              expect(t[name]).toBe(plain[name]);
+            const planes = [
+              "color-bg",
+              "color-drawer",
+              "color-surface",
+              "color-elevated",
+              "color-sunken",
+            ].map((name) => t[name]!);
+            planes.push(
+              ...paperTextureBackgrounds(paperTexture, paperTextureStrength, subject.scheme, [
+                t["color-bg"]!,
+                t["color-drawer"]!,
+                t["color-surface"]!,
+              ]),
+            );
+            for (const name of [
+              "color-text",
+              "color-text-soft",
+              "color-text-muted",
+              "color-text-faint",
+              "color-accent-text",
+              "color-accent-strong",
+              "color-negative",
+              "color-warning",
+              "color-success",
+              "color-info",
+            ])
+              for (const plane of planes)
+                expect(
+                  contrastRatio(restingInk(t[name]!), plane),
+                  `${name} on ${plane}, strength ${paperTextureStrength}, contrast ${contrast}, accent ${accent}`,
+                ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+            for (const name of ["color-focus-ring", "color-control-edge"])
+              for (const plane of planes)
+                expect(
+                  contrastRatio(t[name]!, plane),
+                  `${name} on ${plane}`,
+                ).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
+          }
+        }
+      }
+    },
+  );
+});
 
 describe("palette themes", () => {
   it("emit one role vocabulary for built-in, custom and partial palettes", () => {
