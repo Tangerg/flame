@@ -1184,6 +1184,9 @@ export const en: Record<string, string> = {
   "file.unsupported.sub":
     "Flame shows workspace files as text. Open it in its own app, or find it in Finder.",
   "file.open": "Open",
+  "file.openFailed": "Couldn't open {{path}}. Try again.",
+  "file.revealFailed": "Couldn't show {{path}} in Finder. Try again.",
+  "file.localUnavailable": "Local files are unavailable for the connected Runtime.",
   "file.change.add": "Added in the working tree",
   "file.change.mod": "Modified in the working tree",
   "file.change.del": "Deleted in the working tree",

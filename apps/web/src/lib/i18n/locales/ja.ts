@@ -1158,6 +1158,9 @@ export const ja: Record<string, string> = {
   "file.unsupported.sub":
     "Flame はワークスペースのファイルをテキストとして表示します。既定のアプリで開くか、Finder で表示してください。",
   "file.open": "開く",
+  "file.openFailed": "{{path}} を開けませんでした。もう一度お試しください。",
+  "file.revealFailed": "{{path}} を Finder に表示できませんでした。もう一度お試しください。",
+  "file.localUnavailable": "接続中の Runtime ではローカルファイルを利用できません。",
   "file.change.add": "作業ツリーで追加",
   "file.change.mod": "作業ツリーで変更",
   "file.change.del": "作業ツリーで削除",

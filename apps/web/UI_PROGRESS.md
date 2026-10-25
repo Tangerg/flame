@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Go to line preserves entered text, rejects invalid targets without navigation and provides a visible submit action with associated feedback. Native file reading, correction, return and draft continuation pass, including Chinese large text at 200%. Earlier footnote, unconfirmed-operation, run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
+Updated: 2026-10-25. Local file Open and Reveal now report their captured target and actual failure inside the file workspace, retain notification history and keep the original action reachable. Native reading, retry, feedback dismissal and draft continuation pass, including Chinese large text at 200%. Go-to-line, footnote, unconfirmed-operation, run-settlement, captured-text, notification, directory, catalog and grouped Tool improvements remain delivered. The continuous goal remains active. UI work uses a frozen accepted base; main synchronization happens at intervals, with affected-check reuse. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/file-line-input-1025`. Go-to-line input preservation and submission
+is on `codex/local-file-feedback-1025`. Local file action outcomes and continued
+reading are accepted on frozen base `5918ddcc976f39e77c9321caa975e3ef31d02e06`;
+publication and private evidence retirement are pending below.
+Go-to-line input preservation and submission
 are accepted on frozen base `9b8fe29a187c726395db1b084d99af6f41b8f2b8`;
 implementation `31d69a91dd1a8959b10b5a898177a64eaed22bc1` is published to
 remote main. Private evidence retirement is complete, and the owned checkout
@@ -4200,6 +4203,99 @@ The exact private root
 is absent. This documentation-only receipt changes no tested source. Primary
 parallel work remains preserved; continue from a new observed UI task on the
 accepted frozen base rather than restarting checks for incoming main commits.
+
+### Local file action outcomes and continued reading
+
+Actual Wails reproduced three silent local-action failures: the file header's
+Show in Finder, the file-tree menu's Show in Finder and an unsupported file's
+Open action each discard a rejected host promise. The successive actions leave
+one, two and three unhandled rejections, with no notification record. The
+production native bridge really rejects these effects; the locality adapter's
+`false` result is also unavailable access rather than successful completion.
+
+`application/localFileActions.ts` now settles the captured cwd/path once. It
+returns a closed success/error result and records each failure in the existing
+notification history. The same error text names the original path, supplies a
+retry instruction and preserves the native cause, or explains unavailable local
+access. Success is quiet. The native port, path resolution, locality recheck,
+host installation and Runtime contract remain unchanged.
+
+`FileWorkspace.tsx` uses the existing `useAsyncFeedback` owner to present that
+result inside the current file layout with the existing SystemMessage. Feedback
+can scroll within 40dvh and can be closed; closing a focused feedback action
+returns to the surviving reader or tree cursor. FileBrowser and FilePreview
+provide their actual focus targets. FileTree receives its Reveal intent from
+this owner; its production caller and fifteen isolated test consumers are
+migrated together. No second error store, action queue, automatic retry or new
+notification popup is added.
+
+The existing file-browser pre-mutation layout snapshot now also serves the file
+reader as `FileContentLayout`. A control that was fully visible before feedback
+changed the layout is revealed only if it remains focused inside that reader.
+Later outside focus and a deliberately scrolled-away control are respected.
+The existing viewer, query, mode, line/range, menu-return and Composer owners
+remain intact. Native late failure after switching files still identifies the
+original target and leaves the current draft alone.
+
+Read-only ZCode's actual WorkspaceFileTree checks file-manager outcomes and
+reports failure; it does not supply Flame's local feedback lifecycle. HeroUI's
+actual toast simple/variants examples distinguish status, target and supporting
+detail. The final container decision comes from the task and actual Wails
+constraints. Better-accessibility, layout and writing guide error identity,
+keyboard completion and layout retreat. Existing typography, error semantics,
+Orange/custom accent tokens and reduced-motion behavior are preserved. No fresh
+contrast ratio or screen-reader speech qualification is claimed.
+
+The original FileWorkspace/local-adapter baseline passes **78 tests** in
+**6.85 s**. The first edit-only Claude CLI finishes in **130.73 s** with no
+permission denials; its report counts 49 turns despite a configured limit of
+36, so only the enforced 180-second wall bound is claimed. A second two-file
+revision finishes in **16.52 s**, reports five turns and no denials. Primary
+review supplies the regressions, migrates the isolated tree consumers and owns
+the layout/focus repair.
+
+The first candidate passes **124 tests** and thirteen scoped Web gates, but
+native Chinese 18 px/200% reveals its toast covering the focused Open button
+(`hit=false`). That candidate is rejected. The final in-flow design passes
+**17 focused cases**. Restoring only the original two production views makes
+all **eight** new UI regressions fail, with 75 earlier cases outside that filter.
+One aggregate attempt passes 129 tests then stops on a conditional expectation
+in a new test; the equivalent complete call-sequence assertion fixes lint.
+Final verification passes **5 files / 129 tests** and all **thirteen** scoped
+Web gates in **23.90 s**, including layer and port checks. Its **5,769-file**
+non-Markdown map is
+`6b4b86231163dc4e24af55e5e48952aca5b56e5a4b36d8f8ea71b00412af9881`.
+
+Final native EN/light/14 px/Orange qualifies header failure and keyboard retry,
+tree-menu unavailable access and original-row return, unsupported-file Open and
+retry, and a held Reveal that fails after README reading and Composer focus.
+The same input ID 2 continues its exact **31→42** character draft with caret 42. ZH/dark/18 px/custom blue/reduced motion qualifies normal feedback and
+**200% / 561 × 365 CSS px**. The error remains in normal flow; Open stays fully
+visible at **[254.8, 335, 51.3, 30]** and passes hit testing. Tree feedback
+closes by keyboard into the same README cursor. Pointer feedback dismissal
+returns to the named reader. A separately observed pure-keyboard path reaches
+Open, submits, returns through the reader to feedback Close and dismisses back
+into that same reader. Full-pane Close returns to Conversation; native paste
+continues the original input and draft **11→16**, with caret 16. Chinese Actual
+Size restores **1122 × 730** before Quit. English stays at its original size.
+All final action captures have zero unhandled rejections and zero action toasts.
+
+A reverse-Tab attempt from the clicked Open button does not advance and is
+excluded; the subsequent pure-keyboard path above passes. No fresh cause or
+platform workaround is claimed. Hidden retained feedback geometry is not
+interpreted as visible material. The production views run in real Wails with
+deterministic host outcomes and one unsupported-file fixture entry. These do
+not qualify actual Finder launch, live filesystem permission faults, Runtime
+replacement, provider traffic, VoiceOver, OS IME, RTL or other-platform GUIs.
+Notification history interaction reuses its unchanged earlier qualification.
+No browser suite, benchmark, full-product check, fetch or merge ran. Builds are
+serial. Both native binaries reuse unchanged Go sources for the final assets.
+
+All **26** recorded processes are dead and both bundles are unregistered. Seven
+owned checkout outputs, four Library Cache/WebKit paths and two bundle-temp
+paths are removed. All 36 output-presence baselines, three original file hashes
+and eleven product resources match; two original Vitest files are restored.
+Publication and exact private-root retirement are pending the delivery receipt.
 
 ## Dock tab task continuity
 

@@ -27,6 +27,7 @@ import { Icon, fileIconName } from "@/ui/index";
 import { Button, EmptyState, IconButton, isImeKey, TextField, useCopyFeedback } from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "@/features/workspace/application/ports/localWorkspace";
+import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
 import { workspaceErrorClassifier } from "@/features/workspace/application/ports/workspaceErrorClassifier";
 import { useT } from "@/lib/i18n/index";
 import { FileView } from "@/features/workspace/ui/files/FileView";
@@ -48,6 +49,9 @@ import {
 import { type WorkspaceFileViewer } from "@/features/workspace/application/ports/navigationState";
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
 import { selectFileRenderer } from "@/features/workspace/application/fileRenderer";
+import { type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
+import { SystemMessage } from "@/ui/index";
+import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
@@ -67,7 +71,14 @@ const fp = stylex.create({
   gotoRow: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
   gotoField: { flexGrow: 1, flexBasis: "6rem", minWidth: 0 },
   gotoError: { margin: 0, color: color.negative, overflowWrap: "anywhere" },
+  feedback: { flexShrink: 0, maxHeight: "40dvh", overflowY: "auto", overscrollBehavior: "contain" },
 });
+
+interface LocalFileActions {
+  open: (cwd: string, path: string) => void;
+  reveal: (cwd: string, path: string) => void;
+  feedback: (focusTarget: RefObject<HTMLElement | null>) => ReactNode;
+}
 
 interface LineWindow {
   start?: number;
@@ -79,11 +90,48 @@ function initialWindow(line: number): LineWindow {
 }
 
 export function FileWorkspace() {
+  const t = useT();
+  const { feedback, run, reset } = useAsyncFeedback();
   const viewer = useWorkspaceFileViewer();
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousViewer = useRef(viewer);
   const returnFocus = useRef(false);
+  const fileActions: LocalFileActions = {
+    open(cwd, path) {
+      void run(() => openLocalFile(cwd, path), t("file.openFailed", { path }));
+    },
+    reveal(cwd, path) {
+      void run(() => revealLocalFile(cwd, path), t("file.revealFailed", { path }));
+    },
+    feedback(focusTarget) {
+      if (feedback.state !== "error") return undefined;
+      return (
+        <div {...stylex.props(fp.feedback)}>
+          <SystemMessage
+            variant="error"
+            data-slot="local-file-feedback"
+            action={{
+              label: t("common.close"),
+              onClick: () => {
+                const host = focusTarget.current;
+                const active = host?.ownerDocument.activeElement;
+                if (
+                  active instanceof HTMLElement &&
+                  active.closest('[data-slot="local-file-feedback"]')
+                ) {
+                  host?.focus({ preventScroll: true });
+                }
+                reset();
+              },
+            }}
+          >
+            {feedback.reason}
+          </SystemMessage>
+        </div>
+      );
+    },
+  };
   const restoreFocus = useCallback((item: HTMLElement) => {
     if (!returnFocus.current) return;
     returnFocus.current = false;
@@ -108,15 +156,16 @@ export function FileWorkspace() {
   return (
     <div ref={panelRef} {...stylex.props(fp.workspace)}>
       <Activity mode={viewer ? "hidden" : "visible"}>
-        <FileBrowser restoreFocus={restoreFocus} />
+        <FileBrowser restoreFocus={restoreFocus} fileActions={fileActions} />
       </Activity>
-      {viewer && <FilePreview viewer={viewer} backRef={backRef} />}
+      {viewer && <FilePreview viewer={viewer} backRef={backRef} fileActions={fileActions} />}
     </div>
   );
 }
 
-interface FileBrowserLayoutProps {
+interface FileContentLayoutProps extends ViewHeaderProps {
   viewport: RefObject<HTMLDivElement | null>;
+  scrollLabel?: string;
   notice?: ReactNode;
   children: ReactNode;
 }
@@ -128,13 +177,12 @@ function visibleInViewport(viewport: HTMLElement, row: HTMLElement): boolean {
 }
 
 // A pre-mutation snapshot distinguishes layout displacement from a user who scrolled away.
-class FileBrowserLayout extends Component<FileBrowserLayoutProps, unknown, HTMLElement | null> {
+class FileContentLayout extends Component<FileContentLayoutProps, unknown, HTMLElement | null> {
   override getSnapshotBeforeUpdate(): HTMLElement | null {
     const viewport = this.props.viewport.current;
     const active = viewport?.ownerDocument.activeElement;
     return viewport &&
       active instanceof HTMLElement &&
-      active.getAttribute("role") === "treeitem" &&
       viewport.contains(active) &&
       visibleInViewport(viewport, active)
       ? active
@@ -142,7 +190,7 @@ class FileBrowserLayout extends Component<FileBrowserLayoutProps, unknown, HTMLE
   }
 
   override componentDidUpdate(
-    _previousProps: FileBrowserLayoutProps,
+    _previousProps: FileContentLayoutProps,
     _previousState: unknown,
     row: HTMLElement | null,
   ) {
@@ -159,19 +207,18 @@ class FileBrowserLayout extends Component<FileBrowserLayoutProps, unknown, HTMLE
   }
 
   override render() {
-    return (
-      <WorkspaceViewLayout
-        scrollInset="flush"
-        scrollRef={this.props.viewport}
-        notice={this.props.notice}
-      >
-        {this.props.children}
-      </WorkspaceViewLayout>
-    );
+    const { viewport, ...layout } = this.props;
+    return <WorkspaceViewLayout {...layout} scrollInset="flush" scrollRef={viewport} />;
   }
 }
 
-function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => void }) {
+function FileBrowser({
+  restoreFocus,
+  fileActions,
+}: {
+  restoreFocus: (item: HTMLElement) => void;
+  fileActions: LocalFileActions;
+}) {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
@@ -203,7 +250,15 @@ function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => vo
       )
     ) : undefined;
   return (
-    <FileBrowserLayout viewport={scrollPort} notice={refreshFeedback}>
+    <FileContentLayout
+      viewport={scrollPort}
+      notice={
+        <>
+          {refreshFeedback}
+          {fileActions.feedback(treeRef)}
+        </>
+      }
+    >
       <DataView
         items={query.data}
         isLoading={query.isLoading || isWorkspaceResolving(workspace)}
@@ -214,19 +269,29 @@ function FileBrowser({ restoreFocus }: { restoreFocus: (item: HTMLElement) => vo
         empty={{ icon: "folder", title: t("file.empty.title"), sub: t("file.empty.sub") }}
       >
         {(entries) => (
-          <FileTree ref={treeRef} entries={entries} cwd={cwd} onSelectFile={openWorkspaceFile} />
+          <FileTree
+            ref={treeRef}
+            entries={entries}
+            cwd={cwd}
+            onSelectFile={openWorkspaceFile}
+            onReveal={(path) => {
+              if (cwd) fileActions.reveal(cwd, path);
+            }}
+          />
         )}
       </DataView>
-    </FileBrowserLayout>
+    </FileContentLayout>
   );
 }
 
 function FilePreview({
   viewer,
   backRef,
+  fileActions,
 }: {
   viewer: WorkspaceFileViewer;
   backRef: Ref<HTMLButtonElement>;
+  fileActions: LocalFileActions;
 }) {
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
@@ -342,11 +407,15 @@ function FilePreview({
     ) : undefined;
 
   return (
-    <WorkspaceViewLayout
-      scrollInset="flush"
-      scrollRef={scrollPort}
+    <FileContentLayout
+      viewport={scrollPort}
       scrollLabel={viewer.path}
-      notice={refreshFeedback}
+      notice={
+        <>
+          {refreshFeedback}
+          {fileActions.feedback(scrollPort)}
+        </>
+      }
       navigation={
         <IconButton
           ref={backRef}
@@ -396,7 +465,7 @@ function FilePreview({
               icon={iconGlyph("folder-open")}
               size="sm"
               aria-label={t("file.reveal")}
-              onClick={() => void localWorkspace().reveal(cwd, viewer.path)}
+              onClick={() => fileActions.reveal(cwd, viewer.path)}
             />
           )}
         </>
@@ -410,7 +479,7 @@ function FilePreview({
           action={
             cwd &&
             localWorkspace().available() && (
-              <Button size="sm" onClick={() => void localWorkspace().open(cwd, viewer.path)}>
+              <Button size="sm" onClick={() => fileActions.open(cwd, viewer.path)}>
                 {t("file.open")}
               </Button>
             )
@@ -477,7 +546,7 @@ function FilePreview({
           )}
         </DataView>
       )}
-    </WorkspaceViewLayout>
+    </FileContentLayout>
   );
 }
 

@@ -57,6 +57,7 @@ interface TreeContext {
   changes: ReadonlyMap<string, WorkspaceFileChange>;
   onFocusPath: (path: string) => void;
   onSelectFile: (path: string) => void;
+  onReveal: (path: string) => void;
 }
 
 function changedBelow(changes: TreeContext["changes"], directory: string): boolean {
@@ -202,10 +203,7 @@ function TreeNode({
             {t("file.copyPath")}
           </ContextMenu.IconItem>
           {tree.cwd && localWorkspace().available() && (
-            <ContextMenu.IconItem
-              icon="folder-open"
-              onSelect={() => void localWorkspace().reveal(tree.cwd!, entry.path)}
-            >
+            <ContextMenu.IconItem icon="folder-open" onSelect={() => tree.onReveal(entry.path)}>
               {t("file.reveal")}
             </ContextMenu.IconItem>
           )}
@@ -267,11 +265,13 @@ export function FileTree({
   cwd,
   ref,
   onSelectFile,
+  onReveal,
 }: {
   entries: WorkspaceFileEntry[];
   cwd?: string;
   ref?: Ref<HTMLDivElement>;
   onSelectFile: (path: string) => void;
+  onReveal: (path: string) => void;
 }) {
   const t = useT();
   const changes = useWorkingTreeFiles();
@@ -296,6 +296,7 @@ export function FileTree({
     changes,
     onFocusPath: setFocused,
     onSelectFile,
+    onReveal,
   };
   return (
     <Tree.Root ref={ref} aria-label={t("workspace.view.title.file")} {...stylex.props(ft.pad)}>

@@ -14,7 +14,11 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import { configureLocalWorkspace } from "@/features/workspace/application/ports/localWorkspace";
+import {
+  configureLocalWorkspace,
+  localWorkspace,
+} from "@/features/workspace/application/ports/localWorkspace";
+import * as notifications from "@/features/notifications/public/notifications";
 import { navigator } from "@/lib/navigation";
 import {
   closeWorkspaceFile,
@@ -197,7 +201,7 @@ describe("workspace files panel", () => {
       change: "renamed",
       binary: true,
     });
-    mount(<FileTree entries={[file]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[file]} onSelectFile={() => {}} />);
     const row = screen.getByRole("treeitem", { name: "main.go" });
     expect(row.textContent).toContain("← old/main.go");
     expect(row.textContent).toContain("R");
@@ -654,7 +658,7 @@ describe("workspace files panel", () => {
 
   it("shows a failed directory read and retries it without closing the directory", async () => {
     listFiles.mockRejectedValueOnce(new Error("directory unavailable"));
-    mount(<FileTree entries={[directory]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[directory]} onSelectFile={() => {}} />);
     fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
 
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
@@ -1228,7 +1232,7 @@ describe("expanded directory refresh continuity", () => {
   });
 
   it("explains an unsupported directory refresh beside its accepted children without a retry", async () => {
-    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
     const { child } = await expandWithCursorInChild();
     listFiles.mockRejectedValueOnce(
       new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
@@ -1245,7 +1249,7 @@ describe("expanded directory refresh continuity", () => {
   });
 
   it("moves focus to the folder when a retried refresh actually removes the cursor's child", async () => {
-    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
     const { folder } = await expandWithCursorInChild();
     listFiles.mockRejectedValueOnce(unavailable());
     await act(() => client.refetchQueries(directoryQuery()));
@@ -1263,7 +1267,7 @@ describe("expanded directory refresh continuity", () => {
 
   it("keeps ordinary failure recovery after an accepted empty directory", async () => {
     listFiles.mockResolvedValueOnce([]);
-    mount(<FileTree entries={[directory]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[directory]} onSelectFile={() => {}} />);
     fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
     await screen.findByText("No files");
     listFiles.mockRejectedValueOnce(unavailable());
@@ -1279,7 +1283,7 @@ describe("expanded directory refresh continuity", () => {
   it("drops the previous workspace's children when the workspace changes under refresh feedback", async () => {
     const tree = (cwd: string) => (
       <QueryClientProvider client={client}>
-        <FileTree entries={[directory]} cwd={cwd} onSelectFile={() => {}} />
+        <FileTree onReveal={() => {}} entries={[directory]} cwd={cwd} onSelectFile={() => {}} />
       </QueryClientProvider>
     );
     const view = render(tree("/work/one"));
@@ -1572,7 +1576,9 @@ describe("workspace file tree keyboard model", () => {
 
   it("moves, opens and closes folders the way a tree does", async () => {
     const onSelectFile = vi.fn();
-    mount(<FileTree entries={[directory, readme]} onSelectFile={onSelectFile} />);
+    mount(
+      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={onSelectFile} />,
+    );
     const src = screen.getByRole("treeitem", { name: "src" });
     expect(src.tabIndex).toBe(0);
     expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(-1);
@@ -1599,13 +1605,19 @@ describe("workspace file tree keyboard model", () => {
 
   it("keeps one keyboard entry when the root listing changes under its cursor", () => {
     const notes: WorkspaceFileEntry = { name: "NOTES.md", path: "NOTES.md", type: "file" };
-    const view = mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    const view = mount(
+      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />,
+    );
     const row = screen.getByRole("treeitem", { name: "README.md" });
     act(() => row.focus());
 
     view.rerender(
       <QueryClientProvider client={client}>
-        <FileTree entries={[notes, directory, readme]} onSelectFile={() => {}} />
+        <FileTree
+          onReveal={() => {}}
+          entries={[notes, directory, readme]}
+          onSelectFile={() => {}}
+        />
       </QueryClientProvider>,
     );
     expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(0);
@@ -1613,7 +1625,7 @@ describe("workspace file tree keyboard model", () => {
 
     view.rerender(
       <QueryClientProvider client={client}>
-        <FileTree entries={[notes, directory]} onSelectFile={() => {}} />
+        <FileTree onReveal={() => {}} entries={[notes, directory]} onSelectFile={() => {}} />
       </QueryClientProvider>,
     );
     const entry = screen.getByRole("treeitem", { name: "NOTES.md" });
@@ -1623,7 +1635,7 @@ describe("workspace file tree keyboard model", () => {
 
   it("moves a removed nested cursor and its focus to the surviving folder", async () => {
     const other: WorkspaceFileEntry = { name: "other.go", path: "src/other.go", type: "file" };
-    mount(<FileTree entries={[directory, readme]} onSelectFile={() => {}} />);
+    mount(<FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={() => {}} />);
     fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
     const row = await screen.findByRole("treeitem", { name: "main.go" });
     act(() => row.focus());
@@ -1640,7 +1652,7 @@ describe("workspace file tree keyboard model", () => {
     mount(
       <>
         <button>Another control</button>
-        <FileTree entries={[readme, directory]} onSelectFile={() => {}} />
+        <FileTree onReveal={() => {}} entries={[readme, directory]} onSelectFile={() => {}} />
       </>,
     );
     fireEvent.click(screen.getByRole("treeitem", { name: "src" }));
@@ -1669,7 +1681,9 @@ describe("workspace file tree keyboard model", () => {
     );
     useContextDockStore.setState({ memory: { expandedDirs: [], lastFilePath: file.path } });
     const onSelectFile = vi.fn();
-    mount(<FileTree entries={[directory, readme]} onSelectFile={onSelectFile} />);
+    mount(
+      <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={onSelectFile} />,
+    );
     const src = screen.getByRole("treeitem", { name: "src" });
     const readmeRow = screen.getByRole("treeitem", { name: "README.md" });
     expect(ownedGroup(src)).toBeNull();
@@ -1717,8 +1731,18 @@ describe("workspace file tree keyboard model", () => {
     useContextDockStore.setState({ memory: { expandedDirs: ["src"], lastFilePath: null } });
     mount(
       <>
-        <FileTree entries={[directory]} cwd="/work/one" onSelectFile={() => {}} />
-        <FileTree entries={[directory]} cwd="/work/two" onSelectFile={() => {}} />
+        <FileTree
+          onReveal={() => {}}
+          entries={[directory]}
+          cwd="/work/one"
+          onSelectFile={() => {}}
+        />
+        <FileTree
+          onReveal={() => {}}
+          entries={[directory]}
+          cwd="/work/two"
+          onSelectFile={() => {}}
+        />
       </>,
     );
     const groups: HTMLElement[] = [];
@@ -1863,6 +1887,171 @@ describe("Go to line target validation", () => {
     const draft = within(reopened).getByRole<HTMLInputElement>("textbox", { name: "Go to line" });
     expect(draft.value).toBe("-4");
     await waitFor(() => expect(document.activeElement).toBe(draft));
+  });
+});
+
+describe("local file action feedback", () => {
+  function prepareLocalActions() {
+    isLocal = true;
+    selection.current = { status: "ready", cwd: "/work/project" };
+    vi.mocked(localWorkspace().open).mockResolvedValue(false);
+    vi.mocked(localWorkspace().reveal).mockResolvedValue(false);
+    return vi.spyOn(notifications.useNotificationStore.getState(), "push");
+  }
+
+  it("reports a refused header reveal without replacing the reader or moving focus", async () => {
+    const record = prepareLocalActions();
+    openWorkspaceFile(file.path);
+    mount(<FileWorkspace />);
+    const reader = await screen.findByRole("region", { name: file.path });
+    await screen.findByText("package main");
+    const reveal = screen.getByRole("button", { name: "Show in Finder" });
+    act(() => reveal.focus());
+    const before = useContextDockStore.getState().fileViewer;
+
+    fireEvent.click(reveal);
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback.textContent).toContain(file.path);
+    expect(feedback.textContent).toContain("Finder");
+    expect(record).toHaveBeenCalledOnce();
+    expect(record.mock.calls[0]![0].message).toContain(file.path);
+    expect(localWorkspace().reveal).toHaveBeenCalledExactlyOnceWith("/work/project", file.path);
+    expect(screen.getByRole("region", { name: file.path })).toBe(reader);
+    expect(useContextDockStore.getState().fileViewer).toBe(before);
+    expect(document.activeElement).toBe(reveal);
+  });
+
+  it("reports a refused tree reveal after the menu returns to its original row", async () => {
+    const record = prepareLocalActions();
+    listFiles.mockResolvedValue([file]);
+    mount(<FileWorkspace />);
+    const item = await screen.findByRole("treeitem", { name: file.name });
+    act(() => item.focus());
+    fireEvent.contextMenu(item);
+    const menu = await screen.findByRole("menu", { name: file.path });
+
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Show in Finder" }));
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback.textContent).toContain(file.path);
+    expect(record).toHaveBeenCalledOnce();
+    expect(localWorkspace().reveal).toHaveBeenCalledExactlyOnceWith("/work/project", file.path);
+    await waitFor(() => expect(menu.isConnected).toBe(false));
+    await waitFor(() => expect(document.activeElement).toBe(item));
+    expect(screen.getByRole("treeitem", { name: file.name })).toBe(item);
+    expect(readFile).not.toHaveBeenCalled();
+  });
+
+  async function unsupportedFile() {
+    const path = "assets/logo.png";
+    readFile.mockRejectedValue(
+      new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
+    );
+    openWorkspaceFile(path);
+    mount(
+      <>
+        <FileWorkspace />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    return {
+      path,
+      open: await screen.findByRole("button", { name: "Open" }),
+      reader: screen.getByRole("region", { name: path }),
+    };
+  }
+
+  it("reports a refused external open while retaining the unsupported file and its action", async () => {
+    const record = prepareLocalActions();
+    const { path, open } = await unsupportedFile();
+    const before = useContextDockStore.getState().fileViewer;
+    act(() => open.focus());
+
+    fireEvent.click(open);
+
+    expect((await screen.findByRole("alert")).textContent).toContain(path);
+    expect(record).toHaveBeenCalledOnce();
+    expect(localWorkspace().open).toHaveBeenCalledExactlyOnceWith("/work/project", path);
+    expect(screen.getByRole("button", { name: "Open" })).toBe(open);
+    expect(screen.getByText("No image preview here yet")).toBeTruthy();
+    expect(useContextDockStore.getState().fileViewer).toBe(before);
+    expect(document.activeElement).toBe(open);
+  });
+
+  it.each([
+    { label: "current visible action", laterFocus: false, wasVisible: true, reveals: 1 },
+    { label: "later outside focus", laterFocus: true, wasVisible: true, reveals: 0 },
+    { label: "deliberately out-of-view action", laterFocus: false, wasVisible: false, reveals: 0 },
+  ])(
+    "preserves layout intent for $label when action feedback appears",
+    async ({ laterFocus, wasVisible, reveals }) => {
+      prepareLocalActions();
+      const pending = Promise.withResolvers<boolean>();
+      vi.mocked(localWorkspace().open).mockReturnValue(pending.promise);
+      const { open, reader } = await unsupportedFile();
+      vi.spyOn(reader, "getBoundingClientRect").mockImplementation(
+        () => new DOMRect(0, 0, 200, screen.queryByRole("alert") || !wasVisible ? 100 : 400),
+      );
+      vi.spyOn(open, "getBoundingClientRect").mockImplementation(
+        () => new DOMRect(20, 300, 50, 30),
+      );
+      const reveal = vi.spyOn(open, "scrollIntoView").mockImplementation(() => {});
+      act(() => open.focus());
+      fireEvent.click(open);
+      const outside = screen.getByRole("button", { name: "Elsewhere" });
+      if (laterFocus) act(() => outside.focus());
+
+      await act(async () => pending.resolve(false));
+
+      expect(await screen.findByRole("alert")).toBeTruthy();
+      expect(reveal.mock.calls).toEqual(
+        Array.from({ length: reveals }, () => [{ block: "nearest", inline: "nearest" }]),
+      );
+      expect(document.activeElement).toBe(laterFocus ? outside : open);
+    },
+  );
+
+  it("dismisses local feedback into its surviving reader", async () => {
+    prepareLocalActions();
+    const { open, reader } = await unsupportedFile();
+    fireEvent.click(open);
+    const feedback = await screen.findByRole("alert");
+    const close = within(feedback).getByRole("button", { name: "Close" });
+    act(() => close.focus());
+
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(reader);
+    expect(screen.getByRole("button", { name: "Open" })).toBe(open);
+  });
+
+  it("keeps late feedback tied to its original path without reclaiming later focus", async () => {
+    prepareLocalActions();
+    const pending = Promise.withResolvers<boolean>();
+    vi.mocked(localWorkspace().reveal).mockReturnValue(pending.promise);
+    openWorkspaceFile(file.path);
+    mount(
+      <>
+        <FileWorkspace />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    await screen.findByText("package main");
+    fireEvent.click(screen.getByRole("button", { name: "Show in Finder" }));
+    act(() => openWorkspaceFile("src/other.go"));
+    await screen.findByRole("region", { name: "src/other.go" });
+    const outside = screen.getByRole("button", { name: "Elsewhere" });
+    act(() => outside.focus());
+
+    await act(async () => pending.reject(new Error("Original file is unavailable")));
+
+    const feedback = await screen.findByRole("alert");
+    expect(feedback.textContent).toContain(file.path);
+    expect(feedback.textContent).not.toContain("src/other.go");
+    expect(useContextDockStore.getState().fileViewer?.path).toBe("src/other.go");
+    expect(document.activeElement).toBe(outside);
   });
 });
 
