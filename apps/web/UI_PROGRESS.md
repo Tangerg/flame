@@ -11,8 +11,10 @@ is on `codex/task-progress-reading-1026`. Background-task progress reading,
 keyboard access and viewport containment are qualified on frozen base
 `0714ae287a0c7e3cafbd25cfed200945e2c1d25a`; see Background-task progress reading for
 owners, original counterexamples, native tasks and verification limits.
-Publication and owned-resource retirement are pending below. The primary parallel
-checkout remains outside this batch. The user's latest instruction stops further
+Implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` is published to remote main;
+independent publication checks observe that exact commit and a clean 0/0 checkout.
+All owned acceptance resources are retired; see the receipt below. The primary
+parallel checkout remains outside this batch. The user's latest instruction stops further
 Claude CLI calls; edits and verification are owned directly by Codex.
 Client diagnostics implementation `374e849933d9efaef7782d54602da4ceb5b476f6` and
 receipt `0714ae287a0c7e3cafbd25cfed200945e2c1d25a` remain published and retired.
@@ -4785,7 +4787,31 @@ responsive improvements. Flame's workbench and surface roles supply the visual
 identity; reference-specific marquee or card effects are not copied. **Approve**
 for these inspected tasks. This does not establish whole-product or award-level
 completion. No Claude CLI or subagent was used; the continuous goal remains active.
-Publication and exact resource retirement follow delivery.
+Publication and exact resource retirement are complete.
+
+Implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` is published to remote main.
+The one publication-time fetch finds no incoming commits beyond the frozen base;
+independent remote inspection observes that exact implementation, a clean checkout
+and 0/0 divergence. Post-hook checks preserve all **5,780 accepted non-Markdown
+source files**, aggregate SHA-256
+`5a3225aca27c515b70346046fde48d77b9aafddc0a9bdac4dbf28ad0f2cb5ce7`,
+**1,806 private compiled artifacts**, **14 native input files** and **three read-only
+references** before retirement.
+
+Independent cleanup confirms all **17 recorded processes dead**, **36 output
+presence baselines**, **three original file hashes** and **11 product resources**
+preserved. Seven owned checkout outputs, eight owned Library directories and four
+bundle-temp homes are removed; all four unique apps are unregistered. The original
+native-check binary is restored to its captured SHA-256, and both original Vitest
+files retain their captured bytes. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-task-progress-1026-I1Jsz7`
+is absent. A round-trip-verified in-memory archive retains **85 UTF-8 files** and
+**21 screenshot digests**, gzip SHA-256
+`3a9785dfd5ccb17408bb7d2d1d0442e7f7b50d2503efba66ae2a459f015272a8`.
+This documentation receipt changes no accepted product source. Primary user data,
+parallel work, dependencies, global compiler caches and reference resources remain
+preserved. Continue with a fresh observed reading/Dock task; no pause or overall
+goal completion is implied.
 
 ## Client diagnostics reading
 
