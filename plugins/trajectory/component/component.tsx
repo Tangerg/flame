@@ -153,6 +153,24 @@ function evidence(row: TrajectoryEntry): TrajectoryEntry {
   const { text: _redacted, ...item } = row.item;
   return { ...row, item };
 }
+function searchable(row: TrajectoryEntry): string {
+  const recorded = evidence(row);
+  if (recorded.type !== "item") return JSON.stringify(recorded);
+  const item = recorded.item;
+  if (
+    (item.type !== "userMessage" && item.type !== "agentMessage") ||
+    !item.content
+  )
+    return JSON.stringify(recorded);
+  // Only canonical message image bytes are opaque encoding; every other data
+  // property, including tool arguments and results, is recorded evidence.
+  const content = item.content.map((part) => {
+    if (part.type !== "image") return part;
+    const { data: _bytes, ...metadata } = part;
+    return metadata;
+  });
+  return JSON.stringify({ ...recorded, item: { ...item, content } });
+}
 function identity(row: TrajectoryEntry): string {
   return row.type === "run"
     ? row.run.id
@@ -375,11 +393,7 @@ export function TrajectoryReport({
     return (
       matchesKind &&
       (run === "all" || runId(row) === run) &&
-      JSON.stringify(evidence(row), (key, value) =>
-        key === "data" ? undefined : value,
-      )
-        .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase())
+      searchable(row).toLocaleLowerCase().includes(search.toLocaleLowerCase())
     );
   });
   const toolCalls = rows.filter(

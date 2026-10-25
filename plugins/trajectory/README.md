@@ -67,3 +67,10 @@ prose. Message content keeps its text and image order. When a readable body is
 present, complete JSON remains available under Recorded evidence; structured
 records keep primary JSON evidence. Both projections use the same redacted
 evidence, preserving unknown fields while omitting redacted reasoning text.
+
+Page search uses the same redacted evidence as reading. It excludes only the data
+bytes of canonical user/agent message image blocks, retaining their metadata.
+Ordinary `data` properties in Tool arguments, results and extensions remain
+searchable, including nested arrays and image-shaped business values. This local
+search projection never changes accepted records or their complete raw evidence;
+Run/type selection, page identity and disclosure/focus owners remain unchanged.

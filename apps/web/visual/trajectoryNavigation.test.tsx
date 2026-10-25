@@ -64,6 +64,25 @@ const SESSION_ENDPOINT: TrajectoryEntry = {
   },
 };
 
+const TOOL_DATA: TrajectoryEntry = {
+  type: "item",
+  occurredAt: "2026-07-31T08:00:05.000Z",
+  item: {
+    type: "toolCall",
+    id: "item_tool_data",
+    runId: RUN_ID,
+    status: "completed",
+    startedAt: "2026-07-31T08:00:05.000Z",
+    finishedAt: "2026-07-31T08:00:05.250Z",
+    durationMillis: 250,
+    tool: {
+      name: "inspect_records",
+      arguments: { query: { data: "ARGUMENT_PATH_DATA" } },
+      result: { rows: [{ data: "RESULT_NESTED_DATA" }] },
+    },
+  },
+};
+
 type TrajectoryRead = ReturnType<FlameClient["sessions"]["trajectory"]>;
 
 const releases: Array<() => Promise<void>> = [];
@@ -458,6 +477,44 @@ it.each<[string, TrajectoryEntry[], string, string[]]>([
   expect(runFilter().textContent).toBe(RUN_ID);
   expect(records()).toEqual([]);
   expect(document.activeElement).toBe(refresh());
+});
+
+it("searches accepted tool data in place without another read", async () => {
+  const { discover, trajectory, hold } = await mountTrajectory();
+  const withTool = hold();
+  await activate(refresh(), trajectory, 2);
+  await act(async () => withTool.resolve({ data: [TOOL_DATA, ...FIRST.data] }));
+  await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
+  fireEvent.click(screen.getByRole("combobox", { name: "Observation type" }));
+  const toolCalls = await screen.findByRole("option", { name: "Tool calls" });
+  fireEvent.pointerDown(toolCalls, { pointerType: "mouse" });
+  fireEvent.click(toolCalls);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await chooseRun(RUN_ID);
+
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+  fireEvent.change(search, { target: { value: "ARGUMENT_PATH_DATA" } });
+  expect(records()).toEqual(["item:item_tool_data"]);
+  const record = within(
+    document.querySelector<HTMLElement>('[data-trajectory-record="item:item_tool_data"]')!,
+  );
+  const opened = record.getByRole("button", { expanded: false });
+  fireEvent.click(opened);
+  expect(opened.getAttribute("aria-expanded")).toBe("true");
+  expect(record.getByRole("region", { name: "Recorded evidence" }).textContent).toBe(
+    JSON.stringify(TOOL_DATA, null, 2),
+  );
+
+  search.focus();
+  fireEvent.change(search, { target: { value: "result_nested_data" } });
+  expect(search.value).toBe("result_nested_data");
+  expect(records()).toEqual(["item:item_tool_data"]);
+  expect(record.getByRole("button", { expanded: true })).toBe(opened);
+  expect(screen.getByRole("combobox", { name: "Observation type" }).textContent).toBe("Tool calls");
+  expect(runFilter().textContent).toBe(RUN_ID);
+  expect(document.activeElement).toBe(search);
+  expect(trajectory).toHaveBeenCalledTimes(2);
+  expect(discover).toHaveBeenCalledOnce();
 });
 
 it("keeps the Session only selection while its records are absent", async () => {

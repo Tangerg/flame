@@ -1,13 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Schedules now offers a direct Clear filters action for a locally empty result, restoring the accepted page and the same search focus without another read or command. Native English 320 px Dock, Chinese 200% and an observer-free build preserve reading returns and continued drafts. See Schedules filtered-empty recovery. Earlier brand, hosted identity, status, selection and copying work remains delivered. The stock WKWebView multiline insertion limitation remains separately recorded. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Trajectory page search now finds ordinary Tool data while excluding only canonical message-image bytes and retaining reasoning redaction. Native 320 px Dock, Chinese 200% and a build without private diagnostics preserve evidence, filters, reading returns and continued drafts. See Trajectory search evidence boundary. Earlier Schedules recovery, brand, hosted identity, status, selection and copying work remains delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/schedule-filter-recovery-1025`. Schedules filtered-empty recovery is
+is on `codex/trajectory-search-1025`. Trajectory search evidence is qualified on
+frozen base `ee796a95ac88013b04d99b214f505c3903ae5d64`; see Trajectory search evidence
+boundary below for the owner, complete tasks and verification limits. Publication
+and owned evidence retirement are pending.
+Earlier Schedules filtered-empty recovery is
 qualified on frozen base `0e111df3568389df7f254594975ad41531931e92`; see its
 section below for the owner, complete tasks and coverage boundaries. Implementation
 `afd91ce90b4bbdb8a4a8652e432dd10cf7df3d2c` is published to remote main, and its
@@ -3788,6 +3792,100 @@ Flame Orange/custom blue and persistent controls. Earlier Radix focus principles
 and Ace composition references remain applicable; static artwork supplies no
 keyboard evidence. Runtime trajectory generation, evidence, status, Session
 renaming and all command lifecycles retain their existing owners.
+
+### Trajectory search evidence boundary
+
+Original actual Wails can display a Tool result's `data` text in Recorded
+evidence, then report zero matches for that same literal query. The search's
+recursive JSON replacer drops every property named `data`, even though Runtime's
+`ToolInvocation.arguments` and `result` admit arbitrary JSON. That field name
+does not identify image bytes outside the canonical message-content boundary.
+
+`plugins/trajectory/component/component.tsx` now owns one pure search string
+projection after the existing reasoning-redaction projection. Only image blocks
+in a user/agent message's `item.content` omit their own data bytes. Their type,
+MIME and unknown metadata remain. All other recorded `data` fields participate,
+including direct/nested/array values, extensions and image-shaped Tool business
+objects. Reading and complete raw evidence keep their original records and image
+bytes. No state, cache, dependency, style, label, locale or semantic owner is added.
+Case/substring matching, accepted pages, selected Run/type, disclosure identity,
+focus, commands and Runtime generation retain their contracts. The former global
+key-based replacer is removed; only Trajectory's normal ESM resource changes.
+No persisted-data or protocol migration is needed.
+
+Read-only ZCode's actual `ModelTrajectorySearch.ts` builds search targets from
+the same Tool inputs/outputs formatted by `ModelTrajectoryToolPayload.ts`; its
+JSON presentation keeps ordinary payload keys. This supports agreement between
+search and reading, without importing its highlight index, virtualizer or schema.
+Runtime's published ToolInvocation schema and client wire-check vocabulary confirm
+that opaque/maps stay open and result extensions are retained. The existing
+better-* layout, type, focus, semantic-color and motion research is reused.
+
+| Severity | Location                                                            | Before                                                 | After                                       | Why                                                                       |
+| -------- | ------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
+| MEDIUM   | `plugins/trajectory/component/component.tsx:156` and page filtering | Visible recorded Tool data yields a false empty result | Search omits only known message-image bytes | Keep the search boundary aligned with the evidence the reader can inspect |
+
+The scoped review is **Approve** for the qualified task. Writing now matches the
+existing recorded-text label in these cases; layout/type/color/shape and motion
+are unchanged. Native keyboard entry, continued focus, 320 px wrapping and 200%
+reading/return are verified. VoiceOver speech, OS IME, RTL and fresh numeric
+contrast are **not verified**. This is not whole-product or award-level completion.
+
+Verification (2026-10-25):
+
+- Baseline **2 files / 23 tests** passes. A private data-only trajectory response
+  supplies a valid completed Tool with ordinary data fields and a canonical
+  message image through the existing transport. An initial private Tool omits
+  required duration/finish facts and is correctly refused by real wire validation;
+  adding those canonical fields repairs the fixture without weakening a check.
+  The valid original native record exposes the literal result in evidence but
+  filtering it produces **0 of 7**.
+- Edit-only Claude CLI changes three allowed paths in **185.65 s / 25 turns**,
+  with no denials, delegated agents or test/build commands. Primary reviews the
+  actual diff and adds coverage for preserved unknown image metadata. Focused
+  **25 tests** pass. Original component source fails the **two** new tests while
+  **23** pass; the candidate component is restored byte for byte. Tests cover
+  direct/nested/array Tool arguments/results, image-shaped business values,
+  extension data, message metadata/text, both message-image payload exclusions,
+  omitted/empty agent content, reasoning redaction, unchanged raw/input records,
+  same expanded disclosure, retained Run/type/focus and no additional read/discovery.
+- Final serial checks pass in **49.02 s**: **7 Web files / 137 tests**, all
+  **13 Web gates**, **5 plugin gates**, normal plugin generation and
+  `make check-native` (native Go test/vet/build and supported Wails build).
+  The normal native check retains nonfatal macOS linker warnings. Final input:
+  **5,772 non-Markdown files**, SHA-256
+  `8464188b148c6395ae7d0d19f2de8d195a82e3b81320b2bd7f583fa4fcf2f4d2`. Private
+  candidate/clean assets build in **2.26 / 2.10 s**; EN/ZH/clean native hosts
+  build in **6.28 / 4.77 / 4.78 s**, serially. **1,209** final artifact hashes
+  and **13** native-input hashes bind the accepted evidence, including the data fixture.
+- Actual EN/light/14 px/Orange: result data matches, then native type and Run
+  choices retain Tool calls and `run_root`. Expanding raw evidence and changing
+  to lowercase argument data preserves the record and search focus. Native wheel
+  reading changes controls top **123 → 46 px**. Panel **3**, search **4** and
+  the expanded record survive Main/Dock and a keyboard-resized **320 px** Dock;
+  nested result data also matches there. Existing word wrap stays enabled across
+  the actual Files/DockResizer source, Back to files, Trajectory tab and original
+  main return. Close reveals conversation; input **2** continues the exact draft
+  **28 → 40 characters**. Home is issued only after observing the focused splitter.
+- Actual ZH/dark/18 px/custom blue/motion off: native Left plus twenty native
+  Zoom In commands establishes **561 × 525 CSS px / 200%**. Image-shaped Tool
+  business data matches. MIME search matches two records; explicitly choosing
+  Messages narrows to the one canonical image record. Its binary prefix yields
+  zero matches, while MIME restores it. The image and complete original bytes
+  remain in the expanded reading/Recorded evidence. Input **2** continues the
+  exact draft **11 → 16 characters**; Actual Size is restored before Quit.
+- A separately built EN host omits private diagnostic reports. Tab reaches the
+  matched record and Enter expands it. A nested-data query keeps it open through
+  Dock/original-main/conversation returns. Known AX serialization is calibrated
+  at **zero framing LF** from the initial draft; exact continued text is
+  **22 → 34 characters**. No DOM identity is claimed for that host. Browser visual
+  suites, performance baselines, live Runtime/provider execution, business
+  mutations and Send are **not run**. The receiving multiline-paste limitation
+  remains the separate qualified platform issue.
+
+All four native apps have quit. Publication and final resource/evidence retirement
+are pending. Preserve the accepted Trajectory ESM and all unrelated resources;
+continue from fresh task evidence after delivery.
 
 ## Shortcut recording and activation
 

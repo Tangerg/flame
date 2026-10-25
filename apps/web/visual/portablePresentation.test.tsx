@@ -498,3 +498,126 @@ it("reads recorded text and images in order while keeping full evidence and reas
   );
   expect(container.textContent).not.toContain(secret);
 });
+
+it("searches recorded tool data and message metadata without image bytes or redacted reasoning", () => {
+  const occurredAt = "2026-07-31T08:00:00.000Z";
+  const common = { createdAt: occurredAt, runId: "run_root", status: "completed" as const };
+  const tool = {
+    type: "toolCall" as const,
+    id: "item_search_tool",
+    runId: "run_root",
+    status: "completed" as const,
+    startedAt: occurredAt,
+    finishedAt: "2026-07-31T08:00:01.000Z",
+    durationMillis: 1000,
+    tool: {
+      name: "lookup",
+      arguments: {
+        data: "ARGUMENT_DIRECT_DATA",
+        filter: { data: "ARGUMENT_NESTED_DATA" },
+        rows: [{ data: "ARGUMENT_ARRAY_DATA" }],
+      },
+      result: {
+        data: "RESULT_DATA_VISIBLE_902",
+        page: { data: "RESULT_NESTED_DATA" },
+        rows: [{ data: "RESULT_ARRAY_DATA" }],
+        preview: { type: "image", mime: "image/png", data: "searchable business data" },
+      },
+    },
+    capturedExtension: { data: "EXTENSION_DATA_VALUE" },
+  };
+  const userImage = {
+    type: "image",
+    mime: "image/webp",
+    caption: "USER_IMAGE_METADATA",
+    data: "VVNFUl9JTUFHRV9CWVRFUw==",
+  } as const;
+  const agentImage = {
+    type: "image",
+    mime: "image/gif",
+    data: "QUdFTlRfSU1BR0VfQllURVM=",
+  } as const;
+  const user = {
+    ...common,
+    type: "userMessage" as const,
+    id: "item_search_user",
+    content: [{ type: "text", text: "USER_VISIBLE_TEXT" }, userImage] satisfies ContentBlock[],
+  };
+  const agent = {
+    ...common,
+    type: "agentMessage" as const,
+    id: "item_search_agent_image",
+    content: [agentImage, { type: "text", text: "AGENT_VISIBLE_TEXT" }] satisfies ContentBlock[],
+  };
+  const omitted = { ...common, type: "agentMessage" as const, id: "item_search_agent_omitted" };
+  const empty = { ...omitted, id: "item_search_agent_empty", content: [] };
+  const secret = "REDACTED_SEARCH_SECRET";
+  const redacted = {
+    ...common,
+    type: "reasoning" as const,
+    id: "item_search_redacted",
+    redacted: true,
+    text: secret,
+  };
+  const items = [tool, user, agent, omitted, empty, redacted];
+  const entries: TrajectoryEntry[] = items.map((item) => ({ type: "item", occurredAt, item }));
+  const recorded = structuredClone(entries);
+  const report = (search: string, kind = "all") => (
+    <TrajectoryReport
+      t={reportT}
+      locale="en"
+      page={{ data: entries }}
+      kind={kind}
+      run="all"
+      search={search}
+    />
+  );
+  const { container, rerender } = render(report(""));
+  const matches = (search: string, kind?: string) => {
+    rerender(report(search, kind));
+    return Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>
+      record.getAttribute("data-trajectory-record")?.replace("item:", ""),
+    );
+  };
+
+  expect(matches("item_search_")).toEqual(items.map((item) => item.id));
+  for (const value of [
+    "ARGUMENT_DIRECT_DATA",
+    "ARGUMENT_NESTED_DATA",
+    "ARGUMENT_ARRAY_DATA",
+    "RESULT_DATA_VISIBLE_902",
+    "result_data_visible_902",
+    "RESULT_NESTED_DATA",
+    "RESULT_ARRAY_DATA",
+    "searchable business data",
+    "EXTENSION_DATA_VALUE",
+  ])
+    expect(matches(value)).toEqual([tool.id]);
+  expect(matches(userImage.data)).toEqual([]);
+  expect(matches(agentImage.data)).toEqual([]);
+  expect(matches(userImage.mime)).toEqual([user.id]);
+  expect(matches(userImage.caption)).toEqual([user.id]);
+  expect(matches(agentImage.mime)).toEqual([agent.id]);
+  expect(matches('"type":"image"', "message")).toEqual([user.id, agent.id]);
+  expect(matches("USER_VISIBLE_TEXT")).toEqual([user.id]);
+  expect(matches("AGENT_VISIBLE_TEXT")).toEqual([agent.id]);
+  expect(matches("item_search_agent_")).toEqual([agent.id, omitted.id, empty.id]);
+  expect(matches(secret)).toEqual([]);
+  expect(matches(redacted.id)).toEqual([redacted.id]);
+
+  matches("");
+  const { text: _hidden, ...shown } = redacted;
+  for (const item of items) {
+    const scope = within(
+      container.querySelector<HTMLElement>(`[data-trajectory-record="item:${item.id}"]`)!,
+    );
+    fireEvent.click(scope.getByRole("button", { expanded: false }));
+    const nested = scope.queryByRole("button", { name: "Recorded evidence", expanded: false });
+    if (nested) fireEvent.click(nested);
+    expect(scope.getByRole("region", { name: "Recorded evidence" }).textContent).toBe(
+      JSON.stringify({ type: "item", occurredAt, item: item === redacted ? shown : item }, null, 2),
+    );
+  }
+  expect(container.textContent).not.toContain(secret);
+  expect(entries).toEqual(recorded);
+});
