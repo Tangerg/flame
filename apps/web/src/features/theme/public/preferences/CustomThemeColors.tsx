@@ -57,11 +57,7 @@ export function CustomThemeColors() {
   if (theme !== "custom") return null;
 
   return (
-    <SettingRow
-      label={t("settings.customColors")}
-      sub={t("settings.customColors.sub")}
-      align="start"
-    >
+    <SettingRow label={t("settings.customColors")} align="start">
       <div {...stylex.props(a.colorGrid)}>
         <ColorRow
           label={t("settings.color.bg")}

@@ -12,7 +12,7 @@ export function ContrastSection() {
   const { setContrast } = editAppearance();
 
   return (
-    <SettingRow label={t("settings.contrast")} sub={t("settings.contrast.sub")} align="start">
+    <SettingRow label={t("settings.contrast")}>
       <div {...stylex.props(ss.lineWide)}>
         <Slider
           value={contrast}

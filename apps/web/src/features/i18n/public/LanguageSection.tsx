@@ -19,7 +19,7 @@ export function LanguageSection() {
   if (locales.length === 0) return null;
 
   return (
-    <SettingRow label={t("settings.language.label")} sub={t("settings.language.sub")}>
+    <SettingRow label={t("settings.language.label")}>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           render={

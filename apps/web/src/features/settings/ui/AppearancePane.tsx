@@ -32,11 +32,9 @@ export function AppearancePane() {
           <ShapeMotionSection />
         </SettingsGroup>
       </PanelSection>
-      <PanelSection title={t("settings.appearance.language")}>
-        <SettingsGroup>
-          <LanguageSection />
-        </SettingsGroup>
-      </PanelSection>
+      <SettingsGroup>
+        <LanguageSection />
+      </SettingsGroup>
     </>
   );
 }

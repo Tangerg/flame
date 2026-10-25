@@ -111,7 +111,7 @@ export function ThemeSection() {
     isSystem || !activeSpec ? <SystemSwatch /> : <ThemeSwatch {...previewTokens(activeSpec)} />;
 
   return (
-    <SettingRow label={t("settings.theme")} sub={t("settings.theme.sub")}>
+    <SettingRow label={t("settings.theme")}>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           render={

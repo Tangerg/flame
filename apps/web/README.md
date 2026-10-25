@@ -24,6 +24,11 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
+Appearance settings use section headings and direct label/control rows. Existing
+control labels, selected values and error feedback carry the task; the page does
+not repeat explanatory introductions or one-line descriptions. Section headings
+remain settings search terms through their existing catalog keys.
+
 The existing appearance preference owns optional Xuan paper, cotton paper and
 fine-grain backgrounds with a retained strength from 1 to 5. The document painter
 projects a static, seamless SVG image through `--surface-texture`; shell, reading

@@ -96,7 +96,7 @@ export function FontSection() {
 
   return (
     <>
-      <SettingRow label={t("settings.font.ui")} sub={t("settings.font.ui.sub")}>
+      <SettingRow label={t("settings.font.ui")}>
         <FontPicker
           label={t("settings.font.ui")}
           mono={false}
@@ -105,7 +105,7 @@ export function FontSection() {
           defaultLabel={t("settings.font.defaultUi")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.font.code")} sub={t("settings.font.code.sub")}>
+      <SettingRow label={t("settings.font.code")}>
         <FontPicker
           label={t("settings.font.code")}
           mono={true}
@@ -114,7 +114,7 @@ export function FontSection() {
           defaultLabel={t("settings.font.defaultMono")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.font.size")} sub={t("settings.font.size.sub")}>
+      <SettingRow label={t("settings.font.size")}>
         <Select
           value={fontSize === null ? SIZE_RESET : String(fontSize)}
           options={sizeOptions}
@@ -122,7 +122,7 @@ export function FontSection() {
           label={t("settings.font.size")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.font.codeSize")} sub={t("settings.font.codeSize.sub")}>
+      <SettingRow label={t("settings.font.codeSize")}>
         <Select
           value={codeFontSize === null ? SIZE_RESET : String(codeFontSize)}
           options={codeSizeOptions}
@@ -130,7 +130,7 @@ export function FontSection() {
           label={t("settings.font.codeSize")}
         />
       </SettingRow>
-      <SettingRow label={t("settings.font.smoothing")} sub={t("settings.font.smoothing.sub")}>
+      <SettingRow label={t("settings.font.smoothing")}>
         <Switch
           checked={fontSmoothing}
           onCheckedChange={setFontSmoothing}

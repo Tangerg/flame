@@ -1,20 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Optional paper texture now has three distinct materials and retained strength 1–5. The user-requested stronger effect is clear at the middle setting, while the palette protects text/focus contrast and Off restores the original background. Native EN/light/dark, ZH 18 px at 200% and an uninstrumented custom-base build qualify the exercised reading/settings task. See Paper texture and reading surfaces. Earlier Usage, Memory, schedules, contrast and approved branding remain delivered.
+Updated: 2026-10-25. Appearance now uses direct labels and controls, with redundant descriptions and the duplicate Language heading removed. Section names remain searchable. Native EN, ZH 18 px/200% and an uninstrumented DE custom-base scene qualify the exercised task; ZH content height is about 22.4% shorter. The stronger optional paper material remains delivered. See Appearance labels and search and Paper texture and reading surfaces.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/paper-texture-1025`. Paper texture is qualified on frozen base
-`ac9d04d59c035b6817ec2b991162c423558fbf5f`; see its product section below for
-the material, shared owners, native tasks, checks and limits. Implementation
-`3c0c65e1d9b44a44600022bd56d46c1293a01ee9` is published to remote main, and exact resource
-retirement is complete. The single publication-time fetch finds no delta from
-the frozen base; there is no incoming product work to revalidate.
-The next observed issue is excessive Appearance helper copy and vertical space
-at large type/zoom; preserve the qualified material and existing control semantics.
+is on `codex/appearance-layout-1025`. Appearance labels/search are qualified on
+frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`; see that product section for
+owners, before/after geometry, native tasks and limits. Publication and exact
+resource retirement are pending the final delivery step. The next observed issue
+is whole-row visibility when a settings control receives native focus at 200%.
+Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
+receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
+with owned resources retired. Its stronger material, palette bounds, shared
+numeric readout and Off restoration remain delivered.
 Earlier Usage report/source-scope implementation
 `6f89f24c0f5eb23667f7761237465aa266ba2032` and receipt
 `ac9d04d59c035b6817ec2b991162c423558fbf5f` are published to remote main, with
@@ -843,6 +844,116 @@ data, unrelated processes and the primary parallel checkout remain untouched.
 This documentation receipt changes no accepted product input; its publication
 is followed by fresh remote, cleanliness and preservation checks.
 
+### Appearance labels and search
+
+Appearance now presents direct label/control rows. The page introduction and
+thirteen explanatory sub-lines are removed, together with the repeated Language
+section title. The remaining Language row keeps its visible label and menu name
+in a separate existing SettingsGroup; no substitute heading, description, wrapper
+or style is added. Contrast and single-line shape controls use SettingRow's
+existing center alignment. Custom colors retains top alignment for its two named
+Background/Foreground controls and literal hex values. All real labels, options,
+preferences, asynchronous language feedback and errors retain their owners.
+
+The previous paper batch's native 18 px/200% scene exposed the excess vertical
+copy. This follows the user's explicit instruction to remove slogans, helper
+text and secondary labels, with better-writing's minimal settings language and
+better-layout's grouping/alignment guidance. Existing component/reference research
+remains applicable; no component system, motion or color behavior is introduced.
+The final native review also exposed the repeated Language heading, which is
+removed before acceptance. Source, shared UI, neutral planes, Orange/custom
+accents, stronger paper, readouts and font popup models otherwise stay intact.
+
+The settings registration owns discoverability. Its existing keyword list now
+includes the three visible section names, so removing the introduction cannot
+make Typography disappear from search. Language remains discoverable by its
+field label. The real settings search test covers paper fields, Theme and color,
+Typography, Interaction and Language while retaining the currently selected other
+pane. Before the keyword repair it fails **1 test** and passes **1**; the final
+scope passes. All eight catalogs delete exactly **15** obsolete keys each; every
+remaining quoted string literal is independently identical to the frozen base.
+The repository locale guard validates the resulting catalogs and callers.
+
+| Severity | Location                                                                             | Before                                                                               | After                                                                                             | Why                                                           |
+| -------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| MEDIUM   | theme/public/preferences, i18n/public/LanguageSection.tsx and settings/appearance.ts | Repeated explanations compete with controls and increase large-type reading distance | Direct rows retain names, choices and errors; existing centered alignment fits single-line labels | Settings should expose the actual decision with less scanning |
+| LOW      | settings/ui/AppearancePane.tsx:35                                                    | Language appears as both a section title and the only row label                      | A single named language row keeps the existing independent group                                  | The duplicate label adds no task identity                     |
+| MEDIUM   | settings/appearance.ts:17                                                            | Search depends on prose for a meaningful section term                                | Registered visible section names remain searchable without changing the current pane              | Removing prose must preserve navigation                       |
+
+Native Wails **v3.0.0-beta.34** qualifies the exercised settings/read/return task:
+
+- EN/light/14 px/Orange at **1440 × 900**, Xuan 3: settings content height is
+  **1015 px**, down from **1250 px** with identical controls/material. Search
+  Typography retains Appearance; all four font menus open, Escape returns to
+  their exact triggers, and body scrolling reveals lower controls. Dark theme,
+  Spacious/Comfortable density and Language open/Escape remain coherent. The
+  same Composer element **2** retains Appearance reading and continues to
+  Appearance reading continued after settings/Off/return, with zero observed
+  unhandled errors. No message is sent.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off, Cotton 3: native Left and
+  twenty View/Zoom In actions reach **200%**, **561 × 525 CSS px**, document width
+  **561**. Content height falls from **2122.5** to **1647 px**, about **22.4%**.
+  Option+Tab reaches accent, contrast, paper, strength, both fonts, both sizes,
+  smoothing, density, corners, motion and language. Both size menus open and
+  Escape returns; native Space changes smoothing off/on. Named controls remain
+  reachable in the clipped body, errors stay zero, and Actual Size restores
+  **1122 × 1051** before Quit.
+- A separate build without private observers uses DE/18 px/custom warm base,
+  purple accent and motion Off. Native Left and twenty zoom increments qualify
+  long German labels at 200%; the four paper choices wrap without losing their
+  complete names. All four font controls open and restore focus. Real language
+  selection changes Deutsch/English/Deutsch while retaining appearance values.
+  Actual Size, close/settings/close and Settings reading → Settings reading
+  continued pass. No DOM identity or computed geometry claim comes from this
+  clean build.
+
+The before geometry comes from the preceding accepted paper captures. Every
+non-Markdown input in this frozen base is identical to that accepted source;
+only Markdown receipts differ. Those capture hashes and source digest are
+retained in the private native-before evidence, so no second baseline app is
+rebuilt. An initial outer-container wheel attempt in the clean scene does not
+advance and supplies no wheel claim; accepted paths use observed native focus.
+
+The clean 200% review records one next, **MEDIUM**, issue: focusing a settings
+control can leave its row label above the clipped body's top edge. The control
+is named and reachable, and the label remains available by scrolling; the whole
+row is not always revealed together. Trace SettingRow and SettingsPaneFrame's
+focus/scroll responsibility before changing it. This batch qualifies direct
+labels/search and the exercised paths, not every focus-reveal case or award-level
+completion of the whole product.
+
+Baseline passes **15 files / 241 tests**. Final scope passes **17 files / 251
+tests**, including language failure feedback, theme preferences, palette bounds,
+settings search and installed-view continuity. All **16** selected Web gates and
+supported **make check-native** pass serially. The final duplicate-heading edit
+repeats those affected checks and both private asset builds; unchanged private
+Go binaries are reused. Existing nonfatal linker-target/library and chunk-size
+warnings remain. All **11** portable resource hashes are unchanged; their inputs
+and shared UI sources are unchanged, so no separate portable rebuild or full
+shared UI test run is claimed here. The unrelated Dock shorthand failure recorded
+in Paper texture remains unchanged and is not rerun for this copy/layout batch.
+No browser visual suite or performance benchmark runs.
+
+The bounded Read/Edit/Write-only Claude CLI times out after **180.85 s** with
+**15** reviewed source/catalog edits. It returns no final JSON report or turn
+count. Primary completes the remaining French catalog, search owner/regression,
+duplicate heading, documentation, complete diff review, native acceptance and
+delivery. No permission or test result is inferred from the empty CLI output.
+
+Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
+`cb774ad73b692f2a6439073e4dcf797b1f65df7231a1247034142781dae883f9`, **1,205**
+artifact hashes, **11** native construction-input hashes and **11** unchanged
+portable resources. Scoped result: **Approve** for this label/search refinement
+and exercised settings task, with the next focus-row finding retained above.
+Publication and exact resource retirement follow below.
+
+VoiceOver speech, full OS IME, pseudo-localization, RTL/forced-colors GUI,
+other-platform GUIs, arbitrary palettes and live Runtime/provider work are not
+newly verified. Production views use canonical deterministic read fixtures;
+no Runtime mutation or saved business data is exercised. Font-menu scroll-following
+and synthetic slider dragging are not newly qualified. Continue from the observed
+focus-row issue; do not reopen the delivered paper material or preferences.
+
 ### Paper texture and reading surfaces
 
 Appearance offers Off, Xuan paper, Cotton paper and Fine grain through the existing
@@ -995,10 +1106,9 @@ parallel checkout, installed dependencies, global caches and read-only reference
 remain untouched. This receipt changes no accepted product input; publication is
 followed by fresh remote, cleanliness and preservation checks.
 
-Next evidenced refinement is
-the remaining Appearance helper-copy layout at large type/zoom; retain the
-qualified material, shared control behavior and neutral default. Revisit the
-pre-existing Dock shorthand failure when that owner changes. Native synthetic
+The Appearance helper-copy refinement is qualified in Appearance labels and
+search. Retain the material, shared control behavior and neutral default. Revisit
+the pre-existing Dock shorthand failure when that owner changes. Native synthetic
 drag dispatch remains unqualified; isolate it before attributing a product defect.
 
 ### Schedule editor hierarchy

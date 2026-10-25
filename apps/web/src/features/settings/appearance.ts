@@ -15,6 +15,9 @@ export default definePlugin({
       id: APPEARANCE_PANE,
       label: "settings.pane.appearance",
       keywords: [
+        "settings.appearance.colors",
+        "settings.appearance.typography",
+        "settings.appearance.interaction",
         "settings.theme",
         "settings.accent",
         "settings.contrast",
@@ -31,7 +34,6 @@ export default definePlugin({
         "settings.motion",
         "settings.radius",
       ],
-      description: "settings.appearance.hero",
       group: "general",
       icon: "palette",
       order: 0,

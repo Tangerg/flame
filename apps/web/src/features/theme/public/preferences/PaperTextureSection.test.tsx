@@ -48,7 +48,7 @@ it("selects paper immediately and retains its strength across Off", () => {
   );
 });
 
-it("finds appearance settings by either paper field without leaving the current pane", async () => {
+it("finds appearance by field and section names without leaving the current pane", async () => {
   await loadPluginsForTest(
     appearanceSettings,
     definePlugin({
@@ -66,7 +66,14 @@ it("finds appearance settings by either paper field without leaving the current 
   navigator().go({ settings: "other" });
   render(<SettingsPage />);
   const search = screen.getByRole("searchbox");
-  for (const value of ["Paper texture", "Texture strength"]) {
+  for (const value of [
+    "Paper texture",
+    "Texture strength",
+    "Theme and color",
+    "Typography",
+    "Interaction",
+    "Language",
+  ]) {
     fireEvent.change(search, { target: { value } });
     expect(screen.getByRole("tab", { name: "Appearance" })).toBeTruthy();
     expect(screen.getByRole("tabpanel", { name: "Other" }).textContent).toContain(
