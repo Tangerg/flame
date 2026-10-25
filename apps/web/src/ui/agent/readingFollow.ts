@@ -1,11 +1,118 @@
-import { type FocusEvent, type MouseEvent } from "react";
+import { type FocusEvent, type MouseEvent, useLayoutEffect } from "react";
 import { type StickToBottomInstance } from "use-stick-to-bottom";
 type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopScroll">;
+
+// Native zoom reports fractional CSS pixels.
+const EDGE_TOLERANCE = 0.5;
+
+function withinSafeReading(target: Element, viewport: HTMLElement) {
+  const bounds = target.getBoundingClientRect();
+  let { top, bottom } = safeReadingBounds(viewport);
+  for (
+    let parent = target.parentElement;
+    parent && parent !== viewport;
+    parent = parent.parentElement
+  ) {
+    if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(parent).overflowY)) {
+      const clip = parent.getBoundingClientRect();
+      top = Math.max(top, clip.top);
+      bottom = Math.min(bottom, clip.bottom);
+    }
+  }
+  return (
+    bottom > top && bounds.top >= top - EDGE_TOLERANCE && bounds.bottom <= bottom + EDGE_TOLERANCE
+  );
+}
+
+export function useReadingFocusVisibility(
+  {
+    scrollRef,
+    contentRef,
+    state,
+    stopScroll,
+  }: ReadingFollow & Pick<StickToBottomInstance, "contentRef">,
+  attached: boolean,
+) {
+  useLayoutEffect(() => {
+    const viewport = scrollRef.current;
+    const content = contentRef.current;
+    if (!attached || !viewport || !content) return;
+    let frame = safeReadingBounds(viewport);
+    let witness: Element | null = null;
+    const remember = () => {
+      frame = safeReadingBounds(viewport);
+      const active = content.ownerDocument.activeElement;
+      witness =
+        active &&
+        active !== content &&
+        content.contains(active) &&
+        withinSafeReading(active, viewport)
+          ? active
+          : null;
+    };
+    const retire = () => {
+      witness = null;
+    };
+    const onScroll = (event: Event) => {
+      const next = safeReadingBounds(viewport);
+      // WebKit can emit a geometry-induced scroll before ResizeObserver delivers the new frame.
+      if (
+        event.target === viewport &&
+        (next.top !== frame.top || next.bottom !== frame.bottom || next.width !== frame.width)
+      )
+        return;
+      remember();
+    };
+    const reveal = () => {
+      frame = safeReadingBounds(viewport);
+      const target = witness;
+      if (!target) return;
+      if (
+        scrollRef.current !== viewport ||
+        contentRef.current !== content ||
+        target !== content.ownerDocument.activeElement ||
+        !content.contains(target) ||
+        target.getClientRects().length === 0
+      ) {
+        retire();
+        return;
+      }
+      if (withinSafeReading(target, viewport)) return;
+      const bounds = target.getBoundingClientRect();
+      const { top, bottom } = frame;
+      if (bottom <= top) return;
+      const delta =
+        bounds.height > bottom - top || bounds.top < top
+          ? bounds.top - top
+          : Math.max(0, bounds.bottom - bottom);
+      if (delta === 0) return;
+      if (state.isAtBottom) stopScroll();
+      viewport.scrollBy({
+        top: delta > 0 ? Math.ceil(delta) : Math.floor(delta),
+        behavior: "instant",
+      });
+    };
+    remember();
+    const resize = new ResizeObserver(reveal);
+    resize.observe(viewport);
+    resize.observe(content);
+    content.addEventListener("focusin", remember);
+    viewport.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    viewport.addEventListener("wheel", retire, { passive: true, capture: true });
+    return () => {
+      resize.disconnect();
+      content.removeEventListener("focusin", remember);
+      viewport.removeEventListener("scroll", onScroll, true);
+      viewport.removeEventListener("wheel", retire, true);
+    };
+  }, [attached, scrollRef, contentRef, state, stopScroll]);
+}
 
 function safeReadingBounds(viewport: HTMLElement) {
   const frame = viewport.getBoundingClientRect();
   const style = getComputedStyle(viewport);
   return {
+    width: frame.width,
     top: frame.top + (parseFloat(style.scrollPaddingTop) || 0),
     bottom: frame.bottom - (parseFloat(style.scrollPaddingBottom) || 0),
   };

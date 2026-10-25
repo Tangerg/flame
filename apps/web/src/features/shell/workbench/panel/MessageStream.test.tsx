@@ -229,3 +229,81 @@ describe("MessageStream reading measurement", () => {
     expect(container.querySelector("[data-turn-id]")).toBe(turn);
   });
 });
+
+it("preserves reading focus after geometry changes in the main transcript", async () => {
+  const observations: Array<{ nodes: Set<Element>; callback: ResizeObserverCallback }> = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      nodes = new Set<Element>();
+      constructor(callback: ResizeObserverCallback) {
+        observations.push({ nodes: this.nodes, callback });
+      }
+      observe(node: Element) {
+        this.nodes.add(node);
+      }
+      unobserve(node: Element) {
+        this.nodes.delete(node);
+      }
+      disconnect() {
+        this.nodes.clear();
+      }
+    },
+  );
+  const row = transcriptRow("complete");
+  row.message.blocks = [
+    {
+      kind: "reasoning",
+      reasoningId: "reading-geometry",
+      text: "Retained source evidence",
+      status: "complete",
+    },
+  ];
+  render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-reading-geometry" />);
+  await act(async () => vi.dynamicImportSettled());
+  const viewport = follow.scrollRef.current!;
+  const target = screen.getByRole("button", { name: "Thought" });
+  const shape = { height: 400 };
+  viewport.style.scrollPaddingTop = "20px";
+  viewport.style.scrollPaddingBottom = "80px";
+  vi.spyOn(viewport, "getBoundingClientRect").mockImplementation(
+    () => new DOMRect(0, 0, 600, shape.height),
+  );
+  const bounds = () => new DOMRect(0, 210 - viewport.scrollTop, 100, 24);
+  vi.spyOn(target, "getBoundingClientRect").mockImplementation(bounds);
+  vi.spyOn(target, "getClientRects").mockImplementation(() => [bounds()] as unknown as DOMRectList);
+  Object.defineProperty(viewport, "scrollBy", {
+    configurable: true,
+    value: (options: ScrollToOptions) => {
+      viewport.scrollTop += options.top ?? 0;
+    },
+  });
+  act(() => target.focus());
+  shape.height = 240;
+  fireEvent.scroll(viewport);
+  act(() => {
+    for (const observer of observations)
+      if (observer.nodes.has(viewport)) {
+        observer.callback(
+          [
+            {
+              target: viewport,
+              contentRect: viewport.getBoundingClientRect(),
+              borderBoxSize: [],
+              contentBoxSize: [],
+              devicePixelContentBoxSize: [],
+            },
+          ],
+          {} as ResizeObserver,
+        );
+      }
+  });
+  expect(bounds().bottom).toBeLessThanOrEqual(160);
+  expect(document.activeElement).toBe(target);
+  expect(target.getAttribute("aria-expanded")).toBe("false");
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});

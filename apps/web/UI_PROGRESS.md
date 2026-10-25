@@ -1,19 +1,19 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Contributed Tool actions and view openers now contain synchronous and asynchronous failures, identify the failed interface action beside its summary and preserve captured Tool results. Native recovery, current-file return and draft continuation pass, including Chinese large text at 200% after keyboard re-entry. Continuous-zoom focus visibility has a separate observed follow-up. Previously delivered local-file and reading improvements remain intact. The continuous goal remains active; UI uses a frozen base and main synchronization happens at intervals. Primary parallel work is preserved.
+Updated: 2026-10-25. Main and selected subagent reading controls retain visible keyboard focus through native resize and continuous zoom. The shared reading policy respects existing Composer/jump clearance, deliberate scrolling, hidden readers and later draft focus. English light/14 px/Orange and Chinese dark/18 px/custom-blue flows pass at 200%, including current-file return and draft continuation. The continuous goal remains active on a frozen UI base; main synchronization happens at intervals. Primary parallel work is preserved.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/tool-action-feedback-1025`. Contributed Tool action outcomes are
-accepted on frozen base `8af9bc4296734751c4b275e1afe6c147f519e0c4`; publication
-of implementation `34fb1be4938e23129567f22e61ba49f2b4b6d05d` to remote main and
-final evidence retirement are complete. The owned checkout is clean; this
-documentation receipt changes no accepted product source. Native continuous-zoom focus
-visibility is the next observed task, with original-source qualification still
-pending. Local file action outcomes and continued
+is on `codex/reading-focus-1025`. Reading-focus geometry is accepted on frozen
+base `bd146d20e50ce8b7e05633296d5681d0e523757a`; publication and private
+resource retirement are being completed. The shared repair covers both main
+and selected child transcripts without changing their task/follow owners.
+Tool activation implementation `34fb1be4938e23129567f22e61ba49f2b4b6d05d`
+and its receipt are already published; its continuous-zoom follow-up is now
+resolved in Reading focus through geometry changes below. Local file action outcomes and continued
 reading are accepted on frozen base `5918ddcc976f39e77c9321caa975e3ef31d02e06`;
 implementation `d4f4acba6938b93d2b8fa5d5de8179cda7522191` is published to
 remote main. Private evidence retirement is complete, and the owned checkout
@@ -6167,22 +6167,22 @@ disclosure research and the six better-* skills continue to guide the review.
 
 Scope: React 19, Wails 3.0.0-beta.34, existing Base UI, StyleX and shared controls;
 AGENTS, PROJECT_RULES, DEVELOPMENT and Web/visual conventions. Only Tool activation
-outcomes change; viewport focus reflow is a separate observed follow-up.
+outcomes change; viewport focus reflow is qualified in the following section.
 
 | Domain        | Evidence inspected                                                                                           | Result                                                          |
 | ------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| Accessibility | Real contribution replacement, alert/summary relation, immediate targets, keyboard focus and late completion | Changed boundary clear; continuous-zoom follow-up below         |
+| Accessibility | Real contribution replacement, alert/summary relation, immediate targets, keyboard focus and late completion | Changed boundary clear; reflow qualified below                  |
 | Layout        | Grouped and expanded single results, split/full-pane file return, 561 × 365 viewport                         | Inline feedback stays with its row and can be read by scrolling |
 | Writing       | Action-specific failure and actual cause across eight locales                                                | Clear; no replay instruction or helper caption                  |
 | Typography    | Existing uiSm; EN 13 px/21.125 px and ZH 17 px/27.625 px, wrapping paths                                     | Clear                                                           |
 | Color         | Computed foreground and native screenshot canvas, Orange/custom blue                                         | Sampled light 15.80:1 and dark 16.52:1 contrast                 |
 | UI polish     | Existing icons, focus rings, plain surfaces and motion-off scene                                             | Clear within changed boundary; no new motion or decoration      |
 
-| Severity | Domain        | Location                                                      | Before                                                                               | After                                                                         | Why                                                     | Status                                                |
-| -------- | ------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
-| MEDIUM   | Accessibility | `features/chat/tools/ui/ToolRowParts.tsx`                     | Sync callbacks escape the catch; rejection is diagnostic-only                        | Immediate try/await/catch records the original owner and shows local feedback | A failed interface action needs an intelligible outcome | Resolved                                              |
-| MEDIUM   | Layout        | Expanded `ToolCard`                                           | Initial candidate puts error after the entire result                                 | Feedback sits below summary, before result                                    | Keep the cause near its action                          | Resolved in primary review                            |
-| MEDIUM   | Accessibility | Native conversation during twenty successive Zoom In commands | Focused Copy becomes obscured at 175%–200%; Tab restores the adjacent visible action | Qualify original source, then repair the responsible viewport/focus owner     | Resizing should retain usable current action context    | Open follow-up; original-source qualification pending |
+| Severity | Domain        | Location                                                      | Before                                                                               | After                                                                         | Why                                                     | Status                                             |
+| -------- | ------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| MEDIUM   | Accessibility | `features/chat/tools/ui/ToolRowParts.tsx`                     | Sync callbacks escape the catch; rejection is diagnostic-only                        | Immediate try/await/catch records the original owner and shows local feedback | A failed interface action needs an intelligible outcome | Resolved                                           |
+| MEDIUM   | Layout        | Expanded `ToolCard`                                           | Initial candidate puts error after the entire result                                 | Feedback sits below summary, before result                                    | Keep the cause near its action                          | Resolved in primary review                         |
+| MEDIUM   | Accessibility | Native conversation during twenty successive Zoom In commands | Focused Copy becomes obscured at 175%–200%; Tab restores the adjacent visible action | Qualify original source, then repair the responsible viewport/focus owner     | Resizing should retain usable current action context    | Resolved in Reading focus through geometry changes |
 
 Verification (2026-10-25):
 
@@ -6247,12 +6247,116 @@ files** and **six screenshot digests**, gzip SHA-256
 `61430b839341e824f9027f082f61e72f498b7ba670d4a6c2143bb25ec0474ee9`.
 The retirement guard rechecks all 5,770 source hashes, 607 artifacts, native
 outcomes, 15 dead PIDs, 36 output baselines, three original output hashes and
-11 unchanged resources before deletion. The continuous-zoom focus observation
-remains explicitly unqualified. This receipt changes no tested product source.
+11 unchanged resources before deletion. The continuous-zoom focus observation was unqualified at that receipt; the
+following section records its original-source reproduction and completed repair.
+That receipt changes no tested product source.
 
 **Approve** for contributed Tool activation outcomes in the inspected domains.
-The recoverable continuous-zoom focus observation remains the next explicit
-follow-up. This is not whole-application or award-tier completion.
+The continuous-zoom follow-up is now resolved below. This is not
+whole-application or award-tier completion.
+
+### Reading focus through geometry changes
+
+A previously visible keyboard control now stays within its reading viewport when
+native resize, page zoom or content reflow changes that viewport. The main and
+selected subagent transcripts share `useReadingFocusVisibility` beside the
+existing focus/disclosure policies in `ui/agent/readingFollow.ts`. CSS remains
+the authority for Composer and jump-control clearance; no per-Tool offset is added.
+
+The attached visible viewport retains only its pre-change safe frame and visible
+active descendant. WebKit's geometry-induced scroll can precede ResizeObserver;
+that event defers re-witnessing until the new frame is observed. Ordinary scroll
+re-witnesses actual visibility, including nested evidence clipping, while a wheel
+gesture retires the witness immediately. Geometry can move only the owned viewport
+and only for the same still-focused, rendered descendant. Existing follow stops
+before that adjustment. Native integer scroll offsets require outward ceil/floor
+rounding; a **0.5 CSS px** measurement tolerance handles fractional zoom edges.
+There is no focus call, activation, retry, timer, extra follow state or ancestor
+scroll. Hidden/detached readers disconnect through their existing visibility lifetime.
+
+Read-only ZCode `packages/ui/src/v4/timelineScrollAnchor.ts` reconciles user intent
+before content anchoring, illustrating why user scrolling wins over a later
+measurement. Its virtualizer/follow model is not copied. Existing actual ChatGPT
+disclosure and HeroUI accordion research informs reading ownership; the six
+better-* domains are reviewed against this concrete task.
+
+| Domain        | Inspected evidence                                                                              | Result                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Accessibility | Same DOM action through native zoom; real focus and consumer regressions; later draft/caret     | Clear in changed scope; VoiceOver/IME unverified           |
+| Layout        | Existing safe padding, Composer/jump reservation, selected child, split/hidden/full pane, 200%  | Original obstruction resolved; deliberate scroll preserved |
+| Writing       | Existing concise action/object labels and task/file return                                      | No copy change required                                    |
+| Typography    | EN 14 px and ZH 18 px, long paths and mixed-language child prose at 200%                        | Retains current type and reading rhythm                    |
+| Color         | Light/Orange and dark/custom-blue focus outline/surface                                         | Existing palette unchanged; no new contrast measurement    |
+| UI polish     | Immediate minimal owned scrolling, disclosure/file/task flow, full-motion and motion-off scenes | No new decoration or animation                             |
+
+| Severity | Location                       | Before                                                                                    | After                                                                       | Status                                          |
+| -------- | ------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| HIGH     | Main/child reading viewport    | Continuous geometry changes can hide the currently focused control behind reserved chrome | Retains that same visible action inside existing safe bounds                | Resolved                                        |
+| MEDIUM   | First implementation candidate | Resize-induced scroll retires its witness after the first adjustment                      | Frame-aware scroll/resize coordination; nested scroll remains authoritative | Candidate rejected, primary correction accepted |
+| MEDIUM   | Unrounded revised candidate    | Fractional undershoot invalidates later witness even while center hit testing passes      | Outward scrolling preserves the actual safe edge across successive changes  | Candidate rejected, final correction accepted   |
+
+Verification (2026-10-25):
+
+- The original baseline passes **3 files / 41 tests** but actual Wails ZH/dark/
+  18 px/custom blue reproduces the defect with **zero callbacks and feedback**.
+  Twenty native Zoom In commands after Top Left reach **561 × 365 at 200%**;
+  focus ID 9 remains at y 303.8–327.8 behind Composer y 252–365. Safe bounds are
+  70–204 and scrollTop remains 0. It first leaves the safe frame on step 9 and
+  is obscured on steps 15–20, independently of Tool failure presentation.
+- Edit-only Claude CLI exits 0 in **62.84 s / 9 turns**, editing three production
+  paths but supplying no tests; its claimed elapsed limit is not accepted.
+  A second test-only request times out at **181.05 s**, exit 143, with no edits.
+  Primary writes the regressions and final corrections. The first candidate fails
+  **3 of 12** initial geometry cases and its native zoom trace. The unrounded
+  revision fails **two** added quantized-offset cases and native safe-frame
+  metrics. Initial TS2352 test-entry diagnostics are fixed with complete
+  ResizeObserver entries; assertions are retained. Two real consumer cases fail
+  on the frozen original (**18 skipped**), and candidate bytes are restored.
+- Final serial verification passes **7 files / 167 tests** plus Web typecheck,
+  lint, formatting, knip, design-system, tokens, chrome, styles, classes, locales,
+  layers, port-surface and production bundle in **54.15 s**. Final private assets
+  build in **3.70 s**. The already-built, unchanged pinned Wails hosts load those
+  final external assets; the passive spill probe confirms the final asset version.
+  Accepted **5,771 non-Markdown files** have SHA-256
+  `82cb7d4dee242850508fcccf91c70c0a760ad960bfd2d343b4cd5c155f84feb9`; **608 artifacts**
+  cover final assets, module proxy and three accepted native binaries.
+- Actual Wails EN/light/14 px/Orange and ZH/dark/18 px/custom blue/motion off each
+  pass **20 uninterrupted native zoom steps** to **561 × 365 / 200%**, retaining
+  Copy action IDs 8 and 9 respectively, with no callbacks, feedback or escaped
+  error. Maximum raw safe-edge spill is **0.0186 px EN / 0 px ZH**, within the
+  stated 0.5 px measurement bound. Current-file activation opens the actual
+  navigation target; Back preserves exact opener identity and scrollTop
+  (**87 EN / 124 ZH**). Confirmed end carets and native paste extend original
+  drafts **34 → 45 EN / 11 → 16 ZH**. Actual Size preserves those later input
+  identities, values and carets before Quit.
+- A deliberate Chinese wheel scroll moves the old focused action outside the
+  frame; subsequent native Zoom Out leaves it outside at scrollTop **411**,
+  rather than reclaiming it. The later Composer focus remains authoritative.
+  The selected child transcript retains nested Run action ID 8 through native
+  resize and **nine split-pane zoom steps**. When Dock becomes unavailable,
+  existing host policy moves focus to Conversation. Explicit full-pane reveal
+  preserves the selected parent; ten further zoom steps reach 200% with the same
+  focused nested action, maximum spill **0.0993 px**. Child navigation shows the
+  actual Running child; All subagents returns through its list. Parent source
+  file → Back to task restores its source link; Close → original draft continuation
+  passes. Selection-list return is not claimed to preserve a transcript scroll offset.
+- **37 final native captures** are checked. A separate trace interrupted by
+  external input moving focus to Composer is excluded. Two earlier stale REPL
+  menu lookups admitted no zoom and are excluded. Pointer attempts revealing the
+  transcript host instead of the action are excluded. Only fresh AX observations,
+  actual native menu commands and observed keyboard focus qualify these paths.
+- These are production presentation flows with deterministic data and private
+  passive probes, not live Runtime/provider execution. Private Copy does not
+  write the clipboard. VoiceOver speech, OS IME, RTL, other-platform GUI, real
+  Tool execution and clipboard permissions remain unverified. Browser visual
+  suites, performance benchmarks and unchanged full-repository suites are not
+  rerun. No protocol or persisted-data migration is required. Primary work and
+  read-only references remain untouched; this batch does not fetch main during
+  development. Publication and final resource retirement are recorded below.
+
+**Approve** for the changed reading-focus geometry and inspected native task
+paths across the six domains. The continuous goal remains active; this is not
+whole-application or award-tier completion.
 
 ## Connection token draft intent
 

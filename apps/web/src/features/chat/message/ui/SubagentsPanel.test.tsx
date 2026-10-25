@@ -504,3 +504,85 @@ it("counts a subagent waiting on the person as active, not running", () => {
   expect(screen.queryByText(/running/)).toBeNull();
   expect(screen.getByText("Active · 1")).toBeTruthy();
 });
+
+it("preserves reading focus after geometry changes in the selected child transcript", async () => {
+  const observations: Array<{ nodes: Set<Element>; callback: ResizeObserverCallback }> = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      nodes = new Set<Element>();
+      constructor(callback: ResizeObserverCallback) {
+        observations.push({ nodes: this.nodes, callback });
+      }
+      observe(node: Element) {
+        this.nodes.add(node);
+      }
+      unobserve(node: Element) {
+        this.nodes.delete(node);
+      }
+      disconnect() {
+        this.nodes.clear();
+      }
+    },
+  );
+  material.rows = rows();
+  const facts = material.rows[0]!.facts;
+  facts.toolCalls.nested = {
+    id: "nested",
+    runId: "child",
+    name: "delegate_task",
+    fn: "Review request headers",
+    args: '{"summary":"Review request headers"}',
+    status: "ok",
+  };
+  facts.delegatedRuns.delegate![0]!.messages[0]!.blocks.push({
+    kind: "tool",
+    toolCallId: "nested",
+  });
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  render(<SubagentsPanel />);
+  await act(async () => vi.dynamicImportSettled());
+  const content = screen.getByRole("region", { name: "Sub-agent" });
+  const viewport = content.parentElement!;
+  const target = within(content).getByRole("button", { name: /Sub-agent/ });
+  const shape = { height: 400 };
+  viewport.style.scrollPaddingTop = "20px";
+  viewport.style.scrollPaddingBottom = "80px";
+  vi.spyOn(viewport, "getBoundingClientRect").mockImplementation(
+    () => new DOMRect(0, 0, 600, shape.height),
+  );
+  const bounds = () => new DOMRect(0, 210 - viewport.scrollTop, 100, 24);
+  vi.spyOn(target, "getBoundingClientRect").mockImplementation(bounds);
+  vi.spyOn(target, "getClientRects").mockImplementation(() => [bounds()] as unknown as DOMRectList);
+  Object.defineProperty(viewport, "scrollBy", {
+    configurable: true,
+    value: (options: ScrollToOptions) => {
+      viewport.scrollTop += options.top ?? 0;
+    },
+  });
+  act(() => target.focus());
+  shape.height = 240;
+  fireEvent.scroll(viewport);
+  act(() => {
+    for (const observer of observations)
+      if (observer.nodes.has(viewport)) {
+        observer.callback(
+          [
+            {
+              target: viewport,
+              contentRect: viewport.getBoundingClientRect(),
+              borderBoxSize: [],
+              contentBoxSize: [],
+              devicePixelContentBoxSize: [],
+            },
+          ],
+          {} as ResizeObserver,
+        );
+      }
+  });
+  expect(bounds().bottom).toBeLessThanOrEqual(160);
+  expect(document.activeElement).toBe(target);
+  expect(navigator().get().subagent).toBe("child");
+  expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(content);
+});

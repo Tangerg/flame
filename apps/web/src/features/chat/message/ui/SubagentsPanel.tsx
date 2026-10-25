@@ -20,7 +20,11 @@ import { useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import { prepareDisclosureReading, stopFollowOnReadingFocus } from "@/ui/agent/readingFollow";
+import {
+  prepareDisclosureReading,
+  stopFollowOnReadingFocus,
+  useReadingFocusVisibility,
+} from "@/ui/agent/readingFollow";
 import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
@@ -273,6 +277,7 @@ function SubagentTranscript({
     [entry.narrative.run.sessionId, expandedIds, onToggleExpand, textReveal],
   );
   const measured = useContentVisible() && !hidden;
+  useReadingFocusVisibility({ scrollRef, contentRef, state, stopScroll }, measured);
   const { narrative, facts } = entry;
   const rows = useMemo(() => delegatedTranscriptRows(narrative, facts), [narrative, facts]);
   return (
