@@ -10,6 +10,8 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/diff-selection-1025`. Diff source selection and native copying are
 qualified on frozen base `7c60586f354a64ffdbdbda332dc37f50c7c321dd`; see the
 corresponding Diff section for source, return-task and verification boundaries.
+Implementation `eb75e91bce16c804eef6bc4e064d6de00c5ac8ed` is published to remote
+main, and its owned evidence retirement is complete.
 Native insertion investigation uses
 frozen base `c4adfe87fd4a0be0f10722bf7e98a8c6fe5ef2a7`; its supported-system
 counterexample and rejected alternatives are recorded below. It changes no
@@ -5432,6 +5434,25 @@ textarea limitation remains recorded above.
 **Approve** for the inspected selection/copy and complete source-return task.
 Preserve these reader, navigation, draft and native edit owners while continuing
 from fresh evidence; the continuous goal remains active.
+
+Publication sync finds main unchanged from the frozen base. Implementation
+`eb75e91bce16c804eef6bc4e064d6de00c5ac8ed` is independently verified on remote
+main with a clean owned checkout; commit formatting and workspace lint pass.
+All **25 recorded processes** are dead and **five apps** are unregistered.
+Cleanup removes **eight checkout outputs**, **ten owned Library paths** and
+**five bundle-temp paths**. All **36 output-presence baselines**, **three original
+file hashes/inventories** and **11 product resources** remain intact. The original
+native-check binary and UI Vitest results are restored byte-for-byte; the cache
+tag already matches. The exact root `flame-ui-diff-selection-1025-JLh99z` is absent
+after publication, ownership, source, artifact and archive guards pass.
+Actual-evidence comparison and gzip round trip verify **132 UTF-8 files / ten
+screenshot digests**, SHA-256
+`4c80c82f31b55e4f1af3262adbc98926d0da3201774deb5eefef2e36892fa74f`.
+Accepted maps bind **1,207 final artifacts** and **11 native input files**.
+Fresh post-retirement checks again confirm accepted source/resource bytes and
+the original output inventories. This Markdown-only receipt changes no tested
+product source; primary parallel work, user data and read-only references remain
+preserved. No migration is needed. The continuous goal stays active.
 
 ## Retained workspace and result views
 
