@@ -26,7 +26,7 @@ type remoteModel struct {
 
 func probeModels(t *testing.T, baseURL, apiKey string, provider Provider) ([]string, error) {
 	t.Helper()
-	return ListModels(t.Context(), mustClientSpec(t, provider, "probe", apiKey, baseURL))
+	return ListModels(t.Context(), mustClientSpec(t, provider, apiKey, baseURL))
 }
 
 func TestListRemoteModels(t *testing.T) {
@@ -187,7 +187,7 @@ func TestListModelsRejectsMissingCredentialBeforeIO(t *testing.T) {
 		t.Error("model discovery reached the endpoint without a credential")
 	}))
 	defer server.Close()
-	spec := mustClientSpec(t, ProviderOpenAICompatible, "probe", "test-key", server.URL)
+	spec := mustClientSpec(t, ProviderOpenAICompatible, "test-key", server.URL)
 	spec.credential = providerdomain.APIKey{}
 	if _, err := ListModels(t.Context(), spec); !errors.Is(err, providerdomain.ErrAPIKeyRequired) {
 		t.Fatalf("missing credential error = %v", err)

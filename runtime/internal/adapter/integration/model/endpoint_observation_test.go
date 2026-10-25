@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,40 @@ import (
 	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewModelInvocationStore(db)
+	cause := errors.New("provider returned malformed response")
+	invalid := &chat.Response{}
+	model := &observedEndpoint{
+		inner: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			return invalid, cause
+		}),
+		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
+	}
+	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "invalid-response", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "invalid-response"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
+	response, err := model.Call(ctx, request)
+	if response != invalid || !errors.Is(err, cause) || !errors.Is(err, chat.ErrInvalidResponse) {
+		t.Fatalf("invalid response evidence changed: %+v, %v", response, err)
+	}
+	rows, err := store.PageEndpointInvocations(t.Context(), "invalid-response", 0, "", 10)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("endpoint observation: %+v, %v", rows, err)
+	}
+	want := errors.Join(cause, invalid.Validate()).Error()
+	if rows[0].Response != nil || rows[0].State != "unknown" || rows[0].Failure != want {
+		t.Fatalf("invalid response was promoted or its failure was duplicated: %+v; want failure %q", rows[0], want)
+	}
+}
 
 type endpointStreamFixture struct{}
 

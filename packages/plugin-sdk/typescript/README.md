@@ -77,7 +77,8 @@ then close resources once. Async work must observe its supplied signal.
 `implementStream` takes an async iterable of explicit `{ kind: "chunk", value }`
 and one final `{ kind: "result", value }`. Each chunk waits for the original
 consumer's acknowledgement. The final remains unpublished until iteration ends;
-missing, invalid, duplicate or late final work is a protocol failure. Cancellation
+its value is captured when yielded, so later producer mutation cannot rewrite it.
+Missing, invalid, duplicate or late final work is a protocol failure. Cancellation
 closes and joins the source. A command stream settles through the same original
 receipt as a unary command; recovery does not replay chunks.
 

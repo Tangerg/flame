@@ -16,7 +16,9 @@ generation remains available when later publication fails. Custom JSON codecs
 describe their wire model with `JSONSchemaModel`.
 Endpoint model discovery calls the same Scope binding's `ListModels` API;
 Scope owns authentication, HTTP admission and pagination, while Flame supplies
-its resource budgets and product identity rules. Perplexity uses its Responses
+its resource budgets and product identity rules. Connection configuration contains
+no model identity; chat and embedding construction receive the selected model,
+while discovery needs only the connection. Perplexity uses its Responses
 binding and endpoint-owned model catalog without a retired Sonar default.
 Scope owns external wait acceptance and its checkpoint encoding. Finish earlier
 waiting work with its matching executable and retain that data directory;

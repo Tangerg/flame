@@ -90,7 +90,7 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Se
 	if err != nil {
 		return ResolvedChat{}, err
 	}
-	client, counter, err := llm.BuildChat(ctx, spec)
+	client, counter, err := llm.BuildChat(ctx, spec, selection.Model())
 	if err != nil {
 		return ResolvedChat{}, err
 	}
@@ -101,7 +101,7 @@ func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelcho
 	if err := selection.ValidateExact(); err != nil {
 		return llm.ClientSpec{}, fmt.Errorf("model: chat selection: %w", err)
 	}
-	providerID, model := selection.Provider(), selection.Model()
+	providerID := selection.Provider()
 	entry, ok, err := c.providers.Get(ctx, providerID)
 	if err != nil {
 		return llm.ClientSpec{}, err
@@ -117,7 +117,7 @@ func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelcho
 	if err != nil {
 		return llm.ClientSpec{}, err
 	}
-	spec, err := inputs.clientSpec(model)
+	spec, err := inputs.clientSpec()
 	if err != nil {
 		if errors.Is(err, ErrCredentialUnavailable) {
 			return llm.ClientSpec{}, &run.FailureError{

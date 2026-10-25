@@ -93,10 +93,6 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 }
 
 func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *chat.Response, cause error) error {
-	if response != nil && response.Validate() != nil {
-		cause = errors.Join(cause, response.Validate())
-		response = nil
-	}
 	failure := ""
 	if cause != nil {
 		failure = cause.Error()
@@ -118,13 +114,18 @@ func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*ch
 		return nil, &chat.CallFailure{Kind: chat.CallFailureNotExecuted, Cause: err}
 	}
 	response, err := m.inner.Call(ctx, invocation.Request.Clone())
+	var admitted *chat.Response
 	if response != nil {
-		err = errors.Join(err, response.Validate())
+		validationErr := response.Validate()
+		err = errors.Join(err, validationErr)
+		if validationErr == nil {
+			admitted = response
+		}
 	}
 	if response == nil && err == nil {
 		err = errors.New("model: endpoint returned no response")
 	}
-	return response, errors.Join(err, m.finish(ctx, invocation, response, err))
+	return response, errors.Join(err, m.finish(ctx, invocation, admitted, err))
 }
 
 type streamedEndpoint struct {
