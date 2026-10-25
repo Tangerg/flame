@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "panel.title": "用戶端診斷",
-  "panel.description": "來自此工作台的本機追蹤、指標與日誌。",
   "controls.label": "診斷控制項",
   refresh: "重新整理",
   "actions.label": "診斷操作",
@@ -9,12 +8,11 @@ export const zhTW: Record<string, string> = {
   "signal.spans": "追蹤",
   "signal.metrics": "指標",
   "signal.logs": "日誌",
-  "counts.label": "本機遙測計數",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "本機觀測記錄",
-  "observations.summary_other":
-    "最近一次緩衝區讀取中有 {{count}} 筆觀測記錄。較舊的觀測記錄可能已被淘汰。",
+  "observations.accepted": "最近一次讀取",
+  "observations.stale": "目前顯示上次成功讀取的內容。",
   "observations.empty.title": "本次讀取沒有本機觀測記錄。",
-  "observations.empty.sub": "請選擇其他訊號，或在使用工作台後重新整理。",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "開始時間",
   "fact.duration": "持續時間",
@@ -33,7 +31,7 @@ export const zhTW: Record<string, string> = {
   "raw.label": "本機觀測記錄詳情",
   "about.title": "關於用戶端診斷",
   "about.note":
-    "僅顯示此用戶端的本機緩衝區。重新整理會讀取其最新內容；清除會移除本機觀測記錄。Runtime 計量與遠端遙測不受影響。",
+    "僅顯示此用戶端的本機緩衝區。重新整理會讀取其最新內容；清除會移除本機觀測記錄。Runtime 計量與遠端遙測不受影響。 較舊的觀測記錄可能已被淘汰。",
   "read.failed": "無法讀取本機觀測記錄。",
   "clear.failed": "無法清除本機觀測記錄。",
 };

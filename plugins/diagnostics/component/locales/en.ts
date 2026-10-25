@@ -1,6 +1,5 @@
 export const en: Record<string, string> = {
   "panel.title": "Client diagnostics",
-  "panel.description": "Local traces, metrics and logs from this workbench.",
   "controls.label": "Diagnostic controls",
   refresh: "Refresh",
   "actions.label": "Diagnostic actions",
@@ -9,15 +8,11 @@ export const en: Record<string, string> = {
   "signal.spans": "Traces",
   "signal.metrics": "Metrics",
   "signal.logs": "Logs",
-  "counts.label": "Local telemetry counts",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "Local observations",
-  "observations.summary_one":
-    "{{count}} observation in the last buffer read. Older observations may have been evicted.",
-  "observations.summary_other":
-    "{{count}} observations in the last buffer read. Older observations may have been evicted.",
+  "observations.accepted": "Last buffer read",
+  "observations.stale": "Showing the last accepted read.",
   "observations.empty.title": "No local observations in this read.",
-  "observations.empty.sub":
-    "Select another signal or refresh after using the workbench.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "Started",
   "fact.duration": "Duration",
@@ -36,7 +31,7 @@ export const en: Record<string, string> = {
   "raw.label": "Local observation details",
   "about.title": "About client diagnostics",
   "about.note":
-    "Only this client's local buffer is shown. Refresh reads its latest contents; Clear removes local observations. Runtime accounting and remote telemetry are unchanged.",
+    "Only this client's local buffer is shown. Refresh reads its latest contents; Clear removes local observations. Runtime accounting and remote telemetry are unchanged. Older observations may have been evicted.",
   "read.failed": "Local observations could not be read.",
   "clear.failed": "Local observations could not be cleared.",
 };

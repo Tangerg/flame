@@ -1,21 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Trajectory now uses one accepted-page summary and a direct Clear filters action. The workspace host keeps inactive reading viewports laid out, invisible and inert so returning to a Dock tab retains native scroll position. Native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the change. See Trajectory summary, filter recovery and retained reading. The stronger optional paper material remains delivered.
+Updated: 2026-10-26. Client diagnostics now pairs each signal with its accepted-read count, keeps unknown counts distinct from zero and corrects histogram sample-count units. Native EN, ZH 18 px/200% and uninstrumented DE custom-base reading/return tasks qualify the change. See Client diagnostics reading. The stronger optional paper material remains delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/trajectory-reading-1026`. Trajectory summary/recovery and the shared
-retained-view visibility repair are qualified on frozen base
-`31fef320e003e48f3706047b35dcd15b2ffe84b1`; see the corresponding Trajectory
-section for owners, native counterexamples, complete tasks and verification limits.
-Implementation `92afc65f3553a6584c807b3adc882b531babceae` is published to remote main;
-owned-resource retirement is complete. The single publication fetch finds no
-incoming delta from the frozen base. The primary parallel checkout remains
-outside this batch. The user's latest instruction stops further
+is on `codex/diagnostics-reading-1026`. Client diagnostic navigation, snapshot
+reading and metric dimensions are qualified on frozen base
+`b03e21cf463f2a18246495c9d5d0b920d0cfc335`; see Client diagnostics reading for
+owners, original counterexamples, native tasks and verification limits.
+Publication and owned-resource retirement are pending below. The primary parallel
+checkout remains outside this batch. The user's latest instruction stops further
 Claude CLI calls; edits and verification are owned directly by Codex.
+Trajectory reading implementation `92afc65f3553a6584c807b3adc882b531babceae` and
+receipt `b03e21cf463f2a18246495c9d5d0b920d0cfc335` remain published and retired.
 MCP JSON import implementation `2b70ee84024cece612cccf31fabaf624a4df148c` and
 receipt `31fef320e003e48f3706047b35dcd15b2ffe84b1` remain published and retired.
 MCP editor implementation `0c2f14377d24af2c9a63c44e4153a8a296105bdf` and receipt
@@ -25,9 +25,9 @@ Shared settings focus/pointer implementation
 `55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
 Appearance labels/search implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
-The observed Trajectory summary, filtered-empty recovery and tab-return scroll
-defects are resolved below. Continue from fresh reading/Dock task evidence after
-publication; do not reopen delivered appearance, import or Trajectory work without a new finding.
+The observed diagnostic hierarchy and histogram-unit defects are resolved below.
+Continue from fresh reading/Dock task evidence after publication; do not reopen
+delivered appearance, import, Trajectory or diagnostic work without a new finding.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -4688,6 +4688,102 @@ installation is replaced here. No protocol or persisted-data migration is needed
 VoiceOver, OS IME, measured contrast, other-platform GUIs, browser/visual suites,
 performance benchmarks and independent unchanged Runtime/CLI/SDK/shared UI
 suites were not run.
+
+## Client diagnostics reading
+
+The existing signal controls now carry their last-read counts, formatted through
+Intl for the current locale. They derive directly from the one accepted snapshot.
+An initial read failure, or a failed reread after Clear discarded the snapshot,
+shows no counts; a successful empty read shows zero. Switching signal remains a
+local choice and performs no read. One quiet status names the last buffer read
+and distinguishes retained accepted content after failure. The separate large
+count dashboard, repeated introduction, observation heading and empty-state
+instructions are removed. About retains the bounded-buffer/eviction limitation.
+
+Metric presentation now keeps histogram sample count dimensionless. Sum,
+percentiles and average retain the instrument's unit, and dimensional counter
+values retain theirs. No recorded value or raw evidence is changed. Complete
+multiline log bodies, literal paths/stack indentation, record identity and
+progressive raw details keep their existing reading owners.
+
+The component's read/clear/lifetime boundary and the client telemetry store are
+unchanged. Refresh retains the selected signal and surviving disclosure instances;
+failed reads retain the previous snapshot. Clear still delegates to its existing
+owner, discards the snapshot and returns to Traces before rereading. Clear failure
+keeps accepted material; a failed post-clear read does not resurrect it. No buffer
+capacity, accounting, SDK, protocol, Runtime or shared UI contract changed.
+
+Read-only ZCode SettingsSegmentedTabs.tsx and HeroUI's actual secondary and custom
+rendered Tabs examples support one compact classification level with persistent
+selection. The count placement is Flame's task decision. Better-layout/writing
+and React derived-state guidance keep counts beside their action, preserve the
+last-read fact and avoid a second count store. Existing typography, color, focus,
+Radix and Ace research is reused; Base UI, StyleX, Orange and custom themes remain.
+
+| Severity | Location                           | Before                                                          | After                                                                                    | Why                                                          |
+| -------- | ---------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| MEDIUM   | Diagnostics signal controls/report | Category names and counts occupy separate layers before records | Accepted counts live in the existing category controls; one read status precedes records | Find the right material without scanning a second dashboard  |
+| HIGH     | Diagnostics metric facts           | Histogram count inherits the instrument unit, such as 12 ms     | Sample count is 12; measured values retain ms                                            | Samples and measured duration represent different dimensions |
+
+Verification (2026-10-26):
+
+- Original owner/installed baseline passes **2 files / 10 tests**. The original
+  fails both new count-placement and histogram-unit regressions. Final **3 files /
+  19 tests** pass, including nine presentation cases for category counts, units,
+  dimensional counters/raw values, failed reads, initial unknown counts,
+  clear/reread ordering, clear failure, locale formatting and complete log bodies.
+  An initial JSX closure edit fails compilation and is repaired before acceptance.
+- All **5 plugin gates**, **16 Web gates**, make check-native and serial
+  candidate/clean assets pass (**101.98 seconds**). The normal generator changes
+  only Diagnostics ESM; the other ten resources retain their bytes. Eight locale
+  catalogs preserve unrelated values; removed explanations, the combined count
+  template and accepted/stale status are scoped explicitly. Existing browser
+  expectations are updated for the intentional copy/label changes; the browser
+  suite, full make check and benchmark are not run. The previously recorded
+  unrelated shorthand conflict remains unchanged and is not rerun or claimed
+  passing. Existing chunk/macOS/duplicate Objective-C warnings remain nonfatal.
+- Actual Wails beta.34 EN/light/14 px/Orange at **1440 × 900** places the first
+  trace at **180 CSS px**, versus **370** originally. Right selects Metrics
+  without a read; histogram count is 12 while sum is 840 ms, and percentile/average
+  units remain. Logs opens its complete multiline body. Failed Refresh retains
+  that expanded record and accepted counts; another Refresh keeps focus on Refresh,
+  keeps Logs selected and changes its accepted count from 2 to 3.
+- Keyboard Home produces the actual **320 px Dock**; controls wrap, all three
+  category counts remain reachable and the document has no outer overflow. Wheel
+  reading and expanded raw evidence → Files → Diagnostics retain the same
+  expanded record, **204 px** scroll and three reads. Local Clear then shows known
+  zeros after its reread. Closing the Dock continues the same Composer from
+  Diagnostics reading 保留 to Diagnostics reading 保留 continued; zero observed errors.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off uses native Left and **200%**
+  keyboard zoom. The formal full-width entry keeps the selected view. The observed
+  viewport is **561 px** wide, with the final reading task at **475 px** high and
+  no outer overflow. Direction-key category switching, metric units, multiline
+  reading and failed/successful Refresh pass. Close/reopen retains Logs, the
+  expanded record, **197 px** scroll and three reads. The same draft continues
+  诊断阅读 保留 to 诊断阅读 保留 继续; Actual Size is restored before quit.
+- The **uninstrumented** DE/18 px/warm custom base (#eee7db/#232323)/purple/motion
+  Off app repeats native Left/200%, readable category counts, correct histogram
+  units, multiline logs, wheel and full-width return. Clear plus a failed reread
+  removes old content and shows unknown counts; explicit Refresh shows known zero
+  counts. The draft continues Diagnose lesen 保留 to Diagnose lesen 保留 weiter,
+  then Actual Size is restored before quit. No diagnostic geometry, DOM identity,
+  read count or error count is claimed for this clean app.
+
+The private native fixture supplies canonical telemetry snapshots through the
+existing context boundary and changes only its own read/clear state. It neither
+reads nor clears the user's real telemetry buffer. The real detached-buffer and
+retirement owner is covered separately by its unit tests. No live Runtime,
+provider request, Tool, Send, installation replacement or telemetry export occurs.
+An overlong passive AX report is excluded after truncation; removing repeated row
+names and rebuilding only private candidate assets repairs observation while all
+accepted product bytes remain unchanged. Locator/REPL probes are not product
+failures. VoiceOver, OS IME, RTL, other platform GUIs and fresh numeric rendered
+contrast remain unqualified. No protocol or persisted-data migration is needed;
+existing installations obtain rebuilt ESM through their installation owner.
+
+Scoped review: **Approve** for these inspected tasks. This does not establish
+whole-product or award-level completion; the goal remains active. No Claude CLI
+or subagent was used. Publication and exact resource retirement follow delivery.
 
 ## Trajectory page scope and reading continuity
 

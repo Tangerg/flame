@@ -18,7 +18,6 @@ import {
   ActionMenu,
   Segmented,
   IconButton,
-  Stats,
   CodeBlock,
   Disclosure,
   EmptyState,
@@ -103,107 +102,93 @@ function DiagnosticsReport({
     [locale],
   );
   return (
-    <>
-      <Stats
-        aria-label={t("counts.label")}
-        values={[
-          [t("signal.spans"), snapshot.spans.length],
-          [t("signal.metrics"), snapshot.metrics.length],
-          [t("signal.logs"), snapshot.logs.length],
-        ]}
-      />
-      <PanelSection
-        title={t("observations.title")}
-        description={t("observations.summary", { count: rows.length })}
-      >
-        <RecordGroup
-          variant="list"
-          id="output"
-          aria-label={t("observations.title")}
+    <RecordGroup
+      variant="list"
+      id="output"
+      aria-label={t("observations.title")}
+    >
+      {rows.map((row) => (
+        <Disclosure
+          variant="row"
+          key={`${signal}:${row.id}`}
+          title={title(row, t, clock)}
         >
-          {rows.map((row) => (
-            <Disclosure
-              variant="row"
-              key={`${signal}:${row.id}`}
-              title={title(row, t, clock)}
-            >
-              {"durationMillis" in row && (
-                <>
-                  {row.statusMessage && (
-                    <RecordBody>{row.statusMessage}</RecordBody>
-                  )}
-                  <Facts
-                    values={[
-                      [
-                        t("fact.started"),
-                        new Date(row.startMs).toLocaleString(locale),
-                      ],
-                      [
-                        t("fact.duration"),
-                        t("duration.ms", { ms: row.durationMillis }),
-                      ],
-                      [t("fact.trace"), row.traceId],
-                      [t("fact.parentSpan"), row.parentSpanId],
-                    ]}
-                  />
-                </>
+          {"durationMillis" in row && (
+            <>
+              {row.statusMessage && (
+                <RecordBody>{row.statusMessage}</RecordBody>
               )}
-              {"severity" in row && (
-                <>
-                  <RecordBody>{row.body}</RecordBody>
-                  <Facts
-                    values={[
-                      [
-                        t("fact.recorded"),
-                        new Date(row.timeMs).toLocaleString(locale),
-                      ],
-                      [t("fact.trace"), row.traceId],
-                      [t("fact.span"), row.spanId],
-                    ]}
-                  />
-                </>
-              )}
-              {"count" in row && (
-                <Facts
-                  values={(["count", "sum", "p50", "p95", "avg"] as const)
-                    .filter((key) => row[key] !== undefined)
-                    .map(
-                      (key) =>
-                        [
-                          t(`metric.${key}`),
-                          `${row[key]}${row.unit ? ` ${row.unit}` : ""}`,
-                        ] as Fact,
-                    )}
-                />
-              )}
-              {Object.keys(row.attrs).length > 0 && (
-                <PanelSection title={t("attributes.title")}>
-                  <Facts
-                    values={Object.entries(row.attrs).map(([key, value]) => [
-                      key,
-                      String(value),
-                    ])}
-                  />
-                </PanelSection>
-              )}
-              <Disclosure title={t("raw.title")}>
-                <CodeBlock label={t("raw.label")} language="json">
-                  {JSON.stringify(row, null, 2)}
-                </CodeBlock>
-              </Disclosure>
-            </Disclosure>
-          ))}
-          {!rows.length && (
-            <EmptyState
-              icon={Activity}
-              size="compact"
-              title={t("observations.empty.title")}
-              sub={t("observations.empty.sub")}
+              <Facts
+                values={[
+                  [
+                    t("fact.started"),
+                    new Date(row.startMs).toLocaleString(locale),
+                  ],
+                  [
+                    t("fact.duration"),
+                    t("duration.ms", { ms: row.durationMillis }),
+                  ],
+                  [t("fact.trace"), row.traceId],
+                  [t("fact.parentSpan"), row.parentSpanId],
+                ]}
+              />
+            </>
+          )}
+          {"severity" in row && (
+            <>
+              <RecordBody>{row.body}</RecordBody>
+              <Facts
+                values={[
+                  [
+                    t("fact.recorded"),
+                    new Date(row.timeMs).toLocaleString(locale),
+                  ],
+                  [t("fact.trace"), row.traceId],
+                  [t("fact.span"), row.spanId],
+                ]}
+              />
+            </>
+          )}
+          {"count" in row && (
+            <Facts
+              values={(["count", "sum", "p50", "p95", "avg"] as const)
+                .filter((key) => row[key] !== undefined)
+                .map(
+                  (key) =>
+                    [
+                      t(`metric.${key}`),
+                      row.unit && (key !== "count" || row.kind !== "histogram")
+                        ? `${row[key]} ${row.unit}`
+                        : String(row[key]),
+                    ] as Fact,
+                )}
             />
           )}
-        </RecordGroup>
-      </PanelSection>
-    </>
+          {Object.keys(row.attrs).length > 0 && (
+            <PanelSection title={t("attributes.title")}>
+              <Facts
+                values={Object.entries(row.attrs).map(([key, value]) => [
+                  key,
+                  String(value),
+                ])}
+              />
+            </PanelSection>
+          )}
+          <Disclosure title={t("raw.title")}>
+            <CodeBlock label={t("raw.label")} language="json">
+              {JSON.stringify(row, null, 2)}
+            </CodeBlock>
+          </Disclosure>
+        </Disclosure>
+      ))}
+      {!rows.length && (
+        <EmptyState
+          icon={Activity}
+          size="compact"
+          title={t("observations.empty.title")}
+        />
+      )}
+    </RecordGroup>
   );
 }
 type Read = { snapshot?: TelemetrySnapshot; error?: string };
@@ -211,6 +196,10 @@ type Read = { snapshot?: TelemetrySnapshot; error?: string };
 export function Diagnostics({ context }: { context: ComponentContext }) {
   const t = useMemo(
     () => createTranslator(CATALOGS, context.locale),
+    [context.locale],
+  );
+  const numbers = useMemo(
+    () => new Intl.NumberFormat(context.locale),
     [context.locale],
   );
   const [signal, setSignal] = useState<Signal>("spans");
@@ -244,12 +233,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <Toolbar label={t("controls.label")}>
           <IconButton
@@ -274,23 +258,32 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
             ariaLabel={t("signal.label")}
             value={signal}
             onChange={(value) => setSignal(value as Signal)}
-            options={[
-              { value: "spans", label: t("signal.spans") },
-              { value: "metrics", label: t("signal.metrics") },
-              { value: "logs", label: t("signal.logs") },
-            ]}
+            options={(["spans", "metrics", "logs"] as const).map((value) => ({
+              value,
+              label: read.snapshot
+                ? t("signal.count", {
+                    signal: t(`signal.${value}`),
+                    count: numbers.format(read.snapshot[value].length),
+                  })
+                : t(`signal.${value}`),
+            }))}
           />
         </Toolbar>
       }
     >
       {read.error && <p role="alert">{read.error}</p>}
       {read.snapshot && (
-        <DiagnosticsReport
-          snapshot={read.snapshot}
-          signal={signal}
-          t={t}
-          locale={context.locale}
-        />
+        <>
+          <Metadata role="status">
+            {t(read.error ? "observations.stale" : "observations.accepted")}
+          </Metadata>
+          <DiagnosticsReport
+            snapshot={read.snapshot}
+            signal={signal}
+            t={t}
+            locale={context.locale}
+          />
+        </>
       )}
       <Disclosure title={t("about.title")}>
         <Metadata>{t("about.note")}</Metadata>

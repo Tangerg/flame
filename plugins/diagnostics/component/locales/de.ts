@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "panel.title": "Client-Diagnose",
-  "panel.description": "Lokale Traces, Metriken und Logs von dieser Workbench.",
   "controls.label": "Diagnosesteuerung",
   refresh: "Aktualisieren",
   "actions.label": "Diagnoseaktionen",
@@ -9,16 +8,12 @@ export const de: Record<string, string> = {
   "signal.spans": "Traces",
   "signal.metrics": "Metriken",
   "signal.logs": "Logs",
-  "counts.label": "Lokale Telemetriezählung",
+  "signal.count": "{{signal}} · {{count}}",
   "observations.title": "Lokale Beobachtungen",
-  "observations.summary_one":
-    "{{count}} Beobachtung beim letzten Pufferlesevorgang. Ältere Beobachtungen wurden möglicherweise verdrängt.",
-  "observations.summary_other":
-    "{{count}} Beobachtungen beim letzten Pufferlesevorgang. Ältere Beobachtungen wurden möglicherweise verdrängt.",
+  "observations.accepted": "Letzter Pufferstand",
+  "observations.stale": "Letzter erfolgreich gelesener Stand.",
   "observations.empty.title":
     "Keine lokalen Beobachtungen in diesem Lesevorgang.",
-  "observations.empty.sub":
-    "Wähle ein anderes Signal oder aktualisiere nach der Nutzung der Workbench.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "fact.started": "Gestartet",
   "fact.duration": "Dauer",
@@ -37,7 +32,7 @@ export const de: Record<string, string> = {
   "raw.label": "Details der lokalen Beobachtung",
   "about.title": "Über die Client-Diagnose",
   "about.note":
-    "Es wird nur der lokale Puffer dieses Clients angezeigt. Aktualisieren liest den neuesten Inhalt; Löschen entfernt lokale Beobachtungen. Die Runtime-Abrechnung und die Remote-Telemetrie bleiben unverändert.",
+    "Es wird nur der lokale Puffer dieses Clients angezeigt. Aktualisieren liest den neuesten Inhalt; Löschen entfernt lokale Beobachtungen. Die Runtime-Abrechnung und die Remote-Telemetrie bleiben unverändert. Ältere Beobachtungen wurden möglicherweise verdrängt.",
   "read.failed": "Lokale Beobachtungen konnten nicht gelesen werden.",
   "clear.failed": "Lokale Beobachtungen konnten nicht gelöscht werden.",
 };
