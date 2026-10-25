@@ -10,7 +10,9 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/paper-texture-1025`. Paper texture is qualified on frozen base
 `ac9d04d59c035b6817ec2b991162c423558fbf5f`; see its product section below for
 the material, shared owners, native tasks, checks and limits. Implementation
-publication and exact resource retirement are pending the final delivery step.
+`3c0c65e1d9b44a44600022bd56d46c1293a01ee9` is published to remote main, and exact resource
+retirement is complete. The single publication-time fetch finds no delta from
+the frozen base; there is no incoming product work to revalidate.
 The next observed issue is excessive Appearance helper copy and vertical space
 at large type/zoom; preserve the qualified material and existing control semantics.
 Earlier Usage report/source-scope implementation
@@ -964,9 +966,34 @@ before that task; it supplies no exact-CJK or OS IME acceptance.
 Final integrity freezes **5,775** non-Markdown source inputs, SHA-256
 `b090cf87ac820b6a2b112dd8487f4b21cf3da192890ad01247135c5f6fdedaf1`, **1,205**
 actual artifact hashes, **11** native construction inputs and all **11** unchanged
-portable resources. All **44** recorded PIDs are dead before publication. Scoped
+portable resources. Native acceptance applications are quit before publication. Scoped
 result: **Approve** for the requested material, bounded legibility contracts and
 exercised reading/settings task. Publication and owned retirement follow below.
+
+Delivery: implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` is pushed to remote
+`main` and independently matched with ls-remote before retirement. The single
+publication-time fetch finds main at the frozen base; merge is already up to
+date. Normal formatting, workspace lint and commit-message hooks pass without
+changing accepted product bytes.
+
+All **49** recorded PIDs are dead and all **3** bundles are unregistered. Cleanup
+removes **8** new checkout output/cache paths, **6** bundle-specific Library paths
+and **3** bundle-temporary directories. The original native-check binary and
+shared UI Vitest results are restored exactly. Independent checks before and
+after exact-root deletion preserve **36** output-presence baselines, **3** original
+file hashes and all **11** unchanged portable resources. No exact-root or
+exact-bundle process matches remain.
+
+The exact private root `flame-ui-paper-texture-1025-roGbxy` is absent after
+UID/device/inode/birth-time, source, artifact and native-input guards. Its
+verified compressed in-memory archive retains **218** UTF-8 evidence files and
+**60** capture hashes, SHA-256
+`bfc24e24ec6a3b2e7be484fff47884702f6972349929808e35015563f5c7381d`.
+Only the specific invalid-UTF-8 result class is excluded as binary; the original
+native binary is retained by its preservation hash. User data, the primary
+parallel checkout, installed dependencies, global caches and read-only references
+remain untouched. This receipt changes no accepted product input; publication is
+followed by fresh remote, cleanliness and preservation checks.
 
 Next evidenced refinement is
 the remaining Appearance helper-copy layout at large type/zoom; retain the
