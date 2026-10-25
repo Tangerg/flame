@@ -1,16 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Shared focusable disabled buttons now preserve native commands and parent navigation while retaining activation protection. Native image and diagram return paths qualify the change below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Selected task readers now keep their complete purpose and sibling identity visible at constrained widths, with balanced wrapping at large text sizes. Native task/file/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/zoom-commands-1026`. The shared disabled-command boundary is
-qualified on frozen base `f0787cfc47bad54616b66133ea4aef6b0f95f712`. Implementation
-`bae5b99cff298e4d7d42427e18f093cf139fc82a` is published to remote main, with owned
-resources retired as recorded in that section. Native source return implementation
+is on `codex/task-reading-1026`. The selected-task identity qualification uses
+frozen base `d865ed638b116da41c9008d5b44ed7090c0c925e`; its delivery and retirement
+are recorded in Selected task identity at constrained widths below. Shared
+disabled-command implementation `bae5b99cff298e4d7d42427e18f093cf139fc82a` and
+receipt `d865ed638b116da41c9008d5b44ed7090c0c925e` remain published and retired.
+Native source return implementation
 `e99eb58c800cae12f831e9756607b3c24505f9fd` and receipt
 `f0787cfc47bad54616b66133ea4aef6b0f95f712` remain published and retired.
 The primary parallel checkout remains outside this batch.
@@ -3343,6 +3345,131 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Selected task identity at constrained widths
+
+The selected subagent header now shows the complete recorded task purpose and
+sibling identity. Its existing StyleX name rule keeps natural overflow wrapping,
+uses the project's existing balanced-title treatment and removes the two-line
+clamp, hidden overflow and redundant native title tooltip. No wrapper, parsing,
+state, timer, key handler, token or interface copy is needed. Compact overview
+rows, the single purpose per main Tool group, status/cancellation and the existing
+inspection, retained-reader and source-return owners stay intact.
+
+The native frozen-original comparison uses the same valid 75-character task
+summary on both sides. At a pointer-resized **320 px Dock**, the 252 px label has
+**40 px visible height / 60 px scroll height / clamp 2**; the sibling ordinal is
+absent from the painted header. The final English label has **60 / 60 px / no
+clamp** and visibly retains **Sub-agent 3 of 4**. Large Chinese text initially left
+the final number alone on a line; balanced wrapping keeps the ordinal together in
+the exercised scene without adding identity fragments or another data owner.
+
+The captured delegate Tools separately lacked the Runtime-presented `task`
+category. The actual presenter already owns that category, and the existing
+projection already derives the purpose from the recorded summary. The three
+captures now include that fact; a semantic projection regression compares each
+captured delegation's resulting label with its actual recorded summary. The
+frozen original capture fails **one new case / seven pass**. This fixture repair
+is not evidence that live Runtime delegations had generic labels, and no second
+UI category map or Tool-argument parser was added. The long test summary remains
+inside the actual 80-character delegate contract.
+
+#### Scope and coverage
+
+The reviewed flow is **reply summary → selected task → recorded file → task →
+overview/related task → original Composer draft**. It uses React, StyleX, shared
+Base UI primitives, semantic tokens and actual Wails v3.0.0-beta.34. Repository
+AGENTS, PROJECT_RULES, DEVELOPMENT, Web/Desktop and visual-fixture conventions
+were read. The six better-interface owner skills were loaded. Existing
+HeroUI/ArcUI/Radix/Ace research is retained; new read-only comparison traced
+ChatGPT's actual selected-subagent header and ZCode's actual compact conversation
+rows. The former supplies identity plus an explicit return; the latter informs
+keeping the grouped overview compact. Neither source proves Flame's rendering.
+
+| Domain        | Evidence inspected                                                                                                             | Result                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Accessibility | Named All subagents/source/return controls; native Tab, Shift+Tab, Enter, Escape and source/list focus; inspection regressions | Clear within the recorded flow; VoiceOver speech and IME not verified       |
+| Layout        | Selected header, retained body and 320 px Dock; native half-window/full-pane retreat and source return at 200%                 | Original identity clipping resolved                                         |
+| Writing       | Existing projected purpose, localized sibling/status labels and distinct task/index/source returns                             | No new copy; fixture purpose projection corrected                           |
+| Typography    | Actual 13 px/20.15 px and 17 px/26.35 px label metrics, medium weight, native system/CJK stack and balanced lines              | Large-text ordinal orphan resolved                                          |
+| Colors        | Opaque EN title #1b1b1b on #f1f1f1, **15.24:1**; ZH #eeeeee on #1a1a1a, **15.00:1**; clean warm/purple pixels                  | Inspected title pairs pass; no blanket contrast claim for unchanged content |
+| UI            | Existing gutters, title/status spacing, Back control, keyboard source outline, full/off motion and custom themes               | Clear for exercised states; no new animation or surface decoration          |
+
+#### Resolved findings
+
+| Severity | Domain     | Location                                                      | Before                                                                    | After                                                 | Why                                                                       |
+| -------- | ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------- |
+| HIGH     | Layout     | `apps/web/src/features/chat/message/ui/SubagentsPanel.tsx:78` | Two-line clipped identity hides the sibling ordinal at 320 px             | Delete clamp/hide rules; let the existing header grow | The reader must know which same-purpose child it is inspecting            |
+| LOW      | Typography | `apps/web/src/features/chat/message/ui/SubagentsPanel.tsx:80` | Large-text wrapping leaves only the final ordinal number on its last line | Reuse `textWrap: "balance"`                           | Keep the selected identity readable without another label or layout owner |
+
+#### Verification
+
+- Focused Web run passes **14 files / 233 tests**, including SubagentsPanel,
+  DelegatedRunLink, BlockRenderer, MessageTranscript/Block, Run outcomes,
+  unresolved effects, inspection/Session ownership, reading follow/visibility,
+  Lightbox, captured snapshots and installed continuity. All **16 selected Web
+  gates**, `make check-native` and the **11** product ESM resource checks pass.
+- The final balanced-style adjustment passes the five directly affected suites,
+  **5 files / 129 tests**, plus Web typecheck, lint, format, tokens and chrome.
+  Candidate and clean assets build serially. The unchanged native binaries load
+  those exact final assets through the private static DirFS host; no native
+  command implementation or production Go source changes.
+- Original fixture regression fails as expected. An earlier conditional test
+  assertion fails lint and is corrected without disabling the rule. One artifact
+  gate is initially scheduled before its required Web dist exists; running the
+  normal native build before that gate resolves the ordering error. Existing
+  linker/loader/chunk warnings remain recorded. Rejected AX-only splitter probes
+  and wrong-coordinate drags are setup attempts, not passing resize evidence.
+- Final EN/light/14 px/Orange/full motion: pointer-resized **320 px** Dock retains
+  full task 3 identity. Native Tab reaches the visible source; Enter opens the
+  captured file and Escape restores its original source focus. All subagents
+  restores task 3's list focus; Shift+Tab/Enter opens failed task 2 with its own
+  complete identity and recorded failure. Escape returns to the conversation.
+  The exact draft continues as `Return to this task draft — continued`.
+- Final ZH/dark/18 px/custom blue/motion off: **320 px** Dock, **104 / 104 px**
+  selected label and visible status/Back. Native wheel reading → file → task
+  preserves the visible source and focus. Native Window → Move & Resize → Left,
+  then twenty native Zoom In commands, yields **561 × 475 CSS px at 200%**,
+  matching document width. The existing host presents the selected reader full
+  width; identity, file reading, Escape source return and All subagents remain
+  reachable. Actual Size restores **1122 × 950 CSS px**; the original draft
+  continues as `保留这段任务草稿，继续核对` before Quit.
+- Final clean DE/18 px/warm custom canvas/purple/motion off omits the passive
+  observer. Native pixels/AX show the complete sibling identity at **320 px**.
+  Tab/Shift+Tab retain Back; native half-window and page 200% retain the task.
+  Four Tabs reach its source with a visible purple outline; Enter opens the
+  recorded file, Escape restores that link, and another Escape restores the main
+  task entry. Actual Size and draft continuation produce
+  `Nach dem Lesen fortsetzen — weiter` before Quit. No observer is needed for
+  those interaction or visual results.
+
+Rendered title colors are normalized from computed CSS via an unattached sRGB
+canvas; observed backgrounds are opaque and have no image. Installed colord's
+contrast calculation uses those RGBA pairs. No guessed OKLab conversion or
+unmeasured warm-theme ratio is reported. Empty/unavailable, waiting and retained
+reader contracts retain inspected source and existing tests; fresh live loading,
+cancellation, provider Send, Runtime recovery, VoiceOver, OS IME, RTL and other
+platform GUIs are **not verified** by these deterministic presentation scenes.
+No protocol or persisted-data migration is required.
+
+| Goal CHECK        | Scoped result                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| Typography        | Full, balanced task identity at default/large type and page 200%                         |
+| Whitespace        | Existing gutters/status gap grow with the title; body scrolls independently              |
+| Visual hierarchy  | Compact grouped summary leads to one complete selected identity and authoritative status |
+| Color             | Measured title pairs pass; Orange, custom blue and warm/purple stay theme-owned          |
+| Motion            | Existing full/off-motion routes preserve task and return; no new motion                  |
+| Micro-interaction | Pointer/keyboard entry, source/list focus and exact draft continuation pass              |
+| Responsive        | 320 px Dock and native half-window/200% full-pane retreat retain identity and return     |
+| Originality       | Flame's existing reading surfaces, brand and shared controls remain in use               |
+
+**Verdict: Approve for this inspected task flow and recorded states.** Both
+reported interface findings are resolved. This is **progress**, not whole-product
+or award-tier completion. The accepted **5,784 non-Markdown inputs** have SHA-256
+`dd7559328d3fdbc3ca1de0a5d65b30dcff295a1391cd5d9eced4f6f5f5daec91`.
+No Claude CLI, subagent, browser visual suite or performance benchmark was used.
+Publication and exact resource retirement follow this qualification. Continue with
+fresh reading/Dock evidence; do not restart these accepted identity/return fixes.
 
 ### Explicit-main task return and index focus
 

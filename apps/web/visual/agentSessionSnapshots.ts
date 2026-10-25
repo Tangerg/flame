@@ -1295,7 +1295,11 @@ const FANOUT_DELEGATE: Item = {
   safetyClass: "safe",
   tool: {
     name: "delegate_task",
-    arguments: { summary: "Survey the boundary in parallel", instructions: "…" },
+    category: "task",
+    arguments: {
+      summary: "Audit persistence boundaries across Runtime, Framework and delegated agents",
+      instructions: "…",
+    },
   },
 };
 
@@ -1603,6 +1607,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         safetyClass: "safe",
         tool: {
           name: "delegate_task",
+          category: "task",
           arguments: { summary: "Audit Agent Framework ownership", instructions: "…" },
         },
       },
@@ -1624,6 +1629,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         safetyClass: "safe",
         tool: {
           name: "delegate_task",
+          category: "task",
           arguments: { summary: "Verify package dependencies", instructions: "…" },
         },
       },

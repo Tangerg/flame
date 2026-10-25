@@ -76,11 +76,8 @@ const styles = stylex.create({
   evidence: { marginBottom: space.s6 },
   summary: { display: "grid", gap: space.s0_5, minWidth: 0, flex: 1 },
   name: {
-    display: "-webkit-box",
-    WebkitBoxOrient: "vertical",
-    WebkitLineClamp: 2,
-    overflow: "hidden",
     overflowWrap: "anywhere",
+    textWrap: "balance",
     fontWeight: weight.medium,
   },
 });
@@ -165,11 +162,7 @@ export function SubagentsPanel() {
         )}
         {summary ? (
           <div {...stylex.props(styles.summary)}>
-            <span
-              data-slot="subagent-identity"
-              title={summary.label}
-              {...stylex.props(styles.name, typeStep.uiSm)}
-            >
+            <span data-slot="subagent-identity" {...stylex.props(styles.name, typeStep.uiSm)}>
               {summary.label}
             </span>
             <span {...stylex.props(vocab.line, toneInk[summary.ink], typeStep.uiXs)}>

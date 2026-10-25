@@ -60,6 +60,10 @@ in both standalone and grouped rows, with long values wrapping inside the readin
 column. Captured text, status, disclosure, actions and source-return ownership stay
 with their existing owners.
 
+Selected subagent readers keep the complete task purpose and sibling identity
+visible in their header. Overview rows retain their compact summaries; retained
+reading state, source navigation and return focus stay with the inspection owner.
+
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code

@@ -9,6 +9,18 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it("retains each recorded delegation's purpose in its projected label", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS.delegated;
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const calls = snapshot.items
+      .filter((item) => item.type === "toolCall")
+      .filter((item) => item.tool.name === "delegate_task");
+    expect(calls).not.toHaveLength(0);
+    expect(calls.map((item) => view.toolCalls[item.id]?.fn)).toEqual(
+      calls.map((item) => item.tool.arguments.summary),
+    );
+  });
+
   it("parks the delegated tree before offering its root resume", () => {
     const snapshot = delegatedApprovalSnapshot();
     expect(snapshot.runs.find((run) => run.id === "run_root")?.status).toBe("waiting");
