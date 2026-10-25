@@ -1,17 +1,20 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Generated SVG fences now open the shared reader with zoom, pan and reply-scoped selection. Incoming focus reveals its source while preserving pointer activation. Fixed-geometry EN, ZH 200% and clean DE tasks pass; in-modal native geometry/pixel agreement remains an explicit follow-up under Generated SVG reading and source return.
+Updated: 2026-10-26. Native source return now uses absolute instant scrolling after in-reader window/page-zoom changes. The earlier SVG layout/pixel discrepancy is resolved in EN, ZH and clean DE acceptance below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/svg-reading-1026`. Generated SVG reading and source return is
-qualified on frozen base `0352755d552526824244668f1d9ee88c2badd027` for the fixed-geometry
-native tasks below. The cross-geometry native pixel boundary remains open.
-Publication and resource retirement are recorded in that section. The primary
-parallel checkout remains outside this batch. Recorded Tool failure implementation
+is on `codex/reader-geometry-1026`. Native source return after page zoom is
+qualified on frozen base `8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac`. The observed
+cross-geometry layout/pixel discrepancy is resolved by absolute instant delivery
+in the existing shared reading owner. Publication and resource retirement follow
+in that section. The primary parallel checkout remains outside this batch.
+Earlier SVG implementation `99dfe135b582dbfa767bda46ab230629768a7e42`, merge
+`fa7e9ce01c5f0866f85113c7976802d8727ca879` and receipt
+`8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac` remain published and retired. Recorded Tool failure implementation
 `568848e551bd569ea48443b9a1b1ec5bc228d855` and receipt
 `0352755d552526824244668f1d9ee88c2badd027` remain published and retired.
 The user’s latest instruction stops further Claude CLI calls; edits and verification
@@ -1780,7 +1783,7 @@ Verification on frozen base `0352755d552526824244668f1d9ee88c2badd027`:
   all 1,794 compiled assets, 32 native inputs, eight module artifacts, three
   references and 11 product resources match through acceptance.
 
-**Remaining native geometry boundary**
+**Earlier native geometry counterexample**
 
 Changing window size and native page zoom while the reader is already open is
 **not fully qualified**. In DE, closing restores the focused SVG and draft but
@@ -1788,8 +1791,8 @@ its captured pixels sit below the reported DOM position. A passive trace reports
 source y 68.52 while its _same screenshot_ still shows a blank upstream diagram
 and lower preview. This occurs with and without probes; timers do not explain
 it. The independently qualified fixed-geometry clean path above remains valid.
-Do not claim this cross-geometry discrepancy repaired. Continue with a focused
-native layout/paint investigation using the captured counterexample.
+At that checkpoint the discrepancy remained unrepaired. Native source return
+after page zoom below records its later root-cause comparison and repair.
 
 These are production presentation tasks with deterministic data and only an
 expanded captured SVG payload. Live provider Send/Runtime image production,
@@ -1810,7 +1813,7 @@ subagents were not invoked.
 | Originality       | Flame components/brand remain; no ornamental card treatment is added.           |
 
 This is **progress**, not whole-product or award-tier completion. Preserve the
-qualified SVG entry and continue the native geometry investigation after delivery.
+qualified SVG entry; its subsequent native geometry repair is recorded below.
 
 **Delivery receipt**
 
@@ -1841,8 +1844,93 @@ files**, **116 screenshot digests** and original binary metadata; gzip SHA-256
 all **1,794** compiled assets, **32** native inputs, **eight** module artifacts and
 **three** read-only references. A REPL cross-realm prototype refusal was resolved
 by comparing every exact sorted path/hash entry; no source difference was ignored.
-This documentation-only receipt changes no tested product source. The remaining
-native cross-geometry boundary above is the next investigation, not a completed fix.
+This documentation-only receipt changes no tested product source. The subsequent
+Native source return after page zoom qualification resolves that checkpoint’s
+remaining geometry boundary.
+
+### Native source return after page zoom
+
+The existing `ui/agent/readingFollow.ts` now delivers an absolute instant scroll
+position. It retains the current safe frame, quantized start/end alignment,
+follow retirement, pointer protection and focus witness. Base UI still owns modal
+completion; the reader adds no focus call, retry, frame delivery or scroll cache.
+
+On frozen base `8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac`, a clean Wails DE/18 px
+warm/purple scene reproduces the prior failure: open SVG at wide 100%, resize to
+the native left half and page 200% while open, then Escape. Focus and the original
+draft return, but painted source starts around CSS y 237 despite the earlier
+reported y 69. A small native scroll redraws the preceding blank Mermaid content.
+Changing only relative `scrollBy` to absolute instant `scrollTo` in private
+compiled input returns the visible source start. Its **598** clean assets match
+the final production-source build byte for byte. Final clean native acceptance
+also repeats the complete task without observer DOM, timers or a diagnostic loop.
+
+Read-only ZCode image-dialog/caller and installed Base UI focus/scroll-lock owners
+inform the retained model. [WebKit's upstream async-scrolling repair](https://github.com/WebKit/WebKit/commit/e8697834ad4b3d036032823f29b7d4329ffb45ec)
+describes how programmatic and UI scroll positions can disagree. This informs the
+relative/absolute comparison; it does not establish the installed OS patch level
+or prove an identical engine cause. Better-layout and better-accessibility guide
+actual visible return and zoom checks. Prior visual/reference research remains
+applicable; no new visual system or styling override is introduced.
+
+- Final focused checks: **2 files / 45 tests**. Two new cases reveal from nonzero
+  reading offsets in both directions while retaining horizontal position/focus;
+  existing quantized, pointer, nested-scroll, follow, draft and hidden-reader
+  contracts remain. JSDOM does not simulate compositor behavior; the clean native
+  before/after above is the renderer regression evidence.
+- Final serial validation: **10 files / 141 tests**, all **16 selected Web gates**,
+  `make check-native` and final private builds pass in **63.14 s**. Lint reports
+  zero warnings/errors. Existing linker, loader and bundle warnings are retained.
+- EN/light/14 px/Orange/full motion: in-modal native resize/page 200% returns the
+  same source ID 3/image ID 27 at y **69.90**, **561 × 475 CSS px**. From that visible
+  source, Return → image 400% → native drag/local Down/Right → related image 2/3 →
+  SVG 3/3 → native previous window size → Escape returns the source at y **70.90**
+  in **720 × 450 CSS px**, still page 200%. Reopen/pointer Close preserve Composer
+  ID 2; exact continuation is `Continue from the captured diagram — verified`.
+- ZH/dark/18 px/custom blue/motion off: source reading → open → native left-half
+  200% → 400%/drag/local keys → image 2/3 then SVG → Escape returns the same source
+  at y **69.52**, **561 × 475 CSS px**. Reopen → native View/Actual Size and previous
+  window size → Tab/Tab/Return Close gives y **70.02** at **1440 × 901 CSS px**.
+  Pointer Close also passes; Composer ID 2 continues exactly
+  `缩放后继续核对节点图，再继续`. Viewport/document widths match; reported errors stay zero.
+- Final clean DE/18 px/warm custom canvas/purple/motion off: the same native
+  forward/reverse geometry task, 400%/pan/related-image switching, Escape and
+  pointer Close visibly restore the original source. Native Cmd+Down then paste
+  produces exactly `Diagramm nach Größenänderung lesen — weiter`. This qualifies
+  AX/pixels, not private DOM IDs or computed viewport measurements.
+
+Initial EN AX activation before visible-source preparation is not treated as the
+qualifying reader entry. An earlier DE Cmd+End attempt inserted at its click caret;
+the final continuation above corrects that input assumption. Cmd+0 did not
+establish EN Actual Size; the labeled native menu confirms 100% in final ZH and
+DE. Do not claim that accelerator qualified. Truncated ancestor reports and
+background reports hidden by the modal are not used as complete measurements.
+Live Runtime/provider Send, native Save/clipboard permissions, VoiceOver speech,
+OS IME, RTL, fresh child GUI geometry and other-platform GUIs remain unverified.
+
+| Check             | Scoped result                                                             |
+| ----------------- | ------------------------------------------------------------------------- |
+| Typography        | Existing source/image labels remain readable at 14/18 px and 200%.        |
+| Whitespace        | Source start remains visible against current Composer clearance.          |
+| Hierarchy         | Gallery identity, source and continuing draft retain distinct roles.      |
+| Color             | Existing Orange, blue, purple and warm-canvas tokens remain intact.       |
+| Motion            | Full/reduced-motion returns pass without a queued workaround.             |
+| Micro-interaction | Native pointer/keyboard, zoom, pan, image switch and return pass.         |
+| Responsive        | In-modal native resize/page-zoom discrepancy is resolved in tested paths. |
+| Originality       | Existing Flame gallery and shared reader remain the owners.               |
+
+The **5,783** accepted non-Markdown files have SHA-256
+`9acae065cdaacf3e22457c9b4d28e5200029e4959a4d55c0d77ec071a4781ccc`;
+accepted maps cover **1,794** compiled assets, **30** native inputs, **eight** module
+artifacts, **four** read-only references and **11** product resources. No persisted
+migration is required. Claude CLI, subagents and browser visual/performance suites
+were not invoked. This is **progress**, not whole-product or award-tier completion.
+Continue from new reading/Dock evidence; separately confirm the Actual Size
+accelerator before treating the CUA key result as a product defect.
+
+**Delivery receipt**
+
+Native geometry publication and exact owned resource retirement are pending.
 
 ### Image gallery selection and source geometry
 

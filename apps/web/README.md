@@ -67,6 +67,8 @@ copying retains the complete original SVG text.
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
 pressed position; modal completion continues to own focus restoration.
+Reveals use absolute instant offsets so WebKit's painted reading position agrees
+with layout after native page zoom.
 
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested

@@ -88,8 +88,9 @@ export function useReadingFocusVisibility(
       const delta = alignStart ? bounds.top - top : Math.max(0, bounds.bottom - bottom);
       if (delta === 0) return;
       if (state.isAtBottom) stopScroll();
-      viewport.scrollBy({
-        top: alignStart ? Math.floor(delta) : Math.ceil(delta),
+      // Absolute delivery keeps WebKit's async scroll position in sync after native page zoom.
+      viewport.scrollTo({
+        top: viewport.scrollTop + (alignStart ? Math.floor(delta) : Math.ceil(delta)),
         behavior: "instant",
       });
     };

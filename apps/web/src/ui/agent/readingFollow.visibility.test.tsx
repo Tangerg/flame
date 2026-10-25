@@ -85,6 +85,11 @@ function scenario() {
     configurable: true,
     value: (options: ScrollToOptions) => move(options.top ?? 0),
   });
+  Object.defineProperty(viewport, "scrollTo", {
+    configurable: true,
+    value: (options: ScrollToOptions) =>
+      move((options.top ?? viewport.scrollTop) - viewport.scrollTop),
+  });
   Object.defineProperty(target, "scrollIntoView", {
     configurable: true,
     value: (options: ScrollIntoViewOptions) => {
@@ -168,10 +173,10 @@ describe("reading focus geometry", () => {
     "keeps repeated reveals inside the safe frame with quantized native scroll offsets (%s)",
     (edge) => {
       const s = scenario();
-      Object.defineProperty(s.viewport, "scrollBy", {
+      Object.defineProperty(s.viewport, "scrollTo", {
         configurable: true,
         value: (options: ScrollToOptions) => {
-          s.viewport.scrollTop += Math.trunc(options.top ?? 0);
+          s.viewport.scrollTop = Math.trunc(options.top ?? s.viewport.scrollTop);
         },
       });
       s.shape.top = 210.75;
@@ -242,6 +247,29 @@ describe("reading focus geometry", () => {
     expect(s.bounds().bottom).toBeLessThanOrEqual(160);
     expect(s.order).toEqual(["target revealed"]);
   });
+
+  it.each([
+    { scroll: 250, top: 700, height: 330 },
+    { scroll: 600, top: 500, height: 24 },
+  ])(
+    "reveals returned focus from an existing reading offset ($scroll px)",
+    ({ scroll, top, height }) => {
+      const s = scenario();
+      act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+      s.viewport.scrollTop = scroll;
+      s.viewport.scrollLeft = 23;
+      s.shape.height = 240;
+      s.shape.top = top;
+      s.shape.targetHeight = height;
+
+      act(() => s.target.focus({ preventScroll: true }));
+
+      expect(s.bounds().top).toBe(20);
+      expect(s.viewport.scrollLeft).toBe(23);
+      expect(document.activeElement).toBe(s.target);
+      expect(s.order).toEqual(["target revealed"]);
+    },
+  );
 
   it("keeps the start of oversized focus visible through quantized scrolling and later reflow", () => {
     const s = scenario();
