@@ -10,7 +10,8 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/diff-status-1025`. Diff status presentation is qualified on frozen
 base `4c3f3584fb3b4ee430888c7364b42751346c765f`; see Diff status language and
 canonical identity for the owner, complete task and verification boundaries.
-Publication and evidence retirement follow the native qualification below.
+Implementation `da78b26113d5b3004d744e0b2372d819a7771be6` is published to remote
+main, and its owned evidence retirement is complete.
 Earlier Diff source selection and native copying are qualified on frozen base
 `7c60586f354a64ffdbdbda332dc37f50c7c321dd`.
 Implementation `eb75e91bce16c804eef6bc4e064d6de00c5ac8ed` is published to remote
@@ -5561,8 +5562,24 @@ validation repeats. All **25 recorded processes** are dead; **four apps** are
 unregistered. Cleanup removes **seven checkout outputs**, **eight owned Library
 paths** and **four bundle-temp paths**. All **36 output-presence baselines**,
 **three original file hashes/inventories** and **eleven accepted resources**
-match; the original native-check binary is restored byte-for-byte. The private
-evidence root remains only until publication and independent archive retirement.
+match; the original native-check binary is restored byte-for-byte.
+
+Implementation `da78b26113d5b3004d744e0b2372d819a7771be6` is independently verified
+on remote main with a clean owned checkout and zero commits ahead/behind. Commit
+formatting and workspace lint pass without changing accepted source bytes. The
+exact private root `flame-ui-diff-status-1025-KhOXbE` is absent after publication,
+ownership, process, source, artifact and archive guards pass. Independent evidence
+comparison and gzip round trip verify **157 UTF-8 files / eight screenshot
+digests**, SHA-256
+`0d2bbdb9247956ac11b5f323f8e7c60a8626257a0f50c392cba6a5367e224177`.
+Native screenshot format is identified from actual JPEG payloads rather than
+assuming the filename suffix; original bytes are preserved. Accepted maps bind
+**1,201 final artifacts** and **eleven native input files**, including the actual
+TypeScript observation and chrome inputs. Fresh post-retirement checks again
+confirm accepted source/resource bytes and all original output inventories. This
+Markdown-only receipt changes no tested product source. Primary parallel work,
+user data, global compiler caches and read-only references remain preserved.
+
 Preserve these comparison, status, source-selection and draft owners while
 continuing other material/result paths from fresh evidence. No migration is
 needed; the continuous goal remains active.
