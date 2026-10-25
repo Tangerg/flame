@@ -71,7 +71,7 @@ export const de: Record<string, string> = {
   "catalog.summary":
     "{{enabled}} aktiviert · {{disabled}} deaktiviert auf dieser Seite",
   "empty.filtered.title": "Keine passenden Zeitpläne auf dieser Seite.",
-  "empty.filtered.sub": "Lösche die Suche und die Filter.",
+  "empty.filtered.action": "Filter zurücksetzen",
   "empty.none.title": "Keine Zeitpläne gespeichert.",
   "empty.none.sub":
     "Verwende Zeitplan hinzufügen, um wiederkehrende Arbeit zu speichern.",

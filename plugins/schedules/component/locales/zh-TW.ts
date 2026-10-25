@@ -63,7 +63,7 @@ export const zhTW: Record<string, string> = {
   "catalog.title": "已儲存的排程",
   "catalog.summary": "本頁 {{enabled}} 項已啟用 · {{disabled}} 項已停用",
   "empty.filtered.title": "本頁沒有相符的排程。",
-  "empty.filtered.sub": "清除搜尋和篩選。",
+  "empty.filtered.action": "清除篩選",
   "empty.none.title": "尚未儲存排程。",
   "empty.none.sub": "使用「新增排程」儲存週期性工作。",
   untitled: "未命名排程",

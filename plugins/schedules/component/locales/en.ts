@@ -68,7 +68,7 @@ export const en: Record<string, string> = {
   "catalog.title": "Saved schedules",
   "catalog.summary": "{{enabled}} enabled · {{disabled}} disabled on this page",
   "empty.filtered.title": "No matching schedules on this page.",
-  "empty.filtered.sub": "Clear the search and filters.",
+  "empty.filtered.action": "Clear filters",
   "empty.none.title": "No schedules saved.",
   "empty.none.sub": "Use Add schedule to save recurring work.",
   untitled: "Untitled schedule",

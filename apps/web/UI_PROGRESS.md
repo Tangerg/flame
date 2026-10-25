@@ -1,13 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Hosted full-width panels now keep one visible window identity while retaining page spacing; Dock keeps its compact density. Native Diff and title-only Schedules tasks preserve context, filters, expansion, source returns and continued drafts. See Hosted titles and reading density. Earlier status language, selection, copying and brand work remain delivered. The receiving textarea's first multiline paste still drops one trailing LF, independently reproduced in stock WKWebView; no unsafe workaround ships. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Schedules now offers a direct Clear filters action for a locally empty result, restoring the accepted page and the same search focus without another read or command. Native English 320 px Dock, Chinese 200% and an observer-free build preserve reading returns and continued drafts. See Schedules filtered-empty recovery. Earlier brand, hosted identity, status, selection and copying work remains delivered. The stock WKWebView multiline insertion limitation remains separately recorded. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/panel-heading-1025`. Hosted identity and reading density are
+is on `codex/schedule-filter-recovery-1025`. Schedules filtered-empty recovery is
+qualified on frozen base `0e111df3568389df7f254594975ad41531931e92`; see its
+section below for the owner, complete tasks and coverage boundaries. Publication
+and owned evidence retirement are pending.
+Earlier hosted identity and reading density are
 qualified on frozen base `0ddbb425d0cf388ac28b4ccb285ee1bcf101c605`; see Hosted
 titles and reading density for the contract, complete tasks and verification
 boundaries. Implementation `01fedfaf7cd7bb03b5bb7f14d5ac0243f212e449` is published
@@ -1840,6 +1844,100 @@ failure explicitly labels the accepted page. Refresh uses shared `pending` while
 the independent unresolved-command guard remains natively disabled. Query,
 status, surviving disclosure instances, background subscription, cursor and
 command ownership remain unchanged; no focus effect or new read state was added.
+
+### Schedules filtered-empty recovery
+
+The accepted page and local filters are separate facts. Its enabled/disabled
+summary intentionally counts the complete accepted page, as its existing label
+says; it must not be replaced with counts of the local matches. Native baseline
+confirms a different problem: an empty match only instructs the reader to clear
+search and filters, requiring separate operations in two controls.
+
+`plugins/schedules/component/component.tsx` now uses the existing
+`EmptyState.action` with an outlined shared Button. Clear filters resets only
+search and status, then focuses the surviving search ref in the same user event.
+It remains available while another read is pending and after a failed read. A
+truly empty or unavailable page keeps its distinct state. The obsolete helper
+key is replaced with the action in all eight catalogs. No state, effect, timer,
+style, new abstraction, read, command or optimistic record is added. Paging,
+accepted snapshots, revisions, modal tasks and original receipt owners remain
+authoritative. Only Schedules' published component ESM changes; the other ten
+resources retain their bytes. No persisted-data or protocol migration is needed.
+
+Read-only ZCode `settings/AutomationsSection.tsx` distinguishes a status-filter
+empty state from having no automations. HeroUI's actual table EmptyState example
+keeps the empty presentation in the result body. Flame already supplies the
+required action slot; better-writing's actionable empty states and better-layout's
+distinction between controls and static copy guide this composition. Memory
+already has a combined filter action; Skills and Usage expose one search clear.
+These observations do not justify mechanically resetting their independent
+object/scope choices. The earlier shared Radix/Arc/color and reading research
+remains applicable; no new popup or motion model is introduced.
+
+| Severity | Location                                                           | Before                                                             | After                                                         | Why                                                                          |
+| -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| MEDIUM   | `plugins/schedules/component/component.tsx:444` and eight catalogs | Filtered empty results give an instruction without a combined exit | One visible outlined action restores results and search focus | Replace helper copy with a concrete local recovery, preserving page identity |
+
+The six better-* domains and the objective's visual dimensions are reviewed in
+this scope: existing type, spacing, semantic colors and shape remain intact; the
+outline makes the action recognizable at rest, with shared focus/press behavior
+and no added motion or decorative surface. The scoped pointer/keyboard/layout
+review is **Approve**. VoiceOver speech, OS IME, RTL and fresh numeric contrast
+measurements are **not verified**; this is not a whole-product accessibility or
+award-level completion claim.
+
+Verification (2026-10-25):
+
+- Original baseline: **2 files / 13 tests** and actual Wails filtered-empty
+  capture. Edit-only Claude CLI changes eleven allowed paths in **109.02 s**;
+  configured maximum 32 turns, actual report **36**, no denials or delegates.
+  Primary reviews its diff, removes unrelated Runtime spies and focuses the
+  retiring button before asserting the surviving search focus. An initial test
+  misses Base UI's pointer-down step (**1 failed / 13 passed**); using the
+  established pointer-down/click sequence fixes the test without weakening its
+  assertions. Focused final tests pass **14**. Original product sources fail
+  **2 / 14**, and all nine candidate product files are restored byte for byte.
+- Native visual review rejects the preliminary default ghost button because it
+  still resembles helper text. Primary selects the existing outline variant.
+  The final source is rechecked serially in **42.86 s**: **8 Web files / 137
+  tests**, all **13 Web gates**, **5 plugin gates**, plugin resource generation
+  and ordinary `make check-native` (native Go test/vet/build and supported Wails
+  build). Final input: **5,772 non-Markdown files**, SHA-256
+  `a49106def70060860d29e0f31707f95902b9b8c71f869eb4dd27cf08670f8675`.
+  Candidate/clean assets build in **2.51 / 2.18 s**; final EN/ZH/clean native
+  hosts build in **3.48 / 2.36 / 2.36 s**, serially. **1,209** accepted artifact
+  hashes and **12** private native-input hashes bind the actual final evidence.
+- Actual EN/light/14 px/Orange: combined Disabled + unmatched search clears by
+  pointer; a second empty result clears by Tab/Return. The same panel **3** and
+  search **4** survive Main/Dock placement and an actual keyboard-resized
+  **320 px** Dock. Tab/Space clears there; the outlined target is
+  **96.375 × 32 px**. Expanded Schedule details survive switching to the real
+  Files tab, reading its retained DockResizer source, Back to files, returning
+  to Schedules and its original main view. Closing returns to conversation;
+  original input **2** and exact draft continue **28 → 40 characters**. A
+  six-Shift-Tab probe lands on Approval mode, so it is excluded as resize
+  evidence; the observed splitter is focused before Home establishes 320 px.
+- Actual ZH/dark/18 px/custom blue/motion off: native Left and twenty native
+  Zoom In commands establish **561 × 525 CSS px / 200%**. Disabled + unmatched
+  search clears through Tab/Return, returning to the same search **4** and both
+  records. The target is **90.602 × 32 px**. Expanded details scroll natively;
+  the controls' top changes **78 → 46 px**, revealing later facts and the
+  second record while return remains available. Input **2** continues the exact
+  draft **11 → 16 characters**. Actual Size is restored before Quit.
+- A separately built EN host omits private diagnostics and repeats combined
+  filtering, keyboard clear, Dock recovery and original-main return. Known AX
+  serialization is calibrated at **zero framing LF** from the exact initial
+  draft; continued text matches **20 → 32 characters**. No DOM identity is
+  claimed for that host. A diagnostic-only recorder initially expects absent
+  reports; the dedicated AX-only recorder completes the task without a product
+  change. Browser visual suites, performance baselines, live Runtime/provider
+  execution, Schedule mutations and Send are **not run**. Pending/failure
+  recovery is covered by held component reads, not native backend fault injection.
+
+All four native apps have quit.
+Publication and final output/cache/evidence retirement are pending; preserve
+the accepted final ESM rather than restoring its old resource bytes. Continue
+from fresh material or management-task evidence after delivery.
 
 Memory authoring remains one local non-modal task over its retained catalog.
 `plugins/memory/src/component.tsx` shows the captured scope and stable record ID

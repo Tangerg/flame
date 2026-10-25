@@ -68,6 +68,35 @@ it("opens a bounded editor and returns to the retained catalog on Escape", async
   expect(screen.queryByRole("heading", { name: "Weekly maintenance notes" })).toBeNull();
 });
 
+it("clears a filtered empty page back to its records and search without another Runtime call", async () => {
+  const { call } = await mountSchedules();
+  const query = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  const status = screen.getByRole("combobox", { name: "Schedule status" });
+  fireEvent.click(status);
+  const option = await screen.findByRole("option", { name: "Disabled" });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  expect(status.textContent).toContain("Disabled");
+  fireEvent.change(query, { target: { value: "release notes" } });
+  expect(screen.getByText("No matching schedules on this page.")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[0]!.Title })).toBeNull();
+  expect(screen.queryByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[1]!.Title })).toBeNull();
+
+  const issued = call.mock.calls.length;
+  const clear = screen.getByRole("button", { name: "Clear filters" });
+  clear.focus();
+  fireEvent.click(clear);
+  expect(query.value).toBe("");
+  expect(status.textContent).toContain("All statuses");
+  expect(screen.getByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[0]!.Title })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[1]!.Title })).toBeTruthy();
+  expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
+  expect(screen.getByRole("searchbox", { name: "Search this page" })).toBe(query);
+  expect(document.activeElement).toBe(query);
+  expect(call.mock.calls.length).toBe(issued);
+});
+
 it("cancels a bounded deletion decision back to its record without issuing a command", async () => {
   const { call } = await mountSchedules();
   const trigger = screen.getByRole("button", { name: "More actions for Nightly dependency audit" });

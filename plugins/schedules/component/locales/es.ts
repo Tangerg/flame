@@ -71,7 +71,7 @@ export const es: Record<string, string> = {
   "catalog.summary":
     "{{enabled}} activadas · {{disabled}} desactivadas en esta página",
   "empty.filtered.title": "No hay programaciones coincidentes en esta página.",
-  "empty.filtered.sub": "Borra la búsqueda y los filtros.",
+  "empty.filtered.action": "Borrar filtros",
   "empty.none.title": "No hay programaciones guardadas.",
   "empty.none.sub": "Usa Agregar programación para guardar trabajo recurrente.",
   untitled: "Programación sin título",

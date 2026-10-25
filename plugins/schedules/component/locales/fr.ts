@@ -71,7 +71,7 @@ export const fr: Record<string, string> = {
   "catalog.summary":
     "{{enabled}} activées · {{disabled}} désactivées sur cette page",
   "empty.filtered.title": "Aucune planification correspondante sur cette page.",
-  "empty.filtered.sub": "Effacez la recherche et les filtres.",
+  "empty.filtered.action": "Effacer les filtres",
   "empty.none.title": "Aucune planification enregistrée.",
   "empty.none.sub":
     "Utilisez Ajouter une planification pour enregistrer un travail récurrent.",

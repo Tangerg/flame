@@ -63,7 +63,7 @@ export const zh: Record<string, string> = {
   "catalog.title": "已保存的定时任务",
   "catalog.summary": "本页 {{enabled}} 项已启用 · {{disabled}} 项已禁用",
   "empty.filtered.title": "本页没有匹配的定时任务。",
-  "empty.filtered.sub": "清除搜索和筛选。",
+  "empty.filtered.action": "清除筛选",
   "empty.none.title": "尚未保存定时任务。",
   "empty.none.sub": "使用“添加定时任务”保存周期性工作。",
   untitled: "未命名定时任务",

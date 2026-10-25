@@ -447,7 +447,21 @@ export function Schedules({ context }: { context: ComponentContext }) {
               title={
                 rows.length ? t("empty.filtered.title") : t("empty.none.title")
               }
-              sub={rows.length ? t("empty.filtered.sub") : t("empty.none.sub")}
+              sub={rows.length ? undefined : t("empty.none.sub")}
+              action={
+                rows.length ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearch("");
+                      setStatus("all");
+                      searchElement.current?.focus();
+                    }}
+                  >
+                    {t("empty.filtered.action")}
+                  </Button>
+                ) : undefined
+              }
             />
           )}
           {matching.map((item) => (

@@ -99,8 +99,11 @@ function mountSchedules(subscribeError?: Error) {
   }
   const listCalls = () =>
     call.mock.calls.filter(([request]) => request.method === "flame.schedules/list.v1").length;
-  return { nextRead, listCalls };
+  const pluginCalls = () => call.mock.calls.length;
+  return { nextRead, listCalls, pluginCalls };
 }
+
+const clearFiltersButton = () => screen.queryByRole("button", { name: "Clear filters" });
 
 const reply = (page: typeof VISUAL_SCHEDULES_PAGE) => ({ output: JSON.stringify(page) });
 
@@ -151,6 +154,7 @@ it("names a failed initial read without claiming saved or retained schedules, th
   expect(screen.queryByText("No schedules saved.")).toBeNull();
   expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
   expect(screen.queryByText(/enabled ·/)).toBeNull();
+  expect(clearFiltersButton()).toBeNull();
 
   fireEvent.click(refreshButton());
   expect(screen.queryByRole("alert")).toBeNull();
@@ -165,6 +169,12 @@ it("keeps an accepted empty catalog distinct from its failed refresh", async () 
   (await nextRead()).resolve(reply({ Rows: [], NextCursor: "" }));
   await screen.findByText("No schedules saved.");
   expect(screen.queryByRole("alert")).toBeNull();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search this page" }), {
+    target: { value: "nightly" },
+  });
+  expect(screen.getByText("Use Add schedule to save recurring work.")).toBeTruthy();
+  expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
+  expect(clearFiltersButton()).toBeNull();
 
   fireEvent.click(refreshButton());
   (await nextRead()).reject(backendOffline());
@@ -211,7 +221,7 @@ it("keeps a failed live subscription's published detail separate while the accep
 });
 
 it("retains accepted and filtered records through a failed refresh and its retry", async () => {
-  const { nextRead } = mountSchedules();
+  const { nextRead, pluginCalls } = mountSchedules();
   (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
   await screen.findByRole("heading", { name: nightly });
   const query = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
@@ -231,9 +241,27 @@ it("retains accepted and filtered records through a failed refresh and its retry
   fireEvent.change(query, { target: { value: "release notes" } });
   expect(screen.getByText("No matching schedules on this page.")).toBeTruthy();
   expect(screen.queryByText("No schedules saved.")).toBeNull();
+  const clearLocally = () => {
+    const issued = pluginCalls();
+    const clear = screen.getByRole("button", { name: "Clear filters" });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(query.value).toBe("");
+    expect(document.activeElement).toBe(query);
+    expect(screen.getByRole("heading", { name: nightly })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: weekly })).toBeTruthy();
+    expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
+    expect(pluginCalls()).toBe(issued);
+    fireEvent.change(query, { target: { value: "release notes" } });
+  };
+  clearLocally();
+  expect(screen.getByRole("alert").textContent).toContain("The last accepted page is retained.");
 
   fireEvent.click(refreshButton());
-  (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
+  const retry = await nextRead();
+  expect(screen.getByText("Reading schedules…")).toBeTruthy();
+  clearLocally();
+  retry.resolve(reply(VISUAL_SCHEDULES_PAGE));
   await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   expect(screen.getByText("No matching schedules on this page.")).toBeTruthy();
   expect(query.value).toBe("release notes");
@@ -293,4 +321,5 @@ it("opens and cancels a new schedule from an unavailable catalog with the search
   await waitFor(() => expect(document.activeElement).toBe(add));
   expect(query.value).toBe("nightly");
   expect(screen.queryByText("No matching schedules on this page.")).toBeNull();
+  expect(clearFiltersButton()).toBeNull();
 });

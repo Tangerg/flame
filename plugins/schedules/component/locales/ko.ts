@@ -70,7 +70,7 @@ export const ko: Record<string, string> = {
   "catalog.summary":
     "이 페이지에서 사용 {{enabled}}개 · 사용 안 함 {{disabled}}개",
   "empty.filtered.title": "이 페이지에 일치하는 스케줄이 없습니다.",
-  "empty.filtered.sub": "검색과 필터를 지우세요.",
+  "empty.filtered.action": "필터 지우기",
   "empty.none.title": "저장된 스케줄이 없습니다.",
   "empty.none.sub": "스케줄 추가를 사용하여 반복 작업을 저장하세요.",
   untitled: "제목 없는 스케줄",

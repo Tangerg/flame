@@ -69,7 +69,7 @@ export const ja: Record<string, string> = {
   "catalog.title": "保存済みのスケジュール",
   "catalog.summary": "このページで有効 {{enabled}} 件 · 無効 {{disabled}} 件",
   "empty.filtered.title": "このページに一致するスケジュールはありません。",
-  "empty.filtered.sub": "検索と絞り込みをクリアします。",
+  "empty.filtered.action": "絞り込みをクリア",
   "empty.none.title": "スケジュールは保存されていません。",
   "empty.none.sub": "「スケジュールを追加」で定期的な作業を保存します。",
   untitled: "無題のスケジュール",

@@ -181,7 +181,11 @@ window-reload interaction.
 
 Catalog loading, failed reads and accepted empty pages remain distinct. Only an
 accepted page supplies records, counts or an empty result; it stays visible while
-another read is pending or fails. Read failures name Refresh as the recovery
+another read is pending or fails. A filtered empty result on a nonempty accepted
+page offers Clear filters, which resets the local search and status and returns
+focus to that same search field without reading or issuing a command. It remains
+available during reads and after read failure; genuinely empty or unavailable
+pages retain their distinct states. Read failures name Refresh as the recovery
 action and claim retained data only when a page was accepted. Read and live
 failures pair that complete localized status/recovery summary with a separate
 literal publisher explanation, preserving its punctuation and line breaks rather
