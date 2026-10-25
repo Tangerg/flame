@@ -885,6 +885,29 @@ describe("main presentation focus handoff", () => {
 });
 
 describe("Dock collapse focus handoff", () => {
+  it("keeps inactive workspace scrollports laid out but inert until their tab returns", () => {
+    openWorkspaceViewInDock("subagents");
+    render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+    const viewport = screen.getByRole("region", { name: "Subagents" });
+    const retained = viewport.closest<HTMLElement>("[data-dock-view-id]")!;
+    viewport.scrollTop = 241;
+    fireEvent.scroll(viewport);
+
+    act(() => openWorkspaceViewInDock("file"));
+    expect(viewport.isConnected).toBe(true);
+    expect(retained.hidden).toBe(false);
+    expect(retained.hasAttribute("inert")).toBe(true);
+    expect(screen.queryByRole("region", { name: "Subagents" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Evidence 1" })).toBeNull();
+
+    act(() => openWorkspaceViewInDock("subagents"));
+    expect(screen.getByRole("region", { name: "Subagents" })).toBe(viewport);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+    expect(retained.hasAttribute("inert")).toBe(false);
+    expect(viewport.scrollTop).toBe(241);
+  });
+
   function retainedDock() {
     openWorkspaceViewInDock("subagents");
     render(

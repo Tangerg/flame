@@ -1,20 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. MCP JSON import now preflights the whole source before creation, localizes known source failures, retires obsolete feedback on edit and distinguishes command failures from invalid JSON. The repeated introduction is removed and literal input is preserved. Native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the behavior. See MCP import source preflight and recovery. The stronger optional paper material remains delivered.
+Updated: 2026-10-26. Trajectory now uses one accepted-page summary and a direct Clear filters action. The workspace host keeps inactive reading viewports laid out, invisible and inert so returning to a Dock tab retains native scroll position. Native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the change. See Trajectory summary, filter recovery and retained reading. The stronger optional paper material remains delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/mcp-import-clarity-1026`. MCP JSON import is qualified on frozen base
-`7d11351c98f2682bdb74409972623210530b9575`; see MCP import source preflight and
-recovery for ownership, regression counterexamples, native tasks and limits.
-Implementation `2b70ee84024cece612cccf31fabaf624a4df148c` is published to remote
-main and owned-resource retirement is complete. The single publication fetch
-finds no incoming delta from the frozen base. The primary parallel checkout
-remains outside this batch. The user's latest instruction stops further
-Claude CLI calls; subsequent edits and verification are owned directly by Codex.
+is on `codex/trajectory-reading-1026`. Trajectory summary/recovery and the shared
+retained-view visibility repair are qualified on frozen base
+`31fef320e003e48f3706047b35dcd15b2ffe84b1`; see the corresponding Trajectory
+section for owners, native counterexamples, complete tasks and verification limits.
+Publication and owned-resource retirement are pending below. The primary parallel
+checkout remains outside this batch. The user's latest instruction stops further
+Claude CLI calls; edits and verification are owned directly by Codex.
+MCP JSON import implementation `2b70ee84024cece612cccf31fabaf624a4df148c` and
+receipt `31fef320e003e48f3706047b35dcd15b2ffe84b1` remain published and retired.
 MCP editor implementation `0c2f14377d24af2c9a63c44e4153a8a296105bdf` and receipt
 `7d11351c98f2682bdb74409972623210530b9575` remain published and retired.
 Shared settings focus/pointer implementation
@@ -22,9 +23,9 @@ Shared settings focus/pointer implementation
 `55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
 Appearance labels/search implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
-The observed JSON-import introduction and source-recovery defects are resolved
-in the import section. Continue from fresh reading/Dock task evidence after
-publication; do not reopen delivered appearance or import work without a new finding.
+The observed Trajectory summary, filtered-empty recovery and tab-return scroll
+defects are resolved below. Continue from fresh reading/Dock task evidence after
+publication; do not reopen delivered appearance, import or Trajectory work without a new finding.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -4711,8 +4712,8 @@ and refreshes. A selected Run absent from the accepted page stays in the option
 collection and produces an empty match; it no longer temporarily substitutes
 All Runs. Only the currently selected missing value is retained, without a cache
 of past Runs or another state transition. The empty-string Session only identity
-keeps the same rule. Explicit All Runs remains an explicit choice. Empty-match
-guidance names All Runs alongside the existing text/type recovery controls.
+keeps the same rule. Explicit All Runs remains an explicit choice. The direct
+Clear filters action below supplies recovery for all three page-local filters.
 
 Read-only ZCode `EnabledStatusFilterSelect.tsx` supplies one controlled value to
 its filter; `automationStatusFilter.ts` places an intentional reset at its actual
@@ -4746,6 +4747,102 @@ Flame Orange/custom blue and persistent controls. Earlier Radix focus principles
 and Ace composition references remain applicable; static artwork supplies no
 keyboard evidence. Runtime trajectory generation, evidence, status, Session
 renaming and all command lifecycles retain their existing owners.
+
+### Trajectory summary, filter recovery and retained reading
+
+The accepted page owns one wrapping status line: page number, matching/page record
+count, page Tool count, attention count and the existing last-accepted warning.
+The repeated loaded-count introduction and Recorded activity heading are removed.
+An empty match offers Clear filters. That explicit local action resets text,
+type and Run, restores the existing SearchField's focus and keeps the accepted
+cursor and descendant scope. It performs no read and does not dismiss an actual
+read failure. The existing Refresh action still owns recovery. A truly empty page
+is described as a page, without implying that the whole Session is empty.
+
+Native return testing also reproduced a separate host defect on the frozen
+original: switching Files → Trajectory retained the expanded Run but reset the
+outer viewport by 100 CSS px. ChatPanel hid retained views with the HTML hidden
+attribute, removing their layout and allowing WebKit to clamp the scrollport.
+The workspace host now retains their layout with visibility, inert and explicit
+accessibility exclusion. The selected view still projects the existing
+ContentVisibility and presentation facts. There is no scroll cache, restoration
+listener, new lifetime owner or Runtime transition. Session/view retirement,
+full-width presentation, popup retirement and focus handoffs retain their owners.
+
+Read-only ZCode ModelTrajectorySearchBar.tsx and ModelTrajectoryPaneParts.tsx
+supply actual compact controls and current-result counts, without importing its
+search model. Better-layout, typography, writing and accessibility guide the
+single summary, direct recovery and retained reading boundary. Existing HeroUI,
+Radix color/focus and Ace composition research is reused. Shared Base UI controls,
+StyleX, semantic tokens, Orange, custom themes and motion policy remain in place.
+
+| Severity | Owner              | Original task failure                                            | Final behavior                                                                                              |
+| -------- | ------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Trajectory report  | Loaded count, activity heading and count metadata delay records  | One accepted-page summary precedes the records                                                              |
+| MEDIUM   | Trajectory filters | Empty results only describe a multi-control recovery             | Clear filters resets the three local selectors and focuses search                                           |
+| HIGH     | Workspace host     | Switching away removes layout and resets native reading position | Inactive views retain layout and scroll while remaining invisible, inert and absent from accessible queries |
+
+Verification (2026-10-26):
+
+- Original focused baseline passes **2 files / 25 tests**. The original fails the
+  two new summary/recovery cases; the old host separately fails the retained
+  viewport regression. Final **10 files / 191 tests** pass, covering trajectory
+  cursors, stale reads, disclosure/focus, local clearing, installed continuity,
+  Session retirement, inspection handoffs, Dock presentation and viewports.
+  One density test now declares its intended 1200 px host width and restores the
+  mock afterward; its identity/heading assertions remain. The first candidate's
+  stale-warning assertion was updated for the intentional sibling summary fields.
+- All **5 plugin gates**, **16 Web gates**, make check-native and serial final
+  candidate/clean assets pass (**140.55 seconds**). All eight locale catalogs
+  preserve unrelated keys and plural forms; the new page messages each contain
+  one page placeholder. Normal generation changes only Trajectory's ESM; the
+  other ten package resources retain their original bytes. The separate full
+  make check and browser suite were not run. The earlier unrelated shorthand
+  conflict in ui/agent/dock-catalog.tsx remains byte-identical and is not claimed
+  passing. Existing chunk, macOS target and duplicate Objective-C warnings remain
+  nonfatal.
+- Actual Wails beta.34 EN/light/14 px/Orange at 1440 × 900 shows the first record
+  at **248 CSS px**, versus **304** originally. All three filters produce a true
+  empty match; Option+Tab reaches Clear filters, Return restores search and the
+  three records without a second read. Older accepts page 2 and focuses its
+  summary. A failed same-page Refresh retains its cursor and last-accepted warning;
+  clearing filters preserves the error, and another Refresh recovers that page.
+- In the actual **320 px Dock**, keyboard Home resizes the workspace and summary
+  metadata wraps. Native wheel reading → Files → Trajectory preserves the same
+  viewport and expanded Run at **100 px** scroll and the same row top. Repeating
+  with query run_root retains **200 px**, that query and the expanded record,
+  without rereading. The inactive viewport retains nonzero layout, is inert and
+  exposes no Run control to AX. The same Composer continues Trajectory reading
+  to Trajectory reading continued after closing the Dock; zero observed errors.
+- ZH/dark/18 px/pale custom accent/contrast 100/motion Off uses native Left and
+  existing keyboard zoom to **200%**, yielding **561 × 525 CSS px** without outer
+  overflow. The formal responsive entry opens the selected Trajectory full width.
+  Localized empty recovery, keyboard Older/summary focus and expanded Run reading
+  pass. Native wheel reaches **132 px**; close and reopen retain that position,
+  accepted page and disclosure with two reads. The same draft continues
+  Trajectory 中文阅读 保留 to Trajectory 中文阅读 保留 继续 after return. Actual Size
+  is restored before quit. Initial CUA menu-click timeouts and intermediate
+  navigation are excluded; the isolated fixture was reloaded and the final task
+  began from the production tab at Actual Size. Native paste supplies the final
+  mixed-language draft; Unicode key synthesis and OS IME are not qualified.
+- The **uninstrumented** DE/18 px/custom warm base (#eee7db/#232323)/purple/motion
+  Off app repeats native Left and 200% keyboard zoom. Summary fields wrap, the
+  pointer Clear filters restores search focus, and literal READING_RESULT narrows
+  to its one recorded Tool. Expanded evidence, native wheel, full-width close and
+  reopen retain query and disclosure. The draft continues Ruhig lesen 保留 to
+  Ruhig lesen 保留 weiter, then Actual Size is restored and the app quits. No DOM
+  identity, diagnostic geometry, read count or error count is claimed for this app.
+
+The scoped review finds no remaining defect in these accepted tasks. It does not
+claim whole-product or award-level completion. Production components run against
+isolated canonical read responses through the actual native host; no live Run,
+Tool execution, provider request, Send or installed-package upgrade occurs.
+VoiceOver, OS IME, RTL, other platform GUIs and fresh numeric rendered contrast
+remain unqualified. No protocol or persisted-data migration is required. Runtime
+installations still obtain the rebuilt package through their existing installation
+owner. The goal remains active and no Claude CLI or subagent was used.
+
+Publication and exact owned-resource retirement are recorded after delivery.
 
 ### Trajectory search evidence boundary
 

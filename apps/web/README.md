@@ -44,6 +44,11 @@ Palette themes include the material's opacity bound in their existing text and
 focus contrast calculations. Forced colors suppress the image. No texture layer
 intercepts input or selection.
 
+The workspace host retains mounted view layout when switching Dock tabs. Inactive
+views are invisible, inert and excluded from the accessibility tree. The existing
+viewport keeps its native reading position without a second scroll-state cache;
+Session changes and view retirement retain their existing lifetime boundaries.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

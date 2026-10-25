@@ -4,6 +4,7 @@ export const fr: Record<string, string> = {
   "controls.label": "Contrôles de trajectoire",
   "search.label": "Filtrer cette page",
   "search.placeholder": "Texte enregistré ou ID",
+  "filters.clear": "Réinitialiser les filtres",
   "search.clear": "Effacer le filtre",
   refresh: "Actualiser",
   "kind.label": "Type d’observation",
@@ -22,27 +23,20 @@ export const fr: Record<string, string> = {
   "status.reading": "Lecture des observations enregistrées…",
   "status.error": "La page demandée n’a pas pu être lue : {{error}}",
   "read.failed": "Les observations enregistrées n’ont pas pu être lues.",
-  "summary.loaded_one":
-    "{{count}} observation enregistrée chargée à la page {{page}}.",
-  "summary.loaded_many":
-    "{{count}} observations enregistrées chargées à la page {{page}}.",
-  "summary.loaded_other":
-    "{{count}} observations enregistrées chargées à la page {{page}}.",
   "summary.stale": "Affichage de la dernière page acceptée.",
   "pages.label": "Pages de trajectoire",
   "pages.newer": "Enregistrements plus récents",
   "pages.older": "Enregistrements plus anciens",
-  "activity.title": "Activité enregistrée",
   "records.label": "Observations de trajectoire",
-  "records.onPage_one": "{{count}} enregistrement sur cette page",
-  "records.onPage_many": "{{count}} enregistrements sur cette page",
-  "records.onPage_other": "{{count}} enregistrements sur cette page",
+  "records.onPage_one": "Page {{page}} · {{count}} enregistrement",
+  "records.onPage_many": "Page {{page}} · {{count}} enregistrements",
+  "records.onPage_other": "Page {{page}} · {{count}} enregistrements",
   "records.ofTotal_one":
-    "{{matching}} sur {{count}} enregistrement sur cette page",
+    "Page {{page}} · {{matching}} sur {{count}} enregistrement",
   "records.ofTotal_many":
-    "{{matching}} sur {{count}} enregistrements sur cette page",
+    "Page {{page}} · {{matching}} sur {{count}} enregistrements",
   "records.ofTotal_other":
-    "{{matching}} sur {{count}} enregistrements sur cette page",
+    "Page {{page}} · {{matching}} sur {{count}} enregistrements",
   toolCalls_one: "{{count}} appel d’outil",
   toolCalls_many: "{{count}} appels d’outil",
   toolCalls_other: "{{count}} appels d’outil",
@@ -51,11 +45,7 @@ export const fr: Record<string, string> = {
   attention_other: "{{count}} nécessitent une attention",
   "empty.filtered.title":
     "Aucun enregistrement de cette page ne correspond à ce filtre.",
-  "empty.filtered.sub":
-    "Effacez le filtre ou sélectionnez Toutes les observations et Toutes les exécutions.",
-  "empty.none.title": "Aucune observation de trajectoire enregistrée.",
-  "empty.none.sub":
-    "Actualisez après qu’une exécution a enregistré des observations.",
+  "empty.none.title": "Aucun enregistrement sur cette page.",
   "modelActivity.title": "Activité du modèle",
   "fact.logicalModelCalls": "Appels logiques de modèle",
   "fact.modelEndpoints": "Points de terminaison de modèle",

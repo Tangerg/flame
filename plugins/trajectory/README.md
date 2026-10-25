@@ -41,8 +41,10 @@ counts, not additive billing totals.
 Status tones project recorded severity independently of the attention filter and
 counts. Settled neutral states read as quiet summary metadata; running, waiting,
 warning and failure states keep a toned badge beside the title. The recorded state
-text is always shown. The page record, tool call and attention counts are one
-wrapping metadata line under Recorded activity. Failed, timed-out and lost Runs are failures; canceled Runs and refused or
+text is always shown. The accepted page number, matching/page record count, tool
+call and attention counts share one wrapping status line above the records.
+There is no separate loaded-count introduction or duplicate activity heading.
+Failed, timed-out and lost Runs are failures; canceled Runs and refused or
 canceled tools remain neutral. Attention includes timed-out Runs and retains
 incomplete, refused or errored tools without changing their recorded state.
 
@@ -52,6 +54,11 @@ updates the summary only after acceptance and moves reading focus there while
 the initiating action still owns it. Failed reads retain the accepted page and
 leave their action available for retry; later focus choices remain authoritative.
 Filters and counts apply to that page, without implying a total page count.
+An empty result offers Clear filters for the active text, type and Run selection.
+That local action restores the search field's focus and keeps the accepted page,
+cursor and descendant scope without rereading. A failed read and accepted-page
+warning remain until the existing read owner succeeds. Empty pages are described
+as pages rather than implying that the whole Session has no records.
 An explicit Run filter survives page changes and refreshes, including pages
 without that Run. Its current selection stays available in the control; an
 empty match does not silently widen the scope to All Runs.

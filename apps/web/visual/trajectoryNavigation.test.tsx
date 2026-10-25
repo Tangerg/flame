@@ -133,7 +133,7 @@ async function mountTrajectory() {
   );
   await waitFor(() => expect(trajectory).toHaveBeenCalledOnce());
   await act(async () => initial.resolve(FIRST));
-  await screen.findByText("2 recorded observations loaded on page 1.");
+  await screen.findByText("Page 1 · 2 records");
   return { ...view, context, discover, trajectory, hold };
 }
 
@@ -150,7 +150,8 @@ const records = () =>
     record.getAttribute("data-trajectory-record"),
   );
 
-const summary = () => screen.getByText(/recorded observations? loaded on page \d+\./);
+const pageScope = () => screen.getByText(/^Page \d+ · /);
+const summary = () => pageScope().closest<HTMLParagraphElement>('[role="status"]')!;
 
 const refresh = () => screen.getByRole<HTMLButtonElement>("button", { name: "Refresh" });
 const newer = () => screen.getByRole<HTMLButtonElement>("button", { name: "Newer records" });
@@ -200,7 +201,7 @@ it("starts from the newest page with the negotiated scope and disables only true
   });
   expect(records()).toHaveLength(2);
   expect(summary().classList.contains("sr-only")).toBe(false);
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   expect(newer().matches(":disabled")).toBe(true);
   expect(older().matches(":disabled")).toBe(false);
   expect(older().getAttribute("aria-disabled")).toBeNull();
@@ -212,10 +213,10 @@ it("refreshes the accepted older page with its own cursor, scope, filters and co
   const firstRecords = records();
   const toSecond = hold();
   await activate(older(), trajectory, 2);
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   expect(records()).toEqual(firstRecords);
   await act(async () => toSecond.resolve(SECOND));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
   const secondRecords = records();
   expect(secondRecords).toHaveLength(2);
   expect(secondRecords.some((record) => firstRecords.includes(record))).toBe(false);
@@ -246,11 +247,11 @@ it("refreshes the accepted older page with its own cursor, scope, filters and co
   await activate(refresh(), trajectory, 3);
   expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
   expect(discover).toHaveBeenCalledOnce();
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 1 of 2 records");
   expect(records()).toEqual(filtered);
   await act(async () => reread.resolve(SECOND));
   await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 1 of 2 records");
   expect(search.value).toBe(RUN_ID);
   expect(screen.getByRole("combobox", { name: "Observation type" }).textContent).toBe("Runs");
   expect(screen.getByRole("combobox", { name: "Run filter" }).textContent).toBe(RUN_ID);
@@ -270,9 +271,8 @@ it("retains the previous accepted page on failure and retries from the proper co
   expect(screen.getByRole("alert").textContent).toBe(
     "The requested page could not be read: store busy",
   );
-  expect(summary().textContent).toBe(
-    "2 recorded observations loaded on page 1. Showing the last accepted page.",
-  );
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
+  expect(within(summary()).getByText("Showing the last accepted page.")).toBeTruthy();
   expect(records()).toEqual(firstRecords);
   expect(document.activeElement).toBe(older());
 
@@ -281,15 +281,14 @@ it("retains the previous accepted page on failure and retries from the proper co
   expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
   await act(async () => retriedOlder.resolve(SECOND));
   expect(screen.queryByRole("alert")).toBeNull();
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
   const secondRecords = records();
 
   const failedRefresh = hold();
   await activate(refresh(), trajectory, 4);
   await act(async () => failedRefresh.reject(new Error("owner offline")));
-  expect(summary().textContent).toBe(
-    "2 recorded observations loaded on page 2. Showing the last accepted page.",
-  );
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
+  expect(within(summary()).getByText("Showing the last accepted page.")).toBeTruthy();
   expect(records()).toEqual(secondRecords);
   expect(document.activeElement).toBe(refresh());
 
@@ -298,7 +297,7 @@ it("retains the previous accepted page on failure and retries from the proper co
   expect(query(trajectory, 5)).toEqual(query(trajectory, 3));
   await act(async () => retriedRefresh.resolve(SECOND));
   expect(screen.queryByRole("alert")).toBeNull();
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
   expect(document.activeElement).toBe(refresh());
 });
 
@@ -308,13 +307,13 @@ it("moves explicit navigation to the accepted page summary through middle, last 
   await activate(older(), trajectory, 2);
   await act(async () => toSecond.resolve(SECOND));
   expect(document.activeElement).toBe(summary());
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
 
   const toLast = hold();
   await activate(older(), trajectory, 3);
   expect(query(trajectory, 3)).toMatchObject({ cursor: SECOND.nextCursor });
   await act(async () => toLast.resolve(LAST));
-  expect(summary().textContent).toBe("1 recorded observation loaded on page 3.");
+  expect(pageScope().textContent).toBe("Page 3 · 1 record");
   expect(older().matches(":disabled")).toBe(true);
   expect(document.activeElement).toBe(summary());
 
@@ -322,14 +321,14 @@ it("moves explicit navigation to the accepted page summary through middle, last 
   await activate(newer(), trajectory, 4);
   expect(query(trajectory, 4)).toMatchObject({ cursor: FIRST.nextCursor });
   await act(async () => backToSecond.resolve(SECOND));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
   expect(document.activeElement).toBe(summary());
 
   const backToNewest = hold();
   await activate(newer(), trajectory, 5);
   expect(query(trajectory, 5)).toMatchObject({ cursor: undefined, includeDescendants: true });
   await act(async () => backToNewest.resolve({ data: FIRST.data }));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   expect(screen.queryByRole("toolbar", { name: "Trajectory pages" })).toBeNull();
   expect(document.activeElement).toBe(summary());
 });
@@ -341,7 +340,7 @@ it("leaves a later outside or filter focus choice when navigation completes", as
   const search = screen.getByRole<HTMLElement>("searchbox", { name: "Filter this page" });
   search.focus();
   await act(async () => toSecond.resolve(SECOND));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
+  expect(pageScope().textContent).toBe("Page 2 · 2 records");
   expect(document.activeElement).toBe(search);
 
   const toLast = hold();
@@ -349,7 +348,7 @@ it("leaves a later outside or filter focus choice when navigation completes", as
   const outside = screen.getByRole<HTMLElement>("button", { name: "Outside action" });
   outside.focus();
   await act(async () => toLast.resolve(LAST));
-  expect(summary().textContent).toBe("1 recorded observation loaded on page 3.");
+  expect(pageScope().textContent).toBe("Page 3 · 1 record");
   expect(document.activeElement).toBe(outside);
 });
 
@@ -369,10 +368,10 @@ it("retires a navigation superseded by a new context without taking the page or 
   expect(discover).toHaveBeenCalledTimes(2);
   expect(query(trajectory, 3)).toEqual(query(trajectory, 1));
   await act(async () => toSecond.resolve(SECOND));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   await act(async () => restarted.resolve(FIRST));
   await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   expect(document.activeElement).toBe(older());
 });
 
@@ -397,14 +396,11 @@ it("keeps an explicit Run selection on an accepted page without its records", as
   const toChild = hold();
   await activate(older(), trajectory, 2);
   await act(async () => toChild.resolve(CHILD));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 2.");
   expect(runFilter().textContent).toBe(RUN_ID);
   expect(records()).toEqual([]);
-  expect(screen.getByText("0 of 2 records on this page")).toBeTruthy();
+  expect(pageScope().textContent).toBe("Page 2 · 0 of 2 records");
   expect(screen.getByText("No records on this page match this filter.")).toBeTruthy();
-  expect(
-    screen.getByText("Clear the filter or select All observations and All Runs."),
-  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Clear filters" })).toBeTruthy();
   expect(await chooseRun(RUN_ID)).toEqual(["All Runs", CHILD_RUN_ID, RUN_ID]);
   expect(runFilter().textContent).toBe(RUN_ID);
   expect(records()).toEqual([]);
@@ -413,7 +409,7 @@ it("keeps an explicit Run selection on an accepted page without its records", as
   await activate(newer(), trajectory, 3);
   expect(query(trajectory, 3)).toMatchObject({ cursor: undefined });
   await act(async () => back.resolve(FIRST));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
   expect(runFilter().textContent).toBe(RUN_ID);
   expect(records()).toEqual(selected);
 });
@@ -433,51 +429,54 @@ it("lets an explicit All Runs choice stand when the older Run returns", async ()
   await act(async () =>
     back.resolve({ data: [...FIRST.data, ...CHILD.data], nextCursor: FIRST.nextCursor }),
   );
-  expect(summary().textContent).toBe("4 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 4 records");
   expect(runFilter().textContent).toBe("All Runs");
   expect(records()).toHaveLength(4);
   expect(await chooseRun("All Runs")).toEqual(["All Runs", RUN_ID, CHILD_RUN_ID]);
 });
 
-it.each<[string, TrajectoryEntry[], string, string[]]>([
+it.each<[string, TrajectoryEntry[], string, string[], string]>([
   [
     "another Run's records",
     CHILD.data,
     "No records on this page match this filter.",
     [CHILD_RUN_ID],
+    "Page 1 · 0 of 2 records",
   ],
-  ["no records", [], "No recorded trajectory observations.", []],
-])("keeps the selected Run through a refresh that returns %s", async (_, data, empty, others) => {
-  const { trajectory, hold } = await mountTrajectory();
-  await chooseRun(RUN_ID);
-  const selected = records();
+  ["no records", [], "No records on this page.", [], "Page 1 · 0 records"],
+])(
+  "keeps the selected Run through a refresh that returns %s",
+  async (_, data, empty, others, scope) => {
+    const { trajectory, hold } = await mountTrajectory();
+    await chooseRun(RUN_ID);
+    const selected = records();
 
-  const reread = hold();
-  await activate(refresh(), trajectory, 2);
-  expect(runFilter().textContent).toBe(RUN_ID);
-  expect(records()).toEqual(selected);
-  await act(async () => reread.resolve({ data }));
-  await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
-  expect(summary().textContent).toBe(`${data.length} recorded observations loaded on page 1.`);
-  expect(runFilter().textContent).toBe(RUN_ID);
-  expect(records()).toEqual([]);
-  expect(screen.getByText(empty)).toBeTruthy();
-  expect(await chooseRun(RUN_ID)).toEqual(["All Runs", ...others, RUN_ID]);
+    const reread = hold();
+    await activate(refresh(), trajectory, 2);
+    expect(runFilter().textContent).toBe(RUN_ID);
+    expect(records()).toEqual(selected);
+    await act(async () => reread.resolve({ data }));
+    await waitFor(() => expect(screen.queryByText("Reading recorded observations…")).toBeNull());
+    expect(pageScope().textContent).toBe(scope);
+    expect(runFilter().textContent).toBe(RUN_ID);
+    expect(records()).toEqual([]);
+    expect(screen.getByText(empty)).toBeTruthy();
+    expect(await chooseRun(RUN_ID)).toEqual(["All Runs", ...others, RUN_ID]);
 
-  const failed = hold();
-  await activate(refresh(), trajectory, 3);
-  expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
-  await act(async () => failed.reject(new Error("owner offline")));
-  expect(screen.getByRole("alert").textContent).toBe(
-    "The requested page could not be read: owner offline",
-  );
-  expect(summary().textContent).toBe(
-    `${data.length} recorded observations loaded on page 1. Showing the last accepted page.`,
-  );
-  expect(runFilter().textContent).toBe(RUN_ID);
-  expect(records()).toEqual([]);
-  expect(document.activeElement).toBe(refresh());
-});
+    const failed = hold();
+    await activate(refresh(), trajectory, 3);
+    expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
+    await act(async () => failed.reject(new Error("owner offline")));
+    expect(screen.getByRole("alert").textContent).toBe(
+      "The requested page could not be read: owner offline",
+    );
+    expect(pageScope().textContent).toBe(scope);
+    expect(within(summary()).getByText("Showing the last accepted page.")).toBeTruthy();
+    expect(runFilter().textContent).toBe(RUN_ID);
+    expect(records()).toEqual([]);
+    expect(document.activeElement).toBe(refresh());
+  },
+);
 
 it("searches accepted tool data in place without another read", async () => {
   const { discover, trajectory, hold } = await mountTrajectory();
@@ -529,7 +528,7 @@ it("keeps the Session only selection while its records are absent", async () => 
   const withoutSession = hold();
   await activate(refresh(), trajectory, 3);
   await act(async () => withoutSession.resolve(FIRST));
-  expect(summary().textContent).toBe("2 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 0 of 2 records");
   expect(runFilter().textContent).toBe("Session only");
   expect(records()).toEqual([]);
   expect(await chooseRun("Session only")).toEqual(["All Runs", RUN_ID, "Session only"]);
@@ -537,7 +536,73 @@ it("keeps the Session only selection while its records are absent", async () => 
   const returned = hold();
   await activate(refresh(), trajectory, 4);
   await act(async () => returned.resolve(withSession));
-  expect(summary().textContent).toBe("3 recorded observations loaded on page 1.");
+  expect(pageScope().textContent).toBe("Page 1 · 1 of 3 records");
   expect(runFilter().textContent).toBe("Session only");
   expect(records()).toEqual(["endpoint:endpoint_visual_title"]);
+});
+
+it("clears every page filter from an empty result without rereading or losing the accepted cursor", async () => {
+  const { discover, trajectory, hold } = await mountTrajectory();
+  const toSecond = hold();
+  await activate(older(), trajectory, 2);
+  await act(async () => toSecond.resolve(SECOND));
+  const accepted = records();
+  await chooseRun(RUN_ID);
+  fireEvent.click(screen.getByRole("combobox", { name: "Observation type" }));
+  const messages = await screen.findByRole("option", { name: "Messages" });
+  fireEvent.pointerDown(messages, { pointerType: "mouse" });
+  fireEvent.click(messages);
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+  fireEvent.change(search, { target: { value: "missing-record" } });
+  expect(records()).toEqual([]);
+
+  const clear = screen.getByRole("button", { name: "Clear filters" });
+  clear.focus();
+  fireEvent.click(clear);
+  expect(search.value).toBe("");
+  expect(screen.getByRole("combobox", { name: "Observation type" }).textContent).toBe(
+    "All observations",
+  );
+  expect(runFilter().textContent).toBe("All Runs");
+  expect(document.activeElement).toBe(search);
+  expect(records()).toEqual(accepted);
+  expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+  expect(trajectory).toHaveBeenCalledTimes(2);
+  expect(discover).toHaveBeenCalledOnce();
+
+  const reread = hold();
+  await activate(refresh(), trajectory, 3);
+  expect(query(trajectory, 3)).toEqual(query(trajectory, 2));
+  await act(async () => reread.resolve(SECOND));
+  expect(records()).toEqual(accepted);
+});
+
+it("groups the accepted page and result count once above its records", async () => {
+  await mountTrajectory();
+  expect(screen.queryByRole("heading", { name: "Recorded activity" })).toBeNull();
+  expect(screen.getByText("Page 1 · 2 records").closest('[role="status"]')).toBe(summary());
+  expect(screen.queryByText("2 records on this page")).toBeNull();
+  expect(screen.queryByText(/recorded observations? loaded on page/)).toBeNull();
+});
+
+it("clears local filters without dismissing a failed read or its accepted-page warning", async () => {
+  const { trajectory, hold } = await mountTrajectory();
+  const accepted = records();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter this page" });
+  fireEvent.change(search, { target: { value: "missing-record" } });
+  const failed = hold();
+  await activate(refresh(), trajectory, 2);
+  await act(async () => failed.reject(new Error("owner offline")));
+  const clear = screen.getByRole("button", { name: "Clear filters" });
+  clear.focus();
+  fireEvent.click(clear);
+  expect(document.activeElement).toBe(search);
+  expect(records()).toEqual(accepted);
+  expect(pageScope().textContent).toBe("Page 1 · 2 records");
+  expect(screen.getByRole("alert").textContent).toBe(
+    "The requested page could not be read: owner offline",
+  );
+  expect(within(summary()).getByText("Showing the last accepted page.")).toBeTruthy();
+  expect(trajectory).toHaveBeenCalledTimes(2);
 });

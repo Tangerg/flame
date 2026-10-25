@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { TrajectoryReport } from "../../../plugins/trajectory/component/component";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
 import { createTranslator, type ComponentContext } from "@flame/component-sdk";
@@ -209,6 +209,8 @@ it("shows tool execution status independently of its approval decision", () => {
   }
   render(
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       kind="all"
@@ -221,7 +223,7 @@ it("shows tool execution status independently of its approval decision", () => {
       }}
     />,
   );
-  expect(screen.getByText("1 record on this page")).toBeTruthy();
+  expect(screen.getByText("Page 1 · 1 record")).toBeTruthy();
   expect(screen.getByText("1 tool call")).toBeTruthy();
   const summary = screen.getByRole("button", { name: /incomplete/ });
   expect(summary.textContent).toContain("Approval: approve");
@@ -287,6 +289,8 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
   };
   const { container } = render(
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       page={{ data: [timeout, refused, canceledTool, canceledRun, completed] }}
@@ -341,6 +345,8 @@ it("reads settled neutral states as quiet metadata and keeps attention states be
   });
   render(
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       page={{ data: [run("run_settled", "completed"), run("run_broken", "failed")] }}
@@ -356,7 +362,7 @@ it("reads settled neutral states as quiet metadata and keeps attention states be
   expect(meta("run_settled")).toContain("run_settled");
   expect(meta("run_broken")).not.toContain("failed");
   expect(screen.getByRole("button", { name: /run_broken/ }).textContent).toContain("failed");
-  expect(screen.getByText("2 records on this page")).toBeTruthy();
+  expect(screen.getByText("Page 1 · 2 records")).toBeTruthy();
   expect(screen.getByText("1 needs attention")).toBeTruthy();
   expect(screen.getByText("0 tool calls")).toBeTruthy();
 });
@@ -378,6 +384,8 @@ it("distinguishes same-time Runs before expansion and keeps one Run identity fac
   };
   render(
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       page={{ data: [root, child] }}
@@ -459,6 +467,8 @@ it("reads recorded text and images in order while keeping full evidence and reas
   const entries: TrajectoryEntry[] = cases.map(({ item }) => ({ type: "item", occurredAt, item }));
   const { container } = render(
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       page={{ data: [...entries, { type: "item", occurredAt, item: redacted }] }}
@@ -564,6 +574,8 @@ it("searches recorded tool data and message metadata without image bytes or reda
   const recorded = structuredClone(entries);
   const report = (search: string, kind = "all") => (
     <TrajectoryReport
+      pageNumber={1}
+      onClearFilters={vi.fn()}
       t={reportT}
       locale="en"
       page={{ data: entries }}

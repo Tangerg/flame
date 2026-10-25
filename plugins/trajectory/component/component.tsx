@@ -14,7 +14,7 @@ import {
   type Translate,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import {
   Activity,
   Refresh,
@@ -33,7 +33,6 @@ import {
   Badge,
   Panel,
   PanelHeader,
-  PanelSection,
   PanelFooter,
   IconButton,
   Form,
@@ -368,16 +367,24 @@ function Observation({
 }
 export function TrajectoryReport({
   page,
+  pageNumber,
   kind,
   run,
   search,
+  stale,
+  onClearFilters,
+  ref,
   t,
   locale,
 }: {
   page: Page<TrajectoryEntry>;
+  pageNumber: number;
   kind: string;
   run: string;
   search: string;
+  stale?: boolean;
+  onClearFilters: () => void;
+  ref?: Ref<HTMLParagraphElement>;
   t: Translate;
   locale: string;
 }) {
@@ -419,72 +426,72 @@ export function TrajectoryReport({
   );
   return (
     <>
-      <PanelSection
-        title={t("activity.title")}
-        description={
-          <RecordMeta>
-            <span>
-              {matching.length === rows.length
-                ? t("records.onPage", { count: rows.length })
-                : t("records.ofTotal", {
-                    count: rows.length,
-                    matching: matching.length,
-                  })}
-            </span>
-            <span>{t("toolCalls", { count: toolCalls })}</span>
-            <span>{t("attention", { count: attention })}</span>
-          </RecordMeta>
-        }
-      >
-        <RecordGroup
-          variant="list"
-          id="records"
-          aria-label={t("records.label")}
-        >
-          {matching.map((row) => (
-            <Disclosure
-              variant="row"
-              key={`${row.type}:${identity(row)}`}
-              data-trajectory-record={`${row.type}:${identity(row)}`}
-              data-trajectory-kind={
-                row.type === "item" ? row.item.type : row.type
-              }
-              title={title(row, t, clock)}
-            >
-              <Metadata>
-                <time dateTime={row.occurredAt}>
-                  {occurred.format(new Date(row.occurredAt))}
-                </time>
-              </Metadata>
-              <Observation row={row} t={t} />
-            </Disclosure>
-          ))}
-          {!matching.length && (
-            <EmptyState
-              icon={Activity}
-              size="compact"
-              title={
-                rows.length ? t("empty.filtered.title") : t("empty.none.title")
-              }
-              sub={rows.length ? t("empty.filtered.sub") : t("empty.none.sub")}
-            />
-          )}
-        </RecordGroup>
-        <Disclosure title={t("modelActivity.title")}>
-          <Facts
-            values={[
-              [
-                t("fact.logicalModelCalls"),
-                rows.filter((row) => row.type === "model").length,
-              ],
-              [
-                t("fact.modelEndpoints"),
-                rows.filter((row) => row.type === "endpoint").length,
-              ],
-            ]}
+      <Metadata ref={ref} tabIndex={-1} role="status">
+        <RecordMeta>
+          <span>
+            {matching.length === rows.length
+              ? t("records.onPage", { page: pageNumber, count: rows.length })
+              : t("records.ofTotal", {
+                  page: pageNumber,
+                  count: rows.length,
+                  matching: matching.length,
+                })}
+          </span>
+          <span>{t("toolCalls", { count: toolCalls })}</span>
+          <span>{t("attention", { count: attention })}</span>
+          {stale && <span>{t("summary.stale")}</span>}
+        </RecordMeta>
+      </Metadata>
+      <RecordGroup variant="list" id="records" aria-label={t("records.label")}>
+        {matching.map((row) => (
+          <Disclosure
+            variant="row"
+            key={`${row.type}:${identity(row)}`}
+            data-trajectory-record={`${row.type}:${identity(row)}`}
+            data-trajectory-kind={
+              row.type === "item" ? row.item.type : row.type
+            }
+            title={title(row, t, clock)}
+          >
+            <Metadata>
+              <time dateTime={row.occurredAt}>
+                {occurred.format(new Date(row.occurredAt))}
+              </time>
+            </Metadata>
+            <Observation row={row} t={t} />
+          </Disclosure>
+        ))}
+        {!matching.length && (
+          <EmptyState
+            icon={Activity}
+            size="compact"
+            title={
+              rows.length ? t("empty.filtered.title") : t("empty.none.title")
+            }
+            action={
+              (kind !== "all" || run !== "all" || search !== "") && (
+                <Button variant="outline" onClick={onClearFilters}>
+                  {t("filters.clear")}
+                </Button>
+              )
+            }
           />
-        </Disclosure>
-      </PanelSection>
+        )}
+      </RecordGroup>
+      <Disclosure title={t("modelActivity.title")}>
+        <Facts
+          values={[
+            [
+              t("fact.logicalModelCalls"),
+              rows.filter((row) => row.type === "model").length,
+            ],
+            [
+              t("fact.modelEndpoints"),
+              rows.filter((row) => row.type === "endpoint").length,
+            ],
+          ]}
+        />
+      </Disclosure>
       <Disclosure title={t("about.title")}>
         <Metadata>{t("about.note")}</Metadata>
       </Disclosure>
@@ -519,6 +526,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   const reading = useRef<AbortController>(undefined);
   const arrival = useRef<HTMLElement>(undefined);
   const summary = useRef<HTMLParagraphElement>(null);
+  const searchElement = useRef<HTMLElement>(null);
   const load = useCallback(
     async (
       cursors: (string | undefined)[] = [undefined],
@@ -610,6 +618,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
           label={t("controls.label")}
           search={
             <SearchField
+              ref={searchElement}
               size="lg"
               id="search"
               aria-label={t("search.label")}
@@ -667,18 +676,20 @@ export function Trajectory({ context }: { context: ComponentContext }) {
       )}
       {accepted && (
         <>
-          <Metadata ref={summary} tabIndex={-1} role="status">
-            {t("summary.loaded", {
-              count: accepted.page.data.length,
-              page: accepted.cursors.length,
-            })}
-            {read.error && ` ${t("summary.stale")}`}
-          </Metadata>
           <TrajectoryReport
+            ref={summary}
             page={accepted.page}
+            pageNumber={accepted.cursors.length}
             kind={kind}
             run={run}
             search={search}
+            stale={Boolean(read.error)}
+            onClearFilters={() => {
+              setKind("all");
+              setRun("all");
+              setSearch("");
+              searchElement.current?.focus();
+            }}
             t={t}
             locale={context.locale}
           />
