@@ -753,8 +753,6 @@ export const de: Record<string, string> = {
   "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "toolAction.failed": "„{{action}}“ konnte nicht abgeschlossen werden.",
   "mcp.add": "Server hinzufügen",
-  "mcp.saveEffect":
-    "Nach dem Speichern verbinden sich aktivierte Server im Hintergrund. Der Serverstatus zeigt die Bereitschaft an.",
   "mcp.save": "Speichern",
   "mcp.saving": "Speichern…",
   "mcp.delete": "Löschen",
@@ -767,8 +765,6 @@ export const de: Record<string, string> = {
   "mcp.toolCount_one": "{{count}} Tool",
   "mcp.toolCount_other": "{{count}} Tools",
   "mcp.empty": "Keine MCP-Server",
-  "mcp.empty.sub":
-    "Füge einen Server hinzu oder füge eine Konfiguration ein, um seine Tools dem Agenten bereitzustellen.",
   "mcp.enable.aria": "{{server}} aktivieren",
   "mcp.edit": "{{server}} bearbeiten",
   "mcp.transport.stdio": "stdio",
@@ -785,10 +781,9 @@ export const de: Record<string, string> = {
   "mcp.status.connected": "Verbunden",
   "mcp.status.failed": "Verbindung fehlgeschlagen",
   "mcp.status.needsAuth": "Anmeldung erforderlich",
-  "mcp.form.name.placeholder": "Servername",
   "mcp.form.name.aria": "Servername",
   "mcp.form.transport.aria": "Transport",
-  "mcp.form.command.placeholder": "Befehl (z. B. npx)",
+  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Befehl",
   "mcp.form.args": "Argumente — eines pro Zeile",
   "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/pfad",
@@ -798,7 +793,6 @@ export const de: Record<string, string> = {
   "mcp.form.env.clear": "Gespeicherte Umgebung entfernen",
   "mcp.form.env.targetChanged":
     "Das Prozessziel hat sich geändert. Eine neue Umgebung eingeben oder die gespeicherten Werte entfernen.",
-  "mcp.form.dir.placeholder": "Arbeitsverzeichnis (optional)",
   "mcp.form.dir.aria": "Arbeitsverzeichnis",
   "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "Server-URL",
@@ -816,7 +810,8 @@ export const de: Record<string, string> = {
     "Der Ursprung des Endpunkts hat sich geändert. Neue Header eingeben oder die gespeicherten Werte entfernen.",
   "mcp.form.timeout": "Timeout (Sekunden) — optional",
   "mcp.form.timeout.placeholder": "60",
-  "mcp.form.description.placeholder": "Beschreibung (optional)",
+  "mcp.form.timeout.invalid":
+    "Gib eine positive ganze Zahl an Sekunden ein oder lass das Feld leer für kein Zeitlimit.",
   "mcp.form.description.aria": "Beschreibung",
   "mcp.import": "Aus JSON importieren",
   "mcp.import.confirm": "Importieren",

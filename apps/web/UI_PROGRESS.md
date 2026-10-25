@@ -1,25 +1,25 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Shared Panel focus now keeps fitting settings rows and form groups readable as a whole. Pointer-caused focus keeps the pressed control in place, preserving the first click. Final native EN, ZH 18 px/200% and an uninstrumented DE custom-base scene qualify the exercised tasks. Direct Appearance labels/search and the stronger optional paper material remain delivered. See Settings focus and pointer activation, Appearance labels and search, and Paper texture and reading surfaces.
+Updated: 2026-10-26. MCP editing now uses direct labels, explains invalid timeouts, preserves literal configuration input and reveals async feedback with the focused actions. Final native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the repair. Shared settings focus/pointer behavior, Appearance search and the stronger optional paper material remain delivered. See MCP editor clarity and literal configuration.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/settings-focus-row-1025`. Settings focus/pointer activation are
-qualified on frozen base `d20d5b3dbb67d1240fe877e604e7460b6a6c2104`; see that
-product section for ownership, regressions, final native tasks and limits.
-Implementation `d2f5659a3165328797d86549302f4843b99a2cc0` is published to remote
-main and exact owned-resource retirement is complete. The single publication-time
-fetch finds no incoming delta from the frozen base. Appearance labels/search
-remain qualified on frozen base `35c70c0a6e7da4314e8c5c39e525dcc314412279`.
-Implementation
-`40cbae863434ef53629071cfe75ccf86c46297b6` is published to remote main, and
-exact resource retirement is complete. The single publication-time fetch finds
-no incoming delta from its frozen base. Its observed whole-row focus issue is
-resolved by Settings focus and pointer activation. The next observed scope is
-the MCP editor's repeated introductory/helper copy and task hierarchy at 200%.
+is on `codex/mcp-editor-clarity-1026`. MCP editor clarity, literal inputs and
+feedback visibility are qualified on frozen base
+`55e67879d29ae57168b97b3f62e9aa90902ee04b`; see that product section for ownership,
+regression counterexamples, native tasks and limits. Publication and exact owned
+resource retirement follow qualification. Main is fetched once near publication;
+the primary parallel checkout remains outside this batch.
+Shared settings focus/pointer implementation
+`d2f5659a3165328797d86549302f4843b99a2cc0` and receipt
+`55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
+Appearance labels/search implementation
+`40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
+The next observed task is JSON import: the native DE 200% dialog repeats its
+configuration-schema introduction above the labeled example editor.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -7965,6 +7965,128 @@ accepted source/test hashes match its blobs, with a clean owned worktree and
 zero unpushed commits at that checkpoint. The auxiliary MCP tool-data recovery
 follow-up is now qualified below. Do not repeat this resolved classification
 defect or infer a focus failure solely from pending body focus.
+
+### MCP editor clarity and literal configuration
+
+The actual frozen editor silently disables Save/Test for timeout 0 while its
+native field advertises min 0. It also repeats the list empty prompt and an
+introductory paragraph above the active editor. Existing MCPServerEdit already
+owns blank/unbounded and positive safe whole-second validation. ServerForm now
+projects that parsed value into min 1, step 1, safe maximum, aria-invalid and a
+linked field error, without another parser. Required attributes follow the active
+transport. The error retires on correction and the input keeps its identity/focus.
+
+The list's empty prompt is omitted only during Add. Loading, read failure and
+Retry remain mounted. The editor and empty state use direct labels; five unused
+intro/helper/duplicate-placeholder keys are removed from all eight catalogs.
+Exactly one timeout error key is added and the command example becomes npx;
+independent parsed-catalog comparison preserves every other value. Required
+credential preserve/replace/clear and target/origin messages remain unchanged.
+
+A first native candidate changes npx to Npx before Save. Eight literal controls
+now explicitly disable capitalization, autocorrection and spell checking:
+name, command, arguments, environment, directory, URL, authorization and headers.
+The final native stdio and case-sensitive HTTP paths preserve their input.
+Description and numeric controls keep their existing input policy.
+
+At ZH 18 px/200%, the first save-error candidate leaves part of its error below
+the viewport. Shared FormActions now has a feedback slot and declares its action
+row/result as one focus unit. Changed feedback reuses Panel's existing clipped
+viewport, sticky clearance and fit/tall reveal rule only while current focus
+remains inside the group. The passive effect runs after ancestor refs attach;
+it never focuses or scrolls back to an editor the user left. Existing pointer
+activation rules and action-row wrapping remain. ServerForm keeps its persistent
+polite Test region and conditional alert inside this slot. No command, draft,
+secret, Runtime, protocol, persistence, dependency or theme authority changes.
+
+Reference judgment uses ZCode's actual packages/ui/settings/McpServerForm,
+HeroUI's actual Form/Input docs and the previously retained Radix focus model.
+The better-writing/layout/accessibility/UI/colors reviews guide direct labels,
+field errors, actionable feedback and reuse of existing semantic roles. No new
+motion, color treatment or alternate form framework is introduced.
+
+Focused baseline passes 14 MCP files / 89 tests. New timeout/hierarchy regressions
+fail 6 and pass 14 against the original source. The native literal-input finding
+has a separate failing regression (1 failed / 20 passed). Shared action-feedback
+regressions fail 3 and pass 15 against the original package. An initial layout
+effect misses ancestor refs during parent rerender; the passive-effect repair
+passes the same assertions. Final serial checks pass:
+
+- Shared UI build/type/lint/format, 7 files / 115 tests and the independent
+  offline packed UI/icons consumer.
+- All five plugin gates and all 11 portable ESM resources, rebuilt byte-identically.
+- MCP, DataView, SettingsPage, SettingRow and installed workspace continuity:
+  19 files / 132 tests, then 16 Web type/lint/format, style/token, locale,
+  boundary/port, production bundle, variable and plugin gates.
+- Supported make check-native, private native assets and the exercised hosts.
+  The final complete check script passes in 61.34 seconds on pinned Node 22.22.1
+  and Go 1.27.3. Existing target/library/chunk warnings remain nonfatal.
+
+The unchanged base check:shorthand failure in ui/agent/dock-catalog.tsx:14 remains
+outside this task; no assertion or gate is weakened. An introduced test lint
+failure is fixed before final qualification. Browser visual suites and
+performance benchmarks are not run.
+
+Actual Wails v3.0.0-beta.34 acceptance qualifies:
+
+- EN/light/14 px/Orange at 1440 by 900: Name/Command, fractional timeout error,
+  correction, Test, scripted Save rejection, retained draft/action focus, blank
+  timeout retry and canonical Connecting row. Reopening retains npx/unbounded;
+  Cancel restores the exact Edit opener. The same Composer (identity 2) keeps
+  MCP en reading and continues to MCP en reading continued after Settings.
+  The original editor is 917.0625 CSS px tall; the new invalid-field scene is
+  667.0625 at the same viewport, including the new field error.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off, native Left and twenty native
+  View zoom actions: 200%, 561 by 525 CSS px, document width 561, zero observed
+  unhandled errors. Timeout 0's whole label/control/error fits; Up corrects it
+  to 1 without changing focus. At 15, Test and scripted Save rejection retain
+  npx and the draft. The complete actions/error group lies at 374.492 to 472.383,
+  inside the visible viewport; the primary action retains focus. Blank retry
+  saves unbounded with canonical Connecting. Edit/Cancel restores its opener;
+  Composer identity 2 continues MCP zh reading to MCP zh reading continued.
+- Uninstrumented DE/18 px/custom warm base/Purple/motion Off, native Left/200%:
+  the HTTP URL https://tools.example/Mcp?case=AbC stays literal. Localized timeout
+  feedback corrects before Test. A long scripted German save error and all
+  actions remain fully visible with Save focused. Cancel restores exact Add.
+  Escape closes JSON import to its trigger. Actual Size, Settings/Composer
+  return and MCP de reading continued succeed. This build contains production
+  chrome/font adapters and no private DOM observer; no geometry/identity or
+  unhandled-error count is claimed for it.
+
+The same clean native app reconfirms the already-delivered paper material at
+Actual Size: Xuan strength 3 visibly paints the custom reading planes and rail;
+Off restores the plain background. This is a retained-behavior check, not a new
+paper implementation or a rerun of its 756-case contrast matrix.
+
+Native acceptance uses actual production views, command/client boundaries and
+canonical in-memory MCP responses, with one scripted create failure and canonical
+status rereads. No real process, network dial, credential, live Runtime write or
+message Send occurs. The private fixture initially omits the normal MCP feature;
+the client correctly refuses Test until the private capability declaration is
+fixed. No production capability/security rule changes. A premature native Tab/type
+sequence splits a command across fields; it sends no request and is excluded.
+Fresh observed focus and corrected fields qualify the final task. Other narrow
+AX matcher/capture assumptions are corrected in the private harness. VoiceOver,
+full OS IME, forced-colors/RTL GUI, other platforms, arbitrary themes and live MCP
+execution are not newly qualified. Ordinary portable resources are separately
+built/checked; these native scenes do not claim to load their ESM.
+
+Bounded Read/Edit/Write-only Claude CLI supplies scoped form/catalog, literal-input
+and shared-feedback edits; primary owns review, regressions, native acceptance and
+delivery. The first editor task times out after 180.85 seconds and its actual
+partial diff is reviewed. The literal task exits successfully in 26.87 seconds;
+the feedback task exits successfully in 52.92 seconds. The latter raw CLI JSON is
+overwritten by a same-named runner result, so no turn count or permission-denial
+claim is inferred from that lost report. Final source and checks are independent
+of CLI self-report.
+
+Final integrity freezes 5,778 non-Markdown inputs, SHA-256
+810fc90553b35bfb9c20ca8abdd991fefe78239c7921c2df6297753a2458c218,
+1,806 actual artifact hashes and 14 native construction inputs. All remain exact
+through acceptance, and all recorded native/CLI/build processes have exited.
+Scoped result: Approve for these editor and shared feedback contracts; the
+observed JSON-import introduction is the next separate task. Publication and
+exact owned-resource retirement are recorded below when complete.
 
 ### MCP tool read identity and scoped recovery
 

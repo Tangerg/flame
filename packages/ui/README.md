@@ -67,6 +67,10 @@ Pointer-caused focus leaves the pressed control in place so activation can
 finish before any row reveal. The body consumes the pressed target once,
 including wrapping labels and slider focus proxies; unrelated autofocus still
 reveals its own unit. Leaving the body clears an unconsumed press.
+`FormActions.feedback` keeps asynchronous results in the same focus unit as its
+actions. A changed result reuses the Panel reveal rule only while focus remains
+inside that group; later outside focus is left alone. Oversized feedback retains
+the focused-control fallback.
 `PanelHeader` owns the page title, description and contextual navigation.
 Its title size can use the smaller existing display roles for workbench views.
 Page actions belong to the persistent `Panel.controls` zone, alongside filters.

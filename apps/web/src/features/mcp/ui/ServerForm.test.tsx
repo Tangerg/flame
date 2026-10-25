@@ -151,6 +151,116 @@ function expectDisabledControls(names: readonly string[], role: "switch" | "tab"
 }
 
 describe("MCP server test feedback", () => {
+  it.each(["0", "-1", "1.5", "9007199254740992"])(
+    "explains an invalid timeout %s and clears the error when corrected",
+    (value) => {
+      const test = vi.fn<MCPServerGateway["test"]>();
+      const { trigger } = openDraft(test);
+      const timeout = screen.getByRole<HTMLInputElement>("spinbutton");
+      timeout.focus();
+      fireEvent.change(timeout, { target: { value } });
+
+      expect(timeout.getAttribute("aria-invalid")).toBe("true");
+      const errorId = timeout.getAttribute("aria-describedby");
+      expect(errorId).toBeTruthy();
+      expect(document.getElementById(errorId!)?.textContent).toContain(
+        "Enter positive whole seconds, or leave blank for no time limit.",
+      );
+      expect(timeout.min).toBe("1");
+      expect(trigger.hasAttribute("disabled")).toBe(true);
+      expect(screen.getByRole("button", { name: "Add server" }).hasAttribute("disabled")).toBe(
+        true,
+      );
+      expect(document.activeElement).toBe(timeout);
+      expect(test).not.toHaveBeenCalled();
+
+      fireEvent.change(timeout, { target: { value: "15" } });
+      expect(timeout.hasAttribute("aria-invalid")).toBe(false);
+      expect(timeout.hasAttribute("aria-describedby")).toBe(false);
+      expect(screen.queryByText(/Enter positive whole seconds/)).toBeNull();
+      expect(trigger.hasAttribute("disabled")).toBe(false);
+      expect(document.activeElement).toBe(timeout);
+      expect(field("Server name").value).toBe("workspace-tools");
+      expect(field("Command").value).toBe("npx");
+    },
+  );
+
+  it("keeps a blank timeout unbounded when the corrected draft is saved", async () => {
+    const saved: MCPServerSettings = {
+      ...stdioServer,
+      args: [],
+      envMasked: undefined,
+      handshakeTimeout: { type: "unbounded" },
+    };
+    const create = vi.fn<MCPServerGateway["create"]>().mockResolvedValue(saved);
+    const opener = await mount({ create });
+    fireEvent.change(field("Server name"), { target: { value: "workspace-tools" } });
+    fireEvent.change(field("Command"), { target: { value: "npx" } });
+    const timeout = screen.getByRole<HTMLInputElement>("spinbutton");
+    fireEvent.change(timeout, { target: { value: "0" } });
+    fireEvent.change(timeout, { target: { value: "" } });
+    expect(timeout.hasAttribute("aria-invalid")).toBe(false);
+    const save = screen.getByRole("button", { name: "Add server" });
+    save.focus();
+    fireEvent.click(save);
+
+    await waitFor(() => expect(create).toHaveBeenCalledOnce());
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "workspace-tools",
+        command: "npx",
+        enabled: true,
+        handshakeTimeout: { type: "unbounded" },
+      }),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(servers()).toEqual([saved]);
+  });
+
+  it("marks active required fields and avoids repeating their labels in placeholders", async () => {
+    await mount({});
+    expect(field("Server name").required).toBe(true);
+    expect(field("Command").required).toBe(true);
+    expect(field("Server name").placeholder).toBe("");
+    expect(field("Command").placeholder).toBe("npx");
+    expect(field("Working directory").placeholder).toBe("");
+    expect(field("Description").placeholder).toBe("");
+    expect(screen.queryByText(/Saving starts a background connection/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Streamable HTTP" }));
+    expect(field("Server URL").required).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "Command" })).toBeNull();
+  });
+
+  it("keeps configuration identifiers, commands and connection values literal", async () => {
+    await mount({});
+    const expectLiteral = (names: string[]) => {
+      for (const name of names) {
+        const input = field(name);
+        expect({
+          name,
+          capitalize: input.getAttribute("autocapitalize"),
+          correct: input.getAttribute("autocorrect"),
+          spelling: input.getAttribute("spellcheck"),
+        }).toEqual({ name, capitalize: "none", correct: "off", spelling: "false" });
+      }
+    };
+    expectLiteral([
+      "Server name",
+      "Command",
+      "Arguments — one per line",
+      "Environment — KEY=value, one per line",
+      "Working directory",
+    ]);
+    fireEvent.click(screen.getByRole("tab", { name: "Streamable HTTP" }));
+    expectLiteral([
+      "Server name",
+      "Server URL",
+      "Authorization token",
+      "Headers — KEY=value, one per line",
+    ]);
+  });
+
   it("closes an authored draft on Runtime replacement and never submits it to the successor", async () => {
     const create = vi.fn<MCPServerGateway["create"]>();
     const opener = await mount({ create });

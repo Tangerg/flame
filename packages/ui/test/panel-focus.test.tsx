@@ -6,7 +6,7 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { FormGroup, Panel } from "../dist/index.js";
+import { FormActions, FormGroup, Panel } from "../dist/index.js";
 
 let rectangles: Map<Element, DOMRect>;
 let revealed: Element[];
@@ -207,4 +207,76 @@ it("does not let an old press suppress keyboard return after focus leaves the bo
   act(() => field.focus());
   outside.remove();
   expect(revealed).toEqual([unit]);
+});
+
+function actionScene() {
+  const content = (feedback: string | null) => (
+    <>
+      <button>Outside editor</button>
+      <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+        <Panel label="MCP servers" controls={<button>Add server</button>}>
+          <FormActions
+            label="Save server"
+            feedback={feedback && <p role="alert">{feedback}</p>}
+          >
+            <button>Cancel</button>
+            <button>Save</button>
+          </FormActions>
+        </Panel>
+      </div>
+    </>
+  );
+  const view = render(content(null));
+  const unit = screen.getByRole("group", { name: "Save server" });
+  const save = screen.getByRole("button", { name: "Save" });
+  rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
+  rectangles.set(
+    view.container.querySelector('[data-slot="panel-controls"]')!,
+    new DOMRect(0, 200, 800, 50),
+  );
+  rectangles.set(unit, new DOMRect(0, 300, 300, 80));
+  rectangles.set(save, new DOMRect(0, 310, 100, 32));
+  act(() => save.focus());
+  revealed.length = 0;
+  return {
+    unit,
+    save,
+    update: () => view.rerender(content("The server rejected the update.")),
+  };
+}
+
+it("reveals changed feedback with the still-focused form actions", () => {
+  const { unit, save, update } = actionScene();
+  rectangles.set(unit, new DOMRect(0, 440, 300, 110));
+  rectangles.set(save, new DOMRect(0, 450, 100, 32));
+  update();
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(save);
+  expect(unit.contains(screen.getByRole("alert"))).toBe(true);
+});
+
+it("does not move already-visible form feedback", () => {
+  const { unit, save, update } = actionScene();
+  update();
+  expect(unit.contains(screen.getByRole("alert"))).toBe(true);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(save);
+});
+
+it("does not reveal asynchronous form feedback after focus moved outside", () => {
+  const { update } = actionScene();
+  const outside = screen.getByRole("button", { name: "Outside editor" });
+  act(() => outside.focus());
+  update();
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(outside);
+});
+
+it("keeps the focused action visible when feedback exceeds the viewport", () => {
+  const { unit, save, update } = actionScene();
+  rectangles.set(unit, new DOMRect(0, 440, 300, 400));
+  rectangles.set(save, new DOMRect(0, 510, 100, 32));
+  update();
+  expect(revealed).toEqual([save]);
+  expect(document.activeElement).toBe(save);
 });

@@ -65,6 +65,17 @@ MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a
 background dial, so the row shows canonical server status after the reread.
+Editors use direct field labels and examples without repeating the list's empty
+prompt. Required attributes follow the active transport. Timeout errors project
+the existing draft owner's parsed value: blank remains unbounded and a bound
+requires positive safe whole seconds. Inline feedback names that field and clears
+when corrected. List loading/errors and Retry remain visible during an Add draft;
+connection readiness continues to come from the server row's canonical status.
+Test and save feedback share the action group. New feedback is revealed with its
+focused action when the group fits, without moving focus or returning to a group
+the user already left.
+Configuration identifiers, commands, paths and connection values explicitly opt
+out of native capitalization, autocorrection and spelling changes at their fields.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; visual fixtures live in `visual`. The full check includes

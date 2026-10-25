@@ -763,8 +763,6 @@ export const es: Record<string, string> = {
   "providers.embedding.error": "No se pudo establecer el modelo de embeddings.",
   "toolAction.failed": "No se pudo completar «{{action}}».",
   "mcp.add": "Añadir servidor",
-  "mcp.saveEffect":
-    "Tras guardar, los servidores activados se conectan en segundo plano. Consulta su estado para comprobar la conexión.",
   "mcp.save": "Guardar",
   "mcp.saving": "Guardando…",
   "mcp.delete": "Eliminar",
@@ -778,8 +776,6 @@ export const es: Record<string, string> = {
   "mcp.toolCount_many": "{{count}} herramientas",
   "mcp.toolCount_other": "{{count}} herramientas",
   "mcp.empty": "No hay servidores MCP",
-  "mcp.empty.sub":
-    "Añade un servidor o pega una configuración para exponer sus herramientas al agente.",
   "mcp.enable.aria": "Activar {{server}}",
   "mcp.edit": "Editar {{server}}",
   "mcp.transport.stdio": "stdio",
@@ -796,10 +792,9 @@ export const es: Record<string, string> = {
   "mcp.status.connected": "Conectado",
   "mcp.status.failed": "Error de conexión",
   "mcp.status.needsAuth": "Inicio de sesión necesario",
-  "mcp.form.name.placeholder": "Nombre del servidor",
   "mcp.form.name.aria": "Nombre del servidor",
   "mcp.form.transport.aria": "Transporte",
-  "mcp.form.command.placeholder": "Comando (por ejemplo npx)",
+  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Comando",
   "mcp.form.args": "Argumentos: uno por línea",
   "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/ruta",
@@ -809,7 +804,6 @@ export const es: Record<string, string> = {
   "mcp.form.env.clear": "Eliminar el entorno guardado",
   "mcp.form.env.targetChanged":
     "El destino del proceso cambió. Introduce un entorno nuevo o elimina los valores guardados.",
-  "mcp.form.dir.placeholder": "Directorio de trabajo (opcional)",
   "mcp.form.dir.aria": "Directorio de trabajo",
   "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "URL del servidor",
@@ -827,7 +821,8 @@ export const es: Record<string, string> = {
     "El origen del endpoint cambió. Introduce cabeceras nuevas o elimina los valores guardados.",
   "mcp.form.timeout": "Tiempo de espera (segundos) — opcional",
   "mcp.form.timeout.placeholder": "60",
-  "mcp.form.description.placeholder": "Descripción (opcional)",
+  "mcp.form.timeout.invalid":
+    "Introduce un número entero positivo de segundos o déjalo en blanco para no fijar un límite de tiempo.",
   "mcp.form.description.aria": "Descripción",
   "mcp.import": "Importar desde JSON",
   "mcp.import.confirm": "Importar",

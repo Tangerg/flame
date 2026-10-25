@@ -169,7 +169,7 @@ export class MCPServerEdit {
     };
   }
 
-  private get handshakeTimeout(): MCPHandshakeTimeout | undefined {
+  get handshakeTimeout(): MCPHandshakeTimeout | undefined {
     const normalized = this.fields.timeoutSec.trim();
     if (normalized === "") return UNBOUNDED_MCP_HANDSHAKE;
     if (!/^\d+$/.test(normalized)) return undefined;

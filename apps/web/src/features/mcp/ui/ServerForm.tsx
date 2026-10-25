@@ -1,7 +1,7 @@
 import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
@@ -56,6 +56,8 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
 
   const [edit, setEdit] = useState<MCPServerEdit>(() => MCPServerEdit.of(server));
   const draft = edit.fields;
+  const timeoutInvalid = edit.handshakeTimeout === undefined;
+  const timeoutErrorId = useId();
 
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -116,18 +118,20 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
 
   return (
     <RecordForm opener={opener}>
-      <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.saveEffect")}</p>
       <FormRow>
         <FormField label={t("mcp.form.name.aria")}>
           <TextField
             ref={isEdit ? undefined : firstField}
             type="text"
+            required
             aria-label={t("mcp.form.name.aria")}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             pending={saving}
             value={draft.name}
             disabled={isEdit}
             onChange={(e) => updateDraft("name", e.target.value)}
-            placeholder={t("mcp.form.name.placeholder")}
           />
         </FormField>
         <FormGroup label={t("mcp.form.transport.aria")}>
@@ -151,7 +155,11 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               ref={isEdit ? firstField : undefined}
               font="mono"
               type="text"
+              required
               aria-label={t("mcp.form.command.aria")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               pending={saving}
               value={draft.command}
               onChange={(e) => updateDraft("command", e.target.value)}
@@ -164,6 +172,9 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                 font="mono"
                 rows={3}
                 aria-label={t("mcp.form.args")}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 pending={saving}
                 value={draft.args}
                 onChange={(event) => updateDraft("args", event.target.value)}
@@ -176,6 +187,9 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
                   font="mono"
                   rows={3}
                   aria-label={t("mcp.form.env")}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   pending={saving}
                   value={draft.environment.text}
                   onChange={(event) =>
@@ -211,10 +225,12 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="text"
               aria-label={t("mcp.form.dir.aria")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               pending={saving}
               value={draft.dir}
               onChange={(e) => updateDraft("dir", e.target.value)}
-              placeholder={t("mcp.form.dir.placeholder")}
             />
           </FormField>
         </>
@@ -225,7 +241,11 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               ref={isEdit ? firstField : undefined}
               font="mono"
               type="text"
+              required
               aria-label={t("mcp.form.url.aria")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               pending={saving}
               value={draft.url}
               onChange={(e) => updateDraft("url", e.target.value)}
@@ -237,6 +257,9 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               type="password"
               aria-label={t("mcp.form.auth.aria")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               pending={saving}
               value={draft.authorization.text}
               onChange={(e) =>
@@ -268,6 +291,9 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               font="mono"
               rows={3}
               aria-label={t("mcp.form.headers")}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               pending={saving}
               value={draft.headers.text}
               onChange={(event) => updateDraft("headers", draft.headers.edited(event.target.value))}
@@ -299,14 +325,23 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
         <FormField label={t("mcp.form.timeout")}>
           <TextField
             type="number"
-            min={0}
+            min={1}
+            step={1}
+            max={Number.MAX_SAFE_INTEGER}
             inputMode="numeric"
+            invalid={timeoutInvalid}
+            aria-describedby={timeoutInvalid ? timeoutErrorId : undefined}
             aria-label={t("mcp.form.timeout")}
             pending={saving}
             value={draft.timeoutSec}
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
             placeholder={t("mcp.form.timeout.placeholder")}
           />
+          {timeoutInvalid && (
+            <span id={timeoutErrorId} role="alert" {...stylex.props(vocab.negative, typeStep.uiMd)}>
+              {t("mcp.form.timeout.invalid")}
+            </span>
+          )}
         </FormField>
 
         <FormField label={t("mcp.form.description.aria")}>
@@ -316,7 +351,6 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
             pending={saving}
             value={draft.description}
             onChange={(e) => updateDraft("description", e.target.value)}
-            placeholder={t("mcp.form.description.placeholder")}
           />
         </FormField>
       </FormRow>
@@ -335,6 +369,27 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
               {t("mcp.delete")}
             </Button>
           )
+        }
+        feedback={
+          <>
+            <span
+              role="status"
+              className={
+                feedback.state === "ok"
+                  ? stylex.props(ss.inline, vocab.success, typeStep.uiMd).className
+                  : "sr-only"
+              }
+            >
+              {feedback.state === "ok" && (
+                <>
+                  <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
+                </>
+              )}
+            </span>
+            {feedback.state === "error" && (
+              <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
+            )}
+          </>
         }
       >
         <Button
@@ -359,23 +414,6 @@ export function ServerForm({ server, opener, onDone, onCancel }: Props) {
           {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
         </Button>
       </FormActions>
-      <span
-        role="status"
-        className={
-          feedback.state === "ok"
-            ? stylex.props(ss.inline, vocab.success, typeStep.uiMd).className
-            : "sr-only"
-        }
-      >
-        {feedback.state === "ok" && (
-          <>
-            <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
-          </>
-        )}
-      </span>
-      {feedback.state === "error" && (
-        <SystemMessage variant="warning">{feedback.reason}</SystemMessage>
-      )}
       {server && (
         <ConfirmDialog
           open={confirmingDelete}

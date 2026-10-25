@@ -766,8 +766,6 @@ export const fr: Record<string, string> = {
   "providers.embedding.error": "Impossible de définir le modèle d'embedding.",
   "toolAction.failed": "Impossible de terminer « {{action}} ».",
   "mcp.add": "Ajouter un serveur",
-  "mcp.saveEffect":
-    "Après enregistrement, les serveurs activés se connectent en arrière-plan. Consultez leur état pour vérifier la connexion.",
   "mcp.save": "Enregistrer",
   "mcp.saving": "Enregistrement…",
   "mcp.delete": "Supprimer",
@@ -781,8 +779,6 @@ export const fr: Record<string, string> = {
   "mcp.toolCount_many": "{{count}} d’outils",
   "mcp.toolCount_other": "{{count}} outils",
   "mcp.empty": "Aucun serveur MCP",
-  "mcp.empty.sub":
-    "Ajoutez un serveur ou collez une configuration pour exposer ses outils à l'agent.",
   "mcp.enable.aria": "Activer {{server}}",
   "mcp.edit": "Modifier {{server}}",
   "mcp.transport.stdio": "stdio",
@@ -799,10 +795,9 @@ export const fr: Record<string, string> = {
   "mcp.status.connected": "Connecté",
   "mcp.status.failed": "Échec de la connexion",
   "mcp.status.needsAuth": "Connexion requise",
-  "mcp.form.name.placeholder": "Nom du serveur",
   "mcp.form.name.aria": "Nom du serveur",
   "mcp.form.transport.aria": "Transport",
-  "mcp.form.command.placeholder": "Commande (par ex. npx)",
+  "mcp.form.command.placeholder": "npx",
   "mcp.form.command.aria": "Commande",
   "mcp.form.args": "Arguments — un par ligne",
   "mcp.form.args.placeholder": "-y\n@modelcontextprotocol/server-filesystem\n/chemin",
@@ -812,7 +807,6 @@ export const fr: Record<string, string> = {
   "mcp.form.env.clear": "Supprimer l’environnement enregistré",
   "mcp.form.env.targetChanged":
     "La cible du processus a changé. Saisissez un nouvel environnement ou supprimez les valeurs enregistrées.",
-  "mcp.form.dir.placeholder": "Répertoire de travail (facultatif)",
   "mcp.form.dir.aria": "Répertoire de travail",
   "mcp.form.url.placeholder": "https://example.com/mcp",
   "mcp.form.url.aria": "URL du serveur",
@@ -830,7 +824,8 @@ export const fr: Record<string, string> = {
     "L’origine du point de terminaison a changé. Saisissez de nouveaux en-têtes ou supprimez les valeurs enregistrées.",
   "mcp.form.timeout": "Délai d'expiration (secondes) — facultatif",
   "mcp.form.timeout.placeholder": "60",
-  "mcp.form.description.placeholder": "Description (facultatif)",
+  "mcp.form.timeout.invalid":
+    "Saisissez un nombre entier positif de secondes, ou laissez vide pour ne fixer aucune limite de temps.",
   "mcp.form.description.aria": "Description",
   "mcp.import": "Importer depuis JSON",
   "mcp.import.confirm": "Importer",

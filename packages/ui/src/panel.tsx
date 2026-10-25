@@ -241,6 +241,12 @@ const styles = stylex.create({
     gap: layout.contentGap,
     minWidth: 0,
   },
+  formActionsUnit: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr)",
+    gap: layout.sectionGap,
+    minWidth: 0,
+  },
   formActionGroup: { maxWidth: "100%" },
   formMainActions: { marginInlineStart: "auto", justifyContent: "flex-end" },
 });
@@ -598,28 +604,49 @@ export function FormSection({
 export function FormActions({
   label,
   auxiliaryAction,
+  feedback,
   children,
 }: {
   label: string;
   auxiliaryAction?: ReactNode;
+  feedback?: ReactNode;
   children: ReactNode;
 }) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const panelLayout = useContext(PanelLayoutContext);
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!feedback || !panelLayout || !group) return;
+    // Asynchronous results arrive without a focus event, so the retained
+    // action focus is the only signal that the reader is still here.
+    const focused = group.ownerDocument.activeElement;
+    if (group.contains(focused)) panelLayout.keepBodyFocusVisible(focused);
+  }, [feedback, panelLayout]);
   return (
-    <div role="group" aria-label={label} {...stylex.props(styles.formActions)}>
-      {auxiliaryAction && (
-        <div {...stylex.props(styles.actions, styles.formActionGroup)}>
-          {auxiliaryAction}
-        </div>
-      )}
-      <div
-        {...stylex.props(
-          styles.actions,
-          styles.formActionGroup,
-          styles.formMainActions,
+    <div
+      ref={groupRef}
+      role="group"
+      aria-label={label}
+      data-focus-unit=""
+      {...stylex.props(styles.formActionsUnit)}
+    >
+      <div {...stylex.props(styles.formActions)}>
+        {auxiliaryAction && (
+          <div {...stylex.props(styles.actions, styles.formActionGroup)}>
+            {auxiliaryAction}
+          </div>
         )}
-      >
-        {children}
+        <div
+          {...stylex.props(
+            styles.actions,
+            styles.formActionGroup,
+            styles.formMainActions,
+          )}
+        >
+          {children}
+        </div>
       </div>
+      {feedback}
     </div>
   );
 }
