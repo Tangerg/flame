@@ -33,18 +33,12 @@ export const es: Record<string, string> = {
   "command.enable": "Activar programación",
   "command.disable": "Desactivar programación",
   "editor.new.title": "Nueva programación",
-  "editor.new.description": "Configura la tarea y cuándo debe ejecutarse.",
   "editor.edit.title": "Editar {{title}}",
   "editor.edit.untitled": "programación",
   "editor.edit.description": "Revisión capturada: {{revision}}",
   "editor.close": "Cerrar el editor de programación",
-  "editor.section.task.title": "Tarea",
-  "editor.section.task.description":
-    "Lo que el agente debe hacer cuando se ejecute esta programación.",
   "editor.section.timing.title": "Momento y espacio de trabajo",
   "editor.section.execution.title": "Ejecución",
-  "editor.section.execution.description":
-    "Elige el modelo y el razonamiento que se usarán en futuras ejecuciones.",
   "field.title": "Título",
   "field.instructions": "Instrucciones",
   "field.cron": "Expresión cron",

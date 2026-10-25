@@ -33,18 +33,12 @@ export const ko: Record<string, string> = {
   "command.enable": "스케줄 사용",
   "command.disable": "스케줄 사용 안 함",
   "editor.new.title": "새 스케줄",
-  "editor.new.description": "작업과 실행 시점을 구성합니다.",
   "editor.edit.title": "{{title}} 편집",
   "editor.edit.untitled": "스케줄",
   "editor.edit.description": "캡처된 리비전: {{revision}}",
   "editor.close": "스케줄 편집기 닫기",
-  "editor.section.task.title": "작업",
-  "editor.section.task.description":
-    "이 스케줄이 실행될 때 Agent가 수행할 작업입니다.",
   "editor.section.timing.title": "시간 및 작업 공간",
   "editor.section.execution.title": "실행",
-  "editor.section.execution.description":
-    "향후 실행에 사용할 모델과 추론 강도를 선택합니다.",
   "field.title": "제목",
   "field.instructions": "지침",
   "field.cron": "Cron 식",

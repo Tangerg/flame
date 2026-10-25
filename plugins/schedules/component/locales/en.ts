@@ -32,18 +32,12 @@ export const en: Record<string, string> = {
   "command.enable": "Enable schedule",
   "command.disable": "Disable schedule",
   "editor.new.title": "New schedule",
-  "editor.new.description": "Configure the task and when it should run.",
   "editor.edit.title": "Edit {{title}}",
   "editor.edit.untitled": "schedule",
   "editor.edit.description": "Captured revision: {{revision}}",
   "editor.close": "Close schedule editor",
-  "editor.section.task.title": "Task",
-  "editor.section.task.description":
-    "What the agent should do when this schedule runs.",
   "editor.section.timing.title": "Timing and workspace",
   "editor.section.execution.title": "Execution",
-  "editor.section.execution.description":
-    "Choose the model and reasoning used for future runs.",
   "field.title": "Title",
   "field.instructions": "Instructions",
   "field.cron": "Cron expression",

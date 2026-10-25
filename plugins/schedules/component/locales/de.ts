@@ -33,19 +33,12 @@ export const de: Record<string, string> = {
   "command.enable": "Zeitplan aktivieren",
   "command.disable": "Zeitplan deaktivieren",
   "editor.new.title": "Neuer Zeitplan",
-  "editor.new.description":
-    "Konfiguriere die Aufgabe und wann sie ausgeführt werden soll.",
   "editor.edit.title": "{{title}} bearbeiten",
   "editor.edit.untitled": "Zeitplan",
   "editor.edit.description": "Erfasste Revision: {{revision}}",
   "editor.close": "Zeitplan-Editor schließen",
-  "editor.section.task.title": "Aufgabe",
-  "editor.section.task.description":
-    "Was der Agent tun soll, wenn dieser Zeitplan ausgeführt wird.",
   "editor.section.timing.title": "Zeitpunkt und Arbeitsbereich",
   "editor.section.execution.title": "Ausführung",
-  "editor.section.execution.description":
-    "Wähle das Modell und die Denkintensität für zukünftige Ausführungen.",
   "field.title": "Titel",
   "field.instructions": "Anweisungen",
   "field.cron": "Cron-Ausdruck",

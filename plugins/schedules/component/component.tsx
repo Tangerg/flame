@@ -199,7 +199,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               ? t("editor.edit.description", {
                   revision: String(edit.basis.Revision),
                 })
-              : t("editor.new.description")
+              : undefined
           }
           closeLabel={t("editor.close")}
           size="lg"
@@ -225,30 +225,25 @@ export function Schedules({ context }: { context: ComponentContext }) {
             </>
           }
         >
-          <FormSection
-            title={t("editor.section.task.title")}
-            description={t("editor.section.task.description")}
-          >
-            <FormField label={t("field.title")}>
-              <TextField
-                ref={titleElement}
-                size="lg"
-                aria-label={t("field.title")}
-                value={edit.draft.Title}
-                disabled={busy}
-                onChange={(event) => patch("Title", event.target.value)}
-              />
-            </FormField>
-            <FormField label={t("field.instructions")}>
-              <TextArea
-                aria-label={t("field.instructions")}
-                value={edit.draft.Instructions}
-                disabled={busy}
-                rows={4}
-                onChange={(event) => patch("Instructions", event.target.value)}
-              />
-            </FormField>
-          </FormSection>
+          <FormField label={t("field.title")}>
+            <TextField
+              ref={titleElement}
+              size="lg"
+              aria-label={t("field.title")}
+              value={edit.draft.Title}
+              disabled={busy}
+              onChange={(event) => patch("Title", event.target.value)}
+            />
+          </FormField>
+          <FormField label={t("field.instructions")}>
+            <TextArea
+              aria-label={t("field.instructions")}
+              value={edit.draft.Instructions}
+              disabled={busy}
+              rows={4}
+              onChange={(event) => patch("Instructions", event.target.value)}
+            />
+          </FormField>
           <FormSection title={t("editor.section.timing.title")}>
             <FormRow>
               <FormField label={t("field.cron")}>
@@ -279,10 +274,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               onCheckedChange={(value) => patch("Enabled", value)}
             />
           </FormSection>
-          <FormSection
-            title={t("editor.section.execution.title")}
-            description={t("editor.section.execution.description")}
-          >
+          <FormSection title={t("editor.section.execution.title")}>
             <FormRow>
               <FormField label={t("field.model")}>
                 <Select

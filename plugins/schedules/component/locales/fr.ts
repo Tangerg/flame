@@ -33,19 +33,12 @@ export const fr: Record<string, string> = {
   "command.enable": "Activer la planification",
   "command.disable": "Désactiver la planification",
   "editor.new.title": "Nouvelle planification",
-  "editor.new.description":
-    "Configurez la tâche et le moment de son exécution.",
   "editor.edit.title": "Modifier {{title}}",
   "editor.edit.untitled": "planification",
   "editor.edit.description": "Révision capturée : {{revision}}",
   "editor.close": "Fermer l'éditeur de planification",
-  "editor.section.task.title": "Tâche",
-  "editor.section.task.description":
-    "Ce que l'agent doit faire lorsque cette planification s'exécute.",
   "editor.section.timing.title": "Horaire et espace de travail",
   "editor.section.execution.title": "Exécution",
-  "editor.section.execution.description":
-    "Choisissez le modèle et le raisonnement utilisés pour les exécutions futures.",
   "field.title": "Titre",
   "field.instructions": "Instructions",
   "field.cron": "Expression cron",

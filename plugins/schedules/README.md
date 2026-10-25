@@ -154,7 +154,10 @@ refresh never replaces a saved selection. Missing and deprecated selections reta
 their exact Provider/Model as labeled items until the user chooses another model.
 
 Add/edit is a bounded dialog with scrolling field groups and persistent task
-identity, Cancel and Save. Deletion is a separate named alert dialog and initially
+identity, Cancel and Save. Title and instructions lead directly into timing and
+execution fields; their visible labels carry the hierarchy without an introductory
+caption or a duplicate Task section. Editing retains the captured revision.
+Deletion is a separate named alert dialog and initially
 focuses Cancel. The catalog remains mounted beneath either task. Explicit
 cancellation, the close action and unhandled Escape return to the captured opener;
 if a canonical refresh removed or disabled it, the retained page search is the fallback and

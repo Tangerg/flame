@@ -33,18 +33,12 @@ export const ja: Record<string, string> = {
   "command.enable": "スケジュールを有効化",
   "command.disable": "スケジュールを無効化",
   "editor.new.title": "新しいスケジュール",
-  "editor.new.description": "タスクと実行タイミングを設定します。",
   "editor.edit.title": "{{title}} を編集",
   "editor.edit.untitled": "スケジュール",
   "editor.edit.description": "取得したリビジョン：{{revision}}",
   "editor.close": "スケジュールエディターを閉じる",
-  "editor.section.task.title": "タスク",
-  "editor.section.task.description":
-    "このスケジュールの実行時に Agent が行うべき内容。",
   "editor.section.timing.title": "タイミングとワークスペース",
   "editor.section.execution.title": "実行",
-  "editor.section.execution.description":
-    "今後の実行で使用するモデルと思考強度を選択します。",
   "field.title": "タイトル",
   "field.instructions": "指示",
   "field.cron": "Cron 式",

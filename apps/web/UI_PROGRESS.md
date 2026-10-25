@@ -830,10 +830,73 @@ data, unrelated processes and the primary parallel checkout remain untouched.
 This documentation receipt changes no accepted product input; its publication
 is followed by fresh remote, cleanliness and preservation checks.
 
-Continue from fresh task evidence. The observed 200% schedule editor spends a
-substantial first view on introductory and section copy; inspect that hierarchy
-as a separate task before changing it, retaining cancellation, draft, revision
-and read-model ownership.
+### Schedule editor hierarchy
+
+New schedules begin with Title and Instructions directly in the shared dialog
+body. The redundant introduction, Task legend/description and Execution caption
+are removed, including their four retired keys in all eight locales. Timing and
+workspace and Execution retain their meaningful fieldsets. Existing labels,
+captured edit revision, defaults, errors and command feedback remain. The body
+already owns the same field gap as the removed wrapper, so no shared primitive,
+CSS override, state, event handler or replacement grouping is added. Title remains
+optional and initially focused; Instructions and Cron still determine Save.
+The module README records the hierarchy and its existing task boundaries.
+
+Read-only ZCode `AutomationEditView.tsx` renders authoring fields with their
+visible labels. HeroUI's `modal/with-form.tsx` separates a field body from its
+actions. These inform grouping and completion boundaries; Flame retains its own
+shared dialog, Base UI, layout tokens and functional copy. Better-layout and
+better-writing guide ordering by task importance and deleting repeated meaning.
+
+| Severity | Location                                        | Before                                                                                                                        | After                                                                                                                                        | Why                                                    |
+| -------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| MEDIUM   | `plugins/schedules/component/component.tsx:187` | At native ZH 18 px and 200%, introductory copy and a duplicate Task group put Cron at y=538.09375, beyond the 525 px viewport | Title, Instructions and both timing fields move up **123.5 px**; Cron is fully visible at y=414.59375–450.59375 before the footer at y=453.5 | Required authoring controls should lead the first view |
+
+The retained baseline is actual Wails evidence from the preceding batch; every
+one of its **5,772** non-Markdown source inputs is identical to this batch's
+frozen starting input. Candidate verification uses actual Wails beta.34:
+
+- EN dark, 14 px, dim custom accent: new/edit title focus, required Instructions
+  and Cron with an empty optional Title, local field changes, focused Enabled
+  keyboard toggle, nested Model Escape and cancellation to the captured Add or
+  record opener. The same view moves to **320 px** Dock and back, retaining
+  `nightly` and expanded details. Closing the main view retains the same composer
+  input and exact `Schedule draft 保留`, continued from **17 to 27** characters.
+- ZH light, 18 px, pale custom accent and contrast 100: native Window → Left,
+  Actual Size and twenty Zoom In increments produce **561 × 525 CSS px / 200%**.
+  The first-view fields retain their original heights. Native wheel scrolling
+  advances reported body scrollTop from 10 to 68 while the footer stays at
+  y=453.5. Tab reveals Model, its own Escape retains the edited fields, and Cancel
+  restores Add. Editing retains the original task identity and revision 1;
+  focused Cron scrolls clear of the footer, and Close restores its record opener.
+- EN light, 14 px, default Orange, without private observer nodes: local field
+  editing, nested Model Escape and cancellation restore Add and the same query.
+
+Focused baseline passes **2 files / 14 tests**. Final existing presentation,
+reading, installed-continuity and installed-component suites pass **4 files /
+24 tests**; **8 Web gates**, **5 plugin gates** and `make check-native` pass.
+All **11** portable resources rebuild/check; only the Schedules ESM changes.
+Existing nonfatal macOS linker warnings remain. The initial emitted-module
+check lacks its dist prerequisite; the real Web build followed by the same
+check passes. No assertion is weakened or product workaround added.
+
+Bounded Read/Edit/Write-only Claude CLI completes in **53.81 s**, restricted to
+the component and eight locale files. Primary reviews the complete diff and
+independently confirms exactly **32** retired values with every other locale
+entry identical, then performs generation, checks and native acceptance.
+An inert fixture-row/unregistered shortcut probe is excluded; accepted navigation
+uses Open in the context dock. An unsupported key alias supplies no input or
+acceptance. Private artifact path labels are corrected using their original
+pre-launch hashes; all **1,213** actual artifacts and **11** native construction
+inputs still match. Accepted source SHA-256 is
+`8991816693a6fb4595844bd950bdb4c214c2ccc42512cb0ccc6bdb9693df86e6`.
+
+Scoped result: **Approve** for this authoring hierarchy and the exercised tasks.
+Production components and actual portable ESM run over canonical deterministic
+reads. Save submission/accepted mutations, live providers, VoiceOver speech,
+OS IME, RTL/forced-colors and a standalone 320 px native viewport are not newly
+qualified. No browser visual suite or performance benchmark runs. Publication
+and exact resource retirement are recorded below.
 
 ### Native image save qualification
 
