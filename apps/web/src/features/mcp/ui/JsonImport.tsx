@@ -11,7 +11,11 @@ import {
 import { type MCPServerCommands } from "@/features/mcp/application/mcpServerMutationOwner";
 import { notifyInfo } from "@/features/notifications/public/notifications";
 import { Trans, useT } from "@/lib/i18n/index";
-import { McpImportNameCollision, parseMcpImport } from "@/features/mcp/application/mcpImport";
+import {
+  McpImportError,
+  parseMcpImport,
+  type McpImportIssue,
+} from "@/features/mcp/application/mcpImport";
 const CONFIG_EXAMPLE = JSON.stringify(
   {
     mcpServers: {
@@ -21,6 +25,44 @@ const CONFIG_EXAMPLE = JSON.stringify(
   null,
   2,
 );
+
+const SERVER_ISSUE_KEYS: Record<Extract<McpImportIssue, { server: string }>["kind"], string> = {
+  name: "mcp.import.invalidName",
+  transport: "mcp.import.missingTransport",
+  command: "mcp.import.missingCommand",
+  url: "mcp.import.missingUrl",
+  timeout: "mcp.import.invalidTimeout",
+};
+
+function McpImportIssueMessage({ issue }: { issue: McpImportIssue }) {
+  const t = useT();
+  switch (issue.kind) {
+    case "json":
+      return t("mcp.import.invalidJson");
+    case "shape":
+      return t("mcp.import.invalidShape");
+    case "empty":
+      return t("mcp.import.empty");
+    case "nameCollision":
+      return (
+        <Trans
+          i18nKey="mcp.import.nameCollision"
+          components={{
+            first: <span>{issue.first}</span>,
+            second: <span>{issue.second}</span>,
+            canonical: <span>{issue.canonical}</span>,
+          }}
+        />
+      );
+    default:
+      return (
+        <Trans
+          i18nKey={SERVER_ISSUE_KEYS[issue.kind]}
+          components={{ server: <span>{issue.server}</span> }}
+        />
+      );
+  }
+}
 
 export function JsonImport() {
   const currentCommands = useMCPServerCommands();
@@ -36,17 +78,29 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
   const [draft, setDraft] = useState<{ commands: MCPServerCommands; text: string } | null>(null);
   const text = draft?.text ?? "";
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ message: ReactNode }>();
+  const [error, setError] = useState<{ kind: "validation" | "operation"; message: ReactNode }>();
+  const invalid = error?.kind === "validation";
   useLayoutEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ block: "nearest" });
   }, [error]);
 
   const onImport = async () => {
     if (!draft) return;
-    setBusy(true);
     setError(undefined);
+    let parsed: ReturnType<typeof parseMcpImport>;
     try {
-      const { servers, renamed } = parseMcpImport(text);
+      parsed = parseMcpImport(text);
+    } catch (err) {
+      if (err instanceof McpImportError) {
+        setError({ kind: "validation", message: <McpImportIssueMessage issue={err.issue} /> });
+        return;
+      }
+      setError({ kind: "operation", message: failureText(err, t("mcp.import.error")) });
+      return;
+    }
+    const { servers, renamed } = parsed;
+    setBusy(true);
+    try {
       const outcome = await draft.commands.importServers(servers);
       if (outcome.status === "retired") {
         notifyInfo(
@@ -58,7 +112,10 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
       }
       if (outcome.status === "failed") {
         const partial = t("mcp.import.partial", { count: outcome.completed, total: outcome.total });
-        setError({ message: `${partial} ${failureText(outcome.error, t("mcp.import.error"))}` });
+        setError({
+          kind: "operation",
+          message: `${partial} ${failureText(outcome.error, t("mcp.import.error"))}`,
+        });
         return;
       }
       notifyInfo(t("mcp.import.ok", { count: servers.length }), { source: "mcp" });
@@ -72,22 +129,7 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
       }
       setDraft(null);
     } catch (err) {
-      if (err instanceof McpImportNameCollision) {
-        setError({
-          message: (
-            <Trans
-              i18nKey="mcp.import.nameCollision"
-              components={{
-                first: <span>{err.first}</span>,
-                second: <span>{err.second}</span>,
-                canonical: <span>{err.canonical}</span>,
-              }}
-            />
-          ),
-        });
-        return;
-      }
-      setError({ message: failureText(err, t("mcp.import.error")) });
+      setError({ kind: "operation", message: failureText(err, t("mcp.import.error")) });
     } finally {
       setBusy(false);
     }
@@ -114,7 +156,6 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
           if (!open) setDraft(null);
         }}
         title={t("mcp.import")}
-        description={t("mcp.import.hint")}
         closeLabel={t("common.close")}
         initialFocus={field}
         onSubmit={(event) => {
@@ -136,15 +177,18 @@ function JsonImportGeneration({ currentCommands }: { currentCommands: MCPServerC
           <TextArea
             ref={field}
             font="mono"
-            invalid={error !== undefined}
+            invalid={invalid}
             pending={busy}
             value={text}
-            onChange={(event) =>
-              setDraft((current) => current && { ...current, text: event.target.value })
-            }
+            onChange={(event) => {
+              setError(undefined);
+              setDraft((current) => current && { ...current, text: event.target.value });
+            }}
             rows={10}
             spellCheck={false}
-            aria-describedby={error ? errorId : undefined}
+            autoCapitalize="none"
+            autoCorrect="off"
+            aria-describedby={invalid ? errorId : undefined}
             placeholder={CONFIG_EXAMPLE}
           />
         </FormField>

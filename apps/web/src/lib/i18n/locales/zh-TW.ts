@@ -780,6 +780,15 @@ export const zhTW: Record<string, string> = {
   "mcp.import.error": "無法匯入該設定。",
   "mcp.import.nameCollision":
     "伺服器「<first/>」和「<second/>」都會變成「<canonical/>」，請為它們設定不同的名稱",
+  "mcp.import.invalidJson": "請輸入有效的 JSON。",
+  "mcp.import.invalidShape": "請使用包含「mcpServers」物件的有效 MCP 設定。",
+  "mcp.import.invalidName": "請為伺服器「<server/>」使用包含 a–z 或 0–9 的名稱。",
+  "mcp.import.missingTransport": "請為伺服器「<server/>」新增命令或 URL。",
+  "mcp.import.missingCommand": "請為伺服器「<server/>」新增命令。",
+  "mcp.import.missingUrl": "請為伺服器「<server/>」新增 URL。",
+  "mcp.import.invalidTimeout":
+    "請為伺服器「<server/>」設定以秒為單位的正整數逾時，或省略此項表示不限時。",
+  "mcp.import.empty": "請在「mcpServers」下至少新增一個伺服器。",
   "mcp.tools.title": "{{server}} 的工具",
   "mcp.tools.enabled": "已啟用",
   "mcp.tools.autoApprove": "自動核准",
@@ -799,7 +808,6 @@ export const zhTW: Record<string, string> = {
   "mcp.testOutcome.failed": "伺服器未能連線，或未提供有效的工具清單。請檢查其設定後重試。",
   "settings.theme.system": "系統",
   "mcp.import.config": "JSON 設定",
-  "mcp.import.hint": '貼上一段 MCP 用戶端設定區塊 —— 在 "mcpServers" 下的一個或多個伺服器。',
 
   "rpcError.session_has_active_run": "該工作階段已有一個進行中的執行 —— 請先介入、回應或取消它。",
   "runError.activeRun.running": "該工作階段已有進行中的執行——請介入它或取消它。",

@@ -1,27 +1,30 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. MCP editing now uses direct labels, explains invalid timeouts, preserves literal configuration input and reveals async feedback with the focused actions. Final native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the repair. Shared settings focus/pointer behavior, Appearance search and the stronger optional paper material remain delivered. See MCP editor clarity and literal configuration.
+Updated: 2026-10-26. MCP JSON import now preflights the whole source before creation, localizes known source failures, retires obsolete feedback on edit and distinguishes command failures from invalid JSON. The repeated introduction is removed and literal input is preserved. Native EN, ZH 18 px/200% and uninstrumented DE custom-base tasks qualify the behavior. See MCP import source preflight and recovery. The stronger optional paper material remains delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/mcp-editor-clarity-1026`. MCP editor clarity, literal inputs and
-feedback visibility are qualified on frozen base
-`55e67879d29ae57168b97b3f62e9aa90902ee04b`; see that product section for ownership,
-regression counterexamples, native tasks and limits. Implementation
-`0c2f14377d24af2c9a63c44e4153a8a296105bdf` is published to remote main and exact
-owned-resource retirement is complete. The single publication-time fetch finds
-no incoming delta from the frozen base; the primary parallel checkout remains
-outside this batch.
+is on `codex/mcp-import-clarity-1026`. MCP JSON import is qualified on frozen base
+`7d11351c98f2682bdb74409972623210530b9575`; see MCP import source preflight and
+recovery for ownership, regression counterexamples, native tasks and limits.
+Implementation `2b70ee84024cece612cccf31fabaf624a4df148c` is published to remote
+main and owned-resource retirement is complete. The single publication fetch
+finds no incoming delta from the frozen base. The primary parallel checkout
+remains outside this batch. The user's latest instruction stops further
+Claude CLI calls; subsequent edits and verification are owned directly by Codex.
+MCP editor implementation `0c2f14377d24af2c9a63c44e4153a8a296105bdf` and receipt
+`7d11351c98f2682bdb74409972623210530b9575` remain published and retired.
 Shared settings focus/pointer implementation
 `d2f5659a3165328797d86549302f4843b99a2cc0` and receipt
 `55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
 Appearance labels/search implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
-The next observed task is JSON import: the native DE 200% dialog repeats its
-configuration-schema introduction above the labeled example editor.
+The observed JSON-import introduction and source-recovery defects are resolved
+in the import section. Continue from fresh reading/Dock task evidence after
+publication; do not reopen delivered appearance or import work without a new finding.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -8086,8 +8089,8 @@ Final integrity freezes 5,778 non-Markdown inputs, SHA-256
 810fc90553b35bfb9c20ca8abdd991fefe78239c7921c2df6297753a2458c218,
 1,806 actual artifact hashes and 14 native construction inputs. All remain exact
 through acceptance, and all recorded native/CLI/build processes have exited.
-Scoped result: Approve for these editor and shared feedback contracts; the
-observed JSON-import introduction is the next separate task.
+Scoped result: Approve for these editor and shared feedback contracts. The
+observed JSON-import introduction is resolved in the following import section.
 
 Delivery: implementation 0c2f14377d24af2c9a63c44e4153a8a296105bdf is pushed to
 remote main and independently matches ls-remote. The single publication fetch
@@ -8113,6 +8116,148 @@ Installed dependencies, global caches, user data, the primary parallel checkout
 and reference repositories remain intact. This Markdown receipt changes no
 qualified product source; fresh remote, cleanliness and preservation checks
 follow publication.
+
+### MCP import source preflight and recovery
+
+JSON import now uses its direct field label and existing example without a
+repeated schema introduction. Its source explicitly disables capitalization,
+autocorrection and spelling changes. Editing retires previous submission feedback
+without replacing the field, moving focus or submitting on each keystroke.
+Known source errors mark and describe the editor; command failures retain their
+alert and completed count without incorrectly marking valid JSON invalid.
+
+Native acceptance of the first candidate exposed a deeper failure: a valid first
+entry followed by an explicit stdio entry without a command created the first
+server, then failed in the real runtime-client request validator. The response
+exposed an internal parameter path and left avoidable partial state. The repair
+therefore includes the import parser's complete static preflight before any create.
+It rejects missing or blank active commands/URLs while preserving nonblank literal
+bytes, successful ordering, aliases, environment, headers and name normalization.
+Runtime still owns final creation and validation; external failures may commit a
+prefix, which the existing command owner continues to report accurately.
+
+McpImportError carries a typed issue rather than English recovery prose. The view
+localizes JSON, shape, name, collision, transport, command, URL, timeout and empty
+source failures, rendering names through literal component slots. The existing
+timeout factory remains the only positive safe-integer owner; its typed refusal
+is projected into a named source issue. Unexpected parser/factory failures
+propagate. Source and operation feedback share one state with an explicit kind.
+No Runtime, protocol, SDK, persistence, shared UI or dependency contract changes.
+Internal error messages use stable lowercase categories; the final review removes
+the redundant per-issue category string while retaining typed issue data.
+
+ZCode's actual ExternalAgentImportDialog informs source/action separation;
+HeroUI's Form/Input examples and the retained Radix focus research inform direct
+labels, recoverable errors and trigger return. The better-writing, layout,
+accessibility, UI and colors reviews retain existing component/token ownership.
+No decorative stripe, new motion or explanatory subtitle is introduced.
+
+Focused baseline passes 15 MCP files / 98 tests. New source-state regressions fail
+6 and pass 4 against original source, after correcting two test-environment
+assumptions about the spellcheck property and a synthetic opener without focus.
+The static-preflight counterexample fails 10 and passes 16 before that repair.
+Final focused checks pass 19 files / 161 tests, including no-prefix creation,
+source correction, literal messages/values, unexpected failure propagation,
+partial outcomes, pending read-only behavior and Runtime retirement. Sixteen Web
+type/lint/format, style/token, locale, boundary/port, bundle, variable and plugin
+gates pass, together with supported make check-native and private production
+assets. All 11 portable ESM resources rebuild byte-identically. The first complete
+expanded run passes in 51.84 seconds; after the internal-category review, the same
+checks pass in 82.9 seconds and all three native tasks repeat on those final bytes.
+
+All eight parsed catalogs add exactly eight import error keys and remove only
+mcp.import.hint; every other prior value is unchanged. Each of the five named
+messages has exactly one literal server slot. Name recovery explicitly says a–z
+or 0–9 in every language. The locale guard initially rejects English prose in the
+new timeout error constructor; a stable internal category repairs that failure
+without weakening the guard. The unchanged base check:shorthand failure at
+ui/agent/dock-catalog.tsx:14 remains outside scope. Shared UI's prior 7-file /
+115-test and independent packed-consumer qualification is reused, not rerun.
+Browser visual suites and performance benchmarks are not run.
+
+Actual Wails v3.0.0-beta.34 tasks qualify:
+
+- EN/light/14 px/Orange at 1440 by 900: malformed JSON, edit retirement and
+  missing-second-command preflight with zero creates. A valid two-entry request
+  deliberately fails externally after the first create; the alert retains the
+  completed count and exact source without aria-invalid. Native typing preserves
+  the complete compact JSON and npx. Keyboard submission produces canonical
+  Connecting rows. Reopen/Escape restores Import from JSON. The same Composer
+  continues MCP import reading to MCP import reading continued after Settings.
+  At the same viewport the direct-label empty dialog is 37 CSS px shorter, with
+  the original source height retained.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off, native Left and twenty View
+  zoom actions: 200%, 561 by 525 CSS px, document width 561 and zero observed
+  unhandled errors. A later invalid timeout and normalized-name collision both
+  produce localized linked errors before any create. Editing keeps source
+  identity, clears the error, and forward Option+Tab reaches Cancel then Import.
+  Return imports docs-tools and docs-web exactly once in order with the existing
+  rename/success notices. Pointer Cancel returns to the exact opener. The same
+  Composer continues MCP import zh reading to MCP import zh reading continued;
+  Actual Size is restored before Quit.
+- Uninstrumented DE/18 px/custom warm base/Purple/motion Off, native Left/200%:
+  malformed JSON and missing-second-command errors are German, with no internal
+  parameter path. Correcting and retrying the complete file succeeds for both
+  entries; the fixture rejects duplicates, so that success also excludes the
+  former premature prefix. A separate HTTP import preserves
+  https://tools.example/Mcp?case=AbC in Edit. Edit/Cancel, blank import reopen,
+  Escape/opener return and MCP import de reading continued after Settings pass.
+  This build contains actual chrome/font adapters without the private observer;
+  no DOM geometry, element identity or unhandled-error count is claimed for it.
+
+Native tasks use actual production views and request validation over canonical
+in-memory responses. No process launch, network dial, credential, live Runtime
+write or message Send occurs. The first observer's output was hidden by the
+correct modal inert boundary; only private output nodes are subsequently placed
+inside the dialog, leaving product focus/inert behavior intact. An excluded
+reverse-Tab probe does not reach the field; accepted edits use freshly observed
+field focus and forward navigation. A German AX assertion is corrected for the
+actual catalog wording and component whitespace. Two capture-helper return-shape
+assumptions are corrected without product changes. VoiceOver, full OS IME,
+forced-colors/RTL GUI, other platforms, arbitrary themes and live MCP execution
+are not newly qualified. Portable resources are separately built and checked;
+the native scenes do not claim to load their ESM.
+
+Before the user's instruction to stop CLI usage, bounded Read/Edit/Write-only
+Claude calls supply the scoped source/form/catalog edits in 89.3 seconds /
+37 turns and 160.37 seconds / 44 turns. Both finish successfully without reported
+permission denials. Primary owns review, regression counterexamples, precision
+copy/category edits, native acceptance and delivery. Both calls are over; no
+further Claude CLI calls are authorized by the current workflow preference.
+
+Final integrity freezes 5,778 non-Markdown source inputs, SHA-256
+3972a833b7828a4b7c199505d8bb017a1e46fea9b885db8a20ffb192525bde7c,
+1,806 actual artifact hashes and 14 native construction inputs. All three final
+native reports identify that source digest. All 11 unchanged portable resources
+and three read-only references retain their hashes; all 28 recorded processes
+have exited. Publication and exact owned-resource retirement follow below.
+Scoped result: Approve for the exercised import source and recovery contracts,
+within the stated external-failure limits.
+
+Delivery: implementation 2b70ee84024cece612cccf31fabaf624a4df148c is pushed to
+remote main and independently matched with ls-remote. The one publication-time
+fetch finds no incoming commit; merge is already up to date. Normal formatting,
+workspace lint and commit-message hooks preserve every qualified product input.
+
+All 28 recorded PIDs are dead; all four bundles are unregistered, independently
+absent from the LaunchServices inventory. No exact-root or exact-bundle process
+matches remain. Cleanup removes seven new checkout output/cache paths, eight
+bundle-specific Library paths and four bundle temporary directories. The original
+native-check binary is restored exactly; all three original files, 36 output
+presence baselines and 11 unchanged portable resources survive independent checks
+before and after temporary-root deletion. The three read-only references retain
+their original hashes.
+
+The exact private root flame-ui-mcp-import-1026-XsOmbW is absent after UID,
+device/inode/birth-time, source, artifact, native-input, archive and process guards.
+Its round-trip-verified compressed in-memory archive retains 181 UTF-8 evidence
+files and 73 capture hashes, SHA-256
+723be0b041eaee9f4488e30a87a05f91fc761b5b77d40224cc541a3e7fa48a7f.
+Only the specific invalid-UTF-8 result class is excluded as a preserved binary;
+the original native binary retains its preservation hash. Installed dependencies,
+global caches, user data, the primary parallel checkout and reference repositories
+remain intact. This Markdown receipt changes no qualified product source; fresh
+remote, cleanliness and preservation checks follow its publication.
 
 ### MCP tool read identity and scoped recovery
 

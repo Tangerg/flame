@@ -73,9 +73,13 @@ describe("pasting an MCP client configuration", () => {
   });
 
   it("explains rather than importing a name nothing can be made of", () => {
-    expect(() => parseMcpImport('{"mcpServers": {"---": {"command": "x"}}}')).toThrow(
-      /no name the runtime can accept/,
-    );
+    let failure: unknown;
+    try {
+      parseMcpImport('{"mcpServers": {"---": {"command": "x"}}}');
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({ issue: { kind: "name", server: "---" } });
   });
 
   it("keeps one server per named entry it accepts", () => {

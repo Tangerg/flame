@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { type MCPServerInput } from "@/features/mcp/application/mcpServerInput";
-import { mcpHandshakeTimeoutFromOptionalSeconds } from "@/features/mcp/application/mcpHandshakeTimeout";
+import {
+  MCPHandshakeTimeoutError,
+  mcpHandshakeTimeoutFromOptionalSeconds,
+  type MCPHandshakeTimeout,
+} from "@/features/mcp/application/mcpHandshakeTimeout";
 const envSchema = z
   .union([z.record(z.string(), z.string()), z.array(z.string())])
   .optional()
@@ -51,14 +55,37 @@ export interface McpImportResult {
   renamed: { from: string; to: string }[];
 }
 
-export class McpImportNameCollision extends Error {
-  constructor(
-    readonly first: string,
-    readonly second: string,
-    readonly canonical: string,
-  ) {
-    super("mcp_import_name_collision");
-    this.name = "McpImportNameCollision";
+export type McpImportIssue =
+  | { readonly kind: "json" }
+  | { readonly kind: "shape" }
+  | { readonly kind: "name"; readonly server: string }
+  | {
+      readonly kind: "nameCollision";
+      readonly first: string;
+      readonly second: string;
+      readonly canonical: string;
+    }
+  | { readonly kind: "transport"; readonly server: string }
+  | { readonly kind: "command"; readonly server: string }
+  | { readonly kind: "url"; readonly server: string }
+  | { readonly kind: "timeout"; readonly server: string }
+  | { readonly kind: "empty" };
+
+export class McpImportError extends Error {
+  constructor(readonly issue: McpImportIssue) {
+    super("invalid_mcp_import");
+    this.name = "McpImportError";
+  }
+}
+
+function handshakeTimeoutOf(server: string, seconds: number | undefined): MCPHandshakeTimeout {
+  try {
+    return mcpHandshakeTimeoutFromOptionalSeconds(seconds);
+  } catch (error) {
+    if (error instanceof MCPHandshakeTimeoutError) {
+      throw new McpImportError({ kind: "timeout", server });
+    }
+    throw error;
   }
 }
 
@@ -76,23 +103,27 @@ export function parseMcpImport(text: string): McpImportResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
-  } catch {
-    throw new Error("Not valid JSON");
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new McpImportError({ kind: "json" });
+    throw error;
   }
   const parsed = z.object({ mcpServers: z.record(z.string(), serverSchema) }).safeParse(raw);
-  if (!parsed.success) {
-    throw new Error('Expected {"mcpServers": { "<name>": { … } }}');
-  }
+  if (!parsed.success) throw new McpImportError({ kind: "shape" });
   const servers: MCPServerInput[] = [];
   const renamed: { from: string; to: string }[] = [];
   const sources = new Map<string, string>();
   for (const [key, s] of Object.entries(parsed.data.mcpServers)) {
     const name = wireServerName(key);
-    if (name === null) {
-      throw new Error(`Server "${key}" has no name the runtime can accept`);
-    }
+    if (name === null) throw new McpImportError({ kind: "name", server: key });
     const earlier = sources.get(name);
-    if (earlier !== undefined) throw new McpImportNameCollision(earlier, key, name);
+    if (earlier !== undefined) {
+      throw new McpImportError({
+        kind: "nameCollision",
+        first: earlier,
+        second: key,
+        canonical: name,
+      });
+    }
     sources.set(name, key);
     if (name !== key) renamed.push({ from: key, to: name });
     const type = s.type
@@ -104,10 +135,9 @@ export function parseMcpImport(text: string): McpImportResult {
         : s.url
           ? "streamableHttp"
           : undefined;
-    if (type === undefined) {
-      throw new Error(`Server "${key}" has neither a command (stdio) nor a url (streamableHttp)`);
-    }
+    if (type === undefined) throw new McpImportError({ kind: "transport", server: key });
     if (type === "stdio") {
+      if (!s.command?.trim()) throw new McpImportError({ kind: "command", server: key });
       servers.push({
         name,
         transport: type,
@@ -116,9 +146,10 @@ export function parseMcpImport(text: string): McpImportResult {
         args: s.args,
         env: s.env,
         dir: s.dir ?? s.cwd,
-        handshakeTimeout: mcpHandshakeTimeoutFromOptionalSeconds(s.timeout),
+        handshakeTimeout: handshakeTimeoutOf(key, s.timeout),
       });
     } else {
+      if (!s.url?.trim()) throw new McpImportError({ kind: "url", server: key });
       servers.push({
         name,
         transport: type,
@@ -126,10 +157,10 @@ export function parseMcpImport(text: string): McpImportResult {
         url: s.url,
         authorization: authorizationFrom(s),
         headers: headersExceptAuth(s),
-        handshakeTimeout: mcpHandshakeTimeoutFromOptionalSeconds(s.timeout),
+        handshakeTimeout: handshakeTimeoutOf(key, s.timeout),
       });
     }
   }
-  if (servers.length === 0) throw new Error("No servers found under mcpServers");
+  if (servers.length === 0) throw new McpImportError({ kind: "empty" });
   return { servers, renamed };
 }

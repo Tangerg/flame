@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { McpImportNameCollision, parseMcpImport } from "@/features/mcp/application/mcpImport";
+import { describe, expect, it, vi } from "vitest";
+import { McpImportError, parseMcpImport } from "@/features/mcp/application/mcpImport";
 describe("parseMcpImport", () => {
   it("normalizes stdio and remote servers into MCP config inputs", () => {
     const result = parseMcpImport(
@@ -76,8 +76,8 @@ describe("parseMcpImport", () => {
         return err;
       }
     })();
-    expect(thrown).toBeInstanceOf(McpImportNameCollision);
-    expect(thrown).toMatchObject({ first, second, canonical });
+    expect(thrown).toBeInstanceOf(McpImportError);
+    expect(thrown).toMatchObject({ issue: { kind: "nameCollision", first, second, canonical } });
   });
 
   it("keeps order and reports renames when normalized names stay distinct", () => {
@@ -103,8 +103,74 @@ describe("parseMcpImport", () => {
   });
 
   it("rejects server entries that do not describe a transport", () => {
-    expect(() => parseMcpImport('{"mcpServers":{"empty":{}}}')).toThrow(
-      'Server "empty" has neither a command (stdio) nor a url (streamableHttp)',
-    );
+    expect(importFailure('{"mcpServers":{"empty":{}}}')).toMatchObject({
+      issue: { kind: "transport", server: "empty" },
+    });
   });
+});
+
+function importFailure(text: string): unknown {
+  try {
+    parseMcpImport(text);
+  } catch (error) {
+    return error;
+  }
+  throw new Error("Expected the source to be rejected before submission");
+}
+
+it.each([
+  { entry: { type: "stdio" }, kind: "command" },
+  { entry: { type: "stdio", command: "  " }, kind: "command" },
+  { entry: { type: "streamableHttp" }, kind: "url" },
+  { entry: { type: "sse", url: "  " }, kind: "url" },
+])("preflights the active transport requirement: $kind", ({ entry, kind }) => {
+  expect(
+    importFailure(JSON.stringify({ mcpServers: { first: { command: "npx" }, second: entry } })),
+  ).toMatchObject({ issue: { kind, server: "second" } });
+});
+
+it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+  "identifies the server with invalid timeout %s",
+  (timeout) => {
+    expect(
+      importFailure(JSON.stringify({ mcpServers: { second: { command: "npx", timeout } } })),
+    ).toMatchObject({ issue: { kind: "timeout", server: "second" } });
+  },
+);
+
+it.each([
+  { text: "{", issue: { kind: "json" } },
+  { text: "{}", issue: { kind: "shape" } },
+  { text: '{"mcpServers":{}}', issue: { kind: "empty" } },
+  { text: '{"mcpServers":{"---":{"command":"npx"}}}', issue: { kind: "name", server: "---" } },
+])("exposes a typed source issue for $text", ({ text, issue }) => {
+  expect(importFailure(text)).toBeInstanceOf(McpImportError);
+  expect(importFailure(text)).toMatchObject({ issue });
+});
+
+it("propagates unexpected JSON parser failures", () => {
+  const failure = new Error("Unexpected parser failure");
+  const parser = vi.spyOn(JSON, "parse").mockImplementationOnce(() => {
+    throw failure;
+  });
+  try {
+    expect(importFailure("{}")).toBe(failure);
+  } finally {
+    parser.mockRestore();
+  }
+});
+
+it("preserves literal nonblank connection values during preflight", () => {
+  const input = {
+    mcpServers: {
+      local: { type: "stdio", command: " node ", args: [" A B "] },
+      remote: { type: "sse", url: " https://tools.example/Mcp?case=AbC " },
+    },
+  };
+  const result = parseMcpImport(JSON.stringify(input));
+  expect(result.servers[0]).toMatchObject({
+    command: input.mcpServers.local.command,
+    args: input.mcpServers.local.args,
+  });
+  expect(result.servers[1]).toMatchObject({ url: input.mcpServers.remote.url });
 });

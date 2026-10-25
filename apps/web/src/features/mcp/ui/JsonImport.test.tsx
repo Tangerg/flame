@@ -57,7 +57,9 @@ async function openImport(gateway: MCPServerGateway) {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], []);
   owner = MCPServerMutationOwner.install(gateway);
   render(<JsonImport />);
-  fireEvent.click(screen.getByRole("button", { name: "Import from JSON" }));
+  const opener = screen.getByRole("button", { name: "Import from JSON" });
+  act(() => opener.focus());
+  fireEvent.click(opener);
   const source = await screen.findByRole<HTMLTextAreaElement>("textbox", {
     name: "JSON configuration",
   });
@@ -78,6 +80,182 @@ const colliding = JSON.stringify(
 );
 
 describe("JsonImport", () => {
+  it.each([
+    { text: "{", message: "Enter valid JSON." },
+    { text: "{}", message: 'Use a valid MCP configuration with a "mcpServers" object.' },
+    { text: '{"mcpServers":{}}', message: 'Add at least one server under "mcpServers".' },
+    {
+      text: '{"mcpServers":{"---":{"command":"npx"}}}',
+      message: 'Give server "---" a name containing a–z or 0–9.',
+    },
+    { text: '{"mcpServers":{"empty":{}}}', message: 'Add a command or URL for server "empty".' },
+    {
+      text: '{"mcpServers":{"slow":{"command":"npx","timeout":0}}}',
+      message:
+        'Set a positive whole-second timeout for server "slow", or omit it for no time limit.',
+    },
+  ])(
+    "explains the static source problem in $text before any command",
+    async ({ text, message }) => {
+      const { gateway, create } = runtimeGateway();
+      const source = await openImport(gateway);
+      fireEvent.change(source, { target: { value: text } });
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      expect((await screen.findByRole("alert")).textContent).toBe(message);
+      expect(source.getAttribute("aria-invalid")).toBe("true");
+      expect(source.value).toBe(text);
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps a named source error literal instead of parsing markup or interpolation", async () => {
+    const { gateway, create } = runtimeGateway();
+    const source = await openImport(gateway);
+    const text = JSON.stringify({ mcpServers: { "<b>{{server}}</b>": { type: "stdio" } } });
+    fireEvent.change(source, { target: { value: text } });
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe('Add a command for server "<b>{{server}}</b>".');
+    expect(alert.querySelector("b")).toBeNull();
+    expect(source.value).toBe(text);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { entry: { type: "stdio" }, field: "command" },
+    { entry: { type: "streamableHttp" }, field: "URL" },
+  ])(
+    "rejects a later missing $field before creating the first server",
+    async ({ entry, field }) => {
+      const { gateway, create } = runtimeGateway();
+      const source = await openImport(gateway);
+      const text = JSON.stringify({
+        mcpServers: { "safe-first": { command: "npx" }, "bad-second": entry },
+      });
+      fireEvent.change(source, { target: { value: text } });
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain(field);
+      expect(alert.textContent).toContain("bad-second");
+      expect(create).not.toHaveBeenCalled();
+      expect(source.getAttribute("aria-invalid")).toBe("true");
+      expect(source.value).toBe(text);
+      const corrected = JSON.stringify({
+        mcpServers: { "safe-first": { command: "npx" }, "bad-second": { command: "node" } },
+      });
+      fireEvent.change(source, { target: { value: corrected } });
+      expect(screen.queryByRole("alert")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(create.mock.calls.map(([input]) => input.name)).toEqual(["safe-first", "bad-second"]);
+    },
+  );
+
+  it("uses the labeled JSON example without a repeated introduction and keeps code input literal", async () => {
+    const { gateway } = runtimeGateway();
+    const source = await openImport(gateway);
+    expect(screen.queryByText(/Paste an MCP client config block/)).toBeNull();
+    expect(JSON.parse(source.placeholder)).toEqual({
+      mcpServers: { "my-server": { type: "streamableHttp", url: "https://example.com/mcp" } },
+    });
+    expect(source.getAttribute("autocapitalize")).toBe("none");
+    expect(source.getAttribute("autocorrect")).toBe("off");
+    expect(source.getAttribute("spellcheck")).toBe("false");
+  });
+
+  it.each(["{", '{"mcpServers":{}}'])(
+    "retires validation feedback after editing %s without replacing the draft",
+    async (invalid) => {
+      const { gateway, create } = runtimeGateway();
+      const source = await openImport(gateway);
+      fireEvent.change(source, { target: { value: invalid } });
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      await screen.findByRole("alert");
+      expect(source.getAttribute("aria-invalid")).toBe("true");
+      expect(source.getAttribute("aria-describedby")).toBeTruthy();
+      expect(create).not.toHaveBeenCalled();
+
+      const corrected = '{"mcpServers":{"native-json":{"command":"npx"}}}';
+      act(() => source.focus());
+      fireEvent.change(source, { target: { value: corrected } });
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(source.getAttribute("aria-invalid")).toBeNull();
+      expect(source.getAttribute("aria-describedby")).toBeNull();
+      expect(screen.getByRole("textbox", { name: "JSON configuration" })).toBe(source);
+      expect(document.activeElement).toBe(source);
+      expect(source.value).toBe(corrected);
+      expect(create).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Import" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(create).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ name: "native-json", command: "npx" }),
+      );
+    },
+  );
+
+  it("keeps partial command failure separate from JSON validity and preserves later focus", async () => {
+    const { gateway, create } = runtimeGateway();
+    const accepted = create.getMockImplementation()!;
+    const blocked = Promise.withResolvers<MCPServerSettings>();
+    create.mockImplementation((input) =>
+      input.name === "second" ? blocked.promise : accepted(input),
+    );
+    const source = await openImport(gateway);
+    const text = '{"mcpServers":{"first":{"command":"npx"},"second":{"command":"node"}}}';
+    fireEvent.change(source, { target: { value: text } });
+    const submit = screen.getByRole("button", { name: "Import" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    expect(source.readOnly).toBe(true);
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    act(() => cancel.focus());
+    await act(async () => blocked.reject(new Error("The connection was interrupted.")));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Imported 1 of 2 servers. The connection was interrupted.",
+    );
+    expect(source.getAttribute("aria-invalid")).toBeNull();
+    expect(source.getAttribute("aria-describedby")).toBeNull();
+    expect(source.readOnly).toBe(false);
+    expect(source.value).toBe(text);
+    expect(document.activeElement).toBe(cancel);
+    expect(
+      queryClient
+        .getQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY])
+        ?.map((server) => server.id.name),
+    ).toEqual(["first"]);
+    act(() => source.focus());
+    fireEvent.change(source, { target: { value: text.replace('"second"', '"remaining"') } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(source);
+    expect(create).toHaveBeenCalledTimes(2);
+    fireEvent.click(cancel);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Import from JSON" })),
+    );
+  });
+
+  it("reports an unexpected import rejection without marking valid source invalid", async () => {
+    const { gateway, create } = runtimeGateway();
+    const source = await openImport(gateway);
+    const commands = MCPServerMutationOwner.capture()!;
+    vi.spyOn(commands, "importServers").mockRejectedValueOnce(
+      new Error("The import request failed."),
+    );
+    const text = '{"mcpServers":{"native-json":{"command":"npx"}}}';
+    fireEvent.change(source, { target: { value: text } });
+    const submit = screen.getByRole("button", { name: "Import" });
+    act(() => submit.focus());
+    fireEvent.click(submit);
+    expect((await screen.findByRole("alert")).textContent).toBe("The import request failed.");
+    expect(source.getAttribute("aria-invalid")).toBeNull();
+    expect(source.getAttribute("aria-describedby")).toBeNull();
+    expect(source.value).toBe(text);
+    expect(document.activeElement).toBe(submit);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("clears an unsubmitted JSON draft when its captured Runtime retires", async () => {
     const original = runtimeGateway();
     const source = await openImport(original.gateway);
@@ -176,6 +354,9 @@ describe("JsonImport", () => {
     fireEvent.change(source, {
       target: { value: colliding.replace('"docs-tools"', '"docs-web"') },
     });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(source.getAttribute("aria-invalid")).toBeNull();
+    expect(source.getAttribute("aria-describedby")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Import" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

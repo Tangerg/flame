@@ -5,9 +5,16 @@ export const UNBOUNDED_MCP_HANDSHAKE: MCPHandshakeTimeout = Object.freeze({
   type: "unbounded",
 });
 
+export class MCPHandshakeTimeoutError extends Error {
+  constructor() {
+    super("invalid_mcp_handshake_timeout");
+    this.name = "MCPHandshakeTimeoutError";
+  }
+}
+
 export function boundedMCPHandshakeTimeout(seconds: number): MCPHandshakeTimeout {
   if (!Number.isSafeInteger(seconds) || seconds <= 0) {
-    throw new Error("MCP handshake timeout must be a positive integer");
+    throw new MCPHandshakeTimeoutError();
   }
   return { type: "bounded", seconds };
 }

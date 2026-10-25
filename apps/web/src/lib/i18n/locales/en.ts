@@ -503,7 +503,6 @@ export const en: Record<string, string> = {
   "mcp.form.description.aria": "Description",
   "mcp.import": "Import from JSON",
   "mcp.import.config": "JSON configuration",
-  "mcp.import.hint": 'Paste an MCP client config block — one or more servers under "mcpServers".',
   "mcp.import.confirm": "Import",
   "mcp.importing": "Importing…",
   "mcp.import.ok_one": "Imported {{count}} server",
@@ -515,6 +514,15 @@ export const en: Record<string, string> = {
   "mcp.import.error": "Couldn't import that config.",
   "mcp.import.nameCollision":
     'Servers "<first/>" and "<second/>" both become "<canonical/>"; give them distinct names',
+  "mcp.import.invalidJson": "Enter valid JSON.",
+  "mcp.import.invalidShape": 'Use a valid MCP configuration with a "mcpServers" object.',
+  "mcp.import.invalidName": 'Give server "<server/>" a name containing a–z or 0–9.',
+  "mcp.import.missingTransport": 'Add a command or URL for server "<server/>".',
+  "mcp.import.missingCommand": 'Add a command for server "<server/>".',
+  "mcp.import.missingUrl": 'Add a URL for server "<server/>".',
+  "mcp.import.invalidTimeout":
+    'Set a positive whole-second timeout for server "<server/>", or omit it for no time limit.',
+  "mcp.import.empty": 'Add at least one server under "mcpServers".',
   "mcp.tools.title": "Tools for {{server}}",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
