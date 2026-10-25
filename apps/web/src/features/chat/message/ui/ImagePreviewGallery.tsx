@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import {
   useId,
+  useCallback,
   useState,
   useRef,
   useEffect,
@@ -145,6 +146,7 @@ interface GalleryState {
 }
 
 interface FittedImageSize {
+  item: GalleryItem;
   width: number;
   height: number;
 }
@@ -209,6 +211,10 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [zoomIndex, setZoomIndex] = useState(0);
   const [fittedSize, setFittedSize] = useState<FittedImageSize | null>(null);
+  const currentFit = fittedSize?.item === item ? fittedSize : null;
+  // WKWebView can derive SVG natural dimensions from rendered size and page zoom.
+  // A decoder without a renderer keeps fitting independent of its own output.
+  const sourceRef = useRef<HTMLImageElement | null>(null);
   const anchorRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -232,22 +238,34 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
     if (pan.hasPointerCapture(drag.pointerId)) pan.releasePointerCapture(drag.pointerId);
   };
 
-  const measure = () => {
+  const measure = useCallback(() => {
     const pan = panRef.current;
-    const image = imageRef.current;
-    if (!pan || !image?.naturalWidth || !image.naturalHeight) return;
+    const source = sourceRef.current;
+    if (!pan || !source) return;
+    const { naturalWidth, naturalHeight } = source;
+    if (!naturalWidth || !naturalHeight) return;
     const style = getComputedStyle(pan);
     const width = pan.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const height =
       pan.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
     if (width <= 0 || height <= 0) return;
-    const fit = Math.min(1, width / image.naturalWidth, height / image.naturalHeight);
-    setFittedSize({ width: image.naturalWidth * fit, height: image.naturalHeight * fit });
-  };
+    const fit = Math.min(1, width / naturalWidth, height / naturalHeight);
+    setFittedSize({ item, width: naturalWidth * fit, height: naturalHeight * fit });
+  }, [item]);
 
+  // Captured items own viewing state even when two entries share the same source.
   useLayoutEffect(() => {
     const pan = panRef.current;
     if (!pan) return;
+    anchorRef.current = null;
+    setZoomIndex(0);
+    setFittedSize(null);
+    pan.scrollLeft = 0;
+    pan.scrollTop = 0;
+    const source = new Image();
+    sourceRef.current = source;
+    source.addEventListener("load", measure);
+    source.src = item.src;
     let width = pan.offsetWidth;
     let height = pan.offsetHeight;
     const observer = new ResizeObserver(() => {
@@ -266,11 +284,13 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
     window.addEventListener("blur", cancel);
     measure();
     return () => {
+      source.removeEventListener("load", measure);
+      sourceRef.current = null;
       observer.disconnect();
       window.removeEventListener("blur", cancel);
       stopDrag(true);
     };
-  }, []);
+  }, [item, measure]);
 
   const zoomAt = (next: number, clientX?: number, clientY?: number) => {
     if (next === zoomIndex) return;
@@ -381,7 +401,9 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
         }}
       >
         <div {...stylex.props(ig.centre)}>
+          {/* A new source gets a new element so the previous frame never shows at the new fit. */}
           <img
+            key={item.src}
             ref={imageRef}
             src={item.src}
             alt={item.alt}
@@ -389,12 +411,11 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
             width={item.width}
             height={item.height}
             draggable={false}
-            onLoad={measure}
             style={
-              fittedSize
+              currentFit
                 ? {
-                    width: `${(fittedSize.width * zoomPercent) / 100}px`,
-                    height: `${(fittedSize.height * zoomPercent) / 100}px`,
+                    width: `${(currentFit.width * zoomPercent) / 100}px`,
+                    height: `${(currentFit.height * zoomPercent) / 100}px`,
                     maxWidth: "none",
                     maxHeight: "none",
                   }
@@ -563,7 +584,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
             />
           </>
         )}
-        <ImageInspector key={gallery?.index ?? "closed"} item={active} label={activeLabel} />
+        <ImageInspector item={active} label={activeLabel} />
       </div>
     </LightboxDialog>
   );

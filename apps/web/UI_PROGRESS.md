@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. The empty new-conversation page now shows the approved Flame companion above its existing welcome heading and input. Actual Wails English light/14 px/Orange and Chinese dark/18 px/custom-blue scenes pass at 200%, including project/model menus, compact sizing, long-draft scrolling and continued input. Task return and index focus are delivered. The continuous goal stays active on a frozen UI base; main synchronization happens at intervals and primary parallel work remains untouched.
+Updated: 2026-10-25. Image galleries now preserve their pan and zoom controls while changing the selected image, and fit SVGs from independently decoded source dimensions. Final real Wails English/light/14 px/Orange and Chinese/dark/18 px/custom-blue paths pass, including native fullscreen, page 200%, image 400%, window changes, source return and continued drafts. The new-conversation Flame companion is delivered. The continuous goal remains active; synchronize main at batch intervals and preserve primary parallel work.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/empty-conversation-brand-1025`. New-conversation branding is
+is on `codex/fullscreen-reading-1025`. Gallery selection and source geometry are
+accepted on frozen base `bafb1a0c858c631dacae8414bd102d23d3831076`; publication
+and private evidence retirement follow the completed native acceptance. See
+Image gallery selection and source geometry below. New-conversation branding is
 accepted on frozen base `d3d42903d5ae669c919c3b97ece69812983d4f23`; implementation
 `ceea38aab1d8ddb5cc898e46336d83da3f89913a` is published to remote main, and
 private resource retirement is complete. Existing approved artwork, welcome/project
@@ -676,7 +679,8 @@ browser download behavior.
   trace. Native sheets, current-object/focus captures and exact saved-file bytes
   establish the stated acceptance. Native filesystem rejection, VoiceOver, OS IME,
   browser export and other-platform GUIs remain outside this pass. The recorded
-  fullscreen visibility discrepancy is unchanged.
+  fullscreen visibility discrepancy describes that historical beta.29 scene; the
+  current beta.34 image-gallery qualification is recorded below.
 - **3 files / 61 tests** pass for image/gallery, Markdown and native IPC contracts.
   `make stage-web` passes in 8.07 seconds; the supported `make check-native` passes
   in **25.80 seconds** after latest-main integration. The binary is arm64, minimum
@@ -694,6 +698,121 @@ browser download behavior.
   The private archive retains 67 UTF-8 evidence files and 21 capture hashes outside
   the repository. No migration is needed. That earlier checkpoint ended at the user's
   requested pause; the current explicit resume governs subsequent work.
+
+### Image gallery selection and source geometry
+
+Reading a reply → opening its image → changing or zooming the selection → closing
+→ continuing the original draft is now qualified in native fullscreen. This
+supersedes the old beta.29 production-fixture fullscreen qualification gap below;
+the historical visibility contradiction remains evidence about that old scene.
+Current beta.34 reaches visible, focused fullscreen with advancing frame callbacks
+both from an ordinary window and from the public fullscreen startup condition.
+Temporary hidden frames during the native transition are excluded.
+
+**Cause and ownership**
+
+- The original `ImageInspector key={gallery.index}` remounted the pan area and
+  zoom controls on every selection. Actual native ArrowRight from Zoom in left
+  focus on BODY, still there in the next independent observation. The existing
+  lightbox Portal now owns the inspector's open lifetime. Captured `GalleryItem`
+  identity resets viewing state, including distinct entries sharing one URI;
+  controls and the pan area keep their nodes and focus.
+- The current item owns its fitted dimensions; another item's dimensions never
+  render onto its new image. Its source owns the displayed image element. The
+  existing resize lifecycle cancels a drag and resets fit/scroll as before.
+- Native acceptance rejected two intermediate sizing approaches. Re-reading the
+  displayed SVG's natural dimensions fed fitted/zoomed output back into input;
+  a later per-visible-image cache still doubled a 240 × 96 source after switching
+  away and back at page 200%. In the same native scene a detached decoder read
+  240 × 96 at page 100%, 150% and 200%, while the rendered element's readout
+  followed CSS size and page zoom. The final current-item lifecycle owns one
+  detached browser Image resource, installs its load handler before assigning
+  the source, measures that source and removes the handler on selection/close.
+  It is never appended to the document. This removes the competing dimension
+  owner without parsing SVG, guessing page zoom, adding hidden images or retrying
+  focus/animation. The independent native observations establish this host's
+  behavior; [WebKit's image sizing implementation](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/html/HTMLImageElement.cpp)
+  and [Apple's pageZoom contract](https://developer.apple.com/documentation/webkit/wkwebview/pagezoom)
+  supplied implementation context, not substitutes for those observations.
+- `ImagePreviewGallery.tsx` is the only changed product file. Existing modal
+  completion, shared controls, image save, theme, Runtime and command owners
+  remain in place. No dependency, locale, asset, storage or native preference
+  changes are needed.
+
+**Verification**
+
+- Final `ImageBlock`, `MermaidViewer` and `lightbox-dialog` suites pass
+  **3 files / 22 tests** plus all **13** selected Web gates in **20.81 s**:
+  typecheck, lint, format, knip, design-system, tokens, chrome, styles, classes,
+  locales, layers, port-surface and bundle. Four added regressions cover stable
+  pan/control focus, independent SVG geometry, late retired source loads and
+  same-URI item resets. Final assertions against the frozen original produce
+  **4 failures / 10 passes**; against the intermediate displayed-image cache,
+  **2 failures / 12 passes**. Both restore exact final source bytes.
+- Final actual EN/light/14 px/Orange: ordinary **1440 × 900** → native fullscreen
+  **1921 × 1081**; wide 240 × 96 → image 125% at 300 × 120 → portrait 360 × 540
+  → wide 240 × 96. Pan ID 6 and Zoom in ID 8 stay constant. Leaving and reentering
+  fullscreen preserves those nodes, resets image zoom to 100% and restores the
+  source fit. Pointer Close, Tab/Return Close and Escape each remove the popup,
+  restore original Inline architecture ID 13 and retain entry scroll **57**.
+  Original Composer ID 2 continues its exact draft/caret **30 → 41**.
+- Final actual ZH/dark/18 px/custom-blue/reduced-motion starts directly in native
+  fullscreen, visibly focused with advancing frames. Twenty native Zoom In
+  commands reach page **200%**, **960 × 540 CSS px**. Wide stays 240 × 96 after
+  repeated selection, portrait fits 286 × 429, and the same pan/zoom nodes retain
+  focus. Image 400% gives 1144 × 1716; native drag changes pan scroll from
+  107/662 to 212/812, then local Down/Right to 216/866 without changing images.
+  Tab reaches the disabled maximum zoom control; Left changes image and resets
+  zoom/scroll to 100% and 0/0. Actual Size restores source dimensions. Pointer,
+  keyboard Close and Escape return to original source ID 16 at scroll **800**.
+  Original Composer ID 2 continues exact Chinese draft/caret **7 → 10**.
+- A separate final EN/light scene has no diagnostic DOM, frame loop or observation
+  timers. It uses the existing production native chrome owner and the unchanged
+  approved companion PNG as a second captured image. Ordinary/fullscreen zoom,
+  SVG↔PNG selection and repeated return keep the focused Zoom in action, reset
+  fit to 100%, and show the PNG within the reader. Pointer, keyboard Close and
+  Escape restore the original source; its exact draft continues. AX and native
+  screenshots qualify that scene; it makes no private DOM-identity claim.
+- Final input inventory: **5,771** non-Markdown files, aggregate SHA-256
+  `81ac5b9ede9a2c141e15b404ee682b9a60587ce8a18c65d11bb0be794c6f2184`.
+  All **1,210** final private artifacts, including three real native hosts,
+  match through acceptance. Final diagnostic/clean assets build serially in
+  **2.18 s / 2.14 s**. Both bounded edit-only Claude CLI tasks were reviewed;
+  the second reached its **120.85 s** limit after writing the two permitted
+  files. Primary corrected test setup, reviewed the actual diff and completed
+  every stated check and native path. Earlier build, lint and snapshot-guard
+  failures remain excluded evidence; no check or assertion was disabled.
+- Not verified by these deterministic presentation scenes: live provider Send,
+  real Runtime image production, another image-save round, VoiceOver speech,
+  OS IME composition, RTL or another platform. No browser visual suite,
+  performance benchmark or global fullscreen/Escape workaround was introduced.
+  The broader unchanged product checks were not repeated for this two-file fix.
+
+**Scoped better-interface review**
+
+Scope: existing reply image reading and return; React 19, Base UI lightbox,
+shared controls, StyleX and semantic tokens. Recon used AGENTS.md,
+PROJECT_RULES.md, DEVELOPMENT.md and the Web/Desktop/fixture READMEs. ZCode's
+`ChatMediaAttachmentPreviewDialog` supplied bounded-reader context; installed
+Base UI transition/focus code supplied actual lifecycle evidence.
+
+| Domain        | Evidence inspected                                                                                                                      | Result                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Accessibility | Gallery, shared lightbox/control contracts; native Tab, direction keys, endpoint focus, three close paths, original source/draft return | Focus finding fixed; VoiceOver not verified                        |
+| Layout        | Ordinary/fullscreen sizing, page 200%, image 400%, source aspect ratios, window changes and visible actions                             | SVG feedback finding fixed in its dimension owner                  |
+| Writing       | Existing source title, 1/2 counter, localized action names and alt identity                                                             | Clear in inspected states; no extra copy                           |
+| Typography    | Existing header, counter and zoom tray at 14/18 px and page 200%                                                                        | Clear in inspected states                                          |
+| Colors        | Existing media scrim, icon/text and Orange/custom-blue focus indicators in both scenes                                                  | Clear in inspected states; no palette change or new contrast claim |
+| UI polish     | Shared modal close lifecycle, reduced-motion scene, zoom/drag/resize feedback and clean PNG/SVG scene                                   | Clear in inspected states                                          |
+
+| Severity | Domain        | Location                                                   | Before                                                                     | After                                                                         | Why                                                              |
+| -------- | ------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| HIGH     | Layout        | `src/features/chat/message/ui/ImagePreviewGallery.tsx:241` | Displayed SVG dimensions feed back, shrink or grow after switching/zooming | Current source decoder supplies dimensions; only current item renders its fit | Repeated reading changes the image's apparent size               |
+| MEDIUM   | Accessibility | `src/features/chat/message/ui/ImagePreviewGallery.tsx:587` | Index key retires the focused zoom/pan control into BODY                   | Portal owns open lifetime; captured item resets viewing state                 | Selection must retain a usable keyboard destination (WCAG 2.4.3) |
+
+**Approve**, limited to the inspected domains, states and flows above. No
+remaining actionable finding was observed there. Continue from fresh evidence;
+do not reopen the delivered selection, source-size or fullscreen return fixes.
 
 ### Conversation import file reads
 
@@ -7561,7 +7680,7 @@ For captured-image identity and native window controls:
 - Native Window → Left plus twenty 0.05 page-zoom increments produced a 561 CSS px viewport at 200%. The host reported a 36 px controls end and published a 42 px gutter; the fixed name began at x=54. Its long name used a 350 px visible width for 892 px of text, while its full accessible title and 2/2 status remained available. Download and Close stayed inside the viewport at x=465/509 with 40 px controls. Window/page changes reset fit through the existing image owner.
 - Chinese/light/14 px/Flame Orange measured x=90 at Actual Size and x=54 at the same narrow 200% viewport. Its long identity used 358 px for 686 px of text; localized image actions and the counter remained available. Global Right switched the selected image. Explicit Close returned to the original first trigger, retaining the 142 px entry scroll position before resizing. Actual Size through the native menu restored the 78 px gutter and x=90. Return after later resizing retained source focus; exact scroll preservation across changed geometry is not claimed.
 - A separate scene omitted diagnostic DOM/listeners. Stepped Tab visited Download, Close, Previous, disabled Next, disabled Zoom out, Zoom in and Download again. The exposed native fullscreen button retained the long-named preview; stable native screenshot/AX observations and subsequent previous-image/125% actions passed. The host's fullscreen geometry cleared the gutter, restoring the ordinary 12 px toolbar inset. Ordinary-window explicit Close also returned to the second source.
-- Fullscreen close completion is not qualified: after Escape, the conversation reappeared in AX while a closing image remained visible/exposed until leaving fullscreen; then the popup disappeared and focus returned to the second source. A diagnostic scene also closed during fullscreen observations. Preserve these as follow-up evidence rather than attributing them to the inset or adding focus/animation workarounds. The native menu's Toggle Full Screen did not visibly transition in the clean scene; the exposed window button did. The follow-up below narrows the qualification without claiming a component diagnosis.
+- At this historical checkpoint fullscreen close completion was not qualified (the current beta.34 qualification is recorded in Image gallery selection and source geometry above): after Escape, the conversation reappeared in AX while a closing image remained visible/exposed until leaving fullscreen; then the popup disappeared and focus returned to the second source. A diagnostic scene also closed during fullscreen observations. Preserve these as follow-up evidence rather than attributing them to the inset or adding focus/animation workarounds. The native menu's Toggle Full Screen did not visibly transition in the clean scene; the exposed window button did. The follow-up below narrows the qualification without claiming a component diagnosis.
 - Private scenes used canonical captured-message projection and production image/lightbox components, replacing only two inert Markdown SVG payloads with coordinate grids and one alt label with a long identity. They ran at the real Wails asset origin with the existing native window/zoom owner. The first external-preview-origin attempt did not qualify WindowChrome IPC and is excluded from geometry diagnosis. A private input-matching setup error occurred before the first build and was corrected. No live Runtime, provider, external image fetch or user data was used. Native download/save, VoiceOver, IME composition, pixel contrast and other-platform GUIs were not run; no browser/visual suite or performance baseline ran.
 - Cleanup completed: all 15 owned process records exited, the bundle was unregistered, and newly created Caches/WebKit directories passed UID/birth checks before removal. HTTP storage, preferences and saved state were absent. The private root, fixtures, pinned source, diagnostics, overlays, binaries, disposable data, native captures, CLI prompts/reports and logs were deleted. Shared outputs/dependency caches, read-only references, user data and unrelated worktrees/processes were preserved.
 
@@ -7578,7 +7697,7 @@ For the subsequent fullscreen lifecycle investigation:
 - Repository and installed Base UI 1.9 source retain one close lifecycle: `useOpenStateTransitions` waits through `useAnimationsFinished`, which observes finite CSS animations before unmounting. Flame's shared modal uses 80 ms closing transitions for opacity, scale and translate. No product source was changed during this investigation.
 - A separate real Wails host served a pure HTML/CSS control through its native asset origin, with read-only public window facts. At ordinary size, opacity alone, all three properties and an HTML dialog's Escape close completed; focus returned to its opener. Button and keyboard fullscreen attempts returned to ordinary state in that scene, so their transient frames were not accepted as stable fullscreen evidence.
 - Using Wails' public `StartState: WindowStateFullscreen` as a private initial condition produced a stable 1513 by 950 CSS px window: native fullscreen/visible/focused were all true and the document was visible. The three-property transition and HTML modal close completed. Escape also exited native fullscreen. Installed Wails beta.29's `cancelOperation:` calls its AppKit superclass unless `DisableEscapeExitsFullscreen` is set; Flame retains that default. These results do not justify a global Escape-policy change.
-- The pinned pre-inset gallery was then built into the canonical production fixture. Before opening any image, this native window reported fullscreen=true, visible=false and document visibility=hidden. Frame callbacks stayed at 39 with their last timestamp 1468 while diagnostic timers continued beyond 54 seconds. Raise did not restore visibility; selecting the exact Window-menu entry restored native focus but still reported visible=false. Dock access timed out. The user then confirmed bringing it to the foreground and keeping it visible. A native screenshot showed the fullscreen fixture, but the same visibility values and frame count persisted beyond 360 seconds. This discrepancy does not establish that the user failed to activate it or that a product dialog failed; production fullscreen close remains unqualified. Do not request the same activation again.
+- The pinned pre-inset gallery was then built into the canonical production fixture. Before opening any image, this native window reported fullscreen=true, visible=false and document visibility=hidden. Frame callbacks stayed at 39 with their last timestamp 1468 while diagnostic timers continued beyond 54 seconds. Raise did not restore visibility; selecting the exact Window-menu entry restored native focus but still reported visible=false. Dock access timed out. The user then confirmed bringing it to the foreground and keeping it visible. A native screenshot showed the fullscreen fixture, but the same visibility values and frame count persisted beyond 360 seconds. This discrepancy does not establish that the user failed to activate it or that a product dialog failed; production fullscreen close remained unqualified at that beta.29 checkpoint. The current beta.34 qualification is recorded above. Do not request the same activation again.
 - Cleanup completed after the user expanded the UI scope: all six owned process records exited, the bundle was unregistered, new Caches/WebKit directories passed UID/birth checks before removal, and HTTP storage, preferences and saved state were absent. The private fullscreen-control root, HTML/CSS controls, pinned source, diagnostics, overlay, binaries, fixture output and logs were deleted. No product source, native setting, dependency or user data was changed. Shared outputs, references and unrelated processes remain intact.
 
 For settings width and model-role composition:
@@ -8013,7 +8132,7 @@ Bounded dialogs now retain their independent task scope through backing-material
 
 The settings-width investigation is implemented and natively qualified above. Preserve root-relative retreat conditions and the model roles' existing `SettingsGroup` containment; do not restart the former missing-container hypothesis or the locked-Mac setup. This qualification does not cover every container query in the application. Consecutive menu dismissal is now separately qualified by the immediate-popup repair above. Preserve primitive-owned focus and the shared dismissal signal rather than adding a model-specific focus policy.
 
-The captured-image toolbar repair is implemented and natively qualified above. Preserve the existing image identity, gallery, fit/zoom/pan and ordinary source-return owners. Fullscreen close-transition completion remains unqualified: the visible plain native control passed, while the pinned production fixture's native/WebKit visibility contradicted its captured screen even after confirmed manual activation. Isolate that native occlusion discrepancy before attributing close behavior to a component. Do not repeat activation requests or add focus retries, animation timeouts or native preference workarounds from this evidence. The previously recorded hidden-zoom scrolling limit is separate.
+The captured-image toolbar repair remains delivered. Image gallery selection and source geometry above now qualifies final beta.34 native fullscreen close/return from both dynamic entry and fullscreen startup. Keep the historical beta.29 visibility contradiction as evidence about its original fixture, not a current unresolved close defect. Preserve native Escape policy and primitive-owned completion; do not add focus retries, animation timeouts or native preference workarounds. The previously recorded hidden-zoom scrolling limit is separate.
 
 Saved-report catalog/reading/return, distinct read states and named removal are now implemented and qualified above. Preserve original command identity, fresh-membership reconciliation and exact number semantics. Existing plugin management now also qualifies catalog priority and named Configure/Stage tasks. Preserve captured identity, strict command payloads and shared focus owners. The user chose existing UI only; do not add backend-only pages or recreate completed Memory, Schedules, report or package-editor flows.
 
