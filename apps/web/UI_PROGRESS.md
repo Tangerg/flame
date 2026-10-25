@@ -1814,7 +1814,35 @@ qualified SVG entry and continue the native geometry investigation after deliver
 
 **Delivery receipt**
 
-Publication and exact owned resource retirement are pending.
+Implementation `99dfe135b582dbfa767bda46ab230629768a7e42` is published to remote main
+through merge `fa7e9ce01c5f0866f85113c7976802d8727ca879`. Publication integrates
+14 incoming commits / 65 paths through `88098fa9f8a06d3e875047dd6c678d27279a2a96`
+without conflicts. The four qualified implementation/test files remain byte-identical.
+Affected Web typecheck and `make check-native` pass serially in **27.04 s**;
+unchanged native UI tasks were not repeated for the incoming Runtime/Scope work.
+The merged **5,783 non-Markdown inputs** have SHA-256
+`db1eed65a4f446f7f119b08ba4f5e6d62aef226e01e0cc31dee6b05fc05ab37c`. Nine product resources
+retain their baseline bytes; Memory and Schedules retain the two canonical incoming
+main component resources. No cleanup restores obsolete versions.
+
+Independent remote verification matches the published merge, with a clean owned
+checkout and **0 / 0** commits ahead/behind at publication. All **41** recorded
+processes are dead. Seven new checkout output paths, eight owned Library paths
+and four bundle-temp paths are removed; all four app registrations are absent.
+All **36** output-presence baselines and exact inventories of the **three**
+original output files are restored, including the original native-check binary.
+The **11** accepted product resource hashes remain intact. The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-svg-reading-1026-2LZCf5`
+is absent. Primary parallel work, user data and read-only references remain preserved.
+
+The independently round-trip-verified in-memory evidence archive retains **215 UTF-8
+files**, **116 screenshot digests** and original binary metadata; gzip SHA-256
+`211c89f66cc5a7a3835ec7101ead84f22628b4e64a8fabe1117367f892ca1989`. Accepted input maps retain
+all **1,794** compiled assets, **32** native inputs, **eight** module artifacts and
+**three** read-only references. A REPL cross-realm prototype refusal was resolved
+by comparing every exact sorted path/hash entry; no source difference was ignored.
+This documentation-only receipt changes no tested product source. The remaining
+native cross-geometry boundary above is the next investigation, not a completed fix.
 
 ### Image gallery selection and source geometry
 
