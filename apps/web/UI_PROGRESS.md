@@ -8,8 +8,9 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/diff-reading-identity-1025`. Diff reading identity and shared list sizing
-are accepted on frozen base `d0ace817fd61cf4834ec259853a97094e16d96cb`; publication
-and owned evidence retirement are pending. See Diff reading identity and native list sizing below.
+are accepted on frozen base `d0ace817fd61cf4834ec259853a97094e16d96cb`; implementation
+`8c870b082a8336677963fa86da93335ab86bd3ea` is published to remote main and
+owned evidence retirement is complete. See Diff reading identity and native list sizing below.
 Formatted conversation Find is
 accepted on frozen base `50a3d3483c15d711da850f8357d30766ad1dcc2c`; implementation
 `fd6a07df6645e593de9359c93a0894194fa0bdfa` is published to remote main, and
@@ -4965,8 +4966,22 @@ Verification (2026-10-25):
   performance benchmark runs.
 
 **Approve** for the inspected list sizing and complete Diff reading/return task.
-Publication and final owned evidence retirement remain pending. Preserve existing
-brand, Composer, comparison, navigation and Runtime owners for the next batch.
+Implementation `8c870b082a8336677963fa86da93335ab86bd3ea` is published to remote main.
+The publication sync finds main unchanged from the frozen base, so no unrelated
+validation is repeated. Independent retirement verifies the exact remote commit,
+a clean owned checkout and zero commits ahead/behind, all **23 recorded processes
+dead**, **four apps** unregistered, **36 output-presence baselines**, **three
+original file hashes** and **11 accepted product resources** preserved. Cleanup
+removes **eight checkout outputs**, **eight owned Library paths** and **four
+bundle-temp paths**. The original native-check binary and UI Vitest results are
+restored byte-for-byte; the cache tag already matches. The exact private root
+`flame-ui-diff-identity-1025-b8Fpty` is absent. The independent archive round trip
+checks **106 UTF-8 files / six screenshot digests**, gzip SHA-256
+`704b07b681792ec96a3b5102449122b39c64b56fed3f3a55c57cfd23f751b495`; accepted
+maps bind **1,209 final artifacts** and **12 native input files**. This Markdown-only
+receipt changes no qualified product source. Preserve existing brand, Composer,
+comparison, navigation and Runtime owners for the next batch; the continuous goal
+remains active.
 
 ## Retained workspace and result views
 
