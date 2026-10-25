@@ -1930,7 +1930,24 @@ accelerator before treating the CUA key result as a product defect.
 
 **Delivery receipt**
 
-Native geometry publication and exact owned resource retirement are pending.
+Implementation `e99eb58c800cae12f831e9756607b3c24505f9fd` is published to remote main.
+The single publication fetch found no new commits beyond frozen main
+`8c3bd32655b6d1f785d9bbd3c65cadd4a2100bac`, so no unrelated integration rerun
+was started. Independent remote verification matches the implementation hash,
+with a clean owned checkout and **0 / 0** commits ahead/behind at publication.
+
+All **13** recorded processes are dead. Seven new checkout output paths, eight
+owned Library paths and four bundle-temp paths are removed; all four native app
+registrations are absent. All **36** output-presence baselines and exact inventories
+of the **three** original output files are restored, including the native-check
+binary. All **11** product resources retain their accepted canonical main bytes.
+The exact private root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-reader-geometry-1026-ndQ5qK`
+is absent. Primary parallel work, user data and all four read-only references remain
+preserved. The independently round-trip-verified in-memory evidence archive retains
+**111 UTF-8 files**, **50 screenshot digests** and original binary metadata; gzip
+SHA-256 `4a9adf83f024502b2391fec5bd672dee7da8bc83fa6258b7aa3fb9244396499c`. This documentation-only
+receipt changes no tested product source. Preserve the delivered SVG/gallery and
+source-return owners; continue from new actual reading/Dock evidence.
 
 ### Image gallery selection and source geometry
 
