@@ -1,21 +1,21 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Client diagnostics now pairs each signal with its accepted-read count, keeps unknown counts distinct from zero and corrects histogram sample-count units. Native EN, ZH 18 px/200% and uninstrumented DE custom-base reading/return tasks qualify the change. See Client diagnostics reading. The stronger optional paper material remains delivered.
+Updated: 2026-10-26. Background-task progress now keeps complete identities and literal details inside one named keyboard reader, with viewport-bounded popup geometry and accessible state glyphs. Native EN, ZH 18 px/200% and uninstrumented DE custom-theme reading/update/return tasks qualify the change. See Background-task progress reading. The stronger optional paper material remains delivered.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/diagnostics-reading-1026`. Client diagnostic navigation, snapshot
-reading and metric dimensions are qualified on frozen base
-`b03e21cf463f2a18246495c9d5d0b920d0cfc335`; see Client diagnostics reading for
+is on `codex/task-progress-reading-1026`. Background-task progress reading,
+keyboard access and viewport containment are qualified on frozen base
+`0714ae287a0c7e3cafbd25cfed200945e2c1d25a`; see Background-task progress reading for
 owners, original counterexamples, native tasks and verification limits.
-Implementation `374e849933d9efaef7782d54602da4ceb5b476f6` is published to remote main;
-independent publication checks observe that exact commit and a clean 0/0 checkout.
-All owned acceptance resources are retired; see the receipt below. The primary
-parallel checkout remains outside this batch. The user's latest instruction stops further
+Publication and owned-resource retirement are pending below. The primary parallel
+checkout remains outside this batch. The user's latest instruction stops further
 Claude CLI calls; edits and verification are owned directly by Codex.
+Client diagnostics implementation `374e849933d9efaef7782d54602da4ceb5b476f6` and
+receipt `0714ae287a0c7e3cafbd25cfed200945e2c1d25a` remain published and retired.
 Trajectory reading implementation `92afc65f3553a6584c807b3adc882b531babceae` and
 receipt `b03e21cf463f2a18246495c9d5d0b920d0cfc335` remain published and retired.
 MCP JSON import implementation `2b70ee84024cece612cccf31fabaf624a4df148c` and
@@ -27,9 +27,9 @@ Shared settings focus/pointer implementation
 `55e67879d29ae57168b97b3f62e9aa90902ee04b` remain published and retired.
 Appearance labels/search implementation
 `40cbae863434ef53629071cfe75ccf86c46297b6` and its receipt remain delivered.
-The observed diagnostic hierarchy and histogram-unit defects are resolved below.
+The observed task-reading and diagnostic hierarchy/unit defects are resolved below.
 Continue from fresh reading/Dock task evidence after publication; do not reopen
-delivered appearance, import, Trajectory or diagnostic work without a new finding.
+delivered appearance, import, Trajectory, diagnostic or task-reading work without a new finding.
 Earlier paper implementation `3c0c65e1d9b44a44600022bd56d46c1293a01ee9` and
 receipt `35c70c0a6e7da4314e8c5c39e525dcc314412279` are published to remote main,
 with owned resources retired. Its stronger material, palette bounds, shared
@@ -4690,6 +4690,102 @@ installation is replaced here. No protocol or persisted-data migration is needed
 VoiceOver, OS IME, measured contrast, other-platform GUIs, browser/visual suites,
 performance benchmarks and independent unchanged Runtime/CLI/SDK/shared UI
 suites were not run.
+
+## Background-task progress reading
+
+`features/workspace/ui/TasksPill.tsx` keeps complete task names and literal
+message/error line breaks inside the existing bounded progress popup. One grid
+aligns its state glyph with the task body instead of independently offsetting
+messages and meters by a fixed glyph-column guess. Names and source tokens wrap;
+percentages keep their existing clamp and quiet numeric role. The popup owns its
+available width/height, while its body shrinks beneath the retained heading.
+
+The shared ScrollRegion supplies the named, focusable reading boundary. Existing
+Base UI Popover behavior owns entry, Escape and trigger return; no keyboard handler,
+focus effect, scroll-position cache, new page or modal model is added. Three
+localized state names expose the existing running/completed/failed glyphs to the
+accessibility tree without adding visible labels. All eight catalogs retain their
+unrelated values. Task creation, status, ordering, head/badge selection, progress
+clamping, generation safety and automatic retirement retain their existing owners;
+no Runtime, SDK, protocol, dependency, persistence or shared-primitive change occurs.
+
+Read-only ZCode TaskTitleOverflowText explicitly treats full task identity as a
+reading concern; its hover marquee, copies, masks and timers are not appropriate
+for this bounded Flame reader. HeroUI's actual interactive Popover and bounded
+ScrollShadow examples support named content and a local reading viewport. Existing
+Radix, color, typography and Ace workspace research is reused. Better-layout and
+better-accessibility guide complete identities, one content column, a keyboard
+reading target and a return to the actual entry. The existing Flame surface,
+Orange and custom theme roles remain authoritative.
+
+| Severity | Location                    | Before                                                                                                 | After                                                                     | Why                                                         |
+| -------- | --------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| HIGH     | TasksPill identity/details  | A 320 px reader has 1,640 px of source width; the primary name is ellipsized with no full reading path | Complete identity, messages and errors wrap in the bounded body           | Full identity and 320 px reading must stay reachable        |
+| HIGH     | TasksPill scrolling content | An unnamed, non-focusable body leaves focus on the outer popup; native Page Down stays at zero         | The existing shared named reader receives focus and native page scrolling | WCAG 2.1.1; later task records need a keyboard path         |
+| MEDIUM   | TasksPill state glyphs      | All task state icons are hidden from the accessibility tree                                            | Each existing glyph has its localized state name                          | Non-text state evidence must be readable as well as visible |
+
+Verification (2026-10-26):
+
+- The original readout/lifecycle baseline passes **2 files / 8 tests**. The original
+  fails three added presentation regressions and passes the empty-entry case. Final
+  **3 files / 12 tests** pass: named popup/reader, full literal material, all three
+  states, determinate/indeterminate/failed percentages, retained reader/position
+  through progress updates and later draft focus. Happy DOM position assertions
+  establish retained state, not native layout; the comparisons below supply that.
+- All **16 Web gates**, make check-native and serial candidate/clean assets pass
+  (**49.78 seconds**). All eleven prebuilt plugin resources retain their bytes.
+  Full make check, the whole Web test suite, browser/visual suites, performance
+  benchmarks and unchanged independent shared UI/Runtime/CLI/SDK suites are not run.
+  The previously recorded unrelated shorthand conflict is unchanged and not
+  rerun or claimed passing. Existing chunk/macOS/duplicate Objective-C warnings
+  remain nonfatal. The final README correction only clarifies the existing
+  store/readout ownership and changes no accepted product source.
+- Original actual Wails beta.34 EN/light/14 px/Orange at **1440 × 900** shows a
+  **320 × 280 px** scroll body with **1,640 px** source width, no region name,
+  tabindex -1 and Page Down scroll **0 → 0**. Its single-line identity occupies
+  **245 px** while requiring **2,181 px**. The candidate has source width **320**,
+  full wrapped identity and a named region at tabindex 0; Page Down reaches
+  **240 px**, then spaced page requests reach the last task at **999 px**.
+  Wheel reaches **280 px**. Escape restores the real task trigger, and the same
+  Composer continues Task reading 保留 to Task reading 保留 continued; zero observed
+  errors. An ineffective Cmd-Down probe and coalesced rapid page requests are not
+  end-navigation qualifications.
+- ZH/dark/18 px/pale accent/contrast 100/motion Off uses native Left and **200%**
+  keyboard zoom. The observed viewport is **561 × 475 CSS px**, without document
+  overflow; popup **320 × 309**, body **320 × 280** with equal source width.
+  All three state names appear in the native tree. A delayed source update changes
+  progress **46 → 78%** and message text while preserving the same reader, focus,
+  **260 px** native position and Composer. Page reading reaches the last task at
+  **1,417 px**. Escape returns to the trigger; Return reopens the named reader at
+  its normal initial position, and wheel reading works. The same draft continues
+  任务阅读 保留 to 任务阅读 保留 继续, then Actual Size is restored; zero observed errors.
+- The **uninstrumented** DE/18 px/warm custom base (#eee7db/#232323), purple and
+  motion Off app repeats native Left/200%, named state/reader access, complete
+  wrapped source, **46 → 78%** update, spaced Page Down to the last record, wheel,
+  Escape/Return and continued draft Fortschritt lesen 保留 weiter. Actual Size is
+  restored before quit. No DOM identity, numeric geometry/scroll or error-count
+  claim is made for this clean app.
+
+The private fixture supplies canonical TaskEntry read inputs through the existing
+readout port; its frozen settled rows and explicit update do not qualify live
+background execution or retirement timers. The real task store's generation,
+settlement and retirement behavior is covered separately by its existing tests.
+All native applications use isolated homes; no live Runtime, provider request,
+Tool, Send or user-task mutation occurs. A private dependency-resolution failure
+is repaired before baseline acceptance; the read-only observer initially selected
+the trigger and is corrected before geometric claims. Diff-only locator and REPL
+probes are excluded. VoiceOver speech, OS IME, RTL, other platform GUIs and fresh
+numeric rendered contrast remain unqualified. No migration is needed.
+
+Scoped design review retains the current reading scale and literal line rhythm,
+aligns task bodies and meters, keeps one visible heading and primary identity,
+and uses existing semantic colors and reduced-motion behavior. Native reading,
+update and return plus 320 px bodies/200% windows qualify micro-interaction and
+responsive improvements. Flame's workbench and surface roles supply the visual
+identity; reference-specific marquee or card effects are not copied. **Approve**
+for these inspected tasks. This does not establish whole-product or award-level
+completion. No Claude CLI or subagent was used; the continuous goal remains active.
+Publication and exact resource retirement follow delivery.
 
 ## Client diagnostics reading
 

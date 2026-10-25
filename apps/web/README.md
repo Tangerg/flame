@@ -49,6 +49,12 @@ views are invisible, inert and excluded from the accessibility tree. The existin
 viewport keeps its native reading position without a second scroll-state cache;
 Session changes and view retirement retain their existing lifetime boundaries.
 
+Background-task progress keeps complete names, messages and errors in one named
+keyboard reader. The popup and its scrolling body fit the available viewport;
+progress updates retain the same reader and native position. Task lifecycle
+and automatic retirement remain with the producing task store; the existing readout
+owns percentage clamping.
+
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of

@@ -6,34 +6,63 @@ import { Icon, type IconName } from "@/ui/index";
 import { Popover } from "@/ui/index";
 import { ProgressBar } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
-import { IconButton, toneInk, vocab } from "@flame/ui";
+import { IconButton, ScrollRegion, toneInk, vocab } from "@flame/ui";
 import {
   type TaskEntry,
   type TaskStatus,
 } from "@/features/workspace/application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "@/features/workspace/application/taskReadout";
-const STATUS_ICON: Record<TaskStatus, { name: IconName; tone?: "accent" | "negative" }> = {
-  running: { name: "activity" },
-  succeeded: { name: "circle-check", tone: "accent" },
-  failed: { name: "circle-x", tone: "negative" },
+const STATUS_ICON: Record<
+  TaskStatus,
+  { name: IconName; label: string; tone?: "accent" | "negative" }
+> = {
+  running: { name: "activity", label: "tasks.status.running" },
+  succeeded: { name: "circle-check", label: "tasks.status.succeeded", tone: "accent" },
+  failed: { name: "circle-x", label: "tasks.status.failed", tone: "negative" },
 };
 
-const GLYPH_COLUMN = "18px";
-
 const p = stylex.create({
-  panel: { width: "calc(var(--spacing) * 80)", borderRadius: radius.xl },
-  header: { paddingInline: space.s3, paddingTop: space.s2, paddingBottom: space.s1 },
-  scroller: { maxHeight: "min(280px, var(--available-height))", overflowY: "auto" },
-  row: { paddingInline: space.s3, paddingBlock: space.s2 },
+  panel: {
+    display: "flex",
+    flexDirection: "column",
+    width: "calc(var(--spacing) * 80)",
+    maxWidth: "var(--available-width)",
+    maxHeight: "var(--available-height)",
+    borderRadius: radius.xl,
+  },
+  header: { flexShrink: 0, paddingInline: space.s3, paddingTop: space.s2, paddingBottom: space.s1 },
+  scroller: { minHeight: 0, maxHeight: "280px", paddingBlock: 0 },
+  row: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    columnGap: space.s1_5,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
+  },
+  mark: { display: "inline-flex", marginTop: space.s1 },
+  body: { minWidth: 0 },
+  line: { alignItems: "flex-start" },
   label: {
     flex: 1,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     color: color.fg,
     fontWeight: weight.semibold,
   },
-  percent: { fontFamily: "var(--font-mono)", color: color.fgFaint },
-  detail: { marginTop: space.s0_5, paddingLeft: GLYPH_COLUMN, color: color.fgMuted },
+  percent: {
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+    color: color.fgFaint,
+  },
+  detail: {
+    marginTop: space.s0_5,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    color: color.fgMuted,
+  },
   error: { color: color.negative },
-  meter: { marginTop: space.s1_5, marginLeft: GLYPH_COLUMN },
+  meter: { marginTop: space.s1_5 },
   pulse: { animation: motion.pulseDot },
 });
 
@@ -59,6 +88,7 @@ export function TasksPill() {
         }
       />
       <Popover.Content
+        aria-label={t("tasks.header")}
         side="top"
         align="start"
         sideOffset={6}
@@ -67,23 +97,24 @@ export function TasksPill() {
         <SectionLabel className={stylex.props(p.header).className}>
           {t("tasks.header")}
         </SectionLabel>
-        <div {...stylex.props(p.scroller)}>
+        <ScrollRegion label={t("tasks.header")} styles={p.scroller}>
           {readout.tasks.map((task) => (
             <TaskRow key={task.id} task={task} />
           ))}
-        </div>
+        </ScrollRegion>
       </Popover.Content>
     </Popover.Root>
   );
 }
 
 function TaskRow({ task }: { task: TaskEntry }) {
-  const { name, tone } = STATUS_ICON[task.status];
+  const t = useT();
+  const { name, label, tone } = STATUS_ICON[task.status];
   const percent = taskProgressPercent(task);
 
   return (
     <div {...stylex.props(p.row)}>
-      <div {...stylex.props(vocab.line)}>
+      <span role="img" aria-label={t(label)} {...stylex.props(p.mark)}>
         <Icon
           name={name}
           size="xs"
@@ -94,18 +125,22 @@ function TaskRow({ task }: { task: TaskEntry }) {
             ).className
           }
         />
-        <span {...stylex.props(p.label, vocab.truncate, typeStep.uiMd)}>{task.label}</span>
-        {percent !== null && <span {...stylex.props(p.percent, typeStep.uiSm)}>{percent}%</span>}
+      </span>
+      <div {...stylex.props(p.body)}>
+        <div {...stylex.props(vocab.line, p.line)}>
+          <span {...stylex.props(p.label, typeStep.uiMd)}>{task.label}</span>
+          {percent !== null && <span {...stylex.props(p.percent, typeStep.uiSm)}>{percent}%</span>}
+        </div>
+        {task.message && <div {...stylex.props(p.detail, typeStep.uiSm)}>{task.message}</div>}
+        {task.error && <div {...stylex.props(p.detail, p.error, typeStep.uiSm)}>{task.error}</div>}
+        {percent !== null && (
+          <ProgressBar
+            value={percent}
+            label={task.label}
+            className={stylex.props(p.meter).className}
+          />
+        )}
       </div>
-      {task.message && <div {...stylex.props(p.detail, typeStep.uiSm)}>{task.message}</div>}
-      {task.error && <div {...stylex.props(p.detail, p.error, typeStep.uiSm)}>{task.error}</div>}
-      {percent !== null && (
-        <ProgressBar
-          value={percent}
-          label={task.label}
-          className={stylex.props(p.meter).className}
-        />
-      )}
     </div>
   );
 }
