@@ -263,6 +263,69 @@ it("retains only the parent readers on the explicit inspection path", async () =
   expect(navigator().get().subagent).toBeNull();
   expect(parent.isConnected).toBe(false);
   expect(inspection.result.current?.origin).toBe(origin);
+  expect(document.activeElement).toBe(
+    within(screen.getByRole("group", { name: "Subagents" })).getByRole("button", {
+      name: /Review request headers/,
+    }),
+  );
+  unmount();
+  origin.remove();
+});
+
+it("retains the parent reader through a nested inspection in explicit main", async () => {
+  material.rows = rows();
+  const facts = material.rows[0]!.facts;
+  facts.toolCalls.nested = {
+    id: "nested",
+    runId: "child",
+    name: "delegate_task",
+    fn: "Review request headers",
+    args: '{"summary":"Review request headers"}',
+    status: "ok",
+  };
+  facts.delegatedRuns.delegate![0]!.messages[0]!.blocks.push({
+    kind: "tool",
+    toolCallId: "nested",
+  });
+  navigator().go({ session: "session", view: null, dock: null });
+  const origin = document.createElement("button");
+  document.body.append(origin);
+  openWorkspaceSubagentRun("child", origin);
+  const outer = renderHook(useWorkspaceInspection);
+  const source = outer.result.current;
+  act(() => navigator().go({ view: "subagents" }));
+  const { unmount } = render(<SubagentsPanel />);
+  const inspection = renderHook(useWorkspaceInspection);
+  await act(async () => vi.dynamicImportSettled());
+  const parent = screen.getByText("Child streamed output").closest('[role="region"]')!;
+  const viewport = parent.parentElement!;
+  viewport.scrollTop = 2554;
+  const nested = within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ });
+  act(() => nested.focus());
+  fireEvent.click(nested);
+  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+  expect(parent.isConnected).toBe(true);
+  expect(inspection.result.current?.origin).toBe(nested);
+  expect(inspection.result.current?.returnViewId).toBe("subagents");
+  expect(inspection.result.current?.returnSubagentRunId).toBe("child");
+  expect(inspection.result.current?.previous).toBe(source);
+  act(() => returnFromWorkspaceInspection(inspection.result.current!));
+  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+  expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
+  expect(viewport.scrollTop).toBe(2554);
+  expect(inspection.result.current).toBe(source);
+  fireEvent.click(within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ }));
+  fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
+  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: null });
+  expect(parent.isConnected).toBe(false);
+  expect(inspection.result.current).toBe(source);
+  const row = within(screen.getByRole("group", { name: "Subagents" })).getByRole("button", {
+    name: /Review request headers/,
+  });
+  expect(row.closest<HTMLElement>('[data-slot="delegated-run-link"]')?.dataset.runId).toBe(
+    "nested",
+  );
+  expect(document.activeElement).toBe(row);
   unmount();
   origin.remove();
 });

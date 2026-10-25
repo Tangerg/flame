@@ -1685,6 +1685,61 @@ describe("material inspection without room for the Dock", () => {
     },
   );
 
+  it.each(["header", "body"])(
+    "returns a nested task opened in explicit main through a file using %s",
+    (exit) => {
+      vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
+      openWorkspaceViewInDock("subagents");
+      openWorkspaceSubagentRun("child");
+      render(<ChatPanel onSend={() => true} />);
+      const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
+      fireEvent.click(screen.getByRole("button", { name: /Open material full width/ }));
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(within(windowHeader()!).getByRole("button", { name: "Close" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+
+      const nested = screen.getByRole("button", { name: "Inspect nested task" });
+      act(() => nested.focus());
+      fireEvent.click(nested);
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+      expect(screen.getByText("Selected task: nested")).toBeTruthy();
+      expect(within(windowHeader()!).getByRole("button", { name: "Back to task" })).toBeTruthy();
+      expect(within(windowHeader()!).queryByRole("button", { name: "Close" })).toBeNull();
+
+      const file = screen.getByRole("button", { name: "src/child.ts:8" });
+      act(() => file.focus());
+      fireEvent.click(file);
+      expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+      fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to task" }));
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+      expect(document.activeElement).toBe(file);
+
+      const returnControl =
+        exit === "header"
+          ? within(windowHeader()!).getByRole("button", { name: "Back to task" })
+          : screen.getByRole("button", { name: "Read nested" });
+      act(() => returnControl.focus());
+      if (exit === "header") fireEvent.click(returnControl);
+      else fireEvent.keyDown(returnControl, { key: "Escape" });
+      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(document.activeElement).toBe(nested);
+      expect(screen.getByText("Selected task: child")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+      const header = within(windowHeader()!);
+      expect(header.getByRole("button", { name: "Close" })).toBeTruthy();
+      expect(header.queryByRole("button", { name: "Back to task" })).toBeNull();
+      expect(screen.getByLabelText("Composer draft")).toBe(draft);
+      expect(draft.value).toBe(INITIAL_DRAFT);
+      fireEvent.click(header.getByRole("button", { name: "Close" }));
+      const conversation = screen.getByRole("region", { name: "Conversation" });
+      expect(within(conversation).getByLabelText("Composer draft")).toBe(draft);
+      act(() => draft.focus());
+      fireEvent.change(draft, { target: { value: `${INITIAL_DRAFT} Continued.` } });
+      expect(captureComposerSubmission().value).toBe(`${INITIAL_DRAFT} Continued.`);
+      expect(document.activeElement).toBe(draft);
+    },
+  );
+
   it("leaves outside, composing and local Escape to their owners before returning", () => {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
     model.views[0] = { ...model.views[0]!, component: FilteredMaterial };

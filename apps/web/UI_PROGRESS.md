@@ -1,13 +1,19 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Main and selected subagent reading controls retain visible keyboard focus through native resize and continuous zoom. The shared reading policy respects existing Composer/jump clearance, deliberate scrolling, hidden readers and later draft focus. English light/14 px/Orange and Chinese dark/18 px/custom-blue flows pass at 200%, including current-file return and draft continuation. The continuous goal remains active on a frozen UI base; main synchronization happens at intervals. Primary parallel work is preserved.
+Updated: 2026-10-25. Explicit-main nested task inspection now preserves the parent reader and its direct return path, and All subagents returns focus to the matching index row in both Dock and main. English light/14 px/Orange and Chinese dark/18 px/custom-blue native 200% task/file/parent/draft paths pass. The requested new-conversation brand introduction is next. The continuous goal stays active on a frozen UI base; main synchronization happens at intervals and primary parallel work remains untouched.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/reading-focus-1025`. Reading-focus geometry is accepted on frozen
+is on `codex/subagent-return-1025`. Task return and index focus are accepted on
+frozen base `b16e9ea7190e068837d23cd634a17a2b1344d5f4`; publication and private resource
+retirement are being completed. The existing inspection and selection owners
+remain authoritative. The next batch is the user-requested brand/mascot above
+the empty new-conversation input.
+
+Reading-focus geometry is accepted on frozen
 base `bd146d20e50ce8b7e05633296d5681d0e523757a`. Implementation
 `4f44a785556799e6b436918e460b08e264b00257` is published to remote main;
 private resource retirement is complete. This documentation receipt changes no
@@ -1624,6 +1630,111 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Explicit-main task return and index focus
+
+Nested task inspection now captures its source before choosing main or Dock
+presentation. The existing `WorkspaceInspection` retains the parent Run,
+source element, return view and previous chain; the route remains the sole
+selection owner. Explicit main keeps its current main view and background Dock.
+A source-less index/list selection ends only the local subagent trail, resolving
+its main source before its Dock source, and retains any outer inspection.
+
+`SubagentsPanel` defers its normal row/panel focus only when the new selection
+matches the departing inspection's return Run. Clearing a nested trail to the
+index therefore focuses the matching task row. Direct parent/file returns keep
+the existing host restoration and retained-reader lifetime. There is no new
+history, cached selection, focus service, API, copy, decoration or Runtime state.
+
+Read-only ZCode `SubagentSessionSidePane.tsx` keeps root/child identity and
+workspace scope with its existing SessionPane. Its `SubagentDrilldown.tsx` is
+a bounded preview that suppresses further drilldown, not Flame's task-navigation
+model. ChatGPT's actual local-conversation subagent header receives child identity
+and an explicit Back-to-list callback. Flame retains its distinct Back to task
+and All subagents actions. Existing HeroUI/ArcUI/Radix/Ace research and the six
+better-* domains guide the inspected flow.
+
+| Domain        | Evidence                                                                                 | Result                                                  |
+| ------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Accessibility | Native keyboard/pointer parent and file return, exact DOM focus, index exit, later input | Changed flow clear; screen-reader speech/IME unverified |
+| Layout        | Split and explicit main; long mixed-language parent; 561 × 365 at 200%                   | Return chrome, source and input remain reachable        |
+| Writing       | Existing Back to task, All subagents and Close map to distinct actions                   | No extra instructions or strings required               |
+| Typography    | Existing EN 14 px and ZH 18 px; wrapped inline file reference                            | Safe wrapping and native keyboard access retained       |
+| Color         | Existing light/Orange and dark/custom-blue surfaces and focus fragments                  | No palette change; no new contrast measurement          |
+| UI polish     | Retained parent reader, scoped list focus, file inspection chain, draft continuation     | Existing controls and motion policy retained            |
+
+| Severity | Location                                       | Before                                                        | After                                                         | Why                                                   |
+| -------- | ---------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| MEDIUM   | `workspace/adapters/navigationStatePort.ts:90` | Explicit-main early return skips nested source capture        | Source lifecycle runs before presentation selection           | Return directly to the originating task and reader    |
+| MEDIUM   | `chat/message/ui/SubagentsPanel.tsx:112`       | Index exit resembles a source return and leaves focus on BODY | Defer restoration only for the inspection's actual return Run | Continue keyboard navigation on the matching list row |
+
+Verification (2026-10-25):
+
+- Original baseline passes **3 files / 126 tests**. Actual original Wails at
+  **748 × 486 / 150%** enters `run_nested` from explicit-main `run_child`
+  at scrollTop **2554**, but records no inspection, offers Close without
+  Back to task, and Escape does not return. Source tracing identifies the early
+  return; no arbitrary selection history is added.
+- Edit-only Claude CLI supplies four scoped paths in **79.05 s / 10 turns**.
+  Primary retains main-source precedence, adds both header/body exits and
+  continued draft editing, and replaces deep subset comparison of a live React
+  DOM inspection with exact identity/scalar assertions. Synchronous diagnostic
+  checkpoints isolate that blocked assertion; readiness/query/navigation already
+  finished. The readiness-wait experiment is discarded, temporary instrumentation
+  is removed and every interrupted owned worker exits. The fixed case passes in
+  **2.25 s**. The initial adapter-only original counterexample gives **4 failures /
+  126 passes**; its candidate passes **6 files / 171 tests + 13 gates**.
+- Native acceptance then exposes index focus on BODY. A second edit-only CLI
+  corrects the existing guard in **29.33 s / 5 turns**; primary adds the same
+  exact row-focus assertion to the Dock case. Restoring only the old guard with
+  the new adapter fails **both** focused cases (**13 skipped**). Restoring both
+  original production files fails **5 cases / 125 pass**; candidate bytes are
+  restored. Neither CLI runs verification or uses subagents; both report no
+  permission denials.
+- Final serial checks pass **6 files / 171 tests**, Web typecheck, lint,
+  formatting, knip, design-system, tokens, chrome, styles, classes, locales,
+  layers, port-surface and production bundle in **27.42 s**. Accepted **5,771
+  non-Markdown files** have SHA-256
+  `45ad3cd6a71f26d4923e35ad0a158deb9334900a7923223fecff47028c28af1e`.
+  Final private assets build in **2.73 s**; the unchanged native Go hosts built
+  serially in **6.38 s EN / 4.75 s ZH** load those assets. **607 artifacts**
+  bind assets, module proxy and both accepted binaries. No product source changes
+  after final checks or during accepted native interaction.
+- Final actual Wails EN/light/14 px/Orange and ZH/dark/18 px/custom blue/motion
+  off reach **561 × 365 at 200%**. Parent → nested task → file → nested task →
+  parent restores the same source and reader, exactly **2783 EN / 3705 ZH**.
+  File return restores its own original inline reference and retains the prior
+  task inspection. English pointer and Chinese keyboard Return file activation
+  pass; header and Escape parent returns pass. Both All subagents exits clear
+  the local trail, retire the parent readers, focus the corresponding Running
+  row and leave Escape scoped to that index. Close reveals the original input;
+  confirmed end carets and native paste continue drafts **34 → 45 EN / 11 → 16
+  ZH**. Actual Size preserves the later input/caret before native menu Quit.
+- Chinese split-Dock source/reader identity also survives nested return. First
+  Escape dismisses the visible focused-control Tooltip; the second returns the
+  task. Browser focus reveal adjusts its offset **3043 → 3066**, while the same
+  source remains safely visible. Keyboard All subagents then focuses the exact
+  nested-task row. This is separate from the exact unchanged-width main offsets.
+- **35 final captures** are checked. The canonical private `run_nested` text
+  gains one file reference to exercise the full chain; production snapshot
+  construction, IDs/status and renderers remain unchanged. Passive route/chain
+  and actual overflow-reader reports are split to avoid AX text truncation.
+  Hidden readers report zero geometry/scroll while hidden; revealed identity
+  and offsets qualify retention. A wrapped inline span's bounding center lies
+  between fragments, so its center hit metric is false; visible native focus
+  outlines and actual pointer/Return navigation qualify access instead.
+- The initial English scene receives external scrolling, task/file changes and
+  a private-fixture draft submission; it is excluded. A CUA connection timeout
+  leaves that app live; fresh native menu Quit closes it before a new scene.
+  Unsupported native key Enter admits no action; the observed file reference
+  subsequently opens using supported Return. No browser visual suite, performance
+  benchmark, live Runtime/provider execution, real Tool action, clipboard write,
+  VoiceOver speech, OS IME, RTL or other-platform GUI is claimed. Unchanged
+  whole-repository suites are reused; no protocol/data migration is required.
+
+**Approve** for task return and index focus in the inspected domains and native
+scenes. Publication and resource retirement are recorded below. The continuous
+goal remains active; the requested new-conversation brand introduction is next.
 
 ## Global Composer focus and retained material
 
@@ -6375,13 +6486,10 @@ compiled artifacts, **37** final native captures, rejected counterexamples,
 passed gates, dead PIDs, preserved outputs/resources, clean Git and remote main.
 This receipt changes no tested product source.
 
-Next inspect selected subagent → nested child → list → parent as a complete
-reading task. The native selection path retains object identity, but a prior
-transcript position across selection is not qualified; the current render filter
-retains inspection sources rather than an arbitrary history of selected Runs.
-Trace the existing route/inspection owner and reproduce original behavior before
-calling it a defect or changing navigation. Do not reopen completed resize,
-Tool action, file return or retained hidden-reader work.
+The task-selection follow-up is resolved under Explicit-main task return and
+index focus above. It reuses the explicit inspection path rather than retaining
+an arbitrary history of selected Runs. Completed resize, Tool action and file
+return work remains intact.
 
 **Approve** for the changed reading-focus geometry and inspected native task
 paths across the six domains. The continuous goal remains active; this is not

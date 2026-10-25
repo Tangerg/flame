@@ -320,6 +320,46 @@ it("keeps subagent selection and the way back in the active full view", () => {
   expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: null });
 });
 
+it("captures a nested task source in explicit main and ends only that local trail", () => {
+  navigator().go({ session: "parent-session", view: null, dock: null });
+  const outerSource = document.createElement("button");
+  document.body.append(outerSource);
+  openWorkspaceSubagentRun("child", outerSource);
+  const outer = useContextDockStore.getState().inspection!;
+  navigator().go({ view: "subagents", dock: "diff" });
+  const reader = document.createElement("button");
+  document.body.append(reader);
+
+  openWorkspaceSubagentRun("nested", reader);
+  const fromChild = useContextDockStore.getState().inspection!;
+  expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: "nested" });
+  expect(fromChild).toMatchObject({
+    viewId: "subagents",
+    returnViewId: "subagents",
+    returnDockId: null,
+    returnSubagentRunId: "child",
+  });
+  expect(fromChild.origin).toBe(reader);
+  expect(fromChild.previous).toBe(outer);
+  openWorkspaceSubagentRun("deeper", reader);
+  const fromNested = useContextDockStore.getState().inspection!;
+  expect(fromNested.returnSubagentRunId).toBe("nested");
+  expect(fromNested.previous).toBe(fromChild);
+
+  expect(returnFromWorkspaceInspection(fromNested)).toBe(true);
+  expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: "nested" });
+  expect(useContextDockStore.getState().inspection).toBe(fromChild);
+
+  openWorkspaceSubagentRun(null);
+  expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: null });
+  expect(useContextDockStore.getState().inspection).toBe(outer);
+  openWorkspaceSubagentRun("child");
+  expect(navigator().get()).toMatchObject({ view: "subagents", dock: "diff", subagent: "child" });
+  expect(useContextDockStore.getState().inspection).toBe(outer);
+  outerSource.remove();
+  reader.remove();
+});
+
 it("restores the file inspected before a task opened a different file", () => {
   navigator().go({ session: "session", view: null });
   openWorkspaceFile("src/original.ts", 12);

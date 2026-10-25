@@ -109,7 +109,12 @@ export function SubagentsPanel() {
     const fromInspection = previousInspection.current;
     previousRun.current = selectedId;
     previousInspection.current = inspection;
-    if (fromRun === selectedId || (fromInspection && fromInspection.previous === inspection))
+    if (
+      fromRun === selectedId ||
+      (fromInspection &&
+        fromInspection.previous === inspection &&
+        fromInspection.returnSubagentRunId === selectedId)
+    )
       return;
     const panel = panelRef.current;
     if (!panel) return;
