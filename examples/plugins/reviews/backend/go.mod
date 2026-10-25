@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame v0.1.0-node.20261026.1
+	github.com/Tangerg/flame v0.1.0-node.20261026.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.57.1
 	github.com/invopop/jsonschema v0.14.0
