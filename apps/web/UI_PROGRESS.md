@@ -1,13 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. File-source Select All stays within the source; code cells retain literal line breaks and whole-source copy writes current accepted text. Native English, Chinese 200% and an independent uninstrumented app qualify selection, copying and source return. A separately reproduced native textarea insertion issue remains: the first multiline paste into a single-line draft drops one trailing LF despite receiving complete clipboard data. See File-source selection and literal copying. Compact file identity, Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. File-source selection, literal copying and source return remain delivered. The receiving textarea's first multiline paste still drops one trailing LF. Independent stock WKWebView reproduces it without Wails, React or input observers; tested replacements violate literal text or undo, so no workaround ships. See Native multiline insertion boundary. Compact file identity, Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/file-source-selection-1025`. File-source selection and literal copying
+is on `codex/native-paste-insertion-1025`. Native insertion investigation uses
+frozen base `c4adfe87fd4a0be0f10722bf7e98a8c6fe5ef2a7`; its supported-system
+counterexample and rejected alternatives are recorded below. It changes no
+product source and does not claim the receiving-input defect is repaired.
+File-source selection and literal copying
 are accepted on frozen base `65bbbd15d70b3f621917c1830341fd06ed81cc5b`;
 implementation `c0e4231818e3ef612097d151bd4b3fb760d04fb5` is published to
 remote main and owned evidence retirement is complete. See the corresponding
@@ -3938,9 +3942,9 @@ inserts **92 of 93** characters, dropping one final LF. Passive native events pr
 the file copy writes 93 and Paste receives 93, with native insertion unprevented.
 Direct external paste reproduces the same loss without any file-copy path;
 multiline drafts retain all 93. This is not dismissed as a successful retry or
-claimed fixed. Investigate the native textarea insertion boundary in the next
-evidenced batch, preserving composition, undo and draft ownership. Do not hide it
-behind a source serializer or a blanket manual-paste handler.
+claimed fixed. The Native multiline insertion boundary investigation below
+isolates the system control and rejects replacements that violate literal text
+or undo. Do not hide it behind a source serializer or a blanket manual-paste handler.
 
 Other limits: all scenes use deterministic providers and real Wails presentation;
 no live filesystem write, Send, provider execution, VoiceOver, OS IME, RTL or other
@@ -3974,8 +3978,78 @@ Accepted maps bind **2,422 private artifacts** and **19 native input files**.
 Fresh checks after deletion again confirm all accepted product/resource bytes
 and preserved output inventories. This Markdown-only receipt changes no tested
 source; primary parallel work and read-only references remain preserved. The
-continuous goal stays active. The next evidenced investigation is the receiving
-native textarea's first multiline insertion, with the source-copy repair retained.
+continuous goal stays active. The source-copy repair remains retained during the
+independent receiving-input investigation below.
+
+### Native multiline insertion boundary
+
+The task remains source copy → authoring → continue the original draft. The
+clipboard contains the exact 93-character Go sample, including CJK, tabs, double
+spaces, internal blank lines and two final LF characters. Pasting it into the
+single-line `Prefix. ` draft should produce 101 characters. Actual first insertion
+produces 100, with one final LF. Passive native Paste and beforeinput observations
+retain all 93 clipboard characters; the input event already exposes the loss.
+
+The draft store, Composer input controller and shared TextArea do not trim this
+short native paste. The uncontrolled native textarea, controlled textarea, shared
+TextArea and autosizing TextArea reproduce the same result. A separate
+uncontrolled field has no input observers at all: only an explicit button reads
+the committed value after paste, and still reports 100. Two/twelve rows, wrap
+off, break-spaces, spellcheck off and the isolated application's Smart Copy/Paste
+setting do not repair the default paste. That setting is restored before Quit.
+
+An independent AppKit application uses a default public WKWebViewConfiguration,
+ordinary Edit-menu selectors and a static local HTML page. It imports neither
+Wails nor React and has no input listeners. Native system paste followed by the
+explicit read button reports **100 / expected 101 / one trailing LF**. Native
+Undo retains the eight-character prefix; Redo returns the same 100-character
+result. This reproduces the boundary on **macOS 26.5 (25F71)**, system WebKit
+**21624.2.5.11.4**, independently of Flame and Wails. The Wails probe is built with
+SDK 26.5 and deployment target 13.0. It does not establish behavior on another
+OS, a newer engine, Safari or Safari Technology Preview, or identify the exact
+upstream implementation defect.
+
+Private alternatives are rejected, with no production edits:
+
+| Native insertion experiment                                                                    | Observed result                                                                                                                  | Decision                                              |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `execCommand("insertText")`                                                                    | Retains both LF characters but native smart substitution changes the closing ASCII quote. `autocorrect=off` does not prevent it. | Reject: source text changes.                          |
+| Temporarily disable spellcheck around `insertText`, then restore it                            | Exact 101 characters, but one native Undo removes the genuinely typed prefix too, leaving an empty draft; Redo restores 101.     | Reject: paste loses its independent undo transaction. |
+| `insertHTML` with a DOM-created preformatted span, textContent, optional final BR, or pre/code | Still 100 characters and one final LF. The ordinary span retains the prefix on Undo.                                             | Reject: does not repair the defect.                   |
+
+There is no extra LF, custom history, value reconciliation, private native API,
+global preference change or new editor. Existing short-paste, composition,
+attachment, draft and native undo owners remain intact. This is a verified
+platform limitation with no safe tested repair, not successful retry acceptance.
+Revisit when a supported engine update or native paste API can preserve both
+literal content and the independently undoable insertion.
+
+Verification and review (2026-10-25):
+
+- Focused Composer/input-controller baseline passes **2 files / 33 tests** in
+  **2.75 s**. Shared prerequisites pass in **1.84 s**. The actual Wails native
+  comparison builds in **7.02 s**; the independent system control builds in
+  **0.78 s**. Private Vite-root and explicit-SDK setup errors are corrected before
+  their successful builds; they are not product failures.
+- Bounded read-only Claude CLI completes in **78.94 s**, exit 0. It inspects
+  repository input owners and agrees that the tested replacements are unsafe.
+  Its worktree-only tools cannot read the private probe or module cache; primary
+  inspection and actual native results, not that report, establish the finding.
+- Product input remains **5,771 non-Markdown files**, aggregate SHA-256
+  `e803b45beba839fc7b2a934245e57095675f6b8cf96c6190521819c9259720ed`.
+  This documentation-only investigation reuses the preceding source-selection
+  batch's full Web/UI/native qualification. It does not rerun unrelated gates or
+  claim a new product-wide acceptance. All comparisons use isolated disposable
+  apps, not live Runtime data; no Send, provider execution, external issue,
+  browser visual suite or performance benchmark is run.
+- Native typed-prefix evidence is step-observed; a composition commit needed a
+  second space to reach the exact eight-character baseline. No OS IME coverage
+  is inferred. Two stale REPL-state reads fail before input and are excluded.
+  No visual, theme, motion or layout repair is claimed by these diagnostic grids.
+
+The source-selection repair and the approved new-conversation identity remain
+delivered. Continue with a fresh, concrete workspace task while retaining this
+boundary as unresolved; the continuous UI goal stays active.
 
 ### File-tree hierarchy and selectability
 
