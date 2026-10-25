@@ -8,9 +8,10 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/output-find-navigation-1025`. Recorded output Find navigation is
-accepted on frozen base `8f27e6cdc534281fa70bdf38dcc542d1767b2fce`; publication
-and private retirement follow the completed native acceptance. See Recorded
-output Find navigation below. Gallery selection and source geometry are
+accepted on frozen base `8f27e6cdc534281fa70bdf38dcc542d1767b2fce`; implementation
+`29e7226aab9eb2df3483d17873d7b24fa4f19738` is published to remote main, and
+private evidence retirement is complete. See Recorded output Find navigation
+below. Gallery selection and source geometry are
 accepted on frozen base `bafb1a0c858c631dacae8414bd102d23d3831076`. Implementation
 `cd69bfc407e42b0092b8e90694bd1fd20ff7253a` is published to remote main, and
 private evidence retirement is complete. See
@@ -4912,6 +4913,24 @@ Desktop, visual-fixture, Plugins and Tool-results READMEs.
 **Approve** for the inspected states and domains above, with the stated contrast
 and assistive-technology boundaries. Continue from fresh task evidence; do not
 repeat this delivered same-line Find investigation.
+
+Implementation `29e7226aab9eb2df3483d17873d7b24fa4f19738` is published to remote
+main. Publication fetch finds no incoming main change. Normal commit hooks pass;
+independent retirement verifies the exact remote hash, clean owned checkout and
+zero commits ahead or behind. All **5,771** accepted non-Markdown inputs and
+**1,810** private artifacts retain their accepted bytes. All **21** recorded
+processes are dead and four apps are unregistered. Cleanup removes **four** new
+checkout outputs, **eight** owned Library directories and **four** bundle-temp
+directories. All **36** output-presence baselines, **three** original file hashes
+and **11** accepted product resources match; no preexisting output needs byte
+restoration. The Tool-results ESM is the single intentional resource change.
+The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-output-find-1025-ETIaJX`
+is absent. The independently round-trip-verified archive contains **143 UTF-8
+files** and **six screenshot digests**, gzip SHA-256
+`7e78236de5d35df17cc662f668dfaae479ff48656df0ac2c4f13cfd2030d612c`.
+This documentation receipt changes no accepted product source. Primary user data
+and parallel work remain preserved; the continuous UI goal remains active.
 
 ## Transcript controls and floating navigation
 
