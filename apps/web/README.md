@@ -29,6 +29,12 @@ session titles, message authors, and complete entry paths for files. Nested
 submenus keep their primitive's relationship to the controlling item instead of
 receiving a separate name.
 
+File previews keep their filename to two visible lines beside persistent navigation,
+range and commands. The complete path remains selectable in the same named
+scroller as source, rendered content and read/unsupported states. File requests,
+line placement, renderer mode and source-return history retain their existing
+owners.
+
 MCP server rows read their own tools directly, independent of configuration
 editing and server origin. Reconnect runs in the same exact-ID serial mutation
 generation as other server commands; its acknowledgement only admits a

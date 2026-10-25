@@ -1,13 +1,16 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Diff now keeps its persistent filename bounded and the complete path in scrolling reader content. Shared resource lists use natural vertical sizing in native WebKit. English/light/14 px/Orange, 320 px Dock, Chinese/dark/18 px/custom blue and half-screen 200% reading/return paths pass. Formatted Find, gallery source geometry and the new-conversation Flame companion remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. File previews now bound the persistent filename and keep the complete path in the scrolling reader across source, rendered and unavailable-content states. Native EN 14 px/Orange/320 px Dock and ZH 18 px/custom-blue/half-screen 200% reading/source-return/draft paths pass. Diff list sizing, formatted Find, gallery source geometry and new-conversation branding remain delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/diff-reading-identity-1025`. Diff reading identity and shared list sizing
+is on `codex/file-reading-identity-1025`. File-preview identity is accepted on
+frozen base `2d87f694bf75fe03186ce934a38b21e6f73a2232`; publication and owned
+evidence retirement are pending. See Bounded file-preview identity below.
+Diff reading identity and shared list sizing
 are accepted on frozen base `d0ace817fd61cf4834ec259853a97094e16d96cb`; implementation
 `8c870b082a8336677963fa86da93335ab86bd3ea` is published to remote main and
 owned evidence retirement is complete. See Diff reading identity and native list sizing below.
@@ -3722,6 +3725,109 @@ inform persistent identity, task grouping and quiet supporting detail. Static
 artwork supplies no keyboard evidence. The six better-series domains apply to
 this file-browse/read/return flow; unchanged colors, typography and control
 surfaces retain their existing owners.
+
+### Bounded file-preview identity
+
+The task is reply reference → long-path file → line navigation/reading → related
+Markdown/source/list → original reference → continued draft. Actual original
+Wails at 1440 × 900 with a **320 px Dock** and a valid **534-character path /
+198-character filename** made the nonshrinking file header **434 px** high and
+left **420 px** for content. Source was visible; this is a hierarchy/space
+allocation defect rather than evidence of complete baseline obstruction.
+
+`FileWorkspace.tsx` now bounds only its selected filename to two visible lines,
+retaining the full text and existing path title. The complete path starts the
+existing named scroller as normal selectable LTR text, with the current mono,
+muted, size and inset tokens. It is present for source, rendered, pending, failed
+and unsupported reads. Header sub content retains the existing line/range/
+truncation facts, and navigation, renderer selection, Copy path and local-file
+commands keep their owners. The unused directory wrapper is removed. No shared
+header override, state, effect, event handler, new component or dependency is
+added. FileView, line-window/anchor/placement logic and source history are unchanged.
+
+Read-only ZCode `lib/fileDisplay.tsx:191–259` and the actual file-summary caller
+supply the compact-identity principle. Flame keeps complete visible identity in
+its own scrolling reader rather than relying on a tooltip. Earlier ChatGPT file
+preview, HeroUI/Arc scroll and Radix focus research remain applicable; retained
+Ace images supply composition principles, not interaction evidence. The six
+better-* domains inform the final review:
+
+| Domain        | Result                                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Full filename and body path retained; named reader reached by Tab; local popup Escape restores its trigger; explicit source returns restore the correct reference |
+| Layout        | Header **434 → 116 px**, reader **420 → 738 px** at the same 320 px EN Dock; native ZH 200% has a 133 px header and scrollable 346.5 px reader                    |
+| Writing       | Existing file, range and command vocabulary; complete path is object identity, with no new helper label or slogan                                                 |
+| Typography    | Shared EN 14 px / ZH 18 px roles, wrapping mono path, existing code scale and full selectable values                                                              |
+| Color         | Light/Orange and dark/custom blue retain semantic ink, surfaces, selection and focus; contrast not freshly measured                                               |
+| UI polish     | Existing icon, command, shape and motion system; normal content flow without a decorative surface or animation                                                    |
+
+Typography, whitespace, visual hierarchy, color, motion, micro-interaction,
+responsive behavior and originality are reviewed in the complete native task
+against the retained reference principles. The observed space-allocation gap is
+repaired; this is scoped approval, not certification of the whole product or an
+award outcome.
+
+Verification (2026-10-25):
+
+- Original focused baseline passes **2 files / 89 tests**. Bounded edit-only
+  Claude Code CLI modifies only FileWorkspace and its tests in **98.85 s / 20
+  reported turns**, exit zero with no permission denial or subagent. Primary
+  reviews the actual diff, removes an unnecessary local text-selection override
+  after tracing the existing workspace viewport owner, strengthens the visible-
+  text guard to exclude sr-only/caption content, and owns docs and validation.
+- The five new regressions prove complete visible path placement before source
+  or rendered content, header identity/actions/range, same-region path changes,
+  pending/failure and unsupported-image identity. They all fail on the original
+  production file while **83 existing tests pass**. Candidate bytes are restored
+  exactly afterward. Final source has **5,771 non-Markdown files**, SHA-256
+  `62272aff68b15f533633128e13975de7bb9596acfe5a727806a04e996aa27e86`;
+  only the preview and its tests differ from the frozen base. All 11 published
+  product resources retain their existing bytes.
+- The initial check stops on the new test file's formatting after its tests,
+  types and lint pass. Scoped Prettier corrects that file; no valid assertion or
+  gate is weakened. Final serial checks pass in **52.01 s**: **3 files / 180
+  tests**, all **13 Web gates** and normal **make check-native**, including
+  production staging, Desktop Go tests/vet/build and supported Wails build.
+  The duplicate `-lobjc` warning is non-failing. Candidate/clean assets build
+  serially in **2.17 / 2.15 s**; EN/ZH/clean hosts in **6.36 / 4.89 / 4.89 s**.
+- Actual Wails EN/light/14 px/Orange qualifies keyboard Home to **320 px Dock**,
+  complete long path plus all eight code rows, reply-source entry, Go to line 3,
+  Tab into the same reader and exact source-reference return. Related
+  `README.md:15:2` opens source; Preview/Source switch normally. Back to files
+  preserves README selection and returns to the existing `apps` roving cursor;
+  Down/Down/Return reopens README in its default Preview mode. Source Back
+  restores the README reference. Textarea ID **3** continues exactly to
+  `File reading draft 保留 continued`, caret **31**, matching its sole draft owner.
+- Actual Wails ZH/dark/18 px/custom blue/motion off uses native Left arrangement
+  and twenty observed native Zoom In actions. The sourced file becomes a full
+  pane through existing inspection behavior; actual fixture-sidebar collapse
+  leaves **561 × 525 CSS px at 200%**. Go to line 6 and Tab into the named reader
+  move its scroll to **202 px**, with all eight source rows visible. Native wheel
+  input returns to the complete path at **0 px**; Page Down reads the source
+  again. Popup Escape restores Go to line, and source Back restores the original
+  long reference. The same input ID **3** continues exactly to
+  `文件阅读草稿 保留 继续`, caret **12**. Actual Size restores **1122 × 1051** before Quit.
+- The independent clean EN application contains no observer. Its real 320 px
+  reader shows the same compact header, complete path and code; source Back
+  focuses the original long reference. Explicit input entry continues exactly
+  `Clean file draft 保留 continued`. This scene claims no private DOM identity.
+  All accepted passive captures record zero unhandled errors. The path-equality
+  report compares only the captured long path, so false while reading README
+  does not mean README's visible path is absent. Retained hidden zero-width
+  geometry is not presented-layout evidence. An unavailable Node process global
+  makes earlier kill-based probes unusable; fresh OS `ps` independently confirms
+  all recorded PIDs, including the actually live clean launch and final exits.
+- Private transforms change only canonical path/message input and load passive
+  reports; production host sources are overlaid solely for isolated assets/name/
+  route. Clean assets omit reports. No live filesystem/Runtime write, Send,
+  provider run, browser visual suite or performance benchmark runs. VoiceOver,
+  OS IME, RTL, other-platform GUIs, clipboard fidelity, local Open/Reveal commands
+  and exact hidden-scroll pixels are not newly qualified. Existing regressions
+  retain window/range/failure and navigation contracts; no migration is needed.
+
+**Approve** for this complete file-reading/source-return task. Publication and
+owned evidence retirement remain pending. Preserve the file request, reading,
+comparison, Composer and Runtime owners for the next batch.
 
 ### File-tree hierarchy and selectability
 

@@ -849,6 +849,103 @@ describe("workspace files panel", () => {
   );
 });
 
+describe("file preview path identity", () => {
+  const directoryPath = "packages/runtime/internal/adapters/storage/sqlite/migrations/versioned";
+  const longName = "0042_rename_session_segment_items_to_run_ledger_entries_with_backfill.go";
+  const longPath = `${directoryPath}/${longName}`;
+  const header = () => document.querySelector<HTMLElement>('[data-slot="workspace-view-header"]')!;
+
+  // The reader shows the path itself; its region name and the header title are not visible text.
+  function shownPath(path: string) {
+    const region = screen.getByRole("region", { name: path });
+    const shown = within(region).getByText(path);
+    expect(shown.closest(".sr-only, caption, [hidden], [aria-hidden='true']")).toBeNull();
+    return { region, shown };
+  }
+
+  function precedes(first: Node, second: Node) {
+    return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }
+
+  it("keeps the header to the filename and shows the complete path ahead of the source", async () => {
+    openWorkspaceFile(longPath);
+    mount(<FileWorkspace />);
+    await screen.findByText("package main");
+
+    const { shown } = shownPath(longPath);
+    expect(precedes(shown, document.querySelector('[data-quote-source="file"]')!)).toBe(true);
+    const bar = header();
+    expect(bar.contains(shown)).toBe(false);
+    expect(bar.textContent).not.toContain(directoryPath);
+    expect(within(bar).getByText(longName).closest("[title]")?.getAttribute("title")).toBe(
+      longPath,
+    );
+    expect(within(bar).getByText("1 line")).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: "Back to files" })).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: "Go to line" })).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: "Copy path" })).toBeTruthy();
+  });
+
+  it("follows the opened file's path in the same reader", async () => {
+    readFile.mockResolvedValueOnce({ content: "package first", startLine: 1, totalLines: 1 });
+    openWorkspaceFile(longPath);
+    mount(<FileWorkspace />);
+    await screen.findByText("package first");
+    const { region } = shownPath(longPath);
+
+    readFile.mockResolvedValueOnce({ content: "package next", startLine: 1, totalLines: 1 });
+    act(() => openWorkspaceFile("cmd/flame/main.go"));
+    await screen.findByText("package next");
+    expect(shownPath("cmd/flame/main.go").region).toBe(region);
+    expect(within(region).queryByText(longPath)).toBeNull();
+    expect(header().textContent).not.toContain("cmd/flame");
+  });
+
+  it("shows the complete path ahead of both rendered and source presentations", async () => {
+    const path = "docs/guides/runtime/reading-guide.md";
+    readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
+    openWorkspaceFile(path);
+    mount(<FileWorkspace />);
+
+    const rendered = await screen.findByTestId("rendered-markdown");
+    expect(precedes(shownPath(path).shown, rendered)).toBe(true);
+    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    expect(
+      precedes(shownPath(path).shown, document.querySelector('[data-quote-source="file"]')!),
+    ).toBe(true);
+    expect(header().textContent).not.toContain("docs/guides/runtime");
+  });
+
+  it("shows the complete path while a read is pending and after it fails", async () => {
+    const read = Promise.withResolvers<WorkspaceFileContent>();
+    readFile.mockReturnValueOnce(read.promise);
+    openWorkspaceFile(longPath);
+    mount(<FileWorkspace />);
+    shownPath(longPath);
+
+    await act(async () => read.reject(new Error("file unavailable")));
+    expect(await screen.findByText("Couldn't open file")).toBeTruthy();
+    shownPath(longPath);
+    expect(header().textContent).not.toContain(directoryPath);
+    expect(within(header()).getByText(longName)).toBeTruthy();
+  });
+
+  it("shows the complete path beside an unsupported file", async () => {
+    const path = "assets/brand/marketing/launch/logo.png";
+    readFile.mockRejectedValue(
+      new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
+    );
+    openWorkspaceFile(path);
+    mount(<FileWorkspace />);
+
+    expect(await screen.findByText("No image preview here yet")).toBeTruthy();
+    shownPath(path);
+    expect(header().textContent).not.toContain("assets/brand");
+    expect(within(header()).getByText("logo.png")).toBeTruthy();
+    expect(within(header()).getByRole("button", { name: "Copy path" })).toBeTruthy();
+  });
+});
+
 describe("root file listing refresh continuity", () => {
   const readme: WorkspaceFileEntry = { name: "README.md", path: "README.md", type: "file" };
   const guide: WorkspaceFileEntry = { name: "guide.txt", path: "guide.txt", type: "file" };

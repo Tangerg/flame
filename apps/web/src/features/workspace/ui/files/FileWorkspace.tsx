@@ -24,7 +24,15 @@ import { Popover } from "@/ui/index";
 import { Segmented } from "@flame/ui";
 import { TextButton } from "@/ui/index";
 import { Icon, fileIconName } from "@/ui/index";
-import { Button, EmptyState, IconButton, isImeKey, TextField, useCopyFeedback } from "@flame/ui";
+import {
+  Button,
+  EmptyState,
+  IconButton,
+  isImeKey,
+  TextField,
+  useCopyFeedback,
+  vocab,
+} from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { localWorkspace } from "@/features/workspace/application/ports/localWorkspace";
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
@@ -56,10 +64,23 @@ const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
   workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
-  context: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0 },
   identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
   identityIcon: { flexShrink: 0, color: color.fgFaint },
-  identityName: { minWidth: 0, overflowWrap: "anywhere" },
+  // The header never shrinks, so a long name is bounded here; the reader shows the full path.
+  identityName: {
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: 2,
+    overflow: "hidden",
+    minWidth: 0,
+    overflowWrap: "anywhere",
+  },
+  path: {
+    margin: 0,
+    paddingInline: space.s3,
+    paddingBlockStart: space.s2,
+    overflowWrap: "anywhere",
+  },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
   goto: {
     display: "flex",
@@ -374,7 +395,7 @@ function FilePreview({
   const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
-  const { directory, name } = splitFilePath(viewer.path);
+  const { name } = splitFilePath(viewer.path);
   // A failed refresh of this query's own accepted content keeps its reader, and position, in place.
   const retained = data !== undefined && !isPlaceholderData && !unsupported;
   const refreshFeedback =
@@ -432,12 +453,7 @@ function FilePreview({
           <span {...stylex.props(fp.identityName)}>{name}</span>
         </span>
       }
-      sub={
-        <span {...stylex.props(fp.context)}>
-          {directory && <span {...stylex.props(face.mono)}>{directory}/</span>}
-          {sub}
-        </span>
-      }
+      sub={sub}
       controls={
         renderer && wholeFile && !unsupported ? (
           <Segmented
@@ -471,6 +487,13 @@ function FilePreview({
         </>
       }
     >
+      <p
+        data-slot="file-path"
+        dir="ltr"
+        {...stylex.props(fp.path, face.mono, typeStep.uiXs, vocab.muted)}
+      >
+        {viewer.path}
+      </p>
       {unsupported ? (
         <EmptyState
           icon={iconGlyph(icon)}
