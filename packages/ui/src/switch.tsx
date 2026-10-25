@@ -63,6 +63,7 @@ export function Switch({
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       aria-label={ariaLabel}
+      data-focus-outset=""
       {...track}
       className={cn(track.className, className)}
     >

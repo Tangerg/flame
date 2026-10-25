@@ -1,6 +1,6 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
-import { edgeOnCanvas, focusOnCanvas } from "@/features/theme/kit/legibility";
+import { controlEdge, focusRing } from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
 import { hueScale, neutralScale, solidInk, step, type Scale } from "@/features/theme/kit/scale";
 import { SCHEME_ICON, inkTracksLadder } from "@/features/theme/kit/tokens";
@@ -60,7 +60,12 @@ export function paletteThemeContribution(
   const planes = PLANE_STEP[scheme];
   const neutral = neutralScale(background, foreground, scheme, separation, planes.sunken);
   const canvas = step(neutral, 1);
-  const textPlanes = [step(neutral, planes.sunken), elevatedPlane(scheme, neutral)];
+  const drawer = step(neutral, planes.drawer);
+  const surface = step(neutral, planes.surface);
+  const elevated = elevatedPlane(scheme, neutral);
+  const sunken = step(neutral, planes.sunken);
+  const textPlanes = [sunken, elevated];
+  const backgrounds = [canvas, drawer, surface, elevated, sunken];
   const scale = (color: string) => hueScale(color, scheme, canvas, textPlanes);
   const accent = scale(seed);
   const status = {
@@ -88,10 +93,10 @@ export function paletteThemeContribution(
       "tone-accent": solid,
 
       "color-bg": canvas,
-      "color-drawer": step(neutral, planes.drawer),
-      "color-surface": step(neutral, planes.surface),
-      "color-elevated": elevatedPlane(scheme, neutral),
-      "color-sunken": step(neutral, planes.sunken),
+      "color-drawer": drawer,
+      "color-surface": surface,
+      "color-elevated": elevated,
+      "color-sunken": sunken,
 
       "color-text": text,
       "color-text-bright": mixOklab(text, scheme === "dark" ? "#ffffff" : "#000000", 80),
@@ -99,8 +104,8 @@ export function paletteThemeContribution(
       "color-text-muted": inkTracksLadder(scheme, palette.muted ?? step(neutral, 11)),
       "color-text-faint": inkTracksLadder(scheme, step(neutral, 10)),
 
-      "color-focus-ring": focusOnCanvas(solid, text, canvas),
-      "color-control-edge": edgeOnCanvas(text, canvas),
+      "color-focus-ring": focusRing(solid, text, backgrounds),
+      "color-control-edge": controlEdge(text, canvas, backgrounds),
       "color-divider": step(neutral, planes.divider),
       "color-border": palette.border ?? step(neutral, planes.border),
       "color-border-strong": step(neutral, planes.borderStrong),

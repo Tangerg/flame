@@ -23,23 +23,26 @@ export function inkOnFill(declared: string, fill: string, required: number): str
   return contrastRatio(fill, "#ffffff") >= contrastRatio(fill, "#000000") ? "#ffffff" : "#000000";
 }
 
-export function edgeOnCanvas(ink: string, canvas: string): string {
-  return mixOklab(ink, canvas, legibleMix(ink, canvas, canvas, 0, WCAG_AA_NON_TEXT));
+// A control boundary or focus ring sits on whichever plane hosts the control, so it is
+// measured against every background the palette emits, not only the canvas.
+export function controlEdge(ink: string, canvas: string, planes: readonly string[]): string {
+  return mixOklab(ink, canvas, legibleMix(ink, canvas, planes, 0, WCAG_AA_NON_TEXT));
 }
 
-export function focusOnCanvas(accent: string, ink: string, canvas: string): string {
-  return mixOklab(ink, accent, legibleMix(ink, accent, canvas, 0, WCAG_AA_NON_TEXT));
+export function focusRing(accent: string, ink: string, planes: readonly string[]): string {
+  return mixOklab(ink, accent, legibleMix(ink, accent, planes, 0, WCAG_AA_NON_TEXT));
 }
 
 export function legibleMix(
   ink: string,
   base: string,
-  against: string,
+  against: readonly string[],
   floorPct: number,
   required: number,
 ): number {
   for (let pct = Math.round(floorPct); pct < 100; pct += 1) {
-    if (contrastRatio(mixOklab(ink, base, pct), against) >= required) return pct;
+    const mixed = mixOklab(ink, base, pct);
+    if (against.every((plane) => contrastRatio(mixed, plane) >= required)) return pct;
   }
   return 100;
 }

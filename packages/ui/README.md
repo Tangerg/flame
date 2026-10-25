@@ -11,6 +11,12 @@ message channel and bootstrap exports are removed.
 navigation or action button cannot begin selecting the surrounding document.
 Reading content and editable fields retain their native selection behavior.
 
+Filled primary buttons, selected checkboxes and switches keep their focus
+perimeter on the surrounding surface. Their `data-focus-outset` marker takes
+precedence over an ancestor's `data-focus-inset`, so the focus color cannot
+disappear inside the control's own fill. Unfilled controls and readers retain
+the enclosing inset rule.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";

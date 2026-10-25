@@ -12,6 +12,7 @@ import { type PluginContext } from "@/extensions/definePlugin";
 import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
 import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
+import { contrastRatio, WCAG_AA_NON_TEXT } from "@/features/theme/kit/legibility";
 let uninstall: () => void = () => {};
 
 const TEST_MOTION = {
@@ -72,6 +73,36 @@ describe("a theme's own neutrals are what paints", () => {
       },
     });
   }
+
+  it.each([
+    ["dark", "#101828"],
+    ["light", "#ffe066"],
+  ] as const)(
+    "publishes readable %s controls through contrast and accent changes",
+    async (theme, accent) => {
+      await loadPluginsForTest(flameLight, flameDark);
+      useAppearanceStore.setState({ theme, accent });
+      const reads = () => {
+        for (const name of ["color-control-edge", "color-focus-ring"])
+          for (const plane of [
+            "color-bg",
+            "color-drawer",
+            "color-surface",
+            "color-elevated",
+            "color-sunken",
+          ])
+            expect(contrastRatio(painted(name), painted(plane))).toBeGreaterThanOrEqual(
+              WCAG_AA_NON_TEXT,
+            );
+      };
+      for (const contrast of [0, 25, 100]) {
+        useAppearanceStore.getState().setContrast(contrast);
+        reads();
+      }
+      useAppearanceStore.getState().setAccent("#7f52ff");
+      reads();
+    },
+  );
 
   it("reproduces the theme's own literals when the accent is untouched", async () => {
     await contributeForTest((ctx) => {

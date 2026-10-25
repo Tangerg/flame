@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   contrastRatio,
-  edgeOnCanvas,
-  focusOnCanvas,
+  controlEdge,
+  focusRing,
   inkOnFill,
   legibleMix,
   WCAG_AA_NON_TEXT,
@@ -79,7 +79,7 @@ describe("mixOklab", () => {
 describe("legibleMix", () => {
   it("raises a rung that does not read", () => {
     const floor = 34;
-    const chosen = legibleMix("#e3e5e9", "#1d1f23", "#1d1f23", floor, WCAG_AA_TEXT);
+    const chosen = legibleMix("#e3e5e9", "#1d1f23", ["#1d1f23"], floor, WCAG_AA_TEXT);
     expect(chosen).toBeGreaterThan(floor);
     expect(contrastRatio(mixOklab("#e3e5e9", "#1d1f23", chosen), "#1d1f23")).toBeGreaterThanOrEqual(
       WCAG_AA_TEXT,
@@ -88,37 +88,62 @@ describe("legibleMix", () => {
 
   it("leaves a rung that already reads exactly where the design put it", () => {
     const floor = 88;
-    expect(legibleMix("#000000", "#ffffff", "#ffffff", floor, WCAG_AA_TEXT)).toBe(floor);
+    expect(legibleMix("#000000", "#ffffff", ["#ffffff"], floor, WCAG_AA_TEXT)).toBe(floor);
+  });
+
+  it("chooses the first permitted rung that reads on every adjacent plane", () => {
+    const ink = "#eeeeee";
+    const base = "#101828";
+    const planes = ["#0f0f0f", "#1e1e1e", "#242424"];
+    const floor = 20;
+    const chosen = legibleMix(ink, base, planes, floor, WCAG_AA_NON_TEXT);
+    const reads = (pct: number) =>
+      planes.every((plane) => contrastRatio(mixOklab(ink, base, pct), plane) >= WCAG_AA_NON_TEXT);
+    expect(chosen).toBeGreaterThan(floor);
+    expect(reads(chosen)).toBe(true);
+    expect(reads(chosen - 1)).toBe(false);
   });
 
   it("gives up at the ink itself when even that does not read", () => {
     const ink = "#5a5a5a";
     const fill = "#202020";
     expect(contrastRatio(ink, fill)).toBeLessThan(WCAG_AA_TEXT);
-    expect(legibleMix(ink, fill, fill, 28, WCAG_AA_TEXT)).toBe(100);
+    expect(legibleMix(ink, fill, [fill, "#262626"], 28, WCAG_AA_TEXT)).toBe(100);
   });
 });
 
-describe("edgeOnCanvas", () => {
+describe("controlEdge", () => {
   it("draws an unchecked control boundary no fainter than non-text contrast", () => {
     for (const [ink, canvas] of [
       ["#1e1f22", "#ffffff"],
       ["#e3e5e9", "#1f1f1f"],
     ]) {
-      const edge = edgeOnCanvas(ink!, canvas!);
+      const edge = controlEdge(ink!, canvas!, [canvas!]);
       expect(contrastRatio(edge, canvas!)).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
       expect(contrastRatio(edge, canvas!)).toBeLessThan(contrastRatio(ink!, canvas!));
     }
   });
+
+  it.each([
+    ["#eeeeee", "#0f0f0f", ["#0f0f0f", "#1e1e1e", "#242424"]],
+    ["#1b1b1b", "#f5f5f5", ["#f5f5f5", "#fdfdfd", "#eaeaea"]],
+  ] as const)(
+    "keeps the neutral boundary visible on every plane with ink %s",
+    (ink, canvas, planes) => {
+      const edge = controlEdge(ink, canvas, planes);
+      for (const plane of planes)
+        expect(contrastRatio(edge, plane)).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
+    },
+  );
 });
 
-describe("focusOnCanvas", () => {
+describe("focusRing", () => {
   it("reads as a boundary against the canvas in both schemes", () => {
     for (const [accent, ink, canvas] of [
       ["#2b5fd0", "#1e1f22", "#ffffff"],
       ["#3574f0", "#e3e5e9", "#1f1f1f"],
     ]) {
-      expect(contrastRatio(focusOnCanvas(accent!, ink!, canvas!), canvas!)).toBeGreaterThanOrEqual(
+      expect(contrastRatio(focusRing(accent!, ink!, [canvas!]), canvas!)).toBeGreaterThanOrEqual(
         WCAG_AA_NON_TEXT,
       );
     }
@@ -128,11 +153,20 @@ describe("focusOnCanvas", () => {
     const pale = "#ffe066";
     expect(contrastRatio(pale, "#ffffff")).toBeLessThan(WCAG_AA_NON_TEXT);
     expect(
-      contrastRatio(focusOnCanvas(pale, "#1e1f22", "#ffffff"), "#ffffff"),
+      contrastRatio(focusRing(pale, "#1e1f22", ["#ffffff"]), "#ffffff"),
     ).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
   });
 
   it("leaves an accent that already reads exactly as it is", () => {
-    expect(focusOnCanvas("#2b5fd0", "#1e1f22", "#ffffff").toLowerCase()).toBe("#2b5fd0");
+    expect(focusRing("#2b5fd0", "#1e1f22", ["#ffffff", "#eaeaea"]).toLowerCase()).toBe("#2b5fd0");
+  });
+
+  it.each([
+    ["#101828", "#eeeeee", ["#0f0f0f", "#1e1e1e", "#242424"]],
+    ["#ffe066", "#1b1b1b", ["#f5f5f5", "#fdfdfd", "#eaeaea"]],
+  ] as const)("corrects accent %s against every adjacent plane", (accent, ink, planes) => {
+    const ring = focusRing(accent, ink, planes);
+    for (const plane of planes)
+      expect(contrastRatio(ring, plane)).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
   });
 });

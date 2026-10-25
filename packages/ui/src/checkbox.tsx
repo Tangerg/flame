@@ -47,6 +47,7 @@ export function Checkbox({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
+        data-focus-outset={checked ? "" : undefined}
         {...stylex.props(
           CHOICE_SURFACE.mark,
           CHOICE_SURFACE.square,

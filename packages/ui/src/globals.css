@@ -187,7 +187,7 @@ html[data-pointer] :focus-visible,
 html:not([data-pointer])
   :is([data-focus-inset]:focus-visible, [data-focus-inset] :focus-visible):not(
     [data-chrome-focus]
-  ):not([contenteditable]) {
+  ):not([contenteditable]):not([data-focus-outset]) {
   outline-offset: -2px;
 }
 html:not([data-pointer]) [data-focus-proxy]:focus-within {

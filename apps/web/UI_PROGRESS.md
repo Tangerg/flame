@@ -1,13 +1,19 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-25. Trajectory page search now finds ordinary Tool data while excluding only canonical message-image bytes and retaining reasoning redaction. Native 320 px Dock, Chinese 200% and a build without private diagnostics preserve evidence, filters, reading returns and continued drafts. See Trajectory search evidence boundary. Earlier Schedules recovery, brand, hosted identity, status, selection and copying work remains delivered. Keep the continuous goal active and synchronize main at batch intervals.
+Updated: 2026-10-25. Palette-generated focus and required control edges now read across every emitted background. Filled primary actions, checked boxes and switches retain an outer focus perimeter inside inset hosts. Native Orange, dim/pale custom accents, contrast 100, 320 px Dock, Chinese 200% and an uninstrumented build qualify the affected tasks and continued drafts. See Control contrast across surfaces. Earlier Trajectory search, Schedules recovery, brand, hosted identity, status, selection and copying work remains delivered. Keep the continuous goal active and synchronize main at batch intervals.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/trajectory-search-1025`. Trajectory search evidence is qualified on
+is on `codex/control-contrast-1025`. Control contrast is qualified on frozen base
+`1aa3797ee73ec04ddbea1b45e343ee5fdb82520a`; see Control contrast across surfaces
+for its two owners, measured pairs, complete tasks and verification limits.
+Native acceptance is complete; publication and owned evidence retirement are
+recorded after delivery. Latest main was fetched once at publication and still
+equals the frozen base, so there is no incoming source delta to merge or revalidate.
+Earlier Trajectory search evidence is qualified on
 frozen base `ee796a95ac88013b04d99b214f505c3903ae5d64`; see Trajectory search evidence
 boundary below for the owner, complete tasks and verification limits. Implementation
 `3005c638983a801aecf68047c82f25c88d34592a` is published to remote main; its
@@ -689,6 +695,125 @@ Delivery: acceptance record `a35b04856c74459ebc72f51661d6f6edd55a6d53` is
 pushed to remote `main`. Fresh `ls-remote` matched that commit, the owned checkout
 was clean with zero unpushed commits, and all **24** accepted product/resource
 inputs matched. This in-place receipt adds no product change.
+
+### Control contrast across surfaces
+
+Palette themes derive required control boundaries and focus against the canvas,
+drawer, surface, elevated and sunken backgrounds they actually emit. Those five
+colors are computed once in `kit/palette.ts` and reused by the emitted tokens and
+contrast check. `controlEdge` and `focusRing` replace the retired canvas-only
+helpers; `legibleMix` accepts readonly adjacent planes and chooses the first
+permitted whole-percentage mix meeting every pair. Existing readable accents,
+nonzero floors and saturation at the declared ink remain intact. Light stylesheet
+mirrors become focus `#d86231` and edge `#868686`; dark mirrors edge `#6d6d6d`
+and retains Orange focus. Neutral planes, text/accent/status ramps, CTA
+fill/hover/ink, preferences, Runtime and command behavior retain their owners.
+
+The native task exposes a second owner: a filled control can inherit an inset
+focus perimeter that disappears into its own fill. Shared primary `Button`,
+checked `Checkbox` and both `Switch` states now project `data-focus-outset`.
+The document focus rule honors that marker ahead of an ancestor's inset rule,
+keeping its existing 1.5 px perimeter and 1 px outer gap on the surrounding
+surface. Unfilled controls/readers retain their inset behavior. There is no
+additional ink token, consumer override, product event listener or focus state.
+The shared UI README records this responsibility.
+
+Read-only HeroUI theme variables separate surface, field and focus roles.
+[Radix's scale guidance](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)
+distinguishes interactive backgrounds from boundaries and focus. [WCAG 2.2
+1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)
+requires meaningful control/state contrast against adjacent colors. Flame keeps
+its own tokens and primitives. Better-colors and better-accessibility guide
+actual pair measurement and keyboard evidence; existing layout, typography,
+writing and polish research supplies the EN/ZH, 14/18 px, 320 px and 200% review.
+No copy, artwork, decorative stripe or motion is added.
+
+| Severity | Location                                                                                | Before                                                                                                        | After                                                                                                     | Why                                                                |
+| -------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| HIGH     | `packages/ui/src/globals.css:190`, `button.tsx:550`, `checkbox.tsx:50`, `switch.tsx:66` | Native dark Orange primary and checked switch have an inset Orange perimeter on the same Orange fill: **1:1** | Perimeter sits on the surrounding plane: **6.732:1** for the primary, **5.855:1** for either switch state | A filled state must not erase keyboard focus (1.4.11, 2.4.7)       |
+| MEDIUM   | `apps/web/src/features/theme/kit/palette.ts:68`, `legibility.ts:28`                     | Canvas-only derivation gives native elevated edge **2.651:1** and dim-accent field/close focus **2.672:1**    | Both roles meet **3:1** on all emitted planes; native elevated edge **3.222:1**, focus **3.347:1**        | Boundaries and focus must read on their actual host plane (1.4.11) |
+
+The compiled declared-color probe checks **840 pairs**: four built-in/custom
+appearances, seven accents, three contrast preferences, two required roles and
+five planes. Original owners fail **316** declared pairs; final owners pass
+all pairs, with unrounded minimum **3.000004265562698:1**. Every other emitted
+token is identical to the original in all **84** appearance/accent/contrast
+scenes, including neutral canvases and exact default Orange `#fb6e30`. This is
+a bounded matrix, not every possible user palette or literal-token theme.
+
+Native WebKit resolves the actual opaque sRGB colors and surrounding planes;
+settled measured controls have opacity 1. Selected examples:
+
+| Native scene                                  | Resting field edge / background | Edge ratio  | Focus / background    | Focus ratio |
+| --------------------------------------------- | ------------------------------- | ----------- | --------------------- | ----------- |
+| EN dark, 14 px, dim `#101828`, contrast 25    | `#6d6d6d` / `#1e1e1e`           | **3.222:1** | `#6a707b` / `#1e1e1e` | **3.347:1** |
+| EN dark, 18 px, dim `#101828`, contrast 100   | `#8d8d8d` / `#313131`           | **3.919:1** | `#878c95` / `#313131` | **3.850:1** |
+| ZH light, 18 px, pale `#ffe066`, contrast 100 | `#7d7d7d` / `#fdfdfd`           | **4.047:1** | `#8a7c45` / `#fdfdfd` | **4.088:1** |
+
+Actual Wails beta.34 tasks qualify:
+
+- Dark Orange primary opens its editor from native Tab/Return; checked and
+  unchecked boxes retain visible focus, and cancel restores the same opener.
+  Settings Code size opens/closes normally; the next Tab reaches Font smoothing.
+  Space changes on/off/on with the same target and a visible outer perimeter.
+- Dark dim-accent editing retains `Control reading draft 保留` (**24** characters),
+  edits local title/instructions/Cron, toggles Enabled and opens/closes Model.
+  Escape cancels to Add. Home on the confirmed native right-workspace splitter
+  reaches **320 px**. Search `nightly`, expanded details and native scrolling
+  survive Back to the original main view. Closing it retains the same message
+  input and continues the exact draft to **36** characters.
+- Dark contrast 100 qualifies primary, field and close focus at 18 px; settled
+  Escape restores Add. Chinese light/pale contrast 100 qualifies native Window →
+  Move & Resize → Left and twenty native zoom increments to **200%**:
+  **561 × 525 CSS px**. Body scrolling moves the title from y=238.5 to 188.5;
+  native Tab reveals Cron, checkbox and Model inside the viewport while the
+  footer stays reachable. Cancel, return to main and close retain the same input
+  and continue `浅色对比草稿 保留` from **9** to **14** characters. Actual Size
+  restores **1122 × 1051** before Quit.
+- Separate light/Orange/14 px build contains production chrome/font adapters and
+  no private diagnostic nodes. Native form editing, checkbox toggle, cancel,
+  Dock/main/conversation return and exact continued input pass. Its draft grows
+  from **20** to **32** characters, with zero AX framing LF calibrated from the
+  known initial value. No DOM-identity or computed-color claim comes from this
+  clean build.
+
+Focused baseline passes **3 files / 151 tests**; final focused suites pass
+**4 files / 167 tests**. Against the original two color owners, new palette and
+document-paint regressions fail **86** and pass **46**; exact candidate bytes are
+restored. Final serial verification passes the full shared UI check (**6 files /
+97 tests**, source/type/lint/format and independent packed consumer), **18 Web
+files / 325 tests**, **13 Web gates**, **5 plugin gates** and supported
+**make check-native**, in **64.56 s**. Existing nonfatal macOS linker target/library
+warnings remain. All **11** portable resources rebuild/check without byte changes.
+Acceptance freezes **5,772** non-Markdown tracked inputs (SHA-256
+`91c9a17c8f9a4faf1143309d157bf3940a8a6fec044e292d0caaf04b7e31574d`), **3,005**
+artifact hashes including retained counterexamples, and **24** native construction
+inputs.
+
+Bounded Read/Edit/Write-only Claude CLI times out after **300.85 s**, leaving two
+reviewed color-owner edits. Primary completes regression/mirror work and the
+native-discovered shared placement repair, reviews the complete diff and runs
+all accepted checks. An early private Settings entry lacks the production font
+availability adapter; installing that actual adapter fixes the harness. A
+pointer/Tab probe reaches Density rather than Switch and is excluded; accepted
+entry starts from Code size's confirmed Escape return. One dark100 return capture
+precedes the settled close and is replaced by the confirmed return. A DOM-only
+probe cannot parse the existing focus selector; it supplies no geometry
+acceptance or manufactured pass. Early standalone probe preparations are excluded.
+
+Scoped result: **Approve** for these measured contracts and tasks. Production
+components and real portable resources run over deterministic in-memory reads.
+No Send, saved schedule, live provider/Runtime mutation, VoiceOver speech, OS IME,
+forced-colors/RTL, arbitrary literal-token theme or image-overlaid-control
+contrast is newly qualified. Browser visual suites and performance benchmarks
+are not run. The separately retained native multiline paste issue stays outside
+this batch. Publication and owned evidence retirement are completed in the
+delivery receipt below.
+
+Continue from fresh task evidence. The observed 200% schedule editor spends a
+substantial first view on introductory and section copy; inspect that hierarchy
+as a separate task before changing it, retaining cancellation, draft, revision
+and read-model ownership.
 
 ### Native image save qualification
 

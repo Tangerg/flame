@@ -547,6 +547,7 @@ export function Button({
       data-slot="button"
       data-variant={variant}
       data-active={active ? "" : undefined}
+      data-focus-outset={variant === "primary" ? "" : undefined}
       {...styled}
       className={cn(styled.className, className)}
     >

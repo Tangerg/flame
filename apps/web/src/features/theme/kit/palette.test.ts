@@ -186,9 +186,13 @@ describe("palette themes", () => {
       "read with accent %s at contrast %d",
       (accent, contrast) => {
         const t = tokensOf(subject, accent as string, contrast as number);
-        const planes = ["color-bg", "color-surface", "color-sunken", "color-elevated"].map(
-          (name) => t[name]!,
-        );
+        const planes = [
+          "color-bg",
+          "color-drawer",
+          "color-surface",
+          "color-sunken",
+          "color-elevated",
+        ].map((name) => t[name]!);
         const reads = (ink: string, required: number) =>
           planes.every((plane) => contrastRatio(ink, plane) >= required);
 
@@ -219,12 +223,8 @@ describe("palette themes", () => {
         expect(
           contrastRatio(t["color-text-on-accent"]!, t["color-accent"]!),
         ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
-        expect(contrastRatio(t["color-focus-ring"]!, t["color-bg"]!)).toBeGreaterThanOrEqual(
-          WCAG_AA_NON_TEXT,
-        );
-        expect(contrastRatio(t["color-control-edge"]!, t["color-bg"]!)).toBeGreaterThanOrEqual(
-          WCAG_AA_NON_TEXT,
-        );
+        for (const name of ["color-focus-ring", "color-control-edge"])
+          expect({ name, reads: reads(t[name]!, WCAG_AA_NON_TEXT) }).toEqual({ name, reads: true });
       },
     );
   });
