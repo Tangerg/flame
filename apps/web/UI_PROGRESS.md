@@ -11,8 +11,10 @@ is on `codex/trajectory-reading-1026`. Trajectory summary/recovery and the share
 retained-view visibility repair are qualified on frozen base
 `31fef320e003e48f3706047b35dcd15b2ffe84b1`; see the corresponding Trajectory
 section for owners, native counterexamples, complete tasks and verification limits.
-Publication and owned-resource retirement are pending below. The primary parallel
-checkout remains outside this batch. The user's latest instruction stops further
+Implementation `92afc65f3553a6584c807b3adc882b531babceae` is published to remote main;
+owned-resource retirement is complete. The single publication fetch finds no
+incoming delta from the frozen base. The primary parallel checkout remains
+outside this batch. The user's latest instruction stops further
 Claude CLI calls; edits and verification are owned directly by Codex.
 MCP JSON import implementation `2b70ee84024cece612cccf31fabaf624a4df148c` and
 receipt `31fef320e003e48f3706047b35dcd15b2ffe84b1` remain published and retired.
@@ -4842,7 +4844,29 @@ remain unqualified. No protocol or persisted-data migration is required. Runtime
 installations still obtain the rebuilt package through their existing installation
 owner. The goal remains active and no Claude CLI or subagent was used.
 
-Publication and exact owned-resource retirement are recorded after delivery.
+Implementation `92afc65f3553a6584c807b3adc882b531babceae` is published to remote main.
+The single publication fetch finds no incoming delta from frozen base
+`31fef320e003e48f3706047b35dcd15b2ffe84b1`; an independent remote read confirms publication,
+clean Git state and **0/0** ahead/behind before retirement.
+
+Owned retirement is complete. All **20 recorded processes** have exited and all
+four unique app registrations are absent. The four apps, isolated homes, private
+module proxy, asset trees, overlays, captures and logs under the exact
+`flame-ui-trajectory-reading-1026-vea6iV` root are removed. Seven new checkout
+outputs, eight unique Library caches and four unique temporary cache homes are
+removed; the original native-check binary is restored. Independent checks retain
+all **36 output-presence baselines**, **3 original output files**, **11 generated
+resource hashes**, **5,778 accepted source hashes** and both read-only reference
+hashes. The primary checkout and unrelated processes/resources remain untouched.
+
+The in-memory evidence archive round-trips **131 UTF-8 records**, **52 capture
+hashes** and the original binary hash through gzip. Its SHA-256 is
+`fb951f75ccb4985d7ea4971ffca64218bcb369ef4f190a6a518c21289c88e8b8`.
+The accepted source digest is
+`61c6fa1e1ff6728e9512d02ffe6c6de5b3797cc3aebd06414d4128d1fa40a91e`;
+all **1,806 private artifacts** and **14 native inputs** matched before removal.
+The final handoff-only receipt follows the same owned publication path. Continue
+from fresh task evidence; this delivery neither pauses nor completes the goal.
 
 ### Trajectory search evidence boundary
 
