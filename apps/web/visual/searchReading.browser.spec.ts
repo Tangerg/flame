@@ -62,9 +62,11 @@ for (const [theme, accent] of [
     const pairs = await page.evaluate(async () => {
       const rangesPath = "/src/features/chat/search/adapters/messageRanges.ts";
       const paintPath = "/src/features/chat/search/adapters/searchHighlights.ts";
-      const { findMessageRanges } = await import(rangesPath);
+      const { findMessageMatches } = (await import(
+        rangesPath
+      )) as typeof import("@/features/chat/search/adapters/messageRanges");
       const { paintChatSearchHighlights } = await import(paintPath);
-      const ranges: Range[] = findMessageRanges("Runtime");
+      const ranges = findMessageMatches("Runtime").map((match) => match.range);
       if (ranges.length < 2) throw new Error("The captured answer must contain repeated evidence");
       paintChatSearchHighlights(ranges, 1);
       if (CSS.highlights.get("search-match-active")?.has(ranges[1]!) !== true)

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { type ReactNode } from "react";
 import { ContentVisibility } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { selectAgentSession } from "@/features/agent/public/session";
@@ -39,11 +40,15 @@ function SearchFixture({
   removeComposer = false,
   hideComposer = false,
   inertComposer = false,
+  content = "Alpha beta ALPHA a+b",
+  earlierContent,
 }: {
   visible?: boolean;
   removeComposer?: boolean;
   hideComposer?: boolean;
   inertComposer?: boolean;
+  content?: ReactNode;
+  earlierContent?: string;
 }) {
   return (
     <>
@@ -54,7 +59,14 @@ function SearchFixture({
               <textarea aria-label="Composer draft" defaultValue="Keep this draft." />
             </div>
           )}
-          <article className={MESSAGE_CONTENT_SELECTOR.slice(1)}>Alpha beta ALPHA a+b</article>
+          {earlierContent && (
+            <article key="earlier" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
+              {earlierContent}
+            </article>
+          )}
+          <article key="answer" className={MESSAGE_CONTENT_SELECTOR.slice(1)}>
+            {content}
+          </article>
           <ChatSearchOverlay />
         </div>
       </ContentVisibility>
@@ -129,6 +141,180 @@ describe("ChatSearchOverlay", () => {
     act(() => selectAgentSession("session-b"));
     expect(searchInput()).toBeNull();
     expect(openSearch().value).toBe("");
+  });
+
+  it("refreshes a growing reply without moving the query, caret or reading position", async () => {
+    const { rerender } = renderSearch();
+    const input = searchFor("alpha");
+    const status = screen.getByRole("status");
+    input.setSelectionRange(1, 3);
+    vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+
+    rerender(<SearchFixture content="Alpha beta ALPHA a+b alpha" />);
+    await act(async () => {});
+
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe("1 / 3");
+    expect(searchInput()).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([1, 3]);
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+    const ranges = highlights.paint.mock.lastCall![0] as Range[];
+    expect(ranges.map((range) => range.toString())).toEqual(["Alpha", "ALPHA", "alpha"]);
+  });
+
+  it("keeps the selected occurrence in its message when earlier material arrives", async () => {
+    const { rerender } = renderSearch();
+    const input = searchFor("alpha");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByRole("status").textContent).toBe("2 / 2");
+    vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+
+    rerender(<SearchFixture earlierContent="alpha from an earlier reply" />);
+    await act(async () => {});
+
+    expect(screen.getByRole("status").textContent).toBe("3 / 3");
+    const [ranges, active] = highlights.paint.mock.lastCall as [Range[], number];
+    expect(ranges[active]?.toString()).toBe("ALPHA");
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(screen.getByRole("status").textContent).toBe("2 / 3");
+  });
+
+  it("finds a later result for the same previously unmatched query", async () => {
+    const { rerender } = renderSearch();
+    const input = searchFor("arriving");
+    expect(screen.getByRole("status").textContent).toBe("0 / 0");
+
+    rerender(<SearchFixture content="The arriving result." />);
+    await act(async () => {});
+
+    expect(screen.getByRole("status").textContent).toBe("1 / 1");
+    expect(searchInput()).toBe(input);
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Next match" }).disabled).toBe(
+      false,
+    );
+  });
+
+  it("replaces detached ranges after rendered formatting changes", async () => {
+    const { rerender } = renderSearch();
+    searchFor("alpha");
+    const original = (highlights.paint.mock.lastCall![0] as Range[])[0]!;
+
+    rerender(
+      <SearchFixture
+        content={
+          <p>
+            <strong>Alpha</strong> beta <em>ALPHA</em>
+          </p>
+        }
+      />,
+    );
+    await act(async () => {});
+
+    const ranges = highlights.paint.mock.lastCall![0] as Range[];
+    expect(ranges[0]).not.toBe(original);
+    expect(ranges.map((range) => range.toString())).toEqual(["Alpha", "ALPHA"]);
+    expect(ranges.every((range) => range.startContainer.isConnected)).toBe(true);
+  });
+
+  it("reconciles removed matches and clears the result when none remain", async () => {
+    const { rerender } = renderSearch();
+    const input = searchFor("alpha");
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    rerender(<SearchFixture content="Only alpha remains" />);
+    await act(async () => {});
+    expect(screen.getByRole("status").textContent).toBe("1 / 1");
+    expect((highlights.paint.mock.lastCall![0] as Range[])[0]?.toString()).toBe("alpha");
+
+    rerender(<SearchFixture content="No matching content" />);
+    await act(async () => {});
+    expect(screen.getByRole("status").textContent).toBe("0 / 0");
+    expect(highlights.paint.mock.lastCall![0]).toEqual([]);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("keeps later outside focus while new matching content arrives", async () => {
+    const { rerender } = renderSearch();
+    searchFor("alpha");
+    const outside = screen.getByRole("button", { name: "Outside" });
+    outside.focus();
+    vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+
+    rerender(<SearchFixture content="alpha alpha alpha" />);
+    await act(async () => {});
+
+    expect(screen.getByRole("status").textContent).toBe("1 / 3");
+    expect(document.activeElement).toBe(outside);
+    expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it.each(["Previous match", "Next match"])(
+    "keeps %s focused and locally closable when its last result disappears",
+    async (name) => {
+      const { rerender } = renderSearch();
+      const draft = composer();
+      draft.focus();
+      draft.setSelectionRange(5, 10);
+      searchFor("alpha");
+      const control = screen.getByRole<HTMLButtonElement>("button", { name });
+      act(() => control.focus());
+
+      rerender(<SearchFixture content="No matching content" />);
+      await act(async () => {});
+
+      expect(screen.getByRole("status").textContent).toBe("0 / 0");
+      expect(document.activeElement).toBe(control);
+      expect(control.disabled).toBe(false);
+      expect(control.getAttribute("aria-disabled")).toBe("true");
+      highlights.paint.mockClear();
+      fireEvent.click(control);
+      fireEvent.keyDown(control, { key: "Enter" });
+      fireEvent.keyUp(control, { key: "Enter" });
+      fireEvent.keyDown(control, { key: " " });
+      fireEvent.keyUp(control, { key: " " });
+      expect(highlights.paint).not.toHaveBeenCalled();
+
+      fireEvent.keyDown(control, { key: "Escape" });
+      expect(searchInput()).toBeNull();
+      expectDraftFocus(draft);
+    },
+  );
+
+  it("ignores unrelated chrome and stops refreshing after the query is cleared", async () => {
+    const { rerender } = renderSearch();
+    const input = searchFor("alpha");
+    const chrome = document.createElement("p");
+    chrome.textContent = "alpha in unrelated chrome";
+    highlights.paint.mockClear();
+    await act(async () => {
+      screen.getByRole("region", { name: "Conversation" }).append(chrome);
+    });
+    expect(highlights.paint).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("1 / 2");
+
+    fireEvent.change(input, { target: { value: "" } });
+    highlights.paint.mockClear();
+    rerender(<SearchFixture content="alpha alpha alpha" />);
+    await act(async () => {});
+    expect(highlights.paint).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("does not repaint a retired search from a queued content update", async () => {
+    const { rerender } = renderSearch();
+    const draft = composer();
+    draft.focus();
+    searchFor("alpha");
+    rerender(<SearchFixture content="alpha alpha alpha" />);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    highlights.paint.mockClear();
+    await act(async () => {});
+
+    expect(searchInput()).toBeNull();
+    expect(document.activeElement).toBe(draft);
+    expect(highlights.paint).not.toHaveBeenCalled();
   });
 
   it.each(["Previous match", "Next match", "Close"])(
@@ -269,8 +455,8 @@ describe("ChatSearchOverlay", () => {
     expect(status.textContent).toBe("1 / 2");
     fireEvent.change(input, { target: { value: "missing" } });
     expect(status.textContent).toBe("0 / 0");
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Next match" }).disabled).toBe(
-      true,
+    expect(screen.getByRole("button", { name: "Next match" }).getAttribute("aria-disabled")).toBe(
+      "true",
     );
   });
 

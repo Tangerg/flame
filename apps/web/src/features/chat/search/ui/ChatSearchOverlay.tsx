@@ -11,7 +11,11 @@ import {
   paintChatSearchHighlights,
 } from "@/features/chat/search/adapters/searchHighlights";
 import { setChatSearchOpener } from "@/features/chat/search/application/openChatSearch";
-import { findMessageRanges } from "@/features/chat/search/adapters/messageRanges";
+import {
+  findMessageMatches,
+  observeMessageChanges,
+  type MessageMatch,
+} from "@/features/chat/search/adapters/messageRanges";
 import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const cs = stylex.create({
   bar: {
@@ -35,7 +39,7 @@ export function ChatSearchOverlay() {
 
 type SearchState = {
   query: string;
-  matches: Range[];
+  matches: MessageMatch[];
   activeIndex: number;
 };
 
@@ -78,6 +82,32 @@ function SessionChatSearchOverlay() {
     inputRef.current?.select();
   }, [open]);
 
+  const refreshMatches = useEffectEvent(() => {
+    const root = owningRegion(barRef.current);
+    if (!open || !search.query || !root) return;
+    const matches = findMessageMatches(search.query, root);
+    // Live ranges collapse when rendered text is replaced; retain the occurrence in its message.
+    const current = search.matches[search.activeIndex];
+    const retained = current
+      ? matches.findIndex(
+          (match) => match.message === current.message && match.occurrence === current.occurrence,
+        )
+      : -1;
+    const activeIndex =
+      retained >= 0 ? retained : Math.max(0, Math.min(search.activeIndex, matches.length - 1));
+    setSearch({ ...search, matches, activeIndex });
+    paintChatSearchHighlights(
+      matches.map((match) => match.range),
+      activeIndex,
+    );
+  });
+
+  useEffect(() => {
+    const root = owningRegion(barRef.current);
+    if (!open || !search.query || !root) return;
+    return observeMessageChanges(root, refreshMatches);
+  }, [open, search.query]);
+
   const reset = () => {
     clearChatSearchHighlights();
     focusReturn.current = null;
@@ -97,10 +127,13 @@ function SessionChatSearchOverlay() {
 
   const changeQuery = (query: string) => {
     const root = owningRegion(barRef.current);
-    const found = root ? findMessageRanges(query, root) : [];
+    const found = root ? findMessageMatches(query, root) : [];
     setSearch({ query, matches: found, activeIndex: 0 });
-    paintChatSearchHighlights(found, 0);
-    scrollRangeIntoView(found[0]);
+    paintChatSearchHighlights(
+      found.map((match) => match.range),
+      0,
+    );
+    scrollRangeIntoView(found[0]?.range);
   };
 
   const move = (delta: number) => {
@@ -108,8 +141,11 @@ function SessionChatSearchOverlay() {
     if (matches.length === 0) return;
     const nextIndex = (activeIndex + delta + matches.length) % matches.length;
     setSearch({ ...search, activeIndex: nextIndex });
-    paintChatSearchHighlights(matches, nextIndex);
-    scrollRangeIntoView(matches[nextIndex]);
+    paintChatSearchHighlights(
+      matches.map((match) => match.range),
+      nextIndex,
+    );
+    scrollRangeIntoView(matches[nextIndex]?.range);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -118,7 +154,7 @@ function SessionChatSearchOverlay() {
       event.preventDefault();
       event.stopPropagation();
       close();
-    } else if (event.key === "Enter" && event.currentTarget === inputRef.current) {
+    } else if (event.key === "Enter" && event.target === inputRef.current) {
       event.preventDefault();
       move(event.shiftKey ? -1 : 1);
     }
@@ -135,6 +171,7 @@ function SessionChatSearchOverlay() {
       ref={barRef}
       role="search"
       aria-label={t("chatSearch.label")}
+      onKeyDownCapture={onKeyDown}
       {...stylex.props(rc.box, rc.gutter, cs.bar)}
     >
       <TextField
@@ -145,7 +182,6 @@ function SessionChatSearchOverlay() {
         onChange={(event) => changeQuery(event.target.value)}
         placeholder={t("chatSearch.placeholder")}
         styles={cs.field}
-        onKeyDown={onKeyDown}
       />
       <span role="status" {...stylex.props(cs.count, vocab.faint, typeStep.uiSm, face.mono)}>
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
@@ -156,7 +192,7 @@ function SessionChatSearchOverlay() {
         title={`${t("chatSearch.prev")} (⇧⏎)`}
         aria-label={t("chatSearch.prev")}
         disabled={total === 0}
-        onKeyDown={onKeyDown}
+        focusableWhenDisabled
         onClick={() => move(-1)}
       />
       <IconButton
@@ -165,7 +201,7 @@ function SessionChatSearchOverlay() {
         title={`${t("chatSearch.next")} (⏎)`}
         aria-label={t("chatSearch.next")}
         disabled={total === 0}
-        onKeyDown={onKeyDown}
+        focusableWhenDisabled
         onClick={() => move(1)}
       />
       <IconButton
@@ -173,7 +209,6 @@ function SessionChatSearchOverlay() {
         size="xs"
         title={`${t("common.close")} (Esc)`}
         aria-label={t("common.close")}
-        onKeyDown={onKeyDown}
         onClick={close}
       />
     </div>

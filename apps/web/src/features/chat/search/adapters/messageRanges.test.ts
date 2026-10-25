@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { findMessageRanges } from "@/features/chat/search/adapters/messageRanges";
+import { findMessageMatches } from "@/features/chat/search/adapters/messageRanges";
 let inlineDefaults: HTMLStyleElement;
 beforeEach(() => {
   // Happy DOM omits these user-agent inline defaults from computed styles.
@@ -12,20 +12,40 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+function rangesFor(query: string, root?: ParentNode): Range[] {
+  return findMessageMatches(query, root).map((match) => match.range);
+}
+
 function textOf(selector: string): Text {
   const node = document.querySelector(selector)?.firstChild;
   if (!(node instanceof Text)) throw new Error(`missing text in ${selector}`);
   return node;
 }
 
-describe("findMessageRanges", () => {
+describe("findMessageMatches", () => {
+  it("keeps each occurrence tied to its rendered message", () => {
+    document.body.innerHTML = `
+      <article id="first" class="msg-content">alpha alpha</article>
+      <article id="second" class="msg-content">alpha</article>
+    `;
+
+    const matches = findMessageMatches("alpha");
+
+    expect(matches.map((match) => [match.message.id, match.occurrence])).toEqual([
+      ["first", 0],
+      ["first", 1],
+      ["second", 0],
+    ]);
+    expect(matches.map((match) => match.range.toString())).toEqual(["alpha", "alpha", "alpha"]);
+  });
+
   it("finds case-insensitive matches only inside message content", () => {
     document.body.innerHTML = `
       <article class="msg-content">Alpha beta ALPHA</article>
       <aside>alpha outside chat</aside>
     `;
 
-    const ranges = findMessageRanges("alpha");
+    const ranges = rangesFor("alpha");
 
     expect(ranges.map((range) => range.toString())).toEqual(["Alpha", "ALPHA"]);
   });
@@ -33,7 +53,7 @@ describe("findMessageRanges", () => {
   it("treats regex syntax as literal text", () => {
     document.body.innerHTML = `<article class="msg-content">a+b aab a+b</article>`;
 
-    const ranges = findMessageRanges("a+b");
+    const ranges = rangesFor("a+b");
 
     expect(ranges.map((range) => range.toString())).toEqual(["a+b", "a+b"]);
   });
@@ -41,7 +61,7 @@ describe("findMessageRanges", () => {
   it("returns no ranges for an empty query", () => {
     document.body.innerHTML = `<article class="msg-content">Alpha</article>`;
 
-    expect(findMessageRanges("")).toEqual([]);
+    expect(rangesFor("")).toEqual([]);
   });
 
   it("searches only message content under the given root", () => {
@@ -52,7 +72,7 @@ describe("findMessageRanges", () => {
 
     const root = document.querySelector("#inside");
     if (!root) throw new Error("missing root");
-    const ranges = findMessageRanges("alpha", root);
+    const ranges = rangesFor("alpha", root);
 
     expect(ranges.map((range) => range.toString())).toEqual(["alpha"]);
     expect(root.contains(ranges[0]?.startContainer ?? null)).toBe(true);
@@ -69,7 +89,7 @@ describe("findMessageRanges", () => {
       </article>
     `;
 
-    const ranges = findMessageRanges("Application Owns Transaction Policy");
+    const ranges = rangesFor("Application Owns Transaction Policy");
 
     expect(ranges.map((range) => range.toString())).toEqual([
       "application owns transaction policy",
@@ -86,7 +106,7 @@ describe("findMessageRanges", () => {
   it("matches formatted Chinese text with exact endpoints", () => {
     document.body.innerHTML = `<article class="msg-content"><p id="line">连续<strong>查找</strong>与<code>代码</code>内容。</p></article>`;
 
-    const ranges = findMessageRanges("连续查找与代码内容");
+    const ranges = rangesFor("连续查找与代码内容");
 
     expect(ranges.map((range) => range.toString())).toEqual(["连续查找与代码内容"]);
     const line = document.querySelector("#line");
@@ -104,7 +124,7 @@ describe("findMessageRanges", () => {
     `;
     document.querySelector("a")?.append(document.createTextNode(""));
 
-    const ranges = findMessageRanges("nested word");
+    const ranges = rangesFor("nested word");
 
     expect(ranges.map((range) => range.toString())).toEqual(["nested word"]);
     expect(ranges[0]?.startContainer).toBe(textOf("#head"));
@@ -116,7 +136,7 @@ describe("findMessageRanges", () => {
   it("keeps split occurrences ordered and non-overlapping", () => {
     document.body.innerHTML = `<article class="msg-content"><p>a<strong id="middle">aa</strong>a</p></article>`;
 
-    const ranges = findMessageRanges("aa");
+    const ranges = rangesFor("aa");
 
     expect(ranges.map((range) => range.toString())).toEqual(["aa", "aa"]);
     expect(ranges[0]?.endContainer).toBe(textOf("#middle"));
@@ -128,7 +148,7 @@ describe("findMessageRanges", () => {
   it("treats punctuation across formatting as literal text", () => {
     document.body.innerHTML = `<article class="msg-content"><p><code>a.b</code>(x) axb(x) a.<em>b(x)</em></p></article>`;
 
-    const ranges = findMessageRanges("a.b(x)");
+    const ranges = rangesFor("a.b(x)");
 
     expect(ranges.map((range) => range.toString())).toEqual(["a.b(x)", "a.b(x)"]);
   });
@@ -136,7 +156,7 @@ describe("findMessageRanges", () => {
   it("keeps UTF-16 endpoints exact around emoji and partial text nodes", () => {
     document.body.innerHTML = `<article class="msg-content"><p id="unicode">🧭alph<strong>a🧩be</strong><code id="unicode-end">taX</code></p></article>`;
 
-    const ranges = findMessageRanges("ALPHA🧩BETA");
+    const ranges = rangesFor("ALPHA🧩BETA");
 
     expect(ranges.map((range) => range.toString())).toEqual(["alpha🧩beta"]);
     expect(ranges[0]?.startContainer).toBe(textOf("#unicode"));
@@ -156,15 +176,15 @@ describe("findMessageRanges", () => {
       <article class="msg-content">Message tail</article><article class="msg-content">head marker</article>
     `;
 
-    expect(findMessageRanges("tailhead")).toEqual([]);
-    expect(findMessageRanges("tail head")).toEqual([]);
-    expect(findMessageRanges("head marker")).toHaveLength(5);
+    expect(rangesFor("tailhead")).toEqual([]);
+    expect(rangesFor("tail head")).toEqual([]);
+    expect(rangesFor("head marker")).toHaveLength(5);
   });
 
   it("continues a phrase through block elements styled inline", () => {
     document.body.innerHTML = `<article class="msg-content"><div style="display: inline">Inline tail</div><div style="display: inline">head marker</div></article>`;
 
-    const ranges = findMessageRanges("tailhead");
+    const ranges = rangesFor("tailhead");
 
     expect(ranges.map((range) => range.toString())).toEqual(["tailhead"]);
   });

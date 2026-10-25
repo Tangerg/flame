@@ -1,4 +1,10 @@
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
+
+export interface MessageMatch {
+  readonly range: Range;
+  readonly message: HTMLElement;
+  readonly occurrence: number;
+}
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -63,18 +69,40 @@ function findFlowRanges(flow: Text[], pattern: RegExp, ranges: Range[]): void {
   }
 }
 
-export function findMessageRanges(query: string, root: ParentNode = document): Range[] {
+export function findMessageMatches(query: string, root: ParentNode = document): MessageMatch[] {
   if (!query) return [];
 
   const pattern = new RegExp(escapeRegExp(query), "gi");
-  const ranges: Range[] = [];
+  const matches: MessageMatch[] = [];
   const messageRoots = root.querySelectorAll<HTMLElement>(MESSAGE_CONTENT_SELECTOR);
 
   for (const messageRoot of messageRoots) {
+    const ranges: Range[] = [];
     for (const flow of collectTextFlows(messageRoot)) {
       findFlowRanges(flow, pattern, ranges);
     }
+    matches.push(
+      ...ranges.map((range, occurrence) => ({ range, message: messageRoot, occurrence })),
+    );
   }
 
-  return ranges;
+  return matches;
+}
+
+export function observeMessageChanges(root: HTMLElement, changed: () => void): () => void {
+  const observer = new MutationObserver((records) => {
+    if (records.some(changesMessage)) changed();
+  });
+  observer.observe(root, { childList: true, characterData: true, subtree: true });
+  return () => observer.disconnect();
+}
+
+function changesMessage(record: MutationRecord): boolean {
+  const target = record.target instanceof Element ? record.target : record.target.parentElement;
+  if (target?.closest(MESSAGE_CONTENT_SELECTOR)) return true;
+  return [...record.addedNodes, ...record.removedNodes].some(
+    (node) =>
+      node instanceof Element &&
+      (node.matches(MESSAGE_CONTENT_SELECTOR) || node.querySelector(MESSAGE_CONTENT_SELECTOR)),
+  );
 }

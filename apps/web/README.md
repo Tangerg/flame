@@ -64,6 +64,13 @@ Selected subagent readers keep the complete task purpose and sibling identity
 visible in their header. Overview rows retain their compact summaries; retained
 reading state, source navigation and return focus stay with the inspection owner.
 
+Conversation Find follows rendered message changes while its query is open.
+Refreshes retain the selected occurrence in its message, rebuild current highlight
+ranges and preserve focus and reading position. Only query changes and explicit
+navigation request a match reveal; hiding or closing retires the observer with
+the existing search lifetime. The Find scope owns Escape and query navigation;
+zero-result navigation buttons keep focus while refusing activation.
+
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code

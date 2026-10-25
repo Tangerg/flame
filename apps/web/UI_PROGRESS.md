@@ -1,15 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Selected task readers now keep their complete purpose and sibling identity visible at constrained widths, with balanced wrapping at large text sizes. Native task/file/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Conversation Find now follows rendered reply changes, retaining the current occurrence, query and reading position. Zero-result navigation retains focus and local Escape. Native update/file/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/task-reading-1026`. The selected-task identity qualification uses
-frozen base `d865ed638b116da41c9008d5b44ed7090c0c925e`; its delivery and retirement
-are recorded in Selected task identity at constrained widths below. Shared
+is on `codex/find-updates-1026`. Find refresh qualification uses frozen base
+`fe9c0ae4700b880a08fb66faab8eb76bab419d8f`; see Find follows rendered reply updates
+below. Selected-task implementation `c51f370baef7e2d3ebd08dbfba5e9abde9af1c40`
+and receipt `fe9c0ae4700b880a08fb66faab8eb76bab419d8f` remain published and retired.
+Shared
 disabled-command implementation `bae5b99cff298e4d7d42427e18f093cf139fc82a` and
 receipt `d865ed638b116da41c9008d5b44ed7090c0c925e` remain published and retired.
 Native source return implementation
@@ -4406,9 +4408,9 @@ document-wide fallback when that root is absent. No second visibility fact,
 navigation transition, index, cache or Runtime state is added.
 
 Repeated Find focuses and selects the current query while preserving its opener
-when a Find control owns focus (`:55`). Each interactive control handles its own
-Escape; query Enter/Shift+Enter navigate, while buttons retain native activation
-(`:115`). Composing and already-handled keys remain with their owner. Explicit
+when a Find control owns focus. The Find scope handles local Escape and query
+Enter/Shift+Enter in capture; buttons retain their activation and disabled guards.
+Composing and already-handled keys remain with their owner. Explicit
 close clears the current Find and restores a connected, visible opener only
 while Find/body still owns focus (`:88`). A refused focus call falls back to the
 current focusable Conversation (`:192`). Later outside focus and host focus on
@@ -4433,12 +4435,12 @@ inform the local interaction model.
 [Reduced-motion technique C39](https://www.w3.org/WAI/WCAG22/Techniques/css/C39.html)
 supports the preference review; its associated 2.3.3 criterion is AAA.
 
-| Severity | Root cause                                                                                               | Corrected behavior and acceptance                                                                                                                                         |
-| -------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| High     | Global placement/lifetime ignored the presented Conversation.                                            | Local reading-axis bar, root-scoped matching, hidden retirement and no hidden reopening; native EN/ZH, narrow and 200% pass.                                              |
-| High     | Close did not preserve a meaningful return destination; button Escape and repeated Find were incomplete. | Per-control keyboard handling and origin-sensitive return retain current textarea selection and later host/outside focus; regression and native task checks pass (2.4.3). |
-| Medium   | Match feedback had no status semantics.                                                                  | Stable named-search/status structure retains input/button focus; DOM and native AX qualify semantics (4.1.3), without a VoiceOver speech claim.                           |
-| Medium   | Find forced smooth scrolling despite existing motion preferences.                                        | Event-time preference reads preserve the existing owner; four regressions and actual native request traces pass (2.3.3 AAA reference).                                    |
+| Severity | Root cause                                                                                               | Corrected behavior and acceptance                                                                                                                                        |
+| -------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| High     | Global placement/lifetime ignored the presented Conversation.                                            | Local reading-axis bar, root-scoped matching, hidden retirement and no hidden reopening; native EN/ZH, narrow and 200% pass.                                             |
+| High     | Close did not preserve a meaningful return destination; button Escape and repeated Find were incomplete. | Find-owned keyboard handling and origin-sensitive return retain current textarea selection and later host/outside focus; regression and native task checks pass (2.4.3). |
+| Medium   | Match feedback had no status semantics.                                                                  | Stable named-search/status structure retains input/button focus; DOM and native AX qualify semantics (4.1.3), without a VoiceOver speech claim.                          |
+| Medium   | Find forced smooth scrolling despite existing motion preferences.                                        | Event-time preference reads preserve the existing owner; four regressions and actual native request traces pass (2.3.3 AAA reference).                                   |
 
 Better-accessibility and better-layout give a scoped Approve for the observed
 Find task. This covers the recorded keyboard, focus, geometry and state paths,
@@ -4547,6 +4549,165 @@ The actual six-source harness, manifest, native qualifications, source freezes,
 cleanup and delivery proofs are retained with that archive. Continue from this
 main revision with a new observed task defect, without repeating the completed
 Find or earlier approval work.
+
+### Find follows rendered reply updates
+
+Find now refreshes its matches when the presented reply changes. An open query
+keeps the selected occurrence in its rendered message, updates the stable result
+count and replaces collapsed or detached CSS Highlight ranges. The refresh does
+not focus, select or reveal anything. Explicit query changes and Next/Previous
+remain the owners of match navigation; the existing reading-follow policy keeps
+its own scroll decisions.
+
+On frozen base `fe9c0ae4700b880a08fb66faab8eb76bab419d8f`, actual Wails reproduces
+**2 / 2** after a third matching chunk arrives. Its two old highlight ranges read
+`Search checkpoint` and an empty string. After the captured reply is removed,
+the old count stays **2 / 2** and both ranges are empty. The root cause is that
+query changes alone built the Range array, although React can replace the text
+to which a live Range refers.
+
+`apps/web/src/features/chat/search/adapters/messageRanges.ts:72` now returns
+each Range with its rendered message root and local occurrence. The existing
+inline-flow, literal, case-insensitive and UTF-16 matching rules remain intact.
+Its scoped MutationObserver accepts message text changes and added/removed
+message subtrees, ignoring unrelated chrome and Find's own counter. It observes
+only while an open nonempty query owns a visible Conversation. Close, clearing,
+Session changes and content hiding retire that subscription through the existing
+lifetime. No timer, persistent index, Runtime state or competing reply projection
+is introduced. All callers migrate to `findMessageMatches`; no obsolete alias
+remains.
+
+`apps/web/src/features/chat/search/ui/ChatSearchOverlay.tsx:85` retains the
+message/occurrence when it remains, otherwise bounds the previous result index
+to the current matches. A native intermediate candidate correctly updates to
+**0 / 0**, but natively disabling its focused Next button loses focus to body.
+The final Previous/Next controls use the existing `focusableWhenDisabled`
+contract. One Find-level capture handler replaces four separate key handlers,
+owning Escape and query-only Enter/Shift+Enter before the disabled action guard.
+Disabled activation and submission remain with the shared primitive. This
+scope boundary also leaves later outside focus with its owner.
+
+Read-only ZCode `useConversationTimelineFind.ts` distinguishes a current match
+key from its global index during rendered updates. Its cache, virtualization and
+history loading are not copied. HeroUI's actual SearchField composes a controlled
+query with native input/group/clear primitives; it does not prove streaming Find
+behavior. ChatGPT's actual keyboard-shortcut SearchInput gives its caller first
+refusal and keeps Escape local; it is a settings control, not evidence of a
+conversation index. Existing Arc/Radix and Ace visual research remains applicable
+to scope, restrained hierarchy and return. The missing Ace contact-sheet caches
+are not recreated: the original Alpaca and Marketer source pages are reopened
+read-only. Static reference images do not qualify keyboard behavior.
+
+#### Scope and coverage
+
+The inspected flow is **read reply → Find → background reply update → navigate
+the current result → open source → return → continue the original draft**,
+including no results, reply removal, hidden retirement and disconnected opener
+fallback. Stack and conventions remain React, StyleX, shared Base UI controls,
+semantic tokens and Wails v3.0.0-beta.34. Root AGENTS, PROJECT_RULES, DEVELOPMENT,
+Web/Desktop and visual-fixture documentation were read; the six better-interface
+owner skills inform the review. Live provider execution is outside the inert
+presentation qualification.
+
+| Domain        | Evidence inspected                                                                                                                | Result                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Accessibility | Named search/status/actions; native Tab/Enter/Space/Escape, disabled focus, source/Composer return; existing IME guards           | Clear in inspected paths; VoiceOver speech and OS IME not verified |
+| Layout        | Conversation-owned bar beside Files; native half-window and 561 × 475 CSS px at 200%; visible source/return                       | Clear in exercised states; no fresh 320 px viewport claim          |
+| Writing       | Existing localized controls and accurate stable counter in English, Chinese and German; no helper copy added                      | Stale result feedback resolved                                     |
+| Typography    | Existing prose, formatted inline matching, mono source and count at 14/18 px and page 200%                                        | Preserved in the inspected reading path                            |
+| Colors        | Native Orange/light, blue/dark and warm/purple selected/ordinary matches and focus rings; unchanged semantic CSS Highlight tokens | Clear for inspected roles; fresh contrast ratios not measured      |
+| UI            | Explicit navigation, silent background refresh, local zero-result close, full/off motion and observer-free repeat                 | Update and focus findings resolved                                 |
+
+#### Resolved findings
+
+| Severity | Domain        | Location                                                                                        | Before                                                                                        | After                                                                                  | Why                                                                                    |
+| -------- | ------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| HIGH     | UI            | `apps/web/src/features/chat/search/ui/ChatSearchOverlay.tsx:85`; `adapters/messageRanges.ts:72` | Reply changes leave stale counts and collapsed ranges, omitting new evidence                  | Observe the owning rendered messages, rebuild ranges and retain the message occurrence | The presented result count and navigation must describe the actual reply               |
+| MEDIUM   | Accessibility | `apps/web/src/features/chat/search/ui/ChatSearchOverlay.tsx:150`                                | Removing the last match natively disables the focused navigation button, losing focus to body | Keep unavailable actions focusable; let the Find scope own Escape                      | Preserve a meaningful keyboard position and local return under content changes (2.4.3) |
+
+#### Verification
+
+- The unchanged baseline passes **3 files / 37 tests**. Five new refresh
+  regressions fail on that source (**5 fail / 24 pass** in the overlay), exposing
+  stale append/prepend/no-match counts, detached formatting ranges and removal.
+  The final **10** new overlay cases and **one** metadata case preserve the
+  original matcher endpoints and existing lifetime/focus/motion assertions.
+- Final affected-consumer coverage passes **14 files / 316 tests**: Find,
+  matcher/Slot, inspection, reading follow/visibility, Markdown/UserMessageFold,
+  Button, notifications, Approval, Question, Mermaid and Lightbox. All **16**
+  selected Web gates pass across the serial runs. Final typecheck, lint,
+  formatting, `make check-native`, plugin-module gate and candidate/clean asset
+  builds pass after the last product edit in **47.97 s**. Native includes the
+  normal Web stage and Desktop test/vet/build. Existing linker/loader/chunk
+  warnings remain non-failing.
+- Two new zero-result cases initially expose that a disabled button's leaf
+  handler is suppressed. A rejected shared-handler experiment passes its own
+  **130** tests but fails the existing Approval no-menu assertion (**1 fail /
+  315 pass**) by treating ArrowDown as an available action. It is fully reverted;
+  final shared source/docs/tests match the frozen base. An intermediate bubbling
+  container handler fails accessibility lint; the final delegated capture scope
+  passes without a suppression. Type/format setup failures are retained in the
+  evidence. No check or valid assertion is weakened to admit those alternatives.
+- Final EN/light/14 px/Orange/full motion: query `Search checkpoint` selects
+  **2 / 2**. Native wheel moves to scrollTop **1910** while the query retains
+  selection **17..17**. The captured append updates to **2 / 3**, all three
+  ranges contain the exact phrase, scrollTop remains **1910**, and query focus/
+  caret remain. Return reaches **3 / 3**. `store.go` → file → Back restores its
+  source and scrollTop **31**. The same draft continues as
+  `Continue after checking the updated reply. — continued`.
+- Final English reply removal changes **1 / 3 → 0 / 0**, clears highlights and
+  retains Next focus. Return/Space do nothing; Escape returns to the original
+  Composer and exact draft. Native pixels show the focused disabled control.
+- Final ZH/dark/18 px/custom blue/motion off uses native Window → Move & Resize
+  → Left and twenty native Zoom In commands. At **561 × 475 CSS px / 200%**,
+  document width also equals **561**; query, counter, navigation and Close are
+  reachable. Four native Tabs reach the source; Return presents the file full
+  width, retiring Find/query/highlights. Escape restores the source; reopening
+  Find computes all three current matches. Reply removal preserves Previous,
+  Tab reaches disabled Next, and Escape falls back to the Conversation because
+  the old source is removed. Actual Size restores **1122 × 950** and the draft
+  continues as `保留这段查找草稿，继续核对`.
+- Final clean DE/18 px/warm custom canvas/purple/motion off omits the passive
+  observer. Native pixels/AX independently show **2 / 2 → 2 / 3 → 3 / 3**,
+  keyboard source entry and Escape source return. The original draft continues
+  as `Nach dem Lesen fortsetzen — weiter`. Reply removal shows **0 / 0** with
+  Next still focused; Escape returns to that draft. All apps exit through native
+  Quit.
+
+Private updates use the existing canonical snapshot projector and read-refresh
+boundary to append a recorded chunk, settle the run and install a captured empty
+reply state. They do not Send, call a provider, cancel or mutate live Runtime.
+The passive observer only reports current DOM counts, CSS ranges, focus, caret
+and geometry; the clean host excludes it. The original baseline observer has a
+wrong viewport selector, so its scrollTop is null and supplies no scroll claim.
+Final English uses the corrected selector. Chinese remains at the existing
+follow-tail position before manual scrolling, so its append scroll adjustment is
+not classified as a refresh regression. No production scroll implementation is
+instrumented or replaced.
+
+Not verified: live provider streaming/recovery, automatic opening of hidden
+content, a fresh 320 px viewport, fresh contrast measurement, VoiceOver speech,
+OS IME, RTL mirroring or other platform GUIs. Browser visual suites, performance
+benchmarks, broader unchanged Runtime/CLI suites, Claude CLI and subagents do not
+run. No protocol or persisted-data migration is required.
+
+| Goal CHECK        | Scoped result                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Typography        | Existing prose and count remain readable across default/large type and native 200%          |
+| Whitespace        | The existing local bar/gutters remain; no new floating layer, card or helper row            |
+| Visual hierarchy  | Accurate current result, selected match and source/return retain separate roles             |
+| Color             | Orange/custom themes retain active/ordinary highlights and visible focus; no new palette    |
+| Motion            | Full/off-motion paths pass; background refresh adds no reveal or animation                  |
+| Micro-interaction | New result navigation, zero-result Tab/Escape, source return and draft continuation pass    |
+| Responsive        | Half-window/200% full-pane source retreat keeps the complete task reachable                 |
+| Originality       | Existing Flame brand, reading axis and native controls remain; no decorative template added |
+
+**Verdict: Approve for this inspected flow and recorded states.** Both findings
+are resolved. This remains **progress**, not whole-product or award-tier
+completion. Accepted **5,784 non-Markdown inputs** have SHA-256
+`dd5a1af82c8a73e726a10896eae804dcb17d697f968c310ee2e142afbd00925c`.
+Continue from a fresh reading/Dock task after publication; do not repeat the
+qualified formatting or reply-update repair without new evidence.
 
 ### Formatted conversation Find
 
