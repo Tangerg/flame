@@ -10,8 +10,9 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/provider-selection-reading-1026`. Plugin provider selection reads
 are qualified on frozen base `98be315eb2ad16cf377e46acfbac7255e27af62e`; see
 Plugin provider selection reads for the original counterexamples, owners, native
-tasks and limits. Product checks and native acceptance pass; publication and
-owned-resource retirement are pending. The primary parallel checkout remains
+tasks and limits. Implementation `02f697b62affd6c62c0d676771a037750958eee5` is published to remote main;
+independent publication checks observe its exact hash and a clean 0/0 checkout.
+All owned acceptance resources are retired; see the receipt below. The primary parallel checkout remains
 outside this batch. The user’s latest instruction stops further Claude CLI calls;
 edits and verification are owned directly by Codex. Background-task progress
 implementation `09ea5578f280e4506aad0629cf0f304d2b3518d5` and receipt
@@ -4797,10 +4798,23 @@ The unrelated earlier dock-catalog shorthand conflict is unchanged and is not
 claimed passing. Nonfatal asset/chunk, macOS and duplicate-Objective-C warnings
 remain recorded. No Claude CLI or subagent is used.
 
-Publication and exact owned-resource retirement are pending. The primary checkout,
-user data, references and preexisting output/cache bytes must remain preserved.
-Continue from fresh content/Dock task evidence after delivery; do not reopen this
-selection-read repair without a new finding.
+Implementation `02f697b62affd6c62c0d676771a037750958eee5` is published to remote main. The single
+publication fetch contains no incoming delta from the frozen base. An independent
+remote lookup confirms the implementation hash with a clean 0/0 owned checkout.
+All **18** recorded processes are dead; **20** owned output, Library and bundle-temp
+paths are removed and all four unique apps are unregistered. All **36** output
+presence baselines, exact inventories of the **three** original output files,
+**11** accepted resources, **5,781** accepted source files and **three** read-only
+references match after retirement. The original native-check binary is restored
+byte-for-byte; the two preexisting Vitest cache files already match. The exact
+private root `/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-provider-selections-1026-yJN9Ci` is absent. The independently round-trip-verified
+evidence archive contains **99 UTF-8 files**, **24 screenshot digests** and the
+original binary metadata; gzip SHA-256
+`ef74c8d8e0664add31ce6e559e2186b4d9777b3e8296fe27b0b12fc172e924d4`. Its accepted maps also retain **1,806** compiled-file and
+**24** native-input digests. The primary checkout, user data, dependencies, global
+caches and unrelated processes remain preserved. This documentation-only receipt
+changes no accepted product source. Continue from fresh content/Dock task evidence;
+do not reopen this selection-read repair without a new finding.
 
 ## Background-task progress reading
 
