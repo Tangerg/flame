@@ -9,7 +9,9 @@ This user-requested file is the maintained progress and handoff record for the d
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/local-file-feedback-1025`. Local file action outcomes and continued
 reading are accepted on frozen base `5918ddcc976f39e77c9321caa975e3ef31d02e06`;
-publication and private evidence retirement are pending below.
+implementation `d4f4acba6938b93d2b8fa5d5de8179cda7522191` is published to
+remote main. Private evidence retirement is complete, and the owned checkout
+is clean. The documentation receipt changes no accepted product source.
 Go-to-line input preservation and submission
 are accepted on frozen base `9b8fe29a187c726395db1b084d99af6f41b8f2b8`;
 implementation `31d69a91dd1a8959b10b5a898177a64eaed22bc1` is published to
@@ -4295,7 +4297,18 @@ All **26** recorded processes are dead and both bundles are unregistered. Seven
 owned checkout outputs, four Library Cache/WebKit paths and two bundle-temp
 paths are removed. All 36 output-presence baselines, three original file hashes
 and eleven product resources match; two original Vitest files are restored.
-Publication and exact private-root retirement are pending the delivery receipt.
+Implementation `d4f4acba6938b93d2b8fa5d5de8179cda7522191` is published to
+remote main and its exact remote hash and clean owned checkout are confirmed
+before retirement. Accepted artifact maps contain **607 files**: 597 compiled
+assets, eight module-proxy files and two native binaries. The independently
+round-trip-verified evidence archive contains **147 UTF-8 files** and **18
+screenshot digests**, gzip SHA-256
+`a62421a3b946b2109751b2273270beea27c28229acd1af1d2b60f8d98e7cf6d3`.
+The exact private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-local-files-1025-VYWqB1`
+is absent. This documentation-only receipt changes no tested source. Primary
+parallel work remains preserved. Continue from a new observed UI task on the
+accepted frozen base; incoming main commits do not restart unrelated checks.
 
 ## Dock tab task continuity
 
