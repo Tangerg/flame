@@ -10,7 +10,9 @@ The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flam
 is on `codex/memory-filter-recovery-1025`. Memory filtered-result recovery is
 qualified on frozen base `efd734472c9caedbea59e3aff36565b7f6346dcc`; see its
 section below for the owner, complete tasks, checks and verification limits.
-Publication and owned evidence retirement are recorded there. The preceding
+Implementation `4131befc04411529ee7e4beaaec484022972ade2` is published to remote main;
+owned evidence retirement is complete. The single publication-time fetch finds
+main at the frozen base, so there is no incoming delta to revalidate. The preceding
 Schedule editor hierarchy implementation `90887c91e95039be1c8b6d33ea6264152319f0b5`
 and receipt `efd734472c9caedbea59e3aff36565b7f6346dcc` are already published
 to remote main, with their owned resources retired. Control contrast implementation
@@ -1033,6 +1035,30 @@ Post-native integrity confirms **5,772** accepted non-Markdown inputs, SHA-256
 **11** resources unchanged since construction. Scoped result: **Approve** for the
 local recovery task, its focus destinations and retained draft/command boundaries.
 Publication and owned resource retirement follow below.
+
+Delivery: implementation `4131befc04411529ee7e4beaaec484022972ade2` is pushed to
+remote `main`, independently matched with `ls-remote` before retirement. The
+single publication-time fetch finds main at the frozen base; merging it is already
+up to date. Normal formatting, workspace lint and conventional-message hooks pass
+without changing accepted product bytes.
+
+All **35** recorded PIDs are dead and all **4** owned bundles are unregistered.
+Cleanup removes **7** new checkout output/cache paths, **8** bundle-specific
+Library paths and **4** bundle-specific temporary directories. The original
+native-check binary is restored exactly. All **36** output-presence baselines,
+**3** original file hashes and **11** resource hashes pass independent checks
+before and after root deletion. No exact-root or exact-bundle process remains.
+
+The exact private root `flame-ui-memory-recovery-1025-1JcTT1` is removed after
+UID/device/inode/birth-time, source, artifact and native-input checks. A
+round-trip-verified compressed in-memory archive retains **141** UTF-8 files and
+**9** capture hashes, SHA-256
+`9abc36755de82d7a0ea6c89b3652e372edbe42963eac920d8a11f9f94b6e217c`.
+Installed dependencies, global caches, read-only references, user data, unrelated
+processes and the primary parallel checkout remain untouched. This documentation
+receipt changes no accepted product input; its publication is followed by fresh
+remote, cleanliness and preservation checks. Continue from a fresh task observation,
+preserving Memory's local recovery and nonmodal command/draft ownership.
 
 ### Native image save qualification
 
