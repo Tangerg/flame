@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -46,6 +46,12 @@ the verified ten-record gzip SHA-256 is
 `545b6063ed5f0199539c6b48286fedf9f0bb39e509cd755cde6dafef43e430ba`.
 Merge commit `b3d041efbef3ce7988e543f573f2aa1abd8005e5` stays on the owned local UI branch; no push or primary checkout
 integration is authorized or performed.
+
+The subsequent explicit main-sync request fetches remote main again and confirms
+the same `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` is already an ancestor of
+the local UI branch. There are zero incoming commits; merge reports already up
+to date. This confirmation does not restart the UI verification chain or change
+the primary checkout.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -1207,8 +1213,8 @@ Verdict: **Approve for these semantic feedback colors and file-return tasks**.
 Typography, spacing, task hierarchy, motion and Flame composition retain their
 owners; the inspected responsive and keyboard paths remain usable. This is
 scoped progress across the goal dimensions, not whole-product or award-level
-acceptance. Selected/selected-hover and invalid-focus combinations need separate
-task evidence. Arbitrary literal-token package themes, VoiceOver, OS IME, RTL,
+acceptance. The subsequent hover/selection qualification appears below;
+invalid-focus combinations still need separate task evidence. Arbitrary literal-token package themes, VoiceOver, OS IME, RTL,
 other platforms and broad native/Runtime/CLI suites are not newly qualified.
 No browser visual suite, performance benchmark, Claude CLI or subagent runs.
 
@@ -1223,6 +1229,83 @@ probe artifacts and three native hashes; SHA-256
 `4d12f3791073e4957e2c69732c5db2aa9ffbf124d649a9a53e9e18a097f0f1ec`.
 Read-only references, user data, the primary checkout and unrelated processes
 remain untouched. This repair is committed locally; no push occurs.
+
+### Hover and selection reading
+
+At frozen base `b94d8740cf6019bcf93c70de856b7ec430a9dde4`, actual Wails
+ZH/dark/18 px/`#ffe066`/contrast 100 exposes **4.104037:1** text in both the
+Interface size and Code size menus when the selected option is keyboard
+highlighted. The shared item correctly combines those states, but the contrast
+preference increases translucent state fills beyond the palette's qualified
+backgrounds. Its unselected highlighted option measures **7.778989:1**.
+
+The palette now owns hover, selected and selected-hover fills. Hover uses its
+existing sunken plane. The two opaque selection fills mix the accent with the
+canvas; their common strength keeps both within the luminance interval of the
+qualified reading planes, including paper bounds. Visual styles retire their
+competing wash declarations, and stylesheet defaults mirror the palette. Neutral
+page colors and inks remain independent of the accent. Existing selection marks,
+shared controls, handlers, focus restoration and popup placement remain intact.
+
+Read-only HeroUI `packages/styles/components/list-box-item.css` separates the
+hover background from the selected checkmark. Radix's role guidance and
+better-colors/accessibility inform the bounded interaction colors; the reference
+does not qualify Flame's behavior. Typography, spacing, writing, motion and the
+existing Flame composition retain their owners.
+
+Native tasks use the unchanged production settings command and shared Select:
+
+- ZH/dark/18 px/pale accent/contrast 100: selected highlighted text in both menus
+  now measures **11.689937:1**; unselected highlight measures **8.798240:1**.
+  Interface size changes 18 → 17 → 18, and Code size changes Follow interface →
+  14 → Follow interface. Enter and Escape return focus to their trigger. Both
+  open menus follow actual settings scrolling; Code size flips sides when space
+  permits. A confirmed draft survives settings entry and return, then continues
+  as `核对外观设置后继续。 已核对，继续。`.
+- DE/light/18 px/dark accent/contrast 100/Xuan 5: native Actual Size followed by
+  twenty Zoom In actions establishes **200% / 720 × 450 CSS px**. Both selected
+  highlighted options measure **11.612661:1**. Home and End reach the complete
+  size menu, and Code size changes to 11 and back to Follow interface. Escape
+  restores its trigger; settings close returns to the workspace. Explicitly
+  refocusing the Composer retains and continues
+  `Keep the appearance review draft. Continue after checking.`.
+
+The first synthetic typing attempt leaves an empty draft and supplies no draft
+acceptance. The confirmed native-paste path above supersedes it. Two passive
+observer frames reject unmeasured element opacity and supply no contrast result.
+Accepted measurements use settled selected/highlighted states. No pointer-hover
+measurement, OS IME, VoiceOver, forced-colors/RTL, arbitrary literal-token theme,
+live Runtime/provider mutation or Send is newly qualified. No browser visual
+suite, performance benchmark, Claude CLI or subagent runs.
+
+Baseline passes **14 theme files / 253 tests**, the shared Select positioning
+test, prerequisites, assets and native build in **16.10 s**. The new interaction
+regression fails on original production (**16 failed / 12 passed / 131 skipped**,
+2.37 s wrapper). Final theme/menu/Dock tests pass **20 files / 351 tests**. A test
+record type annotation fixes the subsequent typecheck failure without changing
+runtime assertions. The remaining **12-command / 16.41 s** continuation passes
+typecheck, lint, design-system, tokens, chrome, styles, classes, dead-token and
+shorthand checks, candidate assets and both native builds. The exact-channel
+feedback probe retains **1,320** pairs above 4.5:1. Interaction regressions cover
+four appearances, seven accents, three contrast values, all paper modes, ten text
+roles and both focus/control edges. Existing nonfatal build/linker warnings remain.
+
+Verdict: **Approve for these interaction fills and settings-return tasks**.
+The whole-product award-level goal remains open; invalid-focus combinations and
+new reading/Dock task evidence remain future scoped work.
+
+All **9** recorded PIDs are dead and three bundles are unregistered. Cleanup
+removes four new checkout output/cache roots, six bundle Library paths and three
+bundle temp directories, then restores the original shared UI test-results file.
+All **34** output-presence baselines, three original files, eighteen Library
+baselines, **5,829** accepted non-Markdown inputs and eleven unchanged installed
+resources pass before and after root deletion. The private root
+`flame-state-washes-1027-ji9yZO` is absent. Verified in-memory gzip retains **113**
+flat UTF-8 records, **71** screenshot digests, 598 assets per baseline/candidate,
+twelve module artifacts, four probe artifacts and three native hashes; SHA-256
+`8813d4807c6d0aea329a3da2412281a219e1d54db827f0f653ee27479aed2fc8`.
+The repair remains local; primary checkout, user data and read-only references
+are preserved.
 
 ### Appearance labels and search
 

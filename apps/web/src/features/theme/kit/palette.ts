@@ -7,6 +7,8 @@ import {
   controlEdge,
   focusRing,
   legibleMix,
+  relativeLuminance,
+  type ContrastColor,
 } from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
 import { paperTextureBackgrounds } from "@/features/theme/kit/paperTexture";
@@ -49,8 +51,33 @@ const STATUS_SEED = {
 } as const;
 
 const WASH_OPACITY = 0.1;
+const SELECTION_MIX = { selected: 10, selectedHover: 15 } as const;
 const wash = (tone: "accent" | keyof typeof STATUS_SEED) =>
   `color-mix(in srgb, var(--tone-${tone}) ${WASH_OPACITY * 100}%, transparent)`;
+const selectionPaint = (percent: number) =>
+  `color-mix(in srgb, var(--color-accent) ${percent}%, var(--color-bg))`;
+
+function selectionStrength(
+  accent: string,
+  canvas: string,
+  planes: readonly ContrastColor[],
+): number {
+  const luminances = planes.map(relativeLuminance);
+  const min = Math.min(...luminances);
+  const max = Math.max(...luminances);
+  // Opaque state fills stay inside the qualified reading planes' luminance interval.
+  for (let strength = 100; strength > 0; strength -= 1) {
+    if (
+      Object.values(SELECTION_MIX).every((mix) => {
+        const percent = (mix * strength) / 100;
+        const luminance = relativeLuminance(compositeColor(accent, canvas, percent / 100));
+        return luminance >= min && luminance <= max;
+      })
+    )
+      return strength;
+  }
+  return 0;
+}
 
 const PLANE_STEP: Record<
   Scheme,
@@ -108,6 +135,7 @@ export function paletteThemeContribution(
     info: scale(STATUS_SEED.info),
   };
   const solid = step(accent, 9);
+  const selection = selectionStrength(solid, canvas, backgrounds);
   const onSolid = solidInk(solid);
   const text = step(neutral, 12);
   const restingInk = (declared: string) =>
@@ -138,6 +166,9 @@ export function paletteThemeContribution(
       "color-surface": surface,
       "color-elevated": elevated,
       "color-sunken": sunken,
+      "wash-hover": sunken,
+      "wash-selected": selectionPaint((SELECTION_MIX.selected * selection) / 100),
+      "wash-selected-hover": selectionPaint((SELECTION_MIX.selectedHover * selection) / 100),
 
       "color-text": text,
       "color-text-bright": mixOklab(text, scheme === "dark" ? "#ffffff" : "#000000", 80),

@@ -17,7 +17,7 @@ function rgb(color: ContrastColor): RgbColor {
   return typeof color === "string" ? colord(color).toRgb() : color;
 }
 
-function relativeLuminance(color: ContrastColor): number {
+export function relativeLuminance(color: ContrastColor): number {
   const { r, g, b } = rgb(color);
   const channel = (value: number) => {
     const scaled = value / 255;

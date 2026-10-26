@@ -134,12 +134,12 @@
     var(--color-surface)
   );
   --wash-step: max(3%, var(--depth-step));
-  --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent);
-  --wash-selected: color-mix(in srgb, var(--color-accent) calc(var(--wash-step) * 2.5), transparent);
+  --wash-hover: #eaeaea;
+  --wash-selected: color-mix(in srgb, var(--color-accent) 6.7%, var(--color-bg));
   --wash-selected-hover: color-mix(
     in srgb,
-    var(--color-accent) calc(var(--wash-step) * 3.75),
-    transparent
+    var(--color-accent) 10.05%,
+    var(--color-bg)
   );
   --color-sunken-hover: color-mix(
     in oklab,

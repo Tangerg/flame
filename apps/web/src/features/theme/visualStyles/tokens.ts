@@ -44,8 +44,6 @@ type VisualStyleTokenName =
   | "control-edge-width"
   | "hairline-width"
   | "composer-edge-width"
-  | "wash-hover"
-  | "wash-selected"
   | "app-drawer-surface"
   | "app-content-surface"
   | "app-header-surface"
@@ -127,10 +125,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "control-edge-width": "1px",
   "hairline-width": "0.5px",
   "composer-edge-width": "var(--hairline-width)",
-
-  "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent)",
-  "wash-selected":
-    "color-mix(in srgb, var(--color-accent) calc(var(--wash-step) * 2.5), transparent)",
 
   "app-drawer-surface": "var(--color-drawer)",
   "app-content-surface": "var(--color-bg)",

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { colord } from "colord";
 import { type Scheme } from "@/lib/appearance";
-import { declaredInCss } from "@/test/stylesheet";
+import { collapse, declaredInCss } from "@/test/stylesheet";
+import { visualStyleTokens } from "@/features/theme/visualStyles/tokens";
+import { depthStep } from "@/features/theme/kit/tokens";
 import {
   WCAG_AA_NON_TEXT,
   WCAG_AA_TEXT,
@@ -29,21 +31,38 @@ const tokensOf = (subject: PaletteTheme, accent = "#0485f7", contrast = 25) =>
 
 const restingInk = (token: string) => token.match(/(#[0-9a-f]{6})\)$/i)?.[1] ?? token;
 
-function washedPlane(tokens: Record<string, string>, tone: string, plane: ContrastColor): RgbColor {
-  const property = `color-${tone}-wash`;
-  const paint = tokens[property] ?? declaredInCss(`--${property}`);
-  const parts = paint?.match(
-    /^color-mix\(in srgb,\s*var\(--(tone-[a-z]+)\)\s+([\d.]+)%,\s*transparent\)$/,
+function paintedPlane(
+  tokens: Record<string, string>,
+  paint: string | undefined,
+  plane: ContrastColor,
+  washStep = 0,
+): RgbColor {
+  if (paint?.startsWith("#")) return colord(paint).toRgb();
+  const resolved =
+    paint === undefined
+      ? undefined
+      : collapse(paint).replace(
+          /calc\(var\(--wash-step\) \* ([\d.]+)\)/g,
+          (_expression, factor) => `${washStep * Number(factor)}%`,
+        );
+  const parts = resolved?.match(
+    /^color-mix\(in srgb,\s*var\(--([a-z-]+)\)\s+([\d.]+)%,\s*(transparent|var\(--([a-z-]+)\))\)$/,
   );
-  if (!parts) throw new Error(`Unmeasured feedback paint: ${paint}`);
+  if (!parts) throw new Error(`Unmeasured paint: ${paint}`);
   const ink = colord(tokens[parts[1]!]!).toRgb();
-  const base = typeof plane === "string" ? colord(plane).toRgb() : plane;
+  const backing = parts[3] === "transparent" ? plane : tokens[parts[4]!]!;
+  const base = typeof backing === "string" ? colord(backing).toRgb() : backing;
   const alpha = Number(parts[2]) / 100;
   return {
     r: ink.r * alpha + base.r * (1 - alpha),
     g: ink.g * alpha + base.g * (1 - alpha),
     b: ink.b * alpha + base.b * (1 - alpha),
   };
+}
+
+function washedPlane(tokens: Record<string, string>, tone: string, plane: ContrastColor): RgbColor {
+  const property = `color-${tone}-wash`;
+  return paintedPlane(tokens, tokens[property] ?? declaredInCss(`--${property}`), plane);
 }
 
 const NEUTRAL_ROLES = [
@@ -78,6 +97,62 @@ const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
 ];
 
 describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => {
+  it.each(["off", "xuan", "cotton", "grain"] as const)(
+    "keeps text and focus readable on %s hover and selection states",
+    (paperTexture) => {
+      for (const contrast of [0, 25, 100]) {
+        for (const accent of ACCENTS) {
+          const t = paletteThemeContribution(subject, accent, contrast, {
+            paperTexture,
+            paperTextureStrength: 5,
+          }).tokens!;
+          const effective: Record<string, string> = { ...t, ...visualStyleTokens({}) };
+          const planes: ContrastColor[] = [
+            "color-bg",
+            "color-drawer",
+            "color-surface",
+            "color-elevated",
+            "color-sunken",
+          ].map((name) => t[name]!);
+          planes.push(
+            ...paperTextureBackgrounds(paperTexture, 5, subject.scheme, [
+              t["color-bg"]!,
+              t["color-drawer"]!,
+              t["color-surface"]!,
+            ]),
+          );
+          const washStep = Math.max(3, Number.parseFloat(depthStep("light", contrast)));
+          for (const state of ["wash-hover", "wash-selected", "wash-selected-hover"]) {
+            const paint = effective[state] ?? declaredInCss(`--${state}`);
+            for (const plane of planes) {
+              const fill = paintedPlane(t, paint, plane, washStep);
+              for (const name of [
+                "color-text",
+                "color-text-soft",
+                "color-text-muted",
+                "color-text-faint",
+                "color-accent-text",
+                "color-accent-strong",
+                "color-negative",
+                "color-warning",
+                "color-success",
+                "color-info",
+              ])
+                expect(
+                  contrastRatio(restingInk(t[name]!), fill),
+                  `${name}, ${state}, ${subject.scheme}, ${paperTexture}, ${contrast}, ${accent}`,
+                ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+              for (const name of ["color-focus-ring", "color-control-edge"])
+                expect(contrastRatio(t[name]!, fill), `${name}, ${state}`).toBeGreaterThanOrEqual(
+                  WCAG_AA_NON_TEXT,
+                );
+            }
+          }
+        }
+      }
+    },
+  );
+
   it.each(["off", "xuan", "cotton", "grain"] as const)(
     "keeps semantic text readable over its painted %s feedback",
     (paperTexture) => {

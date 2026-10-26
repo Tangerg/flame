@@ -57,6 +57,13 @@ bounds paper. Composite channels stay fractional through the contrast check,
 so rounding cannot turn a failing pair into a pass. Status fills, the selected
 accent and paper artwork retain their existing values.
 
+The palette also owns hover, selected and selected-hover fills. These opaque
+fills stay within the qualified reading planes' luminance range, so existing
+text and focus colors remain legible independently of the host surface and
+paper. Selection retains its accent tint and stronger highlighted fill; the
+contrast preference no longer increases their opacity. Visual styles consume
+these colors without overriding them.
+
 The workspace host retains mounted view layout when switching Dock tabs. Inactive
 views are invisible, inert and excluded from the accessibility tree. The existing
 viewport keeps its native reading position without a second scroll-state cache;
