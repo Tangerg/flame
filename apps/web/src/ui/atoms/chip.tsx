@@ -14,7 +14,7 @@ import { vocab } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
-import { ButtonPrimitive } from "@flame/ui/primitives";
+import { ButtonPrimitive } from "@flame/ui";
 import { Tooltip } from "@flame/ui/tooltip";
 const chipStyles = stylex.create({
   chip: {

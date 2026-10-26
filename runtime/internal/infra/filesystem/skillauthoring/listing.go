@@ -9,11 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 // List returns active and archived skills from one library snapshot. Directory
@@ -105,7 +104,7 @@ func managedSkillNames(root *os.Root) ([]string, []string, error) {
 }
 
 func managedSkillNamesAt(root *os.Root, path string) ([]string, error) {
-	directory, _, err := fileinput.OpenDirectoryAt(root, path)
+	directory, _, err := filesystem.OpenDirectoryAt(root, path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}

@@ -9,9 +9,9 @@ var fileExtensionPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_+-]*$`)
 type RendererSelectorKind string
 
 const (
-	RendererToolName      RendererSelectorKind = "toolName"
-	RendererResultShape   RendererSelectorKind = "resultShape"
-	RendererFileExtension RendererSelectorKind = "fileExtension"
+	rendererToolName      RendererSelectorKind = "toolName"
+	rendererResultShape   RendererSelectorKind = "resultShape"
+	rendererFileExtension RendererSelectorKind = "fileExtension"
 )
 
 // A selector chooses presentation, never an executable tool or authority.

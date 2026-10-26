@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // PendingRuns returns unacknowledged run-opening commands in authoring order.
@@ -28,7 +27,7 @@ func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 // StagePendingResume transfers a completed interrupt review into the durable
 // command outbox before delivery starts.
 func (s *Store) StagePendingResume(sessionID string, pending PendingResume, input *PreparedInput) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	if err := pending.validate(); err != nil {
@@ -66,18 +65,18 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume, inpu
 
 // AcknowledgePendingResume retires exactly the command whose runtime response
 // was observed. A stale callback cannot delete a newer interrupt decision.
-func (s *Store) AcknowledgePendingResume(sessionID string, commandID replay.CommandID) error {
+func (s *Store) AcknowledgePendingResume(sessionID string, commandID authoring.CommandID) error {
 	return s.retirePendingResume(sessionID, commandID)
 }
 
 // RejectPendingResume releases a command after a definitive runtime refusal so
 // its review can be edited and submitted under a fresh identity.
-func (s *Store) RejectPendingResume(sessionID string, commandID replay.CommandID) error {
+func (s *Store) RejectPendingResume(sessionID string, commandID authoring.CommandID) error {
 	return s.retirePendingResume(sessionID, commandID)
 }
 
 // claimPendingResumeLocked fences settlement to the original command identity.
-func (s *Store) claimPendingResumeLocked(sessionID string, commandID replay.CommandID) (PendingResume, error) {
+func (s *Store) claimPendingResumeLocked(sessionID string, commandID authoring.CommandID) (PendingResume, error) {
 	pending, exists := s.pendingResumes[sessionID]
 	if !exists || pending.Command.CommandID != commandID {
 		return PendingResume{}, errors.New("pending resume command identity changed")
@@ -85,11 +84,11 @@ func (s *Store) claimPendingResumeLocked(sessionID string, commandID replay.Comm
 	return pending, nil
 }
 
-func (s *Store) retirePendingResume(sessionID string, commandID replay.CommandID) error {
+func (s *Store) retirePendingResume(sessionID string, commandID authoring.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -130,7 +129,7 @@ func (s *Store) StagePendingRun(pending PendingRun) error {
 	if err := validatePendingRunSequence(pending.Command.SessionID, next[pending.Command.SessionID]); err != nil {
 		return err
 	}
-	if err := s.saveSessionState(pending.Command.SessionID, prompt.Message{}, next[pending.Command.SessionID]); err != nil {
+	if err := s.saveSessionState(pending.Command.SessionID, authoring.Message{}, next[pending.Command.SessionID]); err != nil {
 		return err
 	}
 	delete(s.drafts, pending.Command.SessionID)
@@ -142,7 +141,7 @@ func (s *Store) StagePendingRun(pending PendingRun) error {
 // Queue edits use this boundary so reordering, replacement, and deletion are
 // crash-consistent with the next launch.
 func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	if err := validatePendingRunSequence(sessionID, commands); err != nil {
@@ -182,14 +181,14 @@ func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
 
 func (s *Store) MarkPendingRunDispatching(
 	sessionID string,
-	commandID replay.CommandID,
-	replayGuard replay.Guard,
+	commandID authoring.CommandID,
+	replayGuard authoring.ReplayGuard,
 	input *PreparedInput,
 ) error {
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -230,13 +229,13 @@ func (s *Store) MarkPendingRunDispatching(
 // acknowledgement must be canceled as soon as its run identity is recovered.
 func (s *Store) MarkPendingRunCanceling(
 	sessionID string,
-	commandID replay.CommandID,
-	replayGuard replay.Guard,
-) (replay.CommandID, error) {
+	commandID authoring.CommandID,
+	replayGuard authoring.ReplayGuard,
+) (authoring.CommandID, error) {
 	if err := commandID.Validate(); err != nil {
 		return "", err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return "", err
 	}
 	s.mu.Lock()
@@ -266,11 +265,11 @@ func (s *Store) MarkPendingRunCanceling(
 // RequeuePendingRun turns a definitively refused runtime mutation back into an
 // ordinary FIFO entry. A new identity is mandatory: the runtime has already
 // bound the old key to its rejection outcome.
-func (s *Store) RequeuePendingRun(sessionID string, commandID replay.CommandID) (replay.CommandID, error) {
+func (s *Store) RequeuePendingRun(sessionID string, commandID authoring.CommandID) (authoring.CommandID, error) {
 	if err := commandID.Validate(); err != nil {
 		return "", err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return "", err
 	}
 	s.mu.Lock()
@@ -296,11 +295,11 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID replay.CommandID) 
 
 // AcknowledgePendingRun retires only the command the caller actually observed.
 // The identity check prevents a late acknowledgement from deleting newer work.
-func (s *Store) AcknowledgePendingRun(sessionID string, commandID replay.CommandID) error {
+func (s *Store) AcknowledgePendingRun(sessionID string, commandID authoring.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()

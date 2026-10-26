@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -16,7 +15,7 @@ func TestSessionStorageCannotCreateCompetingFlagValues(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewSessionStore(db)
+	store := newSessionStore(db)
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_flags", Workspace: testsupport.MustWorkspace("/work"), Selection: testsupport.DefaultModelSelection(),
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,

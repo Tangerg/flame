@@ -9,7 +9,7 @@ prepareTestClient(() => {
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { CodeBlock, CodeHighlightProvider, setCodeWrap } from "@flame/ui";
+import { CodeBlock, CodeHighlightProvider } from "@flame/ui";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
 import { ShikiCodeBlock } from "@/ui/atoms/shiki-code-block";
 const LONG_CODE = Array.from({ length: 30 }, (_, index) => `line ${index + 1}`).join("\n");
@@ -19,7 +19,12 @@ describe("ShikiCodeBlock", () => {
     await getHighlighter();
   });
 
-  beforeEach(() => setCodeWrap(false));
+  beforeEach(() => {
+    const reset = testClient.render(<CodeBlock label="Wrap preference">fixture</CodeBlock>);
+    const enabled = screen.queryByRole("button", { name: "Disable word wrap" });
+    if (enabled) fireEvent.click(enabled);
+    reset.unmount();
+  });
 
   it("retains the reading surface and focus while code updates before highlighting settles", async () => {
     const block = (code: string) => (

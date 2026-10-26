@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
@@ -39,7 +38,7 @@ func TestAcceptedAnswerDeliveryAdvancesOnlyThePausedHead(t *testing.T) {
 			start := interactionTestStart()
 			start.CWD, start.WorkspaceCWD = t.TempDir(), ""
 			start.WorkspaceCWD = start.CWD
-			start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+			start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 			ref, err := executor.StageRoot(t.Context(), start)
 			if err != nil {
 				t.Fatal(err)

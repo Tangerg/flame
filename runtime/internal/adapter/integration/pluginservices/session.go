@@ -6,21 +6,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func contributionSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *capability.Contract) (plugins.ContributionBinding, *sdk.ClientSession, error) {
+func contributionSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *extension.Capability) (plugins.ContributionBinding, *sdk.ClientSession, error) {
 	binding, found, err := plugins.SelectedContribution(ctx, store, selections, required)
 	if err != nil {
 		return binding, nil, err
@@ -41,7 +39,7 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	if err != nil {
 		return zero, err
 	}
-	contract, err := capability.Parse(location.Contract.JSON())
+	contract, err := extension.ParseCapability(location.Contract.JSON())
 	if err != nil {
 		return zero, err
 	}
@@ -53,7 +51,7 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	if err != nil {
 		return zero, err
 	}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, err
 	}
@@ -74,7 +72,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
 	}
-	invocation, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeInstallation, Reference: location.InstallationID.String()})
+	invocation, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeInstallation, Reference: location.InstallationID.String()})
 	if err != nil {
 		return nil, err
 	}

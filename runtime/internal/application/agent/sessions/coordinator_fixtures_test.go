@@ -203,11 +203,11 @@ func (*testClaimer) AcquireWorkingTreeMutation(string) (func(), bool, error) {
 func (*testClaimer) ActiveSessions() map[string]bool { return nil }
 
 // newCoordinator builds a Coordinator over test stores and execution release.
-func newCoordinator(stores testStores, executions ExecutionReleaser) *Coordinator {
+func newCoordinator(stores testStores, executions executionReleaser) *Coordinator {
 	return newCoordinatorWithAdmissions(stores, executions, new(testClaimer))
 }
 
-func newCoordinatorWithAdmissions(stores testStores, executions ExecutionReleaser, admissions Admissions) *Coordinator {
+func newCoordinatorWithAdmissions(stores testStores, executions executionReleaser, admissions Admissions) *Coordinator {
 	return mustNewCoordinator(testDependencies(stores, Dependencies{
 		ExecutionReleaser: executions, Paths: testWorkspaceResolver{}, Admissions: admissions,
 	}))

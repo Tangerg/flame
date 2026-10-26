@@ -3,7 +3,7 @@
 The public package `github.com/Tangerg/flame/packages/go-sdk/plugin` supplies the typed MCP
 method binding for authoring a plugin's Go backend, used by Memory, Schedules and the
 independent Reviews example.
-It lives in the root module and imports only public contracts and pure mechanisms; its production closure contains no Runtime host/business implementation.
+It lives in the independent `packages/go-sdk` module and imports only public contracts and pure mechanisms; its production closure contains no Runtime host/business implementation.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle. React UI components are authored separately
 through [`component-sdk`](../component-sdk).
@@ -12,10 +12,16 @@ protocol for TypeScript implementations, including ordinary MCP Tools.
 
 ## MCP metadata
 
-The root `go.mod` selects Scope and native MCP SDK releases. Native SDK `Meta`
+The SDK's `go.mod` selects Scope and native MCP SDK releases. Native SDK `Meta`
 values are encoded JSON: write typed
 values with `Meta.Set`, check its error, and decode a consumed entry directly into
 its declared type. Do not round-trip metadata through `map[string]any`.
+
+The transport method names, callback and stream metadata keys, and Tool command
+prefix are published protocol constants because independent language bindings
+must use the same values. `flame-sdk backend-protocol` projects direct compiled
+references together with this SDK's schemas; it never inspects another source
+tree or a changed checkout after the command was built.
 
 Scope owns detached request metadata snapshots. Flame's invocation and callback
 bindings retain strict decoding, calling-owner identity, target and callback
@@ -70,19 +76,19 @@ rebuild package declarations, backend and consumers together. Older backend
 protocols are refused without negotiation or a fallback. Keep old data separately
 and complete old waiting work with its original binary.
 
-`github.com/Tangerg/flame/packages/go-sdk/capability` owns the immutable callable
-contracts independently of transport. `capability.AdmitMethod` admits local
+`github.com/Tangerg/flame/packages/go-sdk/extension` owns the immutable callable
+contracts independently of transport. `extension.AdmitMethod` admits local
 method metadata; typed SDK methods, live bindings, callbacks and generation
 consume that owner. It provides the exact schemas, validation and canonical
 identity. Descriptors are deep-copy discovery/build projections.
-Existing Go authors must move method descriptors, kinds, composition metadata
-and callable contracts from `packages/go-sdk/plugin` to `packages/go-sdk/capability`. The old
-SDK definitions and constructors are removed without aliases. Rebuild affected
-Go consumers; the backend wire protocol, canonical JSON and fingerprints are
-unchanged by this source ownership change.
-`capability.New` groups the exact required method descriptors
+Operation, capability and extension-point contracts share the `extension` owner.
+Consumers use these admitted types directly; there are no forwarding aliases or
+compatibility packages. Schema identities include the defining Go namespace, so
+publisher and consumer projections must be regenerated together when ownership
+changes.
+`extension.NewCapability` groups the exact required method descriptors
 under the consumer's semantic reference, composition rule and scope meaning.
-Pipe its capability descriptor JSON into the existing Runtime `contractgen`
+Pipe its capability descriptor JSON into `flame-sdk contract`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
 It emits canonical `capability.generated.json`, standard self-contained Schema,
 operation references, reference prose and TypeScript input/output maps with a
@@ -142,7 +148,7 @@ Go and TypeScript bindings preserve this distinction.
 handlers and checks its complete required set before publication. Several exports
 may share a handler; there is still one semantic method and business receipt
 namespace. Export identity describes routing, not another mutable business fact.
-`capability.Parse` admits generated local metadata without executing code or fetching
+`extension.ParseCapability` admits generated local metadata without executing code or fetching
 schemas. `ResolveCapability` validates a concrete export and all its methods against
 the consumer's exact contract. Missing, duplicate or mismatched exports are unavailable.
 `Method.Bind` returns a typed `BoundMethod` over that concrete binding. It uses the
@@ -164,11 +170,12 @@ consumer resolves collection membership, explicit selections and ordered chains;
 the backend binding validates the resulting exact export rather than inferring
 membership or precedence from an export name.
 
-`RegisterServer[P, R]` binds a query and `RegisterCommand[P, R]` binds a command
-against the same backend. `NewMethod.RegisterServer` preserves its declared kind,
-target and description. `RegisterClient` installs the one invocation/discovery
-transport, independent of the business schemas. `Call[P, R]` and
-`CallCommand[P, R]` decode concrete types through that transport. Missing input,
+`NewMethod` admits the contract once. Its `RegisterServer`, `Call` and
+`CallCommand` operations preserve that declared kind, target and schema.
+`RegisterClient` installs the invocation/discovery transport without originating
+business contracts. `ReceiptQuery` and `ToolReceiptQuery` are the SDK-owned receipt
+contracts; backends register handlers against those same methods.
+Missing input,
 unknown envelope/input/result members and malformed command
 identities are refused. A reply contains exactly one value or business refusal;
 an explicitly nullable value remains distinct from a missing reply.
@@ -196,7 +203,7 @@ return the owner's original outcome according to that operation's contract;
 different input with the same identity must be refused. Retention, capacity and
 transaction boundaries belong to the business owner.
 
-`github.com/Tangerg/flame/packages/go-sdk/jsoninput` owns the immutable admitted JSON.
+`github.com/Tangerg/flame/packages/go-sdk/jsonvalue` owns the immutable admitted JSON.
 Its standard-library parser normalizes object ordering, whitespace and string
 spelling while preserving numeric lexemes and array order. Structs, maps and raw
 objects agree when they encode the same request. A raw `1.0` remains distinct
@@ -214,7 +221,8 @@ saving the route. Recovery uses the retained contract rather than current method
 metadata. The former route schema without that contract is refused without
 conversion; retain the old directory and use a fresh Runtime data directory.
 
-`Reply` encodes a success or explicitly classified refusal;
+`EncodeReply` seals a success or explicitly classified refusal into an immutable
+`jsonvalue.Value`; its `JSON()` projection supplies storage bytes without another encoder;
 `DecodeReply` validates the same outcome when it is read from private storage.
 An empty acknowledgement and other zero values remain present successes.
 
@@ -241,7 +249,7 @@ the exact public query contract and validates Scope output without narrowing its
 JSON. Query errors, missing methods and absent/malformed evidence remain unknown;
 a valid failed Tool receipt is distinct from a failure to read it.
 
-The current SDK requires `capability.Protocol` on invocation and description. It is
+The current SDK requires `extension.Protocol` on invocation and description. It is
 a public wire contract identity, separate from internal build or data-directory
 versions. Only this current protocol is interpreted. Installed admission validates
 the declared contract, complete live exports and exact activation before dispatch.
@@ -360,7 +368,7 @@ Origin, parent and target are ephemeral transport context, not business input or
 credentials. Closing the callback observation leaves independently accepted Runs with
 their canonical Runtime owner. Rebuild against backend protocol 2026-10-15.3.
 
-Known business refusals use capability.Refusal. The former plugin.Failure type is
+Known business refusals use extension.Refusal. The former plugin.Failure type is
 removed; migrate external Go classifiers and errors.AsType calls to the pure
 contract package. JSON refusal fields stay code/message. SetupDependency.Bindings
 now uses SetupBinding, a setup transport projection validated by the existing
@@ -492,7 +500,7 @@ formats are unchanged.
 Core `CallPluginRequest.Input`, `CallPluginResponse.Output`, stream values and
 point attributes/values are JSON text strings. Contribution, requirement and
 resolved-binding contracts retain their canonical JSON strings too. Typed Go
-bindings encode and decode the same original source through `jsoninput` and the
+bindings encode and decode the same original source through `jsonvalue` and the
 feature contract, preserving full-width integers and receipt lexemes. Rebuild
 public Go/CLI/TS consumers together; former inline Core payloads are refused.
 The backend's existing MCP value/receipt envelopes are unchanged.
@@ -778,10 +786,11 @@ keep their formats. The Core wire epoch is unchanged.
 Independent authors can use [`plugin/sqlite`](sqlite/README.md) for original input
 admission, nullable unknown settlement and atomic mutation/receipt handling. The
 same implementation serves the bundled backends. Strict schema admission and
-per-database transaction lifetime live in [`storage/sqlite`](../../../packages/go-sdk/storage/sqlite/README.md).
+per-database transaction lifetime live in [`sqlite`](../../../packages/go-sdk/sqlite/README.md).
 No private Runtime store or host business schema is part of the author API.
-`packages/go-sdk/idempotency` exposes stable identity-conflict categories for the same
-receipt mechanism, including changed original method/input under one command key.
+`extension.ErrInvocationConflict` classifies changed original method/input under
+one invocation identity. Host replay retention and execution lifecycle remain
+inside Runtime.
 
 ## Model choices
 

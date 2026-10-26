@@ -3,16 +3,15 @@ package model
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -31,7 +30,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		}),
 		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "invalid-response", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "invalid-response"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "invalid-response"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +83,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	stream, _ := resolved.Streamer()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"complete", "stop", "stop-final"} {
-		ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-operation", Target: capability.Target{Scope: "call", Reference: id}})
+		ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: extension.Target{Scope: "call", Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}

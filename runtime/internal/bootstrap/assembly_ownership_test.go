@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 )
 
@@ -19,7 +19,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 		if err := os.Symlink(root, alias); err != nil {
 			t.Fatal(err)
 		}
-		gate, err := ownership.NewGate(directories.Canonical)
+		gate, err := ownership.NewGate(filesystem.CanonicalPath)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {
 }
 
 func TestWorkingTreeIdentityFailureRemainsAnError(t *testing.T) {
-	gate, err := ownership.NewGate(directories.Canonical)
+	gate, err := ownership.NewGate(filesystem.CanonicalPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestMissingWorkingTreeRetainsOnePhysicalAdmissionIdentity(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Fatal(err)
 	}
-	gate, err := ownership.NewGate(directories.Canonical)
+	gate, err := ownership.NewGate(filesystem.CanonicalPath)
 	if err != nil {
 		t.Fatal(err)
 	}

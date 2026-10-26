@@ -8,8 +8,7 @@ import {
   type RuntimeEndpointConfiguration,
 } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
-import { createAgent } from "@/features/agent/adapters/agent";
-import { AgentProvider } from "@/features/agent/public/agent";
+import { createAgentFixture } from "@/test/agentFixture";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -65,15 +64,15 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
     reportConnectionLoss: () => undefined,
   };
-  const agent = createAgent(runtimeClient, navigation, runtime, stream, scope);
+  const agent = createAgentFixture(runtimeClient, navigation, runtime, stream, scope);
   agent.start();
   const composer = createComposer(
     {
-      getActiveSessionId: agent.access.state.getActiveSessionId,
-      getLifecycleSnapshot: agent.access.state.getLifecycleSnapshot,
-      subscribeActiveSessionId: agent.access.state.subscribeActiveSessionId,
-      subscribeLifecycle: agent.access.state.subscribeLifecycle,
-      subscribeDeleted: agent.access.state.subscribeDeletedSession,
+      getActiveSessionId: agent.access.getActiveSessionId,
+      getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
+      subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
+      subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
+      subscribeDeleted: agent.access.subscribeDeletedAgentSession,
     },
     runtime.endpoint.currentRuntimeEndpoint,
     scope,
@@ -102,7 +101,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     return (
       <ThemeProvider value={theme.access}>
         <RuntimeProvider value={runtime}>
-          <AgentProvider value={agent.access}>
+          <agent.Provider>
             <ComposerProvider value={composer.access}>
               <WorkspaceProvider value={workspace.access}>
                 <WorkingDirectoryProvider value={directory.access}>
@@ -116,7 +115,7 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
                 </WorkingDirectoryProvider>
               </WorkspaceProvider>
             </ComposerProvider>
-          </AgentProvider>
+          </agent.Provider>
         </RuntimeProvider>
       </ThemeProvider>
     );

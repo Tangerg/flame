@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func newTestStore(t *testing.T) (*Store, string) {
@@ -132,7 +132,7 @@ func TestCheckpointCandidatesRejectPathAndAggregateOverflow(t *testing.T) {
 		for index := range maxCheckpointPaths + 1 {
 			fmt.Fprintf(&output, "missing-%05d\x00", index)
 		}
-		if _, _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte(output.String())); !errors.Is(err, ErrSnapshotTooLarge) {
+		if _, _, err := checkpointCandidates(t.Context(), t.TempDir(), []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
 			t.Fatalf("checkpointCandidates() error = %v, want ErrSnapshotTooLarge", err)
 		}
 	})
@@ -157,7 +157,7 @@ func TestCheckpointCandidatesRejectPathAndAggregateOverflow(t *testing.T) {
 			output.WriteString(name)
 			output.WriteByte(0)
 		}
-		if _, _, err := checkpointCandidates(t.Context(), root, []byte(output.String())); !errors.Is(err, ErrSnapshotTooLarge) {
+		if _, _, err := checkpointCandidates(t.Context(), root, []byte(output.String())); !errors.Is(err, errSnapshotTooLarge) {
 			t.Fatalf("checkpointCandidates() error = %v, want ErrSnapshotTooLarge", err)
 		}
 	})
@@ -172,11 +172,11 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := os.WriteFile(oversizedAlternates, []byte(strings.Repeat("x", maxSourceAlternatesBytes+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readSourceAlternates(t.Context(), oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+	if _, err := readSourceAlternates(t.Context(), oversizedAlternates); !errors.Is(err, errSnapshotTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 		t.Fatalf("readSourceAlternates() lost its snapshot category or source cause: %v", err)
 	}
 	oversizedIdentity := strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))
-	if _, err := readWorkspaceIdentity(oversizedIdentity); !errors.Is(err, ErrSnapshotTooLarge) {
+	if _, err := readWorkspaceIdentity(oversizedIdentity); !errors.Is(err, errSnapshotTooLarge) {
 		t.Fatalf("readWorkspaceIdentity() error = %v, want ErrSnapshotTooLarge", err)
 	}
 
@@ -189,16 +189,16 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := errors.Join(truncateErr, file.Close()); err != nil {
 		t.Fatal(err)
 	}
-	if err := copySourceIndex(t.Context(), source, filepath.Join(t.TempDir(), "copy")); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+	if err := copySourceIndex(t.Context(), source, filepath.Join(t.TempDir(), "copy")); !errors.Is(err, errSnapshotTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 		t.Fatalf("copySourceIndex() lost its snapshot category or source cause: %v", err)
 	}
 
 	invalidSource := t.TempDir()
-	if _, err := readSourceAlternates(t.Context(), invalidSource); !errors.Is(err, fileinput.ErrNotRegular) {
+	if _, err := readSourceAlternates(t.Context(), invalidSource); !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("readSourceAlternates(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	invalidDestination := filepath.Join(t.TempDir(), "copy")
-	if err := copySourceIndex(t.Context(), invalidSource, invalidDestination); !errors.Is(err, fileinput.ErrNotRegular) {
+	if err := copySourceIndex(t.Context(), invalidSource, invalidDestination); !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("copySourceIndex(directory) error = %v, want fileinput.ErrNotRegular", err)
 	}
 	if _, err := os.Stat(invalidDestination); !errors.Is(err, os.ErrNotExist) {

@@ -16,8 +16,8 @@ type Profile struct {
 	client    *protocol.ClientCapabilities
 }
 
-// NewProfile borrows its inputs and retains independent protocol values.
-func NewProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) (Profile, error) {
+// newProfile borrows its inputs and retains independent protocol values.
+func newProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) (Profile, error) {
 	if err := validateDiscovery(discovery); err != nil {
 		return Profile{}, fmt.Errorf("negotiate runtime profile: %w", err)
 	}
@@ -56,7 +56,7 @@ func (p Profile) Supports(feature string) bool {
 	return len(protocol.MissingFeatureRequirements(p.discovery.Capabilities.Features, p.client, feature)) == 0
 }
 
-func (p Profile) SupportsRuntimeTopic(topic protocol.RuntimeTopic) bool {
+func (p Profile) supportsRuntimeTopic(topic protocol.RuntimeTopic) bool {
 	return slices.Contains(p.discovery.Capabilities.RuntimeTopics, topic)
 }
 

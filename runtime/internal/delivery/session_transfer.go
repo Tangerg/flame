@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -84,7 +83,7 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 		if errors.Is(err, sessions.ErrInvalidPortableSnapshot) {
 			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
-		if errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, toolresult.ErrIdentityConflict) {
+		if errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, transcript.ErrToolResultIdentityConflict) {
 			return nil, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		return nil, wireSessionErr(err)

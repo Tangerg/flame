@@ -11,8 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -20,7 +19,7 @@ import (
 // Payloads are separate from the 16 MiB authoring record: one supported image
 // alone may contain 20 MiB before base64. The bound covers all supported input,
 // JSON's worst-case escaping, and attachment names already bounded by a record.
-const maximumInputBytes = 6 * (prompt.MaxMessageTextBytes + prompt.MaxMessageAttachments*prompt.MaxAttachmentBytes + 2*maximumStateBytes + 1024)
+const maximumInputBytes = 6 * (authoring.MaxMessageTextBytes + authoring.MaxMessageAttachments*authoring.MaxAttachmentBytes + 2*maximumStateBytes + 1024)
 
 type inputDigest string
 
@@ -43,7 +42,7 @@ func (d inputDigest) name() string { return filepath.Join("inputs", string(d)+".
 // A nil value is sufficient only for a message without filesystem attachments.
 type PreparedInput struct {
 	owner   *Store
-	message prompt.Message
+	message authoring.Message
 	blocks  []protocol.ContentBlock
 	digest  inputDigest
 }
@@ -52,7 +51,7 @@ type PreparedInput struct {
 // its digest with the command ID and replay guard. Expensive encoding and blob
 // I/O run outside the authoring lock and can be owned by a background operation.
 // Cancellation or a failed later record write leaves only an unreferenced blob.
-func (s *Store) PrepareInput(ctx context.Context, message prompt.Message, input []protocol.ContentBlock) (*PreparedInput, error) {
+func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, input []protocol.ContentBlock) (*PreparedInput, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
@@ -91,7 +90,7 @@ func (s *Store) PrepareInput(ctx context.Context, message prompt.Message, input 
 	return prepared, nil
 }
 
-func (p *PreparedInput) bind(s *Store, message prompt.Message) ([]protocol.ContentBlock, inputDigest, error) {
+func (p *PreparedInput) bind(s *Store, message authoring.Message) ([]protocol.ContentBlock, inputDigest, error) {
 	if p == nil {
 		_, err := message.PreparedInput(nil)
 		return nil, "", err
@@ -111,27 +110,27 @@ func (s *Store) readInput(digest inputDigest) ([]protocol.ContentBlock, error) {
 	}
 	encoded, err := s.persistence.Read(digest.name(), maximumInputBytes)
 	if err != nil {
-		return nil, fmt.Errorf("%w: read %s: %w", replay.ErrCommandInputUnavailable, digest.name(), err)
+		return nil, fmt.Errorf("%w: read %s: %w", authoring.ErrCommandInputUnavailable, digest.name(), err)
 	}
 	if inputDigest(fmt.Sprintf("%x", sha256.Sum256(encoded))) != digest {
-		return nil, fmt.Errorf("%w: content digest mismatch", replay.ErrCommandInputUnavailable)
+		return nil, fmt.Errorf("%w: content digest mismatch", authoring.ErrCommandInputUnavailable)
 	}
 	var input []protocol.ContentBlock
 	if err := decodeStateJSON(encoded, &input); err != nil {
-		return nil, fmt.Errorf("%w: decode content: %w", replay.ErrCommandInputUnavailable, err)
+		return nil, fmt.Errorf("%w: decode content: %w", authoring.ErrCommandInputUnavailable, err)
 	}
 	if len(input) == 0 {
-		return nil, fmt.Errorf("%w: content is empty", replay.ErrCommandInputUnavailable)
+		return nil, fmt.Errorf("%w: content is empty", authoring.ErrCommandInputUnavailable)
 	}
 	return input, nil
 }
 
-func (p PendingRun) ReplayCommand() (prompt.StartRun, error) {
+func (p PendingRun) ReplayCommand() (authoring.StartRun, error) {
 	if p.inputFailure != nil {
-		return prompt.StartRun{}, p.inputFailure
+		return authoring.StartRun{}, p.inputFailure
 	}
 	if _, err := p.Command.Message.PreparedInput(p.Command.Input); err != nil {
-		return prompt.StartRun{}, err
+		return authoring.StartRun{}, err
 	}
 	return p.Command.Clone(), nil
 }
@@ -148,12 +147,12 @@ func (p PendingResume) ReplayCommand() (conversation.ResumeRun, error) {
 	return p.Command.Clone(), nil
 }
 
-func (p PendingSteer) ReplayCommand() (prompt.SteerRun, error) {
+func (p PendingSteer) ReplayCommand() (authoring.SteerRun, error) {
 	if p.inputFailure != nil {
-		return prompt.SteerRun{}, p.inputFailure
+		return authoring.SteerRun{}, p.inputFailure
 	}
 	if _, err := p.command.Message.PreparedInput(p.command.Input); err != nil {
-		return prompt.SteerRun{}, err
+		return authoring.SteerRun{}, err
 	}
 	return p.command.Clone(), nil
 }

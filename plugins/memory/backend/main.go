@@ -9,10 +9,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
-	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
-	"github.com/Tangerg/flame/plugins/memory/backend/sqlite"
-	"github.com/Tangerg/flame/plugins/memory/backend/transport"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/plugins/memory/internal/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,7 +19,7 @@ func run(ctx context.Context) (err error) {
 	if !filepath.IsAbs(data) {
 		return errors.New("memory: PLUGIN_DATA must be absolute")
 	}
-	lease, err := advisorylock.AcquireDirectory(ctx, data)
+	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
 	if err != nil {
 		return err
 	}
@@ -32,7 +30,7 @@ func run(ctx context.Context) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.memory", Version: "3.0.0"}, nil)
-	if err := transport.RegisterServer(server, db, sqlite.NewAgentMemoryStore(db), directories.Resolver{}); err != nil {
+	if err := registerServer(server, db, sqlite.NewAgentMemoryStore(db), filesystem.DirectoryResolver{}); err != nil {
 		return err
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})

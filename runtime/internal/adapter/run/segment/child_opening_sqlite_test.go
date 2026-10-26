@@ -3,8 +3,6 @@ package segment
 import (
 	"context"
 	"crypto/sha256"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -14,11 +12,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
@@ -31,7 +28,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	runStore := db.Runs
 	transcriptStore := db.Transcript
 	capabilities := run.Capabilities{
-		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",

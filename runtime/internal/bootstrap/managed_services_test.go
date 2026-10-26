@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"iter"
@@ -12,18 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	plugin "github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -55,8 +53,8 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
@@ -117,7 +115,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	fact := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "owned fact"}), "fact")
+	fact := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "owned fact"}), "fact")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -136,18 +134,18 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 			t.Fatal("independent candidate lost enablement")
 		}
 	}
-	reused := invoke(delivery.PluginsCall, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "different fact"}), "fact")
+	reused := invoke(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "different fact"}), "fact")
 	if !errors.Is(reused.Failure, protocol.ErrIdempotencyConflict) {
 		t.Fatalf("private command identity conflict=%v", reused.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: false}, "disable")
-	unavailable := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	unavailable := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("withdrawn owner remained callable=%v", unavailable.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *fact) {
 		t.Fatalf("reenable lost private facts=%+v", page)
 	}
@@ -159,7 +157,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "@hourly", CWD: cfg.DefaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "@hourly", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	accepted := readScheduleRun(r, request, "manual")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
@@ -204,7 +202,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
-	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "committed before transport loss"})
+	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "committed before transport loss"})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld reply appeared successful")
@@ -212,35 +210,35 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	if _, err := os.Stat(evidence); err != nil {
 		t.Fatalf("backend did not commit before response loss: %v", err)
 	}
-	commandID := operation.Identity(operation.Bind(t.Context(), cfg.Stores.IdempotencyNamespace.String(), "lost"))
-	original, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	commandID := operation.Identity(operation.Bind(t.Context(), cfg.stores.IdempotencyNamespace.String(), "lost"))
+	original, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found {
 		t.Fatalf("original command binding missing: %t, %v", found, err)
 	}
 	contract := original.Snapshot().Contract
-	var document capability.Descriptor
+	var document extension.CapabilityDescriptor
 	if err := json.Unmarshal(contract.JSON(), &document); err != nil {
 		t.Fatalf("original contract not captured: %v", err)
 	}
-	var add capability.MethodDescriptor
+	var add extension.MethodDescriptor
 	for _, method := range document.Methods {
 		if method.Name == "flame.memory/add.v1" {
 			add = method
 		}
 	}
-	if add.Kind != capability.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
+	if add.Kind != extension.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
 		t.Fatalf("original contract did not capture flame.memory/add.v1: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-memory")
-	unavailable := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	unavailable := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
 	r = reopenCommandRuntime(t, r, &cfg)
-	restored, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	restored, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || restored.Snapshot().Contract != contract {
 		t.Fatalf("restart changed original contract: %t, %v", found, err)
 	}
@@ -252,11 +250,11 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := mustMemoryAdd(r, request, "lost")
-	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
 	}
-	observed, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	observed, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || observed.Snapshot().Contract != contract || observed.Snapshot().Phase != plugin.CommandObserved {
 		t.Fatalf("receipt did not observe original contract: %t, %v", found, err)
 	}
@@ -344,7 +342,7 @@ func requireManagedServiceChange(t *testing.T, changed <-chan error) {
 }
 
 func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
-	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.Create, "response")
+	source, evidence := managedMessageLossPackage(t, "schedules", testsupport.SchedulesCreateV1Method, "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -352,7 +350,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
-	request := scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath})
+	request := scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-create", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld create reply appeared successful")
@@ -364,14 +362,15 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	}
 	var captured struct {
 		Response struct {
-			Result pluginsdk.Result[scheduledomain.Snapshot] `json:"result"`
+			Result jsontext.Value `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	if captured.Response.Result.Value == nil {
-		t.Fatal("create did not commit before response loss")
+	committed, err := pluginsdk.DecodeReply[testsupport.SchedulesCreateV1Output](captured.Response.Result)
+	if err != nil {
+		t.Fatalf("create did not commit before response loss: %v", err)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	r.close()
@@ -380,20 +379,20 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	r.poMCPTools(server, ready)
 	replay := readScheduleCreate(r, request, "lost-create")
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) || replay.ID != captured.Response.Result.Value.ID {
+	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) || replay.ID != committed.ID {
 		t.Fatalf("lost create repeated mutation: %+v", page.Data)
 	}
 }
 
 func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(t *testing.T) {
-	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "response")
+	source, evidence := managedMessageLossPackage(t, "schedules", testsupport.SchedulesRunNowV1Method, "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
@@ -405,16 +404,16 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	}
 	var captured struct {
 		Response struct {
-			Result pluginsdk.Result[scheduleapp.RunReference] `json:"result"`
+			Result jsontext.Value `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	if captured.Response.Result.Value == nil {
-		t.Fatal("manual acceptance did not commit before response loss")
+	accepted, err := pluginsdk.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
+	if err != nil {
+		t.Fatalf("manual acceptance did not commit before response loss: %v", err)
 	}
-	accepted := scheduleapp.RunReference{SessionID: captured.Response.Result.Value.SessionID, RunID: captured.Response.Result.Value.RunID}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	deadline := time.Now().Add(lifecycleWaitBudget(t))
 	for {
@@ -451,14 +450,14 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 }
 
 func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
-	source, evidence := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "response")
+	source, evidence := managedMessageLossPackage(t, "schedules", testsupport.SchedulesRunNowV1Method, "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(&server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-manual", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
@@ -470,20 +469,20 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	}
 	var captured struct {
 		Response struct {
-			Result pluginsdk.Result[scheduleapp.RunReference] `json:"result"`
+			Result jsontext.Value `json:"result"`
 		} `json:"response"`
 	}
 	if err := json.Unmarshal(raw, &captured); err != nil {
 		t.Fatal(err)
 	}
-	if captured.Response.Result.Value == nil {
-		t.Fatal("manual acceptance did not commit")
+	pending, err := pluginsdk.DecodeReply[testsupport.SchedulesRunNowV1Output](captured.Response.Result)
+	if err != nil {
+		t.Fatalf("manual acceptance did not commit: %v", err)
 	}
-	pending := captured.Response.Result.Value
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: server}, "reconnect")
 	r.poMCPTools(&server, ready)
 	title, instructions := "edited title", "edited instructions"
-	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, schedulerpc.UpdateInput{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}), "edit-after-capture")
+	r.must(delivery.PluginsCall, scheduleUpdateRequest(r, testsupport.SchedulesUpdateV1Input{ID: saved.ID, ExpectedRevision: saved.Revision + 1, Title: &title, Instructions: &instructions}), "edit-after-capture")
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.poMCPTools(&server, ready)
@@ -530,14 +529,14 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 }
 
 func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *testing.T) {
-	source, _ := managedMessageLossPackage(t, "schedules", schedulerpc.RunNow, "request")
+	source, _ := managedMessageLossPackage(t, "schedules", testsupport.SchedulesRunNowV1Method, "request")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	options := delivery.Options{IdempotencyKey: "missing-receipt", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	if outcome := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); outcome.Failure == nil {

@@ -3,7 +3,7 @@ package plugin
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -16,7 +16,7 @@ func TestModelContextContractAdmitsOnlyAttributedRequestsAndSystemMaterial(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != capability.Decoration || method.Descriptor().Kind != capability.Query {
+	if contract.Descriptor().Composition != extension.Decoration || method.Descriptor().Kind != extension.Query {
 		t.Fatal("context contribution grants execution")
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))

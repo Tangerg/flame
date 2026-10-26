@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -50,7 +50,6 @@ type Config struct {
 	SessionID        string
 	Workspace        string
 	InitialPrompt    string
-	Plugins          []extensions.Plugin
 	PluginSources    []extensions.Source
 	Host             program.Host
 	Settings         *settings.Config
@@ -72,27 +71,15 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	}
 	defer func() { runErr = errors.Join(runErr, prepared.workbench.Close()) }()
 
-	registry := new(extensions.Registry)
-	extensionHost, err := extensions.NewHost(registry)
-	if err != nil {
-		return err
-	}
+	extensionHost := extensions.NewHost()
 	defer func() { runErr = errors.Join(runErr, extensionHost.Close()) }()
-	sources := make([]extensions.Source, 0, 1+len(cfg.PluginSources))
-	sources = append(sources, extensions.StaticSource{
-		Name: "terminal", Plugins: append([]extensions.Plugin{builtinPlugin()}, cfg.Plugins...),
-	})
-	sources = append(sources, cfg.PluginSources...)
-	discovered, err := extensions.Discover(ctx, sources...)
+	discovered, err := extensions.Discover(ctx, cfg.PluginSources...)
 	if err != nil {
 		return err
 	}
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil {
 		return err
-	}
-	if requireLoadedPluginErr := requireLoadedPlugin(results, "terminal.core"); requireLoadedPluginErr != nil {
-		return requireLoadedPluginErr
 	}
 
 	var active *app
@@ -110,7 +97,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				diagnosticTools: cfg.DiagnosticTools, authoringContext: cfg.AuthoringContext,
 				hooks: cfg.Hooks, feedback: cfg.Feedback,
 				snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
-				registry: registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
+				pluginHost: extensionHost, pluginIssues: discovered.Issues,
 				attachments: prepared.attachments,
 				settings:    prepared.settings,
 				options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
@@ -194,9 +181,9 @@ type preparedSession struct {
 	keyBindings    keyBindings
 	settings       settings.Config
 
-	options          prompt.RunOptions
+	options          flameauthoring.RunOptions
 	workbench        *workbench.Store
-	draft            prompt.Message
+	draft            flameauthoring.Message
 	editor           *draftEditor
 	rollbackRecovery *workbench.SessionRollbackRecovery
 	recoveryIssues   sessionCommandRecovery
@@ -331,8 +318,7 @@ func openPreparedSession(
 	// rollback opening as one Session authoring transition. No later preparation
 	// step may fail after the one-time rollback report becomes unreachable.
 	activation, err := authoring.ActivateSessionDraft(
-		opened.Session.ID,
-		prompt.Message{Text: cfg.InitialPrompt},
+		opened.Session.ID, flameauthoring.Message{Text: cfg.InitialPrompt},
 	)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("activate session draft: %w", err)
@@ -350,22 +336,6 @@ func authoringDirectory(localDirectory, workspace string) string {
 		return localDirectory
 	}
 	return workspace
-}
-
-func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error {
-	for _, result := range results {
-		if result.PluginID != id {
-			continue
-		}
-		if result.Phase == extensions.PluginLoaded {
-			return nil
-		}
-		if result.Err != nil {
-			return fmt.Errorf("session: required plugin %q is %s: %w", id, result.Phase, result.Err)
-		}
-		return fmt.Errorf("session: required plugin %q is %s", id, result.Phase)
-	}
-	return fmt.Errorf("session: required plugin %q was not discovered", id)
 }
 
 // announceStartup reports what recovery and plugin loading found. The status

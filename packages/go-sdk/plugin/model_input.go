@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -23,18 +23,18 @@ func (r ModelInputRequest) Validate() error {
 	return r.Request.Validate()
 }
 func ModelInputMethod() (*Method[ModelInputRequest, chat.Request], error) {
-	return NewMethod[ModelInputRequest, chat.Request](MethodConfig{Name: "flame.model-input/transform.v1", Kind: capability.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
+	return NewMethod[ModelInputRequest, chat.Request](MethodConfig{Name: "flame.model-input/transform.v1", Kind: extension.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
-func ModelInputContract() (*capability.Contract, error) { return modelInputContract() }
+func ModelInputContract() (*extension.Capability, error) { return modelInputContract() }
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelInputContract = sync.OnceValues(func() (*capability.Contract, error) {
+var modelInputContract = sync.OnceValues(func() (*extension.Capability, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
 		return nil, err
 	}
-	return capability.New(capability.Config{Reference: "flame.model-input.v1", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
+	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.model-input.v1", Composition: extension.Decoration, Scope: "call"}, method.Descriptor())
 })
 
 // ValidateModelInput preserves facts owned by selection, Tool preparation and
@@ -56,14 +56,14 @@ func ValidateModelInput(original, transformed *chat.Request) error {
 	copy(originalTools, original.Tools)
 	transformedTools := make([]chat.ToolDefinition, len(transformed.Tools))
 	copy(transformedTools, transformed.Tools)
-	before, err := jsoninput.Encode(struct {
+	before, err := jsonvalue.Encode(struct {
 		Tools  []chat.ToolDefinition `json:"tools"`
 		Choice *chat.ToolChoice      `json:"choice"`
 	}{originalTools, original.ToolChoice})
 	if err != nil {
 		return err
 	}
-	after, err := jsoninput.Encode(struct {
+	after, err := jsonvalue.Encode(struct {
 		Tools  []chat.ToolDefinition `json:"tools"`
 		Choice *chat.ToolChoice      `json:"choice"`
 	}{transformedTools, transformed.ToolChoice})

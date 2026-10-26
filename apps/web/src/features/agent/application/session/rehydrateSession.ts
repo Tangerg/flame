@@ -1,10 +1,10 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { refreshAgentSessionProjection } from "@/features/agent/application/session/refreshSessionProjection";
 
 const REWRITE_SYNCHRONIZATION_ATTEMPTS = 2;
 
 export async function rehydrateSessionView(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
 ): Promise<void> {
   const synchronize = agentAccess.view.getSession(sessionId)?.synchronize;

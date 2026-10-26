@@ -50,11 +50,16 @@ for (const directory of await readdir(root, { withFileTypes: true })) {
     ? await mkdtemp(join(tmpdir(), "flame-components-"))
     : target;
   try {
-    await buildComponent({
+    const built = await buildComponent({
       input: fileURLToPath(source),
       directory: output,
       compiler: rolldown,
     });
+    assert.deepEqual(
+      [...built.exports].sort(),
+      [...new Set(declaration.components.map((entry) => entry.export))].sort(),
+      `${directory.name}: component exports must match declared contributions`,
+    );
     if (check) {
       const files = (await readdir(output)).sort();
       assert.deepEqual((await readdir(target)).sort(), files);

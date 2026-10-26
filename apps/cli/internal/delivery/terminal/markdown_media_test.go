@@ -85,10 +85,10 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 	})
 	block := conversation.Block{ID: "diagram", Kind: conversation.BlockAssistant}
 	onOwner(func(view *transcriptView) {
-		if err := view.Apply(conversation.BlockStarted{Block: block}, nil); err != nil {
+		if err := view.Apply(conversation.BlockStarted{Block: block}); err != nil {
 			t.Error(err)
 		}
-		if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: diagramMarkdown}, nil); err != nil {
+		if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: diagramMarkdown}); err != nil {
 			t.Error(err)
 		}
 	})
@@ -100,7 +100,7 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 	}
 	block.Text = diagramMarkdown + "\n\n```mermaid\nflowchart TD\n A --> B\n```"
 	onOwner(func(view *transcriptView) {
-		if err := view.Apply(conversation.BlockCompleted{Block: block}, nil); err != nil {
+		if err := view.Apply(conversation.BlockCompleted{Block: block}); err != nil {
 			t.Error(err)
 		}
 		if view.content.Finished(view.content.FirstBlock()) {
@@ -242,17 +242,17 @@ func TestMarkdownMathUsesNativeLayoutAndShowsDiagnostics(t *testing.T) {
 func TestStreamingMathReplacesProvisionalDiagnostics(t *testing.T) {
 	view := testTranscriptView(t)
 	block := conversation.Block{ID: "math", Kind: conversation.BlockAssistant}
-	if err := view.Apply(conversation.BlockStarted{Block: block}, nil); err != nil {
+	if err := view.Apply(conversation.BlockStarted{Block: block}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "$$\n\\fra"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "$$\n\\fra"}); err != nil {
 		t.Fatal(err)
 	}
 	message := view.entries[view.content.FirstBlock()].content.(*markdownBlock)
 	if message.diagnostic == nil {
 		t.Fatal("invalid provisional formula has no diagnostic")
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "c{a}{b}\n$$"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "c{a}{b}\n$$"}); err != nil {
 		t.Fatal(err)
 	}
 	if message.diagnostic != nil {

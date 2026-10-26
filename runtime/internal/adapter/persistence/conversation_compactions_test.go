@@ -7,41 +7,40 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore, *ConversationCompactions) {
+func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore, *conversationCompactions) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	messages, err := NewConversationStore(NewMessageStore(db))
+	messages, err := NewConversationStore(newMessageStore(db))
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	compactions, err := NewConversationCompactions(
 		messages,
 		runs,
 		func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return sqlite.RunInTx(ctx, db, fn)
 		},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
-	if err := NewSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := newSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	return db, messages, runs, compactions
@@ -191,7 +190,7 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 	}
 }
 
-func applyTestCompaction(t *testing.T, store *ConversationCompactions, runs *RunStore) error {
+func applyTestCompaction(t *testing.T, store *conversationCompactions, runs *RunStore) error {
 	t.Helper()
 	proposal, err := conversation.NewCompaction(8, 6, 1, compactedMessages())
 	if err != nil {

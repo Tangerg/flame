@@ -8,13 +8,11 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type installationMemory struct {
@@ -35,7 +33,7 @@ func (s *installationMemory) List(ctx context.Context) ([]plugin.Snapshot, error
 	}
 	return []plugin.Snapshot{snapshot}, nil
 }
-func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *installationMemory) Get(ctx context.Context, _ identity.InstallationID) (plugin.Snapshot, bool, error) {
 	if s.getErr != nil {
 		return plugin.Snapshot{}, false, s.getErr
 	}
@@ -68,7 +66,7 @@ func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) err
 	s.record = &r
 	return nil
 }
-func (s *installationMemory) Remove(context.Context, resourceid.InstallationID) error {
+func (s *installationMemory) Remove(context.Context, identity.InstallationID) error {
 	if s.removeErr != nil {
 		return s.removeErr
 	}
@@ -76,9 +74,9 @@ func (s *installationMemory) Remove(context.Context, resourceid.InstallationID) 
 	return nil
 }
 
-type releaseMemory map[fingerprint.Digest]plugin.Release
+type releaseMemory map[identity.Digest]plugin.Release
 
-func (m releaseMemory) Get(_ context.Context, digest fingerprint.Digest) (plugin.Release, error) {
+func (m releaseMemory) Get(_ context.Context, digest identity.Digest) (plugin.Release, error) {
 	release, found := m[digest]
 	if !found {
 		return plugin.Release{}, plugin.ErrNotFound
@@ -112,7 +110,7 @@ func (p installationPackages) Materialize(ctx context.Context, source string) (C
 	}
 	return candidateRelease{release: release}, nil
 }
-func (installationPackages) Reclaim(context.Context, []fingerprint.Digest) error { return nil }
+func (installationPackages) Reclaim(context.Context, []identity.Digest) error { return nil }
 func (p installationPackages) Prepare(ctx context.Context, installation *plugin.Installation, _ plugin.Release) error {
 	if p.prepare != nil {
 		return p.prepare(ctx, installation)
@@ -135,7 +133,7 @@ type installationDependencies struct {
 	executionChanged bool
 }
 
-func (d *installationDependencies) ChangeInstallation(ctx context.Context, _ resourceid.InstallationID, admission ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
+func (d *installationDependencies) ChangeInstallation(ctx context.Context, _ identity.InstallationID, admission ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
 	if d.inUse && admission == RequireQuiescent {
 		return plugin.ErrInUse
 	}
@@ -187,7 +185,7 @@ func (c installationConnections) ReconcileInstallation(ctx context.Context, name
 	return c.reconcile(ctx, names)
 }
 
-func installationFixture(t *testing.T) (*installationMemory, *installationDependencies, resourceid.InstallationID, releaseMemory) {
+func installationFixture(t *testing.T) (*installationMemory, *installationDependencies, identity.InstallationID, releaseMemory) {
 	t.Helper()
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}}})
 	i, err := plugin.New(testsupport.InstallationID(t), "/package", release)

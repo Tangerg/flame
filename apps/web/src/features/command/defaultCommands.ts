@@ -7,8 +7,7 @@ import { type WorkingDirectoryAccess } from "@/features/navigation/public/workin
 import { type Navigator } from "@/lib/navigation";
 import { type CommandSpec } from "@/features/command/public/commands";
 import { toggleThemeScheme } from "@/features/theme/public/scheme";
-import { closeActiveAgentSession } from "@/features/agent/public/session";
-import { stepActiveAgentSession } from "@/features/agent/public/session";
+
 import {
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,
@@ -95,7 +94,7 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
 function closeFocusedSurface(agentAccess: AgentAccess, workspaceAccess: WorkspaceAccess): void {
   if (closeActiveWorkspaceView(workspaceAccess)) return;
   if (closeActiveWorkspaceDockView(workspaceAccess)) return;
-  closeActiveAgentSession(agentAccess);
+  agentAccess.closeActiveAgentSession();
 }
 
 export const defaultCommands = (
@@ -124,8 +123,8 @@ export const defaultCommands = (
         closeFocused: closeFocusedSurface.bind(null, agentAccess, workspaceAccess),
         historyBack: () => navigation.back(),
         historyForward: () => navigation.forward(),
-        previousSession: () => stepActiveAgentSession(agentAccess, -1),
-        nextSession: () => stepActiveAgentSession(agentAccess, 1),
+        previousSession: () => agentAccess.stepActiveAgentSession(-1),
+        nextSession: () => agentAccess.stepActiveAgentSession(1),
       })) {
         ctx.contribute(COMMAND, command);
       }

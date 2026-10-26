@@ -6,14 +6,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -36,10 +32,10 @@ func (e ExecutorMember) Child() bool { return e.ParentID != "" }
 // empty member is reserved for a root execution that failed before the executor
 // created its member.
 func (e ExecutorMember) Validate() error {
-	if err := runtimeidentity.ValidateOptionalMember(e.MemberID); err != nil {
+	if err := validateOptionalMember(e.MemberID); err != nil {
 		return fmt.Errorf("runs: %w", err)
 	}
-	if err := runtimeidentity.ValidateOptionalMember(e.ParentID); err != nil {
+	if err := validateOptionalMember(e.ParentID); err != nil {
 		return fmt.Errorf("runs: executor parent: %w", err)
 	}
 	if e.MemberID == "" {
@@ -63,7 +59,7 @@ func (e ExecutorMember) Validate() error {
 // their producer as the root.
 type ExecutorEvent struct {
 	Member  ExecutorMember
-	Payload ExecutorPayload
+	Payload executorPayload
 }
 
 // Validate checks the envelope before the Coordinator routes it.
@@ -78,7 +74,7 @@ func (e ExecutorEvent) Validate() error {
 // Most values are reducible [ExecutionFact] facts. A control handshake such as
 // control requests share the stream only when their ordering relative to those
 // facts is itself part of correctness.
-type ExecutorPayload interface {
+type executorPayload interface {
 	executorPayload()
 }
 
@@ -90,7 +86,7 @@ func (executorPayloadBase) executorPayload() {}
 // the ExecutionObserver port. Control handshakes deliberately implement only
 // [ExecutorPayload], so they cannot accidentally enter the reducer.
 type ExecutionFact interface {
-	ExecutorPayload
+	executorPayload
 	executionFact()
 }
 
@@ -185,7 +181,7 @@ type ToolCallFinished struct {
 	// Result remains the independently presented client transcript value.
 	ModelResult  *corechat.ToolResult
 	Result       *tool.Result
-	Offload      *toolresult.Ref
+	Offload      *transcript.ToolResultRef
 	OutputText   string
 	MutatedPaths []string
 	// Failure is the one structured failure channel for a completed Tool call.
@@ -273,10 +269,10 @@ func (t TreeInterrupted) validate() error {
 	}
 	seen := make(map[inputRequestKey]struct{}, len(t.interruptions))
 	for index, request := range t.interruptions {
-		if err := runtimeidentity.ValidateMember(request.MemberID); err != nil {
+		if err := ValidateMember(request.MemberID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d] member: %w", index, err)
 		}
-		if err := runtimeidentity.ValidateRequest(request.RequestID); err != nil {
+		if err := validateRequest(request.RequestID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
 		if err := request.Interrupt.Validate(); err != nil {
@@ -325,7 +321,10 @@ func NewSegmentEnded(
 	duration time.Duration,
 ) SegmentEnded {
 	end := SegmentEnded{Reason: reason, Duration: duration}
-	end.failure = optional.Clone(failure)
+	end.failure = failure
+	if end.failure != nil {
+		end.failure = new(*end.failure)
+	}
 	return end
 }
 

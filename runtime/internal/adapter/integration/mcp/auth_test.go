@@ -10,12 +10,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"golang.org/x/oauth2"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestFailedStatus(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +13,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -26,8 +29,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
@@ -64,7 +65,7 @@ func TestRuntimeConnectionResourceFailures(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err = runtime.CallPlugin(t.Context(), request, mutation.NewCommandID())
-		var refusal *capability.Refusal
+		var refusal *extension.Refusal
 		if !errors.As(err, &refusal) || refusal.Code != "not_found" {
 			t.Fatalf("missing installed schedule: %v", err)
 		}
@@ -175,11 +176,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	}
 
 	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicHooksChanged,
-			protocol.TopicSkillsChanged,
-		},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
 	})
 	if err != nil {

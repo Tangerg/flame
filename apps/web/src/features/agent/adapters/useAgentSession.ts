@@ -1,9 +1,9 @@
-import { type AgentAccess } from "@/features/agent/application/agentAccess";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentStoreOwner } from "@/features/agent/adapters/agentStore";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { type createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 export interface AgentSessionDependencies {
-  agentAccess: AgentAccess;
+  agentAccess: AgentDependencies;
   projection: AgentStoreOwner;
   sessions: AgentSessionStore;
   retries: ReturnType<typeof createAgentRuntimeGateway>["retries"];

@@ -10,9 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestMCPServerStoreCannotPersistOrRestoreInvalidHTTPEndpoints(t *testing.T) {
@@ -23,7 +22,7 @@ func TestMCPServerStoreCannotPersistOrRestoreInvalidHTTPEndpoints(t *testing.T) 
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			store := NewMCPServerStore(db)
+			store := newMCPServerStore(db)
 			valid := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}
 			if err := store.Save(t.Context(), valid); err != nil {
 				t.Fatal(err)
@@ -55,7 +54,7 @@ func TestMCPServerStoreRetainsProcessEnvironmentPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMCPServerStore(db)
+	store := newMCPServerStore(db)
 	for _, environment := range []map[string]string{nil, {}, {"TOKEN": "value"}} {
 		server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: environment}
 		if err := store.Save(t.Context(), server); err != nil {
@@ -78,7 +77,7 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMCPServerStore(db)
+	store := newMCPServerStore(db)
 	boundedTimeout, err := mcpserver.NewHandshakeTimeout(3 * time.Second)
 	if err != nil {
 		t.Fatalf("NewHandshakeTimeout: %v", err)
@@ -217,7 +216,7 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := testsupport.ServerName("files")
-	if err := NewMCPServerStore(db).Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Transport: mcpserver.TransportStdio, Command: "mcp-server"}); err != nil {
+	if err := newMCPServerStore(db).Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: server, Transport: mcpserver.TransportStdio, Command: "mcp-server"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(
@@ -256,7 +255,7 @@ func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMCPServerStore(db)
+	store := newMCPServerStore(db)
 	server := mcpserver.Server{
 		Source:    mcpserver.UserSource(),
 		Name:      testsupport.ServerName("files"),
@@ -301,7 +300,7 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMCPServerStore(db)
+	store := newMCPServerStore(db)
 	original := mcpserver.Server{
 		Source: mcpserver.UserSource(),
 		Name:   testsupport.ServerName("files"), Transport: mcpserver.TransportStdio,
@@ -338,7 +337,7 @@ func TestMCPServerStoreReadsOneConfigurationDuringConcurrentSave(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			store := NewMCPServerStore(db)
+			store := newMCPServerStore(db)
 			initial := mcpserver.Server{
 				Source: mcpserver.UserSource(),
 				Name:   testsupport.ServerName("files"), Transport: mcpserver.TransportStdio,

@@ -15,8 +15,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -75,14 +74,14 @@ type app struct {
 	runtimeProfile   RuntimeProfile
 	replayPolicy     mutation.ReplayPolicy
 	artifacts        sessionartifact.Store
-	registry         *extensions.Registry
-	pluginHost       *extensions.Host
-	pluginIssues     []extensions.SourceIssue
-	operations       *operationOwner
-	session          sessionState
-	execution        executionState
-	steers           steerReceipts
-	dialogs          dialogState
+
+	pluginHost   *extensions.Host
+	pluginIssues []extensions.SourceIssue
+	operations   *operationOwner
+	session      sessionState
+	execution    executionState
+	steers       steerReceipts
+	dialogs      dialogState
 
 	transcript  *transcriptView
 	brand       *brandBanner
@@ -93,7 +92,7 @@ type app struct {
 	status      *statusView
 	settings    settings.Config
 
-	options        prompt.RunOptions
+	options        authoring.RunOptions
 	composer       kit.Composer
 	prompt         *promptView
 	commands       commandCatalog
@@ -111,7 +110,7 @@ type app struct {
 	detachOnExit   bool
 
 	attachments        *attachment.Resolver
-	attachmentElements map[uint64]prompt.Attachment
+	attachmentElements map[uint64]authoring.Attachment
 	history            promptHistory
 	workbenchHealth    workbenchHealth
 	commandOperations  commandOperationRegistry
@@ -149,15 +148,15 @@ type appConfig struct {
 	replayPolicy     mutation.ReplayPolicy
 	clientVersion    string
 	snapshot         conversation.SessionSnapshot
-	registry         *extensions.Registry
-	pluginHost       *extensions.Host
-	pluginIssues     []extensions.SourceIssue
-	attachments      *attachment.Resolver
-	initialDraft     prompt.Message
-	recoveredSteers  []runworkflow.SteerResult
-	settings         settings.Config
 
-	options        prompt.RunOptions
+	pluginHost      *extensions.Host
+	pluginIssues    []extensions.SourceIssue
+	attachments     *attachment.Resolver
+	initialDraft    authoring.Message
+	recoveredSteers []runworkflow.SteerResult
+	settings        settings.Config
+
+	options        authoring.RunOptions
 	keyBindings    keyBindings
 	queue          *workbench.Queue
 	workbench      *workbench.Store
@@ -203,8 +202,8 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		agentMemory:      cfg.agentMemory,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
-		session:    sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
-		registry:   cfg.registry,
+		session: sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
+
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
 		execution:          executionState{conversation: conversation.New()},
 		operations:         newOperationOwner(cfg.context),
@@ -223,7 +222,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		options:            cfg.options,
 		syntax:             appearance.syntax,
 		attachments:        cfg.attachments,
-		attachmentElements: make(map[uint64]prompt.Attachment),
+		attachmentElements: make(map[uint64]authoring.Attachment),
 		commandOperations:  newCommandOperationRegistry(),
 		commands:           newCommandCatalog(),
 		attention:          newAttentionCenter(),
@@ -260,7 +259,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	return a
 }
 
-func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial prompt.Message) {
+func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
 	a.composer = kit.Composer{
 		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ",
 		MaxRows: 6,
@@ -368,9 +367,9 @@ func (a *app) Close(ctx context.Context) error {
 	a.closed = true
 	var (
 		target           conversation.CancelRun
-		openingCommandID replay.CommandID
+		openingCommandID authoring.CommandID
 		cancelRuntime    bool
-		cancelReplay     replay.Guard
+		cancelReplay     authoring.ReplayGuard
 	)
 	if a.execution.pendingCancel != nil {
 		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
@@ -446,7 +445,7 @@ func (a *app) submit() {
 	}
 	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		a.runCommand(name, arg, func() {
-			a.restoreComposer(prompt.Message{Attachments: message.Attachments})
+			a.restoreComposer(authoring.Message{Attachments: message.Attachments})
 			a.operations.Cancel(completionOperation)
 			a.completion.Dismiss()
 		})
@@ -458,7 +457,7 @@ func (a *app) submit() {
 // dispatchPrompt owns the single path from an authored message to either the
 // active run or its durable follow-up queue. Callers such as prompt submission
 // cannot bypass session-change exclusion, prompt history, or composer cleanup.
-func (a *app) dispatchPrompt(message prompt.Message) {
+func (a *app) dispatchPrompt(message authoring.Message) {
 	if err := a.validateMessageCapabilities(message); err != nil {
 		a.message(err.Error())
 		return

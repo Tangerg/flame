@@ -88,6 +88,25 @@ for (const name of ["plain-author", "author project", "作者项目", "author %#
         join(author, "component/component.tsx"),
         'export const title = "author component";\n',
       );
+      await mkdir(join(author, "package"));
+      await writeFile(
+        join(author, "package/plugin.json"),
+        JSON.stringify({
+          name: "example.component",
+          version: "1.0.0",
+          extensions: {
+            "io.github.tangerg.flame": { declaration: "declaration.json" },
+          },
+        }),
+      );
+      await writeFile(
+        join(author, "package/declaration.json"),
+        JSON.stringify({ components: [{ export: "title" }] }),
+      );
+      await cp(
+        new URL("./build.mjs", import.meta.url),
+        join(author, "build.mjs"),
+      );
       await cp(
         new URL("./author-component.mjs", import.meta.url),
         join(author, "build-component.mjs"),

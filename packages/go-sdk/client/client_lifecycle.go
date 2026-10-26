@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/sse"
 	"golang.org/x/text/encoding"
 )

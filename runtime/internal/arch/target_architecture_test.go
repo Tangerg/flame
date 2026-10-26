@@ -40,15 +40,15 @@ func repositoryLayer(path string) (string, bool) {
 
 func sdkLayer(path string) string {
 	switch path {
-	case "dependency", "exactint", "exactjson", "fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
+	case "exactint", "identity", "instant", "jsonvalue", "extension", "model":
 		return ringValue
-	case "pagination", "cancellation", "capture", "idempotency", "opaquetoken", "pathidentity":
+	case "pagination", "cancellation", "capture":
 		return ringMechanism
-	case "protocol", "protocol/jsonrpc", "contractshape":
+	case "protocol":
 		return ringProtocol
-	case "plugin", "plugin/memory", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "storage/directories", "model/catalog", "model/text", "sandbox", "fileinput", "httpresponse", "client":
+	case "plugin", "plugin/memory", "plugin/sqlite", "sqlite", "filesystem", "model/catalog", "sandbox", "httpresponse", "client":
 		return ringInfra
-	case "contractgen", "cmd/contractgen", "cmd/archive", "cmd/backendbindings":
+	case "contractgen", "cmd/flame-sdk":
 		return ringGenerator
 	default:
 		return ringUnknown
@@ -134,7 +134,7 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		{name: "public protocol", dependency: sdkModulePath + "/protocol"},
 		{name: "public backend transport", dependency: sdkModulePath + "/plugin", wantViolations: 1},
 		{name: "pure value", dependency: sdkModulePath + "/identity"},
-		{name: "technical mechanism", dependency: sdkModulePath + "/opaquetoken"},
+		{name: "technical mechanism", dependency: sdkModulePath + "/pagination"},
 		{name: "generator", dependency: runtimeModulePath + "/cmd/contractgen", wantViolations: 1},
 		{name: "test support", dependency: runtimeModulePath + "/internal/testsupport", wantViolations: 1},
 		{name: "fixture inside a ring", dependency: runtimeModulePath + "/internal/domain/testdata/fixture", wantViolations: 1},
@@ -177,28 +177,28 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		allowed  bool
 	}{
 		{from: runtimeModulePath, to: runtimeModulePath + "/internal/bootstrap", allowed: true},
-		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/storage/sqlite", allowed: true},
+		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/sqlite", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/model", allowed: true},
-		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/idempotency", allowed: true},
-		{from: sdkModulePath + "/idempotency", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/extension", allowed: true},
+		{from: sdkModulePath + "/extension", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/model", to: sdkModulePath + "/model/catalog"},
 		{from: sdkModulePath + "/model/catalog", to: sdkModulePath + "/model", allowed: true},
-		{from: sdkModulePath + "/storage/sqlite", to: sdkModulePath + "/cancellation", allowed: true},
-		{from: sdkModulePath + "/storage/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
-		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/storage/sqlite"},
+		{from: sdkModulePath + "/sqlite", to: sdkModulePath + "/cancellation", allowed: true},
+		{from: sdkModulePath + "/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/sqlite"},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/identity", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/protocol"},
-		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/capability", allowed: true},
-		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/capability", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/extension", allowed: true},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/extension", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/plugin"},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/plugin"},
-		{from: sdkModulePath + "/capability", to: sdkModulePath + "/plugin"},
-		{from: sdkModulePath + "/capability", to: sdkModulePath + "/jsoninput", allowed: true},
+		{from: sdkModulePath + "/extension", to: sdkModulePath + "/plugin"},
+		{from: sdkModulePath + "/extension", to: sdkModulePath + "/jsonvalue", allowed: true},
 		{from: runtimeModulePath + "/internal/domain/newaggregate", to: runtimeModulePath + "/internal/completion"},
 		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: runtimeModulePath + "/internal/completion", allowed: true},
 		{from: sdkModulePath + "/identity", to: runtimeModulePath + "/internal/domain/session"},
 		{from: runtimeModulePath + "/internal/completion", to: runtimeModulePath + "/internal/application/agent/runs"},
-		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/contractshape", allowed: true},
+		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/jsonvalue", allowed: true},
 		{from: sdkModulePath + "/protocol", to: runtimeModulePath + "/internal/application/agent/runs"},
 		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/capture"},
 		{from: localRuntimeModulePath, to: runtimeModulePath + "/internal/bootstrap"},

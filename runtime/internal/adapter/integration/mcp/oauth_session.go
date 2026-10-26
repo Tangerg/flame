@@ -11,12 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 // OAuthSessionStore binds each credential to the target that requested it and
@@ -190,7 +187,11 @@ type invalidatingTokenSource struct {
 func newSavingTokenSource(source oauth2.TokenSource, cfg *oauth2.Config, token *oauth2.Token, save func(*oauth2.Config, *oauth2.Token) error) oauth2.TokenSource {
 	config := *cfg
 	config.Scopes = slices.Clone(cfg.Scopes)
-	return &savingTokenSource{source: source, config: config, last: optional.Clone(token), save: save}
+	clonedToken := token
+	if clonedToken != nil {
+		clonedToken = new(*clonedToken)
+	}
+	return &savingTokenSource{source: source, config: config, last: clonedToken, save: save}
 }
 
 func (s *savingTokenSource) Token() (*oauth2.Token, error) {
@@ -207,7 +208,10 @@ func (s *savingTokenSource) Token() (*oauth2.Token, error) {
 	if err := s.save(&s.config, token); err != nil {
 		return nil, err
 	}
-	s.last = optional.Clone(token)
+	s.last = token
+	if s.last != nil {
+		s.last = new(*s.last)
+	}
 	return token, nil
 }
 

@@ -17,9 +17,9 @@ func registerInterrupts(registry *Registry) {
 	// different answer from "nothing is waiting".
 	registry.query(MethodMeta{
 		Name: InterruptsList, GoName: "ListInterrupts",
-		Errors: []string{
-			protocol.ErrRunNotRoot.Error(),
-			protocol.ErrCapabilityNotNeg.Error(),
+		Errors: []string{protocol.ErrRunNotRoot.
+			Error(), protocol.ErrCapabilityNotNeg.
+			Error(),
 		},
 	}, func(service interface {
 		ListInterrupts(context.Context, protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error)

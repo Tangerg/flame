@@ -10,9 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -54,18 +52,18 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	defer r.close()
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	item := mustMemoryAdd(r, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeProject, CWD: cfg.DefaultWorkspacePath, Content: fact}), "prepare-fact")
-	if item.Status != memorydomain.StatusActive {
+	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
+	if item.Status != "active" {
 		t.Fatal("human-created fact was not active")
 	}
-	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Recall prepared Memory", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "memory-session").(*protocol.Session)
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Recall prepared Memory", Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "memory-session").(*protocol.Session)
 	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Recall the prepared memory fact."}}}, delivery.Options{IdempotencyKey: "memory-recall-start", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
 		t.Fatal(started.Failure)

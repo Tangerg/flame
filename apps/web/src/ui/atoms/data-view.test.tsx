@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
 import { DataError } from "@/ui/atoms/data-error";
 import { DataView } from "@/ui/atoms/data-view";
-import { TreePrimitive } from "@/ui/primitives/tree";
+import { Tree } from "@/ui/atoms/tree";
 const rows = (items: string[]) => <div>{items.join(",")}</div>;
 
 const broke = new Error("the runtime answered badly");
@@ -225,11 +225,11 @@ describe("DataError", () => {
     const callbackFocus: (Element | null)[] = [];
     testClient.render(
       <>
-        <TreePrimitive.Root ref={target} aria-label="Recovered files">
-          <TreePrimitive.Item level={1} selected={false} focusable onActivate={vi.fn()}>
+        <Tree.Root ref={target} aria-label="Recovered files">
+          <Tree.Item level={1} selected={false} focusable onActivate={vi.fn()}>
             kept.go
-          </TreePrimitive.Item>
-        </TreePrimitive.Root>
+          </Tree.Item>
+        </Tree.Root>
         <div role="region" aria-label="Read error" tabIndex={-1}>
           <DataError
             focusTarget={target}

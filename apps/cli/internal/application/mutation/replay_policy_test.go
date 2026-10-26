@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
@@ -12,11 +12,11 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 
 	stagedAt := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 	now := stagedAt
-	capability, err := replay.NewCapability("runtime-a", 10*time.Minute)
+	capability, err := authoring.NewReplayCapability("runtime-a", 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := NewReplayPolicy(capability, func() time.Time { return now })
+	policy, err := newReplayPolicy(capability, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 	if !policy.SameStore(guard) || !policy.Replayable(guard) {
 		t.Fatalf("fresh advertised guard was not replayable: %+v", guard)
 	}
-	other, err := replay.NewProtectedGuard("runtime-b", guard.Until())
+	other, err := authoring.NewProtectedGuard("runtime-b", guard.Until())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,11 +43,11 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 func TestPolicyRefusesToEvaluateWithoutAClock(t *testing.T) {
 	t.Parallel()
 
-	capability, err := replay.NewCapability("runtime-a", 10*time.Minute)
+	capability, err := authoring.NewReplayCapability("runtime-a", 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewReplayPolicy(capability, nil); err == nil {
+	if _, err := newReplayPolicy(capability, nil); err == nil {
 		t.Fatal("policy was built without a clock")
 	}
 	if err := (ReplayPolicy{}).validate(); err == nil {

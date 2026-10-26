@@ -2,7 +2,6 @@ package pluginpackage
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func benchmarkRelease(b *testing.B, files map[string]string) (*Releases, plugin.Release) {

@@ -11,14 +11,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // IDPrefix is the type prefix assigned when a Runtime generates a Session ID.
-const IDPrefix = runtimeidentity.SessionPrefix
+const IDPrefix = identity.SessionPrefix
 
 var (
 	// ErrNotFound reports that no Session exists for an addressed identity.
@@ -260,7 +259,7 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 // Every constructor and every transition closes here, so a Session that exists
 // is already legal and no reader has to ask again.
 func (s Session) validate() error {
-	if err := resourceid.ValidateSession(s.id); err != nil {
+	if err := identity.ValidateSession(s.id); err != nil {
 		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
 	}
 	if err := s.workspace.Validate(); err != nil {
@@ -273,7 +272,7 @@ func (s Session) validate() error {
 		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	if s.parentID != "" {
-		if err := resourceid.ValidateSession(s.parentID); err != nil {
+		if err := identity.ValidateSession(s.parentID); err != nil {
 			return fmt.Errorf("%w: parent id: %v", ErrInvalid, err)
 		}
 	}

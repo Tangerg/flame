@@ -6,11 +6,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -61,7 +60,7 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 				}
 				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.ToolCall]) (chat.ToolCall, error) {
 					caller, err := pluginsdk.InvocationFromContext(ctx)
-					if err != nil || caller.ID != "original" || caller.Parent != "run_owner" || caller.Origin != capability.Model || caller.Target.Reference != "original" || command.ID != "" {
+					if err != nil || caller.ID != "original" || caller.Parent != "run_owner" || caller.Origin != extension.Model || caller.Target.Reference != "original" || command.ID != "" {
 						return chat.ToolCall{}, errors.New("original Tool caller was replaced")
 					}
 					calls++
@@ -91,7 +90,7 @@ func TestInstalledToolProposalsPreserveOrderCallerAndWithdrawal(t *testing.T) {
 			if err != nil || len(bindings) != 2 {
 				t.Fatalf("installed composition: %+v, %v", bindings, err)
 			}
-			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original", Origin: capability.Model, Parent: "run_owner", Target: capability.Target{Scope: "call", Reference: "original"}})
+			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original", Origin: extension.Model, Parent: "run_owner", Target: extension.Target{Scope: "call", Reference: "original"}})
 			if err != nil {
 				t.Fatal(err)
 			}

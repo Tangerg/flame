@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 )
 
 func TestRuntimeConfigDirectoriesUseOnlyExplicitSource(t *testing.T) {

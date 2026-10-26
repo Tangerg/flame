@@ -9,35 +9,35 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 type observedInteractionTool struct {
 	ref               tool.Ref
 	receiptEvidence   *toolReceiptEvidence
-	sourceFingerprint fingerprint.Digest
+	sourceFingerprint flameidentity.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
 	session           *interactionSession
-	interpreter       InteractionToolInterpreter
-	presenter         InteractionToolPresenter
-	authorizer        InteractionToolAuthorizer
-	hooks             InteractionToolHooks
+	interpreter       interactionToolInterpreter
+	presenter         interactionToolPresenter
+	authorizer        interactionToolAuthorizer
+	hooks             interactionToolHooks
 	offloader         toolResultOffloader
 	offloadPolicy     toolResultOffloadPolicy
 	start             runs.RootExecutionStart
@@ -76,7 +76,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
 	ctx = o.session.modelCallContext(ctx, member, callID)
-	ctx = operation.Adopt(ctx, callID, capability.Model, member.MemberID)
+	ctx = operation.Adopt(ctx, callID, extension.Model, member.MemberID)
 	ctx = runinput.WithCapabilities(ctx, o.start.InterruptKinds)
 	// Scope carries any re-entry answer on bound; a Tool child restored from it
 	// receives the same continuation the question or approval parked on.
@@ -346,7 +346,7 @@ func (o *observedInteractionTool) prepare(
 		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
 			return tool.Arguments{}, false, "", nil, plugin.ErrStale
 		}
-		invocation, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeCall, Reference: callID})
+		invocation, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeCall, Reference: callID})
 		if err != nil {
 			return tool.Arguments{}, false, "", nil, err
 		}
@@ -437,18 +437,16 @@ func (o *observedInteractionTool) requestToolApproval(
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
 ) (tool.Arguments, bool, string, *toolcontract.InputRequest, error) {
-	if !slices.Contains(o.start.InterruptKinds, interrupt.Approval) {
+	if !slices.Contains(o.start.InterruptKinds, run.InterruptApproval) {
 		return request.Arguments, true, "approval input is unavailable for this Run", nil, nil
 	}
-	pending := runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}
+	pending := runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return tool.Arguments{}, false, "", nil, fmt.Errorf("execution: invalid Tool approval prompt: %w", err)
 	}
 	resolution, inputRequest, err := runinput.Require(
 		ctx,
-		bound,
-		interrupt.Key(string(interrupt.Approval), request.Tool.ModelName(), request.Arguments.Canonical()),
-		pending,
+		bound, run.InterruptKey(string(run.InterruptApproval), request.Tool.ModelName(), request.Arguments.Canonical()), pending,
 	)
 	if err != nil {
 		return tool.Arguments{}, false, "", nil, err
@@ -474,10 +472,10 @@ func (o *observedInteractionTool) resumePreparedTool(
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("execution: parse continued Tool arguments: %w", err)
 	}
-	if continued.Interrupt.Kind == interrupt.Question {
+	if continued.Interrupt.Kind == run.InterruptQuestion {
 		return arguments, false, "", nil
 	}
-	if continued.Interrupt.Kind != interrupt.Approval || continued.Interrupt.Approval == nil {
+	if continued.Interrupt.Kind != run.InterruptApproval || continued.Interrupt.Approval == nil {
 		return tool.Arguments{}, false, "", errors.New("execution: continued Tool input has an unsupported kind")
 	}
 	prompt := *continued.Interrupt.Approval
@@ -495,7 +493,7 @@ func (o *observedInteractionTool) resolveToolApproval(
 	ctx context.Context,
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
-	resolution interrupt.Resolution,
+	resolution run.InterruptResolution,
 ) (tool.Arguments, bool, string, error) {
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return tool.Arguments{}, false, "", err
@@ -545,7 +543,7 @@ func (o *observedInteractionTool) offload(
 	toolName string,
 	output corechat.ToolOutput,
 	callErr error,
-) (corechat.ToolOutput, *toolresult.Ref) {
+) (corechat.ToolOutput, *transcript.ToolResultRef) {
 	if callErr != nil {
 		return output, nil
 	}
@@ -623,10 +621,10 @@ func wrapInteractionTools(
 	start runs.RootExecutionStart,
 ) (visible []toolcontract.Tool, deferred []toolcontract.Tool, contracts map[tool.Ref]toolcontract.Contract, err error) {
 	if len(manifest.Visible)+len(manifest.Deferred) > 0 {
-		if dependency.Missing(config.ToolInterpreter) {
+		if lo.IsNil(config.ToolInterpreter) {
 			return nil, nil, nil, errors.New("execution: Interaction Tools require a Tool interpreter")
 		}
-		if dependency.Missing(config.ToolAuthorizer) {
+		if lo.IsNil(config.ToolAuthorizer) {
 			return nil, nil, nil, errors.New("execution: Interaction Tools require a Tool authorizer")
 		}
 	}
@@ -677,7 +675,7 @@ func wrapInteractionTools(
 				}
 			}
 			if config.ToolHooks == nil && len(session.toolProposals) == 0 && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
-				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
+				!slices.Contains(start.InterruptKinds, run.InterruptApproval) {
 				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
 				if err != nil {
 					return nil, fmt.Errorf("execution: resolve Tool concurrency: %w", err)

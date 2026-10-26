@@ -1,10 +1,4 @@
 export {
-  allowMCPTool,
-  forgetRule,
-  forgetRules,
-  setApprovalMode,
-} from "@/features/agent/application/approvalPolicy";
-export {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
   useApprovalMode,

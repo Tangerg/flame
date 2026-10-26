@@ -6,13 +6,13 @@ import (
 	"errors"
 	"iter"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func ModelStreamMethod() (*StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error) {
 	return NewStreamingMethod[chat.Request, chat.ResponseDelta, ModelResult](MethodConfig{
-		Name: "flame.model/stream.v1", Kind: capability.Mutation, Target: "call",
+		Name: "flame.model/stream.v1", Kind: extension.Mutation, Target: "call",
 		Description: "Consume the captured model's canonical stream and final outcome.",
 	})
 }

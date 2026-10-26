@@ -32,8 +32,8 @@ it("keeps concurrent renderer state and generation retirement with the injected 
   );
   expect(screen.getByLabelText("First renderer").textContent).toBe("first-session: first draft");
   expect(screen.getByLabelText("Second renderer").textContent).toBe("second-session: second draft");
-  const firstCommand = first.agent.access.commands.current();
-  const secondCommand = second.agent.access.commands.current();
+  const firstCommand = first.agent.dependencies.commands.current();
+  const secondCommand = second.agent.dependencies.commands.current();
   act(() => {
     first.projection.store.setState({
       connectionGeneration: RuntimeConnectionGeneration.forProcess("first-next"),
@@ -43,7 +43,7 @@ it("keeps concurrent renderer state and generation retirement with the injected 
   });
   expect(firstCommand.isCurrent()).toBe(false);
   expect(secondCommand.isCurrent()).toBe(true);
-  expect(second.agent.access.commands.current()).toBe(secondCommand);
+  expect(second.agent.dependencies.commands.current()).toBe(secondCommand);
   expect(second.directory.access.selection()).toBeNull();
   expect(screen.getByLabelText("Second renderer").textContent).toBe("second-session: second draft");
   await act(() => first.dispose());

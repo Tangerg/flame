@@ -4,22 +4,22 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func ToolProposalMethod() (*Method[chat.ToolCall, chat.ToolCall], error) {
-	return NewMethod[chat.ToolCall, chat.ToolCall](MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: capability.Query, Target: "call", Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
+	return NewMethod[chat.ToolCall, chat.ToolCall](MethodConfig{Name: "flame.tool-proposal/transform.v1", Kind: extension.Query, Target: "call", Description: "Transform a captured Tool proposal's arguments before final schema admission and approval, preserving its logical identity and Tool name."})
 }
 
-func ToolProposalContract() (*capability.Contract, error) { return toolProposalContract() }
+func ToolProposalContract() (*extension.Capability, error) { return toolProposalContract() }
 
-var toolProposalContract = sync.OnceValues(func() (*capability.Contract, error) {
+var toolProposalContract = sync.OnceValues(func() (*extension.Capability, error) {
 	method, err := ToolProposalMethod()
 	if err != nil {
 		return nil, err
 	}
-	return capability.New(capability.Config{Reference: "flame.tool-proposal.v1", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
+	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: extension.Decoration, Scope: "call"}, method.Descriptor())
 })
 
 // Identity and Tool authority belong to execution. Only the final Tool owner can

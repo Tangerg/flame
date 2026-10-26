@@ -12,7 +12,8 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (a *app) ShowProviders() {
@@ -68,15 +69,15 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := runtimeprotocol.ValidateProviderIdentity(providerID); err != nil {
+	if err := model.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	a.status.note("testing provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
-		func(ctx context.Context) (runtimeprotocol.ProviderTestOutcome, error) {
+		func(ctx context.Context) (protocol.ProviderTestOutcome, error) {
 			return a.modelConfig.TestProvider(ctx, providerID)
 		},
-		func(outcome runtimeprotocol.ProviderTestOutcome, err error) {
+		func(outcome protocol.ProviderTestOutcome, err error) {
 			if err == nil {
 				var message string
 				message, err = providerProbeMessage(providerID, outcome)
@@ -98,7 +99,7 @@ func (a *app) ConfigureProvider(providerID string) error {
 	if a.modelConfig == nil {
 		return errors.New("this runtime composition has no model configuration service")
 	}
-	if err := runtimeprotocol.ValidateProviderIdentity(providerID); err != nil {
+	if err := model.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
 	presentation := a.session.context
@@ -247,10 +248,10 @@ func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 	}
 	switch mode {
 	case formChangeSet:
-		change := &models.ValueChange{Kind: runtimeprotocol.ProviderConfigSet, Value: value}
+		change := &models.ValueChange{Kind: protocol.ProviderConfigSet, Value: value}
 		return change, change.Validate()
 	case formChangeClear:
-		change := &models.ValueChange{Kind: runtimeprotocol.ProviderConfigClear}
+		change := &models.ValueChange{Kind: protocol.ProviderConfigClear}
 		return change, change.Validate()
 	case formChangeKeep:
 		return nil, nil

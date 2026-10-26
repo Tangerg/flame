@@ -11,8 +11,7 @@ const ROOT = new URL("../", import.meta.url).pathname;
 const SHARED = new URL("../../../packages/ui/src", import.meta.url).pathname;
 const SHARED_CONFIG = new URL("../../../packages/ui/tsconfig.json", import.meta.url).pathname;
 const TSCONFIG = resolve(ROOT, "tsconfig.json");
-const PRIMITIVES = "ui/primitives/";
-const DESIGN_SYSTEM_RINGS = ["ui/primitives/", "ui/atoms/", "ui/agent/"];
+const DESIGN_SYSTEM_RINGS = ["ui/atoms/", "ui/agent/"];
 const NATIVE_INTERACTIVE_TAGS = new Set([
   "a",
   "button",
@@ -214,23 +213,15 @@ for (const [fileName, program] of [
   const sourceFile = program.getSourceFile(path);
   if (!sourceFile) continue;
   examined += 1;
-  const insidePrimitives = rel.startsWith(PRIMITIVES) || rel.startsWith("@flame/ui/primitives/");
+  const insideControls = shared || rel.startsWith("ui/atoms/");
   const insideDesignSystem = shared || DESIGN_SYSTEM_RINGS.some((prefix) => rel.startsWith(prefix));
 
   function visit(node) {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const specifier = node.moduleSpecifier.text;
-      if (specifier.startsWith("@base-ui/react") && !insidePrimitives) {
-        violations.push(`${rel}:${lineOf(sourceFile, node)} imports Base UI outside ui/primitives`);
-      }
-      if (
-        (specifier === "@flame/ui/primitives" ||
-          specifier === "@/ui/primitives" ||
-          specifier.startsWith("@/ui/primitives/")) &&
-        !insideDesignSystem
-      ) {
+      if (specifier.startsWith("@base-ui/react") && !insideDesignSystem) {
         violations.push(
-          `${rel}:${lineOf(sourceFile, node)} imports ui/primitives outside the design system`,
+          `${rel}:${lineOf(sourceFile, node)} imports Base UI outside the design system`,
         );
       }
     }
@@ -241,16 +232,16 @@ for (const [fileName, program] of [
       node.tagName.text === node.tagName.text.toLowerCase()
     ) {
       const tag = node.tagName.text;
-      if (NATIVE_INTERACTIVE_TAGS.has(tag) && !insidePrimitives) {
+      if (NATIVE_INTERACTIVE_TAGS.has(tag) && !insideControls) {
         violations.push(
-          `${rel}:${lineOf(sourceFile, node)} renders native <${tag}> outside ui/primitives`,
+          `${rel}:${lineOf(sourceFile, node)} renders native <${tag}> outside a control owner`,
         );
       }
 
       const role = stringAttribute(node, "role");
-      if (role && NATIVE_INTERACTIVE_ROLES.has(role) && !insidePrimitives) {
+      if (role && NATIVE_INTERACTIVE_ROLES.has(role) && !insideControls) {
         violations.push(
-          `${rel}:${lineOf(sourceFile, node)} implements role="${role}" outside ui/primitives`,
+          `${rel}:${lineOf(sourceFile, node)} implements role="${role}" outside a control owner`,
         );
       }
     }

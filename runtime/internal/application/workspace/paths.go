@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
+	"github.com/samber/lo"
 )
 
 // Workspace input failures are stable application errors.
 var (
+	ErrCWDUnavailable       = errors.New("workspace: cwd is unavailable")
 	ErrPathRequired         = errors.New("workspace: path required")
 	ErrPathOutsideRoot      = errors.New("workspace: path outside root")
 	ErrInvalidFileRange     = errors.New("workspace: invalid file range")
@@ -27,7 +27,7 @@ var (
 // Paths resolves the externally-observed filesystem identity used by workspace
 // use cases. Implementations own path canonicalization and symlink inspection;
 // this package owns when each operation is required.
-type Paths interface {
+type paths interface {
 	ResolveExistingDir(path string) (string, error)
 	ResolveInRoot(root, path string) (string, error)
 	ResolveExistingInRoot(root, path string) (string, error)
@@ -37,12 +37,12 @@ type Paths interface {
 type Scope struct {
 	defaultWorkspacePath string
 	userHome             string
-	paths                Paths
+	paths                paths
 }
 
 // NewScope constructs the shared workspace root scope.
-func NewScope(defaultWorkspacePath, userHome string, paths Paths) (*Scope, error) {
-	if dependency.Missing(paths) {
+func NewScope(defaultWorkspacePath, userHome string, paths paths) (*Scope, error) {
+	if lo.IsNil(paths) {
 		return nil, errors.New("workspace: path resolver is required")
 	}
 	return &Scope{defaultWorkspacePath: defaultWorkspacePath, userHome: userHome, paths: paths}, nil
@@ -57,7 +57,7 @@ func (s *Scope) ResolveRoot(cwd string) (string, error) {
 	}
 	resolved, err := s.paths.ResolveExistingDir(root)
 	if err != nil {
-		return "", fmt.Errorf("%w: %s: %w", workspacepaths.ErrCWDUnavailable, root, err)
+		return "", fmt.Errorf("%w: %s: %w", ErrCWDUnavailable, root, err)
 	}
 	return resolved, nil
 }

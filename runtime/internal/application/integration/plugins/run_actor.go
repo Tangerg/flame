@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/samber/lo"
 )
 
 // RunActorAdmission reads installation authority inside the Run opening
@@ -15,7 +15,7 @@ import (
 type RunActorAdmission struct{ store Store }
 
 func NewRunActorAdmission(store Store) (*RunActorAdmission, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("plugins: actor installation store is required")
 	}
 	return &RunActorAdmission{store: store}, nil

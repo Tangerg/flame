@@ -7,15 +7,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
 	schema := []string{CommandsSchema, `CREATE TABLE counter (value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`}
-	db, err := sqlitebase.OpenSchema(t.Context(), path, schema)
+	db, err := sqlite.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		return ""
 	}
 	handler := func(ctx context.Context, input string) (string, error) {
-		if _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return "", err
 		}
 		switch input {
@@ -41,7 +41,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 		}
 	}
 	_, err = Command(t.Context(), db, "update", "refused", "known", receiptInput(t, "known"), classify, handler)
-	failure, ok := errors.AsType[*capability.Refusal](err)
+	failure, ok := errors.AsType[*extension.Refusal](err)
 	if !ok || failure.Code != "conflict" {
 		t.Fatalf("known refusal=%v", err)
 	}
@@ -53,7 +53,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown mutation succeeded")
 	}
-	if _, ok := errors.AsType[*capability.Refusal](err); ok {
+	if _, ok := errors.AsType[*extension.Refusal](err); ok {
 		t.Fatalf("unknown became known=%v", err)
 	}
 	var count, total int
@@ -69,7 +69,7 @@ func TestBusinessMutationAndSuccessOrRefusalReceiptAreAtomic(t *testing.T) {
 			return "", nil
 		})
 		if key.id == "refused" {
-			if _, ok := errors.AsType[*capability.Refusal](err); !ok {
+			if _, ok := errors.AsType[*extension.Refusal](err); !ok {
 				t.Fatalf("refusal replay=%v", err)
 			}
 		} else if err != nil {
@@ -87,7 +87,7 @@ func TestFormerDigestReceiptSchemasAreRefusedWithoutMutation(t *testing.T) {
 		t.Run(column, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "private.db")
 			former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, input_digest TEXT NOT NULL, ` + column + ` TEXT NOT NULL CHECK(json_valid(` + column + `)))`
-			db, err := sqlitebase.OpenSchema(t.Context(), path, []string{former})
+			db, err := sqlite.OpenSchema(t.Context(), path, []string{former})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestFormerDigestReceiptSchemasAreRefusedWithoutMutation(t *testing.T) {
 			if err := db.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if current, err := sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
+			if current, err := sqlite.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
 				_ = current.Close()
 				t.Fatal("former private receipt schema was converted or accepted")
 			}
@@ -114,9 +114,9 @@ func TestFormerDigestReceiptSchemasAreRefusedWithoutMutation(t *testing.T) {
 	}
 }
 
-func receiptInput[T any](t *testing.T, value T) jsoninput.Input {
+func receiptInput[T any](t *testing.T, value T) jsonvalue.Value {
 	t.Helper()
-	input, err := jsoninput.Encode(value)
+	input, err := jsonvalue.Encode(value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func receiptInput[T any](t *testing.T, value T) jsoninput.Input {
 func TestFormerCompletedOnlyReceiptSchemaIsRefusedWithoutMutation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
 	former := `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, method TEXT NOT NULL, business_input_json TEXT NOT NULL CHECK(json_valid(business_input_json)), reply TEXT NOT NULL CHECK(json_valid(reply)))`
-	db, err := sqlitebase.OpenSchema(t.Context(), path, []string{former})
+	db, err := sqlite.OpenSchema(t.Context(), path, []string{former})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestFormerCompletedOnlyReceiptSchemaIsRefusedWithoutMutation(t *testing.T) 
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if current, err := sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
+	if current, err := sqlite.OpenSchema(t.Context(), path, []string{CommandsSchema}); err == nil {
 		_ = current.Close()
 		t.Fatal("completed-only schema was interpreted as pending-capable")
 	}

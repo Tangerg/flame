@@ -8,8 +8,8 @@ import (
 	"math"
 	"os"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.
@@ -22,7 +22,7 @@ func ExecutableBuildID() (string, error) {
 }
 
 func buildIDFromFile(path string) (string, error) {
-	file, before, err := fileinput.Open(path, 0)
+	file, before, err := filesystem.OpenFile(path, 0)
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: open executable for build identity: %w", err)
 	}
@@ -42,10 +42,10 @@ func buildIDFromOpenedFile(path string, file *os.File, before os.FileInfo) (stri
 	if written != before.Size() {
 		return "", errors.New("bootstrap: executable size changed while hashing build identity")
 	}
-	if err := fileinput.VerifyPathVersion(file, before, path); err != nil {
+	if err := filesystem.VerifyPathVersion(file, before, path); err != nil {
 		return "", fmt.Errorf("bootstrap: executable changed while hashing build identity: %w", err)
 	}
 	var digest [sha256.Size]byte
 	copy(digest[:], hash.Sum(nil))
-	return runtimeidentity.BuildFromSHA256(digest).String(), nil
+	return runs.BuildFromSHA256(digest).String(), nil
 }

@@ -29,15 +29,15 @@ func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerD
 	if len(tools) == 0 {
 		return paragraphDocument("Diagnostic tools", "none available", []string{"No direct read-only diagnostics are available."})
 	}
-	sections := make([]ToolSection, 0, len(tools)*2)
+	sections := make([]toolSection, 0, len(tools)*2)
 	for _, tool := range tools {
 		description := strings.TrimSpace(tool.Description)
 		if description == "" {
 			description = "No description provided."
 		}
 		sections = append(sections,
-			ToolSection{Title: tool.Name + " · safe", Style: toolSectionParagraph, Text: description},
-			ToolSection{Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(tool.Schema)},
+			toolSection{Title: tool.Name + " · safe", Style: toolSectionParagraph, Text: description},
+			toolSection{Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(tool.Schema)},
 		)
 	}
 	return readerDocument{Title: "Diagnostic tools", Detail: fmt.Sprintf("%d read-only tools", len(tools)), Sections: sections}
@@ -77,7 +77,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 			a.dialogs.workspaceReader = workspaceReaderNone
 			a.openReaderDocument(readerDocument{
 				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
-				Sections: []ToolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
+				Sections: []toolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
 			})
 			a.status.note("diagnostic complete · " + invocation.tool.Name)
 		},

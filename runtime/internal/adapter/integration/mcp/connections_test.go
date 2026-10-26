@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -17,16 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	"golang.org/x/oauth2"
-
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
+	"golang.org/x/oauth2"
 )
 
 type catalogTool string
@@ -796,7 +793,7 @@ func TestOpenReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 						return newLaunch(config, nil, nil, admission{})
 					}
 				}
-				return nil, mcpserver.ErrUnknownServer
+				return nil, errUnknownTestServer
 			}, nil, newClient())
 			if err != nil {
 				t.Fatalf("Open: %v", err)
@@ -1033,7 +1030,7 @@ func testOpen(ctx, lifetime context.Context, servers []ServerConfig, oauthSessio
 				return newLaunch(config, nil, nil, admission{})
 			}
 		}
-		return nil, mcpserver.ErrUnknownServer
+		return nil, errUnknownTestServer
 	}, nil, newClient())
 	if err != nil {
 		return nil, nil, err
@@ -1172,3 +1169,5 @@ func openConnections(ctx, lifetime context.Context, servers []ServerConfig, oaut
 	}
 	return c, nil
 }
+
+var errUnknownTestServer = errors.New("test source is unknown")

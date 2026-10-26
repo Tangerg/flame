@@ -7,14 +7,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	contractsdk "github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func testCapability(t *testing.T, methods ...contractsdk.MethodDescriptor) *contractsdk.Contract {
+func testCapability(t *testing.T, methods ...extension.MethodDescriptor) *extension.Capability {
 	t.Helper()
-	capability, err := contractsdk.New(contractsdk.Config{Reference: "acme/records", Composition: contractsdk.Selection, Scope: "workspace"}, methods...)
+	capability, err := extension.NewCapability(extension.CapabilityConfig{Reference: "acme/records", Composition: extension.Selection, Scope: "workspace"}, methods...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,11 +22,11 @@ func testCapability(t *testing.T, methods ...contractsdk.MethodDescriptor) *cont
 }
 
 func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
-	read, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: contractsdk.Query, Target: "workspace", Description: "Read."})
+	read, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: extension.Query, Target: "workspace", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: contractsdk.Mutation, Target: "workspace", Description: "Write."})
+	write, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: extension.Mutation, Target: "workspace", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,12 +85,12 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 	if err := backend.BindCapability("late", capability); err == nil {
 		t.Fatal("published export changed")
 	}
-	if err := backend.BindCapability("zero", &contractsdk.Contract{}); err == nil {
+	if err := backend.BindCapability("zero", &extension.Capability{}); err == nil {
 		t.Fatal("unvalidated capability bound")
 	}
 	for _, attempt := range []struct {
 		export string
-		need   *contractsdk.Contract
+		need   *extension.Capability
 	}{{"missing", capability}, {"reader", capability}} {
 		if _, err := ResolveCapability(t.Context(), session, attempt.export, attempt.need); err == nil {
 			t.Fatal("unavailable/mismatched export resolved")
@@ -104,7 +104,7 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode("input")
+	input, err := jsonvalue.Encode("input")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestCapabilityPublicationAndDispatchCheckTheWholeExport(t *testing.T) {
 }
 
 func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
-	method, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: contractsdk.Mutation, Target: "installation", Description: "Write."})
+	method, err := NewMethod[string, string](MethodConfig{Name: "acme/write", Kind: extension.Mutation, Target: "installation", Description: "Write."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,12 +162,13 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 	session := methodSession(t, func(backend *Backend) error {
 		if err := method.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 			calls.Add(1)
-			receipts[command.ID], _ = json.Marshal(Result[string]{Value: &command.Input})
+			receipts[command.ID], _ = json.Marshal(methodResult[string]{Value: &command.Input})
 			return "", errors.New("observation lost after commit")
 		}); err != nil {
 			return err
 		}
-		if err := RegisterServer(backend, ReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, request ReceiptRequest) (Receipt, error) {
+		if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, extension.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
+			request := command.Input
 			lookups.Add(1)
 			reply := receipts[request.ID]
 			return Receipt{Found: len(reply) > 0, Reply: reply}, nil
@@ -214,7 +215,7 @@ func TestCapabilityReceiptRecoveryKeepsTheCapturedExport(t *testing.T) {
 }
 
 func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T) {
-	method, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: contractsdk.Query, Target: "installation", Description: "Read."})
+	method, err := NewMethod[struct{}, string](MethodConfig{Name: "acme/read", Kind: extension.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,16 +226,16 @@ func TestCapabilityDiscoveryRefusesIncompleteOrAmbiguousPublication(t *testing.T
 	}{
 		{"missing required method", func(d *Description) { d.Methods = nil }},
 		{"duplicate method", func(d *Description) { d.Methods = append(d.Methods, d.Methods[0]) }},
-		{"wrong required method", func(d *Description) { d.Methods[0].Kind = contractsdk.Mutation }},
+		{"wrong required method", func(d *Description) { d.Methods[0].Kind = extension.Mutation }},
 		{"duplicate export", func(d *Description) { d.Capabilities = append(d.Capabilities, d.Capabilities[0]) }},
 		{"missing export", func(d *Description) { d.Capabilities = nil }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			description := Description{Protocol: contractsdk.Protocol, Methods: []contractsdk.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
+			description := Description{Protocol: extension.Protocol, Methods: []extension.MethodDescriptor{method.Descriptor()}, Capabilities: []CapabilityExport{{Name: "reader", Contract: capability.Descriptor()}}}
 			change.change(&description)
 			server := sdk.NewServer(&sdk.Implementation{Name: "invalid-publication"}, nil)
-			if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*Result[Description], error) {
-				return Reply(description, nil, nil)
+			if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {
+				return reply(description, nil, nil)
 			}); err != nil {
 				t.Fatal(err)
 			}

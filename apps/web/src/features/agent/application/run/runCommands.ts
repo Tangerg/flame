@@ -1,12 +1,13 @@
-import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 
 export function useStopCurrentRootRun(): (() => boolean) | null {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return agentAccess.view.useAction("stop");
 }
 
-export function stopCurrentRootRun(agentAccess: AgentAccess): boolean {
+export function stopCurrentRootRun(agentAccess: AgentDependencies): boolean {
   const sessionId = agentAccess.state.getActiveSessionId();
   const stop = agentAccess.view.getSession(sessionId)?.stop;
   if (!stop) return false;
@@ -19,7 +20,7 @@ interface RunCommandTarget {
 }
 
 export function cancelSessionRun(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   { sessionId, runId }: RunCommandTarget,
 ): boolean {
   const entry = agentAccess.view.getSession(sessionId);
@@ -31,7 +32,7 @@ export function cancelSessionRun(
   return true;
 }
 
-export function dismissActiveSessionProblem(agentAccess: AgentAccess): void {
+export function dismissActiveSessionProblem(agentAccess: AgentDependencies): void {
   const sessionId = agentAccess.state.getActiveSessionId();
   agentAccess.view.clearProblem(sessionId);
 }

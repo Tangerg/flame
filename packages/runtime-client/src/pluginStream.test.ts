@@ -2,7 +2,7 @@ import { parseJSON, stringifyJSON } from "./json";
 import { expect, it, vi } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
-import { createMutationJournal, type MutationJournalStorage } from "./mutationJournal";
+import { type MutationJournalStorage } from "./mutationJournal";
 import { MutationLookupError } from "./mutation";
 import type { ServerCapabilities } from "@flame/runtime-client/wire";
 
@@ -55,7 +55,6 @@ function notification(kind: string, value: unknown): string {
 
 function open(store: MutationJournalStorage, events: string) {
   const scope = { namespace: "idp_" + "1".repeat(32), retentionSeconds: 3600 };
-  const journal = createMutationJournal({ storage: store, scope: () => scope });
   const requests: { params: typeof binding; key: string | null }[] = [];
   const fetch = vi.fn<typeof globalThis.fetch>(async (_url, init) => {
     const request = JSON.parse(init!.body as string) as {
@@ -83,7 +82,7 @@ function open(store: MutationJournalStorage, events: string) {
     );
   });
   const client = createFlameClient(createHttpTransport({ baseUrl: "http://runtime.test", fetch }), {
-    mutationJournal: journal,
+    mutationStorage: store,
     capabilities: () =>
       ({
         features: { plugins: { enabled: true } },

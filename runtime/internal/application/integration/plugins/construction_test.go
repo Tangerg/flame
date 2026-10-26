@@ -11,10 +11,10 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 	type collaborators struct {
 		lifetime     context.Context
 		store        Store
-		catalog      Catalog
-		packages     Packages
-		connections  Connections
-		dependencies Dependencies
+		catalog      catalog
+		packages     packages
+		connections  connections
+		dependencies dependencies
 	}
 	for _, test := range []struct {
 		name   string
@@ -54,7 +54,7 @@ func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 		name          string
 		user          userServers
 		installations Store
-		packages      PackageSources
+		packages      packageSources
 	}{
 		{"user", nil, &installationMemory{}, &singleServerPackages{}},
 		{"typed nil user", (*userMemory)(nil), &installationMemory{}, &singleServerPackages{}},

@@ -7,11 +7,11 @@ import (
 	"iter"
 	"sync/atomic"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/samber/lo"
 )
 
 type PluginStreamer interface {
@@ -21,11 +21,11 @@ type PluginStreamer interface {
 type PluginStreamingMethod[P, C, R any] struct {
 	caller  PluginStreamer
 	binding PluginBinding
-	method  *capability.Method
+	method  *extension.Method
 }
 
 func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding PluginBinding, method *pluginsdk.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error) {
-	if dependency.Missing(caller) || method == nil {
+	if lo.IsNil(caller) || method == nil {
 		return nil, errors.New("runtime: plugin streamer and typed method are required")
 	}
 	required, err := admitPluginBinding(binding, method.Descriptor())
@@ -38,12 +38,12 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 // Stream freezes input and options before lazy delivery. The returned sequence
 // has one consumer and never resubmits or changes its captured binding.
 func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[pluginsdk.StreamValue[C, R], error] {
-	admitted, inputErr := jsoninput.Encode(input)
+	admitted, inputErr := jsonvalue.Encode(input)
 	capturedOptions, optionsErr := captureStreamOptions(options)
 	var consumed atomic.Bool
 	return func(yield func(pluginsdk.StreamValue[C, R], error) bool) {
 		fail := func(err error) {
-			if m != nil && m.method.Kind() == capability.Mutation {
+			if m != nil && m.method.Kind() == extension.Mutation {
 				err = errors.Join(ErrAcknowledgementUnknown, err)
 			}
 			yield(pluginsdk.StreamValue[C, R]{}, err)
@@ -86,7 +86,7 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 			}
 			switch event.Kind {
 			case protocol.PluginStreamFailure:
-				yield(pluginsdk.StreamValue[C, R]{}, &capability.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
+				yield(pluginsdk.StreamValue[C, R]{}, &extension.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
 				return
 			case protocol.PluginStreamChunk:
 				if err := m.method.ValidateChunk([]byte(event.Value)); err != nil {

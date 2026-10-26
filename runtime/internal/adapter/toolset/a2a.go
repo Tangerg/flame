@@ -7,14 +7,12 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	scopea2a "github.com/Tangerg/scope/a2a"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 )
 
 const maxA2AResponseFrameBytes int64 = 64 << 20

@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
-
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 )
@@ -167,7 +167,7 @@ func (a *app) ShowRuntimeStatus() {
 	)
 }
 
-func runtimeStatusText(profile RuntimeProfile, options prompt.RunOptions, mode protocol.ApprovalMode) string {
+func runtimeStatusText(profile RuntimeProfile, options authoring.RunOptions, mode protocol.ApprovalMode) string {
 	lines := []string{
 		"model: " + modelLabel(options),
 		"approval mode: " + string(mode),

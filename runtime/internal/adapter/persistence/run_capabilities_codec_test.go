@@ -5,16 +5,12 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestRunCapabilitiesCodecOwnsCanonicalStorageShape(t *testing.T) {
 	want := run.Capabilities{
-		ChildRuns: true,
-		InterruptKinds: []interrupt.Kind{
-			interrupt.Approval,
-			interrupt.Question,
-		},
+		ChildRuns:      true,
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}
 	encoded, err := encodeRunCapabilities(want)
 	if err != nil {

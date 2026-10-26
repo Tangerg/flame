@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -54,26 +54,26 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, strin
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
 	if err != nil {
-		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
+		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	// Calling this outside Plan mode, or with nothing planned, is the model
 	// mis-sequencing its own tools. Both messages are written for it, so they have
 	// to arrive as this call's outcome rather than end the Run.
 	if mode != approval.ModePlan {
-		return runs.Interrupt{}, "", toolfailure.Definite(errors.New("exit_plan_mode: current session is not in Plan mode"))
+		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current session is not in Plan mode"))
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
-		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
+		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {
-		return runs.Interrupt{}, "", toolfailure.Definite(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
+		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
 	}
 
 	arguments := `{}`
 	pending := runs.Interrupt{
-		Kind: interrupt.Question,
+		Kind: run.InterruptQuestion,
 		Question: &runs.QuestionPrompt{
 			ToolName:  string(tool.ExitPlanMode),
 			Arguments: arguments,
@@ -90,10 +90,10 @@ func (e *exiter) request(ctx context.Context, _ exitArgs) (runs.Interrupt, strin
 	if validateErr := pending.Validate(); validateErr != nil {
 		return runs.Interrupt{}, "", fmt.Errorf("exit_plan_mode: %w", validateErr)
 	}
-	return pending, interrupt.Key(string(interrupt.Question), string(tool.ExitPlanMode), arguments), nil
+	return pending, run.InterruptKey(string(run.InterruptQuestion), string(tool.ExitPlanMode), arguments), nil
 }
 
-func (e *exiter) render(ctx context.Context, _ exitArgs, resolution interrupt.Resolution) (string, error) {
+func (e *exiter) render(ctx context.Context, _ exitArgs, resolution run.InterruptResolution) (string, error) {
 	if selectedChoice(resolution.Question().Answers()) != approveLabel {
 		return "Plan not approved. The session remains in Plan mode; revise the Plan or continue investigating.", nil
 	}

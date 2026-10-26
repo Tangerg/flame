@@ -21,7 +21,9 @@ vi.mock("@/features/workspace/public/navigation", () => ({
   useWorkspaceSubagentRunId: () => actions.selected,
 }));
 
-vi.mock("@/features/agent/public/run", () => ({ cancelSessionRun: actions.cancel }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { cancelSessionRun: actions.cancel });
+});
 
 vi.mock("@/features/connection/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => true,
@@ -64,7 +66,7 @@ describe("DelegatedRunLink", () => {
     expect(actions.open).toHaveBeenLastCalledWith(testClient.workspace.access, "child-run", opener);
     expect(screen.getByText("Needs input")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-    expect(actions.cancel).toHaveBeenCalledWith(testClient.agent.access, {
+    expect(actions.cancel).toHaveBeenCalledWith({
       sessionId: "session-1",
       runId: "child-run",
     });

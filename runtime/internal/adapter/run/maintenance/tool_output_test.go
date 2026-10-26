@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -19,19 +17,15 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		output chat.ToolOutput
-		want   string
 	}{
-		{"text", chat.NewTextToolOutput("visible"), "visible"},
-		{"media", mediaOutput, "image result " + modeltext.MediaMarker},
+		{"text", chat.NewTextToolOutput("visible")},
+		{"media", mediaOutput},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.output.Details = details
 			before, err := json.Marshal(tc.output)
 			if err != nil {
 				t.Fatal(err)
-			}
-			if got := modeltext.RenderToolOutput(tc.output); got != tc.want {
-				t.Errorf("transcript includes hidden details: %q", got)
 			}
 			trimmed, changed := trimToolOutput(tc.output)
 			if changed || !reflect.DeepEqual(trimmed, tc.output) {
@@ -50,9 +44,6 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 
 func TestToolOutputMaintenancePreservesDetailsOnlyFallback(t *testing.T) {
 	output := chat.ToolOutput{Details: jsontext.Value(`{"value":"visible"}`)}
-	if got := modeltext.RenderToolOutput(output); got != string(output.Details) {
-		t.Fatalf("details-only transcript = %q", got)
-	}
 	if trimmed, changed := trimToolOutput(output); changed || !reflect.DeepEqual(trimmed, output) {
 		t.Fatal("small details-only output changed")
 	}

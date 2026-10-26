@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 )
 
@@ -130,13 +130,9 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
-	for _, contributed := range a.registry.OwnedValues(extensions.SlashCommands) {
-		command := contributed.Value
+	for _, contributed := range a.pluginHost.Commands() {
+		command := contributed.Command
 		pluginID := contributed.PluginID
-		if err := command.Validate(); err != nil {
-			a.message("plugin " + pluginID + ": " + err.Error())
-			continue
-		}
 		var evaluate func(*app) extensions.CommandAvailability
 		if command.Available != nil {
 			evaluate = func(host *app) extensions.CommandAvailability {
@@ -311,10 +307,10 @@ func (a *app) runCommand(name, argument string, accept func()) {
 	registration.run(argument, accept)
 }
 
-func (a *app) commandDraft() (prompt.Message, bool, error) {
+func (a *app) commandDraft() (authoring.Message, bool, error) {
 	message, _, err := a.currentDraft()
 	if err != nil {
-		return prompt.Message{}, false, err
+		return authoring.Message{}, false, err
 	}
 	// Command text is the invocation, while attachments remain staged prompt context.
 	if _, _, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {

@@ -9,16 +9,16 @@ import (
 	"reflect"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-type Params[T any] struct {
+type methodParams[T any] struct {
 	sdk.ParamsBase
 	Input     T      `json:"input"`
 	CommandID string `json:"commandId,omitempty"`
-	inputJSON jsoninput.Input
+	inputJSON jsonvalue.Value
 }
 
 // Command carries a caller's logical identity and input. Business admission and
@@ -26,10 +26,10 @@ type Params[T any] struct {
 type Command[T any] struct {
 	ID        string
 	Input     T
-	inputJSON jsoninput.Input
+	inputJSON jsonvalue.Value
 }
 
-func (c Command[T]) RequestInput() (jsoninput.Input, error) {
+func (c Command[T]) RequestInput() (jsonvalue.Value, error) {
 	return c.inputJSON, c.inputJSON.Validate()
 }
 
@@ -37,28 +37,28 @@ type requestInputKey struct{}
 
 // RequestInput projects the input received at this method or Tool boundary.
 // In particular, a typed numeric conversion cannot originate another identity.
-func RequestInput(ctx context.Context) (jsoninput.Input, error) {
-	value, _ := ctx.Value(requestInputKey{}).(jsoninput.Input)
+func RequestInput(ctx context.Context) (jsonvalue.Value, error) {
+	value, _ := ctx.Value(requestInputKey{}).(jsonvalue.Value)
 	return value, value.Validate()
 }
 
-func (p Params[T]) MarshalJSON() ([]byte, error) {
+func (p methodParams[T]) MarshalJSON() ([]byte, error) {
 	input := p.inputJSON
 	if input.Validate() != nil {
 		var err error
-		input, err = jsoninput.Encode(p.Input)
+		input, err = jsonvalue.Encode(p.Input)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return json.Marshal(struct {
 		sdk.ParamsBase
-		Input     jsoninput.Input `json:"input"`
+		Input     jsonvalue.Value `json:"input"`
 		CommandID string          `json:"commandId,omitzero"`
 	}{p.ParamsBase, input, p.CommandID})
 }
 
-func (p *Params[T]) UnmarshalJSON(data []byte) error {
+func (p *methodParams[T]) UnmarshalJSON(data []byte) error {
 	var wire struct {
 		sdk.ParamsBase
 		Input     jsontext.Value `json:"input"`
@@ -76,37 +76,37 @@ func (p *Params[T]) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	*p = Params[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: admitted}
+	*p = methodParams[T]{ParamsBase: wire.ParamsBase, Input: input, CommandID: wire.CommandID, inputJSON: admitted}
 	return nil
 }
 
-func decodeMethodInput[T any](data jsontext.Value) (T, jsoninput.Input, error) {
+func decodeMethodInput[T any](data jsontext.Value) (T, jsonvalue.Value, error) {
 	var input T
 	if len(data) == 0 || string(data) == "null" {
-		return input, jsoninput.Input{}, errors.New("plugin: input is required")
+		return input, jsonvalue.Value{}, errors.New("plugin: input is required")
 	}
-	admitted, err := jsoninput.Parse(data)
+	admitted, err := jsonvalue.Parse(data)
 	if err != nil {
-		return input, jsoninput.Input{}, err
+		return input, jsonvalue.Value{}, err
 	}
 	if err := json.Unmarshal(data, &input, json.RejectUnknownMembers(true)); err != nil {
-		return input, jsoninput.Input{}, err
+		return input, jsonvalue.Value{}, err
 	}
 	return input, admitted, nil
 }
 
-type Result[T any] struct {
+type methodResult[T any] struct {
 	sdk.ResultBase
-	Value     *T                  `json:"value,omitzero"`
-	Failure   *capability.Refusal `json:"failure,omitzero"`
+	Value     *T                 `json:"value,omitzero"`
+	Failure   *extension.Refusal `json:"failure,omitzero"`
 	valueJSON jsontext.Value
 }
 
-func (r *Result[T]) UnmarshalJSON(data []byte) error {
+func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 	var decoded struct {
 		sdk.ResultBase
-		Value   jsontext.Value      `json:"value"`
-		Failure *capability.Refusal `json:"failure,omitzero"`
+		Value   jsontext.Value     `json:"value"`
+		Failure *extension.Refusal `json:"failure,omitzero"`
 	}
 	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
 		return err
@@ -125,18 +125,18 @@ func (r *Result[T]) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	*r = Result[T]{ResultBase: decoded.ResultBase, Value: value, Failure: decoded.Failure, valueJSON: decoded.Value}
+	*r = methodResult[T]{ResultBase: decoded.ResultBase, Value: value, Failure: decoded.Failure, valueJSON: decoded.Value}
 	return nil
 }
 
 // Only an explicitly classified business refusal is a known outcome. Storage,
 // transport and unrecognized failures remain protocol errors; encoding them as
 // refusals would falsely claim that a possibly committed effect did not happen.
-func Reply[T any](value T, err error, classify func(error) string) (*Result[T], error) {
+func reply[T any](value T, err error, classify func(error) string) (*methodResult[T], error) {
 	if err != nil {
-		if failure, ok := errors.AsType[*capability.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
+		if failure, ok := errors.AsType[*extension.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
 			copy := *failure
-			return &Result[T]{Failure: &copy}, nil
+			return &methodResult[T]{Failure: &copy}, nil
 		}
 		code := ""
 		if classify != nil {
@@ -148,12 +148,12 @@ func Reply[T any](value T, err error, classify func(error) string) (*Result[T], 
 		if !utf8.ValidString(code) || !utf8.ValidString(err.Error()) {
 			return nil, errors.Join(err, errors.New("plugin: invalid business refusal"))
 		}
-		return &Result[T]{Failure: &capability.Refusal{Code: code, Message: err.Error()}}, nil
+		return &methodResult[T]{Failure: &extension.Refusal{Code: code, Message: err.Error()}}, nil
 	}
-	return &Result[T]{Value: &value}, nil
+	return &methodResult[T]{Value: &value}, nil
 }
 
-func (r *Result[T]) value(name string) (T, error) {
+func (r *methodResult[T]) value(name string) (T, error) {
 	var zero T
 	if r == nil {
 		return zero, fmt.Errorf("%s: missing result", name)
@@ -175,75 +175,13 @@ func RegisterClient(client *sdk.Client) error {
 		return errors.New("plugin: client is required")
 	}
 	return errors.Join(
-		sdk.AddSendingCustomMethod[*setupParams, *Result[bool]](client, setupMethod),
-		sdk.AddSendingCustomMethod[*protocolParams, *Result[bool]](client, activateMethod),
-		sdk.AddSendingCustomMethod[*invokeParams, *Result[jsontext.Value]](client, invokeMethod),
-		sdk.AddSendingCustomMethod[*invokeParams, *Result[string]](client, validateMethod),
-		sdk.AddSendingCustomMethod[*protocolParams, *Result[Description]](client, describeMethod),
+		sdk.AddSendingCustomMethod[*setupParams, *methodResult[bool]](client, SetupMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[bool]](client, ActivateMethod),
+		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[jsontext.Value]](client, InvokeMethod),
+		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[string]](client, ValidateMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[Description]](client, DescribeMethod),
 	)
 }
-func RegisterServer[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	if handler == nil {
-		return errors.New("plugin: method handler is required")
-	}
-	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: capability.Query, Target: "installation", Description: name})
-	if err != nil {
-		return err
-	}
-	return method.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command Command[P]) (R, error) {
-		return handler(ctx, session, command.Input)
-	})
-}
-func RegisterCommand[P, R any](backend *Backend, name string, classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) error {
-	if handler == nil {
-		return errors.New("plugin: command handler is required")
-	}
-	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: capability.Mutation, Target: "installation", Description: name})
-	if err != nil {
-		return err
-	}
-	return method.RegisterServer(backend, classify, handler)
-}
-
-func Call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, input P) (R, error) {
-	return call[P, R](ctx, session, name, &Params[P]{Input: input})
-}
-
-func CallCommand[P, R any](ctx context.Context, session *sdk.ClientSession, name, id string, input P) (R, error) {
-	var zero R
-	if err := validateCommandID(id); err != nil {
-		return zero, err
-	}
-	return call[P, R](ctx, session, name, &Params[P]{Input: input, CommandID: id})
-}
-
-func callResult[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (*Result[R], error) {
-	if session == nil {
-		return nil, errors.New("plugin: client session is required")
-	}
-	input, err := jsoninput.Encode(params.Input)
-	if err != nil {
-		return nil, err
-	}
-	binding, err := Resolve(ctx, session, name)
-	if err != nil {
-		return nil, err
-	}
-	wire, err := binding.invoke(ctx, params.CommandID, input, params.ParamsBase)
-	if err != nil {
-		return nil, err
-	}
-	return decodeBoundResult[R](wire)
-}
-func call[P, R any](ctx context.Context, session *sdk.ClientSession, name string, params *Params[P]) (R, error) {
-	var zero R
-	result, err := callResult[P, R](ctx, session, name, params)
-	if err != nil {
-		return zero, err
-	}
-	return result.value(name)
-}
-
 func validateCommandID(id string) error {
 	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
 		return errors.New("plugin: bounded logical command identity is required")

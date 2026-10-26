@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestCatalogFilterOwnsNormalizedSearchWorkspaceAndCursorIdentity(t *testing.T) {
@@ -103,7 +103,7 @@ func TestCatalogAnchorAndReadRejectPrimitiveSentinelStates(t *testing.T) {
 	}
 	for _, id := range []string{
 		"", " ses_1", "ses_ one", "ses_\u200bhidden",
-		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
+		strings.Repeat("界", identity.MaximumResourceCharacters+1),
 	} {
 		if _, err := NewCatalogAnchor(true, updatedAt, id); err == nil {
 			t.Fatalf("NewCatalogAnchor accepted identity %q", id)

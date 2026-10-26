@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -33,9 +33,9 @@ func buildCallContributor(t *testing.T) string {
 	return binary
 }
 
-func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace string, contract *capability.Contract) *protocol.PluginInstallation {
+func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace string, contract *extension.Capability) *protocol.PluginInstallation {
 	t.Helper()
-	declaration, err := json.Marshal(map[string]any{"protocol": capability.Protocol, "contributions": []any{map[string]any{"id": "contributor", "server": "contributor", "export": "contributor", "contract": "io.github.tangerg.flame/contracts/contributor.json"}}})
+	declaration, err := json.Marshal(map[string]any{"protocol": extension.Protocol, "contributions": []any{map[string]any{"id": "contributor", "server": "contributor", "export": "contributor", "contract": "io.github.tangerg.flame/contracts/contributor.json"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if err != nil {
 				t.Fatal(err)
 			}
-			cfg.ChatResolver = testChatResolver(client)
+			cfg.chatResolver = testChatResolver(client)
 			r := poMCPOpen(t, cfg)
 			defer func() { r.close() }()
 			reviews := poMCPActivate(r, reviewExamplePackage(t))
@@ -228,7 +228,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if !found || transformations.Load() != 1 {
 				t.Fatalf("proposal missing or replayed across approval/restart: found=%v transformations=%d", found, transformations.Load())
 			}
-			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
+			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: extension.Target{Scope: "installation", Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
 			var current struct {
 				Reviews []struct {
 					Revision int64  `json:"revision"`

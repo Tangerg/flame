@@ -8,11 +8,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/samber/lo"
 )
 
 // NewPreparedWaitingSubtreeCancellation captures one validated executor change
@@ -21,7 +20,7 @@ func NewPreparedWaitingSubtreeCancellation(
 	canceledMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
 	checkpoint ExecutorCheckpoint,
-	change WaitingSubtreeChange,
+	change waitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
 	prepared := PreparedWaitingSubtreeCancellation{
 		canceledMemberIDs:    slices.Clone(canceledMemberIDs),
@@ -77,7 +76,7 @@ func (p PreparedWaitingSubtreeCancellation) Discard() error {
 // validate verifies the Application projection and one-shot executor
 // capability without interpreting the opaque checkpoint payload.
 func (p PreparedWaitingSubtreeCancellation) validate() error {
-	if dependency.Missing(p.change) {
+	if lo.IsNil(p.change) {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
 	if err := p.checkpoint.Validate(); err != nil {
@@ -88,7 +87,7 @@ func (p PreparedWaitingSubtreeCancellation) validate() error {
 	}
 	canceledMembers := make(map[string]struct{}, len(p.canceledMemberIDs))
 	for _, memberID := range p.canceledMemberIDs {
-		if err := runtimeidentity.ValidateMember(memberID); err != nil {
+		if err := ValidateMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := canceledMembers[memberID]; duplicate {
@@ -98,10 +97,10 @@ func (p PreparedWaitingSubtreeCancellation) validate() error {
 	}
 	requests := make(map[inputRequestKey]struct{}, len(p.pendingInterruptions))
 	for index, interruption := range p.pendingInterruptions {
-		if err := runtimeidentity.ValidateMember(interruption.MemberID); err != nil {
+		if err := ValidateMember(interruption.MemberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
-		if err := runtimeidentity.ValidateRequest(interruption.RequestID); err != nil {
+		if err := validateRequest(interruption.RequestID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
 		if _, canceled := canceledMembers[interruption.MemberID]; canceled {
@@ -484,7 +483,7 @@ func inputRequestIdentity(memberID, requestID string) inputRequestKey {
 
 func (w waitingCancellationTransformation) durableCommit(
 	expected Pending,
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 ) (WaitingSubtreeCancellationCommit, error) {
 	if w.remaining == nil {
 		return WaitingSubtreeCancellationCommit{}, errors.New("runs: waiting cancellation has no reduced Pending")
@@ -497,7 +496,7 @@ func (w waitingCancellationTransformation) durableCommit(
 
 func (w waitingCancellationTransformation) resumedDurableCommit(
 	expected Pending,
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	resume rundomain.TreeResumeDraft,
 	openingEvents []EventCommit,
 ) (WaitingSubtreeCancellationCommit, error) {

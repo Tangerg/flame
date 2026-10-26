@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n/index";
 import { Icon } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
 import { EmptyState, vocab } from "@flame/ui";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import { useAgentSessions } from "@/features/agent/public/session";
 import { matchSessions } from "@/features/navigation/session-search/sessionMatches";
 import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
@@ -45,7 +45,7 @@ export function SessionSearch() {
       options={(query) =>
         matchSessions(sessions ?? [], query).map((session) => ({
           key: session.id,
-          onSelect: () => selectAgentSession(agentAccess, session.id),
+          onSelect: () => agentAccess.selectAgentSession(session.id),
           children: (
             <>
               <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />

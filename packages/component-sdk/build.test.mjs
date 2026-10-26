@@ -19,7 +19,12 @@ test("bundles private static and dynamic modules into an executable browser grap
       'export { value } from "./value.ts"; export const lazy = () => import("./lazy.ts");',
     );
     const output = join(directory, "output");
-    await buildComponent({ input, directory: output, compiler: rolldown });
+    const emitted = await buildComponent({
+      input,
+      directory: output,
+      compiler: rolldown,
+    });
+    assert.deepEqual([...emitted.exports].sort(), ["lazy", "value"]);
     const component = await import(pathToFileURL(join(output, "component.js")));
     assert.equal(component.value, 7);
     assert.equal((await component.lazy()).value, 9);

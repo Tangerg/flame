@@ -7,9 +7,7 @@ import (
 	"slices"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -110,13 +108,13 @@ type ToolInvocationCommit struct {
 }
 
 func (t ToolInvocationCommit) Validate() error {
-	if err := runtimeidentity.ValidateEffect(t.CallID); err != nil {
+	if err := ValidateInvocation(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if err := resourceid.ValidateItem(t.ItemID); err != nil {
+	if err := identity.ValidateItem(t.ItemID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if err := resourceid.ValidateSegment(t.SegmentID); err != nil {
+	if err := identity.ValidateSegment(t.SegmentID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
 	if t.StartedAt.IsZero() {
@@ -172,10 +170,10 @@ func (m ModelInvocationCommit) Validate() error {
 			return errors.New("runs: usage differs from known response evidence")
 		}
 	}
-	if err := runtimeidentity.ValidateEffect(m.CallID); err != nil {
+	if err := ValidateInvocation(m.CallID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
-	if err := resourceid.ValidateSegment(m.SegmentID); err != nil {
+	if err := identity.ValidateSegment(m.SegmentID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
 	if m.StartedAt.IsZero() {
@@ -216,7 +214,7 @@ type EventCommit struct {
 	// attempt as success. Nested opening and tree-barrier projections must leave
 	// it empty because their parent commit owns the complete transaction identity;
 	// the top-level CommitEvent port boundary requires it.
-	CommitID runtimeidentity.CommitID
+	CommitID CommitID
 	State    StateChange
 	Items    []transcript.Item
 	// ConversationMessages are the provider-neutral messages this root
@@ -262,8 +260,12 @@ func (e EventCommit) clone() EventCommit {
 		}
 	}
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
-	e.Progress = optional.Clone(e.Progress)
-	e.Run = optional.Clone(e.Run)
+	if e.Progress != nil {
+		e.Progress = new(*e.Progress)
+	}
+	if e.Run != nil {
+		e.Run = new(*e.Run)
+	}
 	return e
 }
 
@@ -350,10 +352,10 @@ func (e EventCommit) validateConversationMessages() error {
 }
 
 func (e EventCommit) validateEnvelope() error {
-	if err := resourceid.ValidateRun(e.RunID); err != nil {
+	if err := identity.ValidateRun(e.RunID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if err := resourceid.ValidateSession(e.SessionID); err != nil {
+	if err := identity.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
 	if e.ExecutionContext != nil {
@@ -364,10 +366,10 @@ func (e EventCommit) validateEnvelope() error {
 			return err
 		}
 	}
-	if err := resourceid.ValidateSegment(e.SegmentID); err != nil {
+	if err := identity.ValidateSegment(e.SegmentID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if err := runtimeidentity.ValidateOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
+	if err := validateOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
 		return fmt.Errorf("runs: event commit checkpoint root: %w", err)
 	}
 	if !e.CommitID.IsZero() {

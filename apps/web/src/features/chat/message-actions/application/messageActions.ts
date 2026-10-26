@@ -6,12 +6,7 @@ import { notifyError, notifyInfo } from "@/features/notifications/public/notific
 import { buildInput } from "@/features/composer/public/input";
 import { agentInputToComposerDraft } from "@/features/chat/message-actions/application/inputBridge";
 import { describeRpcError } from "@/lib/rpcErrors";
-import {
-  activeAgentConversation,
-  forkAgentSessionAtRun,
-  rollbackSessionToBeforeRun,
-  sendToAgentSession,
-} from "@/features/agent/public/session";
+
 import { type RestoreType } from "@/features/agent/public/session";
 import {
   beginComposerDraftReplacement,
@@ -48,28 +43,24 @@ export function regenerateMessage(
   msg: Message,
   opts?: RollbackActionOptions,
 ): void {
-  const conversation = activeAgentConversation(agentAccess);
+  const conversation = agentAccess.activeAgentConversation();
   if (!conversation) return;
   const { sessionId, messages } = conversation;
   const prompt = regenerationPromptBefore(messages, msg.id);
   if (!prompt) return;
   if (!prompt.runId) {
-    sendToAgentSession(agentAccess, sessionId, buildInput(prompt.text, prompt.images));
+    agentAccess.sendToAgentSession(sessionId, buildInput(prompt.text, prompt.images));
     return;
   }
-  void rollbackSessionToBeforeRun(
-    agentAccess,
-    sessionId,
-    prompt.runId,
-    opts?.restoreFiles ? "both" : "history",
-  )
+  void agentAccess
+    .rollbackSessionToBeforeRun(sessionId, prompt.runId, opts?.restoreFiles ? "both" : "history")
     .then((rollback) => {
       if (rollback.status === "inFlight") return;
       const input =
         rollback.status === "committed" && rollback.userInput
           ? rollback.userInput
           : buildInput(prompt.text, prompt.images);
-      if (!sendToAgentSession(agentAccess, sessionId, input)) {
+      if (!agentAccess.sendToAgentSession(sessionId, input)) {
         notifyInfo(t("session.regenerate.switchedAway"), {
           source: "session",
         });
@@ -89,17 +80,17 @@ export function editAndRerunMessage(
   msg: Message,
   opts?: RollbackActionOptions,
 ): void {
-  const conversation = activeAgentConversation(agentAccess);
+  const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canEditMessage(msg) || !canRollbackMessage(msg, conversation.messages)) {
     return;
   }
   const replaceDraft = beginComposerDraftReplacement(composerAccess);
-  void rollbackSessionToBeforeRun(
-    agentAccess,
-    conversation.sessionId,
-    msg.runId,
-    opts?.restoreFiles ? "both" : "history",
-  )
+  void agentAccess
+    .rollbackSessionToBeforeRun(
+      conversation.sessionId,
+      msg.runId,
+      opts?.restoreFiles ? "both" : "history",
+    )
     .then((rollback) => {
       if (rollback.status !== "committed") return;
       const draft = rollback.userInput
@@ -117,9 +108,10 @@ export function restoreCheckpoint(
   msg: Message,
   restoreType: RestoreType,
 ): void {
-  const conversation = activeAgentConversation(agentAccess);
+  const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canRollbackMessage(msg, conversation.messages)) return;
-  void rollbackSessionToBeforeRun(agentAccess, conversation.sessionId, msg.runId, restoreType)
+  void agentAccess
+    .rollbackSessionToBeforeRun(conversation.sessionId, msg.runId, restoreType)
     .then((rollback) => {
       if (rollback.status === "committed") {
         notifyInfo(restoreCopy(restoreType), { source: "session" });
@@ -140,7 +132,7 @@ function restoreCopy(restoreType: RestoreType): string {
 }
 
 export function forkFromMessage(agentAccess: AgentAccess, msg: Message): void {
-  const conversation = activeAgentConversation(agentAccess);
+  const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canForkMessage(msg)) return;
-  void forkAgentSessionAtRun(agentAccess, conversation.sessionId, msg.runId);
+  void agentAccess.forkAgentSessionAtRun(conversation.sessionId, msg.runId);
 }

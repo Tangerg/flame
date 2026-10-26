@@ -8,7 +8,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -76,7 +75,7 @@ type WorkingContextComposer interface {
 // ModelAdmitter admits a model proposal before exact selection is frozen.
 // Authored input is structurally validated here; model-media admission belongs
 // to the complete transformed request at the physical execution boundary.
-type ModelAdmitter interface {
+type modelAdmitter interface {
 	AdmitSelection(selection modelchoice.Selection) error
 }
 
@@ -131,12 +130,12 @@ type RememberedRuleCandidate struct {
 // source authority and derives its durable rule without persisting it. The
 // acceptance transaction persists the returned rule; a changed authority rejects
 // the whole Resume.
-type ApprovalRulePreparer interface {
+type approvalRulePreparer interface {
 	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
 // AcceptedContinuationStore reads and retires the accepted answer handoff.
-type AcceptedContinuationStore interface {
+type acceptedContinuationStore interface {
 	List(ctx context.Context) ([]AcceptedContinuation, error)
 	Delete(ctx context.Context, rootRunID string) error
 }
@@ -145,7 +144,7 @@ type AcceptedContinuationStore interface {
 // without claiming or advancing it. It is used after the previous live owner is
 // known obsolete; the supplied Application value and opaque checkpoint are the
 // only recovery source.
-type WaitingExecutionRestorer interface {
+type waitingExecutionRestorer interface {
 	RestoreWaitingExecution(
 		ctx context.Context,
 		continuation ExecutionContinuation,
@@ -208,7 +207,7 @@ func (w WaitingSubtreeDisposition) Valid() bool {
 // removed the final external boundary; it is a distinct activation phase so an
 // execution failure cannot be mistaken for a failed state installation.
 // Discard idempotently releases a change that was not applied.
-type WaitingSubtreeChange interface {
+type waitingSubtreeChange interface {
 	Apply(disposition WaitingSubtreeDisposition) error
 	Continue(ctx context.Context) error
 	Discard() error
@@ -225,11 +224,11 @@ type PreparedWaitingSubtreeCancellation struct {
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
 	checkpoint ExecutorCheckpoint
 	// Change owns the frozen executor source until Apply or Discard resolves it.
-	change WaitingSubtreeChange
+	change waitingSubtreeChange
 }
 
 // SessionReader resolves the product Session a Run belongs to.
-type SessionReader interface {
+type sessionReader interface {
 	Get(ctx context.Context, id string) (session.Session, error)
 }
 
@@ -238,7 +237,7 @@ type SessionReader interface {
 // Session and, when that Session is not durable, the initial aggregate the
 // opening write-set inserts with the Run, so a retried occurrence reuses its
 // Session and an unaccepted one leaves none.
-type SessionCreator interface {
+type sessionCreator interface {
 	PrepareOpening(
 		ctx context.Context,
 		id, title, cwd string,
@@ -247,20 +246,20 @@ type SessionCreator interface {
 }
 
 // ActiveRunReader reports the Session's current non-terminal Run for admission.
-type ActiveRunReader interface {
+type activeRunReader interface {
 	ActiveRun(ctx context.Context, sessionID string) (run.Run, bool, error)
 }
 
 // PendingInterruptReader returns the valid root-owned waiting boundary for an
 // addressed Run without exposing checkpoint storage. A found value belongs to
 // the requested root Run.
-type PendingInterruptReader interface {
+type pendingInterruptReader interface {
 	LookupOpenInterrupt(ctx context.Context, runID string) (Pending, bool, error)
 }
 
 // TerminationCommitter owns the atomic application write-sets for canceling
 // a parked Run or declaring its executor state unrecoverable.
-type TerminationCommitter interface {
+type terminationCommitter interface {
 	ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (run.Run, error)
 	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
 }
@@ -268,11 +267,11 @@ type TerminationCommitter interface {
 // SessionPorts groups independently consumed Session-side capabilities for
 // composition. Coordinator stores each capability separately.
 type SessionPorts struct {
-	Reader       SessionReader
-	Creator      SessionCreator
-	ActiveRuns   ActiveRunReader
-	Interrupts   PendingInterruptReader
-	Terminations TerminationCommitter
+	Reader       sessionReader
+	Creator      sessionCreator
+	ActiveRuns   activeRunReader
+	Interrupts   pendingInterruptReader
+	Terminations terminationCommitter
 }
 
 // Projection is the run use cases' durable Run read. Run answers point
@@ -314,7 +313,7 @@ type RootExecutionStart struct {
 	// execution, including the current user message as its final entry. It is a
 	// seed, not a reference back to mutable Conversation state.
 	WorkingContext []corechat.Message
-	InterruptKinds []interrupt.Kind
+	InterruptKinds []run.InterruptKind
 	// ChildRunAdmissionEnabled installs the executor-to-application admission
 	// handshake for Delegate children. It is deliberately explicit and defaults
 	// off; the Run's frozen application policy is its sole production source.
@@ -361,6 +360,6 @@ type ExecutionContinuation struct {
 // IsolationProvider resolves the sandbox working-copy directory an isolated
 // session's Run executes in, creating it from the project directory on first
 // use. nil means isolation is unavailable and an isolated start is refused.
-type IsolationProvider interface {
+type isolationProvider interface {
 	Workspace(ctx context.Context, sessionID, projectRoot string) (string, error)
 }

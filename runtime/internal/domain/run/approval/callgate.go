@@ -47,12 +47,12 @@ const (
 type PromptCause string
 
 const (
-	PromptCauseNone                PromptCause = ""
+	promptCauseNone                PromptCause = ""
 	PromptCauseNonMutating         PromptCause = "nonMutating"
 	PromptCauseWorkspaceWrite      PromptCause = "workspaceWrite"
 	PromptCauseWorkspaceCommand    PromptCause = "workspaceCommand"
 	PromptCauseNetworkAccess       PromptCause = "networkAccess"
-	PromptCauseUnknownSafety       PromptCause = "unknownSafety"
+	promptCauseUnknownSafety       PromptCause = "unknownSafety"
 	PromptCauseOutsideWorkspace    PromptCause = "outsideWorkspace"
 	PromptCauseUnknownMutation     PromptCause = "unknownMutation"
 	PromptCauseCatastrophicCommand PromptCause = "catastrophicCommand"
@@ -128,7 +128,7 @@ func promptCauseForSafetyClass(class tool.SafetyClass) PromptCause {
 	case tool.SafetyClassNetwork:
 		return PromptCauseNetworkAccess
 	default:
-		return PromptCauseUnknownSafety
+		return promptCauseUnknownSafety
 	}
 }
 
@@ -141,6 +141,6 @@ func promptCauseForBypassImmunity(immunity tool.BypassImmunity) PromptCause {
 	case tool.BypassImmuneCatastrophicCommand:
 		return PromptCauseCatastrophicCommand
 	default:
-		return PromptCauseNone
+		return promptCauseNone
 	}
 }

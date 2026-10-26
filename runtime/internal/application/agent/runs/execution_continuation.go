@@ -6,9 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -76,7 +75,7 @@ func (w WaitingSubtreeCancellationRequest) validate() error {
 	if err := w.continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
 	}
-	if err := runtimeidentity.ValidateMember(w.targetMemberID); err != nil {
+	if err := ValidateMember(w.targetMemberID); err != nil {
 		return fmt.Errorf("runs: waiting subtree target: %w", err)
 	}
 	if strings.TrimSpace(w.reason) == "" || w.reason != strings.TrimSpace(w.reason) {
@@ -150,20 +149,20 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMe
 // Validate verifies one surviving product member without interpreting executor
 // topology or checkpoint payload.
 func (w ExecutionMember) Validate() error {
-	if err := resourceid.ValidateRun(w.RunID); err != nil {
+	if err := identity.ValidateRun(w.RunID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
-	if err := runtimeidentity.ValidateMember(w.MemberID); err != nil {
+	if err := ValidateMember(w.MemberID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
 	if (w.ParentRunID == "") != (w.SpawnedByItemID == "") {
 		return errors.New("runs: waiting member child lineage is incomplete")
 	}
 	if w.ParentRunID != "" {
-		if err := resourceid.ValidateRun(w.ParentRunID); err != nil {
+		if err := identity.ValidateRun(w.ParentRunID); err != nil {
 			return fmt.Errorf("runs: waiting member parent: %w", err)
 		}
-		if err := resourceid.ValidateItem(w.SpawnedByItemID); err != nil {
+		if err := identity.ValidateItem(w.SpawnedByItemID); err != nil {
 			return fmt.Errorf("runs: waiting member spawned-by: %w", err)
 		}
 	}
@@ -202,13 +201,13 @@ func (w ExecutionContinuation) Validate() error {
 }
 
 func validateExecutionContinuationEnvelope(continuation ExecutionContinuation) error {
-	if err := resourceid.ValidateSession(continuation.SessionID); err != nil {
+	if err := identity.ValidateSession(continuation.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if err := runtimeidentity.ValidateExecutor(continuation.ExecutorID); err != nil {
+	if err := ValidateExecutor(continuation.ExecutorID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if err := resourceid.ValidateRun(continuation.RootRunID); err != nil {
+	if err := identity.ValidateRun(continuation.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if len(continuation.Members) == 0 {

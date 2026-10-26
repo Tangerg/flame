@@ -52,7 +52,7 @@ func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 	fixture.startAndPark()
 
 	restartedConfig := cfg
-	restartedConfig.Resources = nil
+	restartedConfig.resources = nil
 	restartedHost, restartedAPI := buildProtocolRuntime(t, restartedConfig, stores.DataDirectory)
 	defer func() {
 		if closeErr := restartedHost.Close(); closeErr != nil {
@@ -424,27 +424,27 @@ func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.H
 	return buildProtocolRuntime(t, cfg, stores.DataDirectory)
 }
 
-func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.Model) Config {
+func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.Model) assemblyConfig {
 	t.Helper()
 	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		_ = stores.Close()
 		t.Fatalf("build chat client: %v", err)
 	}
-	cfg := ComposeConfig(
+	cfg := composeConfig(
 		config.Settings{Provider: "anthropic", Model: "claude-test"},
 		stores,
 		testChatResolver(client),
 		stores.Providers,
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
-	cfg.UserHome = stores.DataDirectory
-	cfg.DefaultWorkspacePath = stores.DataDirectory
-	cfg.Maintenance = noMaintenance{}
+	cfg.userHome = stores.DataDirectory
+	cfg.defaultWorkspacePath = stores.DataDirectory
+	cfg.maintenance = noMaintenance{}
 	return cfg
 }
 
-func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Instance, *delivery.Handler) {
+func buildProtocolRuntime(t *testing.T, cfg assemblyConfig, cwd string) (*Instance, *delivery.Handler) {
 	t.Helper()
 	host := assembleTestRuntime(t, cfg)
 	api, err := protocolHandler(host, cwd)
@@ -455,9 +455,9 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Instance, *del
 	return host, api
 }
 
-func assembleTestRuntime(t *testing.T, cfg Config) *Instance {
+func assembleTestRuntime(t *testing.T, cfg assemblyConfig) *Instance {
 	t.Helper()
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("build runtime: %v", err)
 	}

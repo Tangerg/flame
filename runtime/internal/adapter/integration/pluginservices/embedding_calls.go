@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/samber/lo"
 )
 
 // EmbeddingRoleCallback publishes the configured role on ordinary installed
@@ -26,9 +26,9 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if model == nil {
-			return pluginsdk.TextEmbeddings{}, &capability.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
+			return pluginsdk.TextEmbeddings{}, &extension.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
 		}
-		if dependency.Missing(model) {
+		if lo.IsNil(model) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")
 		}
 		vectors, err := model.Embed(ctx, command.Input)

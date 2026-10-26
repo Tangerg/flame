@@ -1,4 +1,4 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { prettyJSON } from "@/lib/json";
 import * as stylex from "@stylexjs/stylex";
 import { Button, Disclosure } from "@flame/ui";
@@ -23,7 +23,7 @@ const styles = stylex.create({
 });
 
 export function PendingRunOpenings() {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const t = useT();
   const sessionId = useActiveSessionId();

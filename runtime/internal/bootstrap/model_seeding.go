@@ -14,7 +14,7 @@ import (
 // an explicit runtime-owned value, including cleared credential/endpoint
 // fields, and wins as a whole. Callers must pass the unoverlaid durable
 // registry so an environment credential cannot masquerade as stored state.
-func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistry, cfg config.Settings) error {
+func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistry, cfg config.Settings) error {
 	id := cfg.Provider
 	_, ok, err := registry.Get(ctx, id)
 	if err != nil {
@@ -55,7 +55,7 @@ type utilityRoleSeedStore interface {
 // persisted via models.setUtilityRole is left untouched — runtime edits win
 // over the config file. An empty / identical-to-main UtilityModel seeds
 // nothing (maintenance then runs on the main model).
-func SeedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config.Settings) error {
+func seedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config.Settings) error {
 	_, present, err := store.LoadUtilityRole(ctx)
 	if err != nil {
 		return err

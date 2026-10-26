@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -221,9 +221,9 @@ const (
 
 type pendingCancellation struct {
 	request          conversation.CancelRun
-	openingCommandID replay.CommandID
+	openingCommandID authoring.CommandID
 	policy           cancellationResultPolicy
-	replay           replay.Guard
+	replay           authoring.ReplayGuard
 }
 
 func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy cancellationResultPolicy) {
@@ -231,7 +231,7 @@ func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy c
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
-	var replayGuard replay.Guard
+	var replayGuard authoring.ReplayGuard
 	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
 		replayGuard = current.replay
 	} else {
@@ -272,7 +272,7 @@ func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy c
 func (a *app) cancelRootRun(
 	ctx context.Context,
 	target conversation.CancelRun,
-	replayGuard replay.Guard,
+	replayGuard authoring.ReplayGuard,
 ) error {
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
@@ -342,14 +342,14 @@ func (a *app) handleRuntimeCancellation(
 	a.refreshInvalidatedSession(true)
 }
 
-func (a *app) openingCommandForRun(runID string) replay.CommandID {
+func (a *app) openingCommandForRun(runID string) authoring.CommandID {
 	if a.execution.opening == nil || runID != a.execution.opening.RunID {
 		return ""
 	}
 	return a.execution.opening.CommandID
 }
 
-func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID replay.CommandID) error {
+func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID authoring.CommandID) error {
 	var err error
 	if a.workbench != nil {
 		if pending, ok := a.workbench.PendingResume(a.session.current.ID); ok && pending.Command.RunID == runID {
@@ -365,7 +365,7 @@ func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID repl
 func (a *app) cancelRuntimeNow(
 	ownerCtx context.Context,
 	target conversation.CancelRun,
-	replayGuard replay.Guard,
+	replayGuard authoring.ReplayGuard,
 ) error {
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()

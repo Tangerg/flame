@@ -7,7 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -27,7 +27,7 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	want := toolResultMetadata{
 		MemberID: processID.String(),
 		Start:    runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: "write", Arguments: `{"path":"edited"}`},
-		Result:   &preview, Offload: &toolresult.Ref{ID: "ABCD"},
+		Result:   &preview, Offload: &transcript.ToolResultRef{ID: "ABCD"},
 		OutputText: "UI preview", MutatedPaths: []string{"/workspace/a", "/workspace/b"},
 		Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "second write failed"},
 	}

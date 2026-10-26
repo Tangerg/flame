@@ -2,266 +2,123 @@ package extensions
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"testing"
 )
 
-func newTestKeyedPoint[T any](id string, keyOf func(T) string) Point[T] {
-	return NewCapabilityKeyedPoint(id, "", keyOf)
-}
-
-func newTestMultiPoint[T any](id string) Point[T] {
-	return NewCapabilityMultiPoint[T](id, "")
-}
-
 func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
-	registry := &Registry{
-		next:    registrationSequence(math.MaxUint64),
-		plugins: map[string]registrationSequence{"existing": 1},
-	}
+	registry := &commandRegistry{next: registrationSequence(math.MaxUint64), plugins: map[string]registrationSequence{"existing": 1}}
 	if _, err := registry.claim("replacement"); !errors.Is(err, errRegistrationSequenceExhausted) {
-		t.Fatalf("claim after sequence exhaustion error = %v", err)
+		t.Fatalf("claim after exhaustion = %v", err)
 	}
 	if len(registry.plugins) != 1 || registry.plugins["existing"] != 1 {
-		t.Fatalf("loaded plugin owners after exhaustion = %+v", registry.plugins)
+		t.Fatalf("plugin owners = %+v", registry.plugins)
 	}
 }
-
-func TestContributionSequenceExhaustionDoesNotCreatePointState(t *testing.T) {
-	registry := &Registry{next: registrationSequence(math.MaxUint64)}
-	point := newTestMultiPoint[string]("test.exhausted")
-	if _, _, err := registry.insertContribution("plugin", point, "", "value", 0); !errors.Is(err, errRegistrationSequenceExhausted) {
-		t.Fatalf("contribution after sequence exhaustion error = %v", err)
+func TestCommandSequenceExhaustionLeavesRegistryUnchanged(t *testing.T) {
+	registry := &commandRegistry{next: registrationSequence(math.MaxUint64)}
+	if _, err := registry.insert("plugin", testCommand("hello")); !errors.Is(err, errRegistrationSequenceExhausted) {
+		t.Fatalf("registration after exhaustion = %v", err)
 	}
-	if len(registry.points) != 0 {
-		t.Fatalf("point state after sequence exhaustion = %+v", registry.points)
+	if len(registry.entries) != 0 {
+		t.Fatalf("commands after exhaustion = %+v", registry.entries)
 	}
 }
-
-func TestRejectedContributionDoesNotConsumeRegistrationSequence(t *testing.T) {
-	registry := new(Registry)
-	point := newTestKeyedPoint("test.sequence", func(value format) string { return value.ID })
-	if _, _, err := registry.insertContribution("first", point, "same", format{ID: "same"}, 0); err != nil {
+func TestCommandNamespaceRejectsNamesAndAliasesWithoutConsumingSequence(t *testing.T) {
+	registry := new(commandRegistry)
+	command := testCommand("hello")
+	command.Descriptor.Aliases = []string{"greet"}
+	if _, err := registry.insert("first", command); err != nil {
 		t.Fatal(err)
 	}
 	before := registry.next
-	if _, _, err := registry.insertContribution("second", point, "same", format{ID: "same"}, 0); err == nil {
-		t.Fatal("duplicate contribution was accepted")
+	for _, name := range []string{"hello", "greet"} {
+		if _, err := registry.insert("second", testCommand(name)); err == nil {
+			t.Fatalf("accepted duplicate identity %q", name)
+		}
 	}
 	if registry.next != before {
-		t.Fatalf("registration sequence after rejected contribution = %d, want %d", registry.next, before)
+		t.Fatalf("rejected registration advanced sequence: %d", registry.next)
 	}
 }
-
-type format struct {
-	ID    string
-	Label string
-}
-
-func TestProtectedPointCannotReadAnotherDefinitionWithTheSameName(t *testing.T) {
-	for _, genuineFirst := range []bool{false, true} {
-		t.Run(fmt.Sprint(genuineFirst), func(t *testing.T) {
-			protected := NewCapabilityMultiPoint[string]("test.protected", "presentation")
-			impostor := NewCapabilityMultiPoint[string]("test.protected", "")
-			registry := new(Registry)
-			if genuineFirst {
-				genuine := manifest("test.genuine", func(scope *Scope) error {
-					_, err := scope.Contribute(protected, "genuine", Contribution{})
-					return err
-				})
-				genuine.Capabilities = []Capability{"presentation"}
-				loaded, err := Load(registry, genuine)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { _ = loaded.Dispose() })
-			}
-			loaded, err := Load(registry, manifest("test.impostor", func(scope *Scope) error {
-				_, err := scope.Contribute(impostor, "impostor", Contribution{})
-				return err
-			}))
-			if err == nil {
-				t.Cleanup(func() { _ = loaded.Dispose() })
-			}
-			if genuineFirst && err == nil {
-				t.Fatal("accepted a competing point definition")
-			}
-			for _, value := range registry.Values(protected) {
-				if value != "genuine" {
-					t.Fatalf("protected consumer received %q", value)
-				}
-			}
-		})
-	}
-}
-
-func TestKeyedContributionsAreTypedOrderedAndDisposable(t *testing.T) {
-	point := newTestKeyedPoint("test.format", func(value format) string { return value.ID })
-	registry := new(Registry)
-	loaded, err := Load(registry, manifest("formats", contributeFormats(point)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	values := registry.Values(point)
-	if len(values) != 2 || values[0].ID != "markdown" || values[1].ID != "json" {
-		t.Fatalf("values = %+v", values)
-	}
-	owned := registry.OwnedValues(point)
-	if len(owned) != 2 || owned[0].PluginID != "formats" || owned[1].PluginID != "formats" {
-		t.Fatalf("owned values = %+v", owned)
-	}
-	if err := loaded.Dispose(); err != nil {
-		t.Fatal(err)
-	}
-	if values := registry.Values(point); len(values) != 0 {
-		t.Fatalf("values after unload = %+v", values)
-	}
-}
-
-func contributeFormats(point Point[format]) func(*Scope) error {
-	return func(scope *Scope) error {
-		if _, err := scope.Contribute(point, format{ID: "json", Label: "JSON"}, Contribution{Order: 20}); err != nil {
+func TestCommandsRetainProviderOrderAndDetachedDescriptors(t *testing.T) {
+	host := NewHost()
+	command := testCommand("first")
+	command.Descriptor.Aliases = []string{"alias"}
+	results, err := host.Activate([]Plugin{manifest("test.ordered", func(scope *Scope) error {
+		if err := scope.ContributeCommand(command); err != nil {
 			return err
 		}
-		_, err := scope.Contribute(point, format{ID: "markdown", Label: "Markdown"}, Contribution{Order: 10})
-		return err
+		return scope.ContributeCommand(testCommand("second"))
+	})})
+	if err != nil || !allLoaded(results) {
+		t.Fatalf("activation = %+v, %v", results, err)
+	}
+	command.Descriptor.Aliases[0] = "caller-change"
+	values := host.Commands()
+	if len(values) != 2 || values[0].PluginID != "test.ordered" || values[0].Command.Descriptor.Name != "first" || values[1].Command.Descriptor.Name != "second" || values[0].Command.Descriptor.Aliases[0] != "alias" {
+		t.Fatalf("commands = %+v", values)
+	}
+	values[0].Command.Descriptor.Aliases[0] = "reader-change"
+	if host.Commands()[0].Command.Descriptor.Aliases[0] != "alias" {
+		t.Fatal("reader changed retained descriptor")
+	}
+	if err := host.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if len(host.Commands()) != 0 {
+		t.Fatal("close retained command registrations")
 	}
 }
-
-func TestSetupFailureRollsBackEarlierContributions(t *testing.T) {
-	point := newTestMultiPoint[func()]("test.hook")
-	registry := new(Registry)
+func TestSetupFailureRollsBackCommandsAndPluginClaim(t *testing.T) {
+	registry := new(commandRegistry)
 	want := errors.New("setup failed")
-	_, err := Load(registry, manifest("broken", func(scope *Scope) error {
-		if _, err := scope.Contribute(point, func() {}, Contribution{}); err != nil {
+	_, err := load(registry, manifest("test.failed", func(scope *Scope) error {
+		if err := scope.ContributeCommand(testCommand("hello")); err != nil {
 			return err
 		}
 		return want
 	}))
-	if !errors.Is(err, want) {
-		t.Fatalf("err = %v, want %v", err, want)
+	if !errors.Is(err, want) || len(registry.commands()) != 0 {
+		t.Fatalf("failed setup = %v, commands = %+v", err, registry.commands())
 	}
-	if values := registry.Values(point); len(values) != 0 {
-		t.Fatalf("rollback left %d contribution(s)", len(values))
-	}
-}
-
-func TestKeyedPointRejectsDuplicateOwnership(t *testing.T) {
-	point := newTestKeyedPoint("test.format", func(value format) string { return value.ID })
-	registry := new(Registry)
-	first, err := Load(registry, manifest("first", func(scope *Scope) error {
-		_, err := scope.Contribute(point, format{ID: "json"}, Contribution{})
-		return err
-	}))
+	loaded, err := load(registry, manifest("test.failed", func(scope *Scope) error { return scope.ContributeCommand(testCommand("hello")) }))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = first.Dispose() }()
-
-	if _, err := Load(registry, manifest("second", func(scope *Scope) error {
-		_, err := scope.Contribute(point, format{ID: "json"}, Contribution{})
-		return err
-	})); err == nil {
-		t.Fatal("duplicate key was accepted")
-	}
-}
-
-func TestPointsWithTheSameIDCannotDisagreeOnType(t *testing.T) {
-	stringsPoint := newTestMultiPoint[string]("test.same")
-	intsPoint := newTestMultiPoint[int]("test.same")
-	registry := new(Registry)
-	loaded, err := Load(registry, manifest("strings", func(scope *Scope) error {
-		_, err := scope.Contribute(stringsPoint, "one", Contribution{})
-		return err
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = loaded.Dispose() }()
-
-	if _, err := Load(registry, manifest("ints", func(scope *Scope) error {
-		_, err := scope.Contribute(intsPoint, 1, Contribution{})
-		return err
-	})); err == nil {
-		t.Fatal("incompatible point definition was accepted")
-	}
-}
-
-func TestPluginMustUnloadBeforeItCanReload(t *testing.T) {
-	registry := new(Registry)
-	plugin := manifest("same", func(*Scope) error { return nil })
-	loaded, err := Load(registry, plugin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, loadErr := Load(registry, plugin); loadErr == nil {
-		t.Fatal("loaded the same plugin twice")
-	}
-	if disposeErr := loaded.Dispose(); disposeErr != nil {
-		t.Fatal(disposeErr)
-	}
-	loaded, err = Load(registry, plugin)
-	if err != nil {
-		t.Fatalf("reload after unload: %v", err)
-	}
-	if err := loaded.Dispose(); err != nil {
+	if err := loaded.dispose(); err != nil {
 		t.Fatal(err)
 	}
 }
-
-func TestScopeRejectsOwnershipAfterSetupReturns(t *testing.T) {
-	point := newTestMultiPoint[string]("test.late")
-	registry := new(Registry)
+func TestCompletedScopeRejectsLateCommands(t *testing.T) {
+	registry := new(commandRegistry)
 	var retained *Scope
-	loaded, err := Load(registry, manifest("late", func(scope *Scope) error {
-		retained = scope
-		return nil
-	}))
+	loaded, err := load(registry, manifest("test.complete", func(scope *Scope) error { retained = scope; return nil }))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = loaded.Dispose() }()
-
-	if _, err := retained.Contribute(point, "late", Contribution{}); !errors.Is(err, errScopeClosed) {
-		t.Fatalf("late contribution error = %v, want scope closed", err)
+	if err := retained.ContributeCommand(testCommand("late")); !errors.Is(err, errScopeClosed) {
+		t.Fatalf("late command = %v", err)
 	}
-	if err := retained.OnDispose(func() error { return nil }); !errors.Is(err, errScopeClosed) {
-		t.Fatalf("late cleanup error = %v, want scope closed", err)
-	}
-	if values := registry.Values(point); len(values) != 0 {
-		t.Fatalf("closed scope registered values: %v", values)
+	if err := loaded.dispose(); err != nil {
+		t.Fatal(err)
 	}
 }
-
-func TestScopeSealWinsAgainstAnInFlightLateContribution(t *testing.T) {
-	entered := make(chan struct{})
-	release := make(chan struct{})
-	result := make(chan error, 1)
-	point := newTestKeyedPoint("test.concurrent-late", func(value string) string {
-		close(entered)
-		<-release
-		return value
-	})
-	registry := new(Registry)
-	loaded, err := Load(registry, manifest("concurrent-late", func(scope *Scope) error {
-		go func() {
-			_, err := scope.Contribute(point, "late", Contribution{})
-			result <- err
-		}()
-		<-entered
-		return nil
-	}))
+func TestRegistrationRemovalCannotDeleteAReplacementOwner(t *testing.T) {
+	registry := new(commandRegistry)
+	first, err := registry.insert("first", testCommand("hello"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = loaded.Dispose() }()
-
-	close(release)
-	if err := <-result; !errors.Is(err, errScopeClosed) {
-		t.Fatalf("racing contribution error = %v, want scope closed", err)
+	registry.remove("hello", first)
+	second, err := registry.insert("second", testCommand("hello"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if values := registry.Values(point); len(values) != 0 {
-		t.Fatalf("sealed scope registered values: %v", values)
+	registry.remove("hello", first)
+	values := registry.commands()
+	if len(values) != 1 || values[0].PluginID != "second" {
+		t.Fatalf("stale disposal changed replacement = %+v", values)
 	}
+	registry.remove("hello", second)
 }

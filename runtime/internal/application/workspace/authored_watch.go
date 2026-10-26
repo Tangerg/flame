@@ -7,10 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/samber/lo"
 )
 
 // AuthoredResource is the closed set of file-backed product resources whose
@@ -76,7 +74,7 @@ type AuthoredObservation interface {
 
 // IdentityInspector supplies the one live identity fact needed to distinguish
 // a nested workspace root from its project-discovery root.
-type IdentityInspector interface {
+type identityInspector interface {
 	Inspect(path string) (Resolved, error)
 }
 
@@ -84,13 +82,13 @@ type IdentityInspector interface {
 // external observation mechanism. It does not know transport topics.
 type AuthoredWatch struct {
 	scope      *Scope
-	workspaces IdentityInspector
+	workspaces identityInspector
 	watcher    AuthoredResourceWatcher
 	mu         sync.Mutex
 	active     map[*managedAuthoredObservation]struct{}
 }
 
-func NewAuthoredWatch(scope *Scope, workspaces IdentityInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
+func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -99,7 +97,7 @@ func NewAuthoredWatch(scope *Scope, workspaces IdentityInspector, watcher Author
 		{name: "workspace inspector", value: workspaces},
 		{name: "resource watcher", value: watcher},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: authored watch %s is required", required.name)
 		}
 	}
@@ -141,7 +139,7 @@ func (a *AuthoredWatch) Watch(
 			return nil, err
 		}
 		if resolved.Missing || resolved.ProjectRoot == "" {
-			return nil, workspacepaths.ErrCWDUnavailable
+			return nil, ErrCWDUnavailable
 		}
 		identity := authoredScopeKey{workspace: root, projectRoot: resolved.ProjectRoot}
 		if _, duplicate := seen[identity]; duplicate {

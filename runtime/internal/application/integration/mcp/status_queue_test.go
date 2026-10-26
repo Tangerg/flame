@@ -4,9 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestStatusQueuePublishesPreparedOrderAndRemainsReusable(t *testing.T) {

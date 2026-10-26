@@ -11,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -566,7 +565,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	ctx := t.Context()
 	at := time.Unix(atUnix, 0).UTC()
 	segmentID := "seg_" + runID
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	if err := rt.runs.Admit(ctx, testsupport.RunDraft(run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: segmentID,
 		Capabilities: capabilities, CreatedAt: at,
@@ -576,7 +575,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	if err := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Waiting, Capabilities: capabilities,
 		CreatedAt: at, MessageMark: run.UnknownMessageMark(),
-	}), segmentID, runtimeidentity.CommitID{}); err != nil {
+	}), segmentID, flameruns.CommitID{}); err != nil {
 		t.Fatalf("park %s: %v", runID, err)
 	}
 	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -587,7 +586,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 		t.Fatalf("open interrupt item for %s: %v", runID, err)
 	}
 	if err := rt.openPending(ctx, t, sessionID, serverPending(runID, sessionID, "", "", []transcript.Interrupt{{
-		ItemID: "item_" + runID, Kind: interrupt.Question,
+		ItemID: "item_" + runID, Kind: run.InterruptQuestion,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 	}}, at)); err != nil {
 		t.Fatalf("open interrupt for %s: %v", runID, err)

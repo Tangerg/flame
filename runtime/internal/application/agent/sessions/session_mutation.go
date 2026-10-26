@@ -149,7 +149,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	// The view is the command's result, not settlement: it projects the value
 	// this command committed while the mutation admission is still held, so no
 	// other writer can move the Session between the write and the answer.
-	return c.view(committedSession, ActivityIdle)
+	return c.view(committedSession, activityIdle)
 }
 
 func (c *Coordinator) prepareSessionRestore(

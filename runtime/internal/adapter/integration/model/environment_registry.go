@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/samber/lo"
 )
 
-var ErrRegistryIdentityMismatch = errors.New("model: stored provider identity does not match lookup identity")
+var errRegistryIdentityMismatch = errors.New("model: stored provider identity does not match lookup identity")
 
 // environmentRegistry is the sole owner of the stored-over-environment
 // precedence rule. Environment credentials are an immutable startup snapshot
@@ -26,7 +26,7 @@ type environmentRegistry struct {
 // exposing the effective registry. Invalid host input fails composition instead
 // of becoming a partially configured provider later in a Run.
 func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]string) (models.ProviderRegistry, error) {
-	if dependency.Missing(inner) {
+	if lo.IsNil(inner) {
 		return nil, errors.New("model: durable provider registry is required")
 	}
 	snapshot := make(map[string]provider.APIKey, len(envKeys))
@@ -45,7 +45,7 @@ func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]strin
 
 func (e *environmentRegistry) resolve(entry provider.Provider, found bool, id string) (provider.Provider, bool, error) {
 	if found && entry.ID() != id {
-		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", ErrRegistryIdentityMismatch, entry.ID(), id)
+		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", errRegistryIdentityMismatch, entry.ID(), id)
 	}
 	if !found {
 		key, hasEnvironmentCredential := e.envKeys[id]

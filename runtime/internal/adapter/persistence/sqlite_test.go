@@ -9,13 +9,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -39,7 +37,7 @@ func newTempDB(t *testing.T) *SessionStore {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewSessionStore(db)
+	return newSessionStore(db)
 }
 
 func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
@@ -81,7 +79,7 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	if _, err := db.Exec(insert, "ses_relative", "relative/work", "relative/work"); err != nil {
 		t.Fatalf("seed relative workspace: %v", err)
 	}
-	if _, err := NewSessionStore(db).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
+	if _, err := newSessionStore(db).Get(t.Context(), "ses_relative"); !errors.Is(err, session.ErrInvalid) {
 		t.Fatalf("decode relative workspace error = %v, want session.ErrInvalid", err)
 	}
 }
@@ -164,7 +162,7 @@ func TestSessionPersistAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open 1: %v", err)
 	}
-	svc1 := NewSessionStore(db1)
+	svc1 := newSessionStore(db1)
 	created := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_persistent", Title: "persistent", Workspace: testsupport.MustWorkspace("/work"),
 	})
@@ -178,7 +176,7 @@ func TestSessionPersistAcrossReopen(t *testing.T) {
 		t.Fatalf("Open 2: %v", err)
 	}
 	defer func() { _ = db2.Close() }()
-	svc2 := NewSessionStore(db2)
+	svc2 := newSessionStore(db2)
 
 	got, err := svc2.Get(ctx, created.ID())
 	if err != nil {
@@ -199,7 +197,7 @@ func TestMessageStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	ctx := context.Background()
 
 	var got []chat.Message
@@ -258,7 +256,7 @@ func TestTranscriptStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewTranscriptStore(db)
+	store := newTranscriptStore(db)
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -285,8 +283,8 @@ func TestTranscriptStoreRejectsIdentityReparenting(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewTranscriptStore(db)
-	runs := NewRunStore(db)
+	store := newTranscriptStore(db)
+	runs := newRunStore(db)
 	ctx := t.Context()
 	now := time.Now().UTC()
 
@@ -346,7 +344,7 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewTranscriptStore(db)
+	store := newTranscriptStore(db)
 	now := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	original := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "ses_a",
@@ -412,9 +410,9 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewTranscriptStore(db)
-	for _, id := range []resultoffload.ID{"BLOB234", "OTHER234"} {
-		if err := NewToolResultStore(db).Stage(t.Context(), resultoffload.Stage{ID: id, SessionID: "ses_a", Body: "body"}); err != nil {
+	store := newTranscriptStore(db)
+	for _, id := range []transcript.ToolResultID{"BLOB234", "OTHER234"} {
+		if err := newToolResultStore(db).Stage(t.Context(), transcript.ToolResultStage{ID: id, SessionID: "ses_a", Body: "body"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -428,7 +426,7 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 		FinishedAt: now, Status: transcript.ItemCompleted,
 		Kind: transcript.ToolCall,
 		Tool: &transcript.ToolInvocation{
-			Name: "shell", Result: &preview, Offload: &resultoffload.Ref{ID: "BLOB234"},
+			Name: "shell", Result: &preview, Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 		},
 	})
 	if appendItemErr := store.AppendItem(t.Context(), original); appendItemErr != nil {
@@ -441,7 +439,7 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 		t.Fatal(err)
 	}
 	changedSnapshot.Tool = &transcript.ToolInvocation{
-		Name: "shell", Result: &otherPreview, Offload: &resultoffload.Ref{ID: "OTHER234"},
+		Name: "shell", Result: &otherPreview, Offload: &transcript.ToolResultRef{ID: "OTHER234"},
 	}
 	changed, err := transcript.RestoreItem(changedSnapshot)
 	if err != nil {

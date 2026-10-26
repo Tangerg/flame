@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -160,7 +159,7 @@ func (projection *forkSnapshotProjection) copyItems() error {
 }
 
 func (projection *forkSnapshotProjection) copyToolResults() {
-	blobs := make(map[toolresult.ID]toolresult.Blob, len(projection.source.ToolResults))
+	blobs := make(map[transcript.ToolResultID]transcript.ToolResultBlob, len(projection.source.ToolResults))
 	for _, blob := range projection.source.ToolResults {
 		blobs[blob.ID] = blob
 	}

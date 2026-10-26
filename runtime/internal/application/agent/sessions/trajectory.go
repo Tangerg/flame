@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -18,10 +17,10 @@ import (
 type TrajectoryKind string
 
 const (
-	TrajectoryRun      TrajectoryKind = "run"
+	trajectoryRun      TrajectoryKind = "run"
 	TrajectoryEndpoint TrajectoryKind = "endpoint"
-	TrajectoryModel    TrajectoryKind = "model"
-	TrajectoryItem     TrajectoryKind = "item"
+	trajectoryModel    TrajectoryKind = "model"
+	trajectoryItem     TrajectoryKind = "item"
 )
 
 type TrajectoryModelInvocation struct {
@@ -40,13 +39,13 @@ type TrajectoryEntry struct {
 func (e TrajectoryEntry) Position() TrajectoryPosition {
 	switch {
 	case e.Run != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryRun, ID: e.Run.ID()}
+		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryRun, ID: e.Run.ID()}
 	case e.Model != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryModel, ID: e.Model.CallID}
+		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryModel, ID: e.Model.CallID}
 	case e.Endpoint != nil:
 		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryEndpoint, ID: e.Endpoint.Invocation.ID}
 	case e.Item != nil:
-		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: TrajectoryItem, ID: e.Item.ID()}
+		return TrajectoryPosition{OccurredAt: e.OccurredAt.UnixNano(), Kind: trajectoryItem, ID: e.Item.ID()}
 	default:
 		return TrajectoryPosition{}
 	}
@@ -60,12 +59,12 @@ type TrajectoryPosition struct {
 
 func (p TrajectoryPosition) validate() error {
 	switch p.Kind {
-	case TrajectoryRun:
-		return resourceid.ValidateRun(p.ID)
-	case TrajectoryModel, TrajectoryEndpoint:
-		return runtimeidentity.ValidateEffect(p.ID)
-	case TrajectoryItem:
-		return resourceid.ValidateItem(p.ID)
+	case trajectoryRun:
+		return identity.ValidateRun(p.ID)
+	case trajectoryModel, TrajectoryEndpoint:
+		return runs.ValidateInvocation(p.ID)
+	case trajectoryItem:
+		return identity.ValidateItem(p.ID)
 	default:
 		return errors.New("sessions: unknown trajectory kind")
 	}
@@ -73,13 +72,13 @@ func (p TrajectoryPosition) validate() error {
 
 // QueryTrajectoryReader returns a bounded page hydrated from one database
 // snapshot, including the Session existence check and descendant filter.
-type QueryTrajectoryReader interface {
+type queryTrajectoryReader interface {
 	PageTrajectory(context.Context, string, bool, *TrajectoryPosition, int) ([]TrajectoryEntry, error)
 }
 
 func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID string, includeDescendants bool, cursor string, limit pagination.RequestedLimit) (pagination.Page[TrajectoryEntry], error) {
 	const namespace = "session-trajectory"
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
 	}
 	filters := []string{sessionID, strconv.FormatBool(includeDescendants)}

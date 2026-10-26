@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -26,8 +25,8 @@ func openStore(t *testing.T) *sql.DB {
 
 func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 	db := openStore(t)
-	servers := NewMCPServerStore(db)
-	rules := NewApprovalRuleStore(db)
+	servers := newMCPServerStore(db)
+	rules := newApprovalRuleStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("github"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://old.example/mcp"}
 	if err := servers.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
@@ -60,9 +59,9 @@ func TestRemovedMCPSourceCannotRetainApproval(t *testing.T) {
 // leaves nothing that a recreated server of the same name could inherit.
 func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 	db := openStore(t)
-	servers := NewMCPServerStore(db)
-	rules := NewApprovalRuleStore(db)
-	authorization := NewMCPAuthorizationStore(db)
+	servers := newMCPServerStore(db)
+	rules := newApprovalRuleStore(db)
+	authorization := newMCPAuthorizationStore(db)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://files.example/mcp"}
 	if err := servers.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
@@ -99,11 +98,11 @@ func TestUserServerRemovalCascadesEveryRelation(t *testing.T) {
 // its own relations, and removing one never touches the other.
 func TestEqualNamesAcrossOriginsKeepSeparateRelations(t *testing.T) {
 	db := openStore(t)
-	servers := NewMCPServerStore(db)
-	rules := NewApprovalRuleStore(db)
-	installations := NewInstallationStore(db)
+	servers := newMCPServerStore(db)
+	rules := newApprovalRuleStore(db)
+	installations := newInstallationStore(db)
 	release := testsupport.Release(t, "release", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("files"), Transport: mcpserver.TransportStdio, Command: "files"}}})
-	if err := NewReleaseStore(db).Admit(t.Context(), release); err != nil {
+	if err := newReleaseStore(db).Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
 	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)

@@ -12,7 +12,7 @@ import (
 )
 
 func buildRunMaintenance(
-	cfg Config,
+	cfg assemblyConfig,
 	conversationServices conversationEnvironment,
 	shells *exec.Shells,
 	skills *workspace.Skills,
@@ -29,10 +29,10 @@ func buildRunMaintenance(
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)
 	}
-	if cfg.Maintenance != nil {
-		return cfg.Maintenance, compactor, nil
+	if cfg.maintenance != nil {
+		return cfg.maintenance, compactor, nil
 	}
-	skillSource, err := promptsource.NewSkillSource(cfg.SkillsUserDir, cfg.SkillsUserDir)
+	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build user skill source: %w", err)
 	}

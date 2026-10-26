@@ -14,8 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -81,7 +80,7 @@ type replayingStartRuntime struct {
 
 	mu       sync.Mutex
 	attempts int
-	inputs   []prompt.StartRun
+	inputs   []authoring.StartRun
 	stream   conversation.SegmentStream
 	failure  error
 }
@@ -90,8 +89,8 @@ type idempotentStartRuntime struct {
 	*runtimefixture.Runtime
 
 	mu       sync.Mutex
-	receipts map[replay.CommandID]conversation.SegmentStream
-	inputs   []prompt.StartRun
+	receipts map[authoring.CommandID]conversation.SegmentStream
+	inputs   []authoring.StartRun
 }
 
 type heldCancellationResultRuntime struct {
@@ -119,16 +118,16 @@ func (h *heldCancellationResultRuntime) CancelRun(
 
 type activeConflictRuntime struct {
 	Runtime
-	attempted chan prompt.StartRun
-	conflict  replay.CommandID
+	attempted chan authoring.StartRun
+	conflict  authoring.CommandID
 }
 
 type refusingFirstCommandRuntime struct {
 	*runtimefixture.Runtime
 
 	mu      sync.Mutex
-	refused replay.CommandID
-	inputs  []prompt.StartRun
+	refused authoring.CommandID
+	inputs  []authoring.StartRun
 	refusal error
 }
 
@@ -136,14 +135,14 @@ type invalidAcceptedStartRuntime struct {
 	Runtime
 
 	mu                  sync.Mutex
-	starts              []prompt.StartRun
+	starts              []authoring.StartRun
 	cancellations       []conversation.CancelRun
 	refuseFirst         bool
 	refreshFailure      error
 	releaseCancellation <-chan struct{}
 }
 
-func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	opened, err := i.Runtime.StartRun(ctx, input)
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -186,17 +185,17 @@ func (i *invalidAcceptedStartRuntime) GetSession(ctx context.Context, sessionID 
 	return i.Runtime.GetSession(ctx, sessionID)
 }
 
-func (i *invalidAcceptedStartRuntime) attempts() ([]prompt.StartRun, []conversation.CancelRun) {
+func (i *invalidAcceptedStartRuntime) attempts() ([]authoring.StartRun, []conversation.CancelRun) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	starts := make([]prompt.StartRun, len(i.starts))
+	starts := make([]authoring.StartRun, len(i.starts))
 	for index, input := range i.starts {
 		starts[index] = input.Clone()
 	}
 	return starts, slices.Clone(i.cancellations)
 }
 
-func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	r.mu.Lock()
 	if r.refused == "" {
 		r.refused = input.CommandID
@@ -220,16 +219,16 @@ func (r *refusingFirstCommandRuntime) attempts() int {
 	return len(r.inputs)
 }
 
-func (r *refusingFirstCommandRuntime) refusedCommand() prompt.StartRun {
+func (r *refusingFirstCommandRuntime) refusedCommand() authoring.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.inputs) == 0 {
-		return prompt.StartRun{}
+		return authoring.StartRun{}
 	}
 	return r.inputs[0].Clone()
 }
 
-func (a *activeConflictRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (a *activeConflictRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	if input.CommandID != a.conflict {
 		return a.Runtime.StartRun(ctx, input)
 	}
@@ -240,7 +239,7 @@ func (a *activeConflictRuntime) StartRun(ctx context.Context, input prompt.Start
 	return conversation.SegmentStream{}, fmt.Errorf("active run owns session: %w", conversation.ErrSessionHasActiveRun)
 }
 
-func (i *idempotentStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (i *idempotentStartRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	i.mu.Lock()
 	i.inputs = append(i.inputs, input.Clone())
 	opened, replayGuard := i.receipts[input.CommandID]
@@ -254,24 +253,24 @@ func (i *idempotentStartRuntime) StartRun(ctx context.Context, input prompt.Star
 	}
 	i.mu.Lock()
 	if i.receipts == nil {
-		i.receipts = make(map[replay.CommandID]conversation.SegmentStream)
+		i.receipts = make(map[authoring.CommandID]conversation.SegmentStream)
 	}
 	i.receipts[input.CommandID] = opened
 	i.mu.Unlock()
 	return opened, nil
 }
 
-func (i *idempotentStartRuntime) attempts() []prompt.StartRun {
+func (i *idempotentStartRuntime) attempts() []authoring.StartRun {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	out := make([]prompt.StartRun, len(i.inputs))
+	out := make([]authoring.StartRun, len(i.inputs))
 	for index, input := range i.inputs {
 		out[index] = input.Clone()
 	}
 	return out
 }
 
-func (r *replayingStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *replayingStartRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	r.mu.Lock()
 	r.attempts++
 	r.inputs = append(r.inputs, cloneStartRun(input))
@@ -295,10 +294,10 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input prompt.Start
 	return cached, nil
 }
 
-func (r *replayingStartRuntime) startAttempts() []prompt.StartRun {
+func (r *replayingStartRuntime) startAttempts() []authoring.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := make([]prompt.StartRun, len(r.inputs))
+	out := make([]authoring.StartRun, len(r.inputs))
 	for index, input := range r.inputs {
 		out[index] = cloneStartRun(input)
 	}
@@ -450,7 +449,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	host.Shows(t, "1 queued")
 
 	var pending []workbench.PendingRun
-	var refused prompt.StartRun
+	var refused authoring.StartRun
 	awaitState(t, "the refused start to return to the durable FIFO", func() bool {
 		refused = runtime.refusedCommand()
 		if refused.SessionID == "" {
@@ -661,10 +660,10 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_0123456789abcdef0123456789abcdef"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "replay after launch"},
-		Options: prompt.RunOptions{},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_0123456789abcdef0123456789abcdef"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "replay after launch"},
+		Options: authoring.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &recordingRuntime{Runtime: base}
@@ -689,10 +688,10 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_abcdef0123456789abcdef0123456789"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "already accepted"},
-		Options: prompt.RunOptions{},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_abcdef0123456789abcdef0123456789"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "already accepted"},
+		Options: authoring.RunOptions{},
 	}
 	runtime := &idempotentStartRuntime{Runtime: base}
 	if _, err := runtime.StartRun(t.Context(), command); err != nil {
@@ -737,13 +736,13 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	original := replay.CommandID("cli_22222222222222222222222222222222")
-	command := prompt.StartRun{
-		CommandID: original, SessionID: active.SessionID, Message: prompt.Message{Text: "queue after recovery"},
-		Options: prompt.RunOptions{},
+	original := authoring.CommandID("cli_22222222222222222222222222222222")
+	command := authoring.StartRun{
+		CommandID: original, SessionID: active.SessionID, Message: authoring.Message{Text: "queue after recovery"},
+		Options: authoring.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
-	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan prompt.StartRun, 1), conflict: original}
+	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan authoring.StartRun, 1), conflict: original}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -781,10 +780,10 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_77777777777777777777777777777777"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel after restart"},
-		Options: prompt.RunOptions{},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_77777777777777777777777777777777"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "cancel after restart"},
+		Options: authoring.RunOptions{},
 	}
 	idempotent := &idempotentStartRuntime{Runtime: base}
 	runtime := &heldCancellationResultRuntime{
@@ -840,10 +839,10 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_99999999999999999999999999999999"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "recover canceled start ownership"},
-		Options: prompt.RunOptions{},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_99999999999999999999999999999999"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "recover canceled start ownership"},
+		Options: authoring.RunOptions{},
 	}
 	runtime := &heldCancellationResultRuntime{
 		idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
@@ -920,10 +919,10 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel malformed start after restart"},
-		Options: prompt.RunOptions{},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_88888888888888888888888888888888"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "cancel malformed start after restart"},
+		Options: authoring.RunOptions{},
 	}
 	stateDirectory := t.TempDir()
 	store, err := openTestWorkbench(stateDirectory)
@@ -963,11 +962,11 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	stop()
 }
 
-func stageDispatchingRun(t *testing.T, store *workbench.Store, command prompt.StartRun) {
+func stageDispatchingRun(t *testing.T, store *workbench.Store, command authoring.StartRun) {
 	t.Helper()
 	if err := store.StagePendingRun(workbench.PendingRun{
 		State: workbench.PendingRunQueued, Command: command,
-		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+		Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -999,9 +998,9 @@ func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime := &replayingStartRuntime{Runtime: base}
-	command := prompt.StartRun{
+	command := authoring.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
-		Message: prompt.Message{Text: "do not replay outside the owning store"}, Options: prompt.RunOptions{},
+		Message: authoring.Message{Text: "do not replay outside the owning store"}, Options: authoring.RunOptions{},
 	}
 	_, err = openStartRunWithBackoff(
 		t.Context(), runtime, workbench.PendingRun{Command: command,
@@ -1025,13 +1024,13 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 		{
 			name: "run start",
 			stage: func(t *testing.T, store *workbench.Store) {
-				command := prompt.StartRun{
+				command := authoring.StartRun{
 					CommandID: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SessionID: "ses_demo_1",
-					Message: prompt.Message{Text: "do not replay across stores"}, Options: prompt.RunOptions{},
+					Message: authoring.Message{Text: "do not replay across stores"}, Options: authoring.RunOptions{},
 				}
 				if err := store.StagePendingRun(workbench.PendingRun{
 					State: workbench.PendingRunQueued, Command: command,
-					Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+					Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 				}); err != nil {
 					t.Fatal(err)
 				}

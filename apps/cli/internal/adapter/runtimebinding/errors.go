@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
 
@@ -104,7 +104,7 @@ func classifyError(err error) error {
 		}
 	}
 	if errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
-		kind = errors.Join(kind, replay.ErrCommandOutcomeUnknown)
+		kind = errors.Join(kind, authoring.ErrCommandOutcomeUnknown)
 	}
 	var problem *protocol.ProblemData
 	if source, ok := errors.AsType[protocol.ProblemError](err); ok {

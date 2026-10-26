@@ -13,11 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -41,7 +38,7 @@ const (
 
 func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	creation := fixtureScheduleCreateRequest(t, fixture, scheduledomain.Draft{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *"})
+	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, Cron: "0 0 1 1 *"})
 	created, err := fixtureScheduleCreate(fixture, creation)
 	if err != nil {
 		t.Fatal(err)
@@ -67,9 +64,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	var completed *protocol.RunRef
 	for completed == nil {
 		current, getErr := fixture.runtime.GetRun(
-			fixture.ctx,
-			protocol.GetRunRequest{RunID: started.RunID},
-			protocol.CallOptions{},
+			fixture.ctx, protocol.GetRunRequest{RunID: started.RunID}, protocol.CallOptions{},
 		)
 		if getErr != nil {
 			t.Fatal(getErr)
@@ -100,9 +95,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatalf("manual Schedule answer = %q, want %q", answer, liveScheduleMarker)
 	}
 	if _, err := fixture.runtime.GetSession(
-		fixture.ctx,
-		protocol.GetSessionRequest{SessionID: started.SessionID},
-		protocol.CallOptions{},
+		fixture.ctx, protocol.GetSessionRequest{SessionID: started.SessionID}, protocol.CallOptions{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -128,19 +121,19 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 			}
 		}
 	}
-	contracts, err := schedulerpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(schedulerpc.ListInput{})
+	input, err := json.Marshal(testsupport.SchedulesListV1Input{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: string(input), Target: capability.Target{Scope: "installation", Reference: target.ID}}, protocol.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: target.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
-	var schedules schedulerpc.Page
+	var schedules testsupport.SchedulesListV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil {
 		t.Fatal(err)
 	}
@@ -172,9 +165,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	lastGoal := goal
 	for {
 		current, getErr := fixture.runtime.GetGoal(
-			fixture.ctx,
-			protocol.GoalRequest{SessionID: session.ID},
-			protocol.CallOptions{},
+			fixture.ctx, protocol.GoalRequest{SessionID: session.ID}, protocol.CallOptions{},
 		)
 		if getErr != nil {
 			t.Fatal(getErr)
@@ -193,9 +184,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 		}
 	}
 	plan, err := fixture.runtime.GetPlan(
-		fixture.ctx,
-		protocol.GetPlanRequest{SessionID: session.ID},
-		protocol.CallOptions{},
+		fixture.ctx, protocol.GetPlanRequest{SessionID: session.ID}, protocol.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -206,9 +195,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 		t.Fatalf("Plan = %+v, want one completed %q step", plan, liveGoalMarker)
 	}
 	runs, err := fixture.runtime.ListRuns(
-		fixture.ctx,
-		protocol.ListRunsRequest{SessionID: session.ID},
-		protocol.CallOptions{},
+		fixture.ctx, protocol.ListRunsRequest{SessionID: session.ID}, protocol.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -227,9 +214,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
 	if _, err := fixture.runtime.SetApprovalMode(
-		fixture.ctx,
-		protocol.SetApprovalModeRequest{Mode: protocol.ApprovalModeYolo},
-		protocol.CommandOptions{},
+		fixture.ctx, protocol.SetApprovalModeRequest{Mode: protocol.ApprovalModeYolo}, protocol.CommandOptions{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -544,9 +529,7 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 		t.Fatalf("observable compactions = stream:%t transcript:%d, want one", compactionSeen, compactionItems)
 	}
 	usage, err := fixture.runtime.GetSessionUsage(
-		fixture.ctx,
-		protocol.SessionUsageRequest{SessionID: session.ID},
-		protocol.CallOptions{},
+		fixture.ctx, protocol.SessionUsageRequest{SessionID: session.ID}, protocol.CallOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -844,11 +827,11 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	if err != nil {
 		t.Fatal(err)
 	}
-	contracts, err := schedulerpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(schedulerpc.ItemInput{ID: id})
+	input, err := json.Marshal(testsupport.SchedulesRunNowV1Input{ID: id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -858,7 +841,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.RunNow, Input: string(input), Target: capability.Target{Scope: "installation", Reference: installation.ID}}
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: installation.ID}}
 			}
 		}
 	}
@@ -866,40 +849,40 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	return protocol.CallPluginRequest{}
 }
 
-func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*scheduleapp.RunReference, error) {
+func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*testsupport.SchedulesRunNowV1Output, error) {
 	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, options)
 	if err != nil {
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
-	var value scheduleapp.RunReference
+	var value testsupport.SchedulesRunNowV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	return &value, nil
 }
 
-func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, draft scheduledomain.Draft) protocol.CallPluginRequest {
+func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, draft testsupport.SchedulesCreateV1Input) protocol.CallPluginRequest {
 	t.Helper()
 	request := fixtureScheduleRunRequest(t, fixture, "")
 	input, err := json.Marshal(draft)
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = schedulerpc.Create, string(input)
+	request.Method, request.Input = testsupport.SchedulesCreateV1Method, string(input)
 	return request
 }
-func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*scheduledomain.Snapshot, error) {
+func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*testsupport.SchedulesCreateV1Output, error) {
 	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, protocol.PluginCallOptions{IdempotencyKey: "live-deepseek-create-schedule"})
 	if err != nil {
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
-	var value scheduledomain.Snapshot
+	var value testsupport.SchedulesCreateV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -15,7 +14,7 @@ import (
 )
 
 type failingWaitingCheckpointStore struct {
-	ExecutorCheckpointStore
+	executorCheckpointStore
 	err error
 }
 
@@ -35,7 +34,7 @@ func (f failingWaitingRunWriter) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr
@@ -47,7 +46,7 @@ func (f failingWaitingRunWriter) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	if f.recordErr != nil {
 		return f.recordErr
@@ -182,7 +181,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
 				fixture.replaceEffects(func(config *Config) {
 					config.ExecutorCheckpoints = failingWaitingCheckpointStore{
-						ExecutorCheckpointStore: fixture.checkpoints,
+						executorCheckpointStore: fixture.checkpoints,
 						err:                     injected,
 					}
 				})

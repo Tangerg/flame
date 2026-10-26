@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	memorycontract "github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
 
-type memoryFixtureRecord = memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot
+type memoryFixtureRecord = memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
 
 const (
 	terminalMemoryPendingID = "mem_00000000000000000000000000000001"
@@ -50,7 +50,7 @@ type blockingAgentMemoryUpdateService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	if request.Method != memorycontract.UpdateV1Method {
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
@@ -68,7 +68,7 @@ func (b *blockingAgentMemoryUpdateService) CallPlugin(ctx context.Context, reque
 	}
 }
 
-func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (b *blockingAgentMemoryReviewService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	if request.Method != memorycontract.ReviewV1Method {
 		return b.AgentMemory.CallPlugin(ctx, request, commandID)
 	}
@@ -193,15 +193,15 @@ func (*agentMemoryServiceStub) PrepareDelete(_ context.Context, id string) (prot
 	return boundMemoryRequest(memorycontract.DeleteV1Method, memorycontract.DeleteV1Input{ID: id})
 }
 func boundMemoryRequest(method string, value any) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(value)
+	input, err := jsonvalue.Encode(value)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: string(input.JSON())}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memorycontract.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: installation}, Input: string(input.JSON())}, nil
 }
 
-func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	if (request.Method != memorycontract.DeleteV1Method && request.Method != memorycontract.ReviewV1Method && request.Method != memorycontract.UpdateV1Method && request.Method != memorycontract.AddV1Method) || commandID == "" {
 		return nil, errors.New("invalid memory command")
 	}
@@ -218,8 +218,8 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.AddV1Output{Item: memoryFixtureRecord{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
-		encoded, err := jsoninput.Encode(output)
+		output := memorycontract.AddV1Output{Item: memoryFixtureRecord{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}}
+		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.UpdateV1Method {
@@ -231,8 +231,8 @@ func (a *agentMemoryServiceStub) CallPlugin(_ context.Context, request protocol.
 		if err != nil {
 			return nil, err
 		}
-		output := memorycontract.UpdateV1Output{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
-		encoded, err := jsoninput.Encode(output)
+		output := memorycontract.UpdateV1Output{ID: memorycontract.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(saved.ID), Scope: string(saved.Scope), Content: saved.Content, Origin: string(saved.Origin), Status: string(saved.Status), Pinned: saved.Pinned, CreatedAt: saved.CreatedAt, UpdatedAt: saved.UpdatedAt, Embedding: []float64{}}
+		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memorycontract.ReviewV1Method {

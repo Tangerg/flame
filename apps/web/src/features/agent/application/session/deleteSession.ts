@@ -1,11 +1,11 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useCallback } from "react";
 import { invalidateAgentSessions } from "@/features/agent/application/session/sessionQueries";
 
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 
 export function useDeleteSession(): (id: string) => Promise<void> {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return useCallback(
     async (id) => {

@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
@@ -21,22 +20,22 @@ import (
 // The checkpoint retains this data when a completed sibling waits for another
 // sibling's input; no completed Tool is rerun to reconstruct its presentation.
 type toolResultMetadata struct {
-	Receipt      *toolReceiptEvidence `json:"receipt,omitzero"`
-	MemberID     string               `json:"member_id"`
-	Start        runs.ToolCallStarted `json:"start"`
-	Result       *tool.Result         `json:"result,omitzero"`
-	Offload      *toolresult.Ref      `json:"offload,omitzero"`
-	OutputText   string               `json:"output_text,omitempty"`
-	MutatedPaths []string             `json:"mutated_paths,omitempty"`
-	Failure      *tool.Failure        `json:"failure,omitzero"`
+	Receipt      *toolReceiptEvidence      `json:"receipt,omitzero"`
+	MemberID     string                    `json:"member_id"`
+	Start        runs.ToolCallStarted      `json:"start"`
+	Result       *tool.Result              `json:"result,omitzero"`
+	Offload      *transcript.ToolResultRef `json:"offload,omitzero"`
+	OutputText   string                    `json:"output_text,omitempty"`
+	MutatedPaths []string                  `json:"mutated_paths,omitempty"`
+	Failure      *tool.Failure             `json:"failure,omitzero"`
 }
 
 type toolReceiptEvidence struct {
-	ProcessID string             `json:"process_id"`
-	EffectID  string             `json:"effect_id"`
-	Tool      tool.Ref           `json:"tool"`
-	Release   fingerprint.Digest `json:"release"`
-	Authority fingerprint.Digest `json:"authority"`
+	ProcessID string               `json:"process_id"`
+	EffectID  string               `json:"effect_id"`
+	Tool      tool.Ref             `json:"tool"`
+	Release   flameidentity.Digest `json:"release"`
+	Authority flameidentity.Digest `json:"authority"`
 }
 
 func (t toolResultMetadata) clone() toolResultMetadata {
@@ -170,7 +169,7 @@ func (i *interactionSession) toolResultProjection(relation agent.ProcessRelation
 	return runs.ExecutorEvent{Member: member, Payload: fact}, nil
 }
 
-func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeidentity.EffectID) {
+func (i *interactionSession) retirePublishedToolMetadata(identities []runs.InvocationID) {
 	i.state.mu.Lock()
 	var delegates []*managedDelegateCall
 	for _, identity := range identities {
@@ -221,7 +220,7 @@ func decodeToolMetadata(values []toolResultMetadata, processes map[agent.Process
 	return metadata, nil
 }
 
-func resultPublication(identity runtimeidentity.EffectID, entry interaction.ResultEntry) (runs.ResultPublication, error) {
+func resultPublication(identity runs.InvocationID, entry interaction.ResultEntry) (runs.ResultPublication, error) {
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return runs.ResultPublication{}, err

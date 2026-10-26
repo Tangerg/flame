@@ -11,7 +11,7 @@
       "description": "Read one GitHub issue or pull request by its repository and issue number.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_IssueInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_IssueInput": {
             "additionalProperties": false,
             "properties": {
               "number": {
@@ -64,7 +64,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -191,7 +191,7 @@
       "description": "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ListInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -294,7 +294,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_Issue": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
             "additionalProperties": false,
             "properties": {
               "author": {
@@ -353,12 +353,12 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_IssuePage": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_IssuePage": {
             "additionalProperties": false,
             "properties": {
               "issues": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_Issue"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue"
                 },
                 "type": "array"
               },
@@ -383,7 +383,7 @@
         "properties": {
           "issues": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_Issue"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue"
             },
             "type": "array"
           },
@@ -410,7 +410,7 @@
       "description": "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_FileInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_FileInput": {
             "additionalProperties": false,
             "properties": {
               "path": {
@@ -463,7 +463,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2JhY2tlbmQvcnBj_File": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_File": {
             "additionalProperties": false,
             "properties": {
               "path": {

@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -21,7 +21,7 @@ func TestExecutableBackendStreamsDecorationThroughOriginalModelNext(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "model-decoration", Composition: capability.Decoration, Scope: "call"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "model-decoration", Composition: extension.Decoration, Scope: "call"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

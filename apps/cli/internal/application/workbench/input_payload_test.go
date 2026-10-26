@@ -12,8 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -24,12 +23,12 @@ func TestPreparedInputPreservesMaximumAttachmentOutsideRecordBudget(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := base64.StdEncoding.EncodeToString(make([]byte, prompt.MaxAttachmentBytes))
-	command := prompt.StartRun{
+	data := base64.StdEncoding.EncodeToString(make([]byte, authoring.MaxAttachmentBytes))
+	command := authoring.StartRun{
 		CommandID: "cli_11111111111111111111111111111111", SessionID: "ses_large",
-		Message: prompt.Message{Attachments: []prompt.Attachment{{
+		Message: authoring.Message{Attachments: []authoring.Attachment{{
 			ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png",
-			Path: filepath.Join(t.TempDir(), "image.png"), MimeType: "image/png", Size: prompt.MaxAttachmentBytes,
+			Path: filepath.Join(t.TempDir(), "image.png"), MimeType: "image/png", Size: authoring.MaxAttachmentBytes,
 		}}},
 	}
 	input := []protocol.ContentBlock{{Type: protocol.ContentBlockImage, Mime: "image/png", Data: data}}
@@ -83,7 +82,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			steer := steerTestPending(t, "ses_steer", attachment)
 			message := steer.Message()
 			input := steer.Command().Input
-			start := prompt.StartRun{
+			start := authoring.StartRun{
 				CommandID: "cli_22222222222222222222222222222222", SessionID: "ses_start", Message: message,
 			}
 			if err := store.StagePendingRun(queuedPendingRun(start)); err != nil {
@@ -107,7 +106,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if err := store.StagePendingResume("ses_resume", resume, preparedTestInput(t, store, message, input)); err != nil {
 				t.Fatal(err)
 			}
-			source := prompt.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
+			source := authoring.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
 			if err := store.SaveDraft(steer.SessionID(), source); err != nil {
 				t.Fatal(err)
 			}
@@ -151,17 +150,17 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = reopened.Close() })
 			run := reopened.PendingRuns(start.SessionID)[0]
-			if _, err := run.ReplayCommand(); !errors.Is(err, replay.ErrCommandInputUnavailable) {
+			if _, err := run.ReplayCommand(); !errors.Is(err, authoring.ErrCommandInputUnavailable) {
 				t.Fatalf("start replay error = %v", err)
 			}
-			if _, err := reopened.RequeuePendingRun(start.SessionID, start.CommandID); !errors.Is(err, replay.ErrCommandInputUnavailable) {
+			if _, err := reopened.RequeuePendingRun(start.SessionID, start.CommandID); !errors.Is(err, authoring.ErrCommandInputUnavailable) {
 				t.Fatalf("unavailable start received a fresh command identity: %v", err)
 			}
 			recoveredResume, found := reopened.PendingResume("ses_resume")
 			if !found || recoveredResume.Command.CommandID != resume.Command.CommandID {
 				t.Fatal("resume identity was lost")
 			}
-			if _, err := recoveredResume.ReplayCommand(); !errors.Is(err, replay.ErrCommandInputUnavailable) {
+			if _, err := recoveredResume.ReplayCommand(); !errors.Is(err, authoring.ErrCommandInputUnavailable) {
 				t.Fatalf("resume replay error = %v", err)
 			}
 
@@ -169,10 +168,10 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if !found || recoveredSteer.CommandID() != steer.CommandID() {
 				t.Fatal("steer identity was lost")
 			}
-			if _, err := recoveredSteer.ReplayCommand(); !errors.Is(err, replay.ErrCommandInputUnavailable) {
+			if _, err := recoveredSteer.ReplayCommand(); !errors.Is(err, authoring.ErrCommandInputUnavailable) {
 				t.Fatalf("steer replay error = %v", err)
 			}
-			if err := reopened.SaveDraft(start.SessionID, prompt.Message{Text: "new work remains editable"}); err != nil {
+			if err := reopened.SaveDraft(start.SessionID, authoring.Message{Text: "new work remains editable"}); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -201,8 +200,8 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			command := prompt.StartRun{
-				CommandID: "cli_44444444444444444444444444444444", SessionID: "ses_failure", Message: prompt.Message{Text: "original"},
+			command := authoring.StartRun{
+				CommandID: "cli_44444444444444444444444444444444", SessionID: "ses_failure", Message: authoring.Message{Text: "original"},
 			}
 			if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 				t.Fatal(err)
@@ -211,7 +210,7 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 			input := []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: command.Message.Text}}
 			prepared, err := store.PrepareInput(t.Context(), command.Message, input)
 			if err == nil {
-				err = store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), prepared)
+				err = store.MarkPendingRunDispatching(command.SessionID, command.CommandID, authoring.UnprotectedGuard(), prepared)
 			}
 			if err == nil {
 				t.Fatal("injected publication failure was ignored")
@@ -247,7 +246,7 @@ func TestInputPublicationFailureLeavesQueuedCommandEditable(t *testing.T) {
 	}
 }
 
-func preparedTestInput(t *testing.T, store *Store, message prompt.Message, blocks []protocol.ContentBlock) *PreparedInput {
+func preparedTestInput(t *testing.T, store *Store, message authoring.Message, blocks []protocol.ContentBlock) *PreparedInput {
 	t.Helper()
 	input, err := store.PrepareInput(t.Context(), message, blocks)
 	if err != nil {
@@ -269,7 +268,7 @@ func TestOpeningAnotherStoreDoesNotDeleteInputAwaitingPublication(t *testing.T) 
 		t.Fatal("second writer admitted while input awaits publication")
 	}
 
-	source := prompt.Message{Text: "/steer " + pending.Message().Text, Attachments: pending.Message().Attachments}
+	source := authoring.Message{Text: "/steer " + pending.Message().Text, Attachments: pending.Message().Attachments}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
@@ -323,13 +322,13 @@ func TestInputPreparationDoesNotHoldTheAuthoringLock(t *testing.T) {
 	defer cancel()
 	finished := make(chan error, 1)
 	go func() {
-		_, err := store.PrepareInput(ctx, prompt.Message{Text: "input"}, []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "input"}})
+		_, err := store.PrepareInput(ctx, authoring.Message{Text: "input"}, []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "input"}})
 		finished <- err
 	}()
 	<-persistence.entered
 	// A draft write must finish while the large immutable write is still paused.
 	draftSaved := make(chan error, 1)
-	go func() { draftSaved <- store.SaveDraft("ses_edit", prompt.Message{Text: "still editable"}) }()
+	go func() { draftSaved <- store.SaveDraft("ses_edit", authoring.Message{Text: "still editable"}) }()
 	var saveErr error
 	select {
 	case saveErr = <-draftSaved:

@@ -12,8 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
@@ -142,9 +141,9 @@ func TestRemotePluginCommandsReceiveLocalAndRuntimeDirectories(t *testing.T) {
 	delivered := make(chan extensions.CommandRequest, 1)
 	plugin := extensions.Plugin{
 		ID: "test.locations", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.CommandsCapability},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+			err := scope.ContributeCommand(extensions.SlashCommand{
 				Descriptor: extensions.CommandDescriptor{Name: "locations", Title: "inspect command directories"},
 				Available: func(request extensions.CommandRequest) extensions.CommandAvailability {
 					if request.Workspace != remote || request.LocalDirectory != local || request.SessionID != created.ID {
@@ -156,13 +155,13 @@ func TestRemotePluginCommandsReceiveLocalAndRuntimeDirectories(t *testing.T) {
 					delivered <- request
 					return extensions.CommandResult{Message: "plugin directory context received"}, nil
 				},
-			}, extensions.Contribution{})
+			})
 			return err
 		},
 	}
 	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: created.ID, LocalDirectory: local,
-		DetachOnExit: true, Plugins: []extensions.Plugin{plugin},
+		DetachOnExit: true, PluginSources: []extensions.Source{testPluginSource{Plugins: []extensions.Plugin{plugin}}},
 	})
 	host.Shows(t, "Ask flame")
 	host.Type("/locations")
@@ -223,11 +222,11 @@ type heldStartReceiptsRuntime struct {
 	*idempotentStartRuntime
 	holdQuery bool
 	heldQuery atomic.Bool
-	forwarded chan prompt.StartRun
+	forwarded chan authoring.StartRun
 	queried   chan protocol.GetRunAcceptanceRequest
 }
 
-func (r *heldStartReceiptsRuntime) StartRun(ctx context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *heldStartReceiptsRuntime) StartRun(ctx context.Context, command authoring.StartRun) (conversation.SegmentStream, error) {
 	_, err := r.idempotentStartRuntime.StartRun(ctx, command)
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -262,7 +261,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 			t.Cleanup(func() { cancelFixtureSession(t, base, created.ID) })
 			backend := &heldStartReceiptsRuntime{
 				idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
-				holdQuery:              cancelBeforeExit, forwarded: make(chan prompt.StartRun, 1),
+				holdQuery:              cancelBeforeExit, forwarded: make(chan authoring.StartRun, 1),
 				queried: make(chan protocol.GetRunAcceptanceRequest, 1),
 			}
 			local, state := t.TempDir(), t.TempDir()
@@ -347,7 +346,7 @@ func (r *openingCancellationReplayRuntime) CancelRun(ctx context.Context, comman
 		return conversation.RunCancellation{}, err
 	}
 	r.cancellation, r.receipt = command, receipt
-	return conversation.RunCancellation{}, replay.ErrCommandOutcomeUnknown
+	return conversation.RunCancellation{}, authoring.ErrCommandOutcomeUnknown
 }
 
 func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing.T) {
@@ -372,7 +371,7 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	closing := &app{runtime: backend, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
-	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
+	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, authoring.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}
 	host, stop, workbenchForHost := runUIFromConfig(t, Config{

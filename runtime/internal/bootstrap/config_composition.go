@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
@@ -16,27 +15,27 @@ import (
 
 // ComposeConfig translates process settings and already-opened adapters into
 // the construction input consumed by assembly.
-func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver ChatResolver, providers models.ProviderRegistry, buildID string) Config {
-	return Config{
-		Stores:                   stores,
-		Resources:                []TerminalResource{stores},
-		BuildID:                  buildID,
-		ChatResolver:             resolver,
-		Pricing:                  modeladapter.Pricing(),
-		SkillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
-		Online:                   toolset.OnlineConfig(cfg.Online),
-		A2AAgents:                toolsetA2AAgents(cfg.A2AAgents),
-		LSPServers:               codeintelServers(cfg.LSPServers),
-		SandboxShell:             cfg.SandboxShell,
-		SandboxReadOnlyPaths:     cfg.SandboxReadOnlyPaths,
-		SandboxDir:               filepath.Join(stores.DataDirectory, "sandbox"),
-		ProviderRegistry:         providers,
-		Provider:                 cfg.Provider,
-		Model:                    cfg.Model,
-		CheckpointDir:            filepath.Join(stores.DataDirectory, "checkpoints"),
-		ToolResultOffloadEnabled: cfg.ToolResultOffload.Enabled,
-		ToolResultThreshold:      cfg.ToolResultOffload.Threshold,
-		ApprovalMode:             approval.ModeBalanced,
+func composeConfig(cfg config.Settings, stores *persistence.Bundle, resolver chatResolver, providers models.ProviderRegistry, buildID string) assemblyConfig {
+	return assemblyConfig{
+		stores:                   stores,
+		resources:                []terminalResource{stores},
+		buildID:                  buildID,
+		chatResolver:             resolver,
+		pricing:                  modeladapter.Pricing(),
+		skillsUserDir:            filepath.Join(stores.DataDirectory, "skills"),
+		online:                   toolset.OnlineConfig(cfg.Online),
+		a2aAgents:                toolsetA2AAgents(cfg.A2AAgents),
+		lspServers:               codeintelServers(cfg.LSPServers),
+		sandboxShell:             cfg.SandboxShell,
+		sandboxReadOnlyPaths:     cfg.SandboxReadOnlyPaths,
+		sandboxDir:               filepath.Join(stores.DataDirectory, "sandbox"),
+		providerRegistry:         providers,
+		provider:                 cfg.Provider,
+		model:                    cfg.Model,
+		checkpointDir:            filepath.Join(stores.DataDirectory, "checkpoints"),
+		toolResultOffloadEnabled: cfg.ToolResultOffload.Enabled,
+		toolResultThreshold:      cfg.ToolResultOffload.Threshold,
+		approvalMode:             approval.ModeBalanced,
 	}
 }
 

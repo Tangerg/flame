@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -36,7 +36,7 @@ func BenchmarkTextEmbeddingCallback(b *testing.B) {
 			if err := callbacks.PublishRPC(http.NotFoundHandler(), callback); err != nil {
 				b.Fatal(err)
 			}
-			ctx, err := WithInvocation(b.Context(), capability.Invocation{ID: "knowledge-operation", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "knowledge"}})
+			ctx, err := WithInvocation(b.Context(), extension.Invocation{ID: "knowledge-operation", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "knowledge"}})
 			if err != nil {
 				b.Fatal(err)
 			}

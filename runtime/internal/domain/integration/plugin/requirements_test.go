@@ -4,11 +4,11 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func TestRequiredBindingsCannotBeRetargetedThroughInputOrSnapshot(t *testing.T) {
-	contract, err := capability.New(capability.Config{Reference: "model", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "model.read", Kind: capability.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "model", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "model.read", Kind: extension.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,12 +5,11 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/scope/core/jsonschema"
+	"github.com/samber/lo"
 )
 
 type PointResolver interface {
@@ -26,26 +25,26 @@ type PointValue[T any] struct {
 
 // ResolvePointValues checks the consumer's typed schema against its published
 // point before decoding immutable installed bindings into consumer-owned values.
-func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *point.Contract, target capability.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
-	if dependency.Missing(caller) || contract == nil {
+func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *extension.Point, target extension.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
+	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}
 	schema, err := jsonschema.For[T]()
 	if err != nil {
 		return nil, err
 	}
-	actual, err := jsoninput.Parse(schema.JSON())
+	actual, err := jsonvalue.Parse(schema.JSON())
 	if err != nil {
 		return nil, err
 	}
-	required, err := jsoninput.Parse(contract.Definition().Value)
+	required, err := jsonvalue.Parse(contract.Definition().Value)
 	if err != nil {
 		return nil, err
 	}
 	if actual != required {
 		return nil, errors.New("runtime: consumer type differs from its point value schema")
 	}
-	contextJSON, err := jsoninput.Encode(attributes)
+	contextJSON, err := jsonvalue.Encode(attributes)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +63,7 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	}
 	values := make([]PointValue[T], 0, len(page.Data))
 	for _, binding := range page.Data {
-		input, err := jsoninput.Parse([]byte(binding.Value))
+		input, err := jsonvalue.Parse([]byte(binding.Value))
 		if err != nil {
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}

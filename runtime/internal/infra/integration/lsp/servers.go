@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/samber/lo"
 )
 
 // ErrNoServer means no configured language server handles the target — an
@@ -30,7 +30,7 @@ import (
 var ErrNoServer = errors.New("lsp: no language server for target")
 
 // ErrClosed means the server set has been shut down.
-var ErrClosed = errors.New("lsp: servers closed")
+var errClosed = errors.New("lsp: servers closed")
 
 // diagnosticsSettle bounds how long a diagnostics query waits for the server
 // to (re)analyze a just-synced document before returning what it has.
@@ -70,7 +70,7 @@ type clientStart struct {
 // NewServers builds a server set over specs (see DefaultServers for the
 // built-in table). It starts no processes — servers launch lazily on first use.
 func NewServers(lifetime context.Context, specs []ServerSpec) (*Servers, error) {
-	if dependency.Missing(lifetime) {
+	if lo.IsNil(lifetime) {
 		return nil, errors.New("lsp: lifetime is required")
 	}
 	table, err := newServerTable(specs)
@@ -122,7 +122,7 @@ func (s *Servers) clientFor(ctx context.Context, root string, spec ServerSpec) (
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
-		return nil, ErrClosed
+		return nil, errClosed
 	}
 	if c, ok := s.clients[key]; ok {
 		s.mu.Unlock()
@@ -204,7 +204,7 @@ func (s *Servers) launchClient(
 	if c != nil {
 		pending.cleanupErr = c.close()
 	}
-	pending.err = ErrClosed
+	pending.err = errClosed
 	close(pending.done)
 }
 

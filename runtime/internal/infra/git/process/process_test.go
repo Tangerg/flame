@@ -15,7 +15,7 @@ func TestEnvironmentOwnsGitControlsAndExplicitOverrides(t *testing.T) {
 	t.Setenv("SCOPE_GITPROCESS_SENTINEL", "preserved")
 	t.Setenv("SCOPE_GITPROCESS_OVERRIDE", "ambient")
 
-	environment := Environment(
+	environment := environment(
 		"GIT_DIR=/owned/repository",
 		"SCOPE_GITPROCESS_OVERRIDE=explicit",
 	)

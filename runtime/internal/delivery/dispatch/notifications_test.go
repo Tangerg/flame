@@ -3,17 +3,17 @@ package dispatch
 import (
 	"context"
 	"encoding/json/jsontext"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {
 	router := &Router{}
-	message := &transport.Request{
+	message := &jsonrpc.Request{
 		Method: "client.unknown",
 		Params: jsontext.Value(`{"_meta":null}`),
 	}

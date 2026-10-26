@@ -15,13 +15,13 @@ import (
 var (
 	// ErrModelContextDiverged reports that the Interaction candidate no longer
 	// begins with the exact durable conversation snapshot.
-	ErrModelContextDiverged = errors.New("maintenance: model context diverged from durable conversation")
+	errModelContextDiverged = errors.New("maintenance: model context diverged from durable conversation")
 	// ErrModelContextCannotFit reports that only protected or fixed context is
 	// over budget, so no truthful compaction can make the request executable.
-	ErrModelContextCannotFit = errors.New("maintenance: protected model context cannot fit")
+	errModelContextCannotFit = errors.New("maintenance: protected model context cannot fit")
 	// ErrModelContextCompactionVetoed reports that a lifecycle hook blocked a
 	// compaction required to keep the next model request inside its budget.
-	ErrModelContextCompactionVetoed = errors.New("maintenance: required model context compaction was vetoed")
+	errModelContextCompactionVetoed = errors.New("maintenance: required model context compaction was vetoed")
 )
 
 // CompactModelContext reduces the exact mutable context for one imminent model
@@ -47,7 +47,7 @@ func (c *Compactor) CompactModelContext(
 		if !matches {
 			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 				"%w: candidate_messages=%d durable_messages=%d first_difference=%s",
-				ErrModelContextDiverged,
+				errModelContextDiverged,
 				len(candidate),
 				len(stored),
 				difference,
@@ -63,7 +63,7 @@ func (c *Compactor) CompactModelContext(
 		if protectedTail > len(history) {
 			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 				"%w: protected durable tail %d exceeds stored history %d",
-				ErrModelContextDiverged,
+				errModelContextDiverged,
 				protectedTail,
 				len(history),
 			)
@@ -103,7 +103,7 @@ func (c *Compactor) CompactModelContext(
 		return executionadapter.ModelContextCompactionResult{}, fmt.Errorf("maintenance: pre-compaction hooks: %w", err)
 	}
 	if !allowed {
-		return executionadapter.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
+		return executionadapter.ModelContextCompactionResult{}, errModelContextCompactionVetoed
 	}
 
 	replacement, summary, cutoff, prefixAfter, err := c.materializeModelContextPlan(
@@ -119,7 +119,7 @@ func (c *Compactor) CompactModelContext(
 		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	if overBudget {
-		return executionadapter.ModelContextCompactionResult{}, ErrModelContextCannotFit
+		return executionadapter.ModelContextCompactionResult{}, errModelContextCannotFit
 	}
 	effective := slices.Concat(replacement, ephemeral)
 	result, err := executionadapter.NewModelContextCompactionResult(

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
 import { color, corner, space, surface } from "./tokens.stylex";
-import { SliderPrimitive } from "./primitives/slider";
+import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
 const styles = stylex.create({
   root: {

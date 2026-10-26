@@ -6,13 +6,11 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -146,7 +144,7 @@ func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Too
 		m.err = err
 		return executable
 	}
-	identified, err := WithIdentity(executable, ref, fingerprint.Digest{})
+	identified, err := WithIdentity(executable, ref, identity.Digest{})
 	if err != nil {
 		m.err = err
 		return executable

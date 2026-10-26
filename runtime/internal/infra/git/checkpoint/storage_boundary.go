@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // A checkpoint cannot archive or restore its own mutable Git metadata. This
@@ -17,11 +17,11 @@ func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	workspace, err := pathidentity.Resolve("", cwd)
+	workspace, err := filesystem.ResolvePath("", cwd)
 	if err != nil {
 		return fmt.Errorf("checkpoint: resolve workspace: %w", err)
 	}
-	storage, err := pathidentity.Resolve("", s.root)
+	storage, err := filesystem.ResolvePath("", s.root)
 	if err != nil {
 		return fmt.Errorf("checkpoint: resolve storage: %w", err)
 	}
@@ -29,7 +29,7 @@ func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
 		return nil
 	}
 	for _, pair := range [][2]string{{workspace, storage}, {storage, workspace}} {
-		contains, err := pathidentity.Contains(pair[0], pair[1])
+		contains, err := filesystem.ContainsPath(pair[0], pair[1])
 		if err != nil {
 			return fmt.Errorf("checkpoint: compare workspace and storage: %w", err)
 		}

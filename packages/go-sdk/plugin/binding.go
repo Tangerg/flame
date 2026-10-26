@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -17,43 +17,43 @@ import (
 // and the feature owns its business receipt.
 type Binding struct {
 	session    *sdk.ClientSession
-	method     *capability.Method
+	method     *extension.Method
 	export     string
 	capability string
 }
 
 // NewBinding accepts an already captured contract. The backend checks its exact
 // fingerprint before invocation; restoration does not discover a replacement.
-func NewBinding(session *sdk.ClientSession, descriptor capability.MethodDescriptor) (*Binding, error) {
+func NewBinding(session *sdk.ClientSession, descriptor extension.MethodDescriptor) (*Binding, error) {
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
-	method, err := capability.AdmitMethod(descriptor)
+	method, err := extension.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
 	return &Binding{session: session, method: method}, nil
 }
 
-func (b *Binding) Descriptor() capability.MethodDescriptor { return b.method.Descriptor() }
-func (b *Binding) Contract() jsoninput.Input               { return b.method.Identity() }
+func (b *Binding) Descriptor() extension.MethodDescriptor { return b.method.Descriptor() }
+func (b *Binding) Contract() jsonvalue.Value              { return b.method.Identity() }
 
 var ErrInvalidInput = errors.New("plugin: input is not structurally admitted")
 
 // ValidateInput checks the exact backend's complete structural contract without
 // a command identity or business dispatch. Transport failure proves no refusal.
-func (b *Binding) ValidateInput(ctx context.Context, input jsoninput.Input) error {
+func (b *Binding) ValidateInput(ctx context.Context, input jsonvalue.Value) error {
 	if b == nil {
 		return errors.New("plugin: operation binding is required")
 	}
 	if err := b.method.ValidateInput(input); err != nil {
 		return errors.Join(ErrInvalidInput, err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *Result[string]](ctx, b.session, validateMethod, &invokeParams{Protocol: capability.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON()})
+	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[string]](ctx, b.session, ValidateMethod, &invokeParams{Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON()})
 	if err != nil {
 		return err
 	}
-	problem, err := result.value(validateMethod)
+	problem, err := result.value(ValidateMethod)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 	if err != nil {
 		return nil, err
 	}
-	var selected *capability.MethodDescriptor
+	var selected *extension.MethodDescriptor
 	seen := make(map[string]bool, len(description.Methods))
 	for _, descriptor := range description.Methods {
 		if seen[descriptor.Name] {
@@ -87,14 +87,14 @@ func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Bin
 	return NewBinding(session, *selected)
 }
 
-func (b *Binding) invoke(ctx context.Context, id string, input jsoninput.Input, meta sdk.ParamsBase) (*Result[jsontext.Value], error) {
+func (b *Binding) invoke(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
 	if b != nil && len(b.method.Descriptor().Stream) != 0 {
 		return nil, errors.New("plugin: streaming method requires streaming delivery")
 	}
 	return b.invokeMode(ctx, id, input, meta)
 }
 
-func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Input, meta sdk.ParamsBase) (*Result[jsontext.Value], error) {
+func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Value, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
 	var err error
 	meta, err = invocationMetadata(ctx, meta)
 	if err != nil {
@@ -103,7 +103,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Inp
 	if b == nil {
 		return nil, errors.New("plugin: operation binding is required")
 	}
-	if b.method.Kind() == capability.Mutation {
+	if b.method.Kind() == extension.Mutation {
 		if err := validateCommandID(id); err != nil {
 			return nil, err
 		}
@@ -113,7 +113,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Inp
 	if err := b.method.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *Result[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: capability.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
+	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[jsontext.Value]](ctx, b.session, InvokeMethod, &invokeParams{ParamsBase: meta, Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -126,53 +126,53 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsoninput.Inp
 	return result, nil
 }
 
-func (b *Binding) Invoke(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, error) {
+func (b *Binding) Invoke(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
 	return b.InvokeWithMetadata(ctx, id, input, sdk.ParamsBase{})
 }
 
 // InvokeWithMetadata keeps ephemeral call collaborators outside admitted input.
-func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsoninput.Input, metadata sdk.ParamsBase) (jsoninput.Input, error) {
+func (b *Binding) InvokeWithMetadata(ctx context.Context, id string, input jsonvalue.Value, metadata sdk.ParamsBase) (jsonvalue.Value, error) {
 	if b != nil && len(b.method.Descriptor().Stream) != 0 {
-		return jsoninput.Input{}, errors.New("plugin: streaming method requires streaming delivery")
+		return jsonvalue.Value{}, errors.New("plugin: streaming method requires streaming delivery")
 	}
 	result, err := b.invoke(ctx, id, input, metadata)
 	if err != nil {
-		return jsoninput.Input{}, err
+		return jsonvalue.Value{}, err
 	}
-	return jsoninput.Parse(result.valueJSON)
+	return jsonvalue.Parse(result.valueJSON)
 }
 
-func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsoninput.Input) (jsoninput.Input, bool, error) {
-	if b == nil || b.method.Kind() != capability.Mutation {
-		return jsoninput.Input{}, false, errors.New("plugin: command binding is required")
+func (b *Binding) ReadReceipt(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, bool, error) {
+	if b == nil || b.method.Kind() != extension.Mutation {
+		return jsonvalue.Value{}, false, errors.New("plugin: command binding is required")
 	}
 	// Receipt lookup compares the original admitted evidence. A Tool may have
 	// translated those arguments before calling this business method.
 	if err := input.Validate(); err != nil {
-		return jsoninput.Input{}, false, err
+		return jsonvalue.Value{}, false, err
 	}
 	lookup, err := receiptBinding(b.session)
 	if err != nil {
-		return jsoninput.Input{}, false, err
+		return jsonvalue.Value{}, false, err
 	}
 	lookup.export, lookup.capability = b.export, b.capability
 	value, found, err := readReceipt(ctx, lookup, id, b.method.Name(), input)
 	if err != nil || !found {
-		return jsoninput.Input{}, found, err
+		return jsonvalue.Value{}, found, err
 	}
 	if err := b.method.ValidateOutput(value); err != nil {
-		return jsoninput.Input{}, false, fmt.Errorf("plugin: %s receipt output: %w", b.method.Name(), err)
+		return jsonvalue.Value{}, false, fmt.Errorf("plugin: %s receipt output: %w", b.method.Name(), err)
 	}
-	admitted, err := jsoninput.Parse(value)
+	admitted, err := jsonvalue.Parse(value)
 	return admitted, err == nil, err
 }
 
-func decodeBoundResult[R any](result *Result[jsontext.Value]) (*Result[R], error) {
+func decodeBoundResult[R any](result *methodResult[jsontext.Value]) (*methodResult[R], error) {
 	data, err := json.Marshal(result)
 	if err != nil {
 		return nil, err
 	}
-	var typed Result[R]
+	var typed methodResult[R]
 	if err := json.Unmarshal(data, &typed, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}

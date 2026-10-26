@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/samber/lo"
 )
 
 const (
@@ -48,7 +48,7 @@ func NewWatch(scope *Scope, watcher FileWatcher) (*Watch, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: watch scope is required")
 	}
-	if dependency.Missing(watcher) {
+	if lo.IsNil(watcher) {
 		return nil, errors.New("workspace: file watcher is required")
 	}
 	return &Watch{scope: scope, watcher: watcher}, nil

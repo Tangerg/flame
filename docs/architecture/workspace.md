@@ -5,16 +5,16 @@ module. Each maintained Go module has an independent compilation and dependency
 boundary; packages within one module follow cohesive ownership rather than a
 module-per-directory rule.
 
-| Module directory                   | Responsibility                                                    | Allowed first-party dependencies                         |
-| ---------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| `packages/go-sdk`                  | Public values, protocol, client, plugin SDK and author generators | None                                                     |
-| `packages/local-runtime`           | Runtime process and companion distribution contracts              | None                                                     |
-| `plugins`                          | First-party plugin implementations and publisher contracts        | Go SDK                                                   |
-| `runtime`                          | Product domain, application, adapters and delivery                | Go SDK, local-runtime; plugins only in integration tests |
-| `apps/cli`                         | Workbench and CLI/terminal delivery                               | Go SDK, local-runtime, Runtime                           |
-| `apps/desktop`                     | Native host, pure bridge DTOs and source generator                | Go SDK, local-runtime                                    |
-| `tooling`                          | Repository coordination, API inventory and cross-product tests    | Required public modules                                  |
-| `examples/plugins/reviews/backend` | Independent author namespace                                      | Go SDK                                                   |
+| Module directory                   | Responsibility                                                    | Allowed first-party dependencies |
+| ---------------------------------- | ----------------------------------------------------------------- | -------------------------------- |
+| `packages/go-sdk`                  | Public values, protocol, client, plugin SDK and author generators | None                             |
+| `packages/local-runtime`           | Runtime process and companion distribution contracts              | None                             |
+| `plugins`                          | First-party plugin implementations and publisher contracts        | Go SDK                           |
+| `runtime`                          | Product domain, application, adapters and delivery                | Go SDK, local-runtime            |
+| `apps/cli`                         | Workbench and CLI/terminal delivery                               | Go SDK, local-runtime, Runtime   |
+| `apps/desktop`                     | Native host, pure bridge DTOs and source generator                | Go SDK, local-runtime            |
+| `tooling`                          | Repository coordination, API inventory and cross-product tests    | Required public modules          |
+| `examples/plugins/reviews/backend` | Independent author namespace                                      | Go SDK                           |
 
 Root npm workspaces own one lock. Exported author projects select their own
 dependencies and locks. `module-candidates.json` maps an already selected module
@@ -31,15 +31,15 @@ calls enter the same server delivery semantics. The remote client never imports
 the host, Domain, Application, adapters, bootstrap or server transport.
 
 `packages/go-sdk/protocol` owns wire shapes, strict request/response admission, call
-options and shared problem vocabulary. `packages/go-sdk/protocol/jsonrpc` owns the
-shared envelope codec; server request metadata and handlers remain private.
-`packages/go-sdk/identity` owns lexical declaration IDs and `packages/go-sdk/fingerprint` owns
-pure digest encoding. Backend SDKs, ordinary SDK tests and author commands consume these public
+options, shared problem vocabulary and strict RPC envelope admission. Native
+JSON-RPC message types retain their released upstream owner; server request
+metadata and handlers remain private.
+`packages/go-sdk/identity` owns lexical declaration IDs and pure digest encoding. Backend SDKs, ordinary SDK tests and author commands consume these public
 mechanisms without importing Runtime. SDK enum declarations carry closed-vocabulary
 markers; the Host generator resolves their typed constants. Derived runtime-event
-sets remain projections of their existing descriptor owners. Generic schema/TS
-rendering and feature generation live in `packages/go-sdk/contractgen`; host
-registry walking remains in the Host command. Repository API discovery lives in
+sets remain projections of their existing descriptor owners. Generic schema/TypeScript rendering lives in `packages/go-sdk/contractgen`;
+feature projection is private workflow in `packages/go-sdk/cmd/flame-sdk`.
+Host registry walking remains in the Host command. Repository API discovery lives in
 `tooling/goapi` and consumes generated method names from the manifest. Runtime production and ordinary testsupport never
 import first-party implementation packages. Product integration uses public
 bindings; private adapter/bootstrapping contract tests remain adjacent to the
@@ -62,7 +62,12 @@ inner-to-outer dependencies; collapsing whole directories to graph nodes would
 incorrectly merge those independent contracts. Resolved Agent public types are
 also checked through aliases, mapped types and method return types for SDK leaks.
 
-Each plugin has only its actual `backend/`, `component/` and `package/` sources.
+Each plugin keeps executable composition in `backend/`, private Go behavior in
+its feature-local `internal/`, optional browser UI in `component/`, and distributable
+resources in `package/`. Cross-product fixtures consume published contracts and
+real executables; they do not import private application, persistence or transport
+packages. Memory retains its canonical publisher, while independent Reviews
+retains the contract its analyzer consumes.
 The builder accepts explicit source/output directories. Installation consumes an
 assembled package in `out/`, never a source directory. Generated ESM and contracts
 have the corresponding component/backend owner. Memory, Schedules and Skills

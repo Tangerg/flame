@@ -7,19 +7,17 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // capture retains the exact contributions until all provider work has joined.
@@ -28,7 +26,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 	if release == nil {
 		return models.SelectedChat{}, nil, errors.New("model composition: model release is required")
 	}
-	if dependency.Missing(resolved.Model()) || admit == nil {
+	if lo.IsNil(resolved.Model()) || admit == nil {
 		release()
 		return models.SelectedChat{}, nil, errors.New("model composition: model and admission owner are required")
 	}
@@ -137,7 +135,7 @@ type modelCapture struct {
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil || invocation.Target.Scope != capability.ScopeCall {
+	if err != nil || invocation.Target.Scope != extension.ScopeCall {
 		return nil, nil, errors.Join(err, errors.New("model composition: model call identity is required"))
 	}
 	c.mu.Lock()

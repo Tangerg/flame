@@ -35,10 +35,10 @@ func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
 	byID := make(map[string]run.Run, len(runs))
 	for _, value := range runs {
 		if value.SessionID() != sessionID {
-			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Session", ErrRunIdentityConflict, value.ID())
+			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Session", errRunIdentityConflict, value.ID())
 		}
 		if _, duplicate := byID[value.ID()]; duplicate {
-			return Usage{}, fmt.Errorf("%w: Run %q appears twice", ErrRunIdentityConflict, value.ID())
+			return Usage{}, fmt.Errorf("%w: Run %q appears twice", errRunIdentityConflict, value.ID())
 		}
 		if _, terminal := value.Outcome(); !terminal {
 			return Usage{}, fmt.Errorf("goal: Run %q is not terminal", value.ID())
@@ -49,7 +49,7 @@ func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
 	for index, value := range runs {
 		root, found := byID[value.Lineage().TreeRootID(value.ID())]
 		if !found || !root.Lineage().IsRoot() || root.GoalIncarnationID() != incarnationID {
-			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Goal", ErrRunIdentityConflict, value.ID())
+			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Goal", errRunIdentityConflict, value.ID())
 		}
 		cost, err := value.Metrics().Cost()
 		if err != nil {
@@ -82,7 +82,7 @@ func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
 // Run itself is what the Goal's usage is folded from.
 func (g Goal) RecordRun(value run.Run) (Goal, bool, error) {
 	if value.SessionID() != g.sessionID || value.GoalIncarnationID() != g.incarnationID.String() {
-		return Goal{}, false, fmt.Errorf("%w: Run belongs to another Goal", ErrRunIdentityConflict)
+		return Goal{}, false, fmt.Errorf("%w: Run belongs to another Goal", errRunIdentityConflict)
 	}
 	outcome, terminal := value.Outcome()
 	if !terminal {

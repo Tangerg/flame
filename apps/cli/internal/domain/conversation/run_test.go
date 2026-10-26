@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 	running := runningRun("seg_1")
 	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	running.ProtocolProfile = &runtimeprotocol.RunProtocolProfile{
-		RequiredFeatures: []runtimeprotocol.RunProtocolFeature{runtimeprotocol.RunProtocolFeatureSubagents},
-		InterruptTypes:   []runtimeprotocol.InterruptType{runtimeprotocol.InterruptApproval, runtimeprotocol.InterruptQuestion},
+	running.ProtocolProfile = &protocol.RunProtocolProfile{
+		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}
 	if err := running.Validate(); err != nil {
 		t.Fatal(err)
@@ -22,8 +22,8 @@ func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 		t.Fatal("an unconstructed run projection was accepted")
 	}
 	cloned := running.Clone()
-	cloned.ProtocolProfile.InterruptTypes[0] = runtimeprotocol.InterruptQuestion
-	if running.ProtocolProfile.InterruptTypes[0] != runtimeprotocol.InterruptApproval || running.Equal(cloned) {
+	cloned.ProtocolProfile.InterruptTypes[0] = protocol.InterruptQuestion
+	if running.ProtocolProfile.InterruptTypes[0] != protocol.InterruptApproval || running.Equal(cloned) {
 		t.Fatal("run clone shares its negotiated contract")
 	}
 }
@@ -77,7 +77,7 @@ func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLin
 }
 
 func TestOutcomeProblemIsValueOwned(t *testing.T) {
-	original := Outcome{Status: runtimeprotocol.OutcomeTimedOut, Problem: &runtimeprotocol.ProblemData{
+	original := Outcome{Status: protocol.OutcomeTimedOut, Problem: &protocol.ProblemData{
 		Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2,
 	}}
 	cloned := original.Clone()
@@ -88,7 +88,7 @@ func TestOutcomeProblemIsValueOwned(t *testing.T) {
 }
 
 func TestOutcomeExplanationIncludesRecoveryMetadata(t *testing.T) {
-	outcome := Outcome{Status: runtimeprotocol.OutcomeFailed, Problem: &runtimeprotocol.ProblemData{
+	outcome := Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{
 		Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 	}}
 	if got := outcome.Description(); got != "quota exhausted" {
@@ -103,7 +103,7 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	knownZero, modelCost := 0.0, 0.25
 	usage := Usage{
 		CostUSD: &knownZero, Steps: 3,
-		ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12, CostUSD: &modelCost}},
+		ByModel: map[string]protocol.ModelUsage{"deepseek/v4": {InputTokens: 12, CostUSD: &modelCost}},
 	}
 	cloned := usage.Clone()
 	*usage.CostUSD = 1
@@ -123,7 +123,7 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 		t.Fatal("known cumulative cost regressed")
 	}
 	if err := validateUsageProgress(
-		Usage{Steps: 3, ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12}}},
+		Usage{Steps: 3, ByModel: map[string]protocol.ModelUsage{"deepseek/v4": {InputTokens: 12}}},
 		Usage{Steps: 2},
 	); err == nil {
 		t.Fatal("step or per-model usage regression was accepted")

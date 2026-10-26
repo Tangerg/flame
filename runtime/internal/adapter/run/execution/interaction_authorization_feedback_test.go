@@ -6,13 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -55,11 +53,11 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 				}
 				return interactionUsageTextResponse("request permission", 1, 1), nil
 			})
-			policy := feedbackAuthorizer{decision: DenyTool(reason)}
+			policy := feedbackAuthorizer{decision: denyTool(reason)}
 			hooks := &feedbackHooks{}
 			if fromHook {
-				policy.decision = AllowTool()
-				hooks.decision = DenyToolHook(reason)
+				policy.decision = allowTool()
+				hooks.decision = denyToolHook(reason)
 			}
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
@@ -112,7 +110,7 @@ func TestInteractionAuthorizationErrorsDoNotPublishNestedOutcomes(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy := feedbackAuthorizer{decision: AllowTool(), err: errors.Join(context.DeadlineExceeded, inner)}
+			policy := feedbackAuthorizer{decision: allowTool(), err: errors.Join(context.DeadlineExceeded, inner)}
 			hooks := &feedbackHooks{}
 			if fromHook {
 				hooks.err, policy.err = policy.err, nil
@@ -148,7 +146,7 @@ func (f feedbackAuthorizer) AuthorizeTool(context.Context, ToolAuthorizationRequ
 	return f.decision, f.err
 }
 
-func (f feedbackAuthorizer) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
+func (f feedbackAuthorizer) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, run.InterruptResolution) (ToolAuthorizationDecision, error) {
 	return f.decision, f.err
 }
 

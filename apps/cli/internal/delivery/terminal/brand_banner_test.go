@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -61,7 +61,7 @@ func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 }
 
 func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
-	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", conversation.Session{}, prompt.RunOptions{})
+	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", conversation.Session{}, authoring.RunOptions{})
 	got := drawStatic(t, banner, 72, 12)
 	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
 		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
@@ -70,7 +70,7 @@ func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
 
 func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{})
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, authoring.RunOptions{})
 	view.SetEntrance(banner)
 
 	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
@@ -90,7 +90,7 @@ func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 
 func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
+	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, authoring.RunOptions{}))
 
 	view.Reset()
 	if got := drawRoot(t, view, 72, 12); strings.Contains(got, "Flame CLI") {
@@ -100,7 +100,7 @@ func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 
 func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
-	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
+	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, authoring.RunOptions{}))
 	initial.images = newTerminalImagePresenter(program.Images{})
 	a := &app{ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 

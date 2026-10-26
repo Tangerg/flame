@@ -182,11 +182,7 @@ func TestSideloadedPluginMustDeclareCommandsCapability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := new(extensions.Registry)
-	extensionHost, err := extensions.NewHost(registry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	extensionHost := extensions.NewHost()
 	defer func() { _ = extensionHost.Close() }()
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil {
@@ -195,7 +191,7 @@ func TestSideloadedPluginMustDeclareCommandsCapability(t *testing.T) {
 	if len(results) != 1 || results[0].Phase != extensions.PluginFailed || !strings.Contains(results[0].Err.Error(), "terminal.commands") {
 		t.Fatalf("activation = %+v", results)
 	}
-	if commands := registry.Values(extensions.SlashCommands); len(commands) != 0 {
+	if commands := extensionHost.Commands(); len(commands) != 0 {
 		t.Fatalf("denied plugin registered commands: %+v", commands)
 	}
 }
@@ -216,17 +212,17 @@ func TestSideloadedCommandRejectsAnInvalidArgumentMode(t *testing.T) {
 
 func TestSideloadedCommandTimeoutDistinguishesAbsenceFromExplicitZero(t *testing.T) {
 	t.Parallel()
-	if timeout, err := (commandTimeoutDeclaration{}).Resolve("hello"); err != nil || timeout != defaultCommandTimeout {
+	if timeout, err := (commandTimeoutDeclaration{}).resolve("hello"); err != nil || timeout != defaultCommandTimeout {
 		t.Fatalf("default timeout = (%s, %v), want %s", timeout, err, defaultCommandTimeout)
 	}
 	for _, seconds := range []int{1, int(maxCommandTimeout.Seconds())} {
 		declaration := commandTimeoutDeclaration{present: true, seconds: seconds}
-		if timeout, err := declaration.Resolve("hello"); err != nil || timeout != time.Duration(seconds)*time.Second {
+		if timeout, err := declaration.resolve("hello"); err != nil || timeout != time.Duration(seconds)*time.Second {
 			t.Fatalf("timeout %d = (%s, %v)", seconds, timeout, err)
 		}
 	}
 	for _, seconds := range []int{0, -1, int(maxCommandTimeout.Seconds()) + 1} {
-		if _, err := (commandTimeoutDeclaration{present: true, seconds: seconds}).Resolve("hello"); err == nil {
+		if _, err := (commandTimeoutDeclaration{present: true, seconds: seconds}).resolve("hello"); err == nil {
 			t.Fatalf("timeout %d was accepted", seconds)
 		}
 	}
@@ -234,11 +230,11 @@ func TestSideloadedCommandTimeoutDistinguishesAbsenceFromExplicitZero(t *testing
 		// This value wraps to a positive 512ns if it is multiplied by one
 		// second before its declared unit is bounded.
 		const wrappingSeconds int64 = 20_211_507_185_753_197
-		if _, err := (commandTimeoutDeclaration{present: true, seconds: int(wrappingSeconds)}).Resolve("hello"); err == nil {
+		if _, err := (commandTimeoutDeclaration{present: true, seconds: int(wrappingSeconds)}).resolve("hello"); err == nil {
 			t.Fatalf("overflowing timeout %d was accepted", wrappingSeconds)
 		}
 	}
-	if _, err := (commandTimeoutDeclaration{seconds: 1}).Resolve("hello"); err == nil {
+	if _, err := (commandTimeoutDeclaration{seconds: 1}).resolve("hello"); err == nil {
 		t.Fatal("absent timeout carrying seconds was accepted")
 	}
 }
@@ -354,17 +350,18 @@ func loadFixtureCommands(t *testing.T, root string) ([]extensions.SlashCommand, 
 	if err != nil || len(discovered.Issues) != 0 {
 		t.Fatalf("discovery = %+v, %v", discovered, err)
 	}
-	registry := new(extensions.Registry)
-	extensionHost, err := extensions.NewHost(registry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	extensionHost := extensions.NewHost()
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil || len(results) != 1 || results[0].Phase != extensions.PluginLoaded {
 		_ = extensionHost.Close()
 		t.Fatalf("activation = %+v, %v", results, err)
 	}
-	return registry.Values(extensions.SlashCommands), func() { _ = extensionHost.Close() }
+	owned := extensionHost.Commands()
+	commands := make([]extensions.SlashCommand, len(owned))
+	for i, registered := range owned {
+		commands[i] = registered.Command
+	}
+	return commands, func() { _ = extensionHost.Close() }
 }
 
 func TestExecutableCommandHonorsCancellation(t *testing.T) {

@@ -4,8 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -18,13 +17,13 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	}
 	startGuard := protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour))
 	cancelGuard := protectedReplayGuard(t, "runtime-a", startGuard.Until().Add(time.Minute))
-	start := prompt.StartRun{
+	start := authoring.StartRun{
 		CommandID: "cli_88888888888888888888888888888888", SessionID: "ses_1",
-		Message: prompt.Message{Text: "persist guards"}, Options: prompt.RunOptions{},
+		Message: authoring.Message{Text: "persist guards"}, Options: authoring.RunOptions{},
 	}
 	if stagePendingRunErr := store.StagePendingRun(PendingRun{
 		State: PendingRunQueued, Command: start,
-		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+		Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 	}); stagePendingRunErr != nil {
 		t.Fatal(stagePendingRunErr)
 	}
@@ -72,18 +71,18 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	}
 }
 
-func protectedReplayGuard(t *testing.T, namespace string, until time.Time) replay.Guard {
+func protectedReplayGuard(t *testing.T, namespace string, until time.Time) authoring.ReplayGuard {
 	t.Helper()
-	guard, err := replay.NewProtectedGuard(namespace, until)
+	guard, err := authoring.NewProtectedGuard(namespace, until)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return guard
 }
 
-func queuedPendingRun(command prompt.StartRun) PendingRun {
+func queuedPendingRun(command authoring.StartRun) PendingRun {
 	return PendingRun{
 		State: PendingRunQueued, Command: command,
-		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+		Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 	}
 }

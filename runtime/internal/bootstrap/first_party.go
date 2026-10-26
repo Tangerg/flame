@@ -9,9 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"

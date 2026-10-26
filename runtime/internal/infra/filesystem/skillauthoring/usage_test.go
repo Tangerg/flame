@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -69,7 +69,7 @@ func TestRecordUseRejectsOversizedUsageMetadata(t *testing.T) {
 	}
 
 	store := newStore(t, root, skills.ScopeUser)
-	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrUsageTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrUsageTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 		t.Fatalf("RecordUse error = %v, want ErrUsageTooLarge beyond %d bytes", err, governedUsageBytes)
 	}
 }

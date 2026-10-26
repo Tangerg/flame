@@ -19,7 +19,7 @@ async function files(dir) {
   ).flat();
 }
 await rm(path.join(root, "dist"), { recursive: true, force: true });
-await mkdir(path.join(root, "dist/primitives"), { recursive: true });
+await mkdir(path.join(root, "dist"), { recursive: true });
 const sources = (await files(path.join(root, "src"))).filter(
   (file) => /\.tsx?$/.test(file) && !file.includes("/generated/"),
 );

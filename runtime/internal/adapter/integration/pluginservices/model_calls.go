@@ -5,19 +5,19 @@ import (
 	"errors"
 	"iter"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // ModelCallbacks uses the existing observed provider resolver and retained chain.
 // Each request is independent; a continuation still refers to its frozen endpoint.
 func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pluginsdk.Callback, error) {
-	if dependency.Missing(resolve) {
+	if lo.IsNil(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}
 	capture := func(ctx context.Context, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func(), error) {

@@ -7,7 +7,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	hookdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
@@ -22,7 +21,9 @@ type commandStub struct {
 func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) CommandResult {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	req.Input.Tool = optional.Clone(req.Input.Tool)
+	if req.Input.Tool != nil {
+		req.Input.Tool = new(*req.Input.Tool)
+	}
 	c.requests = append(c.requests, req)
 	if len(c.results) == 0 {
 		return CommandResult{}
@@ -51,7 +52,7 @@ func TestRunner_DeclarativeInject(t *testing.T) {
 }
 
 func TestRunnerTreatsAbsentCommandRunnerAsDeclarativeOnly(t *testing.T) {
-	for _, commands := range []CommandRunner{nil, (*commandStub)(nil)} {
+	for _, commands := range []commandRunner{nil, (*commandStub)(nil)} {
 		var observed error
 		runner := NewRunner(commands, func(_ context.Context, _ string, err error) { observed = err })
 		decision := runner.Run(t.Context(), []hookdomain.Hook{
@@ -133,7 +134,7 @@ func TestRunnerRejectsLossyArgumentsWithoutDroppingDeclarativeContext(t *testing
 }
 
 func TestRunner_StdoutDenyBlocks(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandDeny, Reason: "no rm allowed"}}}}, nil)
+	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: commandDeny, Reason: "no rm allowed"}}}}, nil)
 	hooks := []hookdomain.Hook{{
 		Event:   hookdomain.PreToolUse,
 		Command: "hook",
@@ -184,7 +185,7 @@ func TestRunnerAdmitsCommandMaterialFromTheProcessOutcome(t *testing.T) {
 }
 
 func TestRunner_AskEscalates(t *testing.T) {
-	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandAsk, Reason: "review"}}}}, nil)
+	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: commandAsk, Reason: "review"}}}}, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
 	if dec.Verdict != hookdomain.VerdictAsk {
@@ -285,7 +286,7 @@ func TestRunner_TimeoutIsNonBlocking(t *testing.T) {
 }
 
 func TestRunner_MatcherGatesByToolName(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandDeny, Reason: "x"}}}}
+	cmds := &commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: commandDeny, Reason: "x"}}}}
 	r := NewRunner(cmds, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Matcher: "shell", Command: "hook"}}
 
@@ -304,8 +305,8 @@ func TestRunner_MatcherGatesByToolName(t *testing.T) {
 
 func TestRunner_FirstBlockWins_ContextConcatenated(t *testing.T) {
 	r := NewRunner(&commandStub{results: []CommandResult{
-		{Decision: CommandDecision{Verdict: CommandDeny, Reason: "first"}},
-		{Decision: CommandDecision{Verdict: CommandDeny, Reason: "second"}},
+		{Decision: CommandDecision{Verdict: commandDeny, Reason: "first"}},
+		{Decision: CommandDecision{Verdict: commandDeny, Reason: "second"}},
 	}}, nil)
 	hooks := []hookdomain.Hook{
 		{Event: hookdomain.PostToolUse, Inject: "ctx-a"},
@@ -323,7 +324,7 @@ func TestRunner_FirstBlockWins_ContextConcatenated(t *testing.T) {
 }
 
 func TestRunner_WrongEventDoesNotFire(t *testing.T) {
-	cmds := &commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandDeny}}}}
+	cmds := &commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: commandDeny}}}}
 	r := NewRunner(cmds, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.Stop, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})

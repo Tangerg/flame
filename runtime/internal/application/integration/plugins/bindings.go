@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -15,17 +14,17 @@ import (
 // ContributionBinding captures one concrete implementation of a consumer contract.
 // Installation availability and composition choice remain with their own owners.
 type ContributionBinding struct {
-	InstallationID resourceid.InstallationID
+	InstallationID identity.InstallationID
 	ContributionID plugin.ContributionID
-	Digest         fingerprint.Digest
+	Digest         identity.Digest
 	ServerID       mcpserver.ID
 	ServerName     mcpserver.ServerName
 	Export         string
-	Contract       jsoninput.Input
+	Contract       jsonvalue.Value
 }
 
-func SelectedContribution(ctx context.Context, store Store, selections SelectionStore, required *capability.Contract) (ContributionBinding, bool, error) {
-	if required == nil || required.Descriptor().Composition != capability.Selection {
+func SelectedContribution(ctx context.Context, store Store, selections SelectionStore, required *extension.Capability) (ContributionBinding, bool, error) {
+	if required == nil || required.Descriptor().Composition != extension.Selection {
 		return ContributionBinding{}, false, plugin.ErrInvalid
 	}
 	choice, found, err := selections.Get(ctx, required.Descriptor().Reference)

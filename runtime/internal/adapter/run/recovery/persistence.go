@@ -9,51 +9,51 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
-type RunStore interface {
+type runStore interface {
 	runs.ToolResultPublications
 	ListNonTerminalRuns(ctx context.Context) ([]run.Run, error)
 	RecoverLost(ctx context.Context, replacement run.Replacement) error
 }
 
-type SessionStore interface {
+type sessionStore interface {
 	Get(ctx context.Context, sessionID string) (session.Session, error)
 }
 
-type InterruptStore interface {
+type interruptStore interface {
 	List(ctx context.Context, sessionID string) ([]runs.Pending, error)
 	Delete(ctx context.Context, rootRunID string) error
 }
 
-type TranscriptStore interface {
+type transcriptStore interface {
 	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
 	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
-type ConversationStore interface {
+type conversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]corechat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...corechat.Message) error
 	Count(ctx context.Context, sessionID string) (int, error)
 }
 
-type GoalRunRecorder interface {
+type goalRunRecorder interface {
 	RecordRun(ctx context.Context, value run.Run) error
 }
 
-type ExecutorCheckpointStore interface {
+type executorCheckpointStore interface {
 	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
 	DeleteSessionCheckpoints(ctx context.Context, sessionID string) error
 }
 
-type ModelInvocationStore interface {
+type modelInvocationStore interface {
 	ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error)
 	ValidateIndependentEndpoint(context.Context, modelref.EndpointObservation) error
 	ListStartedModelInvocations(
@@ -64,7 +64,7 @@ type ModelInvocationStore interface {
 	RecoverModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *modelref.EndpointObservation, run.ModelCallPurpose) error
 }
 
-type ToolInvocationStore interface {
+type toolInvocationStore interface {
 	ListStartedToolInvocations(
 		ctx context.Context,
 		yield func(sessionID, runID, segmentID, callID, itemID string, startedAt time.Time) error,
@@ -80,39 +80,39 @@ type ToolInvocationStore interface {
 // child admission. Its rows are not recovery facts: callbacks die with the
 // process, so reconciliation retires the claimed Session's abandoned ledger in
 // the same transaction as the public Run repair.
-type ChildRunStartReservations interface {
+type childRunStartReservations interface {
 	DeleteSession(ctx context.Context, sessionID string) error
 }
 
 type Transactor func(ctx context.Context, fn func(context.Context) error) error
 
 type Config struct {
-	Sessions            SessionStore
-	Runs                RunStore
-	Interrupts          InterruptStore
-	Transcript          TranscriptStore
-	Messages            ConversationStore
-	GoalRuns            GoalRunRecorder
-	ExecutorCheckpoints ExecutorCheckpointStore
-	ModelInvocations    ModelInvocationStore
-	ToolInvocations     ToolInvocationStore
-	ChildRunStarts      ChildRunStartReservations
+	Sessions            sessionStore
+	Runs                runStore
+	Interrupts          interruptStore
+	Transcript          transcriptStore
+	Messages            conversationStore
+	GoalRuns            goalRunRecorder
+	ExecutorCheckpoints executorCheckpointStore
+	ModelInvocations    modelInvocationStore
+	ToolInvocations     toolInvocationStore
+	ChildRunStarts      childRunStartReservations
 	Tx                  Transactor
 }
 
 // Persistence implements the recovery use case's durable fact and atomic
 // commit port.
 type Persistence struct {
-	sessions            SessionStore
-	runs                RunStore
-	interrupts          InterruptStore
-	transcript          TranscriptStore
-	messages            ConversationStore
-	goalRuns            GoalRunRecorder
-	executorCheckpoints ExecutorCheckpointStore
-	modelInvocations    ModelInvocationStore
-	toolInvocations     ToolInvocationStore
-	childRunStarts      ChildRunStartReservations
+	sessions            sessionStore
+	runs                runStore
+	interrupts          interruptStore
+	transcript          transcriptStore
+	messages            conversationStore
+	goalRuns            goalRunRecorder
+	executorCheckpoints executorCheckpointStore
+	modelInvocations    modelInvocationStore
+	toolInvocations     toolInvocationStore
+	childRunStarts      childRunStartReservations
 	tx                  Transactor
 }
 
@@ -128,7 +128,7 @@ func New(config Config) (*Persistence, error) {
 		{"model invocation store", config.ModelInvocations}, {"tool invocation store", config.ToolInvocations},
 		{"child run start reservation store", config.ChildRunStarts}, {"transactor", config.Tx},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("recovery: %s is required", required.name)
 		}
 	}

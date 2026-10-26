@@ -4,14 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
@@ -45,7 +43,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		OccurredAt: at, FinishedAt: at.Add(duration), ExecutionDuration: &duration,
 		Tool: &transcript.ToolInvocation{
 			Name: "delegate_task", Result: &preview,
-			Offload: &toolresult.Ref{ID: "BLOB234"},
+			Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 		},
 	})
 	source := Snapshot{
@@ -55,7 +53,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		},
 		Runs:  []run.Run{root, childRun},
 		Items: []transcript.Item{spawningItem},
-		ToolResults: []toolresult.Blob{{
+		ToolResults: []transcript.ToolResultBlob{{
 			ID: "BLOB234", SessionID: "ses_parent", Body: "delegated full body", CreatedAt: at,
 		}},
 	}

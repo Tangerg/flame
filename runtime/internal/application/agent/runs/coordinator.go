@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -17,12 +16,13 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/trace"
 )
 
 // ErrClosed is returned by [Coordinator.Start] once the Coordinator is closing:
 // it accepts no new run segments.
-var ErrClosed = errors.New("runs: coordinator closed")
+var errClosed = errors.New("runs: coordinator closed")
 
 // Coordinator owns the live run segments, the per-run event [journal], the
 // segment pump that drives a run from Start to terminal, and the
@@ -32,30 +32,30 @@ var ErrClosed = errors.New("runs: coordinator closed")
 // Reading Start and the pump explains a Run end to end through canonical
 // application events.
 type Coordinator struct {
-	commandAcceptances                 CommandAcceptanceReader
+	commandAcceptances                 commandAcceptanceReader
 	startAdmissions                    *keylock.Set
 	rootStarts                         RootExecutionStarter
 	rootCancellation                   RunningRootCancellationRequester
 	conversation                       ConversationReader
 	workingContexts                    WorkingContextComposer
-	models                             ModelAdmitter
+	models                             modelAdmitter
 	modelSelector                      modelapp.Selector
 	continuation                       ExecutionContinuer
-	approvalRules                      ApprovalRulePreparer
-	acceptedContinuations              AcceptedContinuationStore
-	waitingRestorer                    WaitingExecutionRestorer
+	approvalRules                      approvalRulePreparer
+	acceptedContinuations              acceptedContinuationStore
+	waitingRestorer                    waitingExecutionRestorer
 	steering                           RunningExecutionSteerer
 	runningSubtreeCanceler             RunningSubtreeCanceler
 	waitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
-	sessionReader                      SessionReader
-	sessionCreator                     SessionCreator
-	activeRuns                         ActiveRunReader
-	interrupts                         PendingInterruptReader
-	terminations                       TerminationCommitter
+	sessionReader                      sessionReader
+	sessionCreator                     sessionCreator
+	activeRuns                         activeRunReader
+	interrupts                         pendingInterruptReader
+	terminations                       terminationCommitter
 	childStarts                        ChildRunStartCommitter
 	checkpoints                        WaitingCheckpointReader
 	waitingSubtreeCancellations        WaitingSubtreeCancellationCommitter
-	isolation                          IsolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
+	isolation                          isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
 	newRunID                           func() string
 	newSegmentID                       func() string
 	// runs reads the durable run record. A subscribe or a steer that cannot be
@@ -90,19 +90,19 @@ func (c *Coordinator) AdmitSelection(selection modelchoice.Selection) error {
 // Dependencies is the complete collaborator set for the user-visible run use
 // cases and the segment supervisor they own.
 type Dependencies struct {
-	CommandAcceptances                 CommandAcceptanceReader
+	CommandAcceptances                 commandAcceptanceReader
 	RootStarts                         RootExecutionStarter
 	Observations                       ExecutionObserver
 	Releases                           ExecutionReleaser
 	RootCancellation                   RunningRootCancellationRequester
 	Conversation                       ConversationReader
 	WorkingContexts                    WorkingContextComposer
-	Models                             ModelAdmitter
+	Models                             modelAdmitter
 	ModelSelector                      modelapp.Selector
 	Continuation                       ExecutionContinuer
-	ApprovalRules                      ApprovalRulePreparer
-	AcceptedContinuations              AcceptedContinuationStore
-	WaitingRestorer                    WaitingExecutionRestorer
+	ApprovalRules                      approvalRulePreparer
+	AcceptedContinuations              acceptedContinuationStore
+	WaitingRestorer                    waitingExecutionRestorer
 	Steering                           RunningExecutionSteerer
 	RunningSubtreeCanceler             RunningSubtreeCanceler
 	WaitingSubtreeCancellationPreparer WaitingSubtreeCancellationPreparer
@@ -111,7 +111,7 @@ type Dependencies struct {
 	Runs                               Projection
 	Items                              ItemProjection
 	Admissions                         *ownership.Gate
-	Isolation                          IsolationProvider // nil disables isolated sessions (their start is refused)
+	Isolation                          isolationProvider // nil disables isolated sessions (their start is refused)
 	Now                                func() time.Time
 	// Retention bounds every segment's replay window. Zero takes
 	// [DefaultRetention], which is also what discovery advertises.
@@ -134,7 +134,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	if deps.Retention.MaxEvents <= 0 || deps.Retention.MaxBytes <= 0 {
 		return nil, errors.New("runs: replay retention budgets must be positive")
 	}
-	if deps.ModelSelector != nil && dependency.Missing(deps.ModelSelector) {
+	if deps.ModelSelector != nil && lo.IsNil(deps.ModelSelector) {
 		return nil, errors.New("runs: model selector is typed nil")
 	}
 	required := []struct {
@@ -176,11 +176,11 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"segment id generator", deps.NewSegmentID},
 	}
 	for _, required := range required {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("runs: %s is required", required.name)
 		}
 	}
-	if deps.Isolation != nil && dependency.Missing(deps.Isolation) {
+	if deps.Isolation != nil && lo.IsNil(deps.Isolation) {
 		return nil, errors.New("runs: isolation provider must not be typed nil")
 	}
 	return &Coordinator{
@@ -318,9 +318,9 @@ func (c *Coordinator) prepareSegmentStartup(
 	taskContext, releaseTask, attached := c.tasks.Attach(requestContext)
 	if !attached {
 		if spec.Continuation == nil {
-			return nil, c.rejectUnadmittedExecution(requestContext, spec.executorRef(), ErrClosed)
+			return nil, c.rejectUnadmittedExecution(requestContext, spec.executorRef(), errClosed)
 		}
-		return nil, ErrClosed
+		return nil, errClosed
 	}
 	runContext, cancelRun := context.WithCancel(taskContext)
 	startup := &segmentStartup{

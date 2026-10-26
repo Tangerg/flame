@@ -8,8 +8,9 @@ methods/metadata and the local binding; edit the registry rather than generated
 operations.
 
 Import `github.com/Tangerg/flame/packages/go-sdk/client` and use
-`packages/go-sdk/protocol` call options and wire values. `packages/go-sdk/protocol/jsonrpc`
-owns the shared envelope codec. The server's admission and lifecycle handlers
+`packages/go-sdk/protocol` call options, wire values and strict envelope codec.
+Native message types come from `github.com/Tangerg/go-sdk/jsonrpc`.
+The server's admission and lifecycle handlers
 remain private. `client.ErrClosed` describes a closed transport owner;
 `runtime.ErrClosed` describes a closed in-process host.
 

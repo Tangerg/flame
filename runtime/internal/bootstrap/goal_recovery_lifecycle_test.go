@@ -45,7 +45,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	}
 	// The driver clears a Goal whose Session lost its model selection, so the
 	// Session must carry one for this to reach the pause it is meant to prove.
-	if insertErr := cfg.Stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+	if insertErr := cfg.stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
 		Selection: selection, CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
@@ -64,19 +64,19 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if applied, saveErr := cfg.Stores.Goals.Save(ctx, opening); saveErr != nil || !applied {
+	if applied, saveErr := cfg.stores.Goals.Save(ctx, opening); saveErr != nil || !applied {
 		t.Fatalf("save opening Goal = (%t, %v)", applied, saveErr)
 	}
 
 	// The crash window: admitted under the Goal's incarnation, never terminalized.
-	if admitErr := cfg.Stores.Runs.Admit(ctx, run.Draft{
+	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_goal_lost",
 		ModelSelection: selection, GoalIncarnationID: incarnationID, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Goal-owned Run: %v", admitErr)
 	}
 
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	storedRuns, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)
+	storedRuns, err := cfg.stores.Runs.ListRuns(ctx, sessionID)
 	if err != nil || len(storedRuns) != 1 {
 		t.Fatalf("runs after recovery = (%+v, %v), want one", storedRuns, err)
 	}
@@ -98,7 +98,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("recovered Run = %+v, want a run_lost terminal", storedRuns[0].Snapshot())
 	}
 
-	recovered, exists, err := readBootstrapGoal(ctx, cfg.Stores.Goals, sessionID)
+	recovered, exists, err := readBootstrapGoal(ctx, cfg.stores.Goals, sessionID)
 	if err != nil || !exists {
 		t.Fatalf("Goal after recovery = (%t, %v), want the Goal to survive its Run", exists, err)
 	}
@@ -117,7 +117,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if closeErr := host.Close(); closeErr != nil {
 		t.Fatalf("close first Runtime: %v", closeErr)
 	}
-	secondHost, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	secondHost, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("second assemble: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	rebooted, exists, err := readBootstrapGoal(ctx, cfg.Stores.Goals, sessionID)
+	rebooted, exists, err := readBootstrapGoal(ctx, cfg.stores.Goals, sessionID)
 	if err != nil || !exists {
 		t.Fatalf("Goal after second boot = (%t, %v)", exists, err)
 	}
@@ -141,7 +141,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	}
 
 	// The Session is the user's again: nothing holds its single-writer slot.
-	if admitErr := cfg.Stores.Runs.Admit(ctx, run.Draft{
+	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: "run_after_recovery", SessionID: sessionID, SegmentID: "seg_after_recovery",
 		ModelSelection: selection, CreatedAt: createdAt.Add(time.Hour),
 	}); admitErr != nil {
@@ -165,7 +165,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if insertErr := cfg.Stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+	if insertErr := cfg.stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
 		Selection: selection, CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
@@ -183,11 +183,11 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if applied, saveErr := cfg.Stores.Goals.Save(ctx, opening); saveErr != nil || !applied {
+	if applied, saveErr := cfg.stores.Goals.Save(ctx, opening); saveErr != nil || !applied {
 		t.Fatalf("save opening Goal = (%t, %v)", applied, saveErr)
 	}
 
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	recovered, exists, err := readBootstrapGoal(ctx, cfg.Stores.Goals, sessionID)
+	recovered, exists, err := readBootstrapGoal(ctx, cfg.stores.Goals, sessionID)
 	if err != nil || !exists {
 		t.Fatalf("Goal after restart = (%t, %v), want the Goal to survive", exists, err)
 	}

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -174,7 +174,7 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		}
 	}()
 	mark("start requested")
-	opened, err := connection.StartRun(ctx, testStartRequest(session.ID, prompt.Message{Text: "steer admission probe"}))
+	opened, err := connection.StartRun(ctx, testStartRequest(session.ID, authoring.Message{Text: "steer admission probe"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,10 +186,10 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 		t.Fatal(ctx.Err())
 	}
 	mark("first provider entered; steer requested")
-	receipt, err := connection.SteerRun(ctx, prompt.SteerRun{
+	receipt, err := connection.SteerRun(ctx, authoring.SteerRun{
 		CommandID: "cli_77777777777777777777777777777777",
 		RunID:     opened.RunID, SegmentID: opened.SegmentID,
-		Message: prompt.Message{Text: "finish with the steered marker"},
+		Message: authoring.Message{Text: "finish with the steered marker"},
 	})
 	if err != nil || receipt.UserItemID == "" {
 		t.Fatalf("accepted steer receipt = %+v, %v", receipt, err)

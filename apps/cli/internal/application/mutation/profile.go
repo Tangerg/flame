@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -25,9 +25,9 @@ func PolicyFromProfile(profile ReplayProfile, now func() time.Time) (ReplayPolic
 		return ReplayPolicy{}, err
 	}
 	limits := profile.IdempotencyLimits()
-	capability, err := replay.NewCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
+	capability, err := authoring.NewReplayCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
 	if err != nil {
 		return ReplayPolicy{}, err
 	}
-	return NewReplayPolicy(capability, now)
+	return newReplayPolicy(capability, now)
 }

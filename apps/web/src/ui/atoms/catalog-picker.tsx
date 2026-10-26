@@ -3,7 +3,7 @@ import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useStat
 import { SearchField } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
-import { ComboboxPrimitive } from "@/ui/primitives/index";
+import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { dress } from "@flame/ui/button";
 import { Popover } from "@/ui/atoms/popover";

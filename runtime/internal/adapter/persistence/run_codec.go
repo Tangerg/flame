@@ -9,7 +9,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // The Run row's JSON columns. Token accounting, a failure classification, and
@@ -40,8 +39,8 @@ type runModelRowUse struct {
 // stored under their canonical names rather than ordinals, so inserting a kind
 // into the enum cannot silently re-label stored rows.
 type runCapabilitiesRow struct {
-	ChildRuns      bool             `json:"childRuns,omitzero"`
-	InterruptKinds []interrupt.Kind `json:"interruptKinds,omitempty"`
+	ChildRuns      bool                      `json:"childRuns,omitzero"`
+	InterruptKinds []rundomain.InterruptKind `json:"interruptKinds,omitempty"`
 }
 
 // encodeRunCapabilities returns the empty string for no optional capabilities,

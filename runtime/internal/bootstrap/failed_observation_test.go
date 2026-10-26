@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -23,7 +22,7 @@ func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, incompleteObservationModel{})
-	cfg.ChatResolver = observationResolver{ChatResolver: cfg.ChatResolver}
+	cfg.chatResolver = observationResolver{chatResolver: cfg.chatResolver}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
@@ -43,7 +42,7 @@ func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := event.Event.ValidateWire(); err != nil {
+		if err := protocol.ValidateWireTree(event.Event); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -66,7 +65,7 @@ func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 	}
 	visible := 0
 	for _, item := range items.Data {
-		if err := item.ValidateWire(); err != nil {
+		if err := protocol.ValidateWireTree(item); err != nil {
 			t.Fatal(err)
 		}
 		switch item.Type {
@@ -115,7 +114,7 @@ func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Se
 	}
 }
 
-type observationResolver struct{ ChatResolver }
+type observationResolver struct{ chatResolver }
 
 func (observationResolver) ResolveChat(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error) {
 	return modeladapter.NewResolvedChat(incompleteObservationModel{}, nil)

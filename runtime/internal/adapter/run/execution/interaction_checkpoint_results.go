@@ -5,11 +5,11 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func checkpointToolResultIDs(state interactionCheckpointState) []toolresult.ID {
-	var ids []toolresult.ID
+func checkpointToolResultIDs(state interactionCheckpointState) []transcript.ToolResultID {
+	var ids []transcript.ToolResultID
 	for _, metadata := range state.toolMetadata {
 		if metadata.Offload != nil {
 			ids = append(ids, metadata.Offload.ID)

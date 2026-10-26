@@ -7,9 +7,8 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type changeBinding interface {
@@ -17,7 +16,7 @@ type changeBinding interface {
 }
 
 func (r *Connection) Supports(topic protocol.RuntimeTopic) bool {
-	return r.profile.SupportsRuntimeTopic(topic)
+	return r.profile.supportsRuntimeTopic(topic)
 }
 
 func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {

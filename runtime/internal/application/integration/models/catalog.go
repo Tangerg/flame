@@ -7,7 +7,6 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -225,7 +224,10 @@ func cloneDetails(details *Details) *Details {
 	clone.ReasoningLevels = slices.Clone(details.ReasoningLevels)
 	clone.InputModalities = slices.Clone(details.InputModalities)
 	clone.OutputModalities = slices.Clone(details.OutputModalities)
-	clone.Pricing = optional.Clone(details.Pricing)
+	clone.Pricing = details.Pricing
+	if clone.Pricing != nil {
+		clone.Pricing = new(*clone.Pricing)
+	}
 	return &clone
 }
 

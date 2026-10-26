@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,7 +18,7 @@ func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
 	host.AdmitSession(session)
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: capability.Mutation, Target: "call", Description: "Stream the captured owner."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: extension.Mutation, Target: "call", Description: "Stream the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestStreamingCallbackNeverPublishesAPrematureFinalResult(t *testing.T) {
 }
 
 func TestStreamingWriteStopsTheSourceWithoutAnEventQueue(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: capability.Mutation, Target: "call", Description: "Stream with transport backpressure."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: extension.Mutation, Target: "call", Description: "Stream with transport backpressure."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,17 +89,17 @@ func TestStreamingWriteStopsTheSourceWithoutAnEventQueue(t *testing.T) {
 }
 
 func TestStreamSchemaOwnsIdentityAndUnaryInvocationRefusal(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: capability.Mutation, Target: "call", Description: "Stream the captured source."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "test/stream", Kind: extension.Mutation, Target: "call", Description: "Stream the captured source."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor := method.Descriptor()
-	stream, err := capability.AdmitMethod(descriptor)
+	stream, err := extension.AdmitMethod(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor.Stream = nil
-	unary, err := capability.AdmitMethod(descriptor)
+	unary, err := extension.AdmitMethod(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,14 +108,14 @@ func TestStreamSchemaOwnsIdentityAndUnaryInvocationRefusal(t *testing.T) {
 	}
 	descriptor = stream.Descriptor()
 	descriptor.Stream[0] = '!'
-	if _, err := capability.AdmitMethod(descriptor); err == nil {
+	if _, err := extension.AdmitMethod(descriptor); err == nil {
 		t.Fatal("invalid stream schema admitted")
 	}
 	if err := stream.ValidateChunk([]byte(`1`)); err != nil {
 		t.Fatal(err)
 	}
 	binding := &Binding{method: stream}
-	if _, err := binding.Invoke(t.Context(), "original-stream", jsoninput.Input{}); err == nil {
+	if _, err := binding.Invoke(t.Context(), "original-stream", jsonvalue.Value{}); err == nil {
 		t.Fatal("stream entered unary delivery")
 	}
 }

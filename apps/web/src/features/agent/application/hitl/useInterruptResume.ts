@@ -1,9 +1,10 @@
-import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { useCallback, useState } from "react";
 import { type InterruptResumePayload } from "@/features/agent/domain/hitl";
 
 export function resumeInterrupt(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   runId: string,
   itemId: string,
@@ -14,7 +15,7 @@ export function resumeInterrupt(
 }
 
 export function useInterruptResume<P>(sessionId: string, runId?: string, itemId?: string) {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const [pending, setPending] = useState<P | null>(null);
 

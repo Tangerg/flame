@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -19,12 +19,12 @@ func (r *RunStore) RecordRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return err
 	}
-	result, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET commit_segment_id = ?, commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
 		segmentID,
@@ -54,12 +54,12 @@ func (r *RunStore) RecordWaitingRunCommit(
 	ctx context.Context,
 	sessionID string,
 	runID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 		return err
 	}
-	result, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET commit_segment_id = '', commit_id = ?
 		  WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ''`,
 		commitID.String(),
@@ -87,14 +87,14 @@ func (r *RunStore) RecordWaitingRunCommit(
 // tree barrier.
 type runCommitMarker struct {
 	segmentID string
-	commitID  runtimeidentity.CommitID
+	commitID  runs.CommitID
 }
 
 func newRunCommitMarker(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) (*runCommitMarker, error) {
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (r *RunStore) RunCommitCommitted(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) (bool, error) {
 	if segmentID == "" {
 		if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
@@ -130,7 +130,7 @@ func (r *RunStore) RunCommitCommitted(
 		return false, err
 	}
 	var found int
-	err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx,
+	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT count(*)
 		   FROM runs
 		  WHERE session_id = ? AND run_id = ?
@@ -151,7 +151,7 @@ func (r *RunStore) RunCommitCommitted(
 	return found == 1, nil
 }
 
-func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error {
+func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("verify Run commit", sessionID, runID, segmentID); err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func validateRunCoordinates(operation, sessionID, runID, segmentID string) error
 	return nil
 }
 
-func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runtimeidentity.CommitID) error {
+func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runs.CommitID) error {
 	if err := validateSessionResource("verify waiting Run commit", sessionID); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, ru
 		return false, err
 	}
 	var storedSession, storedRun, storedSegment, storedDigest string
-	err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
+	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -212,7 +212,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 	if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(publicationID); err != nil {
+	if err := runs.ValidateInvocation(publicationID); err != nil {
 		return err
 	}
 	if digest == "" {
@@ -228,7 +228,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 	if err != nil {
 		return fmt.Errorf("sqlite: encode exact tool results: %w", err)
 	}
-	_, err = sqlitebase.Connection(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
+	_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
  VALUES (?, ?, ?, ?, ?, (SELECT max(seq) FROM messages WHERE conversation_id = ?), ?)`, publicationID, digest, sessionID, runID, segmentID, sessionID, string(encoded))
 	if err != nil {
 		return fmt.Errorf("sqlite: record result publication: %w", err)
@@ -237,7 +237,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 }
 
 func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]chat.ToolResult, error) {
-	rows, err := sqlitebase.Connection(ctx, r.db).QueryContext(ctx, `SELECT model_results FROM result_publications
+	rows, err := sqlite.Connection(ctx, r.db).QueryContext(ctx, `SELECT model_results FROM result_publications
  WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE conversation_id = ?))
  ORDER BY publication_id`, sessionID, runID, sessionID)
 	if err != nil {

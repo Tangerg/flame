@@ -5,7 +5,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -239,7 +238,7 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 		entry := protocol.Interrupt{ItemID: request.ItemID, RunID: request.RunID}
 		entry.Type = presentInterruptType(request.Kind)
 		switch request.Kind {
-		case interrupt.Approval:
+		case rundomain.InterruptApproval:
 			if request.Approval == nil {
 				panic("delivery: approval interrupt has no approval payload")
 			}
@@ -249,7 +248,7 @@ func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 				Reason:       request.Approval.Reason,
 				Rememberable: request.Approval.Rememberable,
 			}
-		case interrupt.Question:
+		case rundomain.InterruptQuestion:
 			if request.Question == nil {
 				panic("delivery: question interrupt has no question payload")
 			}

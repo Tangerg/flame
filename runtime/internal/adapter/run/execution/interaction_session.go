@@ -12,8 +12,6 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -29,7 +27,7 @@ import (
 
 type interactionSession struct {
 	executionTrees runs.ExecutionTreeStore
-	toolResults    OriginalToolResults
+	toolResults    originalToolResults
 	ref            runs.ExecutorRef
 	scope          runs.ExecutionScope
 	deployment     agent.Deployment
@@ -44,8 +42,8 @@ type interactionSession struct {
 	unknownPollInterval    time.Duration
 	statePollInterval      time.Duration
 	maintenance            RunMaintenance
-	lifecycleHooks         InteractionLifecycleHooks
-	buildID                runtimeidentity.BuildID
+	lifecycleHooks         interactionLifecycleHooks
+	buildID                runs.BuildID
 	start                  runs.RootExecutionStart
 	modelFailures          interactionModelFailures
 	modelObservers         []plugins.ContributionBinding
@@ -54,8 +52,8 @@ type interactionSession struct {
 	modelInputs            []plugins.ContributionBinding
 	toolProposals          []plugins.ContributionBinding
 	selectedChat           modeladapter.SelectedChat
-	modelEvidence          InteractionModelEvidence
-	callComposition        InteractionCallComposition
+	modelEvidence          interactionModelEvidence
+	callComposition        interactionCallComposition
 	effectFailures         interactionEffectFailures
 	segmentClock           interactionSegmentClock
 	// telemetry observes Framework facts only. It owns Process, Step, and
@@ -136,7 +134,7 @@ func newInteractionSession(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
 	config InteractionExecutorConfig,
-	buildID runtimeidentity.BuildID,
+	buildID runs.BuildID,
 	policy interactionExecutionPolicy,
 	telemetry *otelagent.Observer,
 ) *interactionSession {

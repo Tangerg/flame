@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
@@ -231,9 +233,9 @@ func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
 	}
 }
 
-func protectedGuard(t *testing.T, namespace string, until time.Time) replay.Guard {
+func protectedGuard(t *testing.T, namespace string, until time.Time) authoring.ReplayGuard {
 	t.Helper()
-	guard, err := replay.NewProtectedGuard(namespace, until)
+	guard, err := authoring.NewProtectedGuard(namespace, until)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,11 +249,11 @@ func replayPolicy(
 	now func() time.Time,
 ) mutation.ReplayPolicy {
 	t.Helper()
-	capability, err := replay.NewCapability(namespace, retention)
+	capability, err := authoring.NewReplayCapability(namespace, retention)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := mutation.NewReplayPolicy(capability, now)
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: capability}, now)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -22,17 +21,17 @@ func (c capturingToolAuthorizer) AuthorizeTool(
 	request ToolAuthorizationRequest,
 ) (ToolAuthorizationDecision, error) {
 	*c.request = request
-	return AllowTool(), nil
+	return allowTool(), nil
 }
 
 func (c capturingToolAuthorizer) ResolveToolApproval(
 	_ context.Context,
 	request ToolAuthorizationRequest,
 	_ runs.ApprovalPrompt,
-	_ interrupt.Resolution,
+	_ run.InterruptResolution,
 ) (ToolAuthorizationDecision, error) {
 	*c.request = request
-	return AllowTool(), nil
+	return allowTool(), nil
 }
 
 // TestDurableProjectStateIsAddressedByTheWorkspace pins the rule that separates

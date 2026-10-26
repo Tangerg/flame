@@ -7,14 +7,14 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // toolResultOffloader is the narrow write capability the observer needs to
 // persist a body after its candidate preview has proven worth evicting. nil
 // disables eviction.
 type toolResultOffloader interface {
-	Stage(ctx context.Context, stage toolresult.Stage) error
+	Stage(ctx context.Context, stage transcript.ToolResultStage) error
 }
 
 // toolResultPreviewBytes bounds the head+tail preview left inline once a body is
@@ -72,12 +72,12 @@ func evictToolResult(
 	sessionID string,
 	toolName string,
 	output string,
-) (string, *toolresult.Ref) {
+) (string, *transcript.ToolResultRef) {
 	if store == nil || !policy.enabled || len(output) <= policy.threshold ||
 		toolName == policy.readerName || sessionID == "" {
 		return output, nil
 	}
-	id := toolresult.ID(rand.Text())
+	id := transcript.ToolResultID(rand.Text())
 	preview := renderToolResultPreview(
 		output,
 		string(id),
@@ -87,11 +87,11 @@ func evictToolResult(
 	if len(preview) >= len(output) {
 		return output, nil
 	}
-	if err := store.Stage(ctx, toolresult.Stage{
+	if err := store.Stage(ctx, transcript.ToolResultStage{
 		ID: id, SessionID: sessionID, Body: output,
 	}); err != nil {
 		slog.WarnContext(ctx, "execution: persist offloaded tool result", "session.id", sessionID, "tool.name", toolName, "error", err)
 		return output, nil
 	}
-	return preview, &toolresult.Ref{ID: id}
+	return preview, &transcript.ToolResultRef{ID: id}
 }

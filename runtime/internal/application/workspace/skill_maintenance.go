@@ -5,31 +5,31 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/samber/lo"
 )
 
 // IdleSkillSweeper is the persistence port for automatic archival policy. The
 // second result contains every public file identity changed before return, even
 // when a later step fails.
-type IdleSkillSweeper interface {
+type idleSkillSweeper interface {
 	SweepIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, []string, error)
 }
 
 // SkillMaintenance owns automatic Skill-library curation. It is deliberately
 // separate from Skills so interactive consumers cannot invoke scheduled work.
 type SkillMaintenance struct {
-	sweeper       IdleSkillSweeper
+	sweeper       idleSkillSweeper
 	observations  *AuthoredWatch
 	invalidations invalidation.Publish
 }
 
 // NewSkillMaintenance builds the automatic Skill-library curation use case.
-func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, invalidations invalidation.Publish) (*SkillMaintenance, error) {
-	if dependency.Missing(sweeper) {
+func NewSkillMaintenance(sweeper idleSkillSweeper, observations *AuthoredWatch, invalidations invalidation.Publish) (*SkillMaintenance, error) {
+	if lo.IsNil(sweeper) {
 		return nil, errors.New("workspace: idle skill sweeper is required")
 	}
-	if dependency.Missing(observations) {
+	if lo.IsNil(observations) {
 		return nil, errors.New("workspace: idle skill authored observation is required")
 	}
 	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}, nil

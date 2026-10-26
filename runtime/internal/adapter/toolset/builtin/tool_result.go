@@ -14,15 +14,12 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 // defaultReadWindow bounds a read that names no limit, so a naive
@@ -42,7 +39,7 @@ does not contain enough information.`
 // store (consumer-side interface). Fetch returns found=false with a nil error
 // for an unknown id, which the tool surfaces to the model as a recoverable miss.
 type ToolResultStore interface {
-	Fetch(ctx context.Context, sessionID string, id resultoffload.ID) (body string, found bool, err error)
+	Fetch(ctx context.Context, sessionID string, id transcript.ToolResultID) (body string, found bool, err error)
 }
 
 // readArgs is the model-facing argument shape; [toolcontract.NewFunc] derives the JSON
@@ -64,7 +61,7 @@ type toolResultReader struct {
 // per-call off the Run's blackboard ([executionctx.SessionID]), scoping every read
 // to the calling session, so one tool instance serves every session.
 func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[toolResultReadArgs, string](
@@ -78,13 +75,13 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 	if sessionID == "" {
 		return "error: no active session — cannot read a stored tool result", nil
 	}
-	id, err := resultoffload.ParseID(a.ResultID)
+	id, err := transcript.ParseToolResultID(a.ResultID)
 	if err != nil {
 		return "error: result_id must be the uppercase base32 value from an offloaded-result marker", nil
 	}
 	body, found, err := t.store.Fetch(ctx, sessionID, id)
 	if err != nil {
-		return "", toolfailure.Definite(fmt.Errorf("read_tool_result: %w", err))
+		return "", pluginsdk.DefiniteToolFailure(fmt.Errorf("read_tool_result: %w", err))
 	}
 	if !found {
 		// Recoverable: an unknown id (typo, or the blob dropped with its session)
@@ -92,7 +89,7 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 		return "No stored tool result with result_id " + a.ResultID + " — it may have been deleted with its session.", nil
 	}
 
-	limit := optional.Value(a.LimitBytes, defaultReadWindow)
+	limit := lo.FromPtrOr(a.LimitBytes, defaultReadWindow)
 	start, end := window(body, a.OffsetBytes, limit)
 	header := fmt.Sprintf("[tool result %s — %d bytes total, showing bytes %d–%d]\n", a.ResultID, len(body), start, end)
 	if end < len(body) {

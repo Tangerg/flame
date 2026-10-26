@@ -3,13 +3,13 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"unicode"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -18,13 +18,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -58,7 +56,7 @@ func wireCreateGoal(t *testing.T, resolver *Resolver) {
 // nothing to do with drift.
 type allWiredToolResults struct{}
 
-func (allWiredToolResults) Fetch(context.Context, string, resultoffload.ID) (string, bool, error) {
+func (allWiredToolResults) Fetch(context.Context, string, transcript.ToolResultID) (string, bool, error) {
 	return "", false, nil
 }
 
@@ -112,8 +110,8 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 		Plan:         rolePlanStore{},
 		GoalReader:   activeGoalStub{},
 		GoalReporter: activeGoalStub{},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
-			return interrupt.Resolution{}, nil, nil
+		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+			return run.InterruptResolution{}, nil, nil
 		},
 	})
 	if err != nil {
@@ -168,8 +166,8 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		Online: OnlineConfig{
 			HTTPAllowedHosts: []string{"example.com"}, // backs http_request
 		},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
-			return interrupt.Resolution{}, nil, nil
+		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+			return run.InterruptResolution{}, nil, nil
 		},
 	})
 	if err != nil {

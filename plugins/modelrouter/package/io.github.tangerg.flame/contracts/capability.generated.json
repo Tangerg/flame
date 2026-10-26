@@ -82,7 +82,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -110,7 +110,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -125,7 +125,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -153,7 +153,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -238,7 +238,34 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvY29udHJhY3Q_ReplaceInput": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "rules": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
+                },
+                "maxItems": 3,
+                "type": "array"
+              }
+            },
+            "required": [
+              "expectedRevision",
+              "rules"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -265,33 +292,6 @@
               "selection"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9ycGM_ReplaceInput": {
-            "additionalProperties": false,
-            "properties": {
-              "expectedRevision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
-              },
-              "rules": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
-                },
-                "maxItems": 3,
-                "type": "array"
-              }
-            },
-            "required": [
-              "expectedRevision",
-              "rules"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -309,7 +309,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
             },
             "maxItems": 3,
             "type": "array"
@@ -388,7 +388,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule": {
             "additionalProperties": false,
             "properties": {
               "ceiling": {
@@ -416,7 +416,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Snapshot": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
               "revision": {
@@ -431,7 +431,7 @@
               },
               "rules": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
                 },
                 "maxItems": 3,
                 "type": "array"
@@ -459,7 +459,7 @@
           },
           "rules": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvYmFja2VuZC9kb21haW4_Rule"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu_Rule"
             },
             "maxItems": 3,
             "type": "array"

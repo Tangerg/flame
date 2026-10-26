@@ -8,17 +8,15 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func newGoalStore(t *testing.T) (*GoalStore, *SessionStore) {
+func goalStoreFixture(t *testing.T) (*GoalStore, *SessionStore) {
 	t.Helper()
 	goals, sessions, _ := newGoalRunStores(t)
 	return goals, sessions
@@ -31,7 +29,7 @@ func newGoalRunStores(t *testing.T) (*GoalStore, *SessionStore, *RunStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewGoalStore(db), NewSessionStore(db), NewRunStore(db)
+	return newGoalStore(db), newSessionStore(db), newRunStore(db)
 }
 
 func readGoal(ctx context.Context, store *GoalStore, sessionID string) (goal.Goal, bool, error) {
@@ -145,9 +143,9 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	goals, runs := NewGoalStore(db), NewRunStore(db)
+	goals, runs := newGoalStore(db), newRunStore(db)
 	const sessionID = "ses_delegated_goal"
-	seedSession(t, NewSessionStore(db), sessionID)
+	seedSession(t, newSessionStore(db), sessionID)
 	now := time.Unix(10, 0).UTC()
 	active, err := goal.New(sessionID, "delegate", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "inc_delegated", now)
 	if err != nil {
@@ -185,7 +183,7 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	current, found, err := readGoal(t.Context(), NewGoalStore(db), sessionID)
+	current, found, err := readGoal(t.Context(), newGoalStore(db), sessionID)
 	if err != nil || !found || current.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.875), Steps: 7}) {
 		t.Fatalf("delegated Goal after restart = %+v, %t, %v", current.Snapshot(), found, err)
 	}
@@ -255,7 +253,7 @@ func seedSession(t *testing.T, store *SessionStore, id string) {
 
 func TestGoalStore_RoundTrip(t *testing.T) {
 	ctx := context.Background()
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	const sess = "sess-goal"
 	seedSession(t, sessions, sess)
 
@@ -266,7 +264,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()
 	wantCapabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}
 	selection := testReasoningSelection(t, "anthropic", "claude", "high")
 	g, err := goal.New(sess, "ship the feature", selection, wantCapabilities, "lease-round-trip", now)
@@ -305,7 +303,7 @@ func testReasoningSelection(t testing.TB, provider, model, effort string) modelc
 
 func TestGoalStore_ListAndClear(t *testing.T) {
 	ctx := context.Background()
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	now := time.Unix(1_700_000_000, 0).UTC()
 
 	for _, s := range []string{"a", "b"} {
@@ -341,7 +339,7 @@ func TestGoalStore_ListAndClear(t *testing.T) {
 // resurrect a cleared one.
 func TestGoalStore_CompareAndSwap(t *testing.T) {
 	ctx := context.Background()
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	now := time.Unix(1_700_000_000, 0).UTC()
 	const sess = "s"
 	seedSession(t, sessions, sess)
@@ -408,7 +406,7 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 }
 
 func TestGoalStoreReplacesIncarnationWithoutRewritingRevision(t *testing.T) {
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	now := time.Unix(1_700_000_000, 0).UTC()
@@ -439,7 +437,7 @@ func TestGoalStoreReplacesIncarnationWithoutRewritingRevision(t *testing.T) {
 }
 
 func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	now := time.Unix(1_700_000_000, 0).UTC()
@@ -476,7 +474,7 @@ func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
 // session that is not there, so no lifecycle transition can resurrect a goal whose
 // session has already gone.
 func TestGoalStoreRejectsMissingSession(t *testing.T) {
-	store, _ := newGoalStore(t)
+	store, _ := goalStoreFixture(t)
 	g, _ := goal.New("missing", "obj", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "lease-missing", time.Unix(0, 0))
 	if applied, err := store.Save(t.Context(), goalReplacement(t, g, unwrittenVersion(t, "missing"))); err == nil || applied {
 		t.Fatalf("Save(missing session) = applied=%v err=%v, want false/non-nil", applied, err)
@@ -500,7 +498,7 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 }
 
 func TestGoalStoreExecutesDomainDecidedRevision(t *testing.T) {
-	store, sessions := newGoalStore(t)
+	store, sessions := goalStoreFixture(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	g, _ := goal.New(sessionID, "obj", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "lease", time.Unix(0, 0))

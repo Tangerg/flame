@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-type SessionExecutionContexts interface {
+type sessionExecutionContexts interface {
 	LoadSessionCheckpoint(context.Context, string) (ExecutorCheckpoint, bool, error)
 }
 
@@ -21,7 +21,7 @@ type ActiveExecution struct {
 	Items   []transcript.Item
 }
 
-type UncertainExecutionRecovery interface {
+type uncertainExecutionRecovery interface {
 	PrepareUncertainExecution(context.Context, ActiveExecution) (UncertainExecutionPlan, bool, error)
 	StageUncertainExecution(context.Context, ExecutionContinuation) (ExecutorRef, error)
 	BeginUncertainExecution(context.Context, ExecutorRef) error
@@ -39,7 +39,7 @@ type UncertainExecutionPlan struct {
 
 // The coordinator reinstalls the original writer lease and Segment pump before
 // the executor restores Scope or publishes a verified external result.
-func (c *Coordinator) ReviveUncertainExecutions(ctx context.Context, source RecoveryStore, contexts SessionExecutionContexts, executor UncertainExecutionRecovery) error {
+func (c *Coordinator) ReviveUncertainExecutions(ctx context.Context, source RecoveryStore, contexts sessionExecutionContexts, executor uncertainExecutionRecovery) error {
 	values, err := source.ListNonTerminalRuns(ctx)
 	if err != nil {
 		return err

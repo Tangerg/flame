@@ -7,19 +7,18 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 // SessionTitles is the Application capability for best-effort initial title
 // generation. It rechecks first-writer semantics through Session behavior.
-type SessionTitles interface {
+type sessionTitles interface {
 	NeedsGeneratedTitle(ctx context.Context, id string) (bool, error)
 	ApplyGeneratedTitle(ctx context.Context, id, title string) error
 }
@@ -27,32 +26,32 @@ type SessionTitles interface {
 // TitleGenerator derives an initial session title from its opening request. It
 // may return a usable deterministic fallback with a non-nil error so maintenance
 // can persist stable identity and still report provider degradation.
-type TitleGenerator interface {
+type titleGenerator interface {
 	Generate(ctx context.Context, firstMessage string) (string, error)
 }
 
 // Checkpoints anchors the working tree at a terminal run boundary.
-type Checkpoints interface {
+type checkpoints interface {
 	Snapshot(ctx context.Context, sessionID, cwd, runID string) error
 }
 
 // TaskLauncher starts request-detached work owned by its component lifecycle.
-type TaskLauncher interface {
+type taskLauncher interface {
 	Start(parent context.Context, task func(context.Context)) bool
 }
 
 // TitleMaintenance is the complete optional generated-title capability.
 type TitleMaintenance struct {
-	Sessions  SessionTitles
-	Generator TitleGenerator
-	Tasks     TaskLauncher
+	Sessions  sessionTitles
+	Generator titleGenerator
+	Tasks     taskLauncher
 }
 
 // FinalizerConfig declares the two independent post-segment maintenance features.
 // A nil Checkpoints disables workspace snapshots; a nil Titles disables title
 // generation. Enabled features must be complete at construction.
 type FinalizerConfig struct {
-	Checkpoints Checkpoints
+	Checkpoints checkpoints
 	Titles      *TitleMaintenance
 }
 
@@ -60,29 +59,29 @@ type FinalizerConfig struct {
 // durable Effects because neither title generation nor workspace snapshots
 // participate in the Run transaction.
 type Finalizer struct {
-	checkpoints   Checkpoints
-	sessionTitles SessionTitles
-	titles        TitleGenerator
-	tasks         TaskLauncher
+	checkpoints   checkpoints
+	sessionTitles sessionTitles
+	titles        titleGenerator
+	tasks         taskLauncher
 }
 
 var _ runs.SegmentFinalizer = (*Finalizer)(nil)
 
 func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
-	if cfg.Checkpoints != nil && dependency.Missing(cfg.Checkpoints) {
+	if cfg.Checkpoints != nil && lo.IsNil(cfg.Checkpoints) {
 		return nil, errors.New("segment: optional checkpoints must not be typed nil")
 	}
 	finalizer := &Finalizer{checkpoints: cfg.Checkpoints}
 	if cfg.Titles == nil {
 		return finalizer, nil
 	}
-	if dependency.Missing(cfg.Titles.Sessions) {
+	if lo.IsNil(cfg.Titles.Sessions) {
 		return nil, errors.New("segment: session titles are required when title maintenance is enabled")
 	}
-	if dependency.Missing(cfg.Titles.Generator) {
+	if lo.IsNil(cfg.Titles.Generator) {
 		return nil, errors.New("segment: title generator is required when title maintenance is enabled")
 	}
-	if dependency.Missing(cfg.Titles.Tasks) {
+	if lo.IsNil(cfg.Titles.Tasks) {
 		return nil, errors.New("segment: task launcher is required when title maintenance is enabled")
 	}
 	finalizer.sessionTitles = cfg.Titles.Sessions

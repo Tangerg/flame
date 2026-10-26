@@ -3,7 +3,6 @@ package execution
 import (
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -17,9 +16,7 @@ func TestExecutionDefectFailsTheRunAndFinishesTheSession(t *testing.T) {
 		t.Context(),
 		runs.ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
 		runs.RootExecutionStart{SessionID: "ses_1"},
-		InteractionExecutorConfig{},
-		runtimeidentity.BuildID{},
-		interactionExecutionPolicy{},
+		InteractionExecutorConfig{}, runs.BuildID{}, interactionExecutionPolicy{},
 		nil,
 	)
 

@@ -8,10 +8,10 @@ import { Icon } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
 import { BannerAction } from "@/features/shell/workbench/panel/BannerAction";
 import { flattenText } from "@/features/agent/public/messageContent";
-import { getActiveConversationMessages } from "@/features/agent/public/conversation";
+
 import { agentTextInput } from "@/features/agent/public/input";
 import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
-import { dismissActiveSessionProblem } from "@/features/agent/public/run";
+
 import { useActiveSessionProblem } from "@/features/agent/public/run";
 import { useT } from "@/lib/i18n/index";
 import { useMotion } from "@/lib/motion";
@@ -28,9 +28,9 @@ const reb = stylex.create({
 });
 
 function findLastUserText(agentAccess: AgentAccess): string {
-  const last = getActiveConversationMessages(agentAccess).findLast(
-    (m) => m.role === "user" && flattenText(m.blocks).trim() !== "",
-  );
+  const last = agentAccess
+    .getActiveConversationMessages()
+    .findLast((m) => m.role === "user" && flattenText(m.blocks).trim() !== "");
   return last ? flattenText(last.blocks).trim() : "";
 }
 
@@ -78,7 +78,7 @@ export function RunErrorBanner() {
   const onRetry = () => {
     if (retryIn > 0 || !canSend || !retryText) return;
     if (!send(agentTextInput(retryText))) return;
-    dismissActiveSessionProblem(agentAccess);
+    agentAccess.dismissActiveSessionProblem();
   };
 
   const canRetry =
@@ -147,7 +147,7 @@ export function RunErrorBanner() {
             size="xs"
             quiet
             aria-label={t("runError.action.dismiss")}
-            onClick={dismissActiveSessionProblem.bind(null, agentAccess)}
+            onClick={agentAccess.dismissActiveSessionProblem}
           />
         </motion.div>
       )}

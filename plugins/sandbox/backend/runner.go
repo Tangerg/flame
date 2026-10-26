@@ -3,21 +3,20 @@ package main
 import (
 	"context"
 	"database/sql"
-	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"runtime"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
@@ -57,7 +56,7 @@ func (r *runner) limits() rpc.Limits {
 	return rpc.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
 }
 
-func (r *runner) execute(ctx context.Context, method, id string, input rpc.ExecuteInput, original jsoninput.Input) (sandbox.Result, error) {
+func (r *runner) execute(ctx context.Context, method, id string, input rpc.ExecuteInput, original jsonvalue.Value) (sandbox.Result, error) {
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, nil)
 	if err != nil {
 		return sandbox.Result{}, err
@@ -111,14 +110,11 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 			return sandbox.Result{}, err
 		}
 	}
-	reply, err := pluginsdk.Reply(result, operationErr, classify)
+	reply, err := pluginsdk.EncodeReply(result, operationErr, classify)
 	if err != nil {
 		return sandbox.Result{}, err
 	}
-	encoded, err := json.Marshal(reply)
-	if err != nil {
-		return sandbox.Result{}, err
-	}
+	encoded := reply.JSON()
 	if err := prepared.Complete(ctx, encoded); err != nil {
 		return sandbox.Result{}, err
 	}
@@ -134,12 +130,5 @@ func readOutcome(encoded []byte) (sandbox.Result, error) {
 }
 
 func openStore(ctx context.Context, path string) (*sql.DB, error) {
-	return sqlitebase.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema})
-}
-
-func classify(err error) string {
-	if errors.Is(err, processsandbox.ErrUnavailable) {
-		return "sandbox_unavailable"
-	}
-	return rpc.Classify(err)
+	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema})
 }

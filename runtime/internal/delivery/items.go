@@ -15,9 +15,9 @@ func registerItems(registry *Registry) {
 	// does not, since a root run is a run.
 	registry.query(MethodMeta{
 		Name: ItemsList, GoName: "ListItems",
-		Errors: []string{
-			protocol.ErrSessionNotFound.Error(),
-			protocol.ErrRunNotFound.Error(),
+		Errors: []string{protocol.ErrSessionNotFound.
+			Error(), protocol.ErrRunNotFound.
+			Error(),
 		},
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "scope.includeDescendants", Operator: OperatorPresent}},

@@ -1,4 +1,4 @@
-import { iconSizePx, iconScaleCssVariables, type IconSize } from "@flame/ui/font-scale";
+import { iconSizePx, iconScaleCssVariables, type IconSize } from "@flame/ui";
 import { normalizeUiFontSize } from "@flame/ui/typography";
 export type ProductIconSize = IconSize | "composer";
 

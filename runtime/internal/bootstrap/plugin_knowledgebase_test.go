@@ -10,14 +10,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -89,8 +88,8 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ApprovalMode = approval.ModeYolo
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	baseURL, key := provider.URL+"/v1", "local-embedding-fixture"
 	r.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{Provider: "openai", BaseURL: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &baseURL}, APIKey: &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &key}}, "configure-embedding")
@@ -109,28 +108,30 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if toolName.Load().(string) == "" {
 		t.Fatal("knowledge search Tool missing")
 	}
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.KnowledgebaseCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, input any, key string) *protocol.CallPluginResponse {
 		t.Helper()
-		admitted, err := jsoninput.Encode(input)
+		admitted, err := jsonvalue.Encode(input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Capability.Identity().String(), Method: method, Input: admitted.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		response := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contracts.Identity().String(), Method: method, Input: admitted.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if response.Failure != nil {
 			t.Fatalf("knowledge operation: %+v", response.Failure)
 		}
 		return response
 	}
-	input := rpc.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple guide"}}
-	first := call(contracts.Import.Name(), input, "knowledge-import")
-	if replay := call(contracts.Import.Name(), input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
+	input := testsupport.KnowledgebaseImportV1Input{}
+	input.Content.Id, input.Content.Title = "fruit", "Fruit guide"
+	input.Content.Source, input.Content.Text = "docs/fruit.md", "apple guide"
+	first := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import")
+	if replay := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
 		t.Fatalf("import repeated its model exchange: %+v, count=%d", replay, embeddings.Load())
 	}
-	typed := call(contracts.Search.Name(), rpc.SearchInput{Query: "apple", Limit: 1}, "")
+	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchV1Input{Query: "apple", Limit: 1}, "")
 	contextContract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		t.Fatal(err)
@@ -151,7 +152,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("knowledge Run did not complete: %+v", finished.Outcome)
 	}
-	toolJSON, err := jsoninput.Parse([]byte(toolOutput.Load().(string)))
+	toolJSON, err := jsonvalue.Parse([]byte(toolOutput.Load().(string)))
 	if err != nil || toolJSON.String() != typed.Output || !sawContext.Load() || !embeddedUserInput.Load() {
 		t.Fatalf("installed typed/Tool/context entrances diverged: typed=%s tool=%s context=%v error=%v", typed.Output, toolJSON.String(), sawContext.Load(), err)
 	}

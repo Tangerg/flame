@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -114,7 +113,7 @@ func (r *reducer) projectPendingInterrupt(
 	pending Interrupt,
 ) (transcript.Interrupt, error) {
 	switch pending.Kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		if item, ok := projection.approvalItems[index]; ok {
 			return approvalTranscriptInterrupt(item, *pending.Approval), nil
 		}
@@ -126,7 +125,7 @@ func (r *reducer) projectPendingInterrupt(
 			return transcript.Interrupt{}, err
 		}
 		return projected, nil
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		item, projected, err := r.questionInterrupt(pending)
 		if err != nil {
 			return transcript.Interrupt{}, err
@@ -231,7 +230,7 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 		ItemID:         item.ID(),
 		ItemOccurredAt: item.OccurredAt(),
 		RunID:          item.RunID(),
-		Kind:           interrupt.Approval,
+		Kind:           run.InterruptApproval,
 		Approval: &transcript.Approval{
 			Tool: invocation, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		},
@@ -243,7 +242,7 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int {
 	matched := make(map[*openTool]int)
 	for index, value := range values {
-		if value.Kind != interrupt.Approval {
+		if value.Kind != run.InterruptApproval {
 			continue
 		}
 		for _, ref := range open {
@@ -342,7 +341,7 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 	}
 	return item, transcript.Interrupt{
 		ItemID: id, ItemOccurredAt: item.OccurredAt(),
-		RunID: r.cfg.Opened.ID(), Kind: interrupt.Question, Question: &question,
+		RunID: r.cfg.Opened.ID(), Kind: run.InterruptQuestion, Question: &question,
 	}, nil
 }
 

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // observationRoots pins every configured physical boundary for one observer.
@@ -45,7 +45,7 @@ func (r *observationRoots) access(boundary, physical string) (*os.Root, string, 
 	if boundary == "" {
 		return nil, physical, true, nil
 	}
-	inside, err := pathidentity.Contains(boundary, physical)
+	inside, err := filesystem.ContainsPath(boundary, physical)
 	if err != nil {
 		return nil, "", false, err
 	}

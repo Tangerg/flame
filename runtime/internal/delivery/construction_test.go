@@ -9,6 +9,7 @@ type constructionContext struct{ context.Context }
 
 func TestEndpointRejectsTypedNilCollaborators(t *testing.T) {
 	for _, config := range []EndpointConfig{
+		{Lifetime: t.Context()},
 		{Lifetime: t.Context(), IdempotencyStore: (*memoryIdempotencyStore)(nil)},
 		{Lifetime: (*constructionContext)(nil)},
 	} {

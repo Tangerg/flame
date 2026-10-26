@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -30,15 +29,15 @@ func A2ATool(t testing.TB, endpoint string) tool.Ref {
 	return ref
 }
 
-func ToolFingerprint(ref tool.Ref) fingerprint.Digest {
+func ToolFingerprint(ref tool.Ref) identity.Digest {
 	if ref.Kind() == tool.BuiltInKind {
-		return fingerprint.Digest{}
+		return identity.Digest{}
 	}
 	return Digest("source authority")
 }
 
 // Digest derives a distinct valid digest from seed.
-func Digest(seed string) fingerprint.Digest { return fingerprint.Strings(seed) }
+func Digest(seed string) identity.Digest { return identity.DigestStrings(seed) }
 
 // Release admits declaration as the release whose digest derives from seed.
 func Release(t testing.TB, seed string, declaration plugin.Declaration) plugin.Release {
@@ -50,9 +49,9 @@ func Release(t testing.TB, seed string, declaration plugin.Declaration) plugin.R
 	return release
 }
 
-func InstallationID(t testing.TB) resourceid.InstallationID {
+func InstallationID(t testing.TB) identity.InstallationID {
 	t.Helper()
-	id, err := resourceid.ParseInstallation(uuid.NewString())
+	id, err := identity.ParseInstallation(uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +65,7 @@ func UserMCPServer(name string) mcpserver.ID {
 	return must(mcpserver.NewID(mcpserver.UserOrigin(), ServerName(name)))
 }
 
-func InstallationMCPServer(installation resourceid.InstallationID, name string) mcpserver.ID {
+func InstallationMCPServer(installation identity.InstallationID, name string) mcpserver.ID {
 	return must(mcpserver.NewID(must(mcpserver.InstallationOrigin(installation)), ServerName(name)))
 }
 
@@ -91,15 +90,15 @@ func must[T any](value T, err error) T {
 
 type ToolAuthorities struct{}
 
-func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (fingerprint.Digest, bool, error) {
+func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (identity.Digest, bool, error) {
 	if err := ref.Validate(); err != nil {
-		return fingerprint.Digest{}, false, err
+		return identity.Digest{}, false, err
 	}
 	return ToolFingerprint(ref), true, nil
 }
 
-func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]fingerprint.Digest, error) {
-	result := make(map[tool.Ref]fingerprint.Digest, len(refs))
+func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]identity.Digest, error) {
+	result := make(map[tool.Ref]identity.Digest, len(refs))
 	for _, ref := range refs {
 		fingerprint, found, err := a.Fingerprint(ctx, ref)
 		if err != nil {

@@ -2,20 +2,19 @@ package pluginservices
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -50,7 +49,7 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatal(err)
 	}
 	bound, _ := observers.Bind(resolved.Model(), nil, bindings)
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-endpoint-parent", Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: "original-endpoint-parent"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-endpoint-parent", Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-endpoint-parent"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,19 +79,19 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 		t.Fatalf("persisted inner evidence: %+v, %v", rows, err)
 	}
 	row := rows[0]
-	storedResponse, err := jsoninput.Encode(row.Response)
+	storedResponse, err := jsonvalue.Encode(row.Response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedResponse, err := jsoninput.Encode(response)
+	expectedResponse, err := jsonvalue.Encode(response)
 	if err != nil {
 		t.Fatal(err)
 	}
-	storedRequest, err := jsoninput.Encode(row.Invocation.Request)
+	storedRequest, err := jsonvalue.Encode(row.Invocation.Request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedRequest, err := jsoninput.Encode(request)
+	expectedRequest, err := jsonvalue.Encode(request)
 	if err != nil {
 		t.Fatal(err)
 	}

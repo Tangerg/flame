@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
@@ -31,7 +30,7 @@ type RuntimeProfile interface {
 // Individual command implementations still accept narrower local interfaces
 // when they need only one operation.
 type Runtime interface {
-	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 	CreateSession(context.Context, conversation.CreateSession) (conversation.Session, error)
@@ -41,10 +40,10 @@ type Runtime interface {
 	GetRun(context.Context, string) (conversation.Run, error)
 	GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error)
 	ListRuns(context.Context, conversation.RunQuery) (conversation.RunPage, error)
-	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
+	StartRun(context.Context, authoring.StartRun) (conversation.SegmentStream, error)
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
-	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	SteerRun(context.Context, authoring.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error
@@ -71,7 +70,7 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			if asJSON {
-				return render.WriteJSONLine(cmd.OutOrStdout(), struct {
+				return writeJSONLine(cmd.OutOrStdout(), struct {
 					Discovery          protocol.DiscoverResponse    `json:"discovery"`
 					ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities,omitzero"`
 				}{profile.Discovery(), profile.ClientCapabilities()})

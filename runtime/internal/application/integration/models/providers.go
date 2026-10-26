@@ -8,11 +8,10 @@ import (
 	"log/slog"
 	"slices"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ProviderSummary is the application result for provider discovery and

@@ -12,9 +12,8 @@ import (
 	"regexp"
 	"strings"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/destructive"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 var (

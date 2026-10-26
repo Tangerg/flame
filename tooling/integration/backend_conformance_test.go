@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	plugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -67,27 +67,27 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build backend: %s: %v", output, err)
 	}
-	read, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.read", Kind: capability.Query, Target: "installation", Description: "Read exact original input."})
+	read, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.read", Kind: extension.Query, Target: "installation", Description: "Read exact original input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.write", Kind: capability.Mutation, Target: "installation", Description: "Commit one original outcome."})
+	write, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.write", Kind: extension.Mutation, Target: "installation", Description: "Commit one original outcome."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	queryStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.query-stream", Kind: capability.Query, Target: "installation", Description: "Read exact chunks and final."})
+	queryStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.query-stream", Kind: extension.Query, Target: "installation", Description: "Read exact chunks and final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.command-stream", Kind: capability.Mutation, Target: "installation", Description: "Commit streamed final."})
+	commandStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.command-stream", Kind: extension.Mutation, Target: "installation", Description: "Commit streamed final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "flame.test.typescript", Composition: capability.Collection, Scope: "installation"}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "flame.test.typescript", Composition: extension.Collection, Scope: "installation"}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
-	hostMethod, err := plugin.NewMethod[typescriptHostInput, typescriptHostInput](plugin.MethodConfig{Name: "fixture.host", Kind: capability.Query, Target: "installation", Description: "Read through the original calling owner."})
+	hostMethod, err := plugin.NewMethod[typescriptHostInput, typescriptHostInput](plugin.MethodConfig{Name: "fixture.host", Kind: extension.Query, Target: "installation", Description: "Read through the original calling owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := typescriptInput{Mode: "echo", Value: jsontext.Value(`{"wide":9007199254740993,"decimal":1.0,"exponent":1e+25}`)}
-	exact, err := jsoninput.Parse(input.Value)
+	exact, err := jsonvalue.Parse(input.Value)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil || string(output.Value) != string(input.Value) {
 		t.Fatalf("exact round trip: %s, %v", output.Value, err)
 	}
-	original, err := jsoninput.Encode(input)
+	original, err := jsonvalue.Encode(input)
 	if err != nil || output.Source != original.String() {
 		t.Fatalf("original evidence changed: %s, %v", output.Source, err)
 	}
@@ -164,7 +164,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		}
 	})
 	host.AdmitSession(session)
-	invocation := capability.Invocation{ID: "host-call", Origin: capability.Model, Parent: "parent", Target: capability.Target{Scope: "installation", Reference: "original-target"}}
+	invocation := extension.Invocation{ID: "host-call", Origin: extension.Model, Parent: "parent", Target: extension.Target{Scope: "installation", Reference: "original-target"}}
 	ctx, err := plugin.WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +196,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err := metadata.Set(plugin.InvocationMetadataKey, invocation); err != nil {
 		t.Fatal(err)
 	}
-	arguments, err := jsoninput.Encode(typescriptHostInput{Value: input.Value})
+	arguments, err := jsonvalue.Encode(typescriptHostInput{Value: input.Value})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	limits := plugin.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
 	for _, mode := range []string{"echo", "mutated-final", "missing", "late"} {
 		input.Mode = mode
-		original, err := jsoninput.Encode(input)
+		original, err := jsonvalue.Encode(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,7 +261,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 			continue
 		}
 	}
-	originalStream, err := jsoninput.Encode(input)
+	originalStream, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}

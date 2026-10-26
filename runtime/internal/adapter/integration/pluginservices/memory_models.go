@@ -6,15 +6,14 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 type memoryModelAdmission struct {
@@ -24,20 +23,20 @@ type memoryModelAdmission struct {
 
 type memoryModelInvocation struct {
 	method string
-	input  jsoninput.Input
+	input  jsonvalue.Value
 }
 
-func (a *memoryModelAdmission) admit(id, method string, input jsoninput.Input) error {
+func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if original, found := a.invocations[id]; found {
 		if original != (memoryModelInvocation{method: method, input: input}) {
-			return &capability.Refusal{Code: "command_conflict", Message: idempotency.ErrKeyConflict.Error()}
+			return &extension.Refusal{Code: "command_conflict", Message: extension.ErrInvocationConflict.Error()}
 		}
-		return &capability.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
+		return &extension.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
 	}
 	if len(a.invocations) == memorycontract.MaxModelCalls {
-		return &capability.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
+		return &extension.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
 	}
 	// Providers have no owner receipt. Fence each identity before external I/O.
 	a.invocations[id] = memoryModelInvocation{method: method, input: input}
@@ -53,8 +52,8 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, sess
 	admission := &memoryModelAdmission{invocations: make(map[string]memoryModelInvocation)}
 	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
 		request := command.Input
-		if dependency.Missing(model) || !memoryModelRequest(request) {
-			return nil, &capability.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
+		if lo.IsNil(model) || !memoryModelRequest(request) {
+			return nil, &extension.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -74,8 +73,8 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, sess
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
-		if dependency.Missing(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
-			return pluginsdk.TextEmbeddings{}, &capability.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
+			return pluginsdk.TextEmbeddings{}, &extension.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(command.ID, "embedding", input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err

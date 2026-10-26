@@ -17,9 +17,9 @@ func TestRollbackSpecOwnsClosedRestoreScope(t *testing.T) {
 		files   bool
 		history bool
 	}{
-		{name: "history", scope: RestoreHistory, history: true},
-		{name: "files", scope: RestoreFiles, files: true},
-		{name: "both", scope: RestoreBoth, files: true, history: true},
+		{name: "history", scope: restoreHistory, history: true},
+		{name: "files", scope: restoreFiles, files: true},
+		{name: "both", scope: restoreBoth, files: true, history: true},
 	}
 	for _, test := range valid {
 		t.Run(test.name, func(t *testing.T) {
@@ -35,15 +35,15 @@ func TestRollbackSpecOwnsClosedRestoreScope(t *testing.T) {
 			}
 		})
 	}
-	if err := (RollbackSpec{SessionID: "ses_1", Scope: RestoreHistory}).validate(); err != nil {
+	if err := (RollbackSpec{SessionID: "ses_1", Scope: restoreHistory}).validate(); err != nil {
 		t.Fatalf("history rollback to an empty boundary: %v", err)
 	}
 
 	invalid := []RollbackSpec{
 		{SessionID: "ses_1"},
 		{SessionID: "ses_1", Scope: RestoreScope("workspace")},
-		{SessionID: "ses_1", Scope: RestoreFiles},
-		{SessionID: "ses_1", Scope: RestoreBoth},
+		{SessionID: "ses_1", Scope: restoreFiles},
+		{SessionID: "ses_1", Scope: restoreBoth},
 	}
 	for _, spec := range invalid {
 		if err := spec.validate(); err == nil {
@@ -94,7 +94,7 @@ func TestRollbackRefusalKeepsCleanupFailureDistinctFromCompletedRefusal(t *testi
 			cleanupFailure := errors.New("intent cleanup failed")
 			mutations := &observingMutations{completeErr: cleanupFailure}
 			coordinator := mustNewCoordinator(Dependencies{Mutations: mutations, Checkpoints: refusedCheckpoint{err: refusal}})
-			spec := RollbackSpec{SessionID: "ses_1", ToRunID: "run_1", Scope: RestoreBoth}
+			spec := RollbackSpec{SessionID: "ses_1", ToRunID: "run_1", Scope: restoreBoth}
 			mutation := WorkspaceMutation{SessionID: spec.SessionID, CWD: "/workspace", ToRunID: spec.ToRunID, RestoreHistory: true}
 			err := coordinator.restoreRollbackFiles(t.Context(), spec, mutation.CWD, mutation, true)
 			if !errors.Is(err, ErrRollbackRecoveryPending) || !errors.Is(err, cleanupFailure) || !errors.Is(err, refusal) {
@@ -135,7 +135,7 @@ func TestRollbackReadsTheSessionItsClaimFroze(t *testing.T) {
 	deps.Admissions = &relocatingClaimer{claimer: new(testClaimer), stores: stores, after: &after}
 
 	result, err := mustNewCoordinator(deps).Rollback(t.Context(), RollbackSpec{
-		SessionID: "ses_1", Scope: RestoreHistory,
+		SessionID: "ses_1", Scope: restoreHistory,
 	})
 	if err != nil {
 		t.Fatalf("Rollback: %v", err)

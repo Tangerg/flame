@@ -1,6 +1,6 @@
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 
-export const MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
+const MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
 
 export class MutationSettlementClosedError extends Error {
   override readonly name = "MutationSettlementClosedError";

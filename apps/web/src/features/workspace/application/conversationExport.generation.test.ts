@@ -21,10 +21,7 @@ vi.mock("@/features/connection/public/capabilities", () => ({
 }));
 
 vi.mock("@/features/agent/public/session", () => ({
-  getActiveSessionId: () => mocks.activeSessionId,
   invalidateAgentSessions: mocks.invalidateAgentSessions,
-  rehydrateSessionView: mocks.rehydrateSessionView,
-  selectAgentSession: mocks.selectAgentSession,
 }));
 
 vi.mock("@/extensions/selectors/extensions", async (importOriginal) => {
@@ -47,6 +44,11 @@ let files: FileTransferPort | null;
 
 beforeEach(() => {
   testClient = createTestClient({ start: false });
+  Object.assign(testClient.agent.access, {
+    getActiveSessionId: () => mocks.activeSessionId,
+    selectAgentSession: mocks.selectAgentSession,
+  });
+  Object.assign(testClient.agent.access, { rehydrateSessionView: mocks.rehydrateSessionView });
   mocks.activeSessionId = "session-current";
   mocks.sessionExport = true;
   mocks.invalidateAgentSessions.mockReset().mockResolvedValue(undefined);
@@ -211,7 +213,7 @@ describe("conversation archive generation", () => {
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(artifact);
     expect(mocks.notifyError).not.toHaveBeenCalled();
-    expect(mocks.selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "imported");
+    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
   });
 
   it("retires a pending evidence export before the previous Runtime can download", async () => {
@@ -338,9 +340,7 @@ describe("conversation archive generation", () => {
 
     const retired = testClient.workspace.access.archive.importConversationJson();
     const hasSettled = observedSettlement(retired);
-    await vi.waitFor(() =>
-      expect(mocks.rehydrateSessionView).toHaveBeenCalledWith(testClient.agent.access, "imported"),
-    );
+    await vi.waitFor(() => expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported"));
     owner.replaceRuntimeGeneration(() => gateway);
     await drainMicrotasks();
     const settledAtReplacement = hasSettled();
@@ -393,8 +393,8 @@ describe("conversation archive generation", () => {
 
     await testClient.workspace.access.archive.importConversationJson();
 
-    expect(mocks.rehydrateSessionView).toHaveBeenCalledWith(testClient.agent.access, "imported");
-    expect(mocks.selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "imported");
+    expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported");
+    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
@@ -434,10 +434,7 @@ describe("conversation archive generation", () => {
     await retried;
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
-    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith(
-      testClient.agent.access,
-      "imported",
-    );
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("imported");
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).toHaveBeenCalledOnce();
   });
@@ -488,10 +485,7 @@ describe("conversation archive generation", () => {
     await current;
 
     expect(successorImport).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
-    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith(
-      testClient.agent.access,
-      "successor-session",
-    );
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("successor-session");
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });

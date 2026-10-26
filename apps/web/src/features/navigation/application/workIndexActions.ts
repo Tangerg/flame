@@ -8,13 +8,11 @@ import {
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useMemo } from "react";
 import {
-  selectAgentSession,
-  getActiveSessionId,
   useActiveSessionId,
   resolvedWorkspaceCwd,
   useActiveSessionWorkspace,
 } from "@/features/agent/public/session";
-import { createSession, useCreateSession } from "@/features/agent/public/session";
+import { useCreateSession } from "@/features/agent/public/session";
 import { useDeleteSession } from "@/features/agent/public/session";
 import { useForkSession } from "@/features/agent/public/session";
 import { useRenameSession } from "@/features/agent/public/session";
@@ -47,11 +45,11 @@ export function createNewSession(
   directoryAccess: WorkingDirectoryAccess,
 ): void {
   if (!runtimeCommandsAvailable(runtimeAccess)) return;
-  if (!getActiveSessionId(agentAccess)) {
+  if (!agentAccess.getActiveSessionId()) {
     directoryAccess.open();
     return;
   }
-  void createSession(agentAccess).then((sessionId) => {
+  void agentAccess.createSession().then((sessionId) => {
     if (sessionId) focusComposer(composerAccess);
   });
 }
@@ -95,7 +93,7 @@ export function useWorkIndexActions(): WorkIndexActions {
           if (sessionId) focusComposer(composerAccess);
         });
       },
-      selectSession: selectAgentSession.bind(null, agentAccess),
+      selectSession: agentAccess.selectAgentSession,
       renameSession: (id, expectedRevision, title) => {
         void rename(id, expectedRevision, title);
       },

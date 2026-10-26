@@ -23,10 +23,10 @@ const { synchronizeMountedAgentSessions } = vi.hoisted(() => ({
   synchronizeMountedAgentSessions: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/session", () => ({
-  AGENT_SESSIONS_KEY: "agent-sessions",
-  synchronizeMountedAgentSessions,
-}));
+vi.mock("@/features/agent/public/session", () => ({ AGENT_SESSIONS_KEY: "agent-sessions" }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { synchronizeMountedAgentSessions });
+});
 
 interface FixtureState {
   readonly available: boolean;
@@ -89,7 +89,7 @@ describe("workspace Runtime-generation query recovery", () => {
 
     expect(firstSignal?.aborted).toBe(true);
     expect(fetcher).toHaveBeenCalledOnce();
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
       ownership: "retire-live",
     });
     retired.resolve({ available: true, goal: goal("retired goal") });
@@ -136,7 +136,7 @@ describe("workspace Runtime-generation query recovery", () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.data?.goal?.objective).toBe("successor goal"));
     expect(firstSignal?.aborted).toBe(true);
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
       ownership: "replace-live",
     });
 

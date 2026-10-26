@@ -34,16 +34,14 @@ import (
 
 flameruntime "github.com/Tangerg/flame/runtime"
 runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-"github.com/Tangerg/flame/packages/go-sdk/capability"
-"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+"github.com/Tangerg/flame/packages/go-sdk/extension"
+"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 "github.com/Tangerg/flame/packages/local-runtime"
 modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
-"github.com/Tangerg/flame/packages/go-sdk/point"
+sqlitebase "github.com/Tangerg/flame/packages/go-sdk/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
 "github.com/Tangerg/scope/core/chat"
 )
@@ -63,24 +61,24 @@ var _ = pluginsdk.CallTextEmbedding
 var _ = pluginsdk.NewTextEmbeddingCallback
 var _ = pluginsdk.RegisterTools
 var _ = pluginsdk.RegisterClient
-var _ = pluginsdk.CallCommand[string, string]
+var _ = (*pluginsdk.Method[string, string]).CallCommand
 var _ pluginsdk.Command[string]
 var _ = pluginsdk.NewMethod[struct{}, string]
 var _ = pluginsdk.NewStreamingMethod[struct{}, uint64, bool]
-var _ capability.MethodDescriptor
+var _ extension.MethodDescriptor
 var _ = pluginsdk.NewBinding
 var _ = pluginsdk.Resolve
 var _ *pluginsdk.Binding
-var _ = jsoninput.Encode[struct{}]
+var _ = jsonvalue.Encode[struct{}]
 var _ = pluginsdk.ReadToolReceipt
 var _ = pluginsdk.RequestInput
 var _ = pluginsdk.NewCallbacks
 var _ pluginsdk.CallbackRef
-var _ = point.Admit
+var _ = extension.AdmitPoint
 var _ = runtimeclient.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
-	contract, err := capability.New(capability.Config{Reference: "example.com/records", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "records/read", Kind: capability.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.com/records", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "records/read", Kind: extension.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +86,7 @@ func TestLocalContractAdmission(t *testing.T) {
 	if !found {
 		t.Fatal("required method unavailable")
 	}
-	input, err := jsoninput.Encode(struct{}{})
+	input, err := jsonvalue.Encode(struct{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +121,7 @@ func TestPublicToolCollaboratorsHaveNoFeatureDependency(t *testing.T) {
  actual, err := pluginsdk.ToolContextFromContext(ctx)
  if err != nil || actual != want { t.Fatalf("public Tool context = %+v, %v", actual, err) }
  method, err := pluginsdk.TextEmbeddingMethod()
- if err != nil || method.Descriptor().Kind != capability.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
+ if err != nil || method.Descriptor().Kind != extension.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
 }
 
 func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
@@ -131,7 +129,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  db, err := sqlitebase.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), schema)
  if err != nil { t.Fatal(err) }
  defer db.Close()
- input, err := jsoninput.Encode(struct{}{})
+ input, err := jsonvalue.Encode(struct{}{})
  if err != nil { t.Fatal(err) }
  calls := 0
  for range 2 {
@@ -148,13 +146,13 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
  projected, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("owned"), false)
  if err != nil || !projected.Found || projected.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
- changed, err := jsoninput.Encode(map[string]bool{"changed": true})
+ changed, err := jsonvalue.Encode(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }
  _, err = pluginstorage.Command(t.Context(), db, "records.update", "original", struct{}{}, changed, nil, func(context.Context, struct{}) (bool, error) {
    calls++
    return false, nil
  })
- if !errors.Is(err, idempotency.ErrKeyConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
+ if !errors.Is(err, extension.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
  if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
  if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }

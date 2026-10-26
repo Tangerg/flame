@@ -8,15 +8,14 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -30,7 +29,7 @@ type scheduleReceiptTool struct {
 
 func (s scheduleReceiptTool) Unwrap() toolcontract.Tool      { return s.Tool }
 func (s scheduleReceiptTool) SourceConfig() mcp.ServerConfig { return s.configuration }
-func (s scheduleReceiptTool) SourceFingerprint() fingerprint.Digest {
+func (s scheduleReceiptTool) SourceFingerprint() identity.Digest {
 	return s.configuration.AuthorityFingerprint()
 }
 func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error) {
@@ -50,13 +49,13 @@ type scheduleReceiptProbe struct {
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error) {
+func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, identity.Digest, identity.Digest) (bool, error) {
 	return true, nil
 }
-func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error) {
+func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, identity.Digest) (bool, error) {
 	return s.owned, nil
 }
-func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ fingerprint.Digest, _, _ string) (*chat.ToolOutput, error) {
+func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ identity.Digest, _, _ string) (*chat.ToolOutput, error) {
 	s.calls.Add(1)
 	s.context.Store(new(ctx))
 	return s.query(ctx)

@@ -15,7 +15,7 @@ func ValidateHTTPHeaders(authorization string, headers map[string]string) error 
 	}
 	seen := make(map[string]string, len(headers))
 	for name, value := range headers {
-		if !ValidHeaderName(name) {
+		if !validHeaderName(name) {
 			return fmt.Errorf("headers name %q is invalid", name)
 		}
 		canonical := strings.ToLower(name)
@@ -33,7 +33,7 @@ func ValidateHTTPHeaders(authorization string, headers map[string]string) error 
 	return nil
 }
 
-func ValidHeaderName(name string) bool {
+func validHeaderName(name string) bool {
 	if name == "" {
 		return false
 	}

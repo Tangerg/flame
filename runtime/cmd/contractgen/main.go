@@ -23,7 +23,6 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/contract/samples"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
@@ -41,11 +40,12 @@ func main() {
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
 	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
 	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
+	sampleSource := flag.String("samples", "", "directory of canonical Runtime JSON samples; required with -ts")
 	flag.Parse()
 
 	err := writeGoBindings(*localBinding, *remoteBinding)
 	if err == nil {
-		err = run(*out, *validators, *ts)
+		err = run(*out, *validators, *ts, *sampleSource)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)
@@ -53,7 +53,10 @@ func main() {
 	}
 }
 
-func run(dir, validatorDir, tsDir string) error {
+func run(dir, validatorDir, tsDir, sampleDir string) error {
+	if tsDir != "" && sampleDir == "" {
+		return fmt.Errorf("canonical sample directory is required with TypeScript output")
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create %s: %w", dir, err)
 	}
@@ -68,10 +71,6 @@ func run(dir, validatorDir, tsDir string) error {
 	if err != nil {
 		return err
 	}
-	// Generated validators are exported protocol methods, so they must exist on
-	// disk before public-Go-API discovery loads that package. Loading first made a
-	// shape gain require two generator runs: the first wrote ValidateWire, while
-	// only the second published that method in go-api.json.
 	if validatorDir != "" {
 		path := filepath.Join(validatorDir, validatorFile)
 		if err := os.WriteFile(path, []byte(newValidators(registry, shapes, walked)), 0o644); err != nil {
@@ -123,17 +122,17 @@ func run(dir, validatorDir, tsDir string) error {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-	return writeSamples(filepath.Join(testing, "samples"))
+	return writeSamples(os.DirFS(sampleDir), filepath.Join(testing, "samples"))
 }
 
-func writeSamples(directory string) error {
-	files, err := fs.Glob(samples.Files, "*.json")
+func writeSamples(source fs.FS, directory string) error {
+	files, err := fs.Glob(source, "*.json")
 	if err != nil {
 		return err
 	}
 	retained := make(map[string]bool, len(files))
 	for _, name := range files {
-		encoded, err := samples.Files.ReadFile(name)
+		encoded, err := fs.ReadFile(source, name)
 		if err != nil {
 			return err
 		}

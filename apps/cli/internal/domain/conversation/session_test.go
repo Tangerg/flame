@@ -156,7 +156,7 @@ func TestSessionUpdateRequiresIdentityAndAtLeastOneValidField(t *testing.T) {
 }
 
 func TestModelRefRoundTripKeepsProviderAndSlashBearingModel(t *testing.T) {
-	want, err := NewModelRef("openrouter", "anthropic/claude-sonnet")
+	want, err := newModelRef("openrouter", "anthropic/claude-sonnet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestModelRefRoundTripKeepsProviderAndSlashBearingModel(t *testing.T) {
 	if got != want {
 		t.Fatalf("ParseModelRef(%q) = %+v, want %+v", want.String(), got, want)
 	}
-	if _, err := NewModelRef("open/router", "model"); err == nil {
+	if _, err := newModelRef("open/router", "model"); err == nil {
 		t.Fatal("NewModelRef accepted a provider containing the identity separator")
 	}
 }

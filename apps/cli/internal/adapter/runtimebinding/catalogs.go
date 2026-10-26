@@ -106,7 +106,7 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.Approval
 
 func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
 	request := protocol.ListApprovalRulesRequest{SessionID: sessionID}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	result, err := r.approvals.ListApprovalRules(ctx, request, r.callOptions())

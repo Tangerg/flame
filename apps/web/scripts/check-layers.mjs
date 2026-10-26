@@ -35,13 +35,7 @@ const LAYER_PREFIXES = [
   ["app/", "app"],
   ["platform/", "platform"],
   ["lib/", "lib"],
-  // The design system is three rings, and the direction between them is the
-  // whole point: Base UI lives behind `ui/primitives` (nothing else may reach
-  // for it), `ui/atoms` dresses those primitives, and `ui/agent` composes atoms
-  // into shell-shaped pieces. Before this split the three were one `ui` layer,
-  // so the primitives boundary held by discipline alone — and an atom drifted
-  // into the agent ring exactly once.
-  ["ui/primitives/", "ui-primitives"],
+  // Atoms own controls; the agent ring composes them into workbench pieces.
   ["ui/atoms/", "ui-atoms"],
   ["ui/agent/", "ui-agent"],
   ["ui/", "ui"],
@@ -73,7 +67,7 @@ function undeclaredRoot(path) {
 
 // Per guarded layer: the layers it must NEVER import. `rpc` is near-total —
 // it is meant to be self-contained. The outer guards lock the upward edges.
-const UI_RINGS = ["ui", "ui-primitives", "ui-atoms", "ui-agent"];
+const UI_RINGS = ["ui", "ui-atoms", "ui-agent"];
 const UI = [...UI_RINGS, "pages", "features", "extensions-host"];
 const FORBIDDEN = {
   // Consumer-neutral scalar values. This is the innermost app layer and may
@@ -102,22 +96,6 @@ const FORBIDDEN = {
   // is forbidden too: an atom that reads the plugin registry is an atom that can
   // only be dressed by this app.
   ui: ["platform", "app", "rpc", "extensions", "extensions-host", "features", "pages"],
-  // Headless ring: Base UI re-exports and nothing else. It must not know about
-  // the tokens, the atoms, or the shell that consume it.
-  "ui-primitives": [
-    "platform",
-    "app",
-    "rpc",
-    "ui",
-    "ui-atoms",
-    "ui-agent",
-    "pages",
-    "features",
-    "extensions-host",
-    "extensions",
-  ],
-  // Token-dressed controls. May reach primitives; must not reach the shell ring
-  // above it, or anything outside the design system.
   "ui-atoms": [
     "platform",
     "app",
@@ -128,7 +106,7 @@ const FORBIDDEN = {
     "extensions-host",
     "extensions",
   ],
-  // Shell composites. May reach atoms and primitives; still no wiring, and no
+  // Shell composites. May reach atoms; still no wiring, and no
   // reaching back into the app that mounts it.
   "ui-agent": ["platform", "app", "rpc", "pages", "features", "extensions-host", "extensions"],
   // The view layer reaches the backend only through hooks — the SDK's

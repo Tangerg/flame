@@ -12,8 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -56,9 +55,9 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			stream, err := connection.StartRun(t.Context(), prompt.StartRun{
-				SessionID: session.ID, Message: prompt.Message{Text: "delegate approval probe"},
-				Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
+			stream, err := connection.StartRun(t.Context(), authoring.StartRun{
+				SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+				Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -82,7 +81,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			}
 			profile := connection.Profile()
 			stateDirectory := t.TempDir()
-			var stagedCommand replay.CommandID
+			var stagedCommand authoring.CommandID
 			if pendingAtStartup {
 				store, err := openTestWorkbench(stateDirectory)
 				if err != nil {

@@ -522,9 +522,7 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(t *testing.T) {
 	t.Parallel()
 
-	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-	}}
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged}}
 	monitor := runtimeChangeMonitor{
 		subscriptionLimits: testSubscriptionLimits,
 		source:             source, repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
@@ -543,22 +541,14 @@ func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(
 func TestWorkspaceMonitorObservesStateOnlyWithPlanProjection(t *testing.T) {
 	t.Parallel()
 
-	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-	}}
+	source := &runtimeChangeSourceStub{supported: []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged}}
 	monitor := runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}
-	withoutPlan := []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicInterruptsChanged,
-	}
+	withoutPlan := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicInterruptsChanged}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, withoutPlan) {
 		t.Fatalf("topics without plan = %v, want %v", topics, withoutPlan)
 	}
 	monitor.resources.plan = true
-	withPlan := []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-	}
+	withPlan := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, withPlan) {
 		t.Fatalf("topics with plan = %v, want %v", topics, withPlan)
 	}
@@ -570,20 +560,14 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 	source := &runtimeChangeSourceStub{
 		events:       make(chan changefeed.Event),
 		subscription: make(chan changefeed.Subscription, 1),
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
-		},
+		supported:    []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicSkillsChanged, protocol.TopicHooksChanged},
 	}
 	monitor := runtimeChangeMonitor{
 		subscriptionLimits: testSubscriptionLimits,
 		workspace:          "/workspace", source: source, watchFiles: true,
 		resources: runtimeResourceObservation{skills: true, hooks: true},
 	}
-	wantTopics := []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-		protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
-	}
+	wantTopics := []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicSkillsChanged, protocol.TopicHooksChanged}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, wantTopics) {
 		t.Fatalf("authored-resource topics without Git = %v, want %v", topics, wantTopics)
 	}
@@ -605,13 +589,7 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	t.Parallel()
 
-	features := map[string]protocol.FeatureCapability{
-		protocol.FeaturePlan:    {},
-		protocol.FeatureGoals:   {},
-		protocol.FeatureSkills:  {},
-		protocol.FeatureMCP:     {},
-		protocol.FeaturePlugins: {},
-	}
+	features := map[string]protocol.FeatureCapability{protocol.FeaturePlan: {}, protocol.FeatureGoals: {}, protocol.FeatureSkills: {}, protocol.FeatureMCP: {}, protocol.FeaturePlugins: {}}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,

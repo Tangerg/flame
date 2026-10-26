@@ -21,8 +21,6 @@ import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { loadPluginsForTest } from "@/test/kernel";
 
-import { synchronizeMountedAgentSession } from "@/features/agent/public/session";
-import { getAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 import { type GoalState } from "@/features/goal/application/goalReadModel";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import { useNotificationStore } from "@/features/notifications/public/notifications";
@@ -107,7 +105,7 @@ describe("Goal and mounted Session integration", () => {
         ),
       );
     const read = () =>
-      getAgentSessionSharedMaterial<GoalState>(testClient.agent.access, SID, "goal");
+      testClient.agent.access.getAgentSessionSharedMaterial<GoalState>(SID, "goal");
     let mounted = mount();
     try {
       await waitFor(() => expect(read()?.goal?.reason).toEqual(goal.reason));
@@ -118,7 +116,7 @@ describe("Goal and mounted Session integration", () => {
       expect(snapshot).toHaveBeenCalledTimes(2);
 
       snapshot.mockRejectedValueOnce(new Error("Goal snapshot unavailable"));
-      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
+      await testClient.agent.access.synchronizeMountedAgentSession(SID, "replace-live");
       expect(read()?.goal?.reason).toEqual(goal.reason);
       expect(
         useNotificationStore
@@ -127,12 +125,12 @@ describe("Goal and mounted Session integration", () => {
       ).toBe(true);
 
       snapshot.mockResolvedValue({ ...base, goal: { ...goal, reason: { code: "awaitingInput" } } });
-      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
+      await testClient.agent.access.synchronizeMountedAgentSession(SID, "replace-live");
       expect(read()?.goal?.reason).toEqual({ code: "awaitingInput" });
 
       const { reason: _reason, ...active } = goal;
       snapshot.mockResolvedValue({ ...base, goal: { ...active, status: "active" } });
-      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
+      await testClient.agent.access.synchronizeMountedAgentSession(SID, "replace-live");
       expect(read()?.goal?.status).toBe("active");
       expect(read()?.goal).not.toHaveProperty("reason");
       expect(start).not.toHaveBeenCalled();

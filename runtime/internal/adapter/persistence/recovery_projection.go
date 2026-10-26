@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -12,7 +12,7 @@ import (
 // recovery. Storage exposes facts only; it does not decide which Run tree may
 // survive a restart.
 func (r *RunStore) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error) {
-	rows, err := sqlitebase.Connection(ctx, r.db).QueryContext(ctx,
+	rows, err := sqlite.Connection(ctx, r.db).QueryContext(ctx,
 		`SELECT `+runColumns+`
 		   FROM runs AS r
 		   `+runReadJoins+`

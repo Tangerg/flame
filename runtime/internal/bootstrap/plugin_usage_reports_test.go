@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	reports "github.com/Tangerg/flame/plugins/usagereports"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *testing.T) {
@@ -30,11 +30,11 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := reports.NewContracts[protocol.UsageSummary]()
+	contracts, err := extension.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Capability.Identity().String(), Method: contracts.Capture.Name(), Input: `{"period":"daily"}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: testsupport.UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	options := delivery.Options{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
 	if first.Failure == nil {
@@ -48,14 +48,14 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 		t.Fatal(recovered.Failure)
 	}
 	reply := recovered.Value.(*protocol.CallPluginResponse)
-	var saved reports.Header
-	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.ID == "" {
+	var saved testsupport.UsageReportsCaptureV1Output
+	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
 	}
-	request.Method, request.Input = contracts.List.Name(), `{}`
+	request.Method, request.Input = testsupport.UsageReportsListV1Method, `{}`
 	listed := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	var headers []reports.Header
-	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers) != 1 || headers[0].ID != saved.ID || !headers[0].ObservedAt.Equal(saved.ObservedAt) {
+	var headers []testsupport.UsageReportsCaptureV1Output
+	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers) != 1 || headers[0].Id != saved.Id || !headers[0].ObservedAt.Equal(saved.ObservedAt) {
 		t.Fatalf("recovery repeated or changed the captured accounting observation: %s: %v", listed.Output, err)
 	}
 }
@@ -65,17 +65,17 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "usagereports"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := reports.NewContracts[protocol.UsageSummary]()
+	contracts, err := extension.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, input any, key string) *protocol.CallPluginResponse {
 		t.Helper()
-		encoded, err := jsoninput.Encode(input)
+		encoded, err := jsonvalue.Encode(input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Capability.Identity().String(), Method: method, Input: encoded.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("report operation failed: %+v", result.Failure)
 		}
@@ -95,15 +95,15 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		}
 	}
 	run("before-capture")
-	input := reports.CaptureInput{Period: "daily"}
-	captured := call(contracts.Capture.Name(), input, "save-report")
-	var header reports.Header
+	input := testsupport.UsageReportsCaptureV1Input{Period: "daily"}
+	captured := call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
+	var header testsupport.UsageReportsCaptureV1Output
 	if err := json.Unmarshal([]byte(captured.Output), &header); err != nil {
 		t.Fatal(err)
 	}
-	request := reports.ReportInput{ID: header.ID}
-	original := call(contracts.Get.Name(), request, "").Output
-	var saved reports.Report[protocol.UsageSummary]
+	request := testsupport.UsageReportsGetV1Input{Id: header.Id}
+	original := call(testsupport.UsageReportsGetV1Method, request, "").Output
+	var saved testsupport.UsageReportsGetV1Output
 	if err := json.Unmarshal([]byte(original), &saved); err != nil {
 		t.Fatal(err)
 	}
@@ -114,21 +114,21 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	r.close()
 	r = poMCPOpen(t, cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	if restored := call(contracts.Get.Name(), request, "").Output; restored != original {
+	if restored := call(testsupport.UsageReportsGetV1Method, request, "").Output; restored != original {
 		t.Fatalf("saved evidence changed after later work and restart: %s", restored)
 	}
-	if replay := call(contracts.Capture.Name(), input, "save-report"); replay.Output != captured.Output {
+	if replay := call(testsupport.UsageReportsCaptureV1Method, input, "save-report"); replay.Output != captured.Output {
 		t.Fatal("replay did not return the original capture identity")
 	}
-	call(contracts.Delete.Name(), request, "remove-report")
-	call(contracts.Capture.Name(), input, "save-report")
-	var remaining []reports.Header
-	listed := call(contracts.List.Name(), struct{}{}, "")
+	call(testsupport.UsageReportsDeleteV1Method, request, "remove-report")
+	call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
+	var remaining []testsupport.UsageReportsCaptureV1Output
+	listed := call(testsupport.UsageReportsListV1Method, struct{}{}, "")
 	if err := json.Unmarshal([]byte(listed.Output), &remaining); err != nil || len(remaining) != 0 {
 		t.Fatalf("capture replay recreated removed evidence: %s %v", listed.Output, err)
 	}
 	current := r.must(delivery.UsageSummary, protocol.UsageSummaryRequest{SinceDays: new(1)}, "").(*protocol.UsageSummary)
-	if current.Coverage.Calls <= saved.Summary.Coverage.Calls {
+	if int64(current.Coverage.Calls) <= saved.Summary.Coverage.Calls {
 		t.Fatal("archive deletion changed or replaced the core accounting ledger")
 	}
 }

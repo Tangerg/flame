@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -68,7 +67,7 @@ func testTreeContinuation(pending Pending) *treeContinuation {
 // These fakes exercise the application-owned reducer and journal. Delivery
 // protocol values deliberately do not appear here.
 type fakeExecutor struct {
-	events         []ExecutorPayload
+	events         []executorPayload
 	executorEvents []ExecutorEvent
 	block          bool
 	mu             sync.Mutex
@@ -858,7 +857,7 @@ func collectEvents(events iter.Seq[Event]) []Event {
 
 func treeBarrierQuestion(prompt string) Interrupt {
 	return Interrupt{
-		Kind: interrupt.Question,
+		Kind: run.InterruptQuestion,
 		Question: &QuestionPrompt{
 			ToolName:  "ask_user",
 			Arguments: `{}`,
@@ -903,7 +902,7 @@ func TestCoordinatorPreservesUnadmittedExecutorReleaseFailure(t *testing.T) {
 }
 
 func TestCoordinatorCommitsCanonicalOpeningAndTerminal(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{
+	executor := &fakeExecutor{events: []executorPayload{
 		MessageDelta{Text: "hello"},
 		SegmentEnded{Reason: run.OutcomeCompleted},
 	}}
@@ -955,7 +954,7 @@ func TestCoordinatorCommitsCanonicalOpeningAndTerminal(t *testing.T) {
 // projection is that Run's failure. Unwinding out of the pump goroutine would
 // take the process — and every other Session's in-flight work — with it.
 func TestRunProjectionDefectEndsOnlyItsOwnRun(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{
+	executor := &fakeExecutor{events: []executorPayload{
 		MessageDelta{Text: "hello"},
 		SegmentEnded{Reason: run.OutcomeCompleted},
 	}}
@@ -991,7 +990,7 @@ func TestRunProjectionDefectEndsOnlyItsOwnRun(t *testing.T) {
 // Session and the abandoned Run's stream still ends, so no subscriber waits on a
 // Run nothing will finish. Boot recovery already owns a Run whose owner is gone.
 func TestRunProjectionDefectInTheFailurePathStillReleasesItsSubscribers(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}}
+	executor := &fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}}
 	effects := &fakeEffects{commitAlwaysPanics: "projection invariant broken"}
 	coordinator := testCoordinator(executor, effects)
 
@@ -1012,7 +1011,7 @@ func TestRunProjectionDefectInTheFailurePathStillReleasesItsSubscribers(t *testi
 }
 
 func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}}
+	executor := &fakeExecutor{events: []executorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}}
 	started := make(chan struct{}, 1)
 	release := make(chan struct{})
 	effects := &fakeEffects{finishStarted: started, finishRelease: release}
@@ -1086,7 +1085,7 @@ func hasActiveSession(c *Coordinator, sessionID string) bool {
 }
 
 func TestCoordinatorCommitsExecutorStartFailureInCanonicalOrder(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{
+	executor := &fakeExecutor{events: []executorPayload{
 		SegmentEnded{Reason: run.OutcomeFailed, failure: &run.Failure{Kind: run.FailureInternal, Detail: "the run failed due to an internal error"}},
 	}}
 	effects := &fakeEffects{}
@@ -1246,7 +1245,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 	question := func(itemID, runID string) transcript.Interrupt {
 		return transcript.Interrupt{
 			ItemID: itemID, ItemOccurredAt: createdAt,
-			RunID: runID, Kind: interrupt.Question,
+			RunID: runID, Kind: run.InterruptQuestion,
 			Question: &transcript.Question{
 				Fields: []transcript.QuestionField{{
 					Prompt: "Continue?", Kind: transcript.QuestionText,
@@ -1351,7 +1350,7 @@ func TestCoordinatorTreeActivationFailureTerminalizesInCanonicalPostorder(t *tes
 }
 
 func TestCoordinatorMalformedTreeBarrierAbortsExecutorAndTerminalizes(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{TreeInterrupted{}}}
+	executor := &fakeExecutor{events: []executorPayload{TreeInterrupted{}}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
@@ -1383,7 +1382,7 @@ func TestCoordinatorProtocolViolationAbortsExecutorAndTerminalizes(t *testing.T)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			executor := &fakeExecutor{events: []ExecutorPayload{test.event}}
+			executor := &fakeExecutor{events: []executorPayload{test.event}}
 			effects := &fakeEffects{}
 			coordinator := testCoordinator(executor, effects)
 
@@ -2531,7 +2530,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 	spec := testSegment()
 	spec.Capabilities = run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
 	stream, err := coordinator.openSegment(t.Context(), spec)
 	if err != nil {
@@ -2573,7 +2572,7 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 		}},
 		{Member: root, Payload: mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 			MemberID: root.MemberID, RequestID: "request_approval",
-			Interrupt: Interrupt{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
+			Interrupt: Interrupt{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
 				CallID: "call_approval", Arguments: `{"command":"pwd"}`,
 				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium, Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 			}},
@@ -2582,7 +2581,7 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	spec.Capabilities = run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
+	spec.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
 
 	stream, err := coordinator.openSegment(t.Context(), spec)
 	if err != nil {
@@ -2648,7 +2647,7 @@ func TestCoordinatorTreeBarrierCommitFailurePublishesNoInterruptedFact(t *testin
 
 func TestCoordinatorCommitsSyntheticTerminalBeforeRelease(t *testing.T) {
 	executor := &fakeExecutor{
-		events:         []ExecutorPayload{TreeInterrupted{}},
+		events:         []executorPayload{TreeInterrupted{}},
 		releaseStarted: make(chan struct{}),
 		allowRelease:   make(chan struct{}),
 	}
@@ -2705,7 +2704,7 @@ func TestCoordinatorOpeningPublicationFailureReclaimsCommittedRun(t *testing.T) 
 }
 
 func TestCoordinatorCommitFailureNeverPublishesUnbackedFact(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{CompactionBoundary{
+	executor := &fakeExecutor{events: []executorPayload{CompactionBoundary{
 		Summary: "Retained context", MessagesBefore: 4, MessagesAfter: 2,
 	}}}
 	effects := &fakeEffects{commitErr: errors.New("store down")}
@@ -2788,7 +2787,7 @@ func TestCoordinatorStartAfterClose(t *testing.T) {
 	requireCoordinatorShutdown(t, coordinator)
 
 	_, err := coordinator.openSegment(context.Background(), testSegment())
-	if !errors.Is(err, ErrClosed) {
+	if !errors.Is(err, errClosed) {
 		t.Fatalf("openSegment error = %v, want ErrClosed", err)
 	}
 	if executor.releases() != 1 {
@@ -2803,7 +2802,7 @@ func TestCoordinatorStartAfterClosePreservesCleanupFailure(t *testing.T) {
 	requireCoordinatorShutdown(t, coordinator)
 
 	_, err := coordinator.openSegment(t.Context(), testSegment())
-	if !errors.Is(err, ErrClosed) || !errors.Is(err, cleanupErr) {
+	if !errors.Is(err, errClosed) || !errors.Is(err, cleanupErr) {
 		t.Fatalf("openSegment error = %v, want ErrClosed and cleanup failure", err)
 	}
 }

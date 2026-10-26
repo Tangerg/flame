@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/invopop/jsonschema"
 )
@@ -45,7 +45,7 @@ func (f *ModelFailure) Is(target error) bool {
 // ModelMethod publishes Scope's complete exchange without a text-only projection.
 func ModelMethod() (*Method[chat.Request, ModelResult], error) {
 	return NewMethod[chat.Request, ModelResult](MethodConfig{
-		Name: "flame.model/call.v1", Kind: capability.Mutation, Target: "call",
+		Name: "flame.model/call.v1", Kind: extension.Mutation, Target: "call",
 		Description: "Perform one complete exchange with the model captured by this call.",
 	})
 }
@@ -85,7 +85,7 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*capability.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*extension.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)
@@ -93,7 +93,7 @@ func NewModelCallback(call func(context.Context, Command[chat.Request]) (*chat.R
 }
 
 func modelCallContext(ctx context.Context, id string) (context.Context, error) {
-	call := capability.Invocation{ID: id, Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: id}}
+	call := extension.Invocation{ID: id, Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: id}}
 	if parent, err := InvocationFromContext(ctx); err == nil {
 		if parent.ID == id && parent.Target == call.Target {
 			return ctx, nil

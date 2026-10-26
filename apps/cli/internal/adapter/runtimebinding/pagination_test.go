@@ -97,7 +97,7 @@ func TestCursorTraversalRejectsDirectAndMultiStepCycles(t *testing.T) {
 				t.Fatal(err)
 			}
 			for index, next := range test.sequence {
-				more, err := traversal.Advance(next)
+				more, err := traversal.advance(next)
 				if err != nil {
 					if !test.wantErr || !strings.Contains(err.Error(), "cyclic continuation cursor") {
 						t.Fatalf("Advance(%q) error = %v", next, err)
@@ -122,16 +122,16 @@ func TestCursorTraversalRejectsInfiniteUniqueChainsAtItsOwnedCapacity(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if more, err := traversal.Advance("first"); err != nil || !more {
+	if more, err := traversal.advance("first"); err != nil || !more {
 		t.Fatalf("first Advance = (%t, %v), want (true, nil)", more, err)
 	}
-	more, err := traversal.Advance("second")
+	more, err := traversal.advance("second")
 	if err == nil || more || !strings.Contains(err.Error(), "2-page traversal capacity") {
 		t.Fatalf("second Advance = (%t, %v), want capacity violation", more, err)
 	}
 	requireRuntimeContractViolation(t, err)
-	if traversal.Current() != "first" {
-		t.Fatalf("cursor after rejected continuation = %q, want first", traversal.Current())
+	if traversal.cursor() != "first" {
+		t.Fatalf("cursor after rejected continuation = %q, want first", traversal.cursor())
 	}
 }
 
@@ -146,7 +146,7 @@ func TestCursorTraversalBoundsRequestAndResponseCursorBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	more, err := traversal.Advance(oversized)
+	more, err := traversal.advance(oversized)
 	if err == nil || more || !strings.Contains(err.Error(), "continuation cursor larger") {
 		t.Fatalf("oversized continuation = (%t, %v), want contract violation", more, err)
 	}

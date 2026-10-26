@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // recordedBoundaries answers for the runs it knows and reports "never recorded"
@@ -42,7 +41,7 @@ func (f fixedBoundary) Boundary(context.Context, string) ([]plan.Step, bool, err
 	return f.steps, f.recorded, nil
 }
 
-func boundaryCoordinator(stores testStores, boundaries PlanBoundaries) *Coordinator {
+func boundaryCoordinator(stores testStores, boundaries planBoundaries) *Coordinator {
 	deps := testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{}})
 	deps.Plan = PlanServices{
 		Boundaries: boundaries,

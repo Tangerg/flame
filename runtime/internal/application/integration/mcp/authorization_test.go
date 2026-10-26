@@ -9,10 +9,9 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestAuthorizationResultDoesNotDependOnASecondRegistryRead(t *testing.T) {
@@ -23,7 +22,7 @@ func TestAuthorizationResultDoesNotDependOnASecondRegistryRead(t *testing.T) {
 		releaseAuthorize: make(chan struct{}),
 	}
 	cfg := configWithPorts(ports)
-	registry := &failingConnectionRead{Registry: cfg.Registry}
+	registry := &failingConnectionRead{registry: cfg.Registry}
 	cfg.Registry = registry
 	states := make(chan mcpserver.ConnectionState, 4)
 	var c *Coordinator
@@ -89,7 +88,7 @@ func TestQueuedConnectingNotificationCannotHideCompletedAuthorization(t *testing
 		releaseAuthorize: make(chan struct{}),
 	}
 	cfg := configWithPorts(ports)
-	registry := &failingConnectionRead{Registry: cfg.Registry}
+	registry := &failingConnectionRead{registry: cfg.Registry}
 	cfg.Registry = registry
 	firstNotice := make(chan struct{})
 	releaseNotice := make(chan struct{})
@@ -177,7 +176,7 @@ func TestQueuedRegistryNotificationCannotHideCompletedConnection(t *testing.T) {
 }
 
 type failingConnectionRead struct {
-	Registry
+	registry
 	failed atomic.Bool
 }
 
@@ -185,7 +184,7 @@ func (r *failingConnectionRead) Definition(ctx context.Context, name mcpserver.I
 	if r.failed.Load() {
 		return mcpserver.Server{}, false, errors.New("registry read failed")
 	}
-	return r.Registry.Definition(ctx, name)
+	return r.registry.Definition(ctx, name)
 }
 
 func TestAuthorizationAttemptReportsFailureWithoutDiscardingResult(t *testing.T) {

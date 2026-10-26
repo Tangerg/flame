@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ErrInvalidLineage reports a Run whose root/child identity is incomplete or
@@ -26,7 +26,7 @@ type Lineage struct {
 
 // Validate reports whether l is exactly a root or child shape.
 func (l Lineage) Validate(runID string) error {
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidLineage, err)
 	}
 	present := 0
@@ -49,13 +49,13 @@ func (l Lineage) Validate(runID string) error {
 			runID,
 		)
 	}
-	if err := resourceid.ValidateItem(l.SpawnedByItemID); err != nil {
+	if err := identity.ValidateItem(l.SpawnedByItemID); err != nil {
 		return fmt.Errorf("%w: spawned-by %v", ErrInvalidLineage, err)
 	}
-	if err := resourceid.ValidateRun(l.ParentRunID); err != nil {
+	if err := identity.ValidateRun(l.ParentRunID); err != nil {
 		return fmt.Errorf("%w: parent %v", ErrInvalidLineage, err)
 	}
-	if err := resourceid.ValidateRun(l.RootRunID); err != nil {
+	if err := identity.ValidateRun(l.RootRunID); err != nil {
 		return fmt.Errorf("%w: root %v", ErrInvalidLineage, err)
 	}
 	switch {

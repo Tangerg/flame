@@ -526,7 +526,7 @@ func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTr
 
 func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string, compactor ModelContextCompactor) *delegateTreeFixture {
 	t.Helper()
-	var contextState InteractionModelContextState
+	var contextState interactionModelContextState
 	if compactor != nil {
 		contextState = emptyInteractionModelContextState{}
 	}

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -15,7 +14,7 @@ func TestProviderSelectionSurvivesRestartWithoutAnInstallationOrImplicitReplacem
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := NewProviderSelectionStore(db)
+	store := newProviderSelectionStore(db)
 	selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: "consumer.role", Installation: testsupport.InstallationID(t), Contribution: plugin.ContributionID("provider")})
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +30,7 @@ func TestProviderSelectionSurvivesRestartWithoutAnInstallationOrImplicitReplacem
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = NewProviderSelectionStore(db)
+	store = newProviderSelectionStore(db)
 	actual, found, err := store.Get(t.Context(), "consumer.role")
 	if err != nil || !found || actual != selection {
 		t.Fatalf("original choice changed: %+v, %t, %v", actual, found, err)

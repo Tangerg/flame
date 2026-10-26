@@ -10,8 +10,8 @@ import (
 	"iter"
 	"net/http"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/Tangerg/sse"
@@ -24,9 +24,9 @@ type StreamValue[C, R any] struct {
 	Result *R
 }
 
-type StreamingMethod[P, C, R any] struct{ contract *capability.Method }
+type StreamingMethod[P, C, R any] struct{ contract *extension.Method }
 
-func ImplementStreamingMethod[P, C, R any](owner *capability.Contract, name string) (*StreamingMethod[P, C, R], error) {
+func ImplementStreamingMethod[P, C, R any](owner *extension.Capability, name string) (*StreamingMethod[P, C, R], error) {
 	if owner == nil {
 		return nil, errors.New("plugin: method contract is required")
 	}
@@ -51,14 +51,14 @@ func NewStreamingMethod[P, C, R any](config MethodConfig) (*StreamingMethod[P, C
 	}
 	descriptor := base.Descriptor()
 	descriptor.Stream = chunk.JSON()
-	contract, err := capability.AdmitMethod(descriptor)
+	contract, err := extension.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
 	return &StreamingMethod[P, C, R]{contract: contract}, nil
 }
 
-func (m *StreamingMethod[P, C, R]) Descriptor() capability.MethodDescriptor {
+func (m *StreamingMethod[P, C, R]) Descriptor() extension.MethodDescriptor {
 	return m.contract.Descriptor()
 }
 
@@ -160,7 +160,7 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 // StreamHost starts one delivery only when consumed. Closing iteration cancels it;
 // transport writes and reads provide bounded backpressure without an event queue.
 func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id string, input P) iter.Seq2[StreamValue[C, R], error] {
-	admitted, admissionErr := jsoninput.Encode(input)
+	admitted, admissionErr := jsonvalue.Encode(input)
 	return func(yield func(StreamValue[C, R], error) bool) {
 		fail := func(err error) {
 			yield(StreamValue[C, R]{}, errors.Join(ErrStreamUnconfirmed, err, ctx.Err(), context.Cause(ctx)))
@@ -177,7 +177,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			fail(errors.New("plugin: streaming method is required"))
 			return
 		}
-		if method.contract.Kind() == capability.Mutation {
+		if method.contract.Kind() == extension.Mutation {
 			if err := validateCommandID(id); err != nil {
 				fail(err)
 				return
@@ -194,7 +194,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			fail(err)
 			return
 		}
-		encoded, err := json.Marshal(invokeParams{Protocol: capability.Protocol, Method: method.contract.Name(), Contract: method.contract.Identity().Digest(), Input: admitted.JSON(), CommandID: id})
+		encoded, err := json.Marshal(invokeParams{Protocol: extension.Protocol, Method: method.contract.Name(), Contract: method.contract.Identity().Digest(), Input: admitted.JSON(), CommandID: id})
 		if err != nil {
 			fail(err)
 			return

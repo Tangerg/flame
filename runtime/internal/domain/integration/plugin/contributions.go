@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -34,7 +33,7 @@ type Contribution struct {
 	ID         ContributionID
 	Server     mcpserver.ServerName
 	Export     string
-	Contract   jsoninput.Input
+	Contract   jsonvalue.Value
 	Requires   []Requirement
 }
 
@@ -42,7 +41,7 @@ type Contribution struct {
 // collection is composition data and does not impose an activation edge.
 type Requirement struct {
 	ID       ContributionID
-	Contract jsoninput.Input
+	Contract jsonvalue.Value
 	Optional bool
 }
 
@@ -56,10 +55,10 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	if !capability.ValidExportName(value.Export) {
+	if !extension.ValidExportName(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution export %q", value.Export)
 	}
-	contract, err := capability.Parse(value.Contract.JSON())
+	contract, err := extension.ParseCapability(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
 	}
@@ -73,7 +72,7 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 			return refuse(DiagnosticInvalidDependencies, "duplicate dependency %q", requirement.ID)
 		}
 		seen[requirement.ID] = true
-		required, err := capability.Parse(requirement.Contract.JSON())
+		required, err := extension.ParseCapability(requirement.Contract.JSON())
 		if err != nil {
 			return refuse(DiagnosticInvalidDependencies, "invalid dependency %q contract: %v", requirement.ID, err)
 		}
@@ -104,7 +103,7 @@ func (r Release) Contribution(id ContributionID) (Contribution, bool) {
 	}
 	return r.declaration.Contributions[index].clone(), true
 }
-func (r Release) HasImplementation(server mcpserver.ServerName, required *capability.Contract) bool {
+func (r Release) HasImplementation(server mcpserver.ServerName, required *extension.Capability) bool {
 	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
 		return value.Server == server && value.Contract == required.Identity()
 	})

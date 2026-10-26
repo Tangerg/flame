@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 func TestPluginEnablementJSONCannotEraseAuthoredPresence(t *testing.T) {
@@ -59,7 +59,7 @@ func TestPluginInputVariantErrorsSurviveRPCProjection(t *testing.T) {
 		{change: `{"type":"replace","value":"replacement"}`, field: `valueChanges["credential.name"].type`},
 	} {
 		raw := `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"` + strings.Repeat("1", 64) + `","valueChanges":{"credential.name":` + test.change + `},"serverChanges":{},"skillChanges":{}}`
-		_, failure := decodeForTest[protocol.ConfigurePluginRequest](&transport.Request{Params: jsontext.Value(raw)})
+		_, failure := decodeForTest[protocol.ConfigurePluginRequest](&jsonrpc.Request{Params: jsontext.Value(raw)})
 		if failure == nil || failure.Code != codeInvalidParams {
 			t.Fatalf("invalid input variant admitted: %s, %+v", test.change, failure)
 		}

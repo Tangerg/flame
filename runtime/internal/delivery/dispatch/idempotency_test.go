@@ -7,10 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 type blockingCancelRuntime struct {
@@ -49,8 +48,8 @@ func TestReplayClaimSerializesConcurrentMutation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal request params: %v", err)
 	}
-	first := &transport.Request{ID: testID("first"), Method: "runs.cancel", Params: params}
-	second := &transport.Request{ID: testID("second"), Method: "runs.cancel", Params: params}
+	first := &jsonrpc.Request{ID: testID("first"), Method: "runs.cancel", Params: params}
+	second := &jsonrpc.Request{ID: testID("second"), Method: "runs.cancel", Params: params}
 	results := make(chan Result, 2)
 	go func() { results <- router.Dispatch(ctx, first, options) }()
 	<-runtime.started

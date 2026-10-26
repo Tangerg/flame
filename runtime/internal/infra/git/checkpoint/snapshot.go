@@ -177,7 +177,7 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 		if len(seen) == maxCheckpointPaths {
 			return nil, nil, fmt.Errorf(
 				"%w: more than %d changed paths",
-				ErrSnapshotTooLarge, maxCheckpointPaths,
+				errSnapshotTooLarge, maxCheckpointPaths,
 			)
 		}
 		if !filepath.IsLocal(p) {
@@ -208,7 +208,7 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 		if info.Size() > maxCheckpointBytes-admittedBytes {
 			return nil, nil, fmt.Errorf(
 				"%w: changed file material exceeds %d bytes",
-				ErrSnapshotTooLarge, maxCheckpointBytes,
+				errSnapshotTooLarge, maxCheckpointBytes,
 			)
 		}
 		admittedBytes += info.Size()

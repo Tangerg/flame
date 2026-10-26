@@ -7,16 +7,14 @@ package model
 
 import (
 	"errors"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ErrIncomplete reports a provider/model pair where only one value was set.
-var ErrIncomplete = runtimeidentity.ErrIncompleteModelSelection
+var ErrIncomplete = errors.New("model selection: provider and model must be set together")
 
 // ErrReasoningEffortWithoutModel reports a reasoning choice that has no exact
 // provider/model identity to interpret its model-owned vocabulary.
-var ErrReasoningEffortWithoutModel = runtimeidentity.ErrReasoningEffortWithoutModel
+var ErrReasoningEffortWithoutModel = errors.New("model selection: reasoning effort requires provider and model")
 
 // ErrUnsupported reports a syntactically valid exact selection the configured
 // Runtime cannot admit.
@@ -81,7 +79,7 @@ func New(provider, model string) (Selection, error) {
 // effort leaves intensity to the selected model's provider default; a non-empty
 // value is interpreted only against that exact model's advertised vocabulary.
 func NewWithReasoningEffort(provider, model, reasoningEffort string) (Selection, error) {
-	if err := runtimeidentity.ValidateModelSelection(provider, model, reasoningEffort); err != nil {
+	if err := ValidateSelection(provider, model, reasoningEffort); err != nil {
 		return Selection{}, err
 	}
 	return Selection{

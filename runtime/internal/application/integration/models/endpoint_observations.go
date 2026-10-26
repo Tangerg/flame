@@ -5,20 +5,19 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/samber/lo"
 )
 
-type EndpointReader interface {
+type endpointReader interface {
 	PageEndpointInvocations(context.Context, string, int64, string, int) ([]modelref.EndpointObservation, error)
 }
 
-type EndpointObservations struct{ reader EndpointReader }
+type EndpointObservations struct{ reader endpointReader }
 
-func NewEndpointObservations(reader EndpointReader) (*EndpointObservations, error) {
-	if dependency.Missing(reader) {
+func NewEndpointObservations(reader endpointReader) (*EndpointObservations, error) {
+	if lo.IsNil(reader) {
 		return nil, errors.New("models: endpoint observation reader is required")
 	}
 	return &EndpointObservations{reader: reader}, nil
@@ -26,7 +25,7 @@ func NewEndpointObservations(reader EndpointReader) (*EndpointObservations, erro
 
 func (r *EndpointObservations) List(ctx context.Context, parent, cursor string, limit pagination.RequestedLimit) (pagination.Page[modelref.EndpointObservation], error) {
 	var zero pagination.Page[modelref.EndpointObservation]
-	if err := identity.ValidateEffect(parent); err != nil {
+	if err := modelref.ValidateInvocationID(parent); err != nil {
 		return zero, err
 	}
 	const namespace = "model-endpoints"

@@ -20,7 +20,6 @@ import {
   type CodeSourceProps,
   ImageNotice,
   readCalloutMarker,
-  setCodeWrap,
   useCopyFeedback,
   Disclosure,
   DiffTable,
@@ -140,7 +139,15 @@ describe("record form focus ownership", () => {
 });
 
 describe("recorded code", () => {
-  afterEach(() => setCodeWrap(false));
+  afterEach(() => {
+    cleanup();
+    const reset = render(
+      <CodeBlock label="Wrap preference">fixture</CodeBlock>,
+    );
+    const toggle = screen.queryByRole("button", { name: "Disable word wrap" });
+    if (toggle) fireEvent.click(toggle);
+    reset.unmount();
+  });
 
   it("scopes each platform's select-all command to the active literal reader", () => {
     render(

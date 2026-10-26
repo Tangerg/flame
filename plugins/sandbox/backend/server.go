@@ -5,11 +5,11 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -18,7 +18,7 @@ import (
 const executeTool = "sandbox_execute"
 
 func commandFailure(err error) error {
-	refusal, known := errors.AsType[*capability.Refusal](err)
+	refusal, known := errors.AsType[*extension.Refusal](err)
 	if !known {
 		return err
 	}
@@ -57,6 +57,10 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	if err := pluginsdk.RegisterTools(server, execute); err != nil {
 		return nil, err
 	}
+	toolReceipts, err := pluginsdk.ToolReceiptQuery()
+	if err != nil {
+		return nil, err
+	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, runner.db),
 		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ExecuteInput]) (sandbox.Result, error) {
@@ -69,7 +73,8 @@ func newServer(runner *runner) (*sdk.Server, error) {
 		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginsdk.Command[struct{}]) (rpc.Limits, error) {
 			return runner.limits(), nil
 		}),
-		pluginsdk.RegisterServer(backend, pluginsdk.ToolReceiptMethod, classify, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+			input := command.Input
 			if input.Method != executeTool {
 				return pluginsdk.ToolReceipt{}, nil
 			}

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
@@ -61,7 +61,7 @@ type Admission func() error
 
 // ReplayAdmission admits a durable command only while the connected Runtime
 // still owns the exact store and deadline recorded by its guard.
-func ReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
+func ReplayAdmission(policy ReplayPolicy, guard authoring.ReplayGuard) Admission {
 	return func() error {
 		if !policy.Replayable(guard) {
 			return ErrReplayGuaranteeUnavailable
@@ -87,9 +87,9 @@ func AcknowledgementUncertain(err error) bool {
 func OutcomeUnknown(err error) bool {
 	return AcknowledgementUncertain(err) ||
 		errors.Is(err, conversation.ErrCommandConflict) ||
-		errors.Is(err, replay.ErrCommandNotDispatched) ||
-		errors.Is(err, replay.ErrCommandInputUnavailable) ||
-		errors.Is(err, replay.ErrCommandOutcomeUnknown) ||
+		errors.Is(err, authoring.ErrCommandNotDispatched) ||
+		errors.Is(err, authoring.ErrCommandInputUnavailable) ||
+		errors.Is(err, authoring.ErrCommandOutcomeUnknown) ||
 		errors.Is(err, conversation.ErrCommandStoreMismatch) ||
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }

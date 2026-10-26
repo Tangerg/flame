@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const setDescription = `Set the current session's execution plan.
@@ -58,7 +57,7 @@ func (s *setter) set(ctx context.Context, args setArgs) (string, error) {
 	}
 	steps := args.steps()
 	if err := plandomain.ValidateSteps(steps); err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	state, err := s.plans.Replace(ctx, sessionID, steps)
 	if err != nil {

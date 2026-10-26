@@ -62,7 +62,7 @@ func usageDocument(report usageReport) (readerDocument, error) {
 	if recent {
 		window = fmt.Sprintf("last %d days", days)
 	}
-	sections := []ToolSection{
+	sections := []toolSection{
 		{Title: "Current session", Style: toolSectionCode, Text: usageReportText(report.session.Total, report.session.RecordedCostUSD, report.session.Coverage)},
 		{Title: "Runtime total", Style: toolSectionCode, Text: usageReportText(report.summary.Total, report.summary.RecordedCostUSD, report.summary.Coverage)},
 	}
@@ -77,7 +77,7 @@ func usageDocument(report usageReport) (readerDocument, error) {
 	}, nil
 }
 
-func appendUsageBreakdown(sections []ToolSection, title string, buckets []protocol.UsageBucket) []ToolSection {
+func appendUsageBreakdown(sections []toolSection, title string, buckets []protocol.UsageBucket) []toolSection {
 	if len(buckets) == 0 {
 		return sections
 	}
@@ -86,7 +86,7 @@ func appendUsageBreakdown(sections []ToolSection, title string, buckets []protoc
 		line := bucket.Key + "  " + usageReportText(bucket.Total, bucket.RecordedCostUSD, bucket.Coverage)
 		lines = append(lines, line)
 	}
-	return append(sections, ToolSection{Title: title, Style: toolSectionCode, Text: strings.Join(lines, "\n")})
+	return append(sections, toolSection{Title: title, Style: toolSectionCode, Text: strings.Join(lines, "\n")})
 }
 
 func usageTotalsText(totals protocol.ModelUsage) string {

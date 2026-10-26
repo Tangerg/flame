@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -406,7 +406,7 @@ func contextLabel(contextTokens int64) string {
 	return "ctx " + format.Thousands(contextTokens)
 }
 
-func modelLabel(options prompt.RunOptions) string {
+func modelLabel(options authoring.RunOptions) string {
 	if options.Provider != "" && options.Model != "" {
 		label := options.Provider + "/" + options.Model
 		if options.ReasoningEffort != "" {
@@ -420,7 +420,7 @@ func modelLabel(options prompt.RunOptions) string {
 // displayRunOptions resolves an omitted CLI override only for presentation.
 // Commands retain the empty pair so Runtime can read the active Session's
 // durable selection instead of receiving a second client-owned default.
-func displayRunOptions(options prompt.RunOptions, session conversation.Session) prompt.RunOptions {
+func displayRunOptions(options authoring.RunOptions, session conversation.Session) authoring.RunOptions {
 	if options.Provider == "" && options.Model == "" {
 		options.Provider, options.Model = session.Provider, session.Model
 		options.ReasoningEffort = session.ReasoningEffort

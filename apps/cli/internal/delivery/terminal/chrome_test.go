@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -349,7 +348,7 @@ func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
 	prompts := newQueueView(theme, glyphs)
-	prompts.Set(queue.Snapshot{Entries: []queue.Entry{{Message: prompt.Message{Text: "HIDDEN_QUEUE"}}}})
+	prompts.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{Message: authoring.Message{Text: "HIDDEN_QUEUE"}}}})
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("VISIBLE_DRAFT")

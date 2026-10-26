@@ -3,12 +3,11 @@ package delivery
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestToolReferenceRejectsInvalidMCPIdentity(t *testing.T) {
@@ -31,7 +30,7 @@ func TestToolReferenceRejectsInvalidMCPIdentity(t *testing.T) {
 // Every variant crosses the boundary as itself: a reference decoded from its
 // own projection is the same reference, whatever its origin.
 func TestToolReferenceRoundTripsEveryVariant(t *testing.T) {
-	installation, err := resourceid.ParseInstallation("eeb329cd-c7ce-40c9-bd90-6821fef06d30")
+	installation, err := identity.ParseInstallation("eeb329cd-c7ce-40c9-bd90-6821fef06d30")
 	if err != nil {
 		t.Fatal(err)
 	}

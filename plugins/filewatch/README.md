@@ -9,7 +9,7 @@ Build `go build -o plugins/filewatch/bin/filewatch ./plugins/filewatch/backend`,
 then install the package and enable its declared background contribution through
 the ordinary plugin lifecycle. The public generated contract exports `get`,
 `configure`, `status`, `events` and `event` under `flame.filewatch.v1`. Regenerate with
-`go generate ./plugins/filewatch/backend/rpc`.
+`go generate ./plugins/filewatch/internal/contract`.
 
 `configure` replaces the inspected revision with one trigger; omitting `trigger`
 disables observation. Use an available canonical workspace returned by

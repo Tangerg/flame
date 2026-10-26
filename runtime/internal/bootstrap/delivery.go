@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
@@ -21,7 +21,7 @@ type runtimeApplication struct {
 	delivery         delivery.HandlerConfig
 	sessions         *sessions.Coordinator
 	workers          runtimeWorkers
-	idempotencyStore idempotency.Store
+	idempotencyStore operation.ReplayStore
 	callbacks        *pluginsdk.Callbacks
 	modelCallbacks   []pluginsdk.Callback
 	// recoverUncertainExecutions resolves crash-uncertain executions and
@@ -51,7 +51,7 @@ func (h *runtimeApplication) newDeliveryHandler(
 	cfg := h.delivery
 	cfg.ServerInfo = info
 	cfg.IdempotencyLimits = protocol.IdempotencyLimits{
-		RetentionSeconds: int(idempotency.Retention.Seconds()),
+		RetentionSeconds: int(operation.ReplayRetention.Seconds()),
 		Namespace:        idempotencyNamespace,
 	}
 	return delivery.NewHandler(cfg)

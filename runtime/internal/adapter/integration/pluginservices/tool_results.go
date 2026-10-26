@@ -4,20 +4,18 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 type ToolResults struct {
@@ -25,12 +23,12 @@ type ToolResults struct {
 	pool          *mcp.Pool
 }
 
-func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release fingerprint.Digest) (bool, error) {
+func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release identity.Digest) (bool, error) {
 	_, found, err := s.toolSource(ctx, ref, release)
 	return found, err
 }
 
-func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release fingerprint.Digest) (mcpserver.ID, bool, error) {
+func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release identity.Digest) (mcpserver.ID, bool, error) {
 	var zero mcpserver.ID
 	server, _, found := ref.MCP()
 	if !found {
@@ -62,12 +60,12 @@ func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release fing
 	return zero, false, nil
 }
 
-func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest, callID, arguments string) (*chat.ToolOutput, error) {
+func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority identity.Digest, callID, arguments string) (*chat.ToolOutput, error) {
 	session, err := s.originalToolSession(ctx, ref, release, authority)
 	if err != nil {
 		return nil, err
 	}
-	admitted, err := jsoninput.Parse([]byte(arguments))
+	admitted, err := jsonvalue.Parse([]byte(arguments))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +73,7 @@ func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, rele
 	return pluginsdk.ReadToolReceipt(ctx, session, callID, remote.String(), admitted)
 }
 
-func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) (bool, error) {
+func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref, release, authority identity.Digest) (bool, error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return false, err
 	}
@@ -86,7 +84,7 @@ func (s *ToolResults) AwaitOriginalToolSource(ctx context.Context, ref tool.Ref,
 	return err == nil, err
 }
 
-func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority fingerprint.Digest) (*sdk.ClientSession, error) {
+func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, release, authority identity.Digest) (*sdk.ClientSession, error) {
 	source, found, err := s.toolSource(ctx, ref, release)
 	if err != nil {
 		return nil, err
@@ -98,7 +96,7 @@ func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, rel
 }
 
 func NewToolResults(store plugins.Store, pool *mcp.Pool) (*ToolResults, error) {
-	if dependency.Missing(store) || pool == nil {
+	if lo.IsNil(store) || pool == nil {
 		return nil, errors.New("tool results: installation store and connections are required")
 	}
 	return &ToolResults{installations: store, pool: pool}, nil

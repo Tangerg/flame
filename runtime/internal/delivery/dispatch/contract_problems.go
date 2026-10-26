@@ -17,7 +17,7 @@ import (
 type ProblemChannel string
 
 const (
-	ProblemChannelRPC       ProblemChannel = "rpc"
+	problemChannelRPC       ProblemChannel = "rpc"
 	ProblemChannelExecution ProblemChannel = "execution"
 )
 
@@ -38,20 +38,7 @@ type ProblemContract struct {
 }
 
 // executionRecovery owns the default next move for every execution problem.
-var executionRecovery = map[string]protocol.RecoveryAction{
-	protocol.ProblemInternalError:       protocol.RecoveryPromptUser,
-	protocol.ProblemRunLost:             protocol.RecoveryPromptUser,
-	protocol.ProblemAgentStuck:          protocol.RecoveryPromptUser,
-	protocol.ProblemRateLimited:         protocol.RecoveryWaitRetryAfter,
-	protocol.ProblemInvalidAPIKey:       protocol.RecoveryReauthenticate,
-	protocol.ProblemTimeout:             protocol.RecoveryPromptUser,
-	protocol.ProblemProviderUnavailable: protocol.RecoveryWaitRetryAfter,
-	protocol.ProblemProviderRejected:    protocol.RecoveryStop,
-	protocol.ProblemDeniedByUser:        protocol.RecoveryStop,
-	protocol.ProblemToolFailed:          protocol.RecoveryPromptUser,
-	protocol.ProblemToolCanceled:        protocol.RecoveryStop,
-	protocol.ProblemChildRunCanceled:    protocol.RecoveryStop,
-}
+var executionRecovery = map[string]protocol.RecoveryAction{protocol.ProblemInternalError: protocol.RecoveryPromptUser, protocol.ProblemRunLost: protocol.RecoveryPromptUser, protocol.ProblemAgentStuck: protocol.RecoveryPromptUser, protocol.ProblemRateLimited: protocol.RecoveryWaitRetryAfter, protocol.ProblemInvalidAPIKey: protocol.RecoveryReauthenticate, protocol.ProblemTimeout: protocol.RecoveryPromptUser, protocol.ProblemProviderUnavailable: protocol.RecoveryWaitRetryAfter, protocol.ProblemProviderRejected: protocol.RecoveryStop, protocol.ProblemDeniedByUser: protocol.RecoveryStop, protocol.ProblemToolFailed: protocol.RecoveryPromptUser, protocol.ProblemToolCanceled: protocol.RecoveryStop, protocol.ProblemChildRunCanceled: protocol.RecoveryStop}
 
 var problemContracts = mustProblemContracts()
 
@@ -62,22 +49,6 @@ func ProblemContracts() []ProblemContract {
 		out[index].Channels = slices.Clone(out[index].Channels)
 		out[index].Required = slices.Clone(out[index].Required)
 		out[index].Optional = slices.Clone(out[index].Optional)
-	}
-	return out
-}
-
-// ProblemTypesFor returns the stable symbolic vocabulary of one carrier.
-func ProblemTypesFor(channel ProblemChannel) []string {
-	switch channel {
-	case ProblemChannelRPC, ProblemChannelExecution:
-	default:
-		panic(fmt.Sprintf("dispatch: unknown problem channel %q", channel))
-	}
-	var out []string
-	for _, contract := range problemContracts {
-		if slices.Contains(contract.Channels, channel) {
-			out = append(out, contract.Type)
-		}
 	}
 	return out
 }
@@ -97,7 +68,7 @@ func mustProblemContracts() []ProblemContract {
 		}
 	}
 
-	add(ProblemChannelRPC, protocol.ProblemTypes()...)
+	add(problemChannelRPC, protocol.ProblemTypes()...)
 	add(ProblemChannelExecution, slices.Sorted(maps.Keys(executionRecovery))...)
 
 	common := []string{"detail", "docUrl"}
@@ -143,7 +114,7 @@ func (p ProblemContract) validate() error {
 			return fmt.Errorf("problem type %q repeats channel %q", p.Type, channel)
 		}
 		switch channel {
-		case ProblemChannelRPC, ProblemChannelExecution:
+		case problemChannelRPC, ProblemChannelExecution:
 		default:
 			return fmt.Errorf("problem type %q has unknown channel %q", p.Type, channel)
 		}

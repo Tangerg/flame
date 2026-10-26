@@ -25,7 +25,7 @@ const (
 type readerDocument struct {
 	Title    string
 	Detail   string
-	Sections []ToolSection
+	Sections []toolSection
 }
 
 type readerDocumentSource interface {
@@ -120,9 +120,9 @@ func (r *readerPane) replace(document readerDocument, preserveScroll, follow boo
 	}
 	r.detail = strings.TrimSpace(document.Detail)
 	r.resetContent(preserveScroll)
-	presentation := BlockPresentation{Theme: r.theme, Glyphs: r.glyphs, Syntax: r.syntax}
+	presentation := blockPresentation{Theme: r.theme, Glyphs: r.glyphs, Syntax: r.syntax}
 	for _, section := range document.Sections {
-		blocks := renderToolSections(presentation, []ToolSection{section}, false)
+		blocks := renderToolSections(presentation, []toolSection{section}, false)
 		for _, block := range blocks {
 			id := r.content.Append(newReaderSectionBlock(r.theme, section.Title, block))
 			r.content.Finish(id)

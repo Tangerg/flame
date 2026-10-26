@@ -392,11 +392,7 @@ func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicHooksChanged,
-			protocol.TopicSkillsChanged,
-		},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []protocol.WatchSpec{{WatchID: "authored", Workspace: protocol.WorkspaceRef{Path: dir}}},
 	})
 	if err != nil {
@@ -435,9 +431,7 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{
-		protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
-	}})
+	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicHooksChanged, protocol.TopicSkillsChanged}})
 	if err != nil {
 		t.Fatal(err)
 	}

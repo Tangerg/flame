@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -125,7 +123,10 @@ func (r *reducer) attachDurableObservation(
 	commit.ModelInvocations = append(commit.ModelInvocations, modelInvocations...)
 	commit.ToolInvocations = append(commit.ToolInvocations, toolInvocations...)
 	commit.ConversationMessages = appendClonedMessages(commit.ConversationMessages, conversationMessages...)
-	commit.Progress = optional.Clone(progress)
+	commit.Progress = progress
+	if commit.Progress != nil {
+		commit.Progress = new(*commit.Progress)
+	}
 	return validateReductionBatch(*batch)
 }
 

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
@@ -34,7 +33,7 @@ type managedDelegateCall struct {
 	arguments          tool.Arguments
 	modelCallSequence  uint64
 	toolCallIndex      uint32
-	callID             runtimeidentity.EffectID
+	callID             runs.InvocationID
 	admission          agent.ProcessAdmission
 	binding            runs.ChildRunBinding
 	childProcessID     agent.ProcessID

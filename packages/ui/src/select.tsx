@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { ChevronDown, Check } from "@flame/icons/react";
-import { SelectPrimitive } from "./primitives/index";
+import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { FIELD_SIZE, FIELD_SURFACE, MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";

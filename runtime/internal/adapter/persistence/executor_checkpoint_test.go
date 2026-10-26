@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -21,7 +20,7 @@ func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *ExecutorCheckpointSto
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return db, NewExecutorCheckpointStore(db)
+	return db, newExecutorCheckpointStore(db)
 }
 
 func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.ExecutorCheckpoint {

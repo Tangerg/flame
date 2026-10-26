@@ -12,7 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -70,7 +70,7 @@ func run(ctx context.Context) error {
 	}
 	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.ToolCall]) (chat.ToolCall, error) {
 		owner, err := pluginsdk.InvocationFromContext(ctx)
-		if err != nil || owner.Origin != capability.Model || owner.Parent == "" || owner.ID != command.Input.ID || command.ID != "" {
+		if err != nil || owner.Origin != extension.Model || owner.Parent == "" || owner.ID != command.Input.ID || command.ID != "" {
 			return chat.ToolCall{}, errors.New("contributor: original Tool owner was replaced")
 		}
 		proposal := command.Input
@@ -102,11 +102,11 @@ func run(ctx context.Context) error {
 }
 
 func runDroppingStream(ctx context.Context, server *sdk.Server, backend *pluginsdk.Backend, mode, trace string) error {
-	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "example.records/stream.v1", Kind: capability.Mutation, Target: "installation", Description: "Stream the captured command."})
+	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "example.records/stream.v1", Kind: extension.Mutation, Target: "installation", Description: "Stream the captured command."})
 	if err != nil {
 		return err
 	}
-	contract, err := capability.New(capability.Config{Reference: "example.records/streaming.v1", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.records/streaming.v1", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		return err
 	}
@@ -127,8 +127,12 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *plugins
 	}); err != nil {
 		return err
 	}
-	if err := pluginsdk.RegisterServer(backend, pluginsdk.ReceiptMethod, nil, func(ctx context.Context, _ *sdk.ServerSession, request pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
-		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": request.ID}); err != nil {
+	receipt, err := pluginsdk.ReceiptQuery()
+	if err != nil {
+		return err
+	}
+	if err := receipt.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.Receipt, error) {
+		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": command.Input.ID}); err != nil {
 			return pluginsdk.Receipt{}, err
 		}
 		return pluginsdk.Receipt{}, nil

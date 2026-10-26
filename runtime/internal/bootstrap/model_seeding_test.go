@@ -47,7 +47,7 @@ func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := &utilityRoleSeedStoreFake{role: test.stored, present: test.present}
-			if err := SeedUtilityRole(t.Context(), store, test.configured); err != nil {
+			if err := seedUtilityRole(t.Context(), store, test.configured); err != nil {
 				t.Fatal(err)
 			}
 			if store.saves != test.wantSaves || store.role.Provider() != test.wantProvider || store.role.Model() != test.wantModel {

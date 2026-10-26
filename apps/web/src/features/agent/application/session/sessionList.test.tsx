@@ -57,7 +57,7 @@ describe("useReconcilePersistedAgentSessions", () => {
   it("reconciles again when an authoritative list drops a remotely deleted session", async () => {
     const restoreLastSession = vi.fn();
     const reconcileSessions = vi.fn();
-    restoreState = stubInstance(testClient.agent.access.state, {
+    restoreState = stubInstance(testClient.agent.dependencies.state, {
       restoreLastSession,
       reconcileSessions,
     } as unknown as AgentSessionStatePort);

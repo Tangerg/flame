@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -16,14 +15,14 @@ import (
 type pluginUseCases interface {
 	List(context.Context) ([]plugins.Inspection, error)
 	Install(context.Context, string) (plugins.Inspection, error)
-	Stage(context.Context, resourceid.InstallationID, string) (plugins.Inspection, error)
-	Select(context.Context, resourceid.InstallationID, fingerprint.Digest) (plugins.Inspection, error)
-	Enable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
-	Disable(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
-	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
-	Uninstall(context.Context, resourceid.InstallationID) error
-	Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
-	Resource(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID, string) ([]byte, error)
+	Stage(context.Context, identity.InstallationID, string) (plugins.Inspection, error)
+	Select(context.Context, identity.InstallationID, identity.Digest) (plugins.Inspection, error)
+	Enable(context.Context, identity.InstallationID) (plugins.Inspection, error)
+	Disable(context.Context, identity.InstallationID) (plugins.Inspection, error)
+	Configure(context.Context, identity.InstallationID, identity.Digest, plugin.Configuration) (plugins.Inspection, error)
+	Uninstall(context.Context, identity.InstallationID) error
+	Component(context.Context, identity.InstallationID, identity.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
+	Resource(context.Context, identity.InstallationID, identity.Digest, plugin.ContributionID, string) ([]byte, error)
 }
 
 type selectionUseCases interface {
@@ -70,26 +69,26 @@ func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPl
 	return presentProviderSelection(value), nil
 }
 
-func parseInstallationID(text string) (resourceid.InstallationID, error) {
-	id, err := resourceid.ParseInstallation(text)
+func parseInstallationID(text string) (identity.InstallationID, error) {
+	id, err := identity.ParseInstallation(text)
 	if err != nil {
-		return resourceid.InstallationID{}, protocol.InvalidParameters(err)
+		return identity.InstallationID{}, protocol.InvalidParameters(err)
 	}
 	return id, nil
 }
 
-func parseReleaseDigest(text string) (fingerprint.Digest, error) {
-	digest, err := fingerprint.ParseDigest(text)
+func parseReleaseDigest(text string) (identity.Digest, error) {
+	digest, err := identity.ParseDigest(text)
 	if err != nil {
-		return fingerprint.Digest{}, protocol.InvalidParameters(err)
+		return identity.Digest{}, protocol.InvalidParameters(err)
 	}
 	return digest, nil
 }
 
-func parseInstallationRelease(id, digest string) (resourceid.InstallationID, fingerprint.Digest, error) {
+func parseInstallationRelease(id, digest string) (identity.InstallationID, identity.Digest, error) {
 	installation, err := parseInstallationID(id)
 	if err != nil {
-		return resourceid.InstallationID{}, fingerprint.Digest{}, err
+		return identity.InstallationID{}, identity.Digest{}, err
 	}
 	release, err := parseReleaseDigest(digest)
 	return installation, release, err

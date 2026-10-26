@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type RoleKind string
@@ -65,7 +66,7 @@ func (r Role) Validate() error {
 	// name one, and neither takes a provider or a model to disagree with.
 	case inheritedRole, disabledRole:
 	case configuredRole:
-		if err := runtimeprotocol.ValidateModelSelection(r.provider, r.model, ""); err != nil {
+		if err := flamemodel.ValidateSelection(r.provider, r.model, ""); err != nil {
 			return fmt.Errorf("configured model role: %w", err)
 		}
 	default:
@@ -118,10 +119,10 @@ func (r Roles) Validate() error {
 
 type Credential struct {
 	masked string
-	source runtimeprotocol.ProviderKeySource
+	source protocol.ProviderKeySource
 }
 
-func NewCredential(masked string, source runtimeprotocol.ProviderKeySource) (Credential, error) {
+func NewCredential(masked string, source protocol.ProviderKeySource) (Credential, error) {
 	credential := Credential{masked: masked, source: source}
 	if err := credential.Validate(); err != nil {
 		return Credential{}, err
@@ -133,7 +134,7 @@ func (c Credential) Validate() error {
 	if strings.TrimSpace(c.masked) == "" {
 		return errors.New("provider credential mask is empty")
 	}
-	if c.source != runtimeprotocol.ProviderKeySourceStored && c.source != runtimeprotocol.ProviderKeySourceEnv {
+	if c.source != protocol.ProviderKeySourceStored && c.source != protocol.ProviderKeySourceEnv {
 		return fmt.Errorf("provider credential source %q is invalid", c.source)
 	}
 	return nil
@@ -141,9 +142,9 @@ func (c Credential) Validate() error {
 
 func (c Credential) Masked() string { return c.masked }
 func (c Credential) FromEnvironment() bool {
-	return c.source == runtimeprotocol.ProviderKeySourceEnv
+	return c.source == protocol.ProviderKeySourceEnv
 }
-func (c Credential) Stored() bool { return c.source == runtimeprotocol.ProviderKeySourceStored }
+func (c Credential) Stored() bool { return c.source == protocol.ProviderKeySourceStored }
 
 type ProviderSpec struct {
 	ID               string
@@ -184,7 +185,7 @@ func NewProvider(spec ProviderSpec) (Provider, error) {
 }
 
 func (p Provider) Validate() error {
-	if err := runtimeprotocol.ValidateProviderIdentity(p.id); err != nil {
+	if err := flamemodel.ValidateProviderIdentity(p.id); err != nil {
 		return err
 	}
 	if p.baseURL != "" && (p.baseURL != strings.TrimSpace(p.baseURL)) {
@@ -216,17 +217,17 @@ func (p Provider) Credential() (Credential, bool) {
 func (p Provider) BaseURL() (string, bool) { return p.baseURL, p.baseURL != "" }
 
 type ValueChange struct {
-	Kind  runtimeprotocol.ProviderConfigChangeType
+	Kind  protocol.ProviderConfigChangeType
 	Value string
 }
 
 func (v ValueChange) Validate() error {
 	switch v.Kind {
-	case runtimeprotocol.ProviderConfigSet:
+	case protocol.ProviderConfigSet:
 		if strings.TrimSpace(v.Value) == "" {
 			return errors.New("set change value is empty")
 		}
-	case runtimeprotocol.ProviderConfigClear:
+	case protocol.ProviderConfigClear:
 		if v.Value != "" {
 			return errors.New("clear change carries a value")
 		}
@@ -243,7 +244,7 @@ type UpdateProvider struct {
 }
 
 func (u UpdateProvider) Validate() error {
-	if err := runtimeprotocol.ValidateProviderIdentity(u.Provider); err != nil {
+	if err := flamemodel.ValidateProviderIdentity(u.Provider); err != nil {
 		return fmt.Errorf("update provider: %w", err)
 	}
 	if u.BaseURL == nil && u.APIKey == nil {

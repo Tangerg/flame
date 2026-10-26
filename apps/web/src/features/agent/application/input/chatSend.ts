@@ -1,4 +1,4 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { useCallback } from "react";
 import { resolveAgentRunStartOptions } from "@/features/agent/public/runOptions";
@@ -14,7 +14,7 @@ import { steerRunningTurn } from "@/features/agent/application/input/steering";
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 
 export function useChatSend(): (input: AgentInput) => boolean {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const send = agentAccess.view.useAction("send");
   return useCallback(
@@ -44,7 +44,7 @@ export function useChatSend(): (input: AgentInput) => boolean {
 }
 
 export function useCanSendToAgent(): boolean {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const sessionId = useActiveSessionId();
   const send = agentAccess.view.useAction("send");

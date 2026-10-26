@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -468,7 +467,7 @@ func waitingQuestionResponses(pending Pending) []ResumeResponse {
 	for index, pendingInterrupt := range pending.Interrupts {
 		responses[index] = ResumeResponse{
 			ItemID:   pendingInterrupt.ItemID,
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: &QuestionResponse{Answers: [][]string{{"continue"}}},
 		}
 	}

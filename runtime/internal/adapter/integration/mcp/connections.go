@@ -11,14 +11,12 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/go-sdk/auth"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/go-sdk/auth"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
 
 // server is the live state of one configured MCP server. Access is guarded by
@@ -119,7 +117,7 @@ func (c *connections) setToolSink(sink func([]Executable, []mcpserver.ID, []mcps
 // newClient builds the shared MCP client identity used for every server's
 // session (and re-dials). No per-server handlers are needed, so one suffices.
 func newClient() *sdkmcp.Client {
-	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: runtimeidentity.ProductName, Version: "v0.1.0"}, nil)
+	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: identity.ProductName, Version: "v0.1.0"}, nil)
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.
@@ -284,7 +282,7 @@ func (c *connections) activation(session *sdkmcp.ClientSession) (plugin.Activati
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	return plugin.Activation{Identity: fingerprint.Sum(sha256.Sum256(encoded)), Dependencies: plugin.CompactDependencies(dependencies)}, nil
+	return plugin.Activation{Identity: identity.DigestFromSum(sha256.Sum256(encoded)), Dependencies: plugin.CompactDependencies(dependencies)}, nil
 }
 
 func (c *connections) serviceSession(ctx context.Context, current mcpserver.Server) (*sdkmcp.ClientSession, error) {

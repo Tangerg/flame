@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -56,9 +55,7 @@ func TestNegotiationMapsSubagentsToChildRunPolicy(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
 	capabilities, err := s.negotiateCapabilities(withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents: {Enabled: true},
-		},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 	}))
 	if err != nil {
 		t.Fatalf("negotiate: %v", err)
@@ -117,10 +114,7 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	s, _ := rollbackHarness(t)
 
 	capabilities, err := s.negotiateCapabilities(withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents:  {Enabled: false},
-			protocol.FeatureMultimodal: {Enabled: true},
-		},
+		Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: false}, protocol.FeatureMultimodal: {Enabled: true}},
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 	}))
 	if err != nil {
@@ -131,7 +125,7 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	if capabilities.ChildRuns {
 		t.Fatal("declined subagents unexpectedly enabled child runs")
 	}
-	want := []interrupt.Kind{interrupt.Approval, interrupt.Question}
+	want := []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}
 	if len(capabilities.InterruptKinds) != len(want) {
 		t.Fatalf("interruptKinds = %v, want %v", capabilities.InterruptKinds, want)
 	}
@@ -177,13 +171,13 @@ func TestResumeRunRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID:   "item_1",
-			Kind:     interrupt.Approval,
+			Kind:     run.InterruptApproval,
 			Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"},
 		}},
 		time.Unix(1, 0).UTC(),
 	)
 	if err := rt.openPendingWith(ctx, t, sess.ID(), pending, run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}

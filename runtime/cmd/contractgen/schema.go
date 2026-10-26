@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json/jsontext"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
@@ -232,7 +232,7 @@ func (s *schemaSet) object(t reflect.Type) *contractgen.Schema {
 			}
 		}
 	}
-	for _, field := range contractshape.Fields(t) {
+	for _, field := range jsonvalue.Fields(t) {
 		node := s.walk(field.Type)
 		// A value constraint on a directly-owned field narrows it in place; the
 		// declared constraint and the generated Go check read the same statement.
@@ -288,7 +288,7 @@ func (s *schemaSet) object(t reflect.Type) *contractgen.Schema {
 // belonging to another branch.
 func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*contractgen.Schema {
 	tagValues := s.discriminatorValues(t, union)
-	roots := contractshape.FieldNames(t)
+	roots := jsonvalue.FieldNames(t)
 
 	out := make([]*contractgen.Schema, 0, len(union.Variants)+1)
 	for _, variant := range union.Variants {
@@ -327,7 +327,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*contra
 // type, so a variant tag that is not one of them fails generation rather than
 // producing a branch nothing can satisfy.
 func (s *schemaSet) discriminatorValues(t reflect.Type, union dispatch.UnionSpec) []string {
-	field, ok := contractshape.LookupField(t, union.Discriminator)
+	field, ok := jsonvalue.LookupField(t, union.Discriminator)
 	if !ok {
 		return nil
 	}
@@ -359,11 +359,11 @@ func forbidden(t reflect.Type, discriminator string, roots, claimed []string) []
 		}
 	}
 	for root, names := range nested {
-		field, ok := contractshape.LookupField(t, root)
+		field, ok := jsonvalue.LookupField(t, root)
 		if !ok {
 			continue
 		}
-		for _, name := range contractshape.FieldNames(contractshape.Deref(field.Type)) {
+		for _, name := range jsonvalue.FieldNames(jsonvalue.Deref(field.Type)) {
 			if !slices.Contains(names, name) {
 				out = append(out, root+"."+name)
 			}
@@ -421,11 +421,11 @@ func restrictAllowedValues(node *contractgen.Schema, owner reflect.Type, sets []
 }
 
 func restrictAllowedValueSet(node *contractgen.Schema, owner reflect.Type, set dispatch.AllowedValueSet) {
-	_, leaf, found := contractshape.GoPath(owner, set.Field)
+	_, leaf, found := jsonvalue.GoPath(owner, set.Field)
 	if !found {
 		panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
 	}
-	checkAllowedEnumSubset(owner, set, contractshape.Deref(leaf.Type))
+	checkAllowedEnumSubset(owner, set, jsonvalue.Deref(leaf.Type))
 	parent, name := descend(node, owner, set.Field, false)
 	setAllowedValues(parent, name, owner, set)
 }
@@ -485,11 +485,11 @@ func descend(node *contractgen.Schema, owner reflect.Type, path string, markInte
 	segments := strings.Split(path, ".")
 	current := node
 	for _, segment := range segments[:len(segments)-1] {
-		field, ok := contractshape.LookupField(owner, segment)
+		field, ok := jsonvalue.LookupField(owner, segment)
 		if !ok {
 			panic(fmt.Sprintf("contractgen: no JSON field %q on %s", segment, owner))
 		}
-		owner = contractshape.Deref(field.Type)
+		owner = jsonvalue.Deref(field.Type)
 		if current.Properties == nil {
 			current.Properties = make(map[string]any)
 		}

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/google/uuid"
 )
 
-type InitializationStore interface {
+type initializationStore interface {
 	Store
 	Initialize(context.Context, func(context.Context) error) error
 }
@@ -22,7 +22,7 @@ type DefaultProvider struct {
 
 // Initialize commits the distribution catalog and configured provider choices
 // once. Installation and composition owners advance their own facts thereafter.
-func Initialize(ctx context.Context, store InitializationStore, packages Packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
+func Initialize(ctx context.Context, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
 	return store.Initialize(ctx, func(ctx context.Context) (err error) {
 		existing, err := store.List(ctx)
 		if err != nil {
@@ -54,7 +54,7 @@ func Initialize(ctx context.Context, store InitializationStore, packages Package
 	})
 }
 
-func installFirstParty(ctx context.Context, store Store, packages Packages, source string) (err error) {
+func installFirstParty(ctx context.Context, store Store, packages packages, source string) (err error) {
 	candidate, err := packages.Materialize(ctx, source)
 	if err != nil {
 		return fmt.Errorf("plugins: admit first-party package: %w", err)
@@ -64,7 +64,7 @@ func installFirstParty(ctx context.Context, store Store, packages Packages, sour
 	if len(release.Declaration().Diagnostics) != 0 {
 		return errors.New("plugins: first-party package has admission diagnostics")
 	}
-	id, err := resourceid.ParseInstallation(uuid.NewString())
+	id, err := identity.ParseInstallation(uuid.NewString())
 	if err != nil {
 		return err
 	}
@@ -116,12 +116,12 @@ func selectInitialProviders(ctx context.Context, store Store, selections Selecti
 		if !found {
 			return errors.New("plugins: distribution contribution is not declared")
 		}
-		contract, err := capability.Parse(declared.Contract.JSON())
+		contract, err := extension.ParseCapability(declared.Contract.JSON())
 		if err != nil {
 			return err
 		}
 		descriptor := contract.Descriptor()
-		if descriptor.Reference != initial.Role || descriptor.Composition != capability.Selection {
+		if descriptor.Reference != initial.Role || descriptor.Composition != extension.Selection {
 			return errors.New("plugins: distribution provider does not declare its selected role")
 		}
 		selection, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: initial.Role, Installation: chosen.Installation.ID(), Contribution: contribution})

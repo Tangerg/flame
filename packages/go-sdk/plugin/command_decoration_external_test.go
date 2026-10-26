@@ -9,20 +9,20 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	private "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	storage "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *testing.T) {
-	method, err := pluginsdk.NewMethod[string, int64](pluginsdk.MethodConfig{Name: "example.records/update.v1", Kind: capability.Mutation, Target: "workspace", Description: "Update the private record."})
+	method, err := pluginsdk.NewMethod[string, int64](pluginsdk.MethodConfig{Name: "example.records/update.v1", Kind: extension.Mutation, Target: "workspace", Description: "Update the private record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "example.records/decoration.v1", Composition: capability.Decoration, Scope: "workspace"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.records/decoration.v1", Composition: extension.Decoration, Scope: "workspace"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,12 +59,12 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 	}
 	path := filepath.Join(t.TempDir(), "private.db")
 	schema := []string{private.CommandsSchema, `CREATE TABLE IF NOT EXISTS counter(value INTEGER NOT NULL)`, `INSERT INTO counter SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM counter)`}
-	db, err := storage.OpenSchema(t.Context(), path, schema)
+	db, err := sqlite.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	original := capability.Invocation{ID: "original-command", Origin: capability.Model, Parent: "run_original", Target: capability.Target{Scope: "workspace", Reference: "original-workspace"}}
+	original := extension.Invocation{ID: "original-command", Origin: extension.Model, Parent: "run_original", Target: extension.Target{Scope: "workspace", Reference: "original-workspace"}}
 	calling, err := pluginsdk.WithInvocation(t.Context(), original)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 			return 0, err
 		}
 		return private.Command(ctx, db, method.Name(), command.ID, command.Input, input, nil, func(ctx context.Context, _ string) (int64, error) {
-			connection := storage.Connection(ctx, db)
+			connection := sqlite.Connection(ctx, db)
 			if _, err := connection.ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 				return 0, err
 			}
@@ -125,14 +125,14 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode("original-input")
+	input, err := jsonvalue.Encode("original-input")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
 		if _, err := bound.InvokeWithMetadata(calling, "original-command", input, metadata); err == nil {
 			t.Fatal("outer failure appeared successful")
-		} else if _, known := errors.AsType[*capability.Refusal](err); known {
+		} else if _, known := errors.AsType[*extension.Refusal](err); known {
 			t.Fatalf("outer failure claimed a known business refusal: %v", err)
 		}
 	}
@@ -146,7 +146,7 @@ func TestExecutableCommandDecoratorFailurePreservesCommittedInnerReceipt(t *test
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := storage.OpenSchema(t.Context(), path, schema)
+	reopened, err := sqlite.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}

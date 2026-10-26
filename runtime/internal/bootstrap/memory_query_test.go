@@ -3,17 +3,16 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-func memoryQuery(r *poMCPRuntime, input memoryrpc.ListInput) (protocol.CallPluginRequest, error) {
+func memoryQuery(r *poMCPRuntime, input memorycontract.ListV1Input) (protocol.CallPluginRequest, error) {
 	providers := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
 	installations := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
-	contracts, err := memoryrpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -32,19 +31,19 @@ func memoryQuery(r *poMCPRuntime, input memoryrpc.ListInput) (protocol.CallPlugi
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: string(encoded), Target: capability.Target{Scope: "installation", Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV1Method, Input: string(encoded), Target: extension.Target{Scope: "installation", Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }
-func memoryQueryResult(r *poMCPRuntime, input memoryrpc.ListInput) delivery.Result {
+func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListV1Input) delivery.Result {
 	request, err := memoryQuery(r, input)
 	if err != nil {
 		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
-func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[memorydomain.ItemSnapshot] {
+func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV1Input) *protocol.Page[memorycontract.UpdateV1Output] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -54,16 +53,20 @@ func readMemoryPage(r *poMCPRuntime, input memoryrpc.ListInput) *protocol.Page[m
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var page memoryrpc.Page
+	var page memorycontract.ListV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	return protocol.NewPageWithCursor(page.Rows, page.NextCursor)
+	values := make([]memorycontract.UpdateV1Output, len(page.Rows))
+	for index, row := range page.Rows {
+		values[index] = memorycontract.UpdateV1Output(row)
+	}
+	return protocol.NewPageWithCursor(values, page.NextCursor)
 }
 
-func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPluginRequest {
+func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV1Input) protocol.CallPluginRequest {
 	r.t.Helper()
-	request, err := memoryQuery(r, memoryrpc.ListInput{})
+	request, err := memoryQuery(r, memorycontract.ListV1Input{})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -71,18 +74,19 @@ func memoryAddRequest(r *poMCPRuntime, input memoryrpc.AddInput) protocol.CallPl
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = memoryrpc.Add, string(encoded)
+	request.Method, request.Input = memorycontract.AddV1Method, string(encoded)
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorydomain.ItemSnapshot {
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.UpdateV1Output {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var result memoryrpc.AddResult
+	var result memorycontract.AddV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &result); err != nil {
 		r.t.Fatal(err)
 	}
-	return &result.Item
+	item := memorycontract.UpdateV1Output(result.Item)
+	return &item
 }

@@ -10,11 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 // SubmitProposal validates and stages proposal in its name-owned review slot.
@@ -297,7 +296,7 @@ func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, err
 // Counting every entry (including malformed external additions) prevents junk
 // from bypassing the finite scan; only valid named directories become reviews.
 func proposalSlotNames(root *os.Root) ([]string, error) {
-	directory, _, err := fileinput.OpenDirectoryAt(root, proposalsSubdir)
+	directory, _, err := filesystem.OpenDirectoryAt(root, proposalsSubdir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}

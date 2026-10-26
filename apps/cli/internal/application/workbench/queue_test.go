@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 type queueWriteFailure struct {
@@ -40,9 +39,9 @@ func queueWithStorage(t *testing.T) (*Queue, *Store, *queueWriteFailure, string)
 		t.Fatal(err)
 	}
 	for index, message := range []string{"opening", "second", "promote me"} {
-		var entropy [replay.CommandIDEntropyBytes]byte
+		var entropy [authoring.CommandIDEntropyBytes]byte
 		entropy[0] = byte(index + 1)
-		if _, err := prompts.EnqueueCommand(replay.NewCommandID(entropy), "session", prompt.Message{Text: message}, prompt.RunOptions{}); err != nil {
+		if _, err := prompts.EnqueueCommand(authoring.NewCommandID(entropy), "session", authoring.Message{Text: message}, authoring.RunOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -55,7 +54,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	if !ok {
 		t.Fatal("first command was not reserved")
 	}
-	if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 	before := prompts.State("session")
@@ -84,7 +83,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	prompts, store, _, _ := queueWithStorage(t)
 	first, _ := prompts.BeginDispatch("session")
-	if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 	last := prompts.Snapshot("session").Entries[2]
@@ -106,7 +105,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 func TestQueueSettlementRetainsReservationUntilBothDurableWritesSucceed(t *testing.T) {
 	prompts, store, writes, _ := queueWithStorage(t)
 	first, _ := prompts.BeginDispatch("session")
-	if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 	writes.fail = store.sessionStateName("session")
@@ -134,7 +133,7 @@ func TestQueueSettlementRetainsReservationUntilBothDurableWritesSucceed(t *testi
 func TestQueueSettlementNamesTheAcknowledgedCommandAcrossSuccessors(t *testing.T) {
 	prompts, store, _, _ := queueWithStorage(t)
 	first, _ := prompts.BeginDispatch("session")
-	if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 	second := prompts.Snapshot("session").Entries[1]
@@ -164,7 +163,7 @@ func TestQueueRecoveryPreservesHeldSuccessors(t *testing.T) {
 		t.Run(outcome, func(t *testing.T) {
 			prompts, store, _, directory := queueWithStorage(t)
 			first, _ := prompts.BeginDispatch("session")
-			if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+			if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 				t.Fatal(err)
 			}
 			successor := prompts.Snapshot("session").Entries[1]
@@ -221,12 +220,12 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 			prompts, store, _, _ := queueWithStorage(t)
 			first := prompts.Snapshot("session").Entries[0]
 			if state != PendingRunQueued {
-				if err := store.MarkPendingRunDispatching("session", first.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+				if err := store.MarkPendingRunDispatching("session", first.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 					t.Fatal(err)
 				}
 			}
 			if state == PendingRunCanceling {
-				if _, err := store.MarkPendingRunCanceling("session", first.CommandID, replay.UnprotectedGuard()); err != nil {
+				if _, err := store.MarkPendingRunCanceling("session", first.CommandID, authoring.UnprotectedGuard()); err != nil {
 					t.Fatal(err)
 				}
 			}

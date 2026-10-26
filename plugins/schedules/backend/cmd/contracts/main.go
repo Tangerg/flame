@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 )
 
 func main() {

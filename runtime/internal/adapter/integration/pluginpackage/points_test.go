@@ -5,12 +5,11 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func TestPackageAdmitsLocalPointContractsAndIsolatesInvalidValues(t *testing.T) {
-	contract, err := point.Admit(point.Definition{Protocol: capability.Protocol, Reference: "example.com/analyzers", Composition: capability.Collection, Scope: "installation", Optional: true, Ordering: point.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.AdmitPoint(extension.PointDescriptor{Protocol: extension.Protocol, Reference: "example.com/analyzers", Composition: extension.Collection, Scope: "installation", Optional: true, Ordering: extension.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +18,7 @@ func TestPackageAdmitsLocalPointContractsAndIsolatesInvalidValues(t *testing.T) 
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.points","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.points","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/contracts/point.json": string(data),
 		"io.github.tangerg.flame/declaration.json":     flameDeclaration(`"points":[{"id":"analyzers","contract":"io.github.tangerg.flame/contracts/point.json"}],"pointValues":[{"id":"valid","contract":"io.github.tangerg.flame/contracts/point.json","value":{"title":"Evidence"}},{"id":"invalid","contract":"io.github.tangerg.flame/contracts/point.json","value":{"title":1}}]`),
 	}

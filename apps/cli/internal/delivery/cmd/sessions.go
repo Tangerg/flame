@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
@@ -80,7 +79,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return render.WriteSessionJSON(cmd.OutOrStdout(), updated)
+			return writeSessionJSON(cmd.OutOrStdout(), updated)
 		},
 	}
 	cmd.Flags().StringVar(&title, "title", "", "Replace the session title")
@@ -127,7 +126,7 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			if asJSON {
-				return render.WriteSessionPageJSON(cmd.OutOrStdout(), page)
+				return writeSessionPageJSON(cmd.OutOrStdout(), page)
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 			for _, session := range page.Items {
@@ -198,12 +197,12 @@ func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
 
 func writeSessionSnapshot(cmd *cobra.Command, snapshot conversation.SessionSnapshot, asJSON bool) error {
 	if asJSON {
-		return render.WriteSessionSnapshotJSON(cmd.OutOrStdout(), snapshot)
+		return writeSessionSnapshotJSON(cmd.OutOrStdout(), snapshot)
 	}
 	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s · %s\n", snapshot.Session.Title, sessionWorkspaceLabel(snapshot.Session)); err != nil {
 		return err
 	}
-	return render.WriteSessionTranscript(cmd.OutOrStdout(), snapshot)
+	return writeSessionTranscript(cmd.OutOrStdout(), snapshot)
 }
 
 func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {

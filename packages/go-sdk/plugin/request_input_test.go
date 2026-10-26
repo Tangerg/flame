@@ -5,8 +5,8 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	contractsdk "github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 )
@@ -15,13 +15,13 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 	type input struct {
 		N float64 `json:"n"`
 	}
-	method, err := NewMethod[input, struct{}](MethodConfig{Name: "example.update", Kind: contractsdk.Mutation, Target: "installation", Description: "Update a number."})
+	method, err := NewMethod[input, struct{}](MethodConfig{Name: "example.update", Kind: extension.Mutation, Target: "installation", Description: "Update a number."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 	backend := testBackend(t, server)
-	var captured jsoninput.Input
+	var captured jsonvalue.Value
 	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[input]) (struct{}, error) {
 		var err error
 		captured, err = command.RequestInput()
@@ -41,8 +41,16 @@ func TestBoundMethodRetainsRawNumbersBeforeTypedConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
+	binding, err := NewBinding(session, method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, value := range []string{`{"n":1.0}`, `{"n":9007199254740993}`} {
-		if _, err := CallCommand[jsontext.Value, struct{}](t.Context(), session, method.Name(), value, jsontext.Value(value)); err != nil {
+		admitted, err := jsonvalue.Parse([]byte(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := binding.Invoke(t.Context(), value, admitted); err != nil {
 			t.Fatal(err)
 		}
 		if captured.String() != value {
@@ -61,7 +69,7 @@ func TestToolBoundaryRetainsOriginalArgumentsAndOptionalEmptyObject(t *testing.T
 	type input struct {
 		N float64 `json:"n"`
 	}
-	var captured jsoninput.Input
+	var captured jsonvalue.Value
 	read := func(ctx context.Context) (string, error) {
 		var err error
 		captured, err = RequestInput(ctx)

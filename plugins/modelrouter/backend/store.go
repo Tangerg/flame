@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 )
 
 type store struct{ db *sql.DB }
@@ -20,7 +20,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sqlitebase.OpenSchema(ctx, path, []string{
+	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
 		`CREATE TABLE IF NOT EXISTS policy (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
 		`INSERT INTO policy(id,snapshot) VALUES(1,'` + string(initial) + `')`,
@@ -37,7 +37,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) read(ctx context.Context) (routing.Policy, error) {
 	var encoded string
-	if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM policy WHERE id=1`).Scan(&encoded); err != nil {
+	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM policy WHERE id=1`).Scan(&encoded); err != nil {
 		return routing.Policy{}, errors.Join(errStoredPolicy, err)
 	}
 	var snapshot routing.Snapshot
@@ -64,6 +64,6 @@ func (s *store) replace(ctx context.Context, expected int64, rules []routing.Rul
 	if err != nil {
 		return routing.Snapshot{}, err
 	}
-	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE policy SET snapshot=? WHERE id=1`, string(encoded))
+	_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE policy SET snapshot=? WHERE id=1`, string(encoded))
 	return next.Snapshot(), err
 }

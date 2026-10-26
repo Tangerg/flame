@@ -16,11 +16,10 @@ import (
 	"strings"
 	"sync"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 // Store serializes writes to one scoped skills root. The same instance must be
@@ -61,7 +60,7 @@ func (s *Store) openLeasedRoot(ctx context.Context, operation string) (*os.Root,
 	if err != nil {
 		return nil, nil, err
 	}
-	lease, err := advisorylock.AcquireDirectory(ctx, s.root)
+	lease, err := filesystem.AcquireDirectoryLease(ctx, s.root)
 	if err != nil {
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("skillauthoring: %s: acquire library lease: %w", operation, err)

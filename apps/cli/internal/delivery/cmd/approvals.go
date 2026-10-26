@@ -8,9 +8,8 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +96,7 @@ func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID s
 		if rules == nil {
 			rules = []protocol.ApprovalRule{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.ListApprovalRulesResult{Rules: rules})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.ListApprovalRulesResult{Rules: rules})
 	}
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	for _, rule := range rules {

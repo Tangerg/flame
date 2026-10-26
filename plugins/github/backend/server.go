@@ -4,17 +4,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
-	"github.com/Tangerg/flame/plugins/github/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )
 
 func classify(err error) string {
-	if errors.Is(err, resource.ErrResource) {
+	if errors.Is(err, errResource) {
 		return "invalid_resource"
 	}
 	return ""
@@ -23,7 +22,7 @@ func classify(err error) string {
 func toolQuery[P, R any](name, description string, call func(context.Context, P) (R, error)) (tool.Tool, error) {
 	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description}, func(ctx context.Context, input P) (R, error) {
 		result, err := call(ctx, input)
-		_, known := errors.AsType[*capability.Refusal](err)
+		_, known := errors.AsType[*extension.Refusal](err)
 		if err == nil || !known && classify(err) == "" {
 			return result, err
 		}

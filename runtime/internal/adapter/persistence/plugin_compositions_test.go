@@ -6,14 +6,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *testing.T) {
-	contract, err := capability.New(capability.Config{Reference: "model-observer", Composition: capability.Decoration, Scope: "call"}, capability.MethodDescriptor{Name: "observe", Kind: capability.Query, Target: "call", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "model-observer", Composition: extension.Decoration, Scope: "call"}, extension.MethodDescriptor{Name: "observe", Kind: extension.Query, Target: "call", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +25,7 @@ func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := NewCompositionStore(db).Save(t.Context(), value); err != nil {
+	if err := newCompositionStore(db).Save(t.Context(), value); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -37,7 +36,7 @@ func TestCompositionSurvivesRestartInOriginalOrderWithoutInstallationLookup(t *t
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewCompositionStore(db)
+	store := newCompositionStore(db)
 	actual, found, err := store.Get(t.Context(), "model-observer")
 	if err != nil || !found || !reflect.DeepEqual(actual.Snapshot(), value.Snapshot()) {
 		t.Fatalf("persisted order changed: %+v, %t, %v", actual.Snapshot(), found, err)

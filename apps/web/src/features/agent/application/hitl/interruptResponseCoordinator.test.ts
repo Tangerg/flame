@@ -66,7 +66,7 @@ describe("interrupt response coordinator", () => {
     const questionSettled = vi.fn();
 
     expect(
-      testClient.agent.access.interrupts.stage(
+      testClient.agent.dependencies.interrupts.stage(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "approve" },
 
@@ -75,7 +75,7 @@ describe("interrupt response coordinator", () => {
     ).toBe(true);
     expect(resume).not.toHaveBeenCalled();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -83,7 +83,7 @@ describe("interrupt response coordinator", () => {
     ).toBe(true);
 
     expect(
-      testClient.agent.access.interrupts.stage(
+      testClient.agent.dependencies.interrupts.stage(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
         { type: "answer", answers: [["Postgres"]] },
 
@@ -135,19 +135,22 @@ describe("interrupt response coordinator", () => {
     const ref = { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "solo" };
 
     expect(
-      testClient.agent.access.interrupts.stage(ref, { type: "approval", decision: "approve" }),
+      testClient.agent.dependencies.interrupts.stage(ref, {
+        type: "approval",
+        decision: "approve",
+      }),
     ).toBe(true);
     expect(resume).toHaveBeenCalledOnce();
 
     accept?.();
-    expect(testClient.agent.access.interrupts.isStaged(ref)).toBe(true);
+    expect(testClient.agent.dependencies.interrupts.isStaged(ref)).toBe(true);
     expect(
-      testClient.agent.access.interrupts.stage(ref, { type: "approval", decision: "deny" }),
+      testClient.agent.dependencies.interrupts.stage(ref, { type: "approval", decision: "deny" }),
     ).toBe(false);
     expect(resume).toHaveBeenCalledOnce();
 
     seedPending([]);
-    expect(testClient.agent.access.interrupts.isStaged(ref)).toBe(false);
+    expect(testClient.agent.dependencies.interrupts.isStaged(ref)).toBe(false);
   });
 
   it("rolls the whole staged barrier back when run opening is rejected", () => {
@@ -160,13 +163,13 @@ describe("interrupt response coordinator", () => {
     });
     testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "deny" },
 
       { onError: approvalError },
     );
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["SQLite"]] },
 
@@ -176,7 +179,7 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -196,13 +199,13 @@ describe("interrupt response coordinator", () => {
       vi.fn(() => false),
     );
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
       { onError: approvalError },
     );
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
 
@@ -212,7 +215,7 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -229,7 +232,7 @@ describe("interrupt response coordinator", () => {
     const onError = vi.fn();
     const dispose = createInterruptResponseFixture(testClient);
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
@@ -239,7 +242,7 @@ describe("interrupt response coordinator", () => {
 
     expect(onError).toHaveBeenCalledOnce();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -264,13 +267,13 @@ describe("interrupt response coordinator", () => {
     const questionError = vi.fn();
     const dispose = createInterruptResponseFixture(testClient);
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
       { onSettled: approvalSettled, onError: approvalError },
     );
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
 
@@ -282,7 +285,7 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).not.toHaveBeenCalled();
     expect(questionError).not.toHaveBeenCalled();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -310,13 +313,13 @@ describe("interrupt response coordinator", () => {
     const approvalError = vi.fn();
     const questionError = vi.fn();
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
       { onSettled: approvalSettled, onError: approvalError },
     );
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
 
@@ -326,7 +329,7 @@ describe("interrupt response coordinator", () => {
 
     testClient.agent.projection.store.getState().retireProjectionGeneration([SESSION_ID]);
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -339,7 +342,7 @@ describe("interrupt response coordinator", () => {
       .getState()
       .setCommandError(SESSION_ID, { code: "transport_error" });
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -351,7 +354,7 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).not.toHaveBeenCalled();
     expect(questionError).not.toHaveBeenCalled();
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -373,7 +376,7 @@ describe("interrupt response coordinator", () => {
     const successor = createInterruptResponseFixture(testClient);
     const onError = vi.fn();
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
@@ -382,7 +385,7 @@ describe("interrupt response coordinator", () => {
     retired();
 
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",
@@ -406,13 +409,13 @@ describe("interrupt response coordinator", () => {
     const retiredQuestionError = vi.fn();
     const retired = createInterruptResponseFixture(testClient);
 
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
 
       { onSettled: retiredApprovalSettled, onError: retiredApprovalError },
     );
-    testClient.agent.access.interrupts.stage(
+    testClient.agent.dependencies.interrupts.stage(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Retired"]] },
 
@@ -428,7 +431,7 @@ describe("interrupt response coordinator", () => {
     expect(retiredApprovalError).toHaveBeenCalledOnce();
     expect(retiredQuestionError).toHaveBeenCalledOnce();
     expect(
-      testClient.agent.access.interrupts.stage(
+      testClient.agent.dependencies.interrupts.stage(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "deny" },
 
@@ -439,7 +442,7 @@ describe("interrupt response coordinator", () => {
     retiredAccept?.();
 
     expect(
-      testClient.agent.access.interrupts.isStaged({
+      testClient.agent.dependencies.interrupts.isStaged({
         sessionId: SESSION_ID,
         rootRunId: ROOT_RUN_ID,
         itemId: "approval_a",

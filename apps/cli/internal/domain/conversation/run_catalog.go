@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RunQuery selects one cursor page in runtime order, newest first. An empty
@@ -12,7 +12,7 @@ import (
 // their presence changes both topology and pagination.
 type RunQuery struct {
 	SessionID          string
-	Statuses           []runtimeprotocol.RunStatus
+	Statuses           []protocol.RunStatus
 	IncludeDescendants bool
 	Cursor             string
 	PageSize           PageSize
@@ -20,7 +20,7 @@ type RunQuery struct {
 
 func (r RunQuery) Validate() error {
 	if r.SessionID != "" {
-		if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
+		if err := protocol.ValidateSessionID(r.SessionID); err != nil {
 			return fmt.Errorf("run query: %w", err)
 		}
 	}
@@ -28,7 +28,7 @@ func (r RunQuery) Validate() error {
 	if len(statuses) == 0 {
 		statuses = nil
 	}
-	if err := runtimeprotocol.ValidateWireTree(runtimeprotocol.ListRunsRequest{Statuses: statuses}); err != nil {
+	if err := protocol.ValidateWireTree(protocol.ListRunsRequest{Statuses: statuses}); err != nil {
 		return fmt.Errorf("run query statuses %q: %w", r.Statuses, err)
 	}
 	if _, err := r.PageSize.Rows(); err != nil {
@@ -73,7 +73,7 @@ func (r RunCancellation) Validate() error {
 	if err := r.Root.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("root: %w", err))
 	}
-	if r.Canceled.Status != runtimeprotocol.RunStatusFinished || r.Canceled.Outcome.Status != runtimeprotocol.OutcomeCanceled {
+	if r.Canceled.Status != protocol.RunStatusFinished || r.Canceled.Outcome.Status != protocol.OutcomeCanceled {
 		problems = append(problems, errors.New("addressed run is not finished as canceled"))
 	}
 	if !r.Root.Lineage.IsRoot() {
@@ -99,7 +99,7 @@ func (r RunCancellation) ValidateTarget(runID string) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateRunID(runID); err != nil {
+	if err := protocol.ValidateRunID(runID); err != nil {
 		return fmt.Errorf("run cancellation: %w", err)
 	}
 	if r.Canceled.ID != runID {

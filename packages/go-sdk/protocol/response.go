@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 var ErrInvalidResponse = errors.New("runtime: invalid response")
@@ -19,7 +19,7 @@ func DecodeResponse(encoded []byte, target any) error {
 		return fmt.Errorf("%w: response target must be a non-nil pointer", ErrInvalidResponse)
 	}
 	value := reflect.New(destination.Type().Elem())
-	if err := contractshape.DecodeValue(jsontext.Value(encoded), value.Interface(), "result"); err != nil {
+	if err := jsonvalue.DecodeValue(jsontext.Value(encoded), value.Interface(), "result"); err != nil {
 		return errors.Join(ErrInvalidResponse, err)
 	}
 	if err := ValidateWireTree(value.Elem().Interface()); err != nil {

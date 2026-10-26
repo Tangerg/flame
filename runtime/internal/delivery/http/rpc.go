@@ -9,13 +9,11 @@ import (
 	"net/http"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/go-sdk/jsonrpc"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type rpcHandler struct{ router *dispatch.Router }
@@ -74,12 +72,12 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	message, err := transport.DecodeMessage(body)
+	message, err := protocol.DecodeRPCMessage(body)
 	if err != nil {
 		writeProblem(w, problemInvalidRequest, "invalid JSON-RPC message: "+err.Error(), false)
 		return
 	}
-	request, ok := message.(*transport.Request)
+	request, ok := message.(*jsonrpc.Request)
 	if !ok {
 		writeProblem(w, problemInvalidRequest, "POST /v2/rpc accepts only JSON-RPC requests and notifications", false)
 		return
@@ -116,7 +114,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// A decoded JSON-RPC call always returns 200. Its result or error belongs to
 	// the envelope; HTTP status is reserved for failures below this boundary.
-	responseBytes, err := transport.EncodeMessage(result.Response)
+	responseBytes, err := jsonrpc.EncodeMessage(result.Response)
 	if err != nil {
 		recordError(r.Context(), "rpc.encode-response", err,
 			attribute.String("rpc.method", methodLabel),
@@ -185,19 +183,6 @@ var (
 )
 
 func (k problemKind) problemType() string { return transportProblemNamespace + k.name }
-
-// RefusedBeforeDispatch reports whether a transport problem of problemType sent
-// with status is one this transport answers before the request reaches an
-// operation. Any other pairing, including a known type at a foreign status,
-// proves nothing about whether an operation ran.
-func RefusedBeforeDispatch(status int, problemType string) bool {
-	for _, kind := range problemKinds {
-		if kind.problemType() == problemType {
-			return kind.refusal && kind.status == status
-		}
-	}
-	return false
-}
 
 func writeProblem(w http.ResponseWriter, kind problemKind, detail string, noCache bool) {
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")

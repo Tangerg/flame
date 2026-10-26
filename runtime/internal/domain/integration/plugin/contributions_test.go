@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
-	contract, err := capability.New(capability.Config{Reference: "consumer.role", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "owner.read", Kind: capability.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "consumer.role", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "owner.read", Kind: extension.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

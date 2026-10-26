@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func InterruptItemID(interrupt Interrupt) string {
@@ -31,7 +31,7 @@ func InterruptRunID(interrupt Interrupt) string {
 	}
 }
 
-func ValidateInterrupt(interrupt Interrupt) error {
+func validateInterrupt(interrupt Interrupt) error {
 	switch item := interrupt.(type) {
 	case Approval:
 		return item.Validate()
@@ -53,7 +53,7 @@ func ValidateInterrupts(interrupts []Interrupt) error {
 	}
 	seen := make(map[string]struct{}, len(interrupts))
 	for i, interrupt := range interrupts {
-		if err := ValidateInterrupt(interrupt); err != nil {
+		if err := validateInterrupt(interrupt); err != nil {
 			return fmt.Errorf("interrupt %d: %w", i+1, err)
 		}
 		id := InterruptItemID(interrupt)
@@ -67,10 +67,10 @@ func ValidateInterrupts(interrupts []Interrupt) error {
 
 func (a Approval) Validate() error {
 	var problems []error
-	if err := runtimeprotocol.ValidateRunID(a.RunID); err != nil {
+	if err := protocol.ValidateRunID(a.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := runtimeprotocol.ValidateItemID(a.ItemID); err != nil {
+	if err := protocol.ValidateItemID(a.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(a.Title) == "" {
@@ -86,11 +86,7 @@ func (a Approval) Validate() error {
 			problems = append(problems, errors.New("tool is not running"))
 		}
 	}
-	if a.Risk != "" && !slices.Contains([]runtimeprotocol.ApprovalRisk{
-		runtimeprotocol.ApprovalRiskLow,
-		runtimeprotocol.ApprovalRiskMedium,
-		runtimeprotocol.ApprovalRiskHigh,
-	}, a.Risk) {
+	if a.Risk != "" && !slices.Contains([]protocol.ApprovalRisk{protocol.ApprovalRiskLow, protocol.ApprovalRiskMedium, protocol.ApprovalRiskHigh}, a.Risk) {
 		problems = append(problems, fmt.Errorf("risk %q is invalid", a.Risk))
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -121,25 +117,26 @@ func (a Approval) Equal(other Approval) bool {
 
 func (q Question) Validate() error {
 	var problems []error
-	if err := runtimeprotocol.ValidateRunID(q.RunID); err != nil {
+	if err := protocol.ValidateRunID(q.RunID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := runtimeprotocol.ValidateItemID(q.ItemID); err != nil {
+	if err := protocol.ValidateItemID(q.ItemID); err != nil {
 		problems = append(problems, err)
 	}
 	if strings.TrimSpace(q.Title) == "" {
 		problems = append(problems, errors.New("title is empty"))
 	}
-	if err := (runtimeprotocol.Question{
-		Fields:  make([]runtimeprotocol.QuestionField, len(q.Fields)),
-		Answers: q.Answers,
-	}).ValidateWire(); err != nil {
-		problems = append(problems, err)
-	}
+	wire := protocol.Question{Fields: make([]protocol.QuestionField, len(q.Fields)), Answers: q.Answers}
 	for i, field := range q.Fields {
-		if err := field.Validate(); err != nil {
+		translated, err := field.wire()
+		if err != nil {
 			problems = append(problems, fmt.Errorf("field %d: %w", i+1, err))
+			continue
 		}
+		wire.Fields[i] = translated
+	}
+	if err := protocol.ValidateWireTree(wire); err != nil {
+		problems = append(problems, err)
 	}
 	if q.Answered() {
 		if err := validateQuestionAnswer(q, QuestionAnswer{Values: q.Answers}); err != nil {
@@ -189,30 +186,35 @@ func (q Question) Equal(other Question) bool {
 }
 
 func (q QuestionField) Validate() error {
-	wire := runtimeprotocol.QuestionField{
+	wire, err := q.wire()
+	if err != nil {
+		return err
+	}
+	return protocol.ValidateWireTree(wire)
+}
+
+func (q QuestionField) wire() (protocol.QuestionField, error) {
+	wire := protocol.QuestionField{
 		Prompt: q.Prompt, Header: q.Header, AllowCustom: q.AllowCustom,
 		Options: q.Options,
 	}
 	switch q.Kind {
 	case QuestionText:
-		wire.Type = runtimeprotocol.QuestionFieldText
+		wire.Type = protocol.QuestionFieldText
 	case QuestionSingle, QuestionMulti:
-		wire.Type = runtimeprotocol.QuestionFieldChoice
+		wire.Type = protocol.QuestionFieldChoice
 		wire.Multiple = q.Kind == QuestionMulti
 	default:
-		return fmt.Errorf("kind %q is invalid", q.Kind)
-	}
-	if err := runtimeprotocol.ValidateWireTree(wire); err != nil {
-		return err
+		return protocol.QuestionField{}, fmt.Errorf("kind %q is invalid", q.Kind)
 	}
 	seen := make(map[string]struct{}, len(q.Options))
 	for _, option := range q.Options {
 		if _, duplicate := seen[option.Label]; duplicate {
-			return fmt.Errorf("option label %q is duplicated", option.Label)
+			return protocol.QuestionField{}, fmt.Errorf("option label %q is duplicated", option.Label)
 		}
 		seen[option.Label] = struct{}{}
 	}
-	return nil
+	return wire, nil
 }
 
 // Equal reports whether two fields accept and present the same answer space.
@@ -222,7 +224,7 @@ func (q QuestionField) Equal(other QuestionField) bool {
 }
 
 func ValidateAnswer(interrupt Interrupt, answer Answer) error {
-	if err := ValidateInterrupt(interrupt); err != nil {
+	if err := validateInterrupt(interrupt); err != nil {
 		return err
 	}
 	switch item := interrupt.(type) {
@@ -247,18 +249,18 @@ func ValidateAnswer(interrupt Interrupt, answer Answer) error {
 }
 
 func (a ApprovalAnswer) Validate() error {
-	if err := (runtimeprotocol.InterruptResponseValue{
-		Type: runtimeprotocol.InterruptResponseApproval, Decision: a.Decision,
-	}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.InterruptResponseValue{
+		Type: protocol.InterruptResponseApproval, Decision: a.Decision,
+	})); err != nil {
 		return fmt.Errorf("approval answer: %w", err)
 	}
 	if a.Remember != "" {
-		if err := (runtimeprotocol.RememberScope{Scope: a.Remember}).ValidateWire(); err != nil {
+		if err := protocol.ValidateWireTree((protocol.RememberScope{Scope: a.Remember})); err != nil {
 			return fmt.Errorf("approval answer: %w", err)
 		}
 	}
 	if a.ArgumentOverride != nil {
-		if a.Decision != runtimeprotocol.ApprovalApprove {
+		if a.Decision != protocol.ApprovalApprove {
 			return errors.New("approval answer: denied tool carries an argument override")
 		}
 		if err := a.ArgumentOverride.Validate(); err != nil {
@@ -312,7 +314,7 @@ func validateQuestionValues(field QuestionField, values []string) error {
 }
 
 func questionOffers(field QuestionField, value string) bool {
-	return slices.ContainsFunc(field.Options, func(option runtimeprotocol.QuestionOption) bool { return option.Label == value })
+	return slices.ContainsFunc(field.Options, func(option protocol.QuestionOption) bool { return option.Label == value })
 }
 
 func CloneInterrupt(interrupt Interrupt) Interrupt {
@@ -380,7 +382,7 @@ func CloneAnswer(answer Answer) Answer {
 
 // AnswerEqual reports whether two interrupt answers carry the same complete
 // decision value, including edited tool arguments and ordered question values.
-func AnswerEqual(left, right Answer) bool {
+func answerEqual(left, right Answer) bool {
 	switch typed := left.(type) {
 	case ApprovalAnswer:
 		other, ok := right.(ApprovalAnswer)

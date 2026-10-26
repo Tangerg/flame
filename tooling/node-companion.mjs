@@ -77,7 +77,14 @@ export async function stageNode({
   await mkdir(dirname(destination), { recursive: true });
   const stage = await mkdtemp(join(dirname(destination), ".node-stage-"));
   try {
-    execFileSync("tar", ["-xzf", archive, "--strip-components=1", "-C", stage]);
+    execFileSync("tar", [
+      "-xzf",
+      archive,
+      "--no-same-owner",
+      "--strip-components=1",
+      "-C",
+      stage,
+    ]);
     if (
       hash(await readFile(join(stage, target.executable))) !==
       target.executableSHA256

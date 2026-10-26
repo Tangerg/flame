@@ -9,11 +9,9 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
-	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
-	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
-	"github.com/Tangerg/flame/plugins/schedules/backend/transport"
+	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -22,7 +20,7 @@ func run(ctx context.Context) (err error) {
 	if !filepath.IsAbs(data) {
 		return errors.New("schedules: PLUGIN_DATA must be absolute")
 	}
-	lease, err := advisorylock.AcquireDirectory(ctx, data)
+	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
 	if err != nil {
 		return err
 	}
@@ -33,7 +31,7 @@ func run(ctx context.Context) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.schedules", Version: "3.0.0"}, nil)
-	backend, err := transport.RegisterServer(server, db, sqlite.NewScheduleStore(db), directories.Resolver{}, models.Selections{}, connectRunHost)
+	backend, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, models.Selections{}, connectRunHost)
 	if err != nil {
 		return err
 	}

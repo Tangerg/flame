@@ -1,4 +1,4 @@
-import { createMutationJournal } from "./mutationJournal";
+import { type MutationJournalStorage } from "./mutationJournal";
 import { RpcProtocolError } from "./errors";
 import { asSessionId } from "./ids";
 import { PROBLEM_CODES } from "@flame/runtime-client/wire";
@@ -19,22 +19,19 @@ describe("createFlameClient", () => {
     "keeps an unresolved command identity after a malformed acknowledgement: %j",
     async (error) => {
       const entries = new Map<string, unknown>();
-      const journal = () =>
-        createMutationJournal({
-          storage: {
-            get: (key) => structuredClone(entries.get(key)),
-            set: (key, value) => {
-              entries.set(key, structuredClone(value));
-            },
-            remove: (key) => {
-              entries.delete(key);
-            },
-            keys: () => [...entries.keys()],
-          },
-          scope: () => ({ namespace: "idp_store", retentionSeconds: 3600 }),
-        });
+      const mutationStorage: MutationJournalStorage = {
+        get: (key) => structuredClone(entries.get(key)),
+        set: (key, value) => {
+          entries.set(key, structuredClone(value));
+        },
+        remove: (key) => {
+          entries.delete(key);
+        },
+        keys: () => [...entries.keys()],
+      };
+      const capabilities = () => discoverResponse.capabilities as ServerCapabilities;
       const firstTransport = createMemoryTransport();
-      const first = createFlameClient(firstTransport, { mutationJournal: journal() });
+      const first = createFlameClient(firstTransport, { mutationStorage, capabilities });
       const deletion = first.sessions.delete(asSessionId("ses_1"));
       const request = await waitForRequest(firstTransport, "sessions.delete");
       firstTransport.inject({ jsonrpc: "2.0", id: request.id, error });
@@ -43,7 +40,7 @@ describe("createFlameClient", () => {
       await first.close();
 
       const successorTransport = createMemoryTransport();
-      const successor = createFlameClient(successorTransport, { mutationJournal: journal() });
+      const successor = createFlameClient(successorTransport, { mutationStorage, capabilities });
       const retried = successor.sessions.delete(asSessionId("ses_1"));
       expect(retried.idempotencyKey).toBe(deletion.idempotencyKey);
       const replay = await waitForRequest(successorTransport, "sessions.delete");
@@ -75,129 +72,39 @@ describe("createFlameClient", () => {
     await client.close();
   });
 
-  it("disposes journal ownership before closing the transport", async () => {
-    const transport = createMemoryTransport();
-    const dispose = vi.fn();
-    const client = createFlameClient(transport, {
-      mutationJournal: {
-        pendingCommands: () => [],
-        pendingPluginCommands: () => [],
-        reserve: () => {
-          throw new Error("unexpected mutation reservation");
-        },
-        capturePluginCommand: async () => {
-          throw new Error("unexpected plugin command capture");
-        },
-        dispose,
-      },
-    });
-
-    await client.close();
-
-    expect(dispose).toHaveBeenCalledOnce();
-  });
-
-  it("still closes the transport when journal ownership cleanup fails", async () => {
+  it("retires mutation authority before closing the transport", async () => {
     const transport = createMemoryTransport();
     const closeTransport = vi.spyOn(transport, "close");
-    const failure = new Error("journal cleanup failed");
     const client = createFlameClient(transport, {
-      mutationJournal: {
-        capturePluginCommand: async () => {
-          throw new Error("unexpected plugin command capture");
-        },
-        pendingCommands: () => [],
-        pendingPluginCommands: () => [],
-        reserve: () => {
-          throw new Error("unexpected mutation reservation");
-        },
-        dispose: () => {
-          throw failure;
-        },
-      },
+      capabilities: () => discoverResponse.capabilities as ServerCapabilities,
     });
-
-    await expect(client.close()).rejects.toBe(failure);
+    await client.close();
+    await expect(client.sessions.delete(asSessionId("ses_closed"))).rejects.toThrow(
+      "Runtime mutation client was closed",
+    );
+    expect(transport.outbox()).toEqual([]);
     expect(closeTransport).toHaveBeenCalledOnce();
   });
 
-  it("preserves both journal and transport cleanup failures", async () => {
+  it("shares one cleanup failure across concurrent close callers", async () => {
     const transport = createMemoryTransport();
-    const journalFailure = new Error("journal cleanup failed");
-    const transportFailure = new Error("transport cleanup failed");
-    const closeMemoryTransport = transport.close.bind(transport);
-    vi.spyOn(transport, "close").mockImplementation(async () => {
-      await closeMemoryTransport();
-      throw transportFailure;
-    });
-    const client = createFlameClient(transport, {
-      mutationJournal: {
-        capturePluginCommand: async () => {
-          throw new Error("unexpected plugin command capture");
-        },
-        pendingCommands: () => [],
-        pendingPluginCommands: () => [],
-        reserve: () => {
-          throw new Error("unexpected mutation reservation");
-        },
-        dispose: () => {
-          throw journalFailure;
-        },
-      },
-    });
-
-    const failure = await client.close().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(AggregateError);
-    expect((failure as AggregateError).errors).toEqual([journalFailure, transportFailure]);
-  });
-
-  it("shares one cleanup settlement across concurrent close callers", async () => {
-    const transport = createMemoryTransport();
-    const journalFailure = new Error("journal cleanup failed");
-    const transportFailure = new Error("transport cleanup failed");
-    let rejectTransport!: (error: unknown) => void;
+    const failure = new Error("transport cleanup failed");
+    const settlement = Promise.withResolvers<void>();
     const closeMemoryTransport = transport.close.bind(transport);
     const closeTransport = vi.spyOn(transport, "close").mockImplementation(async () => {
       await closeMemoryTransport();
-      await new Promise<void>((_resolve, reject) => {
-        rejectTransport = reject;
-      });
+      await settlement.promise;
     });
-    let disposed = false;
-    const dispose = vi.fn(() => {
-      if (disposed) return;
-      disposed = true;
-      throw journalFailure;
-    });
-    const client = createFlameClient(transport, {
-      mutationJournal: {
-        pendingCommands: () => [],
-        pendingPluginCommands: () => [],
-        reserve: () => {
-          throw new Error("unexpected mutation reservation");
-        },
-        capturePluginCommand: async () => {
-          throw new Error("unexpected plugin command capture");
-        },
-        dispose,
-      },
-    });
-
+    const client = createFlameClient(transport);
     const first = client.close();
     const second = client.close();
-    expect(dispose).toHaveBeenCalledOnce();
+    expect(second).toBe(first);
     expect(closeTransport).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(rejectTransport).toBeTypeOf("function"));
-    rejectTransport(transportFailure);
-
-    const [firstResult, secondResult] = await Promise.allSettled([first, second]);
-    if (firstResult.status !== "rejected" || secondResult.status !== "rejected") {
-      throw new Error("concurrent close unexpectedly resolved");
-    }
-    expect(secondResult.reason).toBe(firstResult.reason);
-    expect((firstResult.reason as AggregateError).errors).toEqual([
-      journalFailure,
-      transportFailure,
+    settlement.reject(failure);
+    const results = await Promise.allSettled([first, second]);
+    expect(results).toEqual([
+      { status: "rejected", reason: failure },
+      { status: "rejected", reason: failure },
     ]);
   });
 

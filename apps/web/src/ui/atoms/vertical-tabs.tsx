@@ -12,7 +12,7 @@ import {
   weight,
 } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
-import { TabsPrimitive } from "@/ui/primitives/index";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { ItemHighlight, HoverTrack, useHoverTrackItem, vocab } from "@flame/ui";
 import { SectionLabel } from "@/ui/atoms/section-label";
 interface VerticalTabItem {

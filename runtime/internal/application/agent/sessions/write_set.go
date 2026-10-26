@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // runsInParentFirstOrder gives persistence a creation-safe tree order while
@@ -55,7 +54,7 @@ type TerminalPlan struct {
 	// result because the parked tree is being abandoned. They are appended in
 	// the same transaction before the terminal Run watermark is committed.
 	messages         []chat.Message
-	checkpointRootID runtimeidentity.MemberID
+	checkpointRootID flameruns.MemberID
 }
 
 // NewTerminalPlan owns the complete durable projection for a parked Run
@@ -67,7 +66,7 @@ func NewTerminalPlan(
 	messages []chat.Message,
 	checkpointRootID string,
 ) (TerminalPlan, error) {
-	checkpointRoot, err := runtimeidentity.ParseMember(checkpointRootID)
+	checkpointRoot, err := flameruns.ParseMember(checkpointRootID)
 	if err != nil {
 		return TerminalPlan{}, fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}

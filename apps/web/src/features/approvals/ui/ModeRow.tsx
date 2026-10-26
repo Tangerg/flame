@@ -9,7 +9,7 @@ import {
   APPROVAL_MODE_LABEL_KEY,
   describeApprovalMode,
 } from "@/features/agent/public/approvalPolicy";
-import { setApprovalMode } from "@/features/agent/public/approvalPolicy";
+
 import { type ApprovalMode, type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { useT } from "@/lib/i18n/index";
@@ -39,7 +39,7 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
   const onChange = (next: ApprovalMode) => {
     if (pending !== null || next === mode) return;
     setPending(next);
-    modeAction.run(() => setApprovalMode(agentAccess, next).finally(() => setPending(null)));
+    modeAction.run(() => agentAccess.setApprovalMode(next).finally(() => setPending(null)));
   };
   return (
     <SettingRow

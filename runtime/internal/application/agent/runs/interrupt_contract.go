@@ -7,10 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -22,12 +20,12 @@ import (
 // request it returns a Scope InputRequest the tool returns as
 // tool.Result{InputRequest}. Tool packages depend only on this contract and
 // never on execution internals.
-type InterruptFunc func(context.Context, toolcontract.Invocation, string, Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error)
+type InterruptFunc func(context.Context, toolcontract.Invocation, string, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error)
 
 // InterruptUnavailable is the fail-closed default for a tool environment that
 // has no execution interrupt provider.
-func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
-	return interrupt.Resolution{}, nil, errors.New("runs: execution interrupts are unavailable")
+func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+	return run.InterruptResolution{}, nil, errors.New("runs: execution interrupts are unavailable")
 }
 
 // ApprovalPrompt is the complete durable plan for one gated tool call.
@@ -37,7 +35,7 @@ func InterruptUnavailable(context.Context, toolcontract.Invocation, string, Inte
 // its model-visible name is Tool.ModelName.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 	CallID            string
 	Arguments         string
 	SafetyClass       tool.SafetyClass
@@ -77,13 +75,15 @@ type QuestionOptionSpec struct {
 // one payload must be present and must match Kind. Executor continuation data is
 // deliberately absent.
 type Interrupt struct {
-	Kind     interrupt.Kind
+	Kind     run.InterruptKind
 	Approval *ApprovalPrompt
 	Question *QuestionPrompt
 }
 
 func cloneInterrupt(value Interrupt) Interrupt {
-	value.Approval = optional.Clone(value.Approval)
+	if value.Approval != nil {
+		value.Approval = new(*value.Approval)
+	}
 	if value.Question != nil {
 		question := *value.Question
 		question.Fields = slices.Clone(question.Fields)
@@ -98,11 +98,11 @@ func cloneInterrupt(value Interrupt) Interrupt {
 // Tool returns the logical tool call that owns this interrupt.
 func (i Interrupt) Tool() (name, arguments string) {
 	switch i.Kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		if i.Approval != nil {
 			return i.Approval.Tool.ModelName(), i.Approval.Arguments
 		}
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		if i.Question != nil {
 			return i.Question.ToolName, i.Question.Arguments
 		}
@@ -114,12 +114,12 @@ func (i Interrupt) Tool() (name, arguments string) {
 // a durable Pending aggregate or application events.
 func (i Interrupt) Validate() error {
 	switch i.Kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		if i.Approval == nil || i.Question != nil {
 			return errors.New("runs: malformed approval interrupt")
 		}
 		return i.Approval.validate()
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		if i.Question == nil || i.Approval != nil {
 			return errors.New("runs: malformed question interrupt")
 		}
@@ -133,7 +133,7 @@ func (a ApprovalPrompt) validate() error {
 	if err := a.Tool.ValidateFingerprint(a.SourceFingerprint); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(a.CallID); err != nil {
+	if err := ValidateInvocation(a.CallID); err != nil {
 		return fmt.Errorf("runs: approval: %w", err)
 	}
 	if err := validateArguments(a.Arguments); err != nil {

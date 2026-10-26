@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -53,8 +53,8 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	input := rpc.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
-	encoded, _ := jsoninput.Encode(input)
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "typed", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "sandbox"}})
+	encoded, _ := jsonvalue.Encode(input)
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "typed", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "sandbox"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "model", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
+	if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "sandbox"}}); err != nil {
 		t.Fatal(err)
 	}
 	model, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: executeTool, Arguments: input, Meta: meta})
@@ -71,7 +71,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 		t.Fatalf("model entry lost original result: %+v %v", model, err)
 	}
 	raw, err := json.Marshal(model.StructuredContent)
-	projected, parseErr := jsoninput.Parse(raw)
+	projected, parseErr := jsonvalue.Parse(raw)
 	if err != nil || parseErr != nil || projected != typed || calls != 1 {
 		t.Fatalf("model entry did not project the typed owner result: %s %s %v %v calls=%d", typed.String(), projected.String(), err, parseErr, calls)
 	}
@@ -79,7 +79,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	if err != nil || receipt == nil || calls != 1 {
 		t.Fatalf("Tool receipt replayed execution or lost evidence: %+v %v calls=%d", receipt, err, calls)
 	}
-	stored, err := jsoninput.Parse(receipt.Details)
+	stored, err := jsonvalue.Parse(receipt.Details)
 	if err != nil || stored != typed {
 		t.Fatalf("Tool recovery changed completed output: %s %v", stored.String(), err)
 	}

@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 // canonicalJSON is the spelling every stored Arguments and Result already
@@ -193,5 +193,5 @@ func (r *Result) UnmarshalJSON(data []byte) error {
 // the repeat matters here because these documents come from a provider, and
 // deciding it by position would let the same call mean two things.
 func decodeValue(data []byte, destination any) error {
-	return json.Unmarshal(data, destination, exactjson.Numbers())
+	return json.Unmarshal(data, destination, jsonvalue.Numbers())
 }

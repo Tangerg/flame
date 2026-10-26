@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/samber/lo"
 )
 
 const (
@@ -38,7 +38,7 @@ type TrajectoryEvidence struct {
 
 // ReadTrajectoryExport must read every collection in one transaction and reject
 // resource limits before materializing unbounded stored bodies.
-type TrajectoryExportReader interface {
+type trajectoryExportReader interface {
 	ReadTrajectoryExport(context.Context, string) (TrajectoryEvidence, error)
 }
 
@@ -50,11 +50,11 @@ type TrajectoryExport struct {
 
 type TrajectoryExporter struct {
 	coordinator *Coordinator
-	reader      TrajectoryExportReader
+	reader      trajectoryExportReader
 }
 
-func NewTrajectoryExporter(coordinator *Coordinator, reader TrajectoryExportReader) (*TrajectoryExporter, error) {
-	if coordinator == nil || dependency.Missing(reader) {
+func NewTrajectoryExporter(coordinator *Coordinator, reader trajectoryExportReader) (*TrajectoryExporter, error) {
+	if coordinator == nil || lo.IsNil(reader) {
 		return nil, errors.New("sessions: trajectory export requires session admission and snapshot reader")
 	}
 	return &TrajectoryExporter{coordinator: coordinator, reader: reader}, nil
@@ -72,7 +72,7 @@ func (e *TrajectoryExporter) Export(ctx context.Context, sessionID string) (Traj
 		return TrajectoryExport{}, err
 	}
 	collectedAt := time.Now().UTC()
-	view, err := e.coordinator.view(evidence.Snapshot.Session, ActivityIdle)
+	view, err := e.coordinator.view(evidence.Snapshot.Session, activityIdle)
 	if err != nil {
 		return TrajectoryExport{}, err
 	}

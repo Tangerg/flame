@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -92,7 +91,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		defer i.childProjection.unlock()
 	}
 	var terminalChildren []*managedDelegateCall
-	var retired []runtimeidentity.EffectID
+	var retired []runs.InvocationID
 	if i.state.observerAttached() {
 		if contextAdvances {
 			checkpoint, err := i.executorCheckpoint(tree)

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -86,7 +86,7 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	}
 	return server, true, nil
 }
-func (r *Releases) prepareBackend(id resourceid.InstallationID, server plugin.Server) (err error) {
+func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Server) (err error) {
 	host, err := os.OpenRoot(filepath.Dir(r.directory))
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open plugin host directory: %w", err)
@@ -203,7 +203,7 @@ func declaredServer(installation *plugin.Installation, release plugin.Release, d
 	return mcpserver.Server{Source: source, Name: declared.Name, Transport: declared.Transport, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}, nil
 }
 
-func (r *Releases) dataRoot(id resourceid.InstallationID) string {
+func (r *Releases) dataRoot(id identity.InstallationID) string {
 	return filepath.Join(filepath.Dir(r.directory), "data", id.String())
 }
 

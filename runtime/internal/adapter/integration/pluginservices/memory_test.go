@@ -4,37 +4,44 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"net/http"
-	"net/http/httptest"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	memorysqlite "github.com/Tangerg/flame/plugins/memory/backend/sqlite"
-	"github.com/Tangerg/flame/plugins/memory/backend/transport"
-
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+// The test owns the temporary executable for the full connection lifetime.
+// Opening it captures the launch resource without importing a plugin implementation.
+type memorySourceRegistry struct{ toolSourceRegistry }
+
+func (r memorySourceRegistry) Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error) {
+	server := r.server.Clone()
+	lease, err := os.Open(server.Command)
+	if err != nil {
+		return mcpapp.Launch{}, err
+	}
+	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: server.Command, Args: server.Args, Env: server.Env, Dir: server.Dir}, Retire: lease}, nil
+}
 
 type capturedConversation []chat.Message
 
@@ -48,19 +55,28 @@ type ownedMemoryEmbedder struct {
 
 func (e *ownedMemoryEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil || invocation.Origin != capability.Model || invocation.Parent != e.parent || invocation.ID == e.parent {
+	if err != nil || invocation.Origin != extension.Model || invocation.Parent != e.parent || invocation.ID == e.parent {
 		e.t.Errorf("Memory embedding detached from its original query: %+v, %v", invocation, err)
 	}
 	return e.preparedEmbedder.Embed(ctx, texts)
 }
 
-func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFailureIsExplicit(t *testing.T) {
+func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *testing.T) {
 	name := testsupport.ServerName("memory")
-	contracts, err := rpc.NewContracts()
+	// The Host exercises the published stdio boundary. Private Memory storage
+	// and publication invariants are verified by the backend's own tests.
+	executable := filepath.Join(t.TempDir(), "flame-memory")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", executable, "./backend")
+	build.Dir = filepath.Join("..", "..", "..", "..", "..", "plugins", "memory")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build Memory backend: %v\n%s", err, output)
+	}
+	environment := map[string]string{"PLUGIN_DATA": t.TempDir()}
+	contract, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "memory-provider", Server: name, Export: "memory", Contract: contracts.Capability.Identity()}}})
+	release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.memory", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "./flame-memory"}}, Contributions: []plugin.Contribution{{ID: "memory-provider", Server: name, Export: "memory", Contract: contract.Identity()}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,25 +92,10 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal(err)
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
-	private, err := memorysqlite.Open(t.Context(), filepath.Join(t.TempDir(), "memory.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = private.Close() })
-	remote := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
-	roots, err := workspaceapp.NewScope("", "", workspace.Resolver{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := transport.RegisterServer(remote, private, memorysqlite.NewAgentMemoryStore(private), roots); err != nil {
-		t.Fatal(err)
-	}
-	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
-	t.Cleanup(endpoint.Close)
-	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
+	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: executable, Env: environment}
 	callbacks := pluginsdk.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
-	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, memorySourceRegistry{toolSourceRegistry{server}}, callbacks, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +114,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	}
 	t.Cleanup(func() { _ = host.Close() })
 	selections := host.ProviderSelections
-	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contracts.Capability.Descriptor().Reference, Installation: installation.ID(), Contribution: "memory-provider"})
+	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contract.Descriptor().Reference, Installation: installation.ID(), Contribution: "memory-provider"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +137,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal(err)
 	}
 	var modelCalls, releases atomic.Int32
-	modelInvocations := make(chan capability.Invocation, 2)
+	modelInvocations := make(chan extension.Invocation, 2)
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
 		invocation, err := pluginsdk.InvocationFromContext(ctx)
 		if err != nil {
@@ -156,7 +157,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	project, err := (workspace.Resolver{}).ResolveExistingDir(t.TempDir())
+	project, err := (filesystem.DirectoryResolver{}).ResolveExistingDir(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,23 +170,48 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if releases.Load() != 1 || len(observers.HeldDependencies()) != 0 {
 		t.Fatal("maintenance did not release its single utility capture")
 	}
-	var id, hostInput, phase, privateInput string
-	if err := host.QueryRowContext(t.Context(), `SELECT id,business_input_json,phase FROM plugin_commands WHERE method=?`, rpc.Maintain).Scan(&id, &hostInput, &phase); err != nil {
+	var id, hostInput, phase string
+	if err := host.QueryRowContext(t.Context(), `SELECT id,business_input_json,phase FROM plugin_commands WHERE method=?`, memorycontract.MaintainV1Method).Scan(&id, &hostInput, &phase); err != nil {
 		t.Fatal(err)
 	}
 	first, second := <-modelInvocations, <-modelInvocations
-	if first.ID == second.ID || first.Parent != id || second.Parent != id || first.Origin != capability.Automatic || second.Origin != capability.Automatic || first.Target.Scope != "call" || second.Target.Scope != "call" {
+	if first.ID == second.ID || first.Parent != id || second.Parent != id || first.Origin != extension.Automatic || second.Origin != extension.Automatic || first.Target.Scope != "call" || second.Target.Scope != "call" {
 		t.Fatalf("model calls lost distinct original ancestry: %+v, %+v", first, second)
 	}
-	if err := private.QueryRowContext(t.Context(), `SELECT business_input_json FROM commands WHERE id=?`, id).Scan(&privateInput); err != nil {
-		t.Fatal(err)
-	}
-	var input rpc.MaintenanceInput
+	var input memorycontract.MaintainV1Input
 	if err := json.Unmarshal([]byte(hostInput), &input, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
-	if input.SessionID != "ses_metadata" || input.Project != project || !input.Compacted || input.Conversation.MessageCount != len(history) || input.Conversation.Transcript == "" || hostInput != privateInput || phase != string(plugin.CommandObserved) {
-		t.Fatalf("original business-only routing/receipt: %+v, equal=%t, phase=%s", input, hostInput == privateInput, phase)
+	if input.SessionID != "ses_metadata" || input.Project != project || !input.Compacted || input.Conversation.MessageCount != int64(len(history)) || input.Conversation.Transcript == "" || phase != string(plugin.CommandObserved) {
+		t.Fatalf("original business-only routing: %+v, phase=%s", input, phase)
+	}
+	session, err := pool.ServiceSession(t.Context(), server.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded, found, err := host.PluginCommands.Get(t.Context(), id)
+	if err != nil || !found {
+		t.Fatalf("original maintenance command: %v, %v", found, err)
+	}
+	bound, err := pluginsdk.NewCapabilityBinding(session, "memory", contract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	maintain, err := bound.Method(memorycontract.MaintainV1Method)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptContext, err := pluginsdk.WithInvocation(t.Context(), recorded.Snapshot().Invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, found, err := maintain.ReadReceipt(receiptContext, id, recorded.Snapshot().Input)
+	if err != nil || !found {
+		t.Fatalf("original backend receipt: %v, %v", found, err)
+	}
+	var outcome memorycontract.MaintainV1Output
+	if err := json.Unmarshal(receipt.JSON(), &outcome, json.RejectUnknownMembers(true)); err != nil || !outcome.Published {
+		t.Fatalf("maintenance receipt lost its published outcome: %+v, %v", outcome, err)
 	}
 	if _, err := owner.Search(t.Context(), project, "fact", 5); !errors.Is(err, resolutionFailure) {
 		t.Fatalf("configured role failure became absence: %v", err)
@@ -198,11 +224,11 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal(err)
 	}
 	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
-	addition, err := jsoninput.Encode(rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "keyword fact"})
+	addition, err := jsonvalue.Encode(memorycontract.AddV1Input{Scope: "project", CWD: project, Content: "keyword fact"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: addition, Target: capability.Target{Scope: "installation", Reference: installation.ID().String()}})
+	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV1Method, Input: addition, Target: extension.Target{Scope: "installation", Reference: installation.ID().String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +239,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil || !found {
 		t.Fatalf("original add route: found=%v, %v", found, err)
 	}
-	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contracts.Capability, Method: rpc.Add, Input: stored.Snapshot().Input, Target: stored.Snapshot().Invocation.Target}
+	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV1Method, Input: stored.Snapshot().Input, Target: stored.Snapshot().Invocation.Target}
 	installed, err := calls.Prepare(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +251,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if len(notices) != beforeRecovery+1 || notices[len(notices)-1].Resource != invalidation.PluginData {
 		t.Fatalf("public command recovery did not invalidate its consumer reads: %+v", notices)
 	}
-	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), capability.Model, "parent-tool")); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, err := installed.Invoke(operation.Adopt(t.Context(), operation.Identity(addContext), extension.Model, "parent-tool")); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed calling origin reused an original identity: %v", err)
 	}
 	changed := request
@@ -234,7 +260,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := other.Invoke(addContext); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, err := other.Invoke(addContext); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed installed binding reused an original identity: %v", err)
 	}
 	if len(notices) != beforeRecovery+1 {
@@ -273,7 +299,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	}
 	embedder := &ownedMemoryEmbedder{t: t, parent: "original-memory-query"}
 	owner.embedder = func(context.Context) (models.TextEmbedder, error) { return embedder, nil }
-	items, err = owner.Search(operation.Adopt(t.Context(), "original-memory-query", capability.Model, "executing-owner"), project, "keyword", 5)
+	items, err = owner.Search(operation.Adopt(t.Context(), "original-memory-query", extension.Model, "executing-owner"), project, "keyword", 5)
 	if err != nil || len(items) != 1 || embedder.calls.Load() != 2 {
 		t.Fatalf("human search callback metadata: items=%v, embeddings=%d, %v", items, embedder.calls.Load(), err)
 	}

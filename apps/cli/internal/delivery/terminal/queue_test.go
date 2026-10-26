@@ -14,9 +14,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -45,11 +43,10 @@ func newTestQueue(t *testing.T, store *workbench.Store) *workbench.Queue {
 
 // enqueueTestPrompt allocates the command identity before the queue sees it,
 // exactly as the app does when it enqueues an authored prompt.
-func enqueueTestPrompt(t *testing.T, prompts *workbench.Queue, sessionID string, message prompt.Message) queue.Entry {
+func enqueueTestPrompt(t *testing.T, prompts *workbench.Queue, sessionID string, message authoring.Message) authoring.QueueEntry {
 	t.Helper()
 	entry, err := prompts.EnqueueCommand(
-		mutation.NewCommandID(), sessionID, message,
-		prompt.RunOptions{},
+		mutation.NewCommandID(), sessionID, message, authoring.RunOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -57,12 +54,12 @@ func enqueueTestPrompt(t *testing.T, prompts *workbench.Queue, sessionID string,
 	return entry
 }
 
-func testQueueEntryID(t *testing.T, value uint64) queue.EntryID {
+func testQueueEntryID(t *testing.T, value uint64) authoring.QueueEntryID {
 	t.Helper()
 	prompts := newTestQueue(t, nil)
-	var entry queue.Entry
+	var entry authoring.QueueEntry
 	for index := uint64(0); index < value; index++ {
-		entry = enqueueTestPrompt(t, prompts, "ses_test", prompt.Message{Text: "test entry"})
+		entry = enqueueTestPrompt(t, prompts, "ses_test", authoring.Message{Text: "test entry"})
 	}
 	return entry.ID
 }
@@ -78,17 +75,17 @@ type blockingFirstStartRuntime struct {
 
 	mu             sync.Mutex
 	blocked        bool
-	receiptCommand replay.CommandID
+	receiptCommand authoring.CommandID
 	receipt        conversation.SegmentStream
 	receiptErr     error
-	inputs         []prompt.StartRun
-	started        chan prompt.StartRun
+	inputs         []authoring.StartRun
+	started        chan authoring.StartRun
 	release        chan struct{}
 }
 
 type gatedRecoveryStartRuntime struct {
 	Runtime
-	commandID replay.CommandID
+	commandID authoring.CommandID
 	started   chan struct{}
 	release   chan struct{}
 }
@@ -108,7 +105,7 @@ func (g *gatedRecoveryStartRuntime) GetRunAcceptance(ctx context.Context, reques
 	return g.Runtime.GetRunAcceptance(ctx, request)
 }
 
-func (b *blockingFirstStartRuntime) StartRun(ctx context.Context, request prompt.StartRun) (conversation.SegmentStream, error) {
+func (b *blockingFirstStartRuntime) StartRun(ctx context.Context, request authoring.StartRun) (conversation.SegmentStream, error) {
 	b.mu.Lock()
 	if request.CommandID != "" && request.CommandID == b.receiptCommand {
 		b.inputs = append(b.inputs, request.Clone())
@@ -155,17 +152,17 @@ func (b *blockingFirstStartRuntime) StartRun(ctx context.Context, request prompt
 	}
 }
 
-func (b *blockingFirstStartRuntime) startInputs() []prompt.StartRun {
+func (b *blockingFirstStartRuntime) startInputs() []authoring.StartRun {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	inputs := make([]prompt.StartRun, len(b.inputs))
+	inputs := make([]authoring.StartRun, len(b.inputs))
 	for index, input := range b.inputs {
 		inputs[index] = input.Clone()
 	}
 	return inputs
 }
 
-func (f *finishObservingRuntime) StartRun(ctx context.Context, request prompt.StartRun) (conversation.SegmentStream, error) {
+func (f *finishObservingRuntime) StartRun(ctx context.Context, request authoring.StartRun) (conversation.SegmentStream, error) {
 	stream, err := f.recordingRuntime.StartRun(ctx, request)
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -187,7 +184,7 @@ func (f *finishObservingRuntime) StartRun(ctx context.Context, request prompt.St
 	return stream, nil
 }
 
-func testQueueDrawer(t *testing.T, messages ...prompt.Message) (*queueDrawer, *workbench.Queue) {
+func testQueueDrawer(t *testing.T, messages ...authoring.Message) (*queueDrawer, *workbench.Queue) {
 	t.Helper()
 	prompts := newTestQueue(t, nil)
 	for _, message := range messages {
@@ -200,12 +197,12 @@ func testQueueDrawer(t *testing.T, messages ...prompt.Message) (*queueDrawer, *w
 	drawer := newQueueDrawer(kit.Dark(), kit.Unicode(), bindings.editor, nil)
 	sync := func() { drawer.Set(prompts.Snapshot("session")) }
 	drawer.SetActions(queueDrawerActions{
-		BeginEdit: func(entry queue.Entry) error {
+		BeginEdit: func(entry authoring.QueueEntry) error {
 			err := prompts.Hold(entry.SessionID, entry.ID)
 			sync()
 			return err
 		},
-		SaveEdit: func(entry queue.Entry, message prompt.Message, sendNow bool) error {
+		SaveEdit: func(entry authoring.QueueEntry, message authoring.Message, sendNow bool) error {
 			if err := prompts.Update(entry.SessionID, entry.ID, message); err != nil {
 				return err
 			}
@@ -217,20 +214,20 @@ func testQueueDrawer(t *testing.T, messages ...prompt.Message) (*queueDrawer, *w
 			sync()
 			return nil
 		},
-		CancelEdit: func(entry queue.Entry) error {
+		CancelEdit: func(entry authoring.QueueEntry) error {
 			return prompts.Release(entry.SessionID, entry.ID)
 		},
-		Remove: func(id queue.EntryID) error {
+		Remove: func(id authoring.QueueEntryID) error {
 			_, err := prompts.Remove("session", id)
 			sync()
 			return err
 		},
-		Move: func(id queue.EntryID, offset int) error {
+		Move: func(id authoring.QueueEntryID, offset int) error {
 			err := prompts.Move("session", id, offset)
 			sync()
 			return err
 		},
-		SendNow: func(id queue.EntryID) error {
+		SendNow: func(id authoring.QueueEntryID) error {
 			err := prompts.Promote("session", id)
 			sync()
 			return err
@@ -276,11 +273,11 @@ func queueDrawerHit(t *testing.T, drawer *queueDrawer, target queueTarget) queue
 
 func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 	view := newQueueView(kit.Dark(), kit.Unicode())
-	view.Set(queue.Snapshot{Entries: []queue.Entry{
-		{ID: testQueueEntryID(t, 1), Message: prompt.Message{Text: "first follow-up\nwith more detail"}},
-		{ID: testQueueEntryID(t, 2), Message: prompt.Message{Text: "second follow-up"}},
-		{ID: testQueueEntryID(t, 3), Message: prompt.Message{Text: "third follow-up"}},
-		{ID: testQueueEntryID(t, 4), Message: prompt.Message{Text: "fourth follow-up"}},
+	view.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{
+		{ID: testQueueEntryID(t, 1), Message: authoring.Message{Text: "first follow-up\nwith more detail"}},
+		{ID: testQueueEntryID(t, 2), Message: authoring.Message{Text: "second follow-up"}},
+		{ID: testQueueEntryID(t, 3), Message: authoring.Message{Text: "third follow-up"}},
+		{ID: testQueueEntryID(t, 4), Message: authoring.Message{Text: "fourth follow-up"}},
 	}})
 	if got := view.HeightForWidth(queueMinWidth - 1); got != 0 {
 		t.Fatalf("narrow queue height = %d", got)
@@ -300,10 +297,7 @@ func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 }
 
 func TestQueueDrawerRendersPreviewActionsAndResponsiveFallback(t *testing.T) {
-	drawer, _ := testQueueDrawer(t,
-		prompt.Message{Text: "first line\nsecond line", Attachments: []prompt.Attachment{{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}}},
-		prompt.Message{Text: "second prompt"},
-	)
+	drawer, _ := testQueueDrawer(t, authoring.Message{Text: "first line\nsecond line", Attachments: []authoring.Attachment{{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}}}, authoring.Message{Text: "second prompt"})
 	_, _, rendered := drawQueueDrawer(t, drawer, 96, 9)
 	for _, want := range []string{
 		"Queue · 2 prompts", "Preview · full queued prompt", "second line",
@@ -327,18 +321,18 @@ func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
 	drawer := newQueueDrawer(kit.Dark(), kit.Unicode(), bindings.editor, nil)
 	active := true
 	drawer.lifecycle.bind(func() bool { return active })
-	removed := make([]queue.EntryID, 0, 1)
-	drawer.SetActions(queueDrawerActions{Remove: func(id queue.EntryID) error {
+	removed := make([]authoring.QueueEntryID, 0, 1)
+	drawer.SetActions(queueDrawerActions{Remove: func(id authoring.QueueEntryID) error {
 		removed = append(removed, id)
 		return nil
 	}})
-	drawer.Set(queue.Snapshot{Entries: []queue.Entry{{ID: testQueueEntryID(t, 1), Message: prompt.Message{Text: "visible"}}}})
+	drawer.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{ID: testQueueEntryID(t, 1), Message: authoring.Message{Text: "visible"}}}})
 	root := headless.NewRoot(drawer)
 	surface := grid.NewSurface(72, 8)
 	root.Draw(surface.View())
 
 	replacementID := testQueueEntryID(t, 2)
-	drawer.Set(queue.Snapshot{Entries: []queue.Entry{{ID: replacementID, Message: prompt.Message{Text: "replacement"}}}})
+	drawer.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{ID: replacementID, Message: authoring.Message{Text: "replacement"}}}})
 	if !root.Handle(input.Key{Code: input.Delete}) || len(removed) != 0 {
 		t.Fatalf("undrawn replacement removed entries %v", removed)
 	}
@@ -355,8 +349,8 @@ func TestQueueDrawerRejectsCommandsAgainstAReplacedPresentation(t *testing.T) {
 }
 
 func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
-	attachment := prompt.Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}
-	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "original", Attachments: []prompt.Attachment{attachment}})
+	attachment := authoring.Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "original", Attachments: []authoring.Attachment{attachment}})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
 	if !drawer.Editing() {
@@ -394,7 +388,7 @@ func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 }
 
 func TestQueueDrawerPreservesItsEditThroughAnExtremeResize(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "original"})
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "original"})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
 	drawer.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
@@ -422,7 +416,7 @@ func TestQueueDrawerPreservesItsEditThroughAnExtremeResize(t *testing.T) {
 }
 
 func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "editable"})
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "editable"})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
 	if !prompts.Snapshot("session").Entries[0].Held {
@@ -435,8 +429,8 @@ func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
 }
 
 func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "old session prompt"})
-	enqueueTestPrompt(t, prompts, "next-session", prompt.Message{Text: "next session prompt"})
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "old session prompt"})
+	enqueueTestPrompt(t, prompts, "next-session", authoring.Message{Text: "next session prompt"})
 	drawer.lifecycle.bind(func() bool { return true })
 	drawer.Focus(true)
 	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
@@ -465,7 +459,7 @@ func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) 
 }
 
 func TestQueueDrawerEditorOwnsPointerPlacement(t *testing.T) {
-	drawer, _ := testQueueDrawer(t, prompt.Message{Text: "move this cursor"})
+	drawer, _ := testQueueDrawer(t, authoring.Message{Text: "move this cursor"})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
 	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
@@ -484,9 +478,7 @@ func TestQueueDrawerEditorOwnsPointerPlacement(t *testing.T) {
 }
 
 func TestQueueDrawerReordersAndPromotesTheSelectedEntry(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t,
-		prompt.Message{Text: "first"}, prompt.Message{Text: "second"}, prompt.Message{Text: "third"},
-	)
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first"}, authoring.Message{Text: "second"}, authoring.Message{Text: "third"})
 	drawer.Handle(input.Key{Code: input.Down})
 	drawer.Handle(input.Key{Code: input.Character, Rune: 'J', Mods: input.Shift})
 	got := prompts.Snapshot("session").Entries
@@ -501,9 +493,9 @@ func TestQueueDrawerReordersAndPromotesTheSelectedEntry(t *testing.T) {
 }
 
 func TestQueueDrawerNavigationKeepsActionsOnTheSelectedEntryAfterResizeAndReorder(t *testing.T) {
-	var messages []prompt.Message
+	var messages []authoring.Message
 	for _, name := range []string{"first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"} {
-		messages = append(messages, prompt.Message{Text: name + " queued prompt"})
+		messages = append(messages, authoring.Message{Text: name + " queued prompt"})
 	}
 	drawer, prompts := testQueueDrawer(t, messages...)
 	selectedID := prompts.Snapshot("session").Entries[7].ID
@@ -534,9 +526,7 @@ func TestQueueDrawerNavigationKeepsActionsOnTheSelectedEntryAfterResizeAndReorde
 }
 
 func TestQueueDrawerResizeKeepsTheSettledSelectionVisible(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t,
-		prompt.Message{Text: "first prompt"}, prompt.Message{Text: "second prompt"}, prompt.Message{Text: "third prompt"},
-	)
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first prompt"}, authoring.Message{Text: "second prompt"}, authoring.Message{Text: "third prompt"})
 	root, surface, _ := drawQueueDrawer(t, drawer, 72, 5)
 	root.Handle(input.Key{Code: input.Down})
 	root.Handle(input.Key{Code: input.Down})
@@ -567,9 +557,7 @@ func (f *failingQueueFrame) Draw(frame headless.Frame) {
 }
 
 func TestQueueDrawerPublishesResizeScrollAndActionsOnlyWithACompleteFrame(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t,
-		prompt.Message{Text: "first prompt"}, prompt.Message{Text: "second prompt"}, prompt.Message{Text: "third prompt"},
-	)
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first prompt"}, authoring.Message{Text: "second prompt"}, authoring.Message{Text: "third prompt"})
 	frame := &failingQueueFrame{queueDrawer: drawer}
 	root := headless.NewRoot(frame)
 	wide := grid.NewSurface(96, 5)
@@ -606,7 +594,7 @@ func TestQueueDrawerPublishesResizeScrollAndActionsOnlyWithACompleteFrame(t *tes
 }
 
 func TestQueueDrawerMouseActionsCommitOnlyOnAnUndraggedMatchingRelease(t *testing.T) {
-	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "first"}, prompt.Message{Text: "second"})
+	drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first"}, authoring.Message{Text: "second"})
 	root, surface, _ := drawQueueDrawer(t, drawer, 80, 5)
 	firstID := prompts.Snapshot("session").Entries[0].ID
 	remove := queueDrawerHit(t, drawer, queueTarget{kind: queueTargetRemove, id: firstID})
@@ -694,7 +682,7 @@ func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "first"}, prompt.Message{Text: "second"})
+			drawer, prompts := testQueueDrawer(t, authoring.Message{Text: "first"}, authoring.Message{Text: "second"})
 			root, _, _ := drawQueueDrawer(t, drawer, 80, 5)
 			firstID := prompts.Snapshot("session").Entries[0].ID
 			remove := queueDrawerHit(t, drawer, queueTarget{kind: queueTargetRemove, id: firstID})
@@ -765,7 +753,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		}}
 	}
 	gate := &blockingFirstStartRuntime{
-		Runtime: base, started: make(chan prompt.StartRun, 1), release: make(chan struct{}),
+		Runtime: base, started: make(chan authoring.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
 	host, stop, workbenchForHost := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
@@ -849,7 +837,7 @@ func TestAcceptedStartSettlementRecoveryRestoresTheTerminalStatusWithoutAFollowU
 		}}
 	}
 	gate := &blockingFirstStartRuntime{
-		Runtime: base, started: make(chan prompt.StartRun, 1), release: make(chan struct{}),
+		Runtime: base, started: make(chan authoring.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
 	host, stop, _ := runUIWithState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
@@ -1179,7 +1167,7 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 			successor.CommandID = mutation.NewCommandID()
 			if err := store.StagePendingRun(workbench.PendingRun{
 				State: workbench.PendingRunQueued, Command: successor,
-				Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+				Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 			}); err != nil {
 				t.Fatal(err)
 			}

@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 const proposalDescription = `Propose a reusable Skill for future work.
@@ -56,7 +54,7 @@ type proposer struct {
 
 // NewProposal builds propose_skill. A nil submitter omits the capability.
 func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
-	if dependency.Missing(proposals) {
+	if lo.IsNil(proposals) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
@@ -70,7 +68,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 	if sessionID == "" {
 		return proposalResult{}, errors.New("propose_skill: no active session")
 	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
 	}
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
@@ -78,7 +76,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		return proposalResult{}, errors.New("propose_skill: no attached Run workspace")
 	}
 	if err := input.Scope.Validate(); err != nil {
-		return proposalResult{}, toolfailure.Definite(fmt.Errorf("propose_skill: scope must be project or user: %w", err))
+		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("propose_skill: scope must be project or user: %w", err))
 	}
 	proposal := skills.Proposal{
 		Scope:         input.Scope,
@@ -89,7 +87,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		SourceSession: sessionID,
 	}
 	if validateErr := proposal.Validate(); validateErr != nil {
-		return proposalResult{}, toolfailure.Definite(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))
+		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))
 	}
 	ref, err := p.proposals.SubmitProposal(ctx, cwd, proposal)
 	if err != nil {

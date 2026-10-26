@@ -7,13 +7,11 @@ import (
 	"log/slog"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	skillspec "github.com/Tangerg/scope/skills"
-	skillstool "github.com/Tangerg/scope/tools/skills"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	skillspec "github.com/Tangerg/scope/skills"
+	skillstool "github.com/Tangerg/scope/tools/skills"
 )
 
 // SkillUsageRecorder records that a skill was loaded, feeding the idle-lifecycle

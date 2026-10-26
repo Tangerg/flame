@@ -4,8 +4,6 @@ import (
 	"errors"
 	"testing"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
@@ -15,7 +13,7 @@ func TestHandlersUseTheOneWorkspaceTranslation(t *testing.T) {
 		source error
 		want   error
 	}{
-		{workspacepaths.ErrCWDUnavailable, protocol.ErrWorkspaceUnavailable},
+		{workspaceapp.ErrCWDUnavailable, protocol.ErrWorkspaceUnavailable},
 		{workspaceapp.ErrPathOutsideRoot, protocol.ErrPathOutsideRoot},
 		{workspaceapp.ErrVCSUnavailable, protocol.ErrVcsUnavailable},
 		{workspaceapp.ErrPageCursor, protocol.ErrInvalidParams},

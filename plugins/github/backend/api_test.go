@@ -12,9 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
-	"github.com/Tangerg/flame/plugins/github/backend/rpc"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 )
 
 type roundTrip func(*http.Request) (*http.Response, error)
@@ -38,14 +37,14 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	}
 	t.Cleanup(func() { _ = cache.db.Close() })
 	token := "first-private-fixture-token"
-	credential, err := resource.NewCredential(&token)
+	credential, err := newCredential(&token)
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, calls := http.StatusOK, 0
 	connector, err := newConnector(cache, roundTrip(func(request *http.Request) (*http.Response, error) {
 		calls++
-		if request.URL.Host != "api.github.com" || request.URL.Path != "/repos/owner/repo/issues/42" || request.Header.Get("Authorization") != "Bearer "+token || request.Header.Get("X-GitHub-Api-Version") != apiVersion {
+		if request.URL.Host != "api.github.com" || request.URL.Path != "/repos/owner/repo/issues/42" || request.Header.Get("authorization") != "Bearer "+token || request.Header.Get("X-GitHub-Api-Version") != apiVersion {
 			t.Error("request lost its resource or credential binding")
 		}
 		if status != http.StatusOK {
@@ -74,11 +73,11 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	status = http.StatusUnauthorized
 	if _, err := connector.getIssue(t.Context(), input); err == nil {
 		t.Fatal("revoked authorization returned cached private data")
-	} else if refusal, ok := errors.AsType[*capability.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("authorization failure = %v", err)
 	}
 	otherToken := "second-private-fixture-token"
-	other, err := resource.NewCredential(&otherToken)
+	other, err := newCredential(&otherToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,12 +145,12 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 					t.Fatal("redirect left the admitted API host")
 				}
 				return upstream(test.status, test.body, test.headers), nil
-			}), resource.Credential{})
+			}), credential{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			_, err = connector.getIssue(t.Context(), rpc.IssueInput{Repository: "owner/repo", Number: 42})
-			refusal, known := errors.AsType[*capability.Refusal](err)
+			refusal, known := errors.AsType[*extension.Refusal](err)
 			if err == nil || known != (test.refusal != "") || known && refusal.Code != test.refusal || calls != 1 {
 				t.Fatalf("failure changed or retried: code=%v err=%v calls=%d", refusal, err, calls)
 			}
@@ -167,7 +166,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 			t.Error("file path or ref escaped its parameter boundary")
 		}
 		return upstream(200, string(fileBody), nil), nil
-	}), resource.Credential{})
+	}), credential{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +188,7 @@ func TestGitHubQueryCancellationJoinsItsOriginalRequest(t *testing.T) {
 		close(started)
 		<-request.Context().Done()
 		return nil, request.Context().Err()
-	}), resource.Credential{})
+	}), credential{})
 	if err != nil {
 		t.Fatal(err)
 	}

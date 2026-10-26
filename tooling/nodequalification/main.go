@@ -16,11 +16,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	reports "github.com/Tangerg/flame/plugins/usagereports"
 )
 
 func main() {
@@ -179,11 +178,11 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err := wait(); err != nil {
 		return err
 	}
-	contracts, err := reports.NewContracts[protocol.UsageSummary]()
+	contract, err := extension.ParseCapability([]byte(UsageReportsCapabilityJSON))
 	if err != nil {
 		return err
 	}
-	request := protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Capability.Identity().String(), Method: contracts.Capture.Name(), Input: `{"period":"daily"}`, Target: capability.Target{Scope: "installation", Reference: usage.ID}}
+	request := protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: extension.Target{Scope: "installation", Reference: usage.ID}}
 	call := func(request protocol.CallPluginRequest, key string) (*protocol.CallPluginResponse, error) {
 		response, err := client.CallPlugin(ctx, request, protocol.PluginCallOptions{IdempotencyKey: key})
 		if err != nil {
@@ -198,7 +197,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err != nil {
 		return err
 	}
-	var header reports.Header
+	var header UsageReportsCaptureV1Output
 	if err := json.Unmarshal([]byte(original.Output), &header); err != nil {
 		return err
 	}
@@ -217,8 +216,8 @@ func qualify(ctx context.Context, directory string) (err error) {
 		return errors.Join(errors.New("qualification: CLI did not capture the installed capability"), err)
 	}
 	read := request
-	read.Method = contracts.Get.Name()
-	encoded, err := json.Marshal(reports.ReportInput{ID: header.ID})
+	read.Method = UsageReportsGetV1Method
+	encoded, err := json.Marshal(UsageReportsGetV1Input{Id: header.Id})
 	if err != nil {
 		return err
 	}
@@ -251,7 +250,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 		return errors.New("qualification: original capture replay changed")
 	}
 	remove := read
-	remove.Method = contracts.Delete.Name()
+	remove.Method = UsageReportsDeleteV1Method
 	if _, err := call(remove, "original-remove"); err != nil {
 		return err
 	}

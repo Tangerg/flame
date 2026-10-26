@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
+	"github.com/samber/lo"
 )
 
 // Command is the application input for recording one quality signal.
@@ -19,18 +19,18 @@ type Command struct {
 }
 
 // Store is the durable receiver this feedback use case needs.
-type Store interface {
+type store interface {
 	Append(ctx context.Context, entry feedbackdomain.Entry) error
 }
 
 // Recorder owns the feedback write use case.
 type Recorder struct {
-	store Store
+	store store
 }
 
 // NewRecorder wires the complete durable receiver for feedback records.
-func NewRecorder(store Store) (*Recorder, error) {
-	if dependency.Missing(store) {
+func NewRecorder(store store) (*Recorder, error) {
+	if lo.IsNil(store) {
 		return nil, errors.New("feedback: store is required")
 	}
 	return &Recorder{store: store}, nil

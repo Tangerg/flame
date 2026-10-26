@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -32,7 +32,7 @@ func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []Interr
 	}
 
 	seen := make(map[string]struct{}, len(responses))
-	resolutions := make(map[string]interrupt.Resolution, len(responses))
+	resolutions := make(map[string]run.InterruptResolution, len(responses))
 	for _, response := range responses {
 		request, exists := open[response.ItemID]
 		if !exists {
@@ -44,13 +44,13 @@ func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []Interr
 		seen[response.ItemID] = struct{}{}
 
 		var (
-			itemResolution interrupt.Resolution
+			itemResolution run.InterruptResolution
 			err            error
 		)
 		switch request.Kind {
-		case interrupt.Approval:
+		case run.InterruptApproval:
 			itemResolution, err = resolveApprovalResponse(request, response)
-		case interrupt.Question:
+		case run.InterruptQuestion:
 			itemResolution, err = resolveQuestionResponse(request, response)
 		default:
 			err = fmt.Errorf("unknown open interrupt kind %q", request.Kind)
@@ -94,39 +94,39 @@ func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []Interr
 	return answers, nil
 }
 
-func resolveApprovalResponse(request transcript.Interrupt, response ResumeResponse) (interrupt.Resolution, error) {
-	if response.Kind != interrupt.Approval || response.Approval == nil || response.Question != nil {
-		return interrupt.Resolution{}, errors.New("approval response is required")
+func resolveApprovalResponse(request transcript.Interrupt, response ResumeResponse) (run.InterruptResolution, error) {
+	if response.Kind != run.InterruptApproval || response.Approval == nil || response.Question != nil {
+		return run.InterruptResolution{}, errors.New("approval response is required")
 	}
 	value := response.Approval
-	resolution, err := interrupt.NewApprovalAnswer(approval.Resolution{
+	resolution, err := run.NewApprovalAnswer(approval.Resolution{
 		Decision: approval.DecisionOf(value.Approved), EditedArguments: value.Arguments,
 		Reason: strings.TrimSpace(value.Reason), RememberScope: value.RememberScope,
 	})
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return run.InterruptResolution{}, err
 	}
 	answer := InterruptAnswer{InterruptItemID: response.ItemID, Resolution: resolution}
 	if err := answer.validateResolution(request); err != nil {
-		return interrupt.Resolution{}, err
+		return run.InterruptResolution{}, err
 	}
 	return resolution, nil
 }
 
-func resolveQuestionResponse(request transcript.Interrupt, response ResumeResponse) (interrupt.Resolution, error) {
-	if response.Kind != interrupt.Question || response.Question == nil || response.Approval != nil {
-		return interrupt.Resolution{}, errors.New("question response is required")
+func resolveQuestionResponse(request transcript.Interrupt, response ResumeResponse) (run.InterruptResolution, error) {
+	if response.Kind != run.InterruptQuestion || response.Question == nil || response.Approval != nil {
+		return run.InterruptResolution{}, errors.New("question response is required")
 	}
 	if request.Question == nil || len(request.Question.Fields) == 0 {
-		return interrupt.Resolution{}, errors.New("open question has no fields")
+		return run.InterruptResolution{}, errors.New("open question has no fields")
 	}
-	resolution, err := interrupt.NewQuestionAnswer(response.Question.Answers)
+	resolution, err := run.NewQuestionAnswer(response.Question.Answers)
 	if err != nil {
-		return interrupt.Resolution{}, err
+		return run.InterruptResolution{}, err
 	}
 	answer := InterruptAnswer{InterruptItemID: response.ItemID, Resolution: resolution}
 	if err := answer.validateResolution(request); err != nil {
-		return interrupt.Resolution{}, err
+		return run.InterruptResolution{}, err
 	}
 	return resolution, nil
 }
@@ -138,9 +138,9 @@ func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error 
 		return errors.New("answer kind differs from its interrupt")
 	}
 	switch request.Kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		return a.validateApprovalResolution(request.Approval)
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		return a.validateQuestionResolution(request.Question)
 	default:
 		return fmt.Errorf("unknown interrupt kind %q", request.Kind)

@@ -63,7 +63,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+			host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 			if err != nil {
 				t.Fatalf("enabled optional plugin blocked Runtime construction: %v", err)
 			}
@@ -76,7 +76,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+			endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 			if err != nil {
 				t.Fatal(err)
 			}

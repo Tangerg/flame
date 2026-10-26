@@ -29,37 +29,20 @@ func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.
 	unsubscribeOld()
 }
 
-func TestPluginPresenterPanicBecomesAnError(t *testing.T) {
-	_, err := presentSafely(BlockPresenter{
-		Kind: conversation.BlockAssistant,
-		Present: func(BlockPresentation, conversation.Block) []headless.Block {
-			panic("present boom")
-		},
-	}, BlockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
+func TestTranscriptPresenterPanicBecomesAnError(t *testing.T) {
+	_, err := presentSafely(func(blockPresentation, conversation.Block) []headless.Block { panic("present boom") }, blockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
 	if err == nil || !strings.Contains(err.Error(), "present boom") {
 		t.Fatalf("presenter panic error = %v", err)
 	}
 }
 
-func TestCustomEventPresenterPanicBecomesAnError(t *testing.T) {
-	_, err := presentCustomSafely(CustomEventPresenter{
-		Name: "vendor.broken",
-		Present: func(BlockPresentation, conversation.CustomEvent) []headless.Block {
-			panic("custom boom")
-		},
-	}, BlockPresentation{}, conversation.CustomEvent{Name: "vendor.broken", PayloadJSON: []byte(`null`)})
-	if err == nil || !strings.Contains(err.Error(), "custom boom") {
-		t.Fatalf("custom presenter panic error = %v", err)
-	}
-}
-
 func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
 	call := conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "provider_tool", Summary: "work", Status: conversation.ToolRunning}
-	presenters := []ToolPresenter{
+	presenters := []toolPresenter{
 		{
 			ID:      "specific",
 			Matches: func(got conversation.ToolCall) bool { return got.Name == "provider_tool" },
-			Present: func(conversation.ToolCall) ToolPresentation { return ToolPresentation{Label: "specific view"} },
+			Present: func(conversation.ToolCall) toolPresentation { return toolPresentation{Label: "specific view"} },
 		},
 		{ID: "fallback", Matches: func(conversation.ToolCall) bool { return true }, Present: presentUnknownTool},
 	}
@@ -81,12 +64,12 @@ func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
 }
 
 func TestToolPresenterPanicsBecomePresentationErrors(t *testing.T) {
-	presenter := ToolPresenter{
+	presenter := toolPresenter{
 		ID:      "broken",
 		Matches: func(conversation.ToolCall) bool { return true },
-		Present: func(conversation.ToolCall) ToolPresentation { panic("projection boom") },
+		Present: func(conversation.ToolCall) toolPresentation { panic("projection boom") },
 	}
-	_, err := selectToolPresentation([]ToolPresenter{presenter}, conversation.ToolCall{})
+	_, err := selectToolPresentation([]toolPresenter{presenter}, conversation.ToolCall{})
 	if err == nil || !strings.Contains(err.Error(), "projection boom") {
 		t.Fatalf("tool presenter error = %v", err)
 	}
@@ -131,7 +114,7 @@ func TestToolDetailTruncationKeepsTheBeginningAndEnd(t *testing.T) {
 }
 
 func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	diff := "--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\n"
 	tests := []struct {
 		name string
@@ -216,7 +199,7 @@ func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 }
 
 func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	call := conversation.ToolCall{
 		Kind: conversation.ToolUnknown, Name: "provider_tool", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"scope":"source"}`), ResultJSON: []byte(`{"status":"source"}`),
@@ -231,7 +214,7 @@ func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
 }
 
 func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	block.ToggleExpanded()
@@ -246,7 +229,7 @@ func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 }
 
 func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	if !block.Expandable() {
@@ -268,7 +251,7 @@ func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
 }
 
 func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
 	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed})
 	if block.Expandable() || block.Expanded() {
@@ -292,7 +275,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 	call := conversation.ToolCall{
 		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "all packages passed",
 	}
-	block := newToolBlock(BlockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, conversation.Block{
+	block := newToolBlock(blockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, conversation.Block{
 		ID: "test", Kind: conversation.BlockTool, Tool: &call,
 	})
 	block.SetExpanded(true)
@@ -323,7 +306,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 }
 
 func TestToolStatusVocabularyDoesNotCollideWithRunOutcomes(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}
 	for _, test := range []struct {
 		status conversation.ToolStatus
 		want   string
@@ -399,10 +382,10 @@ func drawToolBlock(block *toolBlock, width int) string {
 // would notice this default changing.
 func TestSectionLanguageDefaultsToPlainText(t *testing.T) {
 	t.Parallel()
-	if got := sectionLanguage(ToolSection{}); got != "text" {
+	if got := sectionLanguage(toolSection{}); got != "text" {
 		t.Fatalf("unset section language = %q, want plain text", got)
 	}
-	if got := sectionLanguage(ToolSection{Language: "go"}); got != "go" {
+	if got := sectionLanguage(toolSection{Language: "go"}); got != "go" {
 		t.Fatalf("declared section language = %q, want it kept", got)
 	}
 }

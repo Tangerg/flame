@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -47,7 +47,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			host := newTestCallbacks(t)
 			session := new(sdk.ClientSession)
 			host.AdmitSession(session)
-			recorded := make(chan capability.Invocation, 1)
+			recorded := make(chan extension.Invocation, 1)
 			callback, err := NewSelectedModelCallback(func(ctx context.Context, command Command[ModelCallRequest]) (*chat.Response, error) {
 				actual, _ := InvocationFromContext(ctx)
 				recorded <- actual
@@ -66,7 +66,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 			}
 			ctx := t.Context()
 			if owning {
-				ctx, err = WithInvocation(ctx, capability.Invocation{ID: "original-owner", Origin: capability.Human, Parent: "original-parent", Target: capability.Target{Scope: "call", Reference: "original-owner"}})
+				ctx, err = WithInvocation(ctx, extension.Invocation{ID: "original-owner", Origin: extension.Human, Parent: "original-parent", Target: extension.Target{Scope: "call", Reference: "original-owner"}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -87,7 +87,7 @@ func TestSelectedModelSharesPublishedRPCAndRequiresOriginalInvocation(t *testing
 				return
 			}
 			actual := <-recorded
-			want := capability.Invocation{ID: "fresh-model-call", Origin: capability.Human, Parent: "original-owner", Target: capability.Target{Scope: "call", Reference: "fresh-model-call"}}
+			want := extension.Invocation{ID: "fresh-model-call", Origin: extension.Human, Parent: "original-owner", Target: extension.Target{Scope: "call", Reference: "fresh-model-call"}}
 			if err != nil || response == nil || !reflect.DeepEqual(actual, want) {
 				t.Fatalf("original owner changed: %+v %+v %v", actual, response, err)
 			}
@@ -113,8 +113,8 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
 	host.AdmitSession(session)
-	original := capability.Invocation{ID: "retained-operation", Origin: capability.Automatic, Parent: "original-trigger", Target: capability.Target{Scope: "call", Reference: "retained-operation"}}
-	records := make(chan capability.Invocation, 2)
+	original := extension.Invocation{ID: "retained-operation", Origin: extension.Automatic, Parent: "original-trigger", Target: extension.Target{Scope: "call", Reference: "retained-operation"}}
+	records := make(chan extension.Invocation, 2)
 	unary, err := NewSelectedModelCallback(func(ctx context.Context, _ Command[ModelCallRequest]) (*chat.Response, error) {
 		inv, _ := InvocationFromContext(ctx)
 		records <- inv
@@ -138,7 +138,7 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 		t.Fatal(err)
 	}
 	var projections atomic.Int32
-	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire capability.Invocation) (context.Context, error) {
+	ref, release, err := host.OpenRPCWithInvocation(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 << 10, MaxResponseBytes: 64 << 10}, func(ctx context.Context, wire extension.Invocation) (context.Context, error) {
 		if wire != original {
 			return nil, errors.New("unretained invocation")
 		}
@@ -172,7 +172,7 @@ func TestSelectedBackgroundCallbacksProjectOnlyRetainedOwnerForCallAndStream(t *
 		}
 	}
 	forgedOwner := original
-	forgedOwner.Origin = capability.Human
+	forgedOwner.Origin = extension.Human
 	forged, err := WithInvocation(t.Context(), forgedOwner)
 	if err != nil {
 		t.Fatal(err)

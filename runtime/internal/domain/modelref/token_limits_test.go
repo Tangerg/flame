@@ -43,12 +43,12 @@ func TestTokenLimitsInputCeilingOwnsIndependentProviderFacts(t *testing.T) {
 			values: TokenLimitValues{
 				ContextWindow: tokenPointer(400_000), MaxInputTokens: tokenPointer(272_000), MaxOutputTokens: tokenPointer(128_000),
 			},
-			reservation: tokenPointer(128_001), wantErr: ErrOutputTokenLimitExceeded,
+			reservation: tokenPointer(128_001), wantErr: errOutputTokenLimitExceeded,
 		},
 		{
 			name:        "requested output consumes total context",
 			values:      TokenLimitValues{ContextWindow: tokenPointer(16_384)},
-			reservation: tokenPointer(16_384), wantErr: ErrOutputReservationExhaustsContext,
+			reservation: tokenPointer(16_384), wantErr: errOutputReservationExhaustsContext,
 		},
 		{
 			name: "streaming output larger than input context is independent",
@@ -119,12 +119,12 @@ func TestTokenLimitsRejectsSentinelsAndImpossiblePublishedMaximum(t *testing.T) 
 		{ContextWindow: tokenPointer(1_000), MaxInputTokens: tokenPointer(1_001)},
 	}
 	for _, values := range tests {
-		if _, err := NewTokenLimits(values); !errors.Is(err, ErrInvalidTokenLimits) {
+		if _, err := NewTokenLimits(values); !errors.Is(err, errInvalidTokenLimits) {
 			t.Fatalf("NewTokenLimits(%+v) error = %v, want ErrInvalidTokenLimits", values, err)
 		}
 	}
 	for _, value := range []int64{0, -1} {
-		if _, err := NewOutputReservation(value); !errors.Is(err, ErrInvalidOutputReservation) {
+		if _, err := NewOutputReservation(value); !errors.Is(err, errInvalidOutputReservation) {
 			t.Fatalf("NewOutputReservation(%d) error = %v, want ErrInvalidOutputReservation", value, err)
 		}
 	}

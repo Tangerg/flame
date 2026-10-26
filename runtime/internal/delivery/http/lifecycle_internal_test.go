@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -36,7 +38,7 @@ func (s *streamingLifecycleRuntime) SubscribeRuntime(
 
 func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: lifecycleReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +75,7 @@ func TestShutdownCancelsLongLivedTransportHandler(t *testing.T) {
 	defer cancelWait()
 	runtime := &streamingLifecycleRuntime{subscribed: make(chan struct{})}
 	srv := newLifecycleServer(t, func(cfg *Config) {
-		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context()})
+		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: lifecycleReplayStore(t)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -320,4 +322,18 @@ func TestPanickingProbeReportsWhatPanicked(t *testing.T) {
 	if !strings.Contains(output, "lifecycle_internal_test.go") {
 		t.Fatalf("diagnostics lost the stack naming the probe that panicked: %s", output)
 	}
+}
+
+func lifecycleReplayStore(t *testing.T) operation.ReplayStore {
+	t.Helper()
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return stores.Idempotency
 }

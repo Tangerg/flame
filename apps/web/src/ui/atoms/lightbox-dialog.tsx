@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/classNames";
 import { iconGlyph } from "@/ui/icons/index";
 import { layout, space, surface, type, weight } from "@flame/ui/tokens.stylex";
-import { DialogPrimitive } from "@flame/ui/primitives";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { IconButton, ScrollRegion, useContentVisible } from "@flame/ui";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 const styles = stylex.create({

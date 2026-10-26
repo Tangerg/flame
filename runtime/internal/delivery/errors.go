@@ -26,11 +26,7 @@ func NewCapabilityGapError(requirements ...protocol.CapabilityRequirement) *Capa
 }
 
 func requirementOrder(kind protocol.CapabilityRequirementType) int {
-	return slices.Index([]protocol.CapabilityRequirementType{
-		protocol.RequirementFeature,
-		protocol.RequirementInterruptType,
-		protocol.RequirementRuntimeTopic,
-	}, kind)
+	return slices.Index([]protocol.CapabilityRequirementType{protocol.RequirementFeature, protocol.RequirementInterruptType, protocol.RequirementRuntimeTopic}, kind)
 }
 
 func (c *CapabilityGapError) Error() string {

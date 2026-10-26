@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -73,7 +73,7 @@ func (s *SessionStore) list(
 		query += ` LIMIT ?`
 		args = append(args, limit)
 	}
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
 	}
@@ -105,7 +105,7 @@ func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
 		return false, err
 	}
 	var one int
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE id = ?`, id).Scan(&one)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -119,7 +119,7 @@ func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, err
 	if err := validateSessionResource("read Session", id); err != nil {
 		return session.Session{}, err
 	}
-	row := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
+	row := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
 	sess, err := rowToSession(row)
 	if errors.Is(err, sql.ErrNoRows) {

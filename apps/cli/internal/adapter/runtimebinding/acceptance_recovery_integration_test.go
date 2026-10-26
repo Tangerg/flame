@@ -9,7 +9,7 @@ import (
 
 	runapplication "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -19,13 +19,13 @@ type lostOpeningAcknowledgements struct {
 	*Connection
 	clock    time.Time
 	advance  time.Duration
-	starts   []prompt.StartRun
+	starts   []authoring.StartRun
 	resumes  []conversation.ResumeRun
 	queries  []protocol.GetRunAcceptanceRequest
 	receipts []protocol.RunAcceptance
 }
 
-func (r *lostOpeningAcknowledgements) StartRun(ctx context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *lostOpeningAcknowledgements) StartRun(ctx context.Context, command authoring.StartRun) (conversation.SegmentStream, error) {
 	r.starts = append(r.starts, command.Clone())
 	if _, err := r.Connection.StartRun(ctx, command); err != nil {
 		return conversation.SegmentStream{}, err
@@ -76,7 +76,7 @@ func TestOneShotQueriesAcceptedStartAndResumeAfterDeliveryExpiry(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	command := prompt.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: prompt.Message{Text: "delegate approval probe"}, Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
+	command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"}, Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
 	if err := runapplication.Execute(ctx, runapplication.Invocation{Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, ApproveAll: true, Start: command}); err != nil {
 		t.Fatal(err)
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func TestConfigurationInheritsTheRuntimeModelByDefault(t *testing.T) {
@@ -115,7 +115,7 @@ func TestConfigurationAcceptsOnlyBoundedRegularYAML(t *testing.T) {
 		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, fileinput.ErrTooLarge) {
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, filesystem.ErrFileTooLarge) {
 			t.Fatalf("oversized configuration error = %v, want ErrTooLarge", err)
 		}
 	})
@@ -125,7 +125,7 @@ func TestConfigurationAcceptsOnlyBoundedRegularYAML(t *testing.T) {
 		if err := os.Mkdir(path, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, fileinput.ErrNotRegular) {
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, filesystem.ErrNotRegular) {
 			t.Fatalf("non-regular configuration error = %v, want ErrNotRegular", err)
 		}
 	})

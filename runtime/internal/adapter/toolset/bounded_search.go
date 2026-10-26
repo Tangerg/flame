@@ -11,14 +11,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 const (
@@ -127,7 +126,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	limit := optional.Value(request.MaxResults, workspaceapp.DefaultGrepLimit)
+	limit := lo.FromPtrOr(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
 		return runtimePathSearchResponse{}, fmt.Errorf("toolset: glob workspace: %w", err)
@@ -178,7 +177,7 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	if err != nil {
 		return runtimeSearchResponse{}, err
 	}
-	limit := optional.Value(request.MaxResults, workspaceapp.DefaultGrepLimit)
+	limit := lo.FromPtrOr(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
 		Path: path, Pattern: pattern, Limit: limit,
 	})
@@ -225,18 +224,18 @@ func runtimeSearchPath(root, requested string) (string, error) {
 	if root == "" || !filepath.IsAbs(root) {
 		return "", errors.New("toolset: search root must be absolute")
 	}
-	canonicalRoot, err := pathidentity.Resolve("", root)
+	canonicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return "", fmt.Errorf("toolset: resolve search root: %w", err)
 	}
 	if requested == "" {
 		return "", nil
 	}
-	target, err := pathidentity.Resolve(canonicalRoot, requested)
+	target, err := filesystem.ResolvePath(canonicalRoot, requested)
 	if err != nil {
 		return "", fmt.Errorf("toolset: resolve search path %q: %w", requested, err)
 	}
-	inside, err := pathidentity.Contains(canonicalRoot, target)
+	inside, err := filesystem.ContainsPath(canonicalRoot, target)
 	if err != nil {
 		return "", fmt.Errorf("toolset: compare search path %q: %w", requested, err)
 	}

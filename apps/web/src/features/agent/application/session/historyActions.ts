@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/domain/input";
@@ -23,7 +23,9 @@ export interface ActiveAgentConversation {
   messages: Message[];
 }
 
-export function activeAgentConversation(agentAccess: AgentAccess): ActiveAgentConversation | null {
+export function activeAgentConversation(
+  agentAccess: AgentDependencies,
+): ActiveAgentConversation | null {
   const sessionId = agentAccess.state.getActiveSessionId();
   if (!sessionId) return null;
   return {
@@ -33,7 +35,7 @@ export function activeAgentConversation(agentAccess: AgentAccess): ActiveAgentCo
 }
 
 export function sendToAgentSession(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   input: AgentInput,
 ): boolean {
@@ -41,7 +43,7 @@ export function sendToAgentSession(
 }
 
 export async function rollbackSessionToBeforeRun(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   runId: string,
   restoreType: RestoreType = "history",
@@ -90,7 +92,7 @@ export async function rollbackSessionToBeforeRun(
 }
 
 export function forkAgentSessionAtRun(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   runId: string,
 ): Promise<void> {

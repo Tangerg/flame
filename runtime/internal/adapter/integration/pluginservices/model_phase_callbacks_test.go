@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -39,7 +39,7 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 	for _, phase := range []string{"selection", "context", "input"} {
 		for _, fail := range []bool{false, true} {
 			t.Run(phase+map[bool]string{false: "/success", true: "/failure"}[fail], func(t *testing.T) {
-				var contract *capability.Contract
+				var contract *extension.Capability
 				var err error
 				switch phase {
 				case "selection":
@@ -59,13 +59,13 @@ func TestModelPreparationPhasesCaptureReentrantHostAuthorityAndReleaseIt(t *test
 				var backendCalls atomic.Int32
 				selection := testsupport.DefaultModelSelection()
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
-				original := capability.Invocation{ID: "preparing-model", Origin: capability.Model, Parent: "original-tool", Target: capability.Target{Scope: "call", Reference: "preparing-model"}}
-				callers := make(chan capability.Invocation, 1)
+				original := extension.Invocation{ID: "preparing-model", Origin: extension.Model, Parent: "original-tool", Target: extension.Target{Scope: "call", Reference: "preparing-model"}}
+				callers := make(chan extension.Invocation, 1)
 				refs := make(chan pluginsdk.CallbackRef, 1)
 				host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					actor, found := operation.ActorFrom(r.Context())
 					invocation, err := pluginsdk.InvocationFromContext(r.Context())
-					var expected capability.Invocation
+					var expected extension.Invocation
 					select {
 					case expected = <-callers:
 					default:

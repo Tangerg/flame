@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -25,7 +25,7 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Parse([]byte(`{"ordinal":9007199254740993}`))
+	input, err := jsonvalue.Parse([]byte(`{"ordinal":9007199254740993}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,12 +43,13 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 		{name: "corrupt output", receipt: ToolReceipt{Found: true, Output: `{"content":[{"kind":"invalid"}]}`}, invalid: true},
 		{name: "undeclared output", receipt: ToolReceipt{Output: known.Output}, invalid: true},
 		{name: "undeclared failure", receipt: ToolReceipt{IsError: true}, invalid: true},
-		{name: "lookup conflict", queryErr: &capability.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
+		{name: "lookup conflict", queryErr: &extension.Refusal{Code: "command_conflict", Message: "changed input"}, invalid: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "independent records"}, nil)
 			backend := testBackend(t, server)
-			if err := RegisterServer(backend, ToolReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, request ReceiptRequest) (ToolReceipt, error) {
+			if err := testMethod[ReceiptRequest, ToolReceipt](t, ToolReceiptMethod, extension.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (ToolReceipt, error) {
+				request := command.Input
 				if request.ID != "tool:original" || request.Method != "append_record" || request.InputDigest != input.Digest() {
 					t.Fatalf("read changed original identity: %+v", request)
 				}
@@ -56,7 +57,7 @@ func TestToolReceiptReadsOnlyTheOriginalOwnerOutput(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := RegisterCommand(backend, "append_record", nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+			if err := testMethod[string, string](t, "append_record", extension.Mutation).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
 				t.Error("receipt lookup replayed the mutation")
 				return "", nil
 			}); err != nil {

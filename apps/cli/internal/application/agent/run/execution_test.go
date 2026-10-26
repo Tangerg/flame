@@ -12,8 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -21,11 +20,11 @@ import (
 
 func testReplayPolicy(t testing.TB) mutation.ReplayPolicy {
 	t.Helper()
-	capability, err := replay.NewCapability("idp_00000000000000000000000000000001", time.Hour)
+	capability, err := authoring.NewReplayCapability("idp_00000000000000000000000000000001", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := mutation.NewReplayPolicy(capability, time.Now)
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: capability}, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +38,7 @@ type observedOpeningRuntime struct {
 	observation context.Context
 }
 
-func (r *observedOpeningRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *observedOpeningRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	r.observation = ctx
 	return r.Runtime.StartRun(ctx, input)
 }
@@ -51,7 +50,7 @@ type treeReconnectRuntime struct {
 	subscriptions []conversation.SubscribeRun
 }
 
-func (t *treeReconnectRuntime) StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error) {
+func (t *treeReconnectRuntime) StartRun(context.Context, authoring.StartRun) (conversation.SegmentStream, error) {
 	return t.initial, nil
 }
 
@@ -85,7 +84,7 @@ type uncertainAcknowledgementRuntime struct {
 	*runtimefixture.Runtime
 
 	mu             sync.Mutex
-	startAttempts  []prompt.StartRun
+	startAttempts  []authoring.StartRun
 	resumeAttempts []conversation.ResumeRun
 	cancelAttempts []conversation.CancelRun
 	startStream    conversation.SegmentStream
@@ -93,7 +92,7 @@ type uncertainAcknowledgementRuntime struct {
 	cancelResult   conversation.RunCancellation
 }
 
-func (u *uncertainAcknowledgementRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (u *uncertainAcknowledgementRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	u.mu.Lock()
 	u.startAttempts = append(u.startAttempts, input.Clone())
 	attempt := len(u.startAttempts)
@@ -153,10 +152,10 @@ func (u *uncertainAcknowledgementRuntime) CancelRun(
 	return conversation.RunCancellation{}, fmt.Errorf("cancel acknowledgement timed out: %w", context.DeadlineExceeded)
 }
 
-func (u *uncertainAcknowledgementRuntime) attempts() ([]prompt.StartRun, []conversation.ResumeRun) {
+func (u *uncertainAcknowledgementRuntime) attempts() ([]authoring.StartRun, []conversation.ResumeRun) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	starts := make([]prompt.StartRun, len(u.startAttempts))
+	starts := make([]authoring.StartRun, len(u.startAttempts))
 	for index, attempt := range u.startAttempts {
 		starts[index] = attempt.Clone()
 	}
@@ -173,7 +172,7 @@ func (u *uncertainAcknowledgementRuntime) cancellationAttempts() []conversation.
 	return slices.Clone(u.cancelAttempts)
 }
 
-func (i invalidOpeningRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (i invalidOpeningRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	opened, err := i.Runtime.StartRun(ctx, input)
 	if err == nil {
 		opened.Events = nil
@@ -214,7 +213,7 @@ type recordingRenderer struct {
 	err    error
 }
 
-func (r *recordingRenderer) Begin(conversation.Run, prompt.RunOptions) error { return r.err }
+func (r *recordingRenderer) Begin(conversation.Run, authoring.RunOptions) error { return r.err }
 
 func (r *recordingRenderer) Render(event conversation.RunEvent) error {
 	if r.err != nil {
@@ -238,21 +237,21 @@ func (*recordingRenderer) Close() error { return nil }
 
 func advertisedReplayPolicy(t *testing.T) mutation.ReplayPolicy {
 	t.Helper()
-	capability, err := replay.NewCapability("runtime-test", time.Hour)
+	capability, err := authoring.NewReplayCapability("runtime-test", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := mutation.NewReplayPolicy(capability, time.Now)
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: capability}, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return policy
 }
 
-func testRunStart(sessionID, text string) prompt.StartRun {
-	return prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: text},
-		Options: prompt.RunOptions{},
+func testRunStart(sessionID, text string) authoring.StartRun {
+	return authoring.StartRun{
+		SessionID: sessionID, Message: authoring.Message{Text: text},
+		Options: authoring.RunOptions{},
 	}
 }
 
@@ -701,7 +700,7 @@ type cancelingRenderer struct {
 	cancel context.CancelFunc
 }
 
-func (r *cancelingRenderer) Begin(run conversation.Run, options prompt.RunOptions) error {
+func (r *cancelingRenderer) Begin(run conversation.Run, options authoring.RunOptions) error {
 	r.cancel()
 	return r.recordingRenderer.Begin(run, options)
 }

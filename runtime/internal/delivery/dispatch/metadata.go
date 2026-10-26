@@ -6,14 +6,14 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 const requestMetaField = "_meta"
 
 // extractRequestMeta removes the JSON-RPC-only _meta member and returns its
 // binding-neutral protocol value. Semantic validation belongs to operation.
-func extractRequestMeta(request *transport.Request) (protocol.RequestMeta, *transport.Error) {
+func extractRequestMeta(request *jsonrpc.Request) (protocol.RequestMeta, *jsonrpc.Error) {
 	if request == nil || len(request.Params) == 0 {
 		return protocol.RequestMeta{}, nil
 	}

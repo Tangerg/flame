@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	domainrun "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // TestProductionDoesNotImportTestSupport keeps builders and in-memory fakes
@@ -295,7 +296,7 @@ func TestDomainStaysFrameworkFree(t *testing.T) {
 func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 	root := moduleRoot(t)
 	checks := map[string]map[string]string{
-		filepath.Join(root, "..", "plugins", "memory", "backend", "domain"): {
+		filepath.Join(root, "..", "plugins", "memory", "internal", "domain"): {
 			"Render":         "memory prompt rendering belongs to adapter/run/execution",
 			"EstimateTokens": "model token approximation belongs to adapter/run/execution",
 			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/maintenance",
@@ -969,7 +970,6 @@ func TestDeliveryHandlerDependsOnUseCaseBoundaries(t *testing.T) {
 			"github.com/Tangerg/flame/runtime/internal/adapter",
 			"github.com/Tangerg/flame/runtime/internal/infra",
 			"github.com/Tangerg/flame/runtime/internal/bootstrap",
-			"github.com/Tangerg/flame/packages/go-sdk/idempotency",
 		})
 	}
 }
@@ -1358,8 +1358,7 @@ func forbidInterfaceMethodsIn(t *testing.T, path string, banned map[string]map[s
 func TestCanonicalExecutionRecordsStayTyped(t *testing.T) {
 	root := moduleRoot(t)
 	dirs := []string{
-		filepath.Join(root, "internal", "domain", "run", "transcript"),
-		filepath.Join(root, "internal", "domain", "run", "interrupt"),
+		filepath.Join(root, "internal", "domain", "run"),
 	}
 	for _, dir := range dirs {
 		walkErr := walkProductionGoFiles(dir, func(path string, file *ast.File) error {
@@ -1404,42 +1403,53 @@ func assertCanonicalExecutionRecordSource(t *testing.T, root, path string, file 
 // Signal wire. The Run input ACL owns that translation; these values
 // retain only product vocabulary.
 func TestRuntimeInterruptValuesStayWireFree(t *testing.T) {
-	root := moduleRoot(t)
-	interruptDomain := filepath.Join(root, "internal", "domain", "run", "interrupt")
-	forbidExternalImports(t, interruptDomain, []string{"encoding/json"})
-	walkErr := filepath.WalkDir(interruptDomain, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
+	// Interrupt values now live beside their Run owner. Follow their actual
+	// value graph instead of banning codecs from unrelated values in that
+	// package or requiring an artificial package boundary just for this gate.
+	seen := make(map[reflect.Type]bool)
+	var inspect func(reflect.Type)
+	inspect = func(value reflect.Type) {
+		if seen[value] {
+			return
 		}
-		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		ast.Inspect(f, func(node ast.Node) bool {
-			field, ok := node.(*ast.Field)
-			if ok && field.Tag != nil && strings.Contains(field.Tag.Value, `json:`) {
-				rel, _ := filepath.Rel(root, path)
-				t.Errorf("%s: runtime interrupt value must not carry JSON tag %s", rel, field.Tag.Value)
+		seen[value] = true
+		for _, prefix := range []string{"encoding/json", "github.com/Tangerg/scope", "github.com/Tangerg/flame/packages/go-sdk/protocol"} {
+			if value.PkgPath() == prefix || strings.HasPrefix(value.PkgPath(), prefix+"/") {
+				t.Errorf("%s: runtime interrupt value must not carry transport or executor values", value)
 			}
-			return true
-		})
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatal(walkErr)
+		}
+		for _, method := range []string{"MarshalJSON", "UnmarshalJSON", "MarshalJSONTo", "UnmarshalJSONFrom"} {
+			if _, exists := value.MethodByName(method); exists {
+				t.Errorf("%s: runtime interrupt value must not implement %s", value, method)
+			}
+		}
+		switch value.Kind() {
+		case reflect.Pointer, reflect.Slice, reflect.Array:
+			inspect(value.Elem())
+		case reflect.Map:
+			inspect(value.Key())
+			inspect(value.Elem())
+		case reflect.Struct:
+			inspect(reflect.PointerTo(value))
+			for field := range value.Fields() {
+				if _, tagged := field.Tag.Lookup("json"); tagged {
+					t.Errorf("%s.%s: runtime interrupt value must not carry a JSON tag", value, field.Name)
+				}
+				inspect(field.Type)
+			}
+		}
 	}
 	for _, value := range []reflect.Type{
+		reflect.TypeFor[domainrun.InterruptKind](),
+		reflect.TypeFor[domainrun.InterruptResolution](),
+		reflect.TypeFor[domainrun.QuestionAnswer](),
 		reflect.TypeFor[applicationruns.Interrupt](),
 		reflect.TypeFor[applicationruns.ApprovalPrompt](),
 		reflect.TypeFor[applicationruns.QuestionPrompt](),
 		reflect.TypeFor[applicationruns.QuestionFieldSpec](),
 		reflect.TypeFor[applicationruns.QuestionOptionSpec](),
 	} {
-		for field := range value.Fields() {
-			if _, tagged := field.Tag.Lookup("json"); tagged {
-				t.Errorf("runs.%s.%s: runtime interrupt value must not carry a JSON tag", value.Name(), field.Name)
-			}
-		}
+		inspect(value)
 	}
 }
 
@@ -1466,7 +1476,7 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 
 var crossRingCapabilityImports = []string{
 	"github.com/Tangerg/flame/runtime/internal/completion",
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency",
+	"github.com/Tangerg/flame/runtime/internal/application/operation",
 }
 
 // domainPkg is the bounded-context ring. Prefix-matched.
@@ -1865,8 +1875,6 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "contract/samples":
-		return ringValue
 	case "internal/completion", "internal/keylock":
 		return ringMechanism
 	}

@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
+	"github.com/samber/lo"
 )
 
 const (
@@ -30,7 +30,7 @@ type runtimeReadExecutor struct {
 }
 
 func newRuntimeReadTool(reader fs.Reader) (*fs.ReadTool, error) {
-	if dependency.Missing(reader) {
+	if lo.IsNil(reader) {
 		return nil, errors.New("toolset: read executor is required")
 	}
 	tool, err := fs.NewReadTool(runtimeReadExecutor{next: reader})
@@ -59,7 +59,7 @@ func withDefiniteOutcome(inner toolcontract.Tool) toolcontract.Tool {
 		if cause := cancellation.Err(ctx); cause != nil {
 			return output, errors.Join(err, cause)
 		}
-		return output, toolfailure.Definite(err)
+		return output, pluginsdk.DefiniteToolFailure(err)
 	})
 }
 

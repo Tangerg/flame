@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"strconv"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -16,11 +15,11 @@ const (
 	toolInvocationNamespace  = "tool"
 )
 
-func modelInvocationID(invocation interaction.ModelInvocation) (runtimeidentity.EffectID, error) {
+func modelInvocationID(invocation interaction.ModelInvocation) (runs.InvocationID, error) {
 	return modelInvocationIDFrom(invocation.EffectID(), invocation.ModelCallSequence())
 }
 
-func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (runtimeidentity.EffectID, error) {
+func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (runs.InvocationID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(effectID.String()))
 	_, _ = digest.Write([]byte{0})
@@ -34,7 +33,7 @@ func logicalToolCallID(
 	toolCallIndex uint32,
 	sourceID string,
 	name string,
-) (runtimeidentity.EffectID, error) {
+) (runs.InvocationID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(caller.String()))
 	_, _ = digest.Write([]byte{0})
@@ -46,8 +45,8 @@ func logicalToolCallID(
 	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), uint64(toolCallIndex))
 }
 
-func parsedInvocationID(namespace string, digest []byte, ordinal uint64) (runtimeidentity.EffectID, error) {
-	return runtimeidentity.ParseEffect(
+func parsedInvocationID(namespace string, digest []byte, ordinal uint64) (runs.InvocationID, error) {
+	return runs.ParseInvocation(
 		namespace + ":" + hex.EncodeToString(digest) + ":" + strconv.FormatUint(uint64(ordinal), 10),
 	)
 }

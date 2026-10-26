@@ -9,7 +9,7 @@ import (
 	"math"
 	"strconv"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 var errExecutionTreeConflict = errors.New("sqlite: execution tree writer or content conflict")
@@ -25,7 +25,7 @@ type executionTreeRecord struct {
 
 func (s *ExecutorCheckpointStore) executionResultCommitted(ctx context.Context, sessionID, id, digest string) (bool, error) {
 	var owner, stored string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT session_id,digest FROM result_publications WHERE publication_id = ?`, id).Scan(&owner, &stored)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT session_id,digest FROM result_publications WHERE publication_id = ?`, id).Scan(&owner, &stored)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -41,7 +41,7 @@ func (s *ExecutorCheckpointStore) executionResultCommitted(ctx context.Context, 
 func (s *ExecutorCheckpointStore) loadExecutionTreeRecord(ctx context.Context, sessionID, rootID string) (executionTreeRecord, bool, error) {
 	record := executionTreeRecord{SessionID: sessionID, RootID: rootID}
 	var sequence string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT writer, digest, payload, sequence, commit_id, commit_digest FROM execution_trees WHERE session_id = ? AND root_id = ?`, sessionID, rootID).Scan(&record.Writer, &record.Digest, &record.Payload, &sequence, &record.CommitID, &record.CommitDigest)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT writer, digest, payload, sequence, commit_id, commit_digest FROM execution_trees WHERE session_id = ? AND root_id = ?`, sessionID, rootID).Scan(&record.Writer, &record.Digest, &record.Payload, &sequence, &record.CommitID, &record.CommitDigest)
 	if errors.Is(err, sql.ErrNoRows) {
 		return executionTreeRecord{}, false, nil
 	}
@@ -53,7 +53,7 @@ func (s *ExecutorCheckpointStore) loadExecutionTreeRecord(ctx context.Context, s
 }
 
 func (s *ExecutorCheckpointStore) saveExecutionTreeRecord(ctx context.Context, previousWriter, previousDigest string, next executionTreeRecord) error {
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		current, found, err := s.loadExecutionTreeRecord(ctx, next.SessionID, next.RootID)
 		if err != nil {
 			return err
@@ -62,7 +62,7 @@ func (s *ExecutorCheckpointStore) saveExecutionTreeRecord(ctx context.Context, p
 			return errExecutionTreeConflict
 		}
 		var committedDigest string
-		err = sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT digest FROM execution_tree_commits WHERE root_id = ? AND commit_id = ?`, next.RootID, next.CommitID).Scan(&committedDigest)
+		err = sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT digest FROM execution_tree_commits WHERE root_id = ? AND commit_id = ?`, next.RootID, next.CommitID).Scan(&committedDigest)
 		if err == nil {
 			if found && committedDigest == next.CommitDigest && current.Writer == next.Writer && current.Sequence == next.Sequence && current.CommitID == next.CommitID && current.CommitDigest == next.CommitDigest && current.Digest == next.Digest && bytes.Equal(current.Payload, next.Payload) {
 				return nil
@@ -91,14 +91,14 @@ func (s *ExecutorCheckpointStore) saveExecutionTreeRecord(ctx context.Context, p
 		}
 		sequence := strconv.FormatUint(next.Sequence, 10)
 		if !found {
-			_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO execution_trees(root_id,session_id,writer,digest,payload,sequence,commit_id,commit_digest) VALUES(?,?,?,?,?,?,?,?)`, next.RootID, next.SessionID, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest)
+			_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO execution_trees(root_id,session_id,writer,digest,payload,sequence,commit_id,commit_digest) VALUES(?,?,?,?,?,?,?,?)`, next.RootID, next.SessionID, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest)
 		} else {
-			_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE execution_trees SET writer = ?, digest = ?, payload = ?, sequence = ?, commit_id = ?, commit_digest = ? WHERE root_id = ? AND session_id = ?`, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest, next.RootID, next.SessionID)
+			_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE execution_trees SET writer = ?, digest = ?, payload = ?, sequence = ?, commit_id = ?, commit_digest = ? WHERE root_id = ? AND session_id = ?`, next.Writer, next.Digest, next.Payload, sequence, next.CommitID, next.CommitDigest, next.RootID, next.SessionID)
 		}
 		if err != nil {
 			return err
 		}
-		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO execution_tree_commits(root_id,commit_id,digest) VALUES(?,?,?)`, next.RootID, next.CommitID, next.CommitDigest)
+		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO execution_tree_commits(root_id,commit_id,digest) VALUES(?,?,?)`, next.RootID, next.CommitID, next.CommitDigest)
 		return err
 	})
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
@@ -46,13 +46,13 @@ type Draft struct {
 
 // Validate checks the complete fresh Run value before it enters the lifecycle.
 func (d Draft) Validate() error {
-	if err := resourceid.ValidateRun(d.RunID); err != nil {
+	if err := identity.ValidateRun(d.RunID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if err := resourceid.ValidateSession(d.SessionID); err != nil {
+	if err := identity.ValidateSession(d.SessionID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if err := resourceid.ValidateSegment(d.SegmentID); err != nil {
+	if err := identity.ValidateSegment(d.SegmentID); err != nil {
 		return fmt.Errorf("run: opening %w", err)
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(d.GoalIncarnationID); err != nil {

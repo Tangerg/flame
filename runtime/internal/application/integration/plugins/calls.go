@@ -4,28 +4,27 @@ import (
 	"context"
 	"iter"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type CallRequest struct {
-	Installation resourceid.InstallationID
-	Digest       fingerprint.Digest
+	Installation identity.InstallationID
+	Digest       identity.Digest
 	Contribution plugin.ContributionID
-	Contract     *capability.Contract
+	Contract     *extension.Capability
 	Method       string
-	Input        jsoninput.Input
-	Target       capability.Target
+	Input        jsonvalue.Value
+	Target       extension.Target
 }
 
 // Call retains an admitted consumer contract until its concrete invocation ends.
 // Preparation performs no backend I/O or business effect.
 type Call interface {
-	Kind() capability.MethodKind
-	Invoke(context.Context) (jsoninput.Input, error)
+	Kind() extension.MethodKind
+	Invoke(context.Context) (jsonvalue.Value, error)
 }
 
 type StreamKind string
@@ -37,10 +36,10 @@ const (
 
 type StreamEvent struct {
 	Kind  StreamKind
-	Value jsoninput.Input
+	Value jsonvalue.Value
 }
 
 type StreamCall interface {
-	Kind() capability.MethodKind
+	Kind() extension.MethodKind
 	Stream(context.Context) iter.Seq2[StreamEvent, error]
 }

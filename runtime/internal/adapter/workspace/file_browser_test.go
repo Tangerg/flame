@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/tools/textread"
 )
@@ -31,7 +31,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 			t.Fatal(closeErr)
 		}
 		_, err = (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "oversized.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
-		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 			t.Fatalf("oversized source error = %v, want ErrFileReadTooLarge", err)
 		}
 	})
@@ -297,7 +297,7 @@ func TestGrepSourcePreservesReadVerificationAndCloseFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	file, opened, err := fileinput.OpenAt(root, "file.txt", workspaceapp.MaxGrepFileBytes)
+	file, opened, err := filesystem.OpenFileAt(root, "file.txt", workspaceapp.MaxGrepFileBytes)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,7 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -26,7 +26,7 @@ type methodMeta struct {
 }
 
 func lookupMethod(name string) (methodMeta, bool) { meta, ok := methodMetadata[name]; return meta, ok }
-func (m methodMeta) DecodeResult(encoded []byte) (any, error) {
+func (m methodMeta) decodeResult(encoded []byte) (any, error) {
 	if m.ResultNullable && bytes.Equal(bytes.TrimSpace(encoded), []byte("null")) {
 		return reflect.Zero(m.Result).Interface(), nil
 	}
@@ -52,14 +52,14 @@ func invocationOperation(meta methodMeta, request any) (string, error) {
 	if !ok {
 		return "", protocol.ErrInvalidParams
 	}
-	kind, err := capability.KindFor([]byte(call.Contract), call.Method)
+	kind, err := extension.MethodKindFor([]byte(call.Contract), call.Method)
 	if err != nil {
 		// A malformed contract or an undeclared method is a caller error; project
 		// it to the public invalid_params identity the local handler also uses,
 		// before any transport, so errors.Is/As stay recognizable to callers.
 		return "", protocol.InvalidParameters(err)
 	}
-	if kind == capability.Mutation {
+	if kind == extension.Mutation {
 		return "command", nil
 	}
 	return "query", nil

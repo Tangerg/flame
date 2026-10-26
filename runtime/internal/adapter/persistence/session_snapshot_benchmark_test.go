@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -28,27 +27,27 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 			}
 			b.Cleanup(func() { _ = db.Close() })
 			tx := func(ctx context.Context, fn func(context.Context) error) error {
-				return sqlitebase.RunInTx(ctx, db, fn)
+				return sqlite.RunInTx(ctx, db, fn)
 			}
-			messages := NewMessageStore(db)
-			runs := NewRunStore(db)
+			messages := newMessageStore(db)
+			runs := newRunStore(db)
 			history, err := runsapp.NewConversationHistory(mustConversationStore(b, messages))
 			if err != nil {
 				b.Fatal(err)
 			}
-			sessions := NewSessionStore(db)
-			items := NewTranscriptStore(db)
+			sessions := newSessionStore(db)
+			items := newTranscriptStore(db)
 			stores, err := NewSessionStores(SessionStoresConfig{
-				CommandAcceptances: NewCommandAcceptanceStore(db),
+				CommandAcceptances: newCommandAcceptanceStore(db),
 				Sessions:           sessions, Transcript: items, Runs: runs, History: history,
-				Interrupts:          NewInterruptStore(db),
-				ExecutorCheckpoints: NewExecutorCheckpointStore(db),
-				Plan:                NewPlanStore(db), ApprovalRules: NewApprovalRuleStore(db),
-				ApprovalModes: NewModeStore(db), ToolResults: NewToolResultStore(db),
-				ChildRunStarts: NewChildRunStartReservationStore(db), Goals: NewGoalStore(db),
-				GoalRuns: mustGoalRuns(b, NewGoalStore(db)), Tx: tx,
+				Interrupts:          newInterruptStore(db),
+				ExecutorCheckpoints: newExecutorCheckpointStore(db),
+				Plan:                newPlanStore(db), ApprovalRules: newApprovalRuleStore(db),
+				ApprovalModes: newModeStore(db), ToolResults: newToolResultStore(db),
+				ChildRunStarts: newChildRunStartReservationStore(db), Goals: newGoalStore(db),
+				GoalRuns: mustGoalRuns(b, newGoalStore(db)), Tx: tx,
 				ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
-					return sqlitebase.RunReadSnapshot(ctx, db, read)
+					return sqlite.RunReadSnapshot(ctx, db, read)
 				},
 			})
 			if err != nil {

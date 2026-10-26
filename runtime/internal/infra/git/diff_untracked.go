@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 const readBufferBytes = 64 << 10
@@ -54,9 +54,9 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 	if !info.Mode().IsRegular() {
 		return 0, true, nil
 	}
-	file, opened, err := fileinput.OpenExpected(path, info, 0)
+	file, opened, err := filesystem.OpenFileExpected(path, info, 0)
 	if err != nil {
-		if errors.Is(err, fileinput.ErrNotRegular) {
+		if errors.Is(err, filesystem.ErrNotRegular) {
 			return 0, true, nil
 		}
 		return 0, false, fmt.Errorf("git: open untracked file %q: %w", rel, err)
@@ -85,7 +85,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 			break
 		}
 	}
-	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
 		return 0, false, fmt.Errorf("git: verify untracked file %q after reading: %w", rel, err)
 	}
 	if binary {

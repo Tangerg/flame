@@ -12,10 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
+	"github.com/fsnotify/fsnotify"
 )
 
 type gitFailureSignal struct{ failed chan struct{} }
@@ -97,7 +96,7 @@ func TestGitWatchReportsBackendTermination(t *testing.T) {
 	root := t.TempDir()
 	gitCommand(t, root, "init", "-b", "main")
 	failures := make(chan error, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(err error) { failures <- err })
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(err error) { failures <- err })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +116,7 @@ func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if err != nil {
 		t.Fatalf("non-repository root should produce an inert watcher: %v", err)
 	}
@@ -129,7 +128,7 @@ func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
 func TestGitWatcherPreservesRegistrationCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	watcher, err := NewGitWatcher(ctx).Watch([]string{t.TempDir()}, func([]string) {}, func(error) {})
+	watcher, err := newGitWatcher(ctx).Watch([]string{t.TempDir()}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("canceled registration returned a watcher")
@@ -153,7 +152,7 @@ func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("["), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("failed repository discovery returned a watcher")
@@ -164,7 +163,7 @@ func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
 	if err := os.WriteFile(configPath, config, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err = NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
+	watcher, err = newGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if err != nil {
 		t.Fatalf("register after repairing configuration: %v", err)
 	}
@@ -189,7 +188,7 @@ func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) 
 	gitCommand(t, root, "commit", "-m", "initial")
 
 	notified := make(chan struct{}, 2)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) { notified <- struct{}{} }, func(error) {})
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{root}, func([]string) { notified <- struct{}{} }, func(error) {})
 	if err != nil {
 		t.Fatalf("watch repository: %v", err)
 	}
@@ -246,7 +245,7 @@ func TestGitWatcherResolvesRepositoryFromNestedWorkspace(t *testing.T) {
 	gitCommand(t, root, "commit", "-m", "initial")
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func([]string) { notified <- struct{}{} }, func(error) {})
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{nested}, func([]string) { notified <- struct{}{} }, func(error) {})
 	if err != nil {
 		t.Fatalf("watch nested workspace: %v", err)
 	}
@@ -282,7 +281,7 @@ func TestGitWatcherKeepsDistinctScopesWithinOneRepository(t *testing.T) {
 	gitCommand(t, root, "add", "packages/first/tracked.txt", "packages/second/tracked.txt")
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{first, second}, func([]string) {
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{first, second}, func([]string) {
 		select {
 		case notified <- struct{}{}:
 		default:
@@ -344,7 +343,7 @@ func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
 	}
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func([]string) {
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{nested}, func([]string) {
 		select {
 		case notified <- struct{}{}:
 		default:
@@ -389,7 +388,7 @@ func TestGitWatcherIgnoresAmbientRepositoryRouting(t *testing.T) {
 	if !ok {
 		t.Fatal("requested workspace was not resolved as a repository")
 	}
-	want, err := pathidentity.Resolve("", filepath.Join(root, ".git"))
+	want, err := filesystem.ResolvePath("", filepath.Join(root, ".git"))
 	if err != nil {
 		t.Fatalf("resolve requested repository identity: %v", err)
 	}
@@ -416,7 +415,7 @@ func TestGitWatcherRejectsUnreadableInitialIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".git", "index"), []byte("invalid index"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
+	watcher, err := newGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("unreadable index produced a watcher")

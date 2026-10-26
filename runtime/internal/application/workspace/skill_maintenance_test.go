@@ -62,7 +62,7 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 
 func TestSkillMaintenanceRequiresSweeper(t *testing.T) {
 	var missing *fakeIdleSkillSweeper
-	for _, sweeper := range []IdleSkillSweeper{nil, missing} {
+	for _, sweeper := range []idleSkillSweeper{nil, missing} {
 		if maintenance, err := NewSkillMaintenance(sweeper, nil, nil); err == nil || maintenance != nil {
 			t.Fatalf("NewSkillMaintenance = (%v, %v), want construction failure", maintenance, err)
 		}

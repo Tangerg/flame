@@ -8,7 +8,7 @@ type RuntimeContextKind string
 
 const (
 	RuntimeContextDeferredTools  RuntimeContextKind = "deferred-tools"
-	RuntimeContextRecalledMemory RuntimeContextKind = "recalled-memory"
+	runtimeContextRecalledMemory RuntimeContextKind = "recalled-memory"
 	RuntimeContextRetainedShells RuntimeContextKind = "retained-shells"
 	RuntimeContextSessionGoal    RuntimeContextKind = "session-goal"
 	RuntimeContextSessionPlan    RuntimeContextKind = "session-plan"

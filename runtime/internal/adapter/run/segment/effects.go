@@ -15,18 +15,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // SessionStore is the exact persistence surface used inside an opening
@@ -36,20 +33,20 @@ type SessionStore interface {
 	Save(ctx context.Context, replacement session.Replacement) error
 }
 
-type ActorAuthority interface {
+type actorAuthority interface {
 	Admit(context.Context, operation.Actor) error
 }
 
 // CommandAcceptanceStore commits Run command receipts in the same transaction
 // as their opening or input-admission head and confirms uncertain commit ACKs.
-type CommandAcceptanceStore interface {
+type commandAcceptanceStore interface {
 	Save(context.Context, runs.CommandAcceptance) error
 	Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error)
 }
 
 // GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
 // runs in the same transaction as terminalizing that Run.
-type GoalRunRecorder interface {
+type goalRunRecorder interface {
 	RecordRun(ctx context.Context, value run.Run) error
 }
 
@@ -76,7 +73,7 @@ type ItemReplacer interface {
 // transaction. The rule was already derived and validated against its frozen
 // source authority by the acceptance owner; this store only writes it so it lands
 // atomically with the answer, consumed open set, and Segment opening.
-type RememberedRuleStore interface {
+type rememberedRuleStore interface {
 	Put(ctx context.Context, rule approval.Rule) error
 }
 
@@ -84,20 +81,20 @@ type RememberedRuleStore interface {
 // continuation inside the acceptance transaction, so a crash before delivery
 // completes leaves exactly one durable accepted-paused tree to revive. It carries
 // only routing; the answer resolutions stay owned by the settled Items.
-type AcceptedContinuationStore interface {
+type acceptedContinuationStore interface {
 	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
 	Delete(ctx context.Context, rootRunID string) error
 }
 
-type ToolResultStore interface {
-	Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error
+type toolResultStore interface {
+	Discard(ctx context.Context, sessionID string, ref transcript.ToolResultRef) error
 }
 
 // ModelInvocationJournal applies provider-attempt transitions. It is an
 // operational evidence journal. A known inner response can accompany outer failure;
 // it never creates executable Transcript continuation or advances Run accounting.
 // The consumer-owned methods keep application enums out of storage.
-type ModelInvocationJournal interface {
+type modelInvocationJournal interface {
 	StartModelInvocation(
 		ctx context.Context,
 		sessionID, runID, segmentID, callID string,
@@ -128,7 +125,7 @@ type ModelInvocationJournal interface {
 // ToolInvocationJournal records pre-call and terminal attempt boundaries without
 // using Transcript insertion order as an operational lock. Final semantic Tool
 // Items are still committed through TranscriptStore in canonical model order.
-type ToolInvocationJournal interface {
+type toolInvocationJournal interface {
 	StartToolInvocation(
 		ctx context.Context,
 		sessionID, runID, segmentID, callID, itemID string,
@@ -159,15 +156,15 @@ type ToolInvocationJournal interface {
 // after a non-terminal command's complete projections in the same transaction.
 // Suspend and TerminalizeEvent record it in their boundary transitions.
 // The sqlite RunStore satisfies it.
-type RunWriter interface {
+type runWriter interface {
 	Admit(ctx context.Context, draft run.Draft) error
 	Resume(ctx context.Context, replacement run.Replacement) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
-	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
+	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID) error
 	Terminalize(ctx context.Context, replacement run.Replacement) error
-	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error
-	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runtimeidentity.CommitID) error
-	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
+	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runs.CommitID) error
+	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runs.CommitID) error
+	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID) error
 }
 
 // RunStore combines lifecycle writes with the exact durable reads required to
@@ -176,9 +173,9 @@ type RunStore interface {
 	ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error)
 	RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string, results []chat.ToolResult) error
 	runs.ToolResultPublications
-	RunWriter
+	runWriter
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) (bool, error)
+	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runs.CommitID) (bool, error)
 }
 
 // RunProgressWriter writes the running Run the Application advanced at one
@@ -192,7 +189,7 @@ type RunProgressWriter interface {
 // ExecutorCheckpointStore persists and removes root-owned opaque executor
 // checkpoints selected by the Run lifecycle. It never interprets the
 // payload.
-type ExecutorCheckpointStore interface {
+type executorCheckpointStore interface {
 	SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error
 	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
 	DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error
@@ -201,7 +198,7 @@ type ExecutorCheckpointStore interface {
 // ChildRunStartReservationStore is the technical persistence mechanism behind
 // the Application-owned child-start write-set. Its payload is opaque to SQLite;
 // this adapter alone translates the application value.
-type ChildRunStartReservationStore interface {
+type childRunStartReservationStore interface {
 	Reserve(ctx context.Context, record persistence.ChildRunStartReservationRecord) error
 	Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error)
 	Conclude(
@@ -219,63 +216,63 @@ type Transactor func(ctx context.Context, fn func(context.Context) error) error
 
 // ConversationStore appends root execution context and resolves the watermark
 // recorded by a terminal Run. Both operations join the event transaction.
-type ConversationStore interface {
+type conversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID string) (int, error)
 }
 
-type SessionContextInvalidator interface{ ForgetSessionContext(string) }
+type sessionContextInvalidator interface{ ForgetSessionContext(string) }
 
 // Config bundles the Effects dependencies.
 type Config struct {
 	Compactions           runs.ConversationCompactionStore
-	ContextState          SessionContextInvalidator
+	ContextState          sessionContextInvalidator
 	ExecutionTrees        runs.ExecutionTreeStore
 	Interrupts            InterruptStore
 	Sessions              SessionStore
-	ActorAuthority        ActorAuthority
-	CommandAcceptances    CommandAcceptanceStore
-	GoalRuns              GoalRunRecorder
+	ActorAuthority        actorAuthority
+	CommandAcceptances    commandAcceptanceStore
+	GoalRuns              goalRunRecorder
 	Transcript            TranscriptStore
 	ItemReplacer          ItemReplacer
-	ToolResults           ToolResultStore
-	ModelInvocations      ModelInvocationJournal
-	ToolInvocations       ToolInvocationJournal
-	Conversation          ConversationStore
+	ToolResults           toolResultStore
+	ModelInvocations      modelInvocationJournal
+	ToolInvocations       toolInvocationJournal
+	Conversation          conversationStore
 	State                 RunStore
 	RunProgress           RunProgressWriter
-	ExecutorCheckpoints   ExecutorCheckpointStore
-	ChildRunStarts        ChildRunStartReservationStore
+	ExecutorCheckpoints   executorCheckpointStore
+	ChildRunStarts        childRunStartReservationStore
 	Tx                    Transactor
-	RememberedRules       RememberedRuleStore
-	AcceptedContinuations AcceptedContinuationStore
+	RememberedRules       rememberedRuleStore
+	AcceptedContinuations acceptedContinuationStore
 }
 
 // Effects coordinates run-segment side effects. It is stateless beyond its
 // dependencies and safe to share.
 type Effects struct {
 	compactions           runs.ConversationCompactionStore
-	contextState          SessionContextInvalidator
+	contextState          sessionContextInvalidator
 	executionTrees        runs.ExecutionTreeStore
 	interrupts            InterruptStore
 	sessions              SessionStore
-	actorAuthority        ActorAuthority
-	commandAcceptances    CommandAcceptanceStore
-	goalRuns              GoalRunRecorder
+	actorAuthority        actorAuthority
+	commandAcceptances    commandAcceptanceStore
+	goalRuns              goalRunRecorder
 	transcript            TranscriptStore
 	itemReplacer          ItemReplacer
-	toolResults           ToolResultStore
-	modelInvocations      ModelInvocationJournal
-	toolInvocations       ToolInvocationJournal
-	conversation          ConversationStore
+	toolResults           toolResultStore
+	modelInvocations      modelInvocationJournal
+	toolInvocations       toolInvocationJournal
+	conversation          conversationStore
 	runState              RunStore
 	runProgress           RunProgressWriter
-	executorCheckpoints   ExecutorCheckpointStore
-	childRunStarts        ChildRunStartReservationStore
+	executorCheckpoints   executorCheckpointStore
+	childRunStarts        childRunStartReservationStore
 	tx                    Transactor
-	rememberedRules       RememberedRuleStore
-	acceptedContinuations AcceptedContinuationStore
+	rememberedRules       rememberedRuleStore
+	acceptedContinuations acceptedContinuationStore
 }
 
 var (
@@ -320,7 +317,7 @@ func New(cfg Config) (*Effects, error) {
 		{"transactor", cfg.Tx},
 	}
 	for _, required := range required {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("segment: %s is required", required.name)
 		}
 	}

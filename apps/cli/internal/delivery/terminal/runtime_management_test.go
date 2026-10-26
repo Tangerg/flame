@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
@@ -135,43 +134,43 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 	stop()
 }
 
-func terminalProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimebinding.Profile {
+func terminalProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimefixture.Profile {
 	t.Helper()
 	discovery := runtimefixture.Discovery()
 	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
 	for _, edit := range edits {
 		edit(discovery, client)
 	}
-	profile, err := runtimebinding.NewProfile(discovery, client)
+	profile, err := runtimefixture.NewProfile(discovery, client)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return profile
 }
 
-func terminalProfileWithFeatures(t *testing.T, features map[string]protocol.FeatureCapability) runtimebinding.Profile {
+func terminalProfileWithFeatures(t *testing.T, features map[string]protocol.FeatureCapability) runtimefixture.Profile {
 	t.Helper()
 	return terminalProfile(t, func(discovery *protocol.DiscoverResponse, _ *protocol.ClientCapabilities) {
 		discovery.Capabilities.Features = features
 	})
 }
 
-func profileWithReplay(t *testing.T, profile runtimebinding.Profile, namespace string, retention time.Duration) runtimebinding.Profile {
+func profileWithReplay(t *testing.T, profile runtimefixture.Profile, namespace string, retention time.Duration) runtimefixture.Profile {
 	t.Helper()
 	discovery := profile.Discovery()
 	discovery.Capabilities.Limits.Idempotency = protocol.IdempotencyLimits{
 		Namespace: namespace, RetentionSeconds: int(retention / time.Second),
 	}
-	updated, err := runtimebinding.NewProfile(&discovery, profile.ClientCapabilities())
+	updated, err := runtimefixture.NewProfile(&discovery, profile.ClientCapabilities())
 	if err != nil {
 		t.Fatal(err)
 	}
 	return updated
 }
 
-func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) replay.Guard {
+func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) authoring.ReplayGuard {
 	t.Helper()
-	guard, err := replay.NewProtectedGuard(namespace, until)
+	guard, err := authoring.NewProtectedGuard(namespace, until)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -470,7 +469,7 @@ func (g *goalServiceStub) GetGoal(context.Context, string) (protocol.Goal, bool,
 
 func (g *goalServiceStub) StartGoal(_ context.Context, start protocol.StartGoalRequest) (protocol.Goal, error) {
 	g.writes.Add(1)
-	if err := start.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(start); err != nil {
 		return protocol.Goal{}, err
 	}
 	at := time.Unix(1, 0).UTC()
@@ -485,7 +484,7 @@ func (g *goalServiceStub) StartGoal(_ context.Context, start protocol.StartGoalR
 
 func (g *goalServiceStub) UpdateGoal(_ context.Context, update protocol.UpdateGoalRequest) (protocol.Goal, error) {
 	g.writes.Add(1)
-	if err := update.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(update); err != nil {
 		return protocol.Goal{}, err
 	}
 	g.mu.Lock()
@@ -948,9 +947,9 @@ func awaitValue[T any](t *testing.T, values <-chan T, what string) T {
 	}
 }
 
-func featuredTerminalProfile(t testing.TB) *runtimebinding.Profile {
+func featuredTerminalProfile(t testing.TB) *runtimefixture.Profile {
 	t.Helper()
-	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	profile, err := runtimefixture.NewProfile(runtimefixture.CompleteDiscovery())
 	if err != nil {
 		t.Fatal(err)
 	}

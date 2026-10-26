@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // ownWriteSnapshot isolates one complete terminal projection before a Session

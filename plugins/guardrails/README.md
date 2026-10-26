@@ -42,5 +42,5 @@ execution failure and accounting.
 Regenerate the management and input contracts with:
 
 ```sh
-go generate ./plugins/guardrails/backend/rpc
+go generate ./plugins/guardrails/internal/contract
 ```

@@ -10,7 +10,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -173,11 +173,11 @@ func (a *app) openApproval(approval conversation.Approval) {
 	if strings.TrimSpace(call.Diff) == "" {
 		call.Diff = approval.Diff
 	}
-	presentation, err := selectToolPresentation(a.registry.Values(ToolPresenters), call)
+	presentation, err := selectToolPresentation(defaultToolPresenters(), call)
 	if err != nil {
-		presentation = ToolPresentation{
+		presentation = toolPresentation{
 			Label:    toolLabel(call),
-			Sections: []ToolSection{{Title: "Presentation error", Style: toolSectionParagraph, Text: err.Error()}},
+			Sections: []toolSection{{Title: "Presentation error", Style: toolSectionParagraph, Text: err.Error()}},
 		}
 	}
 	a.dialogs.approvalSections = slices.Clone(presentation.Sections)
@@ -194,15 +194,15 @@ func (a *app) openApproval(approval conversation.Approval) {
 	a.dialogs.approvalDialog.Show()
 }
 
-func (a *app) setApprovalPreview(sections []ToolSection) {
+func (a *app) setApprovalPreview(sections []toolSection) {
 	a.dialogs.approvalPane.preview = headless.Transcript{}
 	a.dialogs.approvalPane.view.Content = &a.dialogs.approvalPane.preview
-	presentation := BlockPresentation{
+	presentation := blockPresentation{
 		Theme: a.dialogs.approvalPane.theme, Glyphs: a.dialogs.approvalPane.glyphs, Syntax: a.syntax,
 	}
 	blockCount := 0
 	for _, section := range sections {
-		for _, block := range renderToolSections(presentation, []ToolSection{section}, false) {
+		for _, block := range renderToolSections(presentation, []toolSection{section}, false) {
 			id := a.dialogs.approvalPane.preview.Append(newReaderSectionBlock(a.dialogs.approvalPane.theme, section.Title, block))
 			a.dialogs.approvalPane.preview.Finish(id)
 			blockCount++
@@ -445,7 +445,7 @@ func (a *app) deliverInterruptResume(
 	})
 }
 
-func (a *app) settleAcknowledgedResume(commandID replay.CommandID) {
+func (a *app) settleAcknowledgedResume(commandID authoring.CommandID) {
 	if err := a.retireAcknowledgedResume(commandID); err != nil {
 		a.reportWorkbenchIssue(workbenchResumeOutbox, err)
 		a.message("could not settle acknowledged interrupt decisions: " + err.Error())
@@ -459,7 +459,7 @@ func (a *app) settleAcknowledgedResume(commandID replay.CommandID) {
 	a.reportWorkbenchIssue(workbenchResumeOutbox, nil)
 }
 
-func (a *app) retireAcknowledgedResume(commandID replay.CommandID) error {
+func (a *app) retireAcknowledgedResume(commandID authoring.CommandID) error {
 	if _, ok := a.workbench.PendingResume(a.session.current.ID); !ok {
 		return nil
 	}

@@ -40,7 +40,7 @@ func TestListRemoteModels(t *testing.T) {
 	defer srv.Close()
 
 	// A trailing slash on the base URL must not double up before /models.
-	ids, err := probeModels(t, srv.URL+"/v1/", "sk-test", ProviderOpenAICompatible)
+	ids, err := probeModels(t, srv.URL+"/v1/", "sk-test", providerOpenAICompatible)
 	if err != nil {
 		t.Fatalf("ListRemoteModels: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestListRemoteModelsRejectsInvalidAdvertisedIdentity(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+			if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 				t.Fatalf("ListRemoteModels accepted invalid model identity %q", tt.id)
 			}
 		})
@@ -93,7 +93,7 @@ func TestListRemoteModelsRejectsOversizedCompleteDocument(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels accepted a document larger than its response envelope")
 	}
 }
@@ -105,7 +105,7 @@ func TestListRemoteModelsRejectsTrailingJSONValue(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels accepted a second JSON document")
 	}
 }
@@ -119,7 +119,7 @@ func TestListRemoteModelsRejectsInvalidUTF8Document(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 		t.Fatal("ListRemoteModels normalized an invalid UTF-8 response")
 	}
 }
@@ -139,7 +139,7 @@ func TestListRemoteModelsRejectsOverfullCatalog(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 		t.Fatalf("ListRemoteModels accepted more than %d advertised models", maximumRemoteModelCount)
 	}
 }
@@ -159,7 +159,7 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	models, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible)
+	models, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible)
 	if err != nil {
 		t.Fatalf("ListRemoteModels rejected the catalog boundary: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestListRemoteModelsAcceptsResourceBoundaries(t *testing.T) {
 		_, _ = w.Write([]byte(exactBody))
 	}))
 	defer exactServer.Close()
-	if _, err := probeModels(t, exactServer.URL, "test-key", ProviderOpenAICompatible); err != nil {
+	if _, err := probeModels(t, exactServer.URL, "test-key", providerOpenAICompatible); err != nil {
 		t.Fatalf("ListRemoteModels rejected the exact byte boundary: %v", err)
 	}
 }
@@ -187,7 +187,7 @@ func TestListModelsRejectsMissingCredentialBeforeIO(t *testing.T) {
 		t.Error("model discovery reached the endpoint without a credential")
 	}))
 	defer server.Close()
-	spec := mustClientSpec(t, ProviderOpenAICompatible, "test-key", server.URL)
+	spec := mustClientSpec(t, providerOpenAICompatible, "test-key", server.URL)
 	spec.credential = providerdomain.APIKey{}
 	if _, err := listModels(t.Context(), spec); !errors.Is(err, providerdomain.ErrAPIKeyRequired) {
 		t.Fatalf("missing credential error = %v", err)
@@ -201,7 +201,7 @@ func TestListRemoteModelsNon200IsError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := probeModels(t, srv.URL, "test-key", ProviderOpenAICompatible); err == nil {
+	if _, err := probeModels(t, srv.URL, "test-key", providerOpenAICompatible); err == nil {
 		t.Fatal("expected an error on a non-200 probe, got nil")
 	}
 }
@@ -220,7 +220,7 @@ func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 	}))
 	t.Cleanup(source.Close)
 
-	_, err := probeModels(t, source.URL, "test-key", ProviderAnthropicCompatible)
+	_, err := probeModels(t, source.URL, "test-key", providerAnthropicCompatible)
 	if !errors.Is(err, scopehttp.ErrOriginNotAllowed) {
 		t.Fatalf("ListRemoteModels error = %v, want Scope origin refusal", err)
 	}

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -21,24 +21,24 @@ const installedCommandsName = "installed-commands.json"
 // Recovery uses this exact request before discovering any current provider.
 type PendingInstalledCommand struct {
 	Intent    string
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 	Request   protocol.CallPluginRequest
-	Replay    replay.Guard
+	Replay    authoring.ReplayGuard
 }
 
 // Input is binary in the local record so formatting cannot change accepted
 // request bytes. The remaining fields are projections of the captured binding.
 type installedCommandRecord struct {
-	Intent         string            `json:"intent"`
-	CommandID      replay.CommandID  `json:"commandId"`
-	InstallationID string            `json:"installationId"`
-	Digest         string            `json:"digest"`
-	Contribution   string            `json:"contribution"`
-	Contract       string            `json:"contract"`
-	Method         string            `json:"method"`
-	Input          []byte            `json:"input"`
-	Target         capability.Target `json:"target"`
-	Replay         replay.Guard      `json:"replay"`
+	Intent         string                `json:"intent"`
+	CommandID      authoring.CommandID   `json:"commandId"`
+	InstallationID string                `json:"installationId"`
+	Digest         string                `json:"digest"`
+	Contribution   string                `json:"contribution"`
+	Contract       string                `json:"contract"`
+	Method         string                `json:"method"`
+	Input          []byte                `json:"input"`
+	Target         extension.Target      `json:"target"`
+	Replay         authoring.ReplayGuard `json:"replay"`
 }
 
 func (p PendingInstalledCommand) MarshalJSON() ([]byte, error) {
@@ -66,12 +66,12 @@ func (p PendingInstalledCommand) validate() error {
 	if err := errors.Join(p.CommandID.Validate(), p.Replay.Validate(), protocol.ValidateWireTree(p.Request), p.Request.Target.Validate()); err != nil {
 		return err
 	}
-	contract, err := capability.Parse([]byte(p.Request.Contract))
+	contract, err := extension.ParseCapability([]byte(p.Request.Contract))
 	if err != nil {
 		return err
 	}
 	method, found := contract.Method(p.Request.Method)
-	if !found || method.Kind() != capability.Mutation {
+	if !found || method.Kind() != extension.Mutation {
 		return errors.New("installed command method is not a command")
 	}
 	if method.Descriptor().Target != p.Request.Target.Scope {
@@ -85,7 +85,7 @@ func (s *Store) loadInstalledCommands() error {
 	if err := s.loadOptional(installedCommandsName, &commands); err != nil {
 		return fmt.Errorf("load installed commands: %w", err)
 	}
-	identities := make(map[replay.CommandID]struct{}, len(commands))
+	identities := make(map[authoring.CommandID]struct{}, len(commands))
 	for _, command := range commands {
 		if err := command.validate(); err != nil {
 			return fmt.Errorf("load installed command: %w", err)
@@ -177,7 +177,7 @@ func sortedInstalledCommands(commands map[string]PendingInstalledCommand) []Pend
 }
 
 type InstalledCaller interface {
-	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
+	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 }
 
 // ExecuteInstalledCommand stages the complete request before I/O. An unresolved intent always
@@ -219,7 +219,7 @@ func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller,
 			return zero, err
 		}
 	}
-	var ownerRefusal *capability.Refusal
+	var ownerRefusal *extension.Refusal
 	result, err := mutation.ConfirmAdmitted(ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(policy, pending.Replay), func(ctx context.Context) (T, error) {
 		request := pending.Request
 		reply, err := caller.CallPlugin(ctx, request, pending.CommandID)
@@ -232,13 +232,13 @@ func executeInstalledCommand[T any](ctx context.Context, caller InstalledCaller,
 			return zero, errors.New("installed command acknowledgement is absent")
 		}
 		if reply.Failure != nil {
-			ownerRefusal = &capability.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+			ownerRefusal = &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 			return zero, ownerRefusal
 		}
 		return decode(reply)
 	})
 	if err != nil && ownerRefusal == nil {
-		return zero, fmt.Errorf("installed command outcome remains unknown: %w", errors.Join(replay.ErrCommandOutcomeUnknown, err))
+		return zero, fmt.Errorf("installed command outcome remains unknown: %w", errors.Join(authoring.ErrCommandOutcomeUnknown, err))
 	}
 	if retireErr := store.retireInstalledCommand(pending); retireErr != nil {
 		return zero, errors.Join(err, fmt.Errorf("retire installed command intent: %w", retireErr))

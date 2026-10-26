@@ -110,7 +110,7 @@ func TestPatchDistinguishesPreserveSetAndClearWithoutStringSentinels(t *testing.
 }
 
 func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
-	if _, err := New("  "); !errors.Is(err, ErrIDRequired) {
+	if _, err := New("  "); !errors.Is(err, errIDRequired) {
 		t.Fatalf("New blank id error = %v", err)
 	}
 	for _, value := range []string{
@@ -118,7 +118,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 		"openai\x00shadow",
 		strings.Repeat("p", modelchoice.MaximumProviderIdentityCharacters+1),
 	} {
-		if _, err := New(value); !errors.Is(err, ErrIDInvalid) {
+		if _, err := New(value); !errors.Is(err, errIDInvalid) {
 			t.Errorf("New(%q) error = %v, want ErrIDInvalid", value, err)
 		}
 	}
@@ -126,7 +126,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 		t.Fatalf("NewAPIKey blank error = %v", err)
 	}
 	for _, value := range []string{" sk-live", "sk-live ", "sk-live\n", "sk\x00live"} {
-		if _, err := NewAPIKey(value); !errors.Is(err, ErrAPIKeyInvalid) {
+		if _, err := NewAPIKey(value); !errors.Is(err, errAPIKeyInvalid) {
 			t.Errorf("NewAPIKey(%q) error = %v, want ErrAPIKeyInvalid", value, err)
 		}
 	}
@@ -135,7 +135,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 		"https://api.example.test?token=secret", "https://api.example.test#fragment",
 		"https://api.example.test/%zz",
 	} {
-		if _, err := NewBaseURL(value); !errors.Is(err, ErrBaseURLInvalid) {
+		if _, err := NewBaseURL(value); !errors.Is(err, errBaseURLInvalid) {
 			t.Errorf("NewBaseURL(%q) error = %v", value, err)
 		}
 	}
@@ -150,7 +150,7 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 	}
 
 	entry, _ := New("openai")
-	if _, err := entry.Apply(Patch{APIKey: Set(APIKey{})}); !errors.Is(err, ErrChangeCorrupted) {
+	if _, err := entry.Apply(Patch{APIKey: Set(APIKey{})}); !errors.Is(err, errChangeCorrupted) {
 		t.Fatalf("Apply zero API key error = %v", err)
 	}
 }

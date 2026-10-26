@@ -15,7 +15,7 @@ func TestFeedbackStoreAppendsEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewFeedbackStore(db)
+	store := newFeedbackStore(db)
 	entry, err := feedback.NewEntry("ses_1", "run_1", "item_1", feedback.RatingNegative, "wrong answer", time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +38,7 @@ func TestFeedbackRoundTripPreservesObservationTime(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewFeedbackStore(db)
+	store := newFeedbackStore(db)
 	createdAt := time.Unix(1, 123456789).UTC()
 	entry, err := feedback.NewEntry("ses_time", "run_time", "item_time", feedback.RatingPositive, "useful", createdAt)
 	if err != nil {

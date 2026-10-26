@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // Resource identifiers are application-owned lifecycle identities. Their
 // namespace is decided here rather than by composition or persistence.
 const (
-	runIDPrefix     = runtimeidentity.RunPrefix
-	segmentIDPrefix = runtimeidentity.SegmentPrefix
-	itemIDPrefix    = runtimeidentity.ItemPrefix
+	runIDPrefix     = identity.RunPrefix
+	segmentIDPrefix = identity.SegmentPrefix
+	itemIDPrefix    = identity.ItemPrefix
 
 	segmentItemSeparator         = "_"
 	userMessageItemDiscriminator = "user"
@@ -87,8 +87,3 @@ func userMessageItemID(segmentID string) string {
 	identities := newSegmentItemIdentities(segmentID)
 	return itemIDPrefix + identities.segmentDigest + segmentItemSeparator + userMessageItemDiscriminator
 }
-
-// newRunCommitID identifies one immutable top-level Run write-set. Terminal
-// identities are minted where the reducer creates the write-set and retained
-// across retries. Other command boundaries mint once before persistence.
-func newRunCommitID() runtimeidentity.CommitID { return runtimeidentity.NewCommit() }

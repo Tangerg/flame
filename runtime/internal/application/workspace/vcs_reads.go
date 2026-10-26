@@ -8,27 +8,27 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/samber/lo"
 )
 
 const (
-	MaxWorkspaceChanges   = 10_000
-	MaxWorkspaceDiffFiles = 5_000
-	MaxWorkspaceDiffRows  = 5_000
-	MaxWorkspaceDiffBytes = 64 << 20
+	maxWorkspaceChanges   = 10_000
+	maxWorkspaceDiffFiles = 5_000
+	maxWorkspaceDiffRows  = 5_000
+	maxWorkspaceDiffBytes = 64 << 20
 )
 
 // VCS owns root-scoped Git status and diff operations.
 type VCS struct {
 	scope *Scope
-	git   GitReader
+	git   gitReader
 }
 
-func NewVCS(scope *Scope, git GitReader) (*VCS, error) {
+func NewVCS(scope *Scope, git gitReader) (*VCS, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: vcs scope is required")
 	}
-	if dependency.Missing(git) {
+	if lo.IsNil(git) {
 		return nil, errors.New("workspace: git reader is required")
 	}
 	return &VCS{scope: scope, git: git}, nil
@@ -88,9 +88,9 @@ type FileDiff struct {
 type DiffBaselineType string
 
 const (
-	DiffBaselineHead      DiffBaselineType = "head"
-	DiffBaselineMergeBase DiffBaselineType = "mergeBase"
-	DiffBaselineEmptyTree DiffBaselineType = "emptyTree"
+	diffBaselineHead      DiffBaselineType = "head"
+	diffBaselineMergeBase DiffBaselineType = "mergeBase"
+	diffBaselineEmptyTree DiffBaselineType = "emptyTree"
 )
 
 // DiffBaseline identifies the immutable Git object used by the comparison.
@@ -101,11 +101,11 @@ type DiffBaseline struct {
 
 func (b DiffBaseline) Validate() error {
 	switch b.Type {
-	case DiffBaselineEmptyTree:
+	case diffBaselineEmptyTree:
 		if b.Commit == "" {
 			return nil
 		}
-	case DiffBaselineHead, DiffBaselineMergeBase:
+	case diffBaselineHead, diffBaselineMergeBase:
 		if len(b.Commit) == 40 || len(b.Commit) == 64 {
 			if _, err := hex.DecodeString(b.Commit); err == nil {
 				return nil
@@ -131,7 +131,7 @@ type RawDiffResult struct {
 // ownership to the caller, including the rows within structured diffs.
 // StructuredDiff returns only whole files, at most maxFiles of them holding at
 // most maxRows rows altogether, and reports Truncated when it stopped early.
-type GitReader interface {
+type gitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
 	StructuredDiff(ctx context.Context, root, path string, base bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
 	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (RawDiffResult, error)
@@ -165,9 +165,9 @@ func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
 // Rows resolves this request against the Application-owned maximum.
 func (l DiffRowLimit) Rows() int {
 	if l.rows == 0 {
-		return MaxWorkspaceDiffRows
+		return maxWorkspaceDiffRows
 	}
-	return min(l.rows, MaxWorkspaceDiffRows)
+	return min(l.rows, maxWorkspaceDiffRows)
 }
 
 // Diff is a structured or raw workspace diff.
@@ -184,12 +184,12 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if err != nil {
 		return nil, err
 	}
-	changes, err := v.git.Changes(ctx, root, MaxWorkspaceChanges)
+	changes, err := v.git.Changes(ctx, root, maxWorkspaceChanges)
 	if err != nil {
 		return nil, err
 	}
-	if len(changes) > MaxWorkspaceChanges {
-		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, MaxWorkspaceChanges)
+	if len(changes) > maxWorkspaceChanges {
+		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, maxWorkspaceChanges)
 	}
 	paths := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
@@ -219,12 +219,12 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 	}
 	if input.Raw {
-		result, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, MaxWorkspaceDiffBytes)
+		result, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, maxWorkspaceDiffBytes)
 		if rawDiffErr != nil {
 			return Diff{}, rawDiffErr
 		}
-		if len(result.Patch) > MaxWorkspaceDiffBytes {
-			return Diff{}, fmt.Errorf("%w: raw diff exceeds %d bytes", ErrVCSResultTooLarge, MaxWorkspaceDiffBytes)
+		if len(result.Patch) > maxWorkspaceDiffBytes {
+			return Diff{}, fmt.Errorf("%w: raw diff exceeds %d bytes", ErrVCSResultTooLarge, maxWorkspaceDiffBytes)
 		}
 		if err := result.Baseline.Validate(); err != nil {
 			return Diff{}, err
@@ -237,9 +237,9 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		root,
 		path,
 		input.Base,
-		MaxWorkspaceDiffFiles,
+		maxWorkspaceDiffFiles,
 		rowLimit,
-		MaxWorkspaceDiffBytes,
+		maxWorkspaceDiffBytes,
 	)
 	if err != nil {
 		return Diff{}, err

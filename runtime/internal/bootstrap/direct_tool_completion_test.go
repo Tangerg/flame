@@ -8,16 +8,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
@@ -78,7 +76,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg := protocolRuntimeConfig(t, stores, model)
-			cfg.ApprovalMode = approval.ModeYolo
+			cfg.approvalMode = approval.ModeYolo
 			answer, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_answer", Description: "Return the answer."}, func(context.Context, struct{}) (string, error) {
 				executions.Add(1)
 				return "exact answer", nil
@@ -86,7 +84,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), func(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
+			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), func(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 				source, err := mcpserver.ParseServerName("fixture")
 				if err != nil {
 					return toolEnvironment{}, err
@@ -166,7 +164,7 @@ type directAnswerTool struct{ toolcontract.Tool }
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
 
-func (directAnswerTool) SourceFingerprint() fingerprint.Digest {
+func (directAnswerTool) SourceFingerprint() identity.Digest {
 	return testsupport.Digest("fixture authority")
 }
 

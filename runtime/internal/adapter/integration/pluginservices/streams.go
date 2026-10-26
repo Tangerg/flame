@@ -5,8 +5,8 @@ import (
 	"errors"
 	"iter"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -26,12 +26,12 @@ func (c *CommandCalls) PrepareStream(_ context.Context, request plugins.CallRequ
 
 func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
-		if c.Kind() == capability.Query {
+		if c.Kind() == extension.Query {
 			c.streamQuery(ctx, yield)
 			return
 		}
 		fail := func(err error) { yield(plugins.StreamEvent{}, errors.Join(plugin.ErrCommandUnconfirmed, err)) }
-		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) capability.Target { return c.request.Target }, true)
+		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) extension.Target { return c.request.Target }, true)
 		if err != nil {
 			yield(plugins.StreamEvent{}, err)
 			return
@@ -54,7 +54,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			fail(err)
 			return
 		}
-		contract, err := capability.Parse(record.Contract.JSON())
+		contract, err := extension.ParseCapability(record.Contract.JSON())
 		if err != nil {
 			fail(err)
 			return
@@ -69,7 +69,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			fail(err)
 			return
 		}
-		var result jsoninput.Input
+		var result jsonvalue.Value
 		if record.Phase == plugin.CommandPrepared {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
 			if err != nil {
@@ -85,7 +85,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			defer c.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 			for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, record.ID, record.Input, metadata) {
 				if err != nil {
-					if refusal, known := errors.AsType[*capability.Refusal](err); known {
+					if refusal, known := errors.AsType[*extension.Refusal](err); known {
 						if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 							fail(errors.Join(err, observeErr))
 							return
@@ -97,7 +97,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 					return
 				}
 				if value.Chunk != nil {
-					chunk, err := jsoninput.Parse(*value.Chunk)
+					chunk, err := jsonvalue.Parse(*value.Chunk)
 					if err != nil {
 						fail(err)
 						return
@@ -106,7 +106,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 						return
 					}
 				} else if value.Result != nil {
-					result, err = jsoninput.Parse(*value.Result)
+					result, err = jsonvalue.Parse(*value.Result)
 					if err != nil {
 						fail(err)
 						return
@@ -117,7 +117,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			var found bool
 			result, found, err = binding.ReadReceipt(ctx, record.ID, record.Input)
 			if err != nil {
-				if _, known := errors.AsType[*capability.Refusal](err); known {
+				if _, known := errors.AsType[*extension.Refusal](err); known {
 					if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
 						fail(errors.Join(err, observeErr))
 						return
@@ -195,10 +195,10 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 		var event plugins.StreamEvent
 		if value.Chunk != nil {
 			event.Kind = plugins.StreamChunk
-			event.Value, err = jsoninput.Parse(*value.Chunk)
+			event.Value, err = jsonvalue.Parse(*value.Chunk)
 		} else if value.Result != nil {
 			event.Kind = plugins.StreamResult
-			event.Value, err = jsoninput.Parse(*value.Result)
+			event.Value, err = jsonvalue.Parse(*value.Result)
 		} else {
 			err = pluginsdk.ErrStreamUnconfirmed
 		}

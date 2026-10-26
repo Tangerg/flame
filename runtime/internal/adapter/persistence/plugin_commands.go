@@ -7,38 +7,37 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type PluginCommandStore struct{ db *sql.DB }
+type pluginCommandStore struct{ db *sql.DB }
 
-func NewPluginCommandStore(db *sql.DB) *PluginCommandStore { return &PluginCommandStore{db: db} }
+func newPluginCommandStore(db *sql.DB) *pluginCommandStore { return &pluginCommandStore{db: db} }
 
-func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
+func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	var record plugin.CommandBinding
 	var installation, digest, input, contract, server, contribution, invocation, activation string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &activation, &record.Phase)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase FROM plugin_commands WHERE id=?`, id).Scan(&record.ID, &record.Method, &input, &contract, &installation, &digest, &server, &contribution, &record.Export, &invocation, &activation, &record.Phase)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	if record.Input, err = jsoninput.Parse([]byte(input)); err != nil {
+	if record.Input, err = jsonvalue.Parse([]byte(input)); err != nil {
 		return nil, false, err
 	}
-	if record.Contract, err = jsoninput.Parse([]byte(contract)); err != nil {
+	if record.Contract, err = jsonvalue.Parse([]byte(contract)); err != nil {
 		return nil, false, err
 	}
-	if record.Provider.InstallationID, err = resourceid.ParseInstallation(installation); err != nil {
+	if record.Provider.InstallationID, err = flameidentity.ParseInstallation(installation); err != nil {
 		return nil, false, err
 	}
-	if record.Provider.Digest, err = fingerprint.ParseDigest(digest); err != nil {
+	if record.Provider.Digest, err = flameidentity.ParseDigest(digest); err != nil {
 		return nil, false, err
 	}
 	if record.Server, err = mcpserver.ParseServerName(server); err != nil {
@@ -57,12 +56,12 @@ func (s *PluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 	return command, err == nil, err
 }
 
-func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) error {
+func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) error {
 	if command == nil {
 		return plugin.ErrInvalid
 	}
 	r := command.Snapshot()
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		previous, found, err := s.Get(ctx, r.ID)
 		if err != nil {
 			return err
@@ -72,7 +71,7 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export || old.Invocation != r.Invocation || !old.Activation.Equal(r.Activation) {
 				return plugin.ErrCommandConflict
 			}
-			_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
+			_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
 			return err
 		}
 		if r.Phase != plugin.CommandPrepared {
@@ -86,13 +85,13 @@ func (s *PluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		if err != nil {
 			return err
 		}
-		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
+		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
 		return err
 	})
 }
 
-func (s *PluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?)`, plugin.CommandPrepared, plugin.CommandDispatched)
+func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?)`, plugin.CommandPrepared, plugin.CommandDispatched)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +139,7 @@ func decodeCommandActivation(source string) (plugin.Activation, error) {
 	if err := json.Unmarshal([]byte(source), &value, json.RejectUnknownMembers(true)); err != nil {
 		return plugin.Activation{}, err
 	}
-	identity, err := fingerprint.ParseDigest(value.Identity)
+	identity, err := flameidentity.ParseDigest(value.Identity)
 	if err != nil {
 		return plugin.Activation{}, err
 	}
@@ -149,11 +148,11 @@ func decodeCommandActivation(source string) (plugin.Activation, error) {
 	}
 	activation := plugin.Activation{Identity: identity, Dependencies: make([]plugin.Dependency, len(value.Dependencies))}
 	for i, dependency := range value.Dependencies {
-		id, err := resourceid.ParseInstallation(dependency.Installation)
+		id, err := flameidentity.ParseInstallation(dependency.Installation)
 		if err != nil {
 			return plugin.Activation{}, err
 		}
-		digest, err := fingerprint.ParseDigest(dependency.Digest)
+		digest, err := flameidentity.ParseDigest(dependency.Digest)
 		if err != nil {
 			return plugin.Activation{}, err
 		}

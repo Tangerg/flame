@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,7 +18,7 @@ func (r setupTestResource) Close() error { r.closes.Add(1); return nil }
 func TestSetupProvidesNamedImmutableBindingsAndJoinsResources(t *testing.T) {
 	for _, refuses := range []bool{false, true} {
 		t.Run(map[bool]string{false: "success", true: "refusal"}[refuses], func(t *testing.T) {
-			method, err := NewMethod[struct{}, string](MethodConfig{Name: "records.read", Kind: capability.Query, Target: "workspace", Description: "Read records."})
+			method, err := NewMethod[struct{}, string](MethodConfig{Name: "records.read", Kind: extension.Query, Target: "workspace", Description: "Read records."})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -85,7 +85,7 @@ type activationTestResource struct{ starts, closes *atomic.Int32 }
 func (r activationTestResource) Start() error { r.starts.Add(1); return nil }
 func (r activationTestResource) Close() error { r.closes.Add(1); return nil }
 func TestActivationStartsOnceOnlyAfterSuccessfulSetup(t *testing.T) {
-	method, err := NewMethod[struct{}, string](MethodConfig{Name: "background.read", Kind: capability.Query, Target: "installation", Description: "Read background records."})
+	method, err := NewMethod[struct{}, string](MethodConfig{Name: "background.read", Kind: extension.Query, Target: "installation", Description: "Read background records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestActivationStartsOnceOnlyAfterSuccessfulSetup(t *testing.T) {
 	if err := Activate(t.Context(), session); err == nil {
 		t.Fatal("activation bypassed setup")
 	}
-	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
+	values := []SetupContribution{{ID: "background", Export: "background", Requires: []SetupDependency{}, Background: &extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}}
 	if err := SetUp(t.Context(), session, values, sdk.ParamsBase{}); err != nil {
 		t.Fatal(err)
 	}

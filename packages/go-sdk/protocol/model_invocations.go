@@ -3,7 +3,7 @@ package protocol
 import (
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 type ListModelEndpointsRequest struct {
@@ -24,21 +24,21 @@ const (
 )
 
 type ModelEndpointInvocation struct {
-	CostUSD   *float64              `json:"costUSD,omitzero"`
-	ID        string                `json:"id"`
-	Kind      ModelEndpointKind     `json:"kind"`
-	SessionID string                `json:"sessionId,omitzero"`
-	RunID     string                `json:"runId,omitzero"`
-	SegmentID string                `json:"segmentId,omitzero"`
-	Caller    capability.Invocation `json:"caller"`
-	Provider  string                `json:"provider"`
-	Model     string                `json:"model"`
-	Request   string                `json:"request"`
-	Response  string                `json:"response,omitzero"`
-	Failure   string                `json:"failure,omitzero"`
-	State     ModelInvocationState  `json:"state"`
-	StartedAt time.Time             `json:"startedAt"`
-	SettledAt time.Time             `json:"settledAt,omitzero"`
+	CostUSD   *float64             `json:"costUSD,omitzero"`
+	ID        string               `json:"id"`
+	Kind      ModelEndpointKind    `json:"kind"`
+	SessionID string               `json:"sessionId,omitzero"`
+	RunID     string               `json:"runId,omitzero"`
+	SegmentID string               `json:"segmentId,omitzero"`
+	Caller    extension.Invocation `json:"caller"`
+	Provider  string               `json:"provider"`
+	Model     string               `json:"model"`
+	Request   string               `json:"request"`
+	Response  string               `json:"response,omitzero"`
+	Failure   string               `json:"failure,omitzero"`
+	State     ModelInvocationState `json:"state"`
+	StartedAt time.Time            `json:"startedAt"`
+	SettledAt time.Time            `json:"settledAt,omitzero"`
 }
 
 //flame:enum

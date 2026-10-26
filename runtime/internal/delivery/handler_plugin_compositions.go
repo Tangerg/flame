@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -13,14 +13,14 @@ import (
 type compositionUseCases interface {
 	List(context.Context) ([]plugin.OrderedComposition, error)
 	Set(context.Context, plugin.CompositionRecord) (plugin.OrderedComposition, error)
-	Resolve(context.Context, *capability.Contract) ([]plugins.ContributionBinding, error)
+	Resolve(context.Context, *extension.Capability) ([]plugins.ContributionBinding, error)
 }
 
 func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
 	if s.pluginCompositions == nil {
 		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
 	}
-	contract, err := capability.Parse([]byte(in.Contract))
+	contract, err := extension.ParseCapability([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
 	}
@@ -63,7 +63,7 @@ func (s *Handler) SetPluginComposition(ctx context.Context, in protocol.SetPlugi
 	if s.pluginCompositions == nil {
 		return nil, protocol.NewFailure(protocol.ErrPluginUnavailable, "plugin composition is unavailable")
 	}
-	contract, err := jsoninput.Parse([]byte(in.Contract))
+	contract, err := jsonvalue.Parse([]byte(in.Contract))
 	if err != nil {
 		return nil, protocol.InvalidParameters(err)
 	}

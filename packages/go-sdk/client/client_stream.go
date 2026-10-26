@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 )
 
@@ -62,11 +62,11 @@ func decodeRemoteEvent(frame sse.Message, eventType reflect.Type) (any, error) {
 	if frame.Event != "message" {
 		return nil, invalidRemote("unexpected sse event type")
 	}
-	message, err := transport.DecodeMessage(frame.Data)
+	message, err := protocol.DecodeRPCMessage(frame.Data)
 	if err != nil {
 		return nil, invalidRemote("invalid event envelope")
 	}
-	notification, ok := message.(*transport.Request)
+	notification, ok := message.(*jsonrpc.Request)
 	if !ok || notification.IsCall() {
 		return nil, invalidRemote("stream frame is not a notification")
 	}

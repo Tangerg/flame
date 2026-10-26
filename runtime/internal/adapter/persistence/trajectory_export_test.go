@@ -9,13 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -30,7 +29,7 @@ func (r *exportSnapshotReader) ReadSnapshot(context.Context, string) (sessions.S
 	return r.value, nil
 }
 
-func trajectoryExportFixture(t *testing.T) (*TrajectoryExportReader, *sql.DB, *exportSnapshotReader) {
+func trajectoryExportFixture(t *testing.T) (*trajectoryExportReader, *sql.DB, *exportSnapshotReader) {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "export.sqlite"))
 	if err != nil {
@@ -38,24 +37,24 @@ func trajectoryExportFixture(t *testing.T) (*TrajectoryExportReader, *sql.DB, *e
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_export"})
-	if err := NewSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := newSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	run := testsupport.MustRestoreRun(run.Snapshot{ID: "run_export", SessionID: ses.ID(), State: run.Completed})
-	if err := NewRunStore(db).Restore(t.Context(), run); err != nil {
+	if err := newRunStore(db).Restore(t.Context(), run); err != nil {
 		t.Fatal(err)
 	}
-	modelReader, err := NewModelInvocationReader(NewModelInvocationStore(db))
+	modelReader, err := NewModelInvocationReader(newModelInvocationStore(db))
 	if err != nil {
 		t.Fatal(err)
 	}
 	snapshots := &exportSnapshotReader{value: sessions.Snapshot{Session: ses}}
 	snapshots.value.Runs = append(snapshots.value.Runs, run)
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
-		Snapshots: snapshots, Sessions: NewSessionStore(db), ModelInvocations: modelReader,
-		ToolInvocations: NewToolInvocationStore(db), Feedback: NewFeedbackStore(db),
+		Snapshots: snapshots, Sessions: newSessionStore(db), ModelInvocations: modelReader,
+		ToolInvocations: newToolInvocationStore(db), Feedback: newFeedbackStore(db),
 		ReadSnapshot: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunReadSnapshot(ctx, db, fn)
+			return sqlite.RunReadSnapshot(ctx, db, fn)
 		},
 	})
 	if err != nil {
@@ -142,13 +141,13 @@ func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testi
 
 func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) {
 	reader, db, _ := trajectoryExportFixture(t)
-	store := NewModelInvocationStore(db)
+	store := newModelInvocationStore(db)
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original prompt")))
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}
 	for index, scope := range []string{"ses_export", ""} {
 		id := []string{"session", "global"}[index]
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: "utility_" + id, Origin: capability.Automatic, Parent: "maintenance", Target: capability.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: "utility_" + id, Origin: extension.Automatic, Parent: "maintenance", Target: extension.Target{Scope: "call", Reference: "utility_" + id}}, Provider: "anthropic", Model: "captured-model", SessionID: scope, Request: request, StartedAt: time.Unix(100, 0).UTC()}
 		if err := store.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

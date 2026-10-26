@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
@@ -291,7 +291,7 @@ func (s *Shapes) Constraints() []ObjectConstraintSpec {
 	out := make([]ObjectConstraintSpec, 0, len(s.constraints))
 	for _, stored := range s.constraints {
 		spec := cloneObjectConstraintSpec(stored)
-		for _, embedded := range contractshape.Embeds(spec.GoType) {
+		for _, embedded := range jsonvalue.Embeds(spec.GoType) {
 			inherited, ok := byType[embedded]
 			if !ok {
 				continue
@@ -469,7 +469,7 @@ func (u *unionValidation) validateDiscriminator() error {
 			spec.Discriminator,
 		)
 	}
-	if err := contractshape.HasPath(spec.GoType, spec.Discriminator); err != nil {
+	if err := jsonvalue.HasPath(spec.GoType, spec.Discriminator); err != nil {
 		return fmt.Errorf("%s: %w", u.name, err)
 	}
 	if len(spec.Variants) == 0 {
@@ -492,7 +492,7 @@ func (u *unionValidation) validateForbiddenFields() error {
 			)
 		case slices.Contains(spec.Forbidden[:index], field):
 			return fmt.Errorf("%s: forbidden field %q is declared twice", u.name, field)
-		case slices.Contains(contractshape.FieldNames(spec.GoType), field):
+		case slices.Contains(jsonvalue.FieldNames(spec.GoType), field):
 			return fmt.Errorf(
 				"%s: forbidden field %q still exists on the Go wire shape",
 				u.name,
@@ -576,7 +576,7 @@ func (u *unionValidation) claimFields(
 		}
 	}
 	for _, field := range slices.Concat(required, optional) {
-		if err := contractshape.HasPath(u.spec.GoType, field); err != nil {
+		if err := jsonvalue.HasPath(u.spec.GoType, field); err != nil {
 			return fmt.Errorf("%s: %w", owner, err)
 		}
 		// A nested declaration accounts for the frame that holds it: claiming
@@ -592,7 +592,7 @@ func (u *unionValidation) claimFields(
 func (u *unionValidation) validateCoverage() error {
 	// The drift that actually happens: a field is added to the struct and no
 	// variant claims it, so the generated schema would allow it under every tag.
-	for _, field := range contractshape.FieldNames(u.spec.GoType) {
+	for _, field := range jsonvalue.FieldNames(u.spec.GoType) {
 		if !slices.Contains(u.accounted, field) {
 			return fmt.Errorf(
 				"%s: field %q belongs to no variant — every union field must name its tag",
@@ -652,7 +652,7 @@ func validateRuleFields(owner string, shape reflect.Type, rule ConditionalRule) 
 		}
 	}
 	for _, field := range slices.Concat(rule.Required, rule.RequiredAny, rule.Forbidden) {
-		if err := contractshape.HasPath(shape, field); err != nil {
+		if err := jsonvalue.HasPath(shape, field); err != nil {
 			return fmt.Errorf("%s: %w", owner, err)
 		}
 	}
@@ -717,7 +717,7 @@ func validateAllowedValueSet(
 			owner, set.Field, forbiddenField,
 		)
 	}
-	_, leaf, found := contractshape.GoPath(shape, set.Field)
+	_, leaf, found := jsonvalue.GoPath(shape, set.Field)
 	if !found {
 		return fmt.Errorf("%s: %s has no JSON field path %q", owner, shape.Name(), set.Field)
 	}
@@ -802,7 +802,7 @@ func (f FieldConstraintSpec) validate() error {
 }
 
 func validateFieldConstraint(owner string, shape reflect.Type, constraint FieldConstraint) error {
-	fields, ok := contractshape.PathFields(shape, constraint.Field)
+	fields, ok := jsonvalue.PathFields(shape, constraint.Field)
 	if !ok {
 		return fmt.Errorf("%s: no JSON field %q", owner, constraint.Field)
 	}
@@ -815,7 +815,7 @@ func validateFieldConstraint(owner string, shape reflect.Type, constraint FieldC
 	return validateConstraintTarget(owner, fields[len(fields)-1], constraint)
 }
 
-func validateConstraintPathProjection(owner, path string, fields []contractshape.Field) error {
+func validateConstraintPathProjection(owner, path string, fields []jsonvalue.Field) error {
 	for _, parent := range fields[:len(fields)-1] {
 		if parent.Type.Kind() == reflect.Struct {
 			continue
@@ -888,7 +888,7 @@ func validateConstraintArguments(owner string, constraint FieldConstraint) error
 	return nil
 }
 
-func validateConstraintTarget(owner string, field contractshape.Field, constraint FieldConstraint) error {
+func validateConstraintTarget(owner string, field jsonvalue.Field, constraint FieldConstraint) error {
 	declaredType := field.Type
 	valueType := declaredType
 	if valueType.Kind() == reflect.Pointer {
@@ -937,7 +937,7 @@ func validateConstraintTarget(owner string, field contractshape.Field, constrain
 	return validateConstraintProjection(owner, field, constraint)
 }
 
-func validateConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+func validateConstraintProjection(owner string, field jsonvalue.Field, constraint FieldConstraint) error {
 	if err := validatePointerConstraintProjection(owner, field, constraint); err != nil {
 		return err
 	}
@@ -959,7 +959,7 @@ func validateConstraintProjection(owner string, field contractshape.Field, const
 	return validateTextualConstraintProjection(owner, field, constraint)
 }
 
-func validateConstraintHelperAssignment(owner string, field contractshape.Field, constraint FieldConstraint) error {
+func validateConstraintHelperAssignment(owner string, field jsonvalue.Field, constraint FieldConstraint) error {
 	if field.Type.Kind() == reflect.Pointer {
 		target := field.Type.Elem()
 		if target.Kind() == reflect.String && target != reflect.TypeFor[string]() {
@@ -998,7 +998,7 @@ func validateConstraintHelperAssignment(owner string, field contractshape.Field,
 	return nil
 }
 
-func validatePointerConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+func validatePointerConstraintProjection(owner string, field jsonvalue.Field, constraint FieldConstraint) error {
 	if field.Type.Kind() != reflect.Pointer {
 		return nil
 	}
@@ -1021,7 +1021,7 @@ func validatePointerConstraintProjection(owner string, field contractshape.Field
 	}
 }
 
-func validateTextualConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+func validateTextualConstraintProjection(owner string, field jsonvalue.Field, constraint FieldConstraint) error {
 	declaredKind := field.Type.Kind()
 	if constraint.Kind == ConstraintPrefix && declaredKind != reflect.Pointer && field.Optional {
 		return fmt.Errorf(

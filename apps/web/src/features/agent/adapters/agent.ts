@@ -1,3 +1,6 @@
+import { createElement, type ReactNode } from "react";
+import { AgentScope } from "@/features/agent/application/agentContext";
+import { createAgentAccess } from "@/features/agent/application/agentAccess";
 import { type FlameClient } from "@flame/runtime-client";
 import { type Navigator } from "@/lib/navigation";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
@@ -6,7 +9,7 @@ import {
   type RuntimeServerScope,
   followRuntimeGeneration,
 } from "@/features/connection/public/services";
-import { type AgentAccess } from "@/features/agent/application/agentAccess";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { createAgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 import { createAgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
@@ -34,14 +37,14 @@ export function createAgent(
   const interrupts = new InterruptResponseCoordinator(state.view);
   const defaultSession = createAgentDefaultSession(
     navigation,
-    () => ({ agentAccess: access, projection, sessions, retries: gateway.retries }),
+    () => ({ agentAccess: dependencies, projection, sessions, retries: gateway.retries }),
     client,
     () => {
       const generation = stream.connectionGeneration();
       if (generation) stream.reportConnectionLoss(generation);
     },
   );
-  const access: AgentAccess = {
+  const dependencies: AgentDependencies = {
     state: state.state,
     view: state.view,
     defaultSession,
@@ -51,15 +54,15 @@ export function createAgent(
     sharedMaterial,
     interrupts,
   };
+  const access = createAgentAccess(dependencies);
   const stops: Array<() => void> = [];
   let started = false;
   let disposed = false;
   return {
     access,
-    sessions,
-    projection,
-    retries: gateway.retries,
-    replaceRuntimeGeneration: gateway.replaceRuntimeGeneration,
+    Provider({ children }: { children: ReactNode }) {
+      return createElement(AgentScope, { dependencies, access }, children);
+    },
     start() {
       if (disposed) throw new Error("Agent is disposed");
       if (started) return;

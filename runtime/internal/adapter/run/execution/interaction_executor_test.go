@@ -11,18 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -174,7 +173,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 	maxOutputTokens := int64(256)
 	start := interactionTestStart()
 	start.Options = &chat.Options{MaxOutputTokens: &maxOutputTokens}
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +186,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 
 	start.WorkingContext[0].Parts[0].Text = "changed"
 	*start.Options.MaxOutputTokens = 512
-	start.InterruptKinds[0] = interrupt.Approval
+	start.InterruptKinds[0] = run.InterruptApproval
 	session, err := executor.session(ref)
 	if err != nil {
 		t.Fatal(err)
@@ -198,7 +197,7 @@ func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
 	if got := *session.start.Options.MaxOutputTokens; got != 256 {
 		t.Fatalf("owned max output tokens = %d", got)
 	}
-	if got := session.start.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+	if got := session.start.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
 		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }
@@ -234,7 +233,7 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		t.Fatal("Interaction executor retained duplicate raw build configuration")
 	}
 	got, err := executor.resolveChat(t.Context(), testDefaultSelection())
-	if err != nil || dependency.Missing(got.Model()) || len(resolved) != 1 ||
+	if err != nil || lo.IsNil(got.Model()) || len(resolved) != 1 ||
 		resolved[0] != testDefaultSelection() {
 		t.Fatalf("resolve exact default = (%v, %v, %#v), want the resolved model and [%#v]", got.Model(), err, resolved, testDefaultSelection())
 	}

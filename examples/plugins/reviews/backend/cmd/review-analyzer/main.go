@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -46,7 +46,7 @@ func run() error {
 }
 
 func analyze(snapshot reviews.Snapshot) (reviews.Findings, error) {
-	if _, err := reviews.Restore(snapshot); err != nil {
+	if err := snapshot.Validate(); err != nil {
 		return reviews.Findings{}, err
 	}
 	findings := make([]reviews.Finding, 0, 1)

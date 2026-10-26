@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -181,7 +181,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled schedule.CreateV
 }
 
 func validateScheduleModelPair(provider, model string) error {
-	if err := protocol.ValidateModelSelection(provider, model, ""); errors.Is(err, protocol.ErrIncompleteModelSelection) {
+	if err := flamemodel.ValidateSelection(provider, model, ""); errors.Is(err, flamemodel.ErrIncomplete) {
 		return errors.New("provider and model must both be set or both be empty")
 	} else if err != nil {
 		return err

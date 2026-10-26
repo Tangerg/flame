@@ -7,9 +7,6 @@ import (
 	"testing"
 	"time"
 
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -19,7 +16,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -48,7 +46,7 @@ func TestWaitingContributionProbeDistinguishesWithdrawalFromInconclusiveRead(t *
 				t.Fatal("probe called the provider")
 				return nil, nil
 			}), InteractionExecutorConfig{CallComposition: &unavailableCallComposition{cause: cause}})
-			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_unavailable", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 			verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 			if cause == plugin.ErrUnavailable || cause == plugin.ErrStale {
 				if err != nil || verdict.Resumable() || verdict.Deferred() || verdict.Loss() != runs.LossConfigurationChanged {
@@ -115,7 +113,7 @@ func TestWaitingRecoveryDefersCapturedContributionBeforeRequiringALiveActivation
 		t.Error("recovery required a live activation before checking the pending connection")
 		return modeladapter.ResolvedChat{}, errors.New("unexpected assembly")
 	})
-	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_pending", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_pending", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 	verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	if err != nil || !verdict.Deferred() {
 		t.Fatalf("pending contribution became startup failure or lost state: %+v, %v", verdict, err)
@@ -140,7 +138,7 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-				InterruptKinds: []interrupt.Kind{interrupt.Question},
+				InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 			})
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
@@ -181,7 +179,7 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	})
 	head, found, err := store.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
 	if err != nil || !found {
@@ -226,7 +224,7 @@ func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testi
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	})
 	_, err := executor.RestoreWaitingExecution(ctx, continuation)
 	if !errors.Is(err, context.Canceled) || errors.Is(err, runs.ErrExecutorStateLost) {

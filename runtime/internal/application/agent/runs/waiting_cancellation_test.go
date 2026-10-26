@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -138,7 +137,7 @@ func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) 
 	); err != nil {
 		t.Fatalf("a complete prepared cancellation was refused: %v", err)
 	}
-	for _, change := range []WaitingSubtreeChange{nil, typedNil} {
+	for _, change := range []waitingSubtreeChange{nil, typedNil} {
 		if _, err := NewPreparedWaitingSubtreeCancellation(
 			[]string{"member_a"}, nil,
 			testExecutorCheckpoint(),
@@ -1095,7 +1094,7 @@ func mustResumeWaitingRun(t *testing.T, record run.Run, segmentID string) run.Ru
 
 func waitingQuestionPrompt() Interrupt {
 	return Interrupt{
-		Kind: interrupt.Question,
+		Kind: run.InterruptQuestion,
 		Question: &QuestionPrompt{
 			ToolName:  "ask_user",
 			Arguments: "{}",

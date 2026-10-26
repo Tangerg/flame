@@ -64,7 +64,9 @@ func ExecuteMemoryReview(ctx context.Context, caller MemoryCommands, store *Stor
 			_, err := retainedMemoryReview(request, id, decision)
 			return err
 		},
-		func(*protocol.CallPluginResponse) (memory.ReviewV1Output, error) { return memory.ReviewV1Output{}, nil })
+		func(*protocol.CallPluginResponse) (memory.ReviewV1Output, error) {
+			return memory.ReviewV1Output{}, nil
+		})
 	return err
 }
 
@@ -81,7 +83,9 @@ func ExecuteMemoryDeletion(ctx context.Context, caller MemoryCommands, store *St
 			}
 			return nil
 		},
-		func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) { return memory.DeleteV1Output{}, nil })
+		func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) {
+			return memory.DeleteV1Output{}, nil
+		})
 	return err
 }
 

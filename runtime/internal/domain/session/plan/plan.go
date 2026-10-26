@@ -12,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 )
 
 // Status is one Step's execution state.
@@ -127,7 +126,11 @@ func CurrentOf(state State) (Current, error) {
 
 // State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
-	return optional.Present(c.state)
+	if c.state == nil {
+
+		return State{}, false
+	}
+	return *c.state, true
 }
 
 // Steps returns the latest ordered value. Unwritten and explicitly cleared

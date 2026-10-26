@@ -4,12 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-func (c *Coordinator) Component(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
+func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest identity.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
 	var value plugin.ClientComponent
 	err := c.dependencies.UnderAdmission(ctx, func(_ []plugin.Dependency) error {
 		snapshot, err := c.installationSnapshot(ctx, id)
@@ -22,7 +21,7 @@ func (c *Coordinator) Component(ctx context.Context, id resourceid.InstallationI
 	return value, err
 }
 
-func (c *Coordinator) Resource(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, component plugin.ContributionID, resource string) ([]byte, error) {
+func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, digest identity.Digest, component plugin.ContributionID, resource string) ([]byte, error) {
 	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 		return nil, plugin.ErrInvalid
 	}

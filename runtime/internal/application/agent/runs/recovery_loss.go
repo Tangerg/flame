@@ -14,7 +14,7 @@ type Loss string
 
 const (
 	// LossRestart is a Run that was not parked at a waiting boundary.
-	LossRestart Loss = "restart"
+	lossRestart Loss = "restart"
 	// LossIsolatedWorkspace is a Run whose isolated scratch workspace does not
 	// survive the executor that created it.
 	LossIsolatedWorkspace Loss = "isolatedWorkspace"
@@ -32,7 +32,7 @@ const (
 
 func (l Loss) detail() (string, error) {
 	switch l {
-	case LossRestart:
+	case lossRestart:
 		return "run lost on restart", nil
 	case LossIsolatedWorkspace:
 		return "run lost on restart: its isolated workspace does not survive a restart", nil

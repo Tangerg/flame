@@ -29,7 +29,7 @@ func (r *Connection) GetSession(ctx context.Context, sessionID string) (conversa
 	request := protocol.GetSessionSnapshotRequest{
 		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
 	}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
 	}
 	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, request, r.callOptions())

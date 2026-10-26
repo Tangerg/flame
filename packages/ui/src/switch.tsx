@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
 import { color, corner, motion, space, surface } from "./tokens.stylex";
-import { SwitchPrimitive } from "./primitives/switch";
+import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 
 const styles = stylex.create({
   track: {

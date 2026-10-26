@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 type toolInvocationState string
@@ -26,7 +26,7 @@ func (t toolInvocationState) databaseValue() string { return string(t) }
 // attempt records one Segment's observation, not the Tool's external outcome.
 type ToolInvocationStore struct{ db *sql.DB }
 
-func NewToolInvocationStore(db *sql.DB) *ToolInvocationStore {
+func newToolInvocationStore(db *sql.DB) *ToolInvocationStore {
 	return &ToolInvocationStore{db: db}
 }
 
@@ -39,7 +39,7 @@ func (t *ToolInvocationStore) ListStartedToolInvocations(
 	if yield == nil {
 		return errors.New("sqlite: Tool invocation reader is required")
 	}
-	rows, err := sqlitebase.Connection(ctx, t.db).QueryContext(ctx, `
+	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, item_id, started_at
 		  FROM tool_invocations
 		 WHERE state = ?
@@ -82,7 +82,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
 	}
-	result, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
@@ -124,7 +124,7 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
-	result, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx, `
+	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx, `
 		INSERT INTO tool_invocations(call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		SELECT ?, ?, session_id, run_id, ?, ?, ?, ? FROM runs
 		WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?
@@ -176,7 +176,7 @@ func (t *ToolInvocationStore) finish(
 	if err := instant.Validate(startedAt, finishedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
-	result, err := sqlitebase.Connection(ctx, t.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
 		`UPDATE tool_invocations
 		    SET state = ?, finished_at = ?
 		  WHERE call_id = ? AND item_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
@@ -211,13 +211,13 @@ func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID 
 	if err := validateItemResource("Tool invocation", itemID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(callID); err != nil {
+	if err := runs.ValidateInvocation(callID); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation: %w", err)
 	}
 	return nil
 }
 
-type ToolInvocationRecord struct {
+type toolInvocationRecord struct {
 	CallID     string
 	ItemID     string
 	RunID      string
@@ -229,11 +229,11 @@ type ToolInvocationRecord struct {
 
 // The export reader bounds the complete Session's stored bytes and record count
 // in its transaction before reading this untruncated evidence collection.
-func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string) ([]ToolInvocationRecord, error) {
+func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string) ([]toolInvocationRecord, error) {
 	if err := validateSessionResource("tool invocation", sessionID); err != nil {
 		return nil, err
 	}
-	rows, err := sqlitebase.Connection(ctx, t.db).QueryContext(ctx, `
+	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, `
 		SELECT attempt.call_id, attempt.item_id, attempt.run_id, attempt.segment_id,
 		       attempt.state, attempt.started_at, attempt.finished_at, owner.session_id
 		  FROM tool_invocations attempt
@@ -244,9 +244,9 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 		return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	var records []ToolInvocationRecord
+	var records []toolInvocationRecord
 	for rows.Next() {
-		var record ToolInvocationRecord
+		var record toolInvocationRecord
 		var startedAt int64
 		var finishedAt sql.NullInt64
 		var ownerSessionID sql.NullString

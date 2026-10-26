@@ -3,12 +3,12 @@ package plugin
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestInvocationMetadataRefusesMalformedAndCompetingOwners(t *testing.T) {
-	owner := capability.Invocation{ID: "original", Origin: capability.Model, Parent: "parent", Target: capability.Target{Scope: "installation", Reference: "producer"}}
+	owner := extension.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: extension.Target{Scope: "installation", Reference: "producer"}}
 	ctx, err := WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +33,7 @@ func TestInvocationMetadataRefusesMalformedAndCompetingOwners(t *testing.T) {
 			}
 		})
 	}
-	method, err := NewMethod[struct{}, struct{}](MethodConfig{Name: "owner.read", Kind: capability.Query, Target: "workspace", Description: "Read the captured workspace."})
+	method, err := NewMethod[struct{}, struct{}](MethodConfig{Name: "owner.read", Kind: extension.Query, Target: "workspace", Description: "Read the captured workspace."})
 	if err != nil {
 		t.Fatal(err)
 	}

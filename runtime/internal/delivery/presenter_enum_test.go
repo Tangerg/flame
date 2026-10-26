@@ -5,7 +5,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -23,7 +22,7 @@ func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
 	mustPanic(t, func() { presentOutcome(testsupport.MustRestoreRun(run.Snapshot{State: run.Running})) })
 	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })
 	mustPanic(t, func() { presentToolFailure(&tool.Failure{Kind: tool.FailureKind("invalid")}) })
-	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{Kind: interrupt.Kind("invalid")}}) })
+	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{Kind: run.InterruptKind("invalid")}}) })
 }
 
 func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {

@@ -7,17 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot
+type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot
 
 const (
 	adapterMemoryIDOne   = "mem_00000000000000000000000000000001"
@@ -298,7 +300,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	result, err := jsoninput.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOther, Scope: "project", Content: "edited", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+	result, err := jsonvalue.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOther, Scope: "project", Content: "edited", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +365,7 @@ func (a *agentMemoryBindingStub) ListPluginProviders(_ context.Context, _ protoc
 	return protocol.NewPage([]protocol.PluginProviderSelection{{Role: "memory", InstallationID: id, Contribution: "memory-provider"}}), nil
 }
 func (a *agentMemoryBindingStub) ListPlugins(_ context.Context, _ protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
-	contract, err := capability.Parse([]byte(memory.CapabilityJSON))
+	contract, err := extension.ParseCapability([]byte(memory.CapabilityJSON))
 	if err != nil {
 		a.t.Fatal(err)
 	}
@@ -396,8 +398,8 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if result == nil {
 			result = a.item(adapterMemoryIDTwo, memory.Scope(input.Scope), input.Content, false)
 		}
-		out := memory.AddV1Output{Item: memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
-		encoded, err := jsoninput.Encode(out)
+		out := memory.AddV1Output{Item: memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}}
+		encoded, err := jsonvalue.Encode(out)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memory.UpdateV1Method {
@@ -411,8 +413,8 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		if result == nil {
 			result = a.item(input.ID, memory.ScopeProject, "edited", true)
 		}
-		output := memory.UpdateV1Output{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
-		encoded, err := jsoninput.Encode(output)
+		output := memory.UpdateV1Output{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(result.ID), Scope: string(result.Scope), Content: result.Content, Origin: string(result.Origin), Status: string(result.Status), Pinned: result.Pinned, SessionID: result.SessionID, Day: result.Day, CreatedAt: result.CreatedAt, UpdatedAt: result.UpdatedAt, Embedding: []float64{}}
+		encoded, err := jsonvalue.Encode(output)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	if request.Method == memory.ReviewV1Method {
@@ -449,9 +451,9 @@ func (a *agentMemoryBindingStub) CallPlugin(_ context.Context, request protocol.
 		output.Capacity = a.pageCapacity(input)
 	}
 	for _, row := range page.Data {
-		output.Rows = append(output.Rows, memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemID(row.ID), Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
+		output.Rows = append(output.Rows, memoryFixtureRecord{ID: memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemID(row.ID), Scope: string(row.Scope), Content: row.Content, Origin: string(row.Origin), Status: string(row.Status), Pinned: row.Pinned, SessionID: row.SessionID, Day: row.Day, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Embedding: []float64{}})
 	}
-	encoded, err := jsoninput.Encode(output)
+	encoded, err := jsonvalue.Encode(output)
 	if err != nil {
 		a.t.Fatal(err)
 	}
@@ -468,11 +470,11 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 				t.Fatal(err)
 			}
 			now := time.Now()
-			limits, err := replay.NewCapability("original-store", time.Hour)
+			limits, err := authoring.NewReplayCapability("original-store", time.Hour)
 			if err != nil {
 				t.Fatal(err)
 			}
-			policy, err := mutation.NewReplayPolicy(limits, func() time.Time { return now })
+			policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: limits}, func() time.Time { return now })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -513,7 +515,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 				})
 				return err
 			}
-			if err := execute(ctx); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
+			if err := execute(ctx); !errors.Is(err, authoring.ErrCommandOutcomeUnknown) {
 				t.Fatalf("lost delete acknowledgement: %v", err)
 			}
 			pending, retained := store.PendingInstalledCommand(intent)
@@ -536,7 +538,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 			stub.pluginCall = func(protocol.CallPluginRequest, protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 				return &protocol.CallPluginResponse{Output: `{"extra":true}`}, nil
 			}
-			if err := execute(t.Context()); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
+			if err := execute(t.Context()); !errors.Is(err, authoring.ErrCommandOutcomeUnknown) {
 				t.Fatalf("invalid acknowledgement confirmed a delete: %v", err)
 			}
 			if _, retained := store.PendingInstalledCommand(intent); !retained {
@@ -547,11 +549,11 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 					t.Fatal("delete recovery changed its original command or binding")
 				}
 				if method == memory.AddV1Method {
-					output, err := jsoninput.Encode(memory.AddV1Output{Changed: true, Item: memoryFixtureRecord{ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
+					output, err := jsonvalue.Encode(memory.AddV1Output{Changed: true, Item: memoryFixtureRecord{ID: adapterMemoryIDOne, Scope: "user", Content: "original addition", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				if method == memory.UpdateV1Method {
-					output, err := jsoninput.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
+					output, err := jsonvalue.Encode(memory.UpdateV1Output{ID: adapterMemoryIDOne, Scope: "user", Content: "original patch", Origin: "user", Status: "active", CreatedAt: now, UpdatedAt: now, Embedding: []float64{}})
 					return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 				}
 				return &protocol.CallPluginResponse{Output: `{}`}, nil

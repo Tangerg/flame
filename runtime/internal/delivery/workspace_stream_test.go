@@ -123,9 +123,7 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 func TestWorkspaceHubScopesResyncToEachSubscriptionsDeclaredTopics(t *testing.T) {
 	hub := newWorkspaceHub()
 	events := make(chan protocol.RuntimeEvent, 1)
-	subscription, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{
-		protocol.TopicSkillsChanged: true,
-	}, nil)
+	subscription, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{protocol.TopicSkillsChanged: true}, nil)
 	defer unregister()
 
 	hub.publishTo(subscription, protocol.RuntimeEvent{
@@ -140,11 +138,8 @@ func TestWorkspaceHubScopesResyncToEachSubscriptionsDeclaredTopics(t *testing.T)
 	}
 
 	hub.publishTo(subscription, protocol.RuntimeEvent{
-		Type: protocol.RuntimeResync,
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicSkillsChanged,
-		},
+		Type:     protocol.RuntimeResync,
+		Topics:   []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged},
 		WatchIDs: []string{"foreign-watch"},
 	})
 	got := <-events
@@ -159,25 +154,16 @@ func TestWorkspaceHubScopesResyncToEachSubscriptionsDeclaredTopics(t *testing.T)
 func TestWorkspaceHubScopesResyncToSubscriptionsDeclaredWatches(t *testing.T) {
 	hub := newWorkspaceHub()
 	events := make(chan protocol.RuntimeEvent, 2)
-	subscription, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{
-		protocol.TopicFilesChanged:  true,
-		protocol.TopicSkillsChanged: true,
-	}, []string{"own-second", "own-first"})
+	subscription, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{protocol.TopicFilesChanged: true, protocol.TopicSkillsChanged: true}, []string{"own-second", "own-first"})
 	defer unregister()
 
 	hub.publishTo(subscription, protocol.RuntimeEvent{
-		Type: protocol.RuntimeResync,
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicSkillsChanged,
-		},
+		Type:     protocol.RuntimeResync,
+		Topics:   []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged},
 		WatchIDs: []string{"foreign-watch", "own-first", "own-second"},
 	})
 	got := <-events
-	if !slices.Equal(got.Topics, []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged,
-		protocol.TopicSkillsChanged,
-	}) {
+	if !slices.Equal(got.Topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged}) {
 		t.Fatalf("resync topics = %v, want files.changed and skills.changed", got.Topics)
 	}
 	if !slices.Equal(got.WatchIDs, []string{"own-second", "own-first"}) {
@@ -375,10 +361,7 @@ func TestWorkspaceHubIsolatesMutableEventDataPerSubscription(t *testing.T) {
 func TestWorkspaceHubRecoversMalformedSignalWithSubscriptionResync(t *testing.T) {
 	hub := newWorkspaceHub()
 	events := make(chan protocol.RuntimeEvent, 1)
-	topics := map[protocol.RuntimeTopic]bool{
-		protocol.TopicFilesChanged:  true,
-		protocol.TopicSkillsChanged: true,
-	}
+	topics := map[protocol.RuntimeTopic]bool{protocol.TopicFilesChanged: true, protocol.TopicSkillsChanged: true}
 	_, unregister, _ := hub.register(events, topics, nil)
 	defer unregister()
 
@@ -403,11 +386,8 @@ func TestWorkspaceHubRecoversMalformedResyncWithSubscriptionScope(t *testing.T) 
 			Type: protocol.RuntimeResync,
 		},
 		"duplicate topic": {
-			Type: protocol.RuntimeResync,
-			Topics: []protocol.RuntimeTopic{
-				protocol.TopicFilesChanged,
-				protocol.TopicFilesChanged,
-			},
+			Type:   protocol.RuntimeResync,
+			Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicFilesChanged},
 		},
 		"duplicate watch": {
 			Type:     protocol.RuntimeResync,
@@ -427,18 +407,12 @@ func TestWorkspaceHubRecoversMalformedResyncWithSubscriptionScope(t *testing.T) 
 		t.Run(name, func(t *testing.T) {
 			hub := newWorkspaceHub()
 			events := make(chan protocol.RuntimeEvent, 1)
-			_, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{
-				protocol.TopicFilesChanged:  true,
-				protocol.TopicSkillsChanged: true,
-			}, []string{"own-watch"})
+			_, unregister, _ := hub.register(events, map[protocol.RuntimeTopic]bool{protocol.TopicFilesChanged: true, protocol.TopicSkillsChanged: true}, []string{"own-watch"})
 			defer unregister()
 
 			hub.publish(malformed)
 			got := <-events
-			wantTopics := []protocol.RuntimeTopic{
-				protocol.TopicFilesChanged,
-				protocol.TopicSkillsChanged,
-			}
+			wantTopics := []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged}
 			if got.Type != protocol.RuntimeResync || got.Sequence != 1 ||
 				!slices.Equal(got.Topics, wantTopics) || len(got.WatchIDs) != 0 {
 				t.Fatalf("recovery frame = %+v, want full subscription resync", got)

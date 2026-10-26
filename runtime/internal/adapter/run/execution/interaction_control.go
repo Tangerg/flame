@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
@@ -72,7 +72,7 @@ func (i *interactionSession) submitSteer(
 		return "", runs.ErrExecutorNotLive
 	}
 	itemID := prepared.ItemID
-	if err := resourceid.ValidateItem(itemID); err != nil {
+	if err := identity.ValidateItem(itemID); err != nil {
 		return "", err
 	}
 	if acceptance := prepared.Acceptance; acceptance != nil {

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/scope/core/chat"
@@ -396,7 +395,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		t.Fatal(err)
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
+	rawEstimate, err := modelchoice.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,7 +471,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a3" + large)),
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
+	rawEstimate, err := modelchoice.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +553,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
 	requestedOutput := modelInfo.Limits.MaxOutputTokens
 	options := chat.Options{MaxOutputTokens: &requestedOutput}
-	rawEstimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: options})
+	rawEstimate, err := modelchoice.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: options})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -667,7 +666,7 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 	)
 	request := durableContextRequest(t, sessionID, []chat.Message{current}, 1, nil)
 
-	if _, compactErr := compactor.CompactModelContext(t.Context(), request); !errors.Is(compactErr, ErrModelContextCannotFit) {
+	if _, compactErr := compactor.CompactModelContext(t.Context(), request); !errors.Is(compactErr, errModelContextCannotFit) {
 		t.Fatalf("error = %v, want ErrModelContextCannotFit", compactErr)
 	}
 	if len(model.requests) != 0 {
@@ -689,7 +688,7 @@ func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T)
 		resolveErr error
 		wantErr    error
 	}{
-		{name: "veto", wantErr: ErrModelContextCompactionVetoed},
+		{name: "veto", wantErr: errModelContextCompactionVetoed},
 		{name: "configuration failure", resolveErr: resolveErr, wantErr: resolveErr},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -759,7 +758,7 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
-	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, errModelContextDiverged) {
 		t.Fatalf("error = %v, want ErrModelContextDiverged", err)
 	}
 }
@@ -816,7 +815,7 @@ func TestDurableModelContextCompactionRetainsAnnotatedToolMessageBoundaries(t *t
 
 		result, err := compactor.CompactModelContext(t.Context(), request)
 		if grouped {
-			if !errors.Is(err, ErrModelContextDiverged) {
+			if !errors.Is(err, errModelContextDiverged) {
 				t.Fatalf("unannotated group error = %v, want ErrModelContextDiverged", err)
 			}
 			continue
@@ -897,7 +896,7 @@ func TestDurableModelContextCompactionUsesCanonicalMetadata(t *testing.T) {
 
 				result, err := compactor.CompactModelContext(t.Context(), request)
 				if test.diverged {
-					if !errors.Is(err, ErrModelContextDiverged) {
+					if !errors.Is(err, errModelContextDiverged) {
 						t.Fatalf("error = %v, want ErrModelContextDiverged", err)
 					}
 					return
@@ -926,7 +925,7 @@ func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
-	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, errModelContextDiverged) {
 		t.Fatalf("error = %v, want ErrModelContextDiverged", err)
 	}
 }
@@ -948,7 +947,7 @@ func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testin
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
-	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, errModelContextDiverged) {
 		t.Fatalf("error = %v, want ErrModelContextDiverged", err)
 	}
 }
@@ -1168,7 +1167,7 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewTextPart("a2" + large)),
 	}
 	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	estimate, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
+	estimate, err := modelchoice.EstimateRequestTokens(&chat.Request{Messages: append(cloneMessages(instructions), history...), Tools: nil, Options: chat.Options{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1177,9 +1176,11 @@ func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
 		t.Fatalf("fixture estimate = %d, want below %d", estimate, hardInput)
 	}
 	const marker = "per-request trailer"
-	trailer := []chat.Message{chat.NewUserMessage(chat.NewTextPart(
-		marker + strings.Repeat("y", (hardInput-estimate)*2*modeltext.ASCIIBytesPerEstimatedToken),
-	))}
+	trailerText := strings.Repeat("y", max(1, hardInput-estimate))
+	for modelchoice.EstimateTextTokens(trailerText) <= hardInput-estimate {
+		trailerText += trailerText
+	}
+	trailer := []chat.Message{chat.NewUserMessage(chat.NewTextPart(marker + trailerText))}
 	compact := func(sessionID string, trailer []chat.Message) (executionadapter.ModelContextCompactionResult, *compactionTestStore) {
 		t.Helper()
 		store := newCompactionTestStore()

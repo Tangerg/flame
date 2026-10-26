@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -196,6 +195,8 @@ func (a *authorizationAttemptStore) purgeExpiredLocked() {
 }
 
 func cloneAuthorizationAttempt(attempt AuthorizationAttempt) AuthorizationAttempt {
-	attempt.FinishedAt = optional.Clone(attempt.FinishedAt)
+	if attempt.FinishedAt != nil {
+		attempt.FinishedAt = new(*attempt.FinishedAt)
+	}
 	return attempt
 }

@@ -6,7 +6,6 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 

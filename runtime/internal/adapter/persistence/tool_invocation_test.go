@@ -5,9 +5,8 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -19,14 +18,14 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	segments := []string{"segment_before_wait", "segment_after_answer"}
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	createdAt := time.Unix(100, 0).UTC()
 	if err := runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: segments[0], CreatedAt: createdAt,
 	})); err != nil {
 		t.Fatalf("admit Run: %v", err)
 	}
-	store := NewToolInvocationStore(db)
+	store := newToolInvocationStore(db)
 	startedAt := createdAt.Add(time.Second)
 	starts := make([]time.Time, len(segments))
 	for index, segmentID := range segments {
@@ -39,7 +38,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := runs.Suspend(t.Context(), waiting, segments[0], runtimeidentity.CommitID{}); err != nil {
+			if err := runs.Suspend(t.Context(), waiting, segments[0], flameruns.CommitID{}); err != nil {
 				t.Fatal(err)
 			}
 			startedAt = startedAt.Add(2 * time.Millisecond)
@@ -84,7 +83,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs = NewRunStore(db)
+	runs = newRunStore(db)
 	active, found, err := runs.Run(t.Context(), "run_1")
 	if err != nil || !found {
 		t.Fatalf("active Run = %v, %v", found, err)
@@ -105,7 +104,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	store = NewToolInvocationStore(db)
+	store = newToolInvocationStore(db)
 	rows, err := store.ListSession(t.Context(), "session_1")
 	if err != nil || len(rows) != len(segments) {
 		t.Fatalf("retained attempts = %+v, %v", rows, err)
@@ -124,7 +123,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 	if other, err := store.ListSession(t.Context(), "session_other"); err != nil || len(other) != 0 {
 		t.Fatalf("foreign Session attempts = %+v, %v", other, err)
 	}
-	if err := NewRunStore(db).Delete(t.Context(), "session_1", "run_1"); err != nil {
+	if err := newRunStore(db).Delete(t.Context(), "session_1", "run_1"); err != nil {
 		t.Fatal(err)
 	}
 	if deleted, err := store.ListSession(t.Context(), "session_1"); err != nil || len(deleted) != 0 {
@@ -139,12 +138,12 @@ func TestToolInvocationReadRetainsUnsettledTerminalEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	draft := runDraft("run_unsettled", "session_unsettled")
 	if err := runs.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	store := NewToolInvocationStore(db)
+	store := newToolInvocationStore(db)
 	if err := store.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID,
 		"call_unsettled", "item_unsettled", draft.CreatedAt); err != nil {
 		t.Fatal(err)
@@ -159,7 +158,7 @@ func TestToolInvocationReadRetainsUnsettledTerminalEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := NewToolInvocationStore(db).ListSession(t.Context(), draft.SessionID)
+	rows, err := newToolInvocationStore(db).ListSession(t.Context(), draft.SessionID)
 	if err != nil || len(rows) != 1 || rows[0].State != "started" || !rows[0].FinishedAt.IsZero() ||
 		!rows[0].StartedAt.Equal(draft.CreatedAt) {
 		t.Fatalf("unsettled terminal evidence = %+v, %v", rows, err)
@@ -172,10 +171,10 @@ func TestToolInvocationReadRejectsForeignOwnershipWithoutPartialEvidence(t *test
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewToolInvocationStore(db)
+	store := newToolInvocationStore(db)
 	for _, suffix := range []string{"a", "b"} {
 		draft := runDraft("run_"+suffix, "session_"+suffix)
-		if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+		if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID,

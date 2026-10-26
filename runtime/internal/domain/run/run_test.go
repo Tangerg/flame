@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func mustRunSelection(t testing.TB) modelchoice.Selection {
@@ -75,7 +74,7 @@ func TestRestoreRejectsInvalidState(t *testing.T) {
 
 func TestChildRunCarriesNoCapabilitiesOfItsOwn(t *testing.T) {
 	lineage := Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root"}
-	capabilities := Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := Capabilities{InterruptKinds: []InterruptKind{InterruptQuestion}}
 	draft := Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_1",
 		SpawnedByItemID: lineage.SpawnedByItemID, ParentRunID: lineage.ParentRunID, RootRunID: lineage.RootRunID,
@@ -101,7 +100,7 @@ func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 	for name, mutate := range map[string]func(*Draft){
 		"run control":       func(draft *Draft) { draft.RunID = "run_\n1" },
 		"session control":   func(draft *Draft) { draft.SessionID = "session_\t1" },
-		"segment oversized": func(draft *Draft) { draft.SegmentID = strings.Repeat("s", runtimeidentity.MaximumResourceCharacters+1) },
+		"segment oversized": func(draft *Draft) { draft.SegmentID = strings.Repeat("s", identity.MaximumResourceCharacters+1) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			draft := valid
@@ -127,7 +126,7 @@ func TestRunAdmissionRequiresExactModelSelection(t *testing.T) {
 
 func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
-	capabilities := Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := Capabilities{ChildRuns: true, InterruptKinds: []InterruptKind{InterruptQuestion}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
 		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: createdAt,
@@ -410,7 +409,7 @@ func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 }
 
 func TestRunAndMetricsCopyOwnership(t *testing.T) {
-	capabilities := Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := Capabilities{InterruptKinds: []InterruptKind{InterruptQuestion}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
 		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: time.Unix(1, 0).UTC(),
@@ -418,10 +417,10 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
 	}
-	capabilities.InterruptKinds[0] = interrupt.Approval
+	capabilities.InterruptKinds[0] = InterruptApproval
 	read := value.Capabilities()
-	read.InterruptKinds[0] = interrupt.Approval
-	if got := value.Capabilities().InterruptKinds[0]; got != interrupt.Question {
+	read.InterruptKinds[0] = InterruptApproval
+	if got := value.Capabilities().InterruptKinds[0]; got != InterruptQuestion {
 		t.Fatalf("Run capabilities changed through an external slice: %s", got)
 	}
 

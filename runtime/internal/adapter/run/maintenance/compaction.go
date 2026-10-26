@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // compactionStore supplies the durable prefix used to compute a proposal.
@@ -51,7 +50,7 @@ func NewCompactor(
 	liveState LiveStateSnapshotter,
 	values CompactionPolicyValues,
 ) (*Compactor, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("compactor: conversation store is required")
 	}
 	if client == nil {
@@ -81,7 +80,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{estimatedTokens: estimatedTokens}, nil
 	}
 	if protectedTail < 0 || protectedTail > len(messages) {
-		return compactionPlan{}, ErrModelContextCannotFit
+		return compactionPlan{}, errModelContextCannotFit
 	}
 	foldableLimit := len(messages) - protectedTail
 	protectedOverBudget, _, err := budget.exceeded(ctx, messages[foldableLimit:])
@@ -89,14 +88,14 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{}, err
 	}
 	if protectedOverBudget {
-		return compactionPlan{}, ErrModelContextCannotFit
+		return compactionPlan{}, errModelContextCannotFit
 	}
 	if foldableLimit == 0 {
-		return compactionPlan{}, ErrModelContextCannotFit
+		return compactionPlan{}, errModelContextCannotFit
 	}
 	cutoff := summaryCutoffWithProtectedTail(messages, protectedTail)
 	if cutoff == 0 {
-		return compactionPlan{}, ErrModelContextCannotFit
+		return compactionPlan{}, errModelContextCannotFit
 	}
 	trimmed, changed := trimForBudgetBefore(messages, cutoff)
 	trimmedOverBudget, trimmedEstimate, err := budget.exceeded(ctx, trimmed)

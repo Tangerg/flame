@@ -9,13 +9,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -39,11 +38,11 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 						t.Error(err)
 					}
 					toolResult.Store(string(encoded))
-					var result sandbox.Result
+					var result testsupport.SandboxExecuteV1Output
 					if err := json.Unmarshal(part.ToolResult.Output.Details, &result); err != nil {
 						t.Error(err)
 					}
-					if !part.ToolResult.IsError && result.Status == sandbox.Completed && result.ExitCode == 0 && result.Stdout.Content == "native-model-result" {
+					if !part.ToolResult.IsError && result.Status == "completed" && result.ExitCode == 0 && result.Stdout.Content == "native-model-result" {
 						observed.Store(true)
 					}
 					return completedTextResponse("sandbox completed"), nil
@@ -63,24 +62,24 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "sandbox"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "sandbox"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	name.Store(tools[0].ModelName)
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.SandboxCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode(rpc.ExecuteInput{Script: "printf native-typed-result; exit 5", TimeoutMillis: 3000})
+	input, err := jsonvalue.Encode(testsupport.SandboxExecuteV1Input{Script: "printf native-typed-result; exit 5", TimeoutMillis: 3000})
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Capability.Identity().String(), Method: contracts.Execute.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
-	var result sandbox.Result
+	var result testsupport.SandboxExecuteV1Output
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || result.ExitCode != 5 || result.Stdout.Content != "native-typed-result" {
 		t.Fatalf("installed native callback failed: %+v %+v %v", typed, result, err)
 	}

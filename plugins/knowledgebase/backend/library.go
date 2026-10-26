@@ -6,11 +6,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +39,7 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 	return &library{store: store, resolve: resolve}, nil
 }
 
-func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsoninput.Input) (knowledge.Header, error) {
+func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsonvalue.Value) (knowledge.Header, error) {
 	var embed embed
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, func(ctx context.Context) error {
 		var err error
@@ -115,11 +115,4 @@ func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]knowledg
 		matches = append(matches, found...)
 	}
 	return knowledge.Rank(matches, input.Limit), nil
-}
-
-func classify(err error) string {
-	if errors.Is(err, errStoredDocument) {
-		return ""
-	}
-	return rpc.Classify(err)
 }

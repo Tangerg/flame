@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -43,7 +42,7 @@ func (r *retiredOpeningProbe) GetRunAcceptance(ctx context.Context, query protoc
 	return r.Runtime.GetRunAcceptance(ctx, query)
 }
 
-func (r *retiredOpeningProbe) StartRun(ctx context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *retiredOpeningProbe) StartRun(ctx context.Context, command authoring.StartRun) (conversation.SegmentStream, error) {
 	r.starts.Add(1)
 	return r.Runtime.StartRun(ctx, command)
 }
@@ -132,7 +131,7 @@ func TestAnotherRunsTerminalEventCannotSettleAnUnconfirmedOpening(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingRun(workbench.PendingRun{Command: command, State: workbench.PendingRunQueued, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()}); err != nil {
+	if err := store.StagePendingRun(workbench.PendingRun{Command: command, State: workbench.PendingRunQueued, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard()}); err != nil {
 		t.Fatal(err)
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")

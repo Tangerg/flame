@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
 import { type SessionProjectionSynchronizationOwnership } from "@/features/agent/application/session/sessionAccess";
@@ -19,7 +19,7 @@ export interface AgentSessionProjectionRevalidation {
 }
 
 export async function refreshAgentSessionProjection(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionView | null> {
@@ -28,7 +28,7 @@ export async function refreshAgentSessionProjection(
 }
 
 export async function revalidateAgentSessionProjection(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionProjectionRevalidation | null> {
@@ -41,7 +41,7 @@ export async function revalidateAgentSessionProjection(
 }
 
 export async function revalidateAgentSessionMaterial(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   readMaterial: () => Promise<AgentSessionMaterialRead | null>,
   options: RefreshSessionProjectionOptions = {},
@@ -79,7 +79,7 @@ export interface MountedAgentSessionSynchronization {
 }
 
 export function synchronizeMountedAgentSession(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   ownership: SessionProjectionSynchronizationOwnership,
 ): Promise<boolean> {
@@ -91,7 +91,7 @@ export function synchronizeMountedAgentSession(
 }
 
 export function synchronizeMountedAgentSessions(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   request: MountedAgentSessionSynchronization,
 ): readonly string[] {
   const sessions = agentAccess.view.getSessions();

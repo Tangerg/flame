@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -18,7 +17,7 @@ type ResultPublication struct {
 }
 
 func (r ResultPublication) Validate() error {
-	if err := runtimeidentity.ValidateEffect(r.ID); err != nil {
+	if err := ValidateInvocation(r.ID); err != nil {
 		return err
 	}
 	value, found := strings.CutPrefix(r.Digest, "sha256:")

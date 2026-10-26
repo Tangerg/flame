@@ -25,7 +25,7 @@ describe("useRelocateSession", () => {
   it("revalidates Session truth after an ambiguous conditional-write failure", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession: vi.fn().mockRejectedValue(new Error("response lost after commit")),
     } as unknown as AgentRuntimeGateway);
     const { result } = testClient.renderHook(() => useRelocateSession());

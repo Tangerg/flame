@@ -110,8 +110,8 @@ func resourceTool(view *transcriptView, kind conversation.ToolKind, summary, out
 	return newToolBlock(toolGroupPresentation(view), conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 }
 
-func toolGroupPresentation(view *transcriptView) BlockPresentation {
-	return BlockPresentation{
+func toolGroupPresentation(view *transcriptView) blockPresentation {
+	return blockPresentation{
 		Theme: view.theme, Glyphs: view.glyphs, Look: view.look,
 		Syntax: view.syntax, Tools: defaultToolPresenters(),
 	}

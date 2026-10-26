@@ -5,7 +5,8 @@ import type { WireMethodName } from "@flame/runtime-client/methods";
 import { createHttpTransport } from "./http";
 import { createFlameClient } from "../sdk";
 import { asSessionId } from "../ids";
-import { createMutationJournal } from "../mutationJournal";
+import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import * as rpcTypes from "../types";
 
 afterEach(() => vi.restoreAllMocks());
@@ -841,15 +842,13 @@ describe("HTTP mutation acknowledgement", () => {
     const client = createFlameClient(
       createHttpTransport({ baseUrl: "http://x", fetch: fetchStub as unknown as typeof fetch }),
       {
-        mutationJournal: createMutationJournal({
-          storage: {
-            get: (key) => structuredClone(entries.get(key)),
-            set: (key, value) => void entries.set(key, structuredClone(value)),
-            remove: (key) => void entries.delete(key),
-            keys: () => [...entries.keys()],
-          },
-          scope: () => ({ namespace: "idp_store", retentionSeconds: 3600 }),
-        }),
+        mutationStorage: {
+          get: (key) => structuredClone(entries.get(key)),
+          set: (key, value) => void entries.set(key, structuredClone(value)),
+          remove: (key) => void entries.delete(key),
+          keys: () => [...entries.keys()],
+        },
+        capabilities: () => discovery.capabilities as ServerCapabilities,
       },
     );
 

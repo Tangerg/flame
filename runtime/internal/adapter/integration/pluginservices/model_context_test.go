@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -21,7 +21,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			composition, bindings, store := installedContextFixture(t, mode)
-			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context", Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: "original-context"}})
+			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -52,7 +52,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	composition, bindings, _ := installedContextFixture(t, "ordered")
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
 	}

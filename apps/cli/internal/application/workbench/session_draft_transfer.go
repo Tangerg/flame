@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const sessionDraftTransferName = "session-draft-transfer.json"
@@ -15,12 +15,12 @@ const sessionDraftTransferName = "session-draft-transfer.json"
 // two session aggregates. Before values fence stale recovery; after values let
 // Open finish either half of an interrupted transfer without guessing.
 type DraftTransfer struct {
-	SourceSessionID      string         `json:"sourceSessionId"`
-	DestinationSessionID string         `json:"destinationSessionId"`
-	SourceBefore         prompt.Message `json:"sourceBefore"`
-	SourceAfter          prompt.Message `json:"sourceAfter"`
-	DestinationBefore    prompt.Message `json:"destinationBefore"`
-	DestinationAfter     prompt.Message `json:"destinationAfter"`
+	SourceSessionID      string            `json:"sourceSessionId"`
+	DestinationSessionID string            `json:"destinationSessionId"`
+	SourceBefore         authoring.Message `json:"sourceBefore"`
+	SourceAfter          authoring.Message `json:"sourceAfter"`
+	DestinationBefore    authoring.Message `json:"destinationBefore"`
+	DestinationAfter     authoring.Message `json:"destinationAfter"`
 }
 
 func (d DraftTransfer) clone() DraftTransfer {
@@ -41,10 +41,10 @@ func (d DraftTransfer) equal(other DraftTransfer) bool {
 }
 
 func (d DraftTransfer) validate() error {
-	if err := runtimeprotocol.ValidateSessionID(d.SourceSessionID); err != nil {
+	if err := protocol.ValidateSessionID(d.SourceSessionID); err != nil {
 		return fmt.Errorf("draft transfer source: %w", err)
 	}
-	if err := runtimeprotocol.ValidateSessionID(d.DestinationSessionID); err != nil {
+	if err := protocol.ValidateSessionID(d.DestinationSessionID); err != nil {
 		return fmt.Errorf("draft transfer destination: %w", err)
 	}
 	if d.SourceSessionID == d.DestinationSessionID {
@@ -52,7 +52,7 @@ func (d DraftTransfer) validate() error {
 	}
 	values := []struct {
 		label   string
-		message prompt.Message
+		message authoring.Message
 	}{
 		{label: "source before", message: d.SourceBefore},
 		{label: "source after", message: d.SourceAfter},
@@ -83,10 +83,10 @@ func (d DraftTransfer) blocks(sessionID string) bool {
 // draft. Existing destination text comes first; incoming text follows as a new
 // paragraph. Exact attachment identities are kept once, while conflicting
 // identities fail closed instead of silently choosing one user's file value.
-func MergeSessionDraft(existing, incoming prompt.Message) (prompt.Message, error) {
+func MergeSessionDraft(existing, incoming authoring.Message) (authoring.Message, error) {
 	values := []struct {
 		label   string
-		message prompt.Message
+		message authoring.Message
 	}{
 		{label: "existing", message: existing},
 		{label: "incoming", message: incoming},
@@ -96,7 +96,7 @@ func MergeSessionDraft(existing, incoming prompt.Message) (prompt.Message, error
 			continue
 		}
 		if err := value.message.Validate(); err != nil {
-			return prompt.Message{}, fmt.Errorf("%s session draft: %w", value.label, err)
+			return authoring.Message{}, fmt.Errorf("%s session draft: %w", value.label, err)
 		}
 	}
 	if existing.IsEmpty() {
@@ -114,8 +114,8 @@ func MergeSessionDraft(existing, incoming prompt.Message) (prompt.Message, error
 	default:
 		merged.Text += "\n\n" + incoming.Text
 	}
-	byID := make(map[string]prompt.Attachment, len(merged.Attachments)+len(incoming.Attachments))
-	byPath := make(map[string]prompt.Attachment, len(merged.Attachments)+len(incoming.Attachments))
+	byID := make(map[string]authoring.Attachment, len(merged.Attachments)+len(incoming.Attachments))
+	byPath := make(map[string]authoring.Attachment, len(merged.Attachments)+len(incoming.Attachments))
 	for _, item := range merged.Attachments {
 		byID[item.ID] = item
 		byPath[item.Path] = item
@@ -123,13 +123,13 @@ func MergeSessionDraft(existing, incoming prompt.Message) (prompt.Message, error
 	for _, item := range incoming.Attachments {
 		if current, found := byID[item.ID]; found {
 			if current != item {
-				return prompt.Message{}, fmt.Errorf("session drafts conflict on attachment id %q", item.ID)
+				return authoring.Message{}, fmt.Errorf("session drafts conflict on attachment id %q", item.ID)
 			}
 			continue
 		}
 		if current, found := byPath[item.Path]; found {
 			if current != item {
-				return prompt.Message{}, fmt.Errorf("session drafts conflict on attachment path %q", item.Path)
+				return authoring.Message{}, fmt.Errorf("session drafts conflict on attachment path %q", item.Path)
 			}
 			continue
 		}
@@ -138,7 +138,7 @@ func MergeSessionDraft(existing, incoming prompt.Message) (prompt.Message, error
 		byPath[item.Path] = item
 	}
 	if err := merged.Validate(); err != nil {
-		return prompt.Message{}, fmt.Errorf("merged session draft: %w", err)
+		return authoring.Message{}, fmt.Errorf("merged session draft: %w", err)
 	}
 	return merged, nil
 }
@@ -170,7 +170,7 @@ func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
 	return s.completeDraftTransferLocked()
 }
 
-func (d DraftTransfer) expect(drafts map[string]prompt.Message) error {
+func (d DraftTransfer) expect(drafts map[string]authoring.Message) error {
 	if !drafts[d.SourceSessionID].Equal(d.SourceBefore) {
 		return errors.New("source draft changed before session transfer")
 	}
@@ -225,14 +225,14 @@ func (s *Store) completeDraftTransferLocked() error {
 	return nil
 }
 
-func validateTransferSide(label string, current, before, after prompt.Message) error {
+func validateTransferSide(label string, current, before, after authoring.Message) error {
 	if current.Equal(before) || current.Equal(after) {
 		return nil
 	}
 	return fmt.Errorf("%s draft changed while session transfer was pending", label)
 }
 
-func (s *Store) advanceDraftTransferSide(sessionID string, before, after prompt.Message) error {
+func (s *Store) advanceDraftTransferSide(sessionID string, before, after authoring.Message) error {
 	current := s.drafts[sessionID]
 	if current.Equal(after) {
 		return nil

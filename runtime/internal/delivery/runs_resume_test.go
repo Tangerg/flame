@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -17,7 +17,7 @@ import (
 // the failing continuation Start is what's under test.
 type resumeOKExecution struct{ executionStub }
 
-func (resumeOKExecution) Resume(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, []interrupt.Kind) error {
+func (resumeOKExecution) Resume(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, []run.InterruptKind) error {
 	return nil
 }
 
@@ -38,7 +38,7 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID: "item_1",
-			Kind:   interrupt.Approval,
+			Kind:   run.InterruptApproval,
 			Approval: &transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 			},
@@ -93,7 +93,7 @@ func TestResumeRunRejectsMissingAndUnknownItemCoverage(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID: "item_open",
-			Kind:   interrupt.Approval,
+			Kind:   run.InterruptApproval,
 			Approval: &transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 			},

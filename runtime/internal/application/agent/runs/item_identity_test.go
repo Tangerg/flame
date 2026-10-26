@@ -6,16 +6,15 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {
-	segmentID := runtimeidentity.SegmentPrefix + strings.Repeat(
-		"s",
-		runtimeidentity.MaximumResourceCharacters-len(runtimeidentity.SegmentPrefix),
+	segmentID := identity.SegmentPrefix + strings.Repeat(
+		"s", identity.MaximumResourceCharacters-
+			len(identity.SegmentPrefix),
 	)
-	if err := resourceid.ValidateSegment(segmentID); err != nil {
+	if err := identity.ValidateSegment(segmentID); err != nil {
 		t.Fatalf("maximum Segment fixture: %v", err)
 	}
 
@@ -24,12 +23,12 @@ func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Item identity: %v", err)
 	}
-	if err := resourceid.ValidateItem(first); err != nil {
+	if err := identity.ValidateItem(first); err != nil {
 		t.Fatalf("Item identity derived from maximum Segment = %q: %v", first, err)
 	}
 	if user := userMessageItemID(segmentID); user == first {
 		t.Fatalf("user Item identity aliases sequenced identity %q", user)
-	} else if err := resourceid.ValidateItem(user); err != nil {
+	} else if err := identity.ValidateItem(user); err != nil {
 		t.Fatalf("user Item identity derived from maximum Segment = %q: %v", user, err)
 	}
 }
@@ -41,7 +40,7 @@ func TestSegmentItemIdentitiesDoNotWrap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("last Item identity: %v", err)
 	}
-	if err := resourceid.ValidateItem(last); err != nil {
+	if err := identity.ValidateItem(last); err != nil {
 		t.Fatalf("last Item identity = %q: %v", last, err)
 	}
 	if next, err := identities.Next(); next != "" || !errors.Is(err, errItemIdentitySequenceExhausted) {

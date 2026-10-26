@@ -219,7 +219,7 @@ func TestShellsRejectLaunchAfterKillAll(t *testing.T) {
 	if err := shells.KillAll(); err != nil {
 		t.Fatalf("KillAll: %v", err)
 	}
-	if _, err := shells.Launch(context.Background(), "", "", "printf late", Timeout{}, false); !errors.Is(err, ErrShellsClosed) {
+	if _, err := shells.Launch(context.Background(), "", "", "printf late", Timeout{}, false); !errors.Is(err, errShellsClosed) {
 		t.Fatalf("Launch after KillAll = %v, want ErrShellsClosed", err)
 	}
 }
@@ -266,7 +266,7 @@ func TestShellIdentityCodecAndExhaustion(t *testing.T) {
 	}
 	shells := unconfinedShells(t)
 	shells.nextID = ^uint64(0)
-	if _, err := shells.Launch(t.Context(), "", "", "true", Timeout{}, false); !errors.Is(err, ErrShellIdentityExhausted) {
+	if _, err := shells.Launch(t.Context(), "", "", "true", Timeout{}, false); !errors.Is(err, errShellIdentityExhausted) {
 		t.Fatalf("Launch after identity exhaustion = %v, want ErrShellIdentityExhausted", err)
 	}
 }
@@ -303,7 +303,7 @@ func TestShellsLaunchRacesKillAll(t *testing.T) {
 			t.Errorf("KillAll: %v", err)
 		}
 		got := <-result
-		if got.err != nil && !errors.Is(got.err, ErrShellsClosed) {
+		if got.err != nil && !errors.Is(got.err, errShellsClosed) {
 			t.Fatalf("Launch error = %v", got.err)
 		}
 		if got.id != "" {

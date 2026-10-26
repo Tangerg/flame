@@ -16,7 +16,7 @@ import (
 type FileWatcher struct{ git GitWatcher }
 
 func NewFileWatcher(lifetime context.Context) FileWatcher {
-	return FileWatcher{git: NewGitWatcher(lifetime)}
+	return FileWatcher{git: newGitWatcher(lifetime)}
 }
 
 func (w FileWatcher) Watch(scopes []workspaceapp.WatchScope, notify func(workspaceapp.ObservationChange), report func(error)) (io.Closer, error) {

@@ -12,11 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/text/unicode/norm"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"golang.org/x/text/unicode/norm"
 )
 
 // staging is a private directory inside the release directory that receives
@@ -122,23 +121,23 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 		if err != nil {
 			return err
 		}
-		f, opened, err := fileinput.OpenAtExpected(input, name, info, MaxPackageBytes)
+		f, opened, err := filesystem.OpenFileAtExpected(input, name, info, maxPackageBytes)
 		if err != nil {
 			return packageInputError(err)
 		}
 		copyErr := s.writeFile(ctx, name, opened.Mode(), f)
-		verifyErr := fileinput.VerifyAtVersion(f, opened, input, name)
+		verifyErr := filesystem.VerifyAtVersion(f, opened, input, name)
 		return packageInputError(errors.Join(copyErr, verifyErr, f.Close()))
 	})
 }
 
 func (s *staging) extractArchive(ctx context.Context, source string, expected fs.FileInfo) (err error) {
-	file, opened, err := fileinput.OpenExpected(source, expected, MaxPackageBytes)
+	file, opened, err := filesystem.OpenFileExpected(source, expected, maxPackageBytes)
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open package archive: %w", packageInputError(err))
 	}
 	defer func() {
-		err = packageInputError(errors.Join(err, fileinput.VerifyPathVersion(file, opened, source), file.Close()))
+		err = packageInputError(errors.Join(err, filesystem.VerifyPathVersion(file, opened, source), file.Close()))
 		if errors.Is(err, zip.ErrFormat) || errors.Is(err, zip.ErrChecksum) || errors.Is(err, zip.ErrAlgorithm) {
 			err = errors.Join(plugin.ErrInvalid, err)
 		}
@@ -172,7 +171,7 @@ func (s *staging) extractArchive(ctx context.Context, source string, expected fs
 }
 
 func packageInputError(err error) error {
-	if errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) || errors.Is(err, fileinput.ErrChanged) {
+	if errors.Is(err, filesystem.ErrNotRegular) || errors.Is(err, filesystem.ErrFileTooLarge) || errors.Is(err, filesystem.ErrChanged) {
 		return errors.Join(plugin.ErrInvalid, err)
 	}
 	return err
@@ -200,7 +199,7 @@ func (s *staging) admitEntry(name string, kind entryKind) error {
 			return fmt.Errorf("%w: package entry parent is a file", plugin.ErrInvalid)
 		}
 	}
-	if len(s.entries)+added > MaxFiles {
+	if len(s.entries)+added > maxFiles {
 		return fmt.Errorf("%w: entry limit exceeded", plugin.ErrInvalid)
 	}
 	for segment := name; segment != "."; segment = path.Dir(segment) {
@@ -238,7 +237,7 @@ func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, 
 	if err != nil {
 		return err
 	}
-	limit := MaxPackageBytes - s.copied
+	limit := maxPackageBytes - s.copied
 	n, copyErr := io.Copy(f, io.LimitReader(cancellation.Reader(ctx, input), limit+1))
 	closeErr := f.Close()
 	s.copied += n

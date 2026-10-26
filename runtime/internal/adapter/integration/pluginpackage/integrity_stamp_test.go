@@ -11,7 +11,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -19,7 +19,7 @@ import (
 // settle launches until the cached proof is settled. A filesystem whose clock
 // ticks coarsely stamps entries changed just before a scan within its first
 // tick, and only a scan in a later tick can vouch for them.
-func settle(t *testing.T, r *Releases, digest fingerprint.Digest) {
+func settle(t *testing.T, r *Releases, digest identity.Digest) {
 	t.Helper()
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
 		root, err := r.currentRoot(t.Context(), digest)

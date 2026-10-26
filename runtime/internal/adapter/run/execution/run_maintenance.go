@@ -34,7 +34,7 @@ type RunMaintenanceResult struct {
 // rather than one Tool call, so their cwd is the Session's project directory:
 // it is what a hook trust grant was given to, and it outlives the isolated copy
 // an individual Run may have executed in.
-type InteractionLifecycleHooks interface {
+type interactionLifecycleHooks interface {
 	BeforeCompaction(ctx context.Context, sessionID, cwd string) (bool, error)
 	NotifyWaiting(ctx context.Context, sessionID, cwd string) error
 	NotifyStopped(ctx context.Context, sessionID, cwd, reason string) error

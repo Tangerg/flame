@@ -126,7 +126,7 @@ func TestListModelsProjectsDiscoveryFailures(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			handler := probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), &tc.lister)
 			endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
-			page, err := endpoint.Call[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](t.Context(), ModelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{})
+			page, err := endpoint.Call[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](t.Context(), modelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{})
 			if page != nil || !errors.Is(err, protocol.ErrProviderError) {
 				t.Fatalf("ListModels = (%v, %v), want provider failure", page, err)
 			}
@@ -151,7 +151,7 @@ func TestListModelsPreservesCallerCancellation(t *testing.T) {
 			)
 			endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
 			page, err := endpoint.Call[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](
-				t.Context(), ModelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{},
+				t.Context(), modelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{},
 			)
 			if page != nil || !errors.Is(err, cause) || lister.calls != 1 {
 				t.Fatalf("ListModels = (%+v, %v), calls=%d; want endpoint %v", page, err, lister.calls, cause)

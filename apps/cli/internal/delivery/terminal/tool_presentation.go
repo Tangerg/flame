@@ -34,10 +34,10 @@ const (
 	toolSectionParagraph
 )
 
-// ToolSection is one semantic region of a tool presentation. It deliberately
+// toolSection is one semantic region of a tool presentation. It deliberately
 // carries no Oolong component so inline blocks, the reader, and approvals can
 // project the same meaning at different sizes without sharing widget state.
-type ToolSection struct {
+type toolSection struct {
 	Title       string
 	Style       toolSectionStyle
 	Language    string
@@ -46,23 +46,23 @@ type ToolSection struct {
 	Links       bool
 }
 
-// ToolPresentation is the deterministic terminal meaning of one tool call.
-type ToolPresentation struct {
+// toolPresentation is the deterministic terminal meaning of one tool call.
+type toolPresentation struct {
 	Label    string
-	Sections []ToolSection
+	Sections []toolSection
 }
 
-// ToolPresenter claims tool calls it understands and produces their semantic
+// toolPresenter claims tool calls it understands and produces their semantic
 // presentation. Matchers are ordered; the first match wins and the built-in
 // generic presenter remains the final fallback.
-type ToolPresenter struct {
+type toolPresenter struct {
 	ID      string
 	Matches func(conversation.ToolCall) bool
-	Present func(conversation.ToolCall) ToolPresentation
+	Present func(conversation.ToolCall) toolPresentation
 }
 
-func defaultToolPresenters() []ToolPresenter {
-	return []ToolPresenter{
+func defaultToolPresenters() []toolPresenter {
+	return []toolPresenter{
 		kindToolPresenter("shell", conversation.ToolShell, presentShellTool),
 		kindToolPresenter("edit", conversation.ToolEdit, presentEditTool),
 		kindToolPresenter("read", conversation.ToolRead, presentReadTool),
@@ -73,8 +73,8 @@ func defaultToolPresenters() []ToolPresenter {
 	}
 }
 
-func kindToolPresenter(id string, kind conversation.ToolKind, present func(conversation.ToolCall) ToolPresentation) ToolPresenter {
-	return ToolPresenter{
+func kindToolPresenter(id string, kind conversation.ToolKind, present func(conversation.ToolCall) toolPresentation) toolPresenter {
+	return toolPresenter{
 		ID: id,
 		Matches: func(call conversation.ToolCall) bool {
 			return call.Kind == kind
@@ -83,71 +83,71 @@ func kindToolPresenter(id string, kind conversation.ToolKind, present func(conve
 	}
 }
 
-func presentShellTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentShellTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: shellToolLabel(call),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
 
-func presentEditTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentEditTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: toolKindLabel("edit", toolPrimary(call.Path, call.Summary)),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
 
-func presentReadTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentReadTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: toolKindLabel("read", toolPrimary(call.Path, call.Summary)),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Content", Style: toolSectionCode, Language: languageForPath(call.Path), Text: call.Output, LineNumbers: true,
 		}),
 	}
 }
 
-func presentSearchTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentSearchTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: toolKindLabel("search", toolPrimary(call.Query, call.Summary)),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Matches", Style: toolSectionParagraph, Text: call.Output,
 		}),
 	}
 }
 
-func presentWebTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentWebTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: toolKindLabel("web", toolPrimary(call.URL, call.Summary)),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Response", Style: toolSectionParagraph, Text: call.Output, Links: true,
 		}),
 	}
 }
 
-func presentTaskTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentTaskTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: toolKindLabel("task", strings.TrimSpace(call.Summary)),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Result", Style: toolSectionParagraph, Text: call.Output,
 		}),
 	}
 }
 
-func presentUnknownTool(call conversation.ToolCall) ToolPresentation {
-	return ToolPresentation{
+func presentUnknownTool(call conversation.ToolCall) toolPresentation {
+	return toolPresentation{
 		Label: unknownToolLabel(call),
-		Sections: toolSections(call, ToolSection{
+		Sections: toolSections(call, toolSection{
 			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
 
-func toolSections(call conversation.ToolCall, output ToolSection) []ToolSection {
-	sections := make([]ToolSection, 0, 6)
+func toolSections(call conversation.ToolCall, output toolSection) []toolSection {
+	sections := make([]toolSection, 0, 6)
 	metadata := make([]string, 0, 3)
 	if call.Safety != "" {
 		metadata = append(metadata, "safety   "+string(call.Safety))
@@ -159,25 +159,25 @@ func toolSections(call conversation.ToolCall, output ToolSection) []ToolSection 
 		metadata = append(metadata, "finished "+call.FinishedAt.Format(time.RFC3339))
 	}
 	if len(metadata) > 0 {
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),
 		})
 	}
 	if call.ArgumentsText != "" {
-		sections = append(sections, ToolSection{Title: "Arguments", Style: toolSectionCode, Text: call.ArgumentsText})
+		sections = append(sections, toolSection{Title: "Arguments", Style: toolSectionCode, Text: call.ArgumentsText})
 	} else if len(call.ArgumentsJSON) != 0 {
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ArgumentsJSON),
 		})
 	}
 	if strings.TrimSpace(call.Diff) != "" {
-		sections = append(sections, ToolSection{Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: call.Diff})
+		sections = append(sections, toolSection{Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: call.Diff})
 	}
 	if strings.TrimSpace(output.Text) != "" {
 		sections = append(sections, output)
 	}
 	if len(call.ResultJSON) != 0 {
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ResultJSON),
 		})
 	}
@@ -186,14 +186,14 @@ func toolSections(call conversation.ToolCall, output ToolSection) []ToolSection 
 		if err != nil {
 			encoded = []byte(failure.String(call.Problem))
 		}
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: "Problem", Style: toolSectionCode, Language: "json", Text: prettyJSON(encoded),
 		})
 	}
 	return sections
 }
 
-func selectToolPresentation(presenters []ToolPresenter, call conversation.ToolCall) (ToolPresentation, error) {
+func selectToolPresentation(presenters []toolPresenter, call conversation.ToolCall) (toolPresentation, error) {
 	if len(presenters) == 0 {
 		presenters = defaultToolPresenters()
 	} else {
@@ -201,29 +201,29 @@ func selectToolPresentation(presenters []ToolPresenter, call conversation.ToolCa
 	}
 	for _, presenter := range presenters {
 		if err := validateToolPresenter(presenter); err != nil {
-			return ToolPresentation{}, err
+			return toolPresentation{}, err
 		}
 		matches, err := matchToolSafely(presenter, call)
 		if err != nil {
-			return ToolPresentation{}, err
+			return toolPresentation{}, err
 		}
 		if !matches {
 			continue
 		}
 		presentation, err := presentToolSafely(presenter, call)
 		if err != nil {
-			return ToolPresentation{}, err
+			return toolPresentation{}, err
 		}
 		if strings.TrimSpace(presentation.Label) == "" {
-			return ToolPresentation{}, fmt.Errorf("tool presenter %q returned an empty label", presenter.ID)
+			return toolPresentation{}, fmt.Errorf("tool presenter %q returned an empty label", presenter.ID)
 		}
 		presentation.Sections = slices.Clone(presentation.Sections)
 		return presentation, nil
 	}
-	return ToolPresentation{}, errors.New("no tool presenter matched the call")
+	return toolPresentation{}, errors.New("no tool presenter matched the call")
 }
 
-func validateToolPresenter(presenter ToolPresenter) error {
+func validateToolPresenter(presenter toolPresenter) error {
 	switch {
 	case strings.TrimSpace(presenter.ID) == "":
 		return errors.New("tool presenter has no id")
@@ -236,7 +236,7 @@ func validateToolPresenter(presenter ToolPresenter) error {
 	}
 }
 
-func matchToolSafely(presenter ToolPresenter, call conversation.ToolCall) (matched bool, err error) {
+func matchToolSafely(presenter toolPresenter, call conversation.ToolCall) (matched bool, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("tool presenter %q matcher panicked: %v", presenter.ID, recovered)
@@ -245,7 +245,7 @@ func matchToolSafely(presenter ToolPresenter, call conversation.ToolCall) (match
 	return presenter.Matches(call), nil
 }
 
-func presentToolSafely(presenter ToolPresenter, call conversation.ToolCall) (presentation ToolPresentation, err error) {
+func presentToolSafely(presenter toolPresenter, call conversation.ToolCall) (presentation toolPresentation, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("tool presenter %q projection panicked: %v", presenter.ID, recovered)

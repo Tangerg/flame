@@ -14,11 +14,11 @@ func TestComposeConfigInjectsDurableRuntimePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = stores.Close() })
-	got := ComposeConfig(config.Settings{}, stores, nil, nil, buildID)
-	if got.BuildID != buildID {
-		t.Fatalf("BuildID = %q, want %q", got.BuildID, buildID)
+	got := composeConfig(config.Settings{}, stores, nil, nil, buildID)
+	if got.buildID != buildID {
+		t.Fatalf("BuildID = %q, want %q", got.buildID, buildID)
 	}
-	if got.Stores != stores {
+	if got.stores != stores {
 		t.Fatal("composition replaced the durable graph")
 	}
 }

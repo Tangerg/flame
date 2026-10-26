@@ -9,15 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	sdk "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sdk "github.com/Tangerg/scope/skills"
 )
 
 func mustPackageSkills(t testing.TB, releases *Releases, installations skillInstallations) *Skills {
@@ -244,7 +242,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		t.Fatalf("skill document = %q, %v", content, err)
 	}
 	t.Run("oversized resource", func(t *testing.T) {
-		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, fileinput.ErrTooLarge) || len(content) != 0 {
+		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, filesystem.ErrFileTooLarge) || len(content) != 0 {
 			t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
 		}
 	})
@@ -299,7 +297,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes+1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, domainskills.ErrDocumentTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, fileinput.ErrTooLarge) || len(content) != 0 {
+	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, domainskills.ErrDocumentTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, filesystem.ErrFileTooLarge) || len(content) != 0 {
 		t.Fatalf("oversized document = %d bytes, %v", len(content), err)
 	}
 }

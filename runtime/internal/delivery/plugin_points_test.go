@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -17,24 +16,24 @@ import (
 
 type inspectedPoint struct {
 	pluginCallUseCases
-	contract *point.Contract
+	contract *extension.Point
 }
 
-func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *point.Contract, _ point.Context, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
+func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *extension.Point, _ extension.PointContext, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
 	s.contract = contract
 	return []plugins.PointBinding{}, nil
 }
 
 func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
-	contract, err := point.Admit(point.Definition{
-		Protocol: capability.Protocol, Reference: "example.threshold", Scope: "workspace",
-		Composition: capability.Collection, Ordering: point.CanonicalKeys, Optional: true,
+	contract, err := extension.AdmitPoint(extension.PointDescriptor{
+		Protocol: extension.Protocol, Reference: "example.threshold", Scope: "workspace",
+		Composition: extension.Collection, Ordering: extension.CanonicalKeys, Optional: true,
 		Value: []byte(`{"type":"integer","maximum":18446744073709551615}`), Applicability: []byte(`true`),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := jsoninput.Parse([]byte(`18446744073709551615`))
+	value, err := jsonvalue.Parse([]byte(`18446744073709551615`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +53,7 @@ func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
 	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || projected.PointValues[0].Value != "18446744073709551615" || !strings.Contains(raw, "18446744073709551615") {
 		t.Fatal("point projection changed the admitted schema identity")
 	}
-	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: capability.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
+	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: extension.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
 	body, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)

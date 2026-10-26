@@ -46,7 +46,7 @@ func TestExecutionCWD(t *testing.T) {
 	t.Run("isolated with no provider fails closed", func(t *testing.T) {
 		c := &Coordinator{}
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/proj"), Isolated: true})
-		if _, _, err := c.executionCWD(ctx, value); !errors.Is(err, ErrIsolationUnavailable) {
+		if _, _, err := c.executionCWD(ctx, value); !errors.Is(err, errIsolationUnavailable) {
 			t.Fatalf("err = %v, want ErrIsolationUnavailable", err)
 		}
 	})
@@ -54,7 +54,7 @@ func TestExecutionCWD(t *testing.T) {
 	t.Run("isolated with a provider error fails closed", func(t *testing.T) {
 		c := &Coordinator{isolation: &stubIsolation{err: errors.New("no backend")}}
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/proj"), Isolated: true})
-		if _, _, err := c.executionCWD(ctx, value); !errors.Is(err, ErrIsolationUnavailable) {
+		if _, _, err := c.executionCWD(ctx, value); !errors.Is(err, errIsolationUnavailable) {
 			t.Fatalf("err = %v, want ErrIsolationUnavailable", err)
 		}
 	})

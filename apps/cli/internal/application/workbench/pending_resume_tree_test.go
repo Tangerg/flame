@@ -3,7 +3,7 @@ package workbench
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -30,7 +30,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 				{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"Safe"}}}},
 			},
 		},
-		Interrupts: []conversation.Interrupt{approval, question}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval, question}, Replay: authoring.UnprotectedGuard(),
 	}
 	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatal(err)

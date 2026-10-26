@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/samber/lo"
 )
 
 type PluginCaller interface {
@@ -23,18 +23,18 @@ type PluginBinding struct {
 	InstallationID string
 	Digest         string
 	Contribution   string
-	Contract       *capability.Contract
-	Target         capability.Target
+	Contract       *extension.Capability
+	Target         extension.Target
 }
 
 type PluginMethod[P, R any] struct {
 	caller  PluginCaller
 	binding PluginBinding
-	method  *capability.Method
+	method  *extension.Method
 }
 
 func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *pluginsdk.Method[P, R]) (*PluginMethod[P, R], error) {
-	if dependency.Missing(caller) || binding.Contract == nil || method == nil {
+	if lo.IsNil(caller) || binding.Contract == nil || method == nil {
 		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
 	}
 	required, err := admitPluginBinding(binding, method.Descriptor())
@@ -44,12 +44,12 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	return &PluginMethod[P, R]{caller: caller, binding: binding, method: required}, nil
 }
 
-func admitPluginBinding(binding PluginBinding, descriptor capability.MethodDescriptor) (*capability.Method, error) {
+func admitPluginBinding(binding PluginBinding, descriptor extension.MethodDescriptor) (*extension.Method, error) {
 	if binding.Contract == nil {
 		return nil, errors.New("runtime: plugin binding contract is required")
 	}
 	required, found := binding.Contract.Method(descriptor.Name)
-	actual, err := capability.AdmitMethod(descriptor)
+	actual, err := extension.AdmitMethod(descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +76,10 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 	if m == nil {
 		return zero, errors.New("runtime: bound plugin method is required")
 	}
-	if m.method.Kind() == capability.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
+	if m.method.Kind() == extension.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
 		return zero, errors.New("runtime: plugin query cannot carry a command identity")
 	}
-	inputJSON, err := jsoninput.Encode(input)
+	inputJSON, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, err
 	}
@@ -97,7 +97,7 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	if result.Failure != nil {
-		return zero, &capability.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return zero, &extension.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
 	if err := m.method.ValidateOutput([]byte(result.Output)); err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))

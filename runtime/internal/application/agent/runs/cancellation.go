@@ -330,7 +330,7 @@ func (c *Coordinator) commitWaitingChildCancellation(
 	sess session.Session,
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
-	change WaitingSubtreeChange,
+	change waitingSubtreeChange,
 ) (CancelResult, error) {
 	durable, err := transformation.durableCommit(plan.pending, newRunCommitID())
 	if err != nil {
@@ -368,7 +368,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	sess session.Session,
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
-	change WaitingSubtreeChange,
+	change waitingSubtreeChange,
 	runAdmission *ownership.RunAdmission,
 ) (CancelResult, error) {
 	segmentID := c.newSegmentID()

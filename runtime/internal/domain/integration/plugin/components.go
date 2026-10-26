@@ -8,26 +8,24 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 )
 
 // ComponentScope is the host context a client component renders in.
 type ComponentScope string
 
 const (
-	ComponentScopeInstallation ComponentScope = "installation"
-	ComponentScopeWorkspace    ComponentScope = "workspace"
-	ComponentScopeSession      ComponentScope = "session"
-	ComponentScopeClient       ComponentScope = "client"
-	ComponentScopeFile         ComponentScope = "file"
-	ComponentScopeToolResult   ComponentScope = "toolResult"
+	componentScopeInstallation ComponentScope = "installation"
+	componentScopeWorkspace    ComponentScope = "workspace"
+	componentScopeSession      ComponentScope = "session"
+	componentScopeClient       ComponentScope = "client"
+	componentScopeFile         ComponentScope = "file"
+	componentScopeToolResult   ComponentScope = "toolResult"
 )
 
 func (s ComponentScope) Valid() bool {
 	switch s {
-	case ComponentScopeInstallation, ComponentScopeWorkspace, ComponentScopeSession,
-		ComponentScopeClient, ComponentScopeFile, ComponentScopeToolResult:
+	case componentScopeInstallation, componentScopeWorkspace, componentScopeSession,
+		componentScopeClient, componentScopeFile, componentScopeToolResult:
 		return true
 	default:
 		return false
@@ -38,11 +36,11 @@ func (s ComponentScope) Valid() bool {
 type ComponentPlacement string
 
 const (
-	ComponentPlacementExport             ComponentPlacement = "export"
-	ComponentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
-	ComponentPlacementSessionAction      ComponentPlacement = "sessionAction"
-	ComponentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
-	ComponentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
+	componentPlacementExport             ComponentPlacement = "export"
+	componentPlacementWorkspaceView      ComponentPlacement = "workspaceView"
+	componentPlacementSessionAction      ComponentPlacement = "sessionAction"
+	componentPlacementFileRenderer       ComponentPlacement = "fileRenderer"
+	componentPlacementToolResultRenderer ComponentPlacement = "toolResultRenderer"
 )
 
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
@@ -70,36 +68,36 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 			return err
 		}
 	}
-	if value.Title == "" || len(value.Title) > MaxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
+	if value.Title == "" || len(value.Title) > maxPresentationTitleBytes || !utf8.ValidString(value.Title) || !value.Scope.Valid() || !ValidResourcePath(value.Entry) || !strings.HasPrefix(value.Entry, Namespace+"/") || !strings.HasSuffix(value.Entry, ".js") || !componentExport.MatchString(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", value.ID)
 	}
 	switch value.Placement {
-	case ComponentPlacementExport:
+	case componentPlacementExport:
 		if value.Selector != nil || value.Material != "" {
 			return refuse(DiagnosticInvalidDeclaration, "exported component cannot declare host placement metadata")
 		}
-	case ComponentPlacementWorkspaceView:
-		if (value.Scope == ComponentScopeFile || value.Scope == ComponentScopeToolResult) || value.Selector != nil {
+	case componentPlacementWorkspaceView:
+		if (value.Scope == componentScopeFile || value.Scope == componentScopeToolResult) || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "workspace component has a renderer target")
 		}
-	case ComponentPlacementSessionAction:
-		if value.Scope != ComponentScopeSession || value.Material != "" || value.Selector != nil {
+	case componentPlacementSessionAction:
+		if value.Scope != componentScopeSession || value.Material != "" || value.Selector != nil {
 			return refuse(DiagnosticInvalidDeclaration, "session action requires session context")
 		}
-	case ComponentPlacementFileRenderer:
-		if value.Scope != ComponentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != RendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
+	case componentPlacementFileRenderer:
+		if value.Scope != componentScopeFile || value.Material != "" || value.Selector == nil || value.Selector.Kind != rendererFileExtension || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !fileExtensionPattern.MatchString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "file component requires an exact extension selector")
 		}
-	case ComponentPlacementToolResultRenderer:
-		if value.Scope != ComponentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
+	case componentPlacementToolResultRenderer:
+		if value.Scope != componentScopeToolResult || value.Material != "" || value.Selector == nil || value.Selector.Name == "" || len(value.Selector.Name) > MaxRendererSelectorNameBytes || !utf8.ValidString(value.Selector.Name) {
 			return refuse(DiagnosticInvalidDeclaration, "tool result component requires an exact selector")
 		}
 		switch value.Selector.Kind {
-		case RendererToolName:
+		case rendererToolName:
 			if strings.ContainsAny(value.Selector.Name, " \t\r\n") {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result name")
 			}
-		case RendererResultShape:
+		case rendererResultShape:
 			if !slices.Contains([]string{"command", "search", "patch", "webSearch"}, value.Selector.Name) {
 				return refuse(DiagnosticInvalidDeclaration, "invalid tool result shape")
 			}
@@ -127,7 +125,7 @@ func (b *Builder) AdmitComponent(value ClientComponent) error {
 	return nil
 }
 
-func (i *Installation) AuthorizeComponent(release Release, digest fingerprint.Digest, id ContributionID) (ClientComponent, error) {
+func (i *Installation) AuthorizeComponent(release Release, digest identity.Digest, id ContributionID) (ClientComponent, error) {
 	if err := i.authorizePresentation(release, digest); err != nil {
 		return ClientComponent{}, err
 	}

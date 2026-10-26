@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -145,15 +144,13 @@ func TestListRunsRefusesAStatusThatIsNotOne(t *testing.T) {
 // the one thing it cannot mean, and a repeat asks a set for something a set has no
 // way to answer.
 func TestListRunsRefusesAnEmptyOrRepeatedStatusFilter(t *testing.T) {
-	if err := (protocol.ListRunsRequest{Statuses: []protocol.RunStatus{}}).ValidateWire(); err == nil {
+	if err := protocol.ValidateWireTree((protocol.ListRunsRequest{Statuses: []protocol.RunStatus{}})); err == nil {
 		t.Error("an empty status filter validated")
 	}
-	if err := (protocol.ListRunsRequest{Statuses: []protocol.RunStatus{
-		protocol.RunStatusRunning, protocol.RunStatusRunning,
-	}}).ValidateWire(); err == nil {
+	if err := protocol.ValidateWireTree((protocol.ListRunsRequest{Statuses: []protocol.RunStatus{protocol.RunStatusRunning, protocol.RunStatusRunning}})); err == nil {
 		t.Error("a repeated status validated")
 	}
-	if err := (protocol.ListRunsRequest{}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.ListRunsRequest{})); err != nil {
 		t.Errorf("an absent status filter = %v, want the whole history", err)
 	}
 }
@@ -212,9 +209,7 @@ func TestChildRunReadsRequireNegotiatedSubagents(t *testing.T) {
 	}
 
 	optedIn := withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents: {Enabled: true},
-		},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 	})
 	child, err := s.GetRun(optedIn, protocol.GetRunRequest{RunID: "run_child"})
 	if err != nil || child.ID != "run_child" || child.RootRunID != "run_root" {
@@ -391,7 +386,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			RootRunID: "run_waiting", ExecutorID: "turn_1",
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
-				RunID: "run_child", Kind: interrupt.Approval,
+				RunID: "run_child", Kind: run.InterruptApproval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 					Risk: tool.RiskHigh, Reason: "Runs commands in the workspace.", Rememberable: true,
@@ -411,7 +406,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			},
 			CreatedAt: created}}}
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
-		Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 	})
 	approvalItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_1", SessionID: "ses_1", RunID: "run_child",
@@ -422,9 +417,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 		Interrupts: reader, Runs: rootRunReader{root}, Transcript: oneItemReader{item: approvalItem},
 	})}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents: {Enabled: true},
-		},
+		Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval},
 	})
 

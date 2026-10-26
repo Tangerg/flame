@@ -8,8 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -28,10 +27,10 @@ var (
 // Record is the persisted projection of an installation. It names releases
 // by digest only: the admitted release catalog alone owns their content.
 type Record struct {
-	ID              resourceid.InstallationID
+	ID              identity.InstallationID
 	Source          string
-	Selected        fingerprint.Digest
-	Staged          *fingerprint.Digest
+	Selected        identity.Digest
+	Staged          *identity.Digest
 	Enabled         bool
 	Values          map[string]string
 	DisabledServers []mcpserver.ServerName
@@ -88,7 +87,7 @@ type Snapshot struct {
 // storage records cannot originate an installation that transitions would reject.
 type Installation struct{ record Record }
 
-func New(id resourceid.InstallationID, source string, release Release) (*Installation, error) {
+func New(id identity.InstallationID, source string, release Release) (*Installation, error) {
 	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), Values: map[string]string{}}, release, nil)
 }
 
@@ -164,13 +163,13 @@ func clone(r Record) Record {
 	return r
 }
 
-func (i *Installation) Snapshot() Record              { return clone(i.record) }
-func (i *Installation) ID() resourceid.InstallationID { return i.record.ID }
-func (i *Installation) Selected() fingerprint.Digest  { return i.record.Selected }
-func (i *Installation) Enabled() bool                 { return i.record.Enabled }
-func (i *Installation) Staged() (fingerprint.Digest, bool) {
+func (i *Installation) Snapshot() Record            { return clone(i.record) }
+func (i *Installation) ID() identity.InstallationID { return i.record.ID }
+func (i *Installation) Selected() identity.Digest   { return i.record.Selected }
+func (i *Installation) Enabled() bool               { return i.record.Enabled }
+func (i *Installation) Staged() (identity.Digest, bool) {
 	if i.record.Staged == nil {
-		return fingerprint.Digest{}, false
+		return identity.Digest{}, false
 	}
 	return *i.record.Staged, true
 }
@@ -384,8 +383,8 @@ func requiredValues(release Release, values map[string]string, disabled []mcpser
 // selected release digest and the server's name in it. Any release change
 // makes standing approvals for its tools stale; credentials and availability
 // affect connection realization, not permission.
-func (i *Installation) ServerAuthority(server mcpserver.ServerName) fingerprint.Digest {
-	return fingerprint.Strings(i.record.Selected.String(), server.String())
+func (i *Installation) ServerAuthority(server mcpserver.ServerName) identity.Digest {
+	return identity.DigestStrings(i.record.Selected.String(), server.String())
 }
 
 // ServerID names one declared server of this installation in the MCP registry.
@@ -430,7 +429,7 @@ func (i *Installation) ServerSource(release Release, server mcpserver.ServerName
 	return mcpserver.InstallationSource(i.record.ID, i.record.Selected, i.ServerAuthority(server), recipient)
 }
 
-func (i *Installation) authorizePresentation(release Release, digest fingerprint.Digest) error {
+func (i *Installation) authorizePresentation(release Release, digest identity.Digest) error {
 	if i.Selected() != digest || release.Digest() != digest {
 		return fmt.Errorf("%w: presentation release", ErrStale)
 	}
@@ -469,7 +468,7 @@ func (s InputState) Value() (string, bool) { return s.value, s.presence == Input
 // configured secret discloses only that it is configured: its text is never
 // copied into a view, so no encoder, log or client cache can carry it.
 type View struct {
-	ID              resourceid.InstallationID
+	ID              identity.InstallationID
 	Source          string
 	Enabled         bool
 	Inputs          map[string]InputState

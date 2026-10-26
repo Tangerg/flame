@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -28,7 +27,7 @@ func TestRunReadsRefuseOpenRowsWithTerminalFacts(t *testing.T) {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = db.Close() })
-				store := NewRunStore(db)
+				store := newRunStore(db)
 				draft := runDraft("run_decode", "ses_decode")
 				if err := store.Admit(t.Context(), draft); err != nil {
 					t.Fatal(err)

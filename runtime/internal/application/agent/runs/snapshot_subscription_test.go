@@ -45,7 +45,7 @@ func (e *snapshotEffects) CommitEvent(ctx context.Context, commit EventCommit) e
 func TestSnapshotSubscriptionHandsOffBeforeItemAndRootCompletion(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	executor := &snapshotExecutor{fakeExecutor: fakeExecutor{events: []ExecutorPayload{
+	executor := &snapshotExecutor{fakeExecutor: fakeExecutor{events: []executorPayload{
 		MessageDelta{Text: "review complete"}, SegmentEnded{Reason: run.OutcomeCompleted},
 	}}, publish: make(chan struct{}), attempted: make(chan struct{})}
 	effects := &snapshotEffects{committed: make(chan struct{}, 1)}

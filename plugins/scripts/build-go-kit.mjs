@@ -68,7 +68,7 @@ export async function prepareDevelopmentTools({
       GOARCH: "",
     };
     await mkdir(join(output, "tools"));
-    for (const name of ["contractgen", "archive"])
+    for (const name of ["flame-sdk"])
       execFileSync(
         "go",
         [
@@ -97,10 +97,7 @@ export async function prepareGoKit({
   offline,
   tools,
 }) {
-  const allowed = new Set([
-    `${sdkPath}/cmd/contractgen`,
-    `${sdkPath}/cmd/archive`,
-  ]);
+  const allowed = new Set([`${sdkPath}/cmd/flame-sdk`]);
   for (const tool of tools)
     if (!allowed.has(tool))
       throw new Error(`author tool is not public: ${tool}`);

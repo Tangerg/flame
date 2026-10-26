@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -44,22 +44,22 @@ func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 // DecodeResolution restores a typed user decision from persisted agent-process
 // response JSON. It applies the same exact-field and single-value contract as
 // [DecodePrompt].
-func DecodeResolution(raw []byte) (interrupt.Resolution, error) {
-	wire, err := decode[ResolutionPayload](raw)
+func decodeResolution(raw []byte) (run.InterruptResolution, error) {
+	wire, err := decode[resolutionPayload](raw)
 	if err != nil {
-		return interrupt.Resolution{}, fmt.Errorf("run input codec: decode resolution: %w", err)
+		return run.InterruptResolution{}, fmt.Errorf("run input codec: decode resolution: %w", err)
 	}
-	return wire.Resolution()
+	return wire.resolution()
 }
 
 // EncodeResolution converts a typed human decision to the JSON the executor
 // validates against its pending-input response schema before continuing.
-func EncodeResolution(resolution interrupt.Resolution) (jsontext.Value, error) {
-	wire := ResolutionPayload{}
+func EncodeResolution(resolution run.InterruptResolution) (jsontext.Value, error) {
+	wire := resolutionPayload{}
 	switch resolution.Kind() {
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		wire.Question = &questionAnswerPayload{Answers: resolution.Question().Answers()}
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		value := resolution.Approval()
 		wire.Approval = &approvalAnswerPayload{Decision: value.Decision, Arguments: value.EditedArguments, Reason: value.Reason, RememberScope: value.RememberScope}
 	default:
@@ -82,20 +82,20 @@ func decode[T any](raw []byte) (T, error) {
 }
 
 type interruptWire struct {
-	Kind     interrupt.Kind      `json:"kind"`
+	Kind     run.InterruptKind   `json:"kind"`
 	Approval *approvalPromptWire `json:"approval,omitzero"`
 	Question *questionPromptWire `json:"question,omitzero"`
 }
 
 type approvalPromptWire struct {
-	Tool              tool.Ref           `json:"tool"`
-	SourceFingerprint fingerprint.Digest `json:"sourceFingerprint,omitzero"`
-	CallID            string             `json:"callId"`
-	Arguments         string             `json:"arguments"`
-	SafetyClass       tool.SafetyClass   `json:"safetyClass"`
-	Risk              tool.RiskLevel     `json:"risk"`
-	Reason            string             `json:"reason,omitempty"`
-	Rememberable      bool               `json:"rememberable,omitzero"`
+	Tool              tool.Ref         `json:"tool"`
+	SourceFingerprint identity.Digest  `json:"sourceFingerprint,omitzero"`
+	CallID            string           `json:"callId"`
+	Arguments         string           `json:"arguments"`
+	SafetyClass       tool.SafetyClass `json:"safetyClass"`
+	Risk              tool.RiskLevel   `json:"risk"`
+	Reason            string           `json:"reason,omitempty"`
+	Rememberable      bool             `json:"rememberable,omitzero"`
 }
 
 type questionPromptWire struct {
@@ -203,9 +203,9 @@ func questionOptionsFrom(options []questionOptionWire) []runs.QuestionOptionSpec
 	return result
 }
 
-// ResolutionPayload is the closed response contract shared by the checkpoint
+// resolutionPayload is the closed response contract shared by the checkpoint
 // codec and Scope's pending-input schema.
-type ResolutionPayload struct {
+type resolutionPayload struct {
 	Question *questionAnswerPayload `json:"question,omitempty" jsonschema:"oneof_required=question"`
 	Approval *approvalAnswerPayload `json:"approval,omitempty" jsonschema:"oneof_required=approval"`
 }
@@ -221,14 +221,14 @@ type approvalAnswerPayload struct {
 	RememberScope approval.Scope    `json:"remember_scope,omitempty"`
 }
 
-func (r ResolutionPayload) Resolution() (interrupt.Resolution, error) {
+func (r resolutionPayload) resolution() (run.InterruptResolution, error) {
 	if (r.Question == nil) == (r.Approval == nil) {
-		return interrupt.Resolution{}, errors.New("run input codec: exactly one answer kind is required")
+		return run.InterruptResolution{}, errors.New("run input codec: exactly one answer kind is required")
 	}
 	if r.Question != nil {
-		return interrupt.NewQuestionAnswer(r.Question.Answers)
+		return run.NewQuestionAnswer(r.Question.Answers)
 	}
-	return interrupt.NewApprovalAnswer(approval.Resolution{
+	return run.NewApprovalAnswer(approval.Resolution{
 		Decision: r.Approval.Decision, EditedArguments: r.Approval.Arguments,
 		Reason: r.Approval.Reason, RememberScope: r.Approval.RememberScope,
 	})

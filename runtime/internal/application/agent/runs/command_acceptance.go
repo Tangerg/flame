@@ -7,8 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -56,23 +55,23 @@ func (a CommandAcceptance) Validate() error {
 	if a.Key == "" {
 		return errors.New("runs: command acceptance has no idempotency key")
 	}
-	if _, err := fingerprint.ParseDigest(a.Fingerprint); err != nil {
+	if _, err := flameidentity.ParseDigest(a.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command acceptance fingerprint: %w", err)
 	}
 	if !a.Operation.Valid() {
 		return fmt.Errorf("runs: command acceptance has unknown operation %q", a.Operation)
 	}
-	if err := resourceid.ValidateSession(a.SessionID); err != nil {
+	if err := flameidentity.ValidateSession(a.SessionID); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateRun(a.RunID); err != nil {
+	if err := flameidentity.ValidateRun(a.RunID); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateSegment(a.SegmentID); err != nil {
+	if err := flameidentity.ValidateSegment(a.SegmentID); err != nil {
 		return err
 	}
 	if a.UserItemID != "" || a.Operation == CommandStartOpening || a.Operation == CommandSteerInput {
-		if err := resourceid.ValidateItem(a.UserItemID); err != nil {
+		if err := flameidentity.ValidateItem(a.UserItemID); err != nil {
 			return err
 		}
 	}
@@ -111,7 +110,7 @@ func (c CommandIdentity) Validate() error {
 	if c.Key == "" {
 		return errors.New("runs: command identity has no idempotency key")
 	}
-	if _, err := fingerprint.ParseDigest(c.Fingerprint); err != nil {
+	if _, err := flameidentity.ParseDigest(c.Fingerprint); err != nil {
 		return fmt.Errorf("runs: command identity fingerprint: %w", err)
 	}
 	return nil
@@ -131,7 +130,7 @@ type CommandAcceptanceRecord struct {
 
 // CommandAcceptanceReader observes original command facts without admitting,
 // completing, or repairing a record.
-type CommandAcceptanceReader interface {
+type commandAcceptanceReader interface {
 	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)
 }
 

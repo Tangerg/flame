@@ -7,16 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 func TestNewRejectsMalformedDependencies(t *testing.T) {
@@ -83,70 +80,70 @@ func mustNewEffects(cfg Config) *Effects {
 	if cfg.ContextState == nil {
 		cfg.ContextState = inertContextState{}
 	}
-	if dependency.Missing(cfg.ExecutionTrees) {
+	if lo.IsNil(cfg.ExecutionTrees) {
 		cfg.ExecutionTrees = unusedExecutionTrees{}
 	}
-	if dependency.Missing(cfg.CommandAcceptances) {
+	if lo.IsNil(cfg.CommandAcceptances) {
 		cfg.CommandAcceptances = inertCommandAcceptances{}
 	}
-	if dependency.Missing(cfg.ActorAuthority) {
+	if lo.IsNil(cfg.ActorAuthority) {
 		cfg.ActorAuthority = inertActorAuthority{}
 	}
-	if dependency.Missing(cfg.GoalRuns) {
+	if lo.IsNil(cfg.GoalRuns) {
 		cfg.GoalRuns = inertGoalRuns{}
 	}
-	if dependency.Missing(cfg.ToolResults) {
+	if lo.IsNil(cfg.ToolResults) {
 		cfg.ToolResults = inertToolResults{}
 	}
-	if dependency.Missing(cfg.RememberedRules) {
+	if lo.IsNil(cfg.RememberedRules) {
 		cfg.RememberedRules = inertRememberedRules{}
 	}
-	if dependency.Missing(cfg.AcceptedContinuations) {
+	if lo.IsNil(cfg.AcceptedContinuations) {
 		cfg.AcceptedContinuations = inertAcceptedContinuations{}
 	}
-	if dependency.Missing(cfg.Interrupts) {
+	if lo.IsNil(cfg.Interrupts) {
 		cfg.Interrupts = &fakeInterrupts{}
 	}
-	if dependency.Missing(cfg.Sessions) {
+	if lo.IsNil(cfg.Sessions) {
 		cfg.Sessions = &fakeSession{}
 	}
-	if dependency.Missing(cfg.Transcript) {
+	if lo.IsNil(cfg.Transcript) {
 		cfg.Transcript = &fakeTranscript{}
 	}
 	items := inertItems{}
-	if dependency.Missing(cfg.ItemReplacer) {
+	if lo.IsNil(cfg.ItemReplacer) {
 		if replacer, ok := cfg.Transcript.(ItemReplacer); ok {
 			cfg.ItemReplacer = replacer
 		} else {
 			cfg.ItemReplacer = items
 		}
 	}
-	if dependency.Missing(cfg.ModelInvocations) {
+	if lo.IsNil(cfg.ModelInvocations) {
 		cfg.ModelInvocations = inertModelInvocations{}
 	}
-	if dependency.Missing(cfg.ToolInvocations) {
+	if lo.IsNil(cfg.ToolInvocations) {
 		cfg.ToolInvocations = inertToolInvocations{}
 	}
-	if dependency.Missing(cfg.Conversation) {
+	if lo.IsNil(cfg.Conversation) {
 		cfg.Conversation = &fakeStores{}
 	}
-	if dependency.Missing(cfg.State) {
+	if lo.IsNil(cfg.State) {
 		cfg.State = &fakeRunState{}
 	}
-	if dependency.Missing(cfg.RunProgress) {
+	if lo.IsNil(cfg.RunProgress) {
 		if progress, ok := cfg.State.(RunProgressWriter); ok {
 			cfg.RunProgress = progress
 		} else {
 			cfg.RunProgress = &fakeRunState{}
 		}
 	}
-	if dependency.Missing(cfg.ExecutorCheckpoints) {
+	if lo.IsNil(cfg.ExecutorCheckpoints) {
 		cfg.ExecutorCheckpoints = &recordingExecutorCheckpointStore{}
 	}
-	if dependency.Missing(cfg.ChildRunStarts) {
+	if lo.IsNil(cfg.ChildRunStarts) {
 		cfg.ChildRunStarts = &fakeChildRunStarts{}
 	}
-	if dependency.Missing(cfg.Tx) {
+	if lo.IsNil(cfg.Tx) {
 		cfg.Tx = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	}
 	effects, err := New(cfg)
@@ -225,7 +222,7 @@ func (inertGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 
 type inertToolResults struct{}
 
-func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+func (inertToolResults) Discard(context.Context, string, transcript.ToolResultRef) error { return nil }
 
 type inertRememberedRules struct{}
 

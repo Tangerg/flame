@@ -35,8 +35,12 @@ responses. Retrying continues that original command. Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
 
-The client installs a mutation journal by default, using the supplied capabilities
-reader for its scope. Every mutation, including one with an explicit key, must
+Each client owns one mutation journal and retires it when `close()` begins.
+Consumers may supply `mutationStorage` to retain unresolved commands across
+client replacement. The `capabilities` reader supplies the sole namespace and
+retention authority; there is no separate scope, clock, or journal lifecycle
+option. Recovery handles and `createMutationSettler` retain their explicit
+operation lifetimes. Every mutation, including one with an explicit key, must
 reserve its immutable input and Runtime store namespace before
 dispatch. Missing scope or failed persistence refuses the command without opening
 transport. That refused handle cannot later capture a different target through

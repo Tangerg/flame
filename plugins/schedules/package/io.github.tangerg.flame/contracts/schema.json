@@ -2,34 +2,34 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2eschedules_2fcreate_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fDraft"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft"
     },
     "Method_flame_2eschedules_2fcreate_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
     },
     "Method_flame_2eschedules_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fItemInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fItemInput"
     },
     "Method_flame_2eschedules_2fdelete_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fAck"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fAck"
     },
     "Method_flame_2eschedules_2flist_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fListInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fListInput"
     },
     "Method_flame_2eschedules_2flist_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fPage"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fPage"
     },
     "Method_flame_2eschedules_2frunNow_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fItemInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fItemInput"
     },
     "Method_flame_2eschedules_2frunNow_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvYXBwbGljYXRpb24_5fRunReference"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference"
     },
     "Method_flame_2eschedules_2fupdate_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fUpdateInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput"
     },
     "Method_flame_2eschedules_2fupdate_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fSelection": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_5fselectionJSON_5bstring_5d"
@@ -54,7 +54,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvYXBwbGljYXRpb24_5fRunReference": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u_5fRunReference": {
       "additionalProperties": false,
       "properties": {
         "RunID": {
@@ -70,7 +70,120 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fDraft": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fAck": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "ID": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "Cursor": {
+          "type": "string"
+        },
+        "Limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "Cursor"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fModelPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "Model": {
+          "type": "string"
+        },
+        "Provider": {
+          "type": "string"
+        },
+        "ReasoningEffort": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fPage": {
+      "additionalProperties": false,
+      "properties": {
+        "NextCursor": {
+          "type": "string"
+        },
+        "Rows": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Rows",
+        "NextCursor"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput": {
+      "additionalProperties": false,
+      "properties": {
+        "CWD": {
+          "type": "string"
+        },
+        "Cron": {
+          "type": "string"
+        },
+        "Enabled": {
+          "type": "boolean"
+        },
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "ID": {
+          "type": "string"
+        },
+        "Instructions": {
+          "type": "string"
+        },
+        "ModelSelection": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_5fModelPatch"
+        },
+        "Title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ID",
+        "ExpectedRevision",
+        "ModelSelection"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fDraft": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -102,7 +215,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot": {
       "additionalProperties": false,
       "properties": {
         "CWD": {
@@ -156,119 +269,6 @@
         "NextRunAt",
         "CreatedAt",
         "Revision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fAck": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fListInput": {
-      "additionalProperties": false,
-      "properties": {
-        "Cursor": {
-          "type": "string"
-        },
-        "Limit": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "required": [
-        "Cursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fModelPatch": {
-      "additionalProperties": false,
-      "properties": {
-        "Model": {
-          "type": "string"
-        },
-        "Provider": {
-          "type": "string"
-        },
-        "ReasoningEffort": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fPage": {
-      "additionalProperties": false,
-      "properties": {
-        "NextCursor": {
-          "type": "string"
-        },
-        "Rows": {
-          "items": {
-            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "Rows",
-        "NextCursor"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fUpdateInput": {
-      "additionalProperties": false,
-      "properties": {
-        "CWD": {
-          "type": "string"
-        },
-        "Cron": {
-          "type": "string"
-        },
-        "Enabled": {
-          "type": "boolean"
-        },
-        "ExpectedRevision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "type": "integer"
-        },
-        "ID": {
-          "type": "string"
-        },
-        "Instructions": {
-          "type": "string"
-        },
-        "ModelSelection": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvcnBj_5fModelPatch"
-        },
-        "Title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID",
-        "ExpectedRevision",
-        "ModelSelection"
       ],
       "type": "object"
     }

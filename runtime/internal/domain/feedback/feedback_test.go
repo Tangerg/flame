@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestNewEntryValidatesSignalAndTimestamp(t *testing.T) {
@@ -25,7 +25,7 @@ func TestNewEntryValidatesSignalAndTimestamp(t *testing.T) {
 		{Text: "text"},
 		{SessionID: "ses_ one", Rating: RatingPositive, CreatedAt: now},
 		{RunID: "run_\u200bhidden", Rating: RatingPositive, CreatedAt: now},
-		{ItemID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), Rating: RatingPositive, CreatedAt: now},
+		{ItemID: strings.Repeat("界", identity.MaximumResourceCharacters+1), Rating: RatingPositive, CreatedAt: now},
 	} {
 		if err := invalid.Validate(); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("Validate(%+v) = %v, want ErrInvalid", invalid, err)

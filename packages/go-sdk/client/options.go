@@ -1,8 +1,6 @@
 package client
 
-import (
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-)
+import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 func pluginCallOptions(options protocol.PluginCallOptions) callConfig {
 	return callConfig{

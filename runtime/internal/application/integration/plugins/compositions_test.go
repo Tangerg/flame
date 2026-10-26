@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -22,7 +22,7 @@ func (s requirementCompositions) List(context.Context) ([]plugin.OrderedComposit
 
 func (s requirementCompositions) Get(_ context.Context, reference string) (plugin.OrderedComposition, bool, error) {
 	for _, value := range s.values {
-		contract, err := capability.Parse(value.Snapshot().Contract.JSON())
+		contract, err := extension.ParseCapability(value.Snapshot().Contract.JSON())
 		if err != nil {
 			return plugin.OrderedComposition{}, false, err
 		}
@@ -39,7 +39,7 @@ func (s *requirementCompositions) Save(_ context.Context, value plugin.OrderedCo
 }
 
 func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *testing.T) {
-	contract := requirementContract(t, "model-observer", capability.Decoration)
+	contract := requirementContract(t, "model-observer", extension.Decoration)
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "outer", contract)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "inner", contract)
 	store := requirementInstallations{snapshots: []plugin.Snapshot{first, second}}
@@ -71,7 +71,7 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 	}
 	descriptor := contract.Descriptor()
 	descriptor.Methods[0].Output = jsontext.Value(`{"type":"boolean"}`)
-	drifted, err := capability.FromDescriptor(descriptor)
+	drifted, err := extension.AdmitCapability(descriptor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,8 +85,8 @@ func TestOrderedCompositionFreezesExplicitOrderAndRejectsWithdrawnMembers(t *tes
 }
 
 func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *testing.T) {
-	contract := requirementContract(t, "observed-model", capability.Decoration)
-	rootContract := requirementContract(t, "consumer", capability.Collection)
+	contract := requirementContract(t, "observed-model", extension.Decoration)
+	rootContract := requirementContract(t, "consumer", extension.Collection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", rootContract, plugin.Requirement{ID: "observers", Contract: contract.Identity()})
 	first := requirementSnapshot(t, testsupport.InstallationID(t), "outer", contract)
 	second := requirementSnapshot(t, testsupport.InstallationID(t), "inner", contract)
@@ -96,7 +96,7 @@ func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *tes
 	}
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root, first, second}}
 	choices := &requirementCompositions{values: []plugin.OrderedComposition{composition}}
-	bound, err := ResolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, root, testsupport.ServerName("backend"))
+	bound, err := resolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, root, testsupport.ServerName("backend"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *tes
 	if len(values) != 1 || len(values[0].Bindings) != 2 || values[0].Bindings[0].Provider.InstallationID != second.Installation.ID() {
 		t.Fatalf("setup order lost: %+v", values)
 	}
-	if _, err := ResolveEntryRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, root, testsupport.ServerName("backend")); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := resolveEntryRequirements(t.Context(), store, requirementSelections{}, &requirementCompositions{}, root, testsupport.ServerName("backend")); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("required absence admitted: %v", err)
 	}
 	empty, err := plugin.NewOrderedComposition(plugin.CompositionRecord{Contract: contract.Identity(), Members: []plugin.CompositionMember{}})
@@ -112,15 +112,15 @@ func TestNamedDecorationRequirementsPreserveStoredOrderAndRequiredAbsence(t *tes
 		t.Fatal(err)
 	}
 	choices.values = []plugin.OrderedComposition{empty}
-	if _, err := ResolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, root, testsupport.ServerName("backend")); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := resolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, root, testsupport.ServerName("backend")); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("required empty composition admitted: %v", err)
 	}
 	optional := requirementSnapshot(t, testsupport.InstallationID(t), "optional", rootContract, plugin.Requirement{ID: "observers", Contract: contract.Identity(), Optional: true})
 	store.snapshots = append(store.snapshots, optional)
-	if value, err := ResolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, optional, testsupport.ServerName("backend")); err != nil || len(value.Snapshot()[0].Bindings) != 0 {
+	if value, err := resolveEntryRequirements(t.Context(), store, requirementSelections{}, choices, optional, testsupport.ServerName("backend")); err != nil || len(value.Snapshot()[0].Bindings) != 0 {
 		t.Fatalf("optional empty composition: %+v, %v", value, err)
 	}
-	changed := requirementContract(t, "observed-model", capability.Selection)
+	changed := requirementContract(t, "observed-model", extension.Selection)
 	if _, err := ResolveComposition(t.Context(), store, choices, changed); !errors.Is(err, plugin.ErrInvalid) {
 		t.Fatalf("non-decoration consumer admitted: %v", err)
 	}

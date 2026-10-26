@@ -8,14 +8,14 @@ import (
 	"iter"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	scopemetadata "github.com/Tangerg/scope/core/metadata"
 	"github.com/google/uuid"
 )
 
-const streamMetadataKey = "io.github.tangerg.flame/stream.v1"
+const StreamMetadataKey = "io.github.tangerg.flame/stream.v1"
 
 type deliveredChunk struct {
 	Sequence uint64         `json:"sequence"`
@@ -23,15 +23,15 @@ type deliveredChunk struct {
 }
 
 func chunkDeliveryMethod() (*Method[deliveredChunk, bool], error) {
-	return NewMethod[deliveredChunk, bool](MethodConfig{Name: "flame.stream/deliver.v1", Kind: capability.Mutation, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
+	return NewMethod[deliveredChunk, bool](MethodConfig{Name: "flame.stream/deliver.v1", Kind: extension.Mutation, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
 }
 
 // StreamDeliveryContract projects the existing acknowledged chunk callback for
 // independent language bindings. Its schema identity remains owned here.
-func StreamDeliveryContract() (capability.MethodDescriptor, error) {
+func StreamDeliveryContract() (extension.MethodDescriptor, error) {
 	method, err := chunkDeliveryMethod()
 	if err != nil {
-		return capability.MethodDescriptor{}, err
+		return extension.MethodDescriptor{}, err
 	}
 	return method.Descriptor(), nil
 }
@@ -43,9 +43,9 @@ func (m *StreamingMethod[P, C, R]) RegisterServer(backend *Backend, handler func
 	return backend.register(bindStreaming(m, handler))
 }
 
-func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method boundMethod, wire *invokeParams) (*Result[jsontext.Value], error) {
+func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method boundMethod, wire *invokeParams) (*methodResult[jsontext.Value], error) {
 	var ref CallbackRef
-	if err := json.Unmarshal(wire.Meta[streamMetadataKey], &ref, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(wire.Meta[StreamMetadataKey], &ref, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	if err := ref.Validate(); err != nil {
@@ -62,13 +62,13 @@ func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method
 	var index uint64
 	for value, err := range sequence {
 		if err != nil {
-			if refusal, known := errors.AsType[*capability.Refusal](err); known {
-				return &Result[jsontext.Value]{Failure: refusal}, nil
+			if refusal, known := errors.AsType[*extension.Refusal](err); known {
+				return &methodResult[jsontext.Value]{Failure: refusal}, nil
 			}
 			return nil, err
 		}
 		if value.Kind == "result" {
-			return &Result[jsontext.Value]{Value: new(value.Value), valueJSON: value.Value}, nil
+			return &methodResult[jsontext.Value]{Value: new(value.Value), valueJSON: value.Value}, nil
 		}
 		if value.Kind != "chunk" || index == ^uint64(0) {
 			return nil, errors.New("plugin: invalid backend stream ordering")
@@ -90,13 +90,13 @@ type pendingChunk struct {
 	consumed chan struct{}
 }
 type streamCompletion struct {
-	reply *Result[jsontext.Value]
+	reply *methodResult[jsontext.Value]
 	err   error
 }
 
 // StreamWithMetadata retains the original MCP invocation while acknowledged
 // callback delivery keeps production behind actual consumer demand.
-func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id string, input jsoninput.Input, metadata sdk.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error] {
+func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id string, input jsonvalue.Value, metadata sdk.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error] {
 	frozen := scopemetadata.Map(metadata.Meta).Clone()
 	_, metadataErr := json.Marshal(sdk.ParamsBase{Meta: sdk.Meta(frozen)})
 	return func(yield func(StreamValue[jsontext.Value, jsontext.Value], error) bool) {
@@ -168,7 +168,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			return
 		}
 		defer release()
-		if err := metadata.Set(streamMetadataKey, ref); err != nil {
+		if err := metadata.Set(StreamMetadataKey, ref); err != nil {
 			fail(err)
 			return
 		}
@@ -189,7 +189,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 				close(chunk.consumed)
 			case <-done:
 				if completion.err != nil {
-					if refusal, known := errors.AsType[*capability.Refusal](completion.err); known {
+					if refusal, known := errors.AsType[*extension.Refusal](completion.err); known {
 						yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
 						return
 					}
@@ -215,7 +215,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 }
 
 func (m *StreamingMethod[P, C, R]) StreamWithMetadata(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata sdk.ParamsBase) iter.Seq2[StreamValue[C, R], error] {
-	admitted, admissionErr := jsoninput.Encode(input)
+	admitted, admissionErr := jsonvalue.Encode(input)
 	source := binding.StreamWithMetadata(ctx, callbacks, limits, id, admitted, metadata)
 	return func(yield func(StreamValue[C, R], error) bool) {
 		if admissionErr != nil || m == nil || binding == nil || m.contract.Identity() != binding.Contract() {

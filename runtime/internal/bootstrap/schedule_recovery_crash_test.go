@@ -12,10 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/scope/core/chat"
@@ -91,9 +90,9 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 
 	cfg := protocolRuntimeConfig(t, stores, scheduleCrashModel(t, home))
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.approvalMode = approval.ModeYolo
 	if os.Getenv("FLAME_TEST_SCHEDULE_EDITED") == "1" {
-		cfg.ApprovalMode = approval.ModeSafe
+		cfg.approvalMode = approval.ModeSafe
 	}
 	executable, err := os.Open(os.Args[0])
 	if err != nil {
@@ -106,7 +105,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	var sum [sha256.Size]byte
 	copy(sum[:], hash.Sum(nil))
-	cfg.BuildID = identity.BuildFromSHA256(sum).String()
+	cfg.buildID = runs.BuildFromSHA256(sum).String()
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
 	endpoint := acceptedCommandEndpoint(t, api, stores)

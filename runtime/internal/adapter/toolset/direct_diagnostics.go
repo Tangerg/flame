@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -111,15 +110,15 @@ func directPath(root, path string) (string, error) {
 	// a lexical /var/... spelling but a physical /private/var/... spelling;
 	// comparing only a resolved target to an unresolved root would reject an
 	// in-root file (or make the policy platform-dependent).
-	resolvedRoot, err := pathidentity.Resolve("", root)
+	resolvedRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return "", fmt.Errorf("%w: resolve root %q: %w", workspaceapp.ErrPathOutsideRoot, root, err)
 	}
-	resolved, err := pathidentity.Resolve(resolvedRoot, path)
+	resolved, err := filesystem.ResolvePath(resolvedRoot, path)
 	if err != nil {
 		return "", fmt.Errorf("%w: resolve %q: %w", workspaceapp.ErrPathOutsideRoot, path, err)
 	}
-	inside, err := pathidentity.Contains(resolvedRoot, resolved)
+	inside, err := filesystem.ContainsPath(resolvedRoot, resolved)
 	if err != nil {
 		return "", fmt.Errorf("%w: compare %q: %w", workspaceapp.ErrPathOutsideRoot, path, err)
 	}

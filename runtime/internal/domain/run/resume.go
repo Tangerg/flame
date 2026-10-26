@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // TreeResumeDraft is the complete set of parked Runs reopened after one
@@ -79,7 +79,7 @@ func (t TreeResumeDraft) Validate() error {
 		if replacement.Expected().State() != Waiting || resumed.State() != Running {
 			return fmt.Errorf("run: tree resume Run %q does not move from waiting to running", resumed.ID())
 		}
-		if err := resourceid.ValidateSegment(resumed.ActiveSegmentID()); err != nil {
+		if err := identity.ValidateSegment(resumed.ActiveSegmentID()); err != nil {
 			return fmt.Errorf("run: tree resume Run %q: %w", resumed.ID(), err)
 		}
 		if resumed.SessionID() != root.SessionID() || resumed.Lineage().TreeRootID(resumed.ID()) != root.ID() {

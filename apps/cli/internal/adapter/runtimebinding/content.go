@@ -13,9 +13,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -40,14 +40,14 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	if err := validateAttachmentSource(source, maximumBytes); err != nil {
 		return nil, err
 	}
-	file, opened, err := fileinput.OpenExpected(path, source, maximumBytes)
+	file, opened, err := filesystem.OpenFileExpected(path, source, maximumBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return nil, errors.New("file changed while it was being opened")
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return nil, errors.New("file is not a regular file")
-		case errors.Is(err, fileinput.ErrTooLarge):
+		case errors.Is(err, filesystem.ErrFileTooLarge):
 			return nil, attachmentTooLargeError{maximumBytes: maximumBytes}
 		default:
 			return nil, err
@@ -70,8 +70,8 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	if int64(len(data)) > maximumBytes {
 		return nil, attachmentTooLargeError{maximumBytes: maximumBytes}
 	}
-	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return nil, errors.New("file changed while it was being read")
 		}
 		return nil, fmt.Errorf("verify file after reading: %w", err)
@@ -102,7 +102,7 @@ func (c contextReader) Read(buffer []byte) (int, error) {
 }
 
 // PrepareInput materializes files before a workflow binds content to a command.
-func (r *Connection) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
+func (r *Connection) PrepareInput(ctx context.Context, message authoring.Message) ([]protocol.ContentBlock, error) {
 	if err := message.Validate(); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (r *Connection) PrepareInput(ctx context.Context, message prompt.Message) (
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
 		}
-		data, err := r.loadAttachment(ctx, attachment.Path, prompt.MaxAttachmentBytes)
+		data, err := r.loadAttachment(ctx, attachment.Path, authoring.MaxAttachmentBytes)
 		if err != nil {
 			return nil, fmt.Errorf("read attachment %q: %w", attachment.Name, err)
 		}
@@ -145,7 +145,7 @@ func (r *Connection) PrepareInput(ctx context.Context, message prompt.Message) (
 	return blocks, nil
 }
 
-func (r *Connection) requireInputCapabilities(message prompt.Message) error {
+func (r *Connection) requireInputCapabilities(message authoring.Message) error {
 	for _, attachment := range message.Attachments {
 		if attachment.Kind == protocol.ContentBlockImage {
 			return r.requireFeature(protocol.FeatureMultimodal)
@@ -154,7 +154,7 @@ func (r *Connection) requireInputCapabilities(message prompt.Message) error {
 	return nil
 }
 
-func projectContent(itemID string, content []protocol.ContentBlock) (string, []prompt.Attachment, error) {
+func projectContent(itemID string, content []protocol.ContentBlock) (string, []authoring.Attachment, error) {
 	projected, err := projectContentValue(itemID, content)
 	return projected.text, projected.attachments, err
 }
@@ -166,13 +166,13 @@ func projectAssistantContent(itemID string, content []protocol.ContentBlock) (st
 
 type contentProjection struct {
 	text        string
-	attachments []prompt.Attachment
+	attachments []authoring.Attachment
 	images      []conversation.InlineImage
 }
 
 func projectContentValue(itemID string, content []protocol.ContentBlock) (contentProjection, error) {
 	textParts := make([]string, 0, len(content))
-	attachments := make([]prompt.Attachment, 0, len(content))
+	attachments := make([]authoring.Attachment, 0, len(content))
 	images := make([]conversation.InlineImage, 0, len(content))
 	for index, block := range content {
 		switch block.Type {
@@ -189,7 +189,7 @@ func projectContentValue(itemID string, content []protocol.ContentBlock) (conten
 			} else if subtype := strings.TrimPrefix(block.Mime, "image/"); subtype != block.Mime && subtype != "" {
 				name += "." + filepath.Base(subtype)
 			}
-			attachments = append(attachments, prompt.Attachment{
+			attachments = append(attachments, authoring.Attachment{
 				ID: fmt.Sprintf("%s:image:%d", itemID, index), Kind: protocol.ContentBlockImage,
 				Name: name, MimeType: block.Mime, Size: int64(len(data)),
 			})

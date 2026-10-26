@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -68,8 +67,8 @@ func TestResumeRejectsAHandoffConsumedBeforeAdmission(t *testing.T) {
 	}
 	_, err := coordinator.Resume(t.Context(), ResumeCommand{
 		RunID:              "run_1",
-		CallerCapabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
-		Responses:          []ResumeResponse{{ItemID: "item_1", Kind: interrupt.Question, Question: &QuestionResponse{Answers: [][]string{{"Yes"}}}}},
+		CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
+		Responses:          []ResumeResponse{{ItemID: "item_1", Kind: run.InterruptQuestion, Question: &QuestionResponse{Answers: [][]string{{"Yes"}}}}},
 	})
 	if !errors.Is(err, ErrInterruptNotOpen) {
 		t.Fatalf("resume of a consumed handoff = %v, want ErrInterruptNotOpen", err)

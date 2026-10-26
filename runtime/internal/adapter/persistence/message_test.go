@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 	history "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/history/storetest"
@@ -32,7 +32,7 @@ func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	id := " provider\u200b" + strings.Repeat("界", 513) + "\n"
 	want := []chat.Message{
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
@@ -61,7 +61,7 @@ func TestMessageStore_ReplaceIsTransactional(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	ctx := context.Background()
 
 	if _, writeErr := store.Write(ctx, "conv",
@@ -100,7 +100,7 @@ func TestMessageStore_CountMatchesReadLength(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	ctx := context.Background()
 
 	if n, countErr := store.Count(ctx, "conv"); countErr != nil || n != 0 {
@@ -130,7 +130,7 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	if _, err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
 		t.Fatal(err)
 	}
@@ -159,14 +159,14 @@ func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	if _, err := store.Write(t.Context(), "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two"))); err != nil {
 		t.Fatal(err)
 	}
 
 	abandoned := errors.New("rewrite abandoned")
-	if err := sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
 		if replaceErr := store.Replace(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("replacement"))); replaceErr != nil {
 			return replaceErr
 		}
@@ -195,7 +195,7 @@ func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMessageStore(db)
+	store := newMessageStore(db)
 	ctx := t.Context()
 
 	for _, text := range []string{"one", "two", "three"} {

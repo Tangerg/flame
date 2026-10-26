@@ -21,10 +21,6 @@
       "import": "./src/tokens.stylex.ts"
     },
     "./styles.css": "./dist/styles.css",
-    "./primitives": {
-      "types": "./dist/primitives/index.d.ts",
-      "import": "./dist/primitives/index.js"
-    },
     "./button": {
       "types": "./dist/button.d.ts",
       "import": "./dist/button.js"
@@ -72,10 +68,6 @@
     "./well-surface": {
       "types": "./dist/well-surface.d.ts",
       "import": "./dist/well-surface.js"
-    },
-    "./font-scale": {
-      "types": "./dist/font-scale.d.ts",
-      "import": "./dist/font-scale.js"
     },
     "./panel": {
       "types": "./dist/panel.d.ts",

@@ -6,7 +6,6 @@ import (
 	"iter"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -14,25 +13,26 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/trace"
 )
 
 // EndpointJournal commits observations without authorizing replay or continuation.
 // The owner is the host-captured logical Model/Tool call, not caller-supplied ancestry.
 // Its durable admission supplies the original Run/Segment before provider generation.
-type EndpointJournal interface {
+type endpointJournal interface {
 	StartEndpointInvocation(context.Context, modelref.EndpointInvocation, string) error
 	SettleEndpointInvocation(context.Context, modelref.EndpointInvocation, modelref.EndpointOutcome) error
 }
 
 type ObservedResolver struct {
 	resolver ChatModelResolver
-	journal  EndpointJournal
+	journal  endpointJournal
 	pricing  accounting.Pricing
 }
 
-func NewObservedResolver(resolver ChatModelResolver, journal EndpointJournal, pricing accounting.Pricing) (*ObservedResolver, error) {
-	if dependency.Missing(resolver) || dependency.Missing(journal) {
+func NewObservedResolver(resolver ChatModelResolver, journal endpointJournal, pricing accounting.Pricing) (*ObservedResolver, error) {
+	if lo.IsNil(resolver) || lo.IsNil(journal) {
 		return nil, errors.New("model: resolver and endpoint journal are required")
 	}
 	return &ObservedResolver{resolver: resolver, journal: journal, pricing: pricing}, nil
@@ -43,7 +43,7 @@ func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelchoic
 	if err != nil {
 		return ResolvedChat{}, err
 	}
-	if dependency.Missing(resolved.Model()) {
+	if lo.IsNil(resolved.Model()) {
 		return ResolvedChat{}, errors.New("model: resolver returned no endpoint model")
 	}
 	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: r.pricing}
@@ -66,7 +66,7 @@ func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, mode
 
 type observedEndpoint struct {
 	inner     chat.Model
-	journal   EndpointJournal
+	journal   endpointJournal
 	selection modelchoice.Selection
 	pricing   accounting.Pricing
 }

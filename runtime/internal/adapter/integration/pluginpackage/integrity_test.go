@@ -11,17 +11,17 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-func verificationOf(t *testing.T, r *Releases, digest fingerprint.Digest) (uint64, bool) {
+func verificationOf(t *testing.T, r *Releases, digest identity.Digest) (uint64, bool) {
 	t.Helper()
 	integrity, found := r.cached(digest)
 	return integrity.verifiedAt, found
 }
 
-func drop(r *Releases, digest fingerprint.Digest) {
+func drop(r *Releases, digest identity.Digest) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.verified, digest)
@@ -234,11 +234,11 @@ func TestIntegrityCacheStaysWithinItsBoundAndKeepsHeldProofs(t *testing.T) {
 	r := testReleases(t)
 	proof := releaseIntegrity{treeContents: treeContents{files: map[string][sha256.Size]byte{strings.Repeat("n", maxVerifiedBytes/4): {}}}}
 	fits := int(maxVerifiedBytes / proof.estimate())
-	digests := make([]fingerprint.Digest, fits+2)
+	digests := make([]identity.Digest, fits+2)
 	for index := range digests {
-		digests[index] = fingerprint.Sum([sha256.Size]byte{byte(index + 1)})
+		digests[index] = identity.DigestFromSum([sha256.Size]byte{byte(index + 1)})
 	}
-	hold := func(digest fingerprint.Digest) {
+	hold := func(digest identity.Digest) {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		r.verifying[digest] = &verification{done: make(chan struct{})}
@@ -255,7 +255,7 @@ func TestIntegrityCacheStaysWithinItsBoundAndKeepsHeldProofs(t *testing.T) {
 			t.Fatalf("integrity cache retains %d bytes, bound is %d", used, maxVerifiedBytes)
 		}
 	}
-	cached := func(digest fingerprint.Digest) bool {
+	cached := func(digest identity.Digest) bool {
 		_, found := r.cached(digest)
 		return found
 	}
@@ -288,7 +288,7 @@ func TestIntegrityCacheStaysWithinItsBoundAndKeepsHeldProofs(t *testing.T) {
 	if cached(digests[fits+1]) {
 		t.Fatal("a proof was cached although only held proofs could make room")
 	}
-	for _, digest := range append([]fingerprint.Digest{digests[0]}, digests[2:fits+1]...) {
+	for _, digest := range append([]identity.Digest{digests[0]}, digests[2:fits+1]...) {
 		if !cached(digest) {
 			t.Fatal("eviction dropped a held proof")
 		}

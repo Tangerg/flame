@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -81,7 +81,7 @@ func (c treeContents) estimate() int64 {
 	return size
 }
 
-func (r *Releases) remember(digest fingerprint.Digest, integrity releaseIntegrity) {
+func (r *Releases) remember(digest identity.Digest, integrity releaseIntegrity) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.commit(digest, integrity)
@@ -93,7 +93,7 @@ func (r *Releases) remember(digest fingerprint.Digest, integrity releaseIntegrit
 // and readers that accept any verified proof are served by it meanwhile. When
 // only such proofs could make room, the new proof is returned uncached. r.mu is
 // held.
-func (r *Releases) commit(digest fingerprint.Digest, integrity releaseIntegrity) releaseIntegrity {
+func (r *Releases) commit(digest identity.Digest, integrity releaseIntegrity) releaseIntegrity {
 	r.nextVerification++
 	integrity.verifiedAt = r.nextVerification
 	integrity.footprint = integrity.estimate()
@@ -109,7 +109,7 @@ func (r *Releases) commit(digest fingerprint.Digest, integrity releaseIntegrity)
 		return integrity
 	}
 	for used+integrity.footprint > maxVerifiedBytes {
-		var oldest fingerprint.Digest
+		var oldest identity.Digest
 		for key, value := range r.verified {
 			if _, held := r.verifying[key]; !held && (oldest.IsZero() || value.verifiedAt < r.verified[oldest].verifiedAt) {
 				oldest = key
@@ -124,7 +124,7 @@ func (r *Releases) commit(digest fingerprint.Digest, integrity releaseIntegrity)
 
 // withdraw drops the cached proof for digest when it is still the one a
 // caller found stale, so a newer proof is never discarded on its behalf.
-func (r *Releases) withdraw(digest fingerprint.Digest, stale releaseIntegrity) {
+func (r *Releases) withdraw(digest identity.Digest, stale releaseIntegrity) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if cached, found := r.verified[digest]; found && cached.verifiedAt == stale.verifiedAt {
@@ -133,13 +133,13 @@ func (r *Releases) withdraw(digest fingerprint.Digest, stale releaseIntegrity) {
 }
 
 // forget drops the cached proof of a release being reclaimed.
-func (r *Releases) forget(digest fingerprint.Digest) {
+func (r *Releases) forget(digest identity.Digest) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.verified, digest)
 }
 
-func (r *Releases) cached(digest fingerprint.Digest) (releaseIntegrity, bool) {
+func (r *Releases) cached(digest identity.Digest) (releaseIntegrity, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	integrity, found := r.verified[digest]
@@ -156,7 +156,7 @@ func (r *Releases) observe() uint64 {
 
 // verify returns a full scan of digest that began no earlier than the call,
 // so it vouches for the bytes as they are now.
-func (r *Releases) verify(ctx context.Context, digest fingerprint.Digest) (releaseIntegrity, error) {
+func (r *Releases) verify(ctx context.Context, digest identity.Digest) (releaseIntegrity, error) {
 	return r.verifyAfter(ctx, digest, r.observe())
 }
 
@@ -165,7 +165,7 @@ func (r *Releases) verify(ctx context.Context, digest fingerprint.Digest) (relea
 // a new one. A scan that began earlier may have read bytes the caller has
 // since seen change, so a caller arriving during it waits and then scans
 // again. A cold 128 MiB release delays only the callers that need it.
-func (r *Releases) verifyAfter(ctx context.Context, digest fingerprint.Digest, since uint64) (releaseIntegrity, error) {
+func (r *Releases) verifyAfter(ctx context.Context, digest identity.Digest, since uint64) (releaseIntegrity, error) {
 	for {
 		r.mu.Lock()
 		if err := cancellation.Err(ctx); err != nil {
@@ -205,7 +205,7 @@ func (r *Releases) verifyAfter(ctx context.Context, digest fingerprint.Digest, s
 // lead runs the scan of current and settles its outcome, the cache entry and
 // the end of the flight in one critical section, so no caller can find the
 // flight over without also finding its outcome.
-func (r *Releases) lead(ctx context.Context, digest fingerprint.Digest, current *verification) (releaseIntegrity, error) {
+func (r *Releases) lead(ctx context.Context, digest identity.Digest, current *verification) (releaseIntegrity, error) {
 	integrity, err := r.inspect(ctx, digest)
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -221,7 +221,7 @@ func (r *Releases) lead(ctx context.Context, digest fingerprint.Digest, current 
 	return integrity, err
 }
 
-func (r *Releases) inspect(ctx context.Context, digest fingerprint.Digest) (releaseIntegrity, error) {
+func (r *Releases) inspect(ctx context.Context, digest identity.Digest) (releaseIntegrity, error) {
 	dir, err := r.Root(digest)
 	if err != nil {
 		return releaseIntegrity{}, err
@@ -229,7 +229,7 @@ func (r *Releases) inspect(ctx context.Context, digest fingerprint.Digest) (rele
 	return verifyTree(ctx, dir, digest)
 }
 
-func (r *Releases) integrity(ctx context.Context, digest fingerprint.Digest) (releaseIntegrity, error) {
+func (r *Releases) integrity(ctx context.Context, digest identity.Digest) (releaseIntegrity, error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return releaseIntegrity{}, err
 	}
@@ -243,7 +243,7 @@ func (r *Releases) integrity(ctx context.Context, digest fingerprint.Digest) (re
 // verifiedRoot opens a release whose bytes were verified at some point and
 // whose directory is still the one verified. Readers that check each file they
 // consume against the content index, or that only need declared paths, use it.
-func (r *Releases) verifiedRoot(ctx context.Context, digest fingerprint.Digest) (*os.Root, releaseIntegrity, error) {
+func (r *Releases) verifiedRoot(ctx context.Context, digest identity.Digest) (*os.Root, releaseIntegrity, error) {
 	integrity, err := r.integrity(ctx, digest)
 	if err != nil {
 		return nil, releaseIntegrity{}, err
@@ -260,7 +260,7 @@ func (r *Releases) verifiedRoot(ctx context.Context, digest fingerprint.Digest) 
 // when it was read. Otherwise the caller takes a proof from a scan that began
 // after it saw the change, and still requires that proof to match the tree it
 // opens: a proof that no longer matches is withdrawn, never accepted.
-func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (*os.Root, error) {
+func (r *Releases) currentRoot(ctx context.Context, digest identity.Digest) (*os.Root, error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (
 
 // openRoot keeps the verified directory capability alive for its consumer.
 // Reopening its pathname after validation could select a replacement directory.
-func (r *Releases) openRoot(digest fingerprint.Digest, integrity releaseIntegrity) (*os.Root, error) {
+func (r *Releases) openRoot(digest identity.Digest, integrity releaseIntegrity) (*os.Root, error) {
 	dir, err := r.Root(digest)
 	if err != nil {
 		return nil, err
@@ -327,7 +327,7 @@ func (r *Releases) openRoot(digest fingerprint.Digest, integrity releaseIntegrit
 	return root, nil
 }
 
-func verifyTree(ctx context.Context, dir string, digest fingerprint.Digest) (releaseIntegrity, error) {
+func verifyTree(ctx context.Context, dir string, digest identity.Digest) (releaseIntegrity, error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return releaseIntegrity{}, err
 	}
@@ -367,13 +367,13 @@ func verifyTree(ctx context.Context, dir string, digest fingerprint.Digest) (rel
 // before its bytes are read, so a change during or after the read moves the
 // stamp away from the recorded one, unless the filesystem stamps both within
 // one tick of its clock; settled tells those entries apart.
-func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeContents, error) {
+func treeDigest(ctx context.Context, root *os.Root) (identity.Digest, treeContents, error) {
 	if err := cancellation.Err(ctx); err != nil {
-		return fingerprint.Digest{}, treeContents{}, err
+		return identity.Digest{}, treeContents{}, err
 	}
 	scanned, stamped, err := changeClock(root)
 	if err != nil {
-		return fingerprint.Digest{}, treeContents{}, err
+		return identity.Digest{}, treeContents{}, err
 	}
 	h := sha256.New()
 	contents := treeContents{files: map[string][sha256.Size]byte{}, scanned: scanned}
@@ -393,7 +393,7 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 			return nil
 		}
 		count++
-		if count > MaxFiles {
+		if count > maxFiles {
 			return errors.New("pluginpackage: entry limit exceeded")
 		}
 		if !plugin.ValidResourcePath(name) {
@@ -404,11 +404,11 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 			return err
 		}
 		if entry.IsDir() != info.IsDir() {
-			return fileinput.ErrChanged
+			return filesystem.ErrChanged
 		}
 		var file *os.File
 		if !entry.IsDir() {
-			file, info, err = fileinput.OpenAtExpected(root, name, info, MaxPackageBytes)
+			file, info, err = filesystem.OpenFileAtExpected(root, name, info, maxPackageBytes)
 			if err != nil {
 				return err
 			}
@@ -426,13 +426,13 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 			return nil
 		}
 		total += info.Size()
-		if total > MaxPackageBytes {
+		if total > maxPackageBytes {
 			return errors.New("pluginpackage: release limit exceeded")
 		}
 		fmt.Fprintf(h, "%d:%s:%o:%d:", len(name), name, info.Mode().Perm()&0111, info.Size())
 		fileHash := sha256.New()
-		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancellation.Reader(ctx, file), MaxPackageBytes+1))
-		err = errors.Join(err, fileinput.VerifyAtVersion(file, info, root, name))
+		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancellation.Reader(ctx, file), maxPackageBytes+1))
+		err = errors.Join(err, filesystem.VerifyAtVersion(file, info, root, name))
 		if n != info.Size() {
 			return errors.Join(errors.New("pluginpackage: release changed during inspection"), err)
 		}
@@ -442,9 +442,9 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		return err
 	})
 	if err != nil {
-		return fingerprint.Digest{}, treeContents{}, err
+		return identity.Digest{}, treeContents{}, err
 	}
-	return fingerprint.Sum([sha256.Size]byte(h.Sum(nil))), contents, nil
+	return identity.DigestFromSum([sha256.Size]byte(h.Sum(nil))), contents, nil
 }
 
 // changeClock reads the filesystem's clock at the granularity it stamps change

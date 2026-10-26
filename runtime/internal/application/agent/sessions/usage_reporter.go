@@ -9,16 +9,16 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/samber/lo"
 )
 
 // UsageSource reads retained physical evidence from one snapshot. The callback
 // must not perform storage I/O while that snapshot owns the database connection.
-type UsageSource interface {
+type usageSource interface {
 	VisitEndpointInvocations(context.Context, string, time.Time, func(modelref.EndpointObservation) error) error
 }
 
@@ -59,17 +59,17 @@ type UsageSummary struct {
 }
 
 type UsageDependencies struct {
-	Source UsageSource
+	Source usageSource
 	Now    func() time.Time
 }
 
 type UsageReporter struct {
-	source UsageSource
+	source usageSource
 	now    func() time.Time
 }
 
 func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
-	if dependency.Missing(deps.Source) {
+	if lo.IsNil(deps.Source) {
 		return nil, errors.New("sessions: physical usage source is required")
 	}
 	now := deps.Now
@@ -80,7 +80,7 @@ func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
 }
 
 func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return UsageReport{}, err
 	}
 	report, err := r.collect(ctx, sessionID, time.Time{})

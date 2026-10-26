@@ -6,31 +6,30 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
 )
 
 type pluginRuntime interface {
 	GetPluginCommand(context.Context, protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error)
-	RetirePluginCommand(context.Context, protocol.PluginCommandRequest, replay.CommandID) error
+	RetirePluginCommand(context.Context, protocol.PluginCommandRequest, authoring.CommandID) error
 	ListPluginCompositions(context.Context) ([]protocol.PluginComposition, error)
-	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, replay.CommandID) (*protocol.PluginComposition, error)
+	SetPluginComposition(context.Context, protocol.SetPluginCompositionRequest, authoring.CommandID) (*protocol.PluginComposition, error)
 	ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) ([]protocol.PluginOperationBinding, error)
 	ResolvePluginPoint(context.Context, protocol.ResolvePluginPointRequest) ([]protocol.PluginPointBinding, error)
 	ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) ([]protocol.PluginCollaborator, error)
-	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
+	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
-	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, replay.CommandID) (*protocol.PluginProviderSelection, error)
+	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, authoring.CommandID) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
-	InstallPlugin(context.Context, protocol.InstallPluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	StagePlugin(context.Context, protocol.StagePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	SelectPlugin(context.Context, protocol.PluginReleaseRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, replay.CommandID) (*protocol.PluginInstallation, error)
-	UninstallPlugin(context.Context, protocol.PluginRequest, replay.CommandID) error
+	InstallPlugin(context.Context, protocol.InstallPluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	StagePlugin(context.Context, protocol.StagePluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	SelectPlugin(context.Context, protocol.PluginReleaseRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	UninstallPlugin(context.Context, protocol.PluginRequest, authoring.CommandID) error
 }
 
 func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginRuntime, error) {
@@ -51,7 +50,7 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 	root := &cobra.Command{Use: "plugins", Short: "Manage Runtime-owned portable plugins"}
 	root.AddCommand(newPluginGetCommand(provider))
-	root.AddCommand(pluginCommand(provider, "retire-command", "Retire an original command only if it was never dispatched", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginCommandRequest, commandID replay.CommandID) error {
+	root.AddCommand(pluginCommand(provider, "retire-command", "Retire an original command only if it was never dispatched", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginCommandRequest, commandID authoring.CommandID) error {
 		return runtime.RetirePluginCommand(cmd.Context(), request, commandID)
 	}))
 	root.AddCommand(newPluginCallCommand(provider))
@@ -70,7 +69,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		if values == nil {
 			values = []protocol.PluginComposition{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginComposition]{Data: values})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginComposition]{Data: values})
 	}})
 	root.AddCommand(&cobra.Command{Use: "providers", Short: "Inspect explicit plugin provider choices", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -84,7 +83,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		if values == nil {
 			values = []protocol.PluginProviderSelection{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginProviderSelection]{Data: values})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginProviderSelection]{Data: values})
 	}})
 	root.AddCommand(&cobra.Command{Use: "list", Short: "Inspect releases, installation state and component diagnostics", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		runtime, err := requirePluginRuntime(cmd, provider)
@@ -98,7 +97,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		if installations == nil {
 			installations = []protocol.PluginInstallation{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
 	}})
 	root.AddCommand(
 		pluginMutationCommand(provider, "set-composition", "Set explicit outer-to-inner members for a consumer contract", pluginRuntime.SetPluginComposition),
@@ -108,7 +107,7 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		pluginMutationCommand(provider, "select", "Select a staged release when dependencies are quiescent", pluginRuntime.SelectPlugin),
 		pluginMutationCommand(provider, "configure", "Change inputs and enable or disable components of an exact selected release", pluginRuntime.ConfigurePlugin),
 		pluginMutationCommand(provider, "set-enablement", "Enable or disable an installation with an explicit enabled value", pluginRuntime.SetPluginEnablement),
-		pluginCommand(provider, "uninstall", "Remove installation while retaining private data", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginRequest, commandID replay.CommandID) error {
+		pluginCommand(provider, "uninstall", "Remove installation while retaining private data", func(runtime pluginRuntime, cmd *cobra.Command, request protocol.PluginRequest, commandID authoring.CommandID) error {
 			return runtime.UninstallPlugin(cmd.Context(), request, commandID)
 		}),
 	)
@@ -133,7 +132,7 @@ func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), original)
+		return writeJSONLine(cmd.OutOrStdout(), original)
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Original Runtime store namespace and command key as JSON")
 	return command
@@ -160,7 +159,7 @@ func newPluginResolveCompositionCommand(provider runtimeProvider) *cobra.Command
 		if values == nil {
 			values = []protocol.PluginOperationBinding{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginOperationBinding]{Data: values})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginOperationBinding]{Data: values})
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Consumer contract as a JSON string inside the request")
 	return command
@@ -187,7 +186,7 @@ func newPluginRequirementsCommand(provider runtimeProvider) *cobra.Command {
 		if values == nil {
 			values = []protocol.PluginCollaborator{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginCollaborator]{Data: values})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginCollaborator]{Data: values})
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Exact installation, release digest and contribution as JSON")
 	return command
@@ -214,7 +213,7 @@ func newPluginPointCommand(provider runtimeProvider) *cobra.Command {
 		if values == nil {
 			values = []protocol.PluginPointBinding{}
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginPointBinding]{Data: values})
+		return writeJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginPointBinding]{Data: values})
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Point request as JSON; contract and attributes contain JSON strings")
 	return command
@@ -230,7 +229,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 			return fmt.Errorf("plugin request: %w", err)
 		}
-		contract, err := capability.Parse([]byte(request.Contract))
+		contract, err := extension.ParseCapability([]byte(request.Contract))
 		if err != nil {
 			return err
 		}
@@ -238,8 +237,8 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if !found {
 			return errors.New("plugin method is absent from the required contract")
 		}
-		commandID := replay.CommandID(key)
-		if method.Kind() == capability.Mutation {
+		commandID := authoring.CommandID(key)
+		if method.Kind() == extension.Mutation {
 			if commandID == "" {
 				commandID = mutation.NewCommandID()
 			}
@@ -262,7 +261,7 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), result)
+		return writeJSONLine(cmd.OutOrStdout(), result)
 	}}
 	command.Flags().StringVar(&input, "request", "{}", "Installed operation request as JSON; contract and input contain JSON strings")
 	command.Flags().StringVar(&key, "command-id", "", "Retain this identity and request to reconcile a command; queries forbid it")
@@ -270,17 +269,17 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 }
 
 // pluginMutationCommand prints the canonical result the Runtime reports.
-func pluginMutationCommand[Input, Output any](provider runtimeProvider, name, description string, run func(pluginRuntime, context.Context, Input, replay.CommandID) (Output, error)) *cobra.Command {
-	return pluginCommand(provider, name, description, func(runtime pluginRuntime, cmd *cobra.Command, request Input, commandID replay.CommandID) error {
+func pluginMutationCommand[Input, Output any](provider runtimeProvider, name, description string, run func(pluginRuntime, context.Context, Input, authoring.CommandID) (Output, error)) *cobra.Command {
+	return pluginCommand(provider, name, description, func(runtime pluginRuntime, cmd *cobra.Command, request Input, commandID authoring.CommandID) error {
 		result, err := run(runtime, cmd.Context(), request, commandID)
 		if err != nil {
 			return err
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), result)
+		return writeJSONLine(cmd.OutOrStdout(), result)
 	})
 }
 
-func pluginCommand[Input any](provider runtimeProvider, name, description string, run func(pluginRuntime, *cobra.Command, Input, replay.CommandID) error) *cobra.Command {
+func pluginCommand[Input any](provider runtimeProvider, name, description string, run func(pluginRuntime, *cobra.Command, Input, authoring.CommandID) error) *cobra.Command {
 	var input, key string
 	command := &cobra.Command{Use: name, Short: description, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		if len(input) > 1<<20 {
@@ -290,7 +289,7 @@ func pluginCommand[Input any](provider runtimeProvider, name, description string
 		if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 			return fmt.Errorf("plugin request: %w", err)
 		}
-		commandID := replay.CommandID(key)
+		commandID := authoring.CommandID(key)
 		if commandID == "" {
 			commandID = mutation.NewCommandID()
 		}

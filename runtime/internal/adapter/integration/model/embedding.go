@@ -7,17 +7,16 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 // TextEmbedder exposes the model adapter's captured vector space and observed call.
@@ -34,19 +33,19 @@ type TextEmbedder interface {
 // excludes credential rotation. Every resolved embedder journals its real
 // provider request through the shared endpoint evidence owner.
 type EmbeddingResolver struct {
-	providers CredentialLookup
-	journal   EndpointJournal
+	providers credentialLookup
+	journal   endpointJournal
 	pricing   accounting.Pricing
 }
 
 // NewEmbeddingResolver returns a complete resolver over the provider credential
 // lookup. The endpoint journal owns physical admission and settlement; pricing
 // is optional and absent when no price table is configured.
-func NewEmbeddingResolver(providers CredentialLookup, journal EndpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
-	if dependency.Missing(providers) {
+func NewEmbeddingResolver(providers credentialLookup, journal endpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
+	if lo.IsNil(providers) {
 		return nil, errors.New("model: embedding provider credential lookup is required")
 	}
-	if dependency.Missing(journal) {
+	if lo.IsNil(journal) {
 		return nil, errors.New("model: embedding endpoint journal is required")
 	}
 	return &EmbeddingResolver{providers: providers, journal: journal, pricing: pricing}, nil
@@ -54,7 +53,7 @@ func NewEmbeddingResolver(providers CredentialLookup, journal EndpointJournal, p
 
 // Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.Selection) (TextEmbedder, error) {
-	if e == nil || dependency.Missing(e.providers) || dependency.Missing(e.journal) {
+	if e == nil || lo.IsNil(e.providers) || lo.IsNil(e.journal) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}
 	if err := selection.ValidateExact(); err != nil {
@@ -106,7 +105,7 @@ type embedder struct {
 	id        string
 	model     embedding.Model
 	selection modelchoice.Selection
-	journal   EndpointJournal
+	journal   endpointJournal
 	pricing   accounting.Pricing
 }
 

@@ -250,9 +250,7 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 // interface wrapping nil, so the consumer's own "is this wired?" check cannot
 // fire and its first call dereferences nil.
 func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
-	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
-	})}
+	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true}})}
 	profile := runtime.Profile()
 	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
 		profile.Supports(protocol.FeatureGoals) {

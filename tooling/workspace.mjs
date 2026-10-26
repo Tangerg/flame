@@ -81,16 +81,16 @@ async function declarationFiles(directory) {
   return found;
 }
 
-// The backend protocol version has one owner, capability.Protocol. Stamp it
+// The backend protocol version has one owner, extension.Protocol. Stamp it
 // into every first-party package declaration so a bump needs no hand-edited
 // manifest; checkGenerated then enforces the projection stays current.
 async function stampDeclarations(repository) {
   const method = await readFile(
-    join(repository, "packages/go-sdk/capability/method.go"),
+    join(repository, "packages/go-sdk/extension/method.go"),
     "utf8",
   );
   const owner = method.match(/\bconst Protocol = "([^"]+)"/);
-  if (!owner) throw new Error("capability.Protocol not found in method.go");
+  if (!owner) throw new Error("extension.Protocol not found in method.go");
   const protocol = JSON.stringify(owner[1]);
   for (const base of ["plugins", "examples/plugins"])
     for (const file of await declarationFiles(join(repository, base))) {
@@ -113,9 +113,8 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "./cmd/backendbindings",
-        "--source",
-        "plugin",
+        "./cmd/flame-sdk",
+        "backend-protocol",
         "--node-release",
         "../local-runtime/node-release.json",
         "--out",
@@ -137,7 +136,8 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "./cmd/contractgen",
+        "./cmd/flame-sdk",
+        "contract",
         "--feature",
         memory,
         "--out",
@@ -162,6 +162,8 @@ export async function generate(repository = root) {
       true,
     );
     go(["generate", "./..."], "plugins");
+    go(["generate", "./internal/testsupport"], "runtime");
+    go(["generate", "./nodequalification", "./integration"], "tooling");
     go(
       [
         "run",
@@ -172,6 +174,8 @@ export async function generate(repository = root) {
         "../packages/go-sdk/protocol",
         "--ts",
         "../packages/runtime-client",
+        "--samples",
+        "contract/samples",
         "--go-local",
         ".",
         "--go-client",

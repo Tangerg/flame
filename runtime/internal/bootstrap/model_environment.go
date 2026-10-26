@@ -14,7 +14,7 @@ import (
 // states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
 	defaultSelection   modelchoice.Selection
-	chatResolver       ChatResolver
+	chatResolver       chatResolver
 	utilityRoleState   *models.RoleState
 	utilityModel       modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
@@ -23,23 +23,23 @@ type modelEnvironment struct {
 	callbacks          *pluginsdk.Callbacks
 }
 
-func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelchoice.Selection) (modelEnvironment, error) {
-	chatResolver, err := modeladapter.NewObservedResolver(cfg.ChatResolver, cfg.Stores.ModelInvocations, cfg.Pricing)
+func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection) (modelEnvironment, error) {
+	chatResolver, err := modeladapter.NewObservedResolver(cfg.chatResolver, cfg.stores.ModelInvocations, cfg.pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityRole, err := loadUtilityRole(ctx, cfg.Stores.UtilityRole)
+	utilityRole, err := loadUtilityRole(ctx, cfg.stores.UtilityRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
 	utilityRoleState := models.NewRoleState(utilityRole)
 
-	embeddingRole, err := loadEmbeddingRole(ctx, cfg.Stores.EmbeddingRole)
+	embeddingRole, err := loadEmbeddingRole(ctx, cfg.stores.EmbeddingRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry, cfg.Stores.ModelInvocations, cfg.Pricing)
+	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, cfg.stores.ModelInvocations, cfg.pricing)
 	if err != nil {
 		return modelEnvironment{}, err
 	}

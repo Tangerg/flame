@@ -56,7 +56,7 @@ describe("Agent bootstrap Runtime generation wiring", () => {
       createAgentBootstrapPlugin(testClient.agent, getRuntimeClient),
     );
 
-    const command = rejected(forgetRules(testClient.agent.access, ["rule-1"]));
+    const command = rejected(forgetRules(testClient.agent.dependencies, ["rule-1"]));
     await vi.waitFor(() => expect(forgetRule).toHaveBeenCalledOnce());
 
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");

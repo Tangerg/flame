@@ -2,7 +2,6 @@ import { Check } from "@flame/icons/react";
 import { clsx } from "clsx";
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { Icon } from "./font-scale";
-import { TaskListMarkerPrimitive } from "./primitives/index";
 
 export function TaskListItem({
   checked,
@@ -21,9 +20,15 @@ export function TaskListItem({
       data-slot="task-list-item"
       className={clsx("task-list-item", className)}
     >
-      <TaskListMarkerPrimitive checked={checked} label={label}>
+      <span
+        data-slot="task-list-marker"
+        role="checkbox"
+        aria-checked={checked}
+        aria-disabled="true"
+        aria-label={label}
+      >
         {checked && <Icon glyph={Check} size="sm" />}
-      </TaskListMarkerPrimitive>
+      </span>
       {children}
     </li>
   );

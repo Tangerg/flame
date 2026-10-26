@@ -9,12 +9,10 @@ import (
 	"unicode/utf8"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -32,7 +30,7 @@ var (
 	// ErrIsolationUnavailable reports that an isolated session cannot run because
 	// isolation is not configured or the host has no sandbox backend. The run is
 	// refused rather than run unconfined (fail-closed).
-	ErrIsolationUnavailable = errors.New("runs: sandbox isolation unavailable")
+	errIsolationUnavailable = errors.New("runs: sandbox isolation unavailable")
 	// ErrRunNotFound reports that a cancel or steer target is neither live nor
 	// parked.
 	ErrRunNotFound = errors.New("runs: run not found")
@@ -137,8 +135,12 @@ func (s StartCommand) clone() StartCommand {
 		acceptance := *s.Acceptance
 		s.Acceptance = &acceptance
 	}
-	s.NewSession = optional.Clone(s.NewSession)
-	s.Actor = optional.Clone(s.Actor)
+	if s.NewSession != nil {
+		s.NewSession = new(*s.NewSession)
+	}
+	if s.Actor != nil {
+		s.Actor = new(*s.Actor)
+	}
 	return s
 }
 
@@ -204,11 +206,19 @@ type ResumeCommand struct {
 }
 
 func (r ResumeCommand) clone() ResumeCommand {
-	r.Acceptance = optional.Clone(r.Acceptance)
+	if r.Acceptance != nil {
+		r.Acceptance = new(*r.Acceptance)
+	}
 	r.Responses = slices.Clone(r.Responses)
 	for index := range r.Responses {
-		r.Responses[index].Approval = optional.Clone(r.Responses[index].Approval)
-		if question := optional.Clone(r.Responses[index].Question); question != nil {
+		if r.Responses[index].Approval != nil {
+			r.Responses[index].Approval = new(*r.Responses[index].Approval)
+		}
+		clonedQuestion := r.Responses[index].Question
+		if clonedQuestion != nil {
+			clonedQuestion = new(*clonedQuestion)
+		}
+		if question := clonedQuestion; question != nil {
 			question.Answers = transcript.CloneAnswers(question.Answers)
 			r.Responses[index].Question = question
 		}
@@ -231,7 +241,7 @@ type CommittedUserInput struct {
 // Exactly one payload must match Kind.
 type ResumeResponse struct {
 	ItemID   string
-	Kind     interrupt.Kind
+	Kind     run.InterruptKind
 	Approval *ApprovalResponse
 	Question *QuestionResponse
 }

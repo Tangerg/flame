@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -33,7 +33,7 @@ func TestEnsureOpenRejectsOversizedDocumentBeforeNotification(t *testing.T) {
 		},
 	}
 
-	if version, err := client.ensureOpen(t.Context(), path); !errors.Is(err, ErrDocumentTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+	if version, err := client.ensureOpen(t.Context(), path); !errors.Is(err, errDocumentTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 		t.Fatalf("ensureOpen = (%d, %v), want ErrDocumentTooLarge", version, err)
 	}
 	if client.open[uri].version != 1 {
@@ -71,7 +71,7 @@ func TestReadDocumentRejectsUnsupportedSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{directory, invalid} {
-		if _, err := readDocument(t.Context(), path); !errors.Is(err, ErrUnsupportedDocument) {
+		if _, err := readDocument(t.Context(), path); !errors.Is(err, errUnsupportedDocument) {
 			t.Fatalf("readDocument(%q) error = %v, want ErrUnsupportedDocument", path, err)
 		}
 	}

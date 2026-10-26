@@ -3,8 +3,10 @@ import { type KeyboardEvent, type ReactNode } from "react";
 import { corner, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { CHOICE_SURFACE } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
-import { CheckboxGroupPrimitive, RadioGroupPrimitive, RadioPrimitive } from "@/ui/primitives/index";
-import { CheckboxPrimitive } from "@flame/ui/primitives";
+import { CheckboxGroup as CheckboxGroupPrimitive } from "@base-ui/react/checkbox-group";
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 import { Pressable } from "@/ui/atoms/pressable";
 const styles = stylex.create({
   list: { display: "flex", flexDirection: "column", gap: space.s1 },

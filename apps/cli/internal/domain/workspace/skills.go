@@ -16,11 +16,11 @@ type SkillProposal struct {
 }
 
 func (p SkillProposal) Validate() error {
-	return (protocol.SkillProposal{
+	return protocol.ValidateWireTree((protocol.SkillProposal{
 		Name: p.Name, Revision: p.Revision, Scope: p.Scope,
 		Description: p.Description, Instructions: p.Instructions,
 		Origin: p.Origin, SourceSession: p.SourceSession, Revises: p.Revises,
-	}).ValidateWire()
+	}))
 }
 
 func (p SkillProposal) QualifiedName() string { return string(p.Scope) + "/" + p.Name }

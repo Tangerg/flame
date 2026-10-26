@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ProviderSelection owns a product composition choice. Availability and a
@@ -15,7 +15,7 @@ type ProviderSelection struct{ record SelectionRecord }
 
 type SelectionRecord struct {
 	Role         string
-	Installation resourceid.InstallationID
+	Installation identity.InstallationID
 	Contribution ContributionID
 }
 

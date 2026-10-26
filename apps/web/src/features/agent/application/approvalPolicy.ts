@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
 import {
@@ -10,7 +10,7 @@ import { queryClient } from "@/lib/queryClient";
 
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
 export function setApprovalMode(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   mode: ApprovalMode,
 ): Promise<ApprovalModeResult> {
   const owner = agentAccess.commands.current();
@@ -32,11 +32,11 @@ export function setApprovalMode(
   });
 }
 
-export async function forgetRule(agentAccess: AgentAccess, id: string): Promise<void> {
+export async function forgetRule(agentAccess: AgentDependencies, id: string): Promise<void> {
   return forgetRules(agentAccess, [id]);
 }
 
-export function forgetRules(agentAccess: AgentAccess, ids: string[]): Promise<void> {
+export function forgetRules(agentAccess: AgentDependencies, ids: string[]): Promise<void> {
   const owner = agentAccess.commands.current();
   const runtime = agentAccess.runtime;
   return owner.serializeApprovalRules(async () => {
@@ -71,7 +71,7 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
 }
 
 export function allowMCPTool(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   server: MCPServerID,
   name: string,
 ): Promise<void> {

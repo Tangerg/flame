@@ -17,7 +17,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9iYWNrZW5kL2RvbWFpbg_Summary": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4_Summary": {
             "additionalProperties": false,
             "properties": {
               "protectedPhraseCount": {
@@ -88,7 +88,7 @@
       "description": "Replace exact, case-sensitive protected phrases at the inspected revision. Matching model-visible string fields refuse provider dispatch.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9iYWNrZW5kL3JwYw_ReplaceInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9jb250cmFjdA_ReplaceInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -145,7 +145,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9iYWNrZW5kL2RvbWFpbg_Summary": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4_Summary": {
             "additionalProperties": false,
             "properties": {
               "protectedPhraseCount": {

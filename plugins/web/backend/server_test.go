@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
-	"github.com/Tangerg/flame/plugins/web/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
+	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -62,21 +62,21 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "web-entry", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "web"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "web-entry", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "web"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	meta := make(sdk.Meta)
-	if err := meta.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "model-web-entry", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "web"}}); err != nil {
+	if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model-web-entry", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "web"}}); err != nil {
 		t.Fatal(err)
 	}
-	compare := func(method, name string, input any) jsoninput.Input {
+	compare := func(method, name string, input any) jsonvalue.Value {
 		t.Helper()
 		bound, err := exported.Method(method)
 		if err != nil {
 			t.Fatal(err)
 		}
-		encoded, err := jsoninput.Encode(input)
+		encoded, err := jsonvalue.Encode(input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -92,7 +92,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 		if err != nil {
 			t.Fatal(err)
 		}
-		projected, err := jsoninput.Parse(bytes)
+		projected, err := jsonvalue.Parse(bytes)
 		if err != nil || projected != typed {
 			t.Fatalf("typed/model read diverged: %s %s %v", typed.String(), projected.String(), err)
 		}

@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -273,7 +273,7 @@ func encodeInteractionPendingSteer(
 	signalID agent.SignalID,
 	steer pendingInteractionSteer,
 ) (interactionPendingSteerWire, error) {
-	if err := resourceid.ValidateItem(steer.itemID); err != nil {
+	if err := identity.ValidateItem(steer.itemID); err != nil {
 		return interactionPendingSteerWire{}, err
 	}
 	if !signalID.Valid() {
@@ -317,7 +317,7 @@ func encodeInteractionPendingContinuation(
 	if !pending.processID.Valid() || pending.processID != rootID {
 		return nil, errors.New("pending continuation does not name the root member")
 	}
-	if err := resourceid.ValidateItem(pending.itemID); err != nil {
+	if err := identity.ValidateItem(pending.itemID); err != nil {
 		return nil, fmt.Errorf("pending continuation Item: %w", err)
 	}
 	if len(pending.content) == 0 {
@@ -598,7 +598,7 @@ func (w interactionPendingSteerWire) decode(
 	previousSignalID string,
 ) (agent.SignalID, pendingInteractionSteer, error) {
 	var zeroSignalID agent.SignalID
-	if err := resourceid.ValidateItem(w.ItemID); err != nil {
+	if err := identity.ValidateItem(w.ItemID); err != nil {
 		return zeroSignalID, pendingInteractionSteer{}, err
 	}
 	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
@@ -641,7 +641,7 @@ func decodeInteractionPendingContinuation(
 	if err != nil || processID != rootID {
 		return nil, errors.New("does not name the root member")
 	}
-	if err := resourceid.ValidateItem(wire.ItemID); err != nil {
+	if err := identity.ValidateItem(wire.ItemID); err != nil {
 		return nil, fmt.Errorf("item: %w", err)
 	}
 	if len(wire.Content) == 0 {

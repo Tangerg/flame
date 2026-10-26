@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   asItemId,
@@ -8,9 +9,8 @@ import {
   type MutationPromise,
   type RunEvent,
 } from "@flame/runtime-client";
-import { createMutationPromise } from "@flame/runtime-client";
+
 import { runtimeRunsGateway } from "@/features/agent/adapters/runtimeRunsGateway";
-import { MUTATION_ATTEMPT_TIMEOUT_MS } from "@flame/runtime-client";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -93,7 +93,7 @@ describe("runtimeRunsGateway", () => {
     const keys: string[] = [];
     let executions = 0;
     const start = vi.fn((_params, signal?: AbortSignal) =>
-      createMutationPromise(
+      mutationResult(
         async (key, attempt) => {
           keys.push(key);
           executions += 1;
@@ -126,7 +126,8 @@ describe("runtimeRunsGateway", () => {
 
     const first = gateway.start(params);
     const firstFailure = first.catch((error: unknown) => error);
-    await vi.advanceTimersByTimeAsync(MUTATION_ATTEMPT_TIMEOUT_MS * 2);
+    await vi.advanceTimersToNextTimerAsync();
+    await vi.advanceTimersToNextTimerAsync();
     await expect(firstFailure).resolves.toMatchObject({ name: "TimeoutError" });
 
     await expect(gateway.start(params)).resolves.toMatchObject({

@@ -9,30 +9,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 // StartRun lets the fake drive the streamable path: it returns a runId ack plus
 // a finite RunEvent sequence so a POST runs.start exercises serveStream
 // end-to-end.
 func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-	events := seq2(
-		protocol.RunEvent{
-			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
-				RunSummary: protocol.RunSummary{
-					ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
-					Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
-				},
-				ActiveSegmentID: "seg_x",
-			}},
-		},
-		protocol.RunEvent{
-			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()}}},
-		},
+	events := seq2(protocol.RunEvent{
+		RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
+		Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
+			RunSummary: protocol.RunSummary{
+				ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
+				Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
+			},
+			ActiveSegmentID: "seg_x",
+		}},
+	}, protocol.RunEvent{
+		RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
+		Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()}}},
+	},
 	)
 	return &protocol.StartRunResponse{
 		RunID: "run_x", SegmentID: "seg_x", UserItemID: "item_x",

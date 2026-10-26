@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var ErrInvalidTimeout = errors.New("exec: invalid timeout")
+var errInvalidTimeout = errors.New("exec: invalid timeout")
 
 // Timeout is the optional hard lifetime of one shell command or wait. Its
 // useful zero value is explicitly disabled; a present timeout is constructed
@@ -19,7 +19,7 @@ type Timeout struct {
 // NewTimeout validates and freezes an enabled hard timeout.
 func NewTimeout(duration time.Duration) (Timeout, error) {
 	if duration <= 0 {
-		return Timeout{}, fmt.Errorf("%w: duration must be positive", ErrInvalidTimeout)
+		return Timeout{}, fmt.Errorf("%w: duration must be positive", errInvalidTimeout)
 	}
 	return Timeout{duration: duration, enabled: true}, nil
 }
@@ -27,10 +27,10 @@ func NewTimeout(duration time.Duration) (Timeout, error) {
 // Validate checks the value's construction invariant.
 func (t Timeout) Validate() error {
 	if t.enabled && t.duration <= 0 {
-		return fmt.Errorf("%w: enabled duration must be positive", ErrInvalidTimeout)
+		return fmt.Errorf("%w: enabled duration must be positive", errInvalidTimeout)
 	}
 	if !t.enabled && t.duration != 0 {
-		return fmt.Errorf("%w: disabled timeout carries a duration", ErrInvalidTimeout)
+		return fmt.Errorf("%w: disabled timeout carries a duration", errInvalidTimeout)
 	}
 	return nil
 }

@@ -24,11 +24,11 @@ function subscribeWrap(listener: () => void): () => void {
 
 const readWrap = () => wrapCode;
 
-export function useCodeWrap(): boolean {
+function useCodeWrap(): boolean {
   return useSyncExternalStore(subscribeWrap, readWrap, readWrap);
 }
 
-export function setCodeWrap(next: boolean): void {
+function setCodeWrap(next: boolean): void {
   if (wrapCode === next) return;
   wrapCode = next;
   for (const listener of wrapListeners) listener();

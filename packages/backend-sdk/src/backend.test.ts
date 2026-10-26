@@ -39,13 +39,17 @@ async function connect(backend: Backend) {
     { name: "fixture", version: "1" },
     { capabilities: {} },
   );
-  backend.publish();
-  await backend.server.connect(new StdioTransport(a, b));
-  await client.connect(new StdioTransport(b, a));
+  const serving = backend.serve(new StdioTransport(a, b));
+  await Promise.race([
+    client.connect(new StdioTransport(b, a)),
+    serving.then(() => {
+      throw new Error("backend stopped before client connection");
+    }),
+  ]);
   cleanup.push(async () => {
     await client.close();
     await backend.close();
-    await backend.server.close();
+    await serving;
   });
   return client;
 }
@@ -212,9 +216,6 @@ it("closes partially acquired setup resources once after failure", async () => {
       response,
     ),
   ).rejects.toThrow("setup failed");
-  await backend.close();
-  await backend.close();
-  expect(closes).toBe(1);
   await expect(
     client.request(
       {
@@ -224,6 +225,9 @@ it("closes partially acquired setup resources once after failure", async () => {
       response,
     ),
   ).rejects.toThrow();
+  await backend.close();
+  await backend.close();
+  expect(closes).toBe(1);
 });
 
 it("retains accepted setup bindings until EOF and cancels and joins active work before cleanup", async () => {

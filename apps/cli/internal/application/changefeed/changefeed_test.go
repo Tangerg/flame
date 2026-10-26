@@ -11,11 +11,7 @@ import (
 
 func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
 	t.Parallel()
-	want := []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged,
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged,
-		protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
-	}
+	want := []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged}
 	got := Topics()
 	if !slices.Equal(got, want) {
 		t.Fatalf("Topics = %v, want %v", got, want)
@@ -103,10 +99,7 @@ func TestSubscriptionLimitsKeepARequestWithinThemWhole(t *testing.T) {
 func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
-		},
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
 	partitions, err := (SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(requested)

@@ -13,7 +13,7 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 		cfg.Registry = &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
 	}
 	if cfg.Store == nil {
-		store, isStore := cfg.Registry.(Store)
+		store, isStore := cfg.Registry.(store)
 		if !isStore {
 			store = &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
 		}
@@ -53,7 +53,7 @@ func TestNewRequiresCompleteDependencies(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			cfg := configWithPorts(&fakePorts{})
-			cfg.Store = cfg.Registry.(Store)
+			cfg.Store = cfg.Registry.(store)
 			cfg.Exposure = NewExposureState(nil, nil)
 			omit(&cfg)
 			if coordinator, err := New(cfg); err == nil || coordinator != nil {

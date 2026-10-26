@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 )
 
 func TestAnalyzerFindingsReferToTheInspectedSnapshot(t *testing.T) {

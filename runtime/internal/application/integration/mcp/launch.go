@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -18,7 +18,7 @@ type Launch struct {
 	Stdio  *Stdio
 	Retire io.Closer
 	// Callable entries must prove this declared set before connection publication.
-	Exports       map[string]jsoninput.Input
+	Exports       map[string]jsonvalue.Value
 	Requirements  *plugin.RequiredBindings
 	Contributions []plugin.Contribution
 }

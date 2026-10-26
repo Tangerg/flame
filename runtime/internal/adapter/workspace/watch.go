@@ -14,11 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
+	"github.com/fsnotify/fsnotify"
 )
 
 // GitWatcher adapts platform filesystem notifications to the workspace
@@ -31,7 +30,7 @@ type GitWatcher struct {
 }
 
 // NewGitWatcher binds Git observation to the owning Runtime lifetime.
-func NewGitWatcher(lifetime context.Context) GitWatcher {
+func newGitWatcher(lifetime context.Context) GitWatcher {
 	return GitWatcher{lifetime: lifetime}
 }
 
@@ -135,11 +134,11 @@ func gitDirectoriesOf(lifetime context.Context, root string) (gitDir, commonDir 
 	if !filepath.IsAbs(commonDir) {
 		commonDir = filepath.Join(root, commonDir)
 	}
-	gitDir, err = pathidentity.Resolve("", gitDir)
+	gitDir, err = filesystem.ResolvePath("", gitDir)
 	if err != nil {
 		return "", "", false, fmt.Errorf("resolve git directory: %w", err)
 	}
-	commonDir, err = pathidentity.Resolve("", commonDir)
+	commonDir, err = filesystem.ResolvePath("", commonDir)
 	if err != nil {
 		return "", "", false, fmt.Errorf("resolve common git directory: %w", err)
 	}

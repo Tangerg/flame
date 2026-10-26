@@ -86,7 +86,7 @@ func (r *Connection) changeGoal(
 
 func newGoalRequest(operation, sessionID string) (protocol.GoalRequest, error) {
 	request := protocol.GoalRequest{SessionID: sessionID}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.GoalRequest{}, fmt.Errorf("%s: %w", operation, err)
 	}
 	return request, nil

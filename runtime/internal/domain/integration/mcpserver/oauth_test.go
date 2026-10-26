@@ -3,8 +3,7 @@ package mcpserver_test
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -56,12 +55,12 @@ func TestInstallationOAuthTargetFollowsItsRecipient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installation, err := resourceid.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
+	installation, err := identity.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
 	if err != nil {
 		t.Fatal(err)
 	}
 	target := func(release, authority, recipient string, headers map[string]string) mcpserver.OAuthTarget {
-		source, err := mcpserver.InstallationSource(installation, fingerprint.Strings(release), fingerprint.Strings(authority), fingerprint.Strings(recipient))
+		source, err := mcpserver.InstallationSource(installation, identity.DigestStrings(release), identity.DigestStrings(authority), identity.DigestStrings(recipient))
 		if err != nil {
 			t.Fatal(err)
 		}

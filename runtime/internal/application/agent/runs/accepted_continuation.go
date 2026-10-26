@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -50,7 +49,7 @@ func NewAcceptedContinuation(sessionID string, pending Pending, resume run.TreeR
 }
 
 func (a AcceptedContinuation) Validate() error {
-	if err := resourceid.ValidateSession(a.SessionID); err != nil {
+	if err := identity.ValidateSession(a.SessionID); err != nil {
 		return fmt.Errorf("runs: accepted continuation session: %w", err)
 	}
 	if err := a.Pending.Validate(); err != nil {
@@ -64,7 +63,7 @@ func (a AcceptedContinuation) Validate() error {
 		if segment.RunID != a.Pending.Continuations[index].RunID {
 			return errors.New("runs: accepted continuation segment order differs from its members")
 		}
-		if err := resourceid.ValidateSegment(segment.SegmentID); err != nil {
+		if err := identity.ValidateSegment(segment.SegmentID); err != nil {
 			return err
 		}
 		if seen[segment.SegmentID] {
@@ -73,7 +72,7 @@ func (a AcceptedContinuation) Validate() error {
 		seen[segment.SegmentID] = true
 	}
 	if a.InputItemID != "" {
-		if err := resourceid.ValidateItem(a.InputItemID); err != nil {
+		if err := identity.ValidateItem(a.InputItemID); err != nil {
 			return err
 		}
 	}
@@ -121,16 +120,16 @@ func (a AcceptedContinuation) answers(items map[string]transcript.Item) ([]Inter
 // owns. A Question Item carries its answers; a reviewed ToolCall carries its full
 // approval resolution. The derivation is the exact inverse of the acceptance
 // write, so a re-delivered Signal reproduces the same identity and bytes.
-func acceptedItemResolution(item transcript.Item) (interrupt.Resolution, error) {
+func acceptedItemResolution(item transcript.Item) (run.InterruptResolution, error) {
 	if question, ok := item.Question(); ok {
 		if !question.Answered() {
-			return interrupt.Resolution{}, errors.New("question item is not answered")
+			return run.InterruptResolution{}, errors.New("question item is not answered")
 		}
-		return interrupt.NewQuestionAnswer(question.Answers)
+		return run.NewQuestionAnswer(question.Answers)
 	}
 	resolution := item.ApprovalResolution()
 	if resolution.Decision == "" {
-		return interrupt.Resolution{}, errors.New("approval item has no accepted resolution")
+		return run.InterruptResolution{}, errors.New("approval item has no accepted resolution")
 	}
-	return interrupt.NewApprovalAnswer(resolution)
+	return run.NewApprovalAnswer(resolution)
 }

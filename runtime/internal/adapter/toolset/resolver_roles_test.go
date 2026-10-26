@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -43,8 +43,8 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 		UserHome: t.TempDir(),
 		PlanMode: policy,
 		Plan:     rolePlanStore{},
-		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
-			return interrupt.Resolution{}, nil, nil
+		Interrupt: func(context.Context, toolcontract.Invocation, string, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
+			return run.InterruptResolution{}, nil, nil
 		},
 	})
 	if err != nil {

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	"github.com/Tangerg/scope/core/chat"
 )
 

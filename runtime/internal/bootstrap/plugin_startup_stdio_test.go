@@ -36,7 +36,7 @@ func TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable(t *testing.T) {
 	assertPluginExited(t, firstPID)
 	ctx, cancel := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
 	defer cancel()
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("blocked stdio prevented construction: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}

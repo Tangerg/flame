@@ -8,7 +8,7 @@ package goalref
 import (
 	"errors"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // MaximumIncarnationCharacters bounds every durable Goal-incarnation key.
@@ -24,7 +24,7 @@ type IncarnationID struct {
 // ParseIncarnation validates and preserves text exactly. It never trims,
 // normalizes, case-folds, or otherwise repairs caller input.
 func ParseIncarnation(text string) (IncarnationID, error) {
-	if err := runtimeidentity.ValidateResource("goal incarnation", text, MaximumIncarnationCharacters); err != nil {
+	if err := identity.ValidateResource("goal incarnation", text, MaximumIncarnationCharacters); err != nil {
 		return IncarnationID{}, err
 	}
 	return IncarnationID{text: text}, nil

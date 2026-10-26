@@ -1,13 +1,13 @@
 package model
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 func auxiliaryFixture(model chat.Model) SelectedChat {
-	if dependency.Missing(model) {
+	if lo.IsNil(model) {
 		return SelectedChat{}
 	}
 	resolved, err := NewResolvedChat(model, nil)

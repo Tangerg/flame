@@ -16,6 +16,6 @@ type SessionStore struct {
 
 // NewSessionStore wires a database opened via [openDatabase] to the session persistence
 // surface.
-func NewSessionStore(db *sql.DB) *SessionStore {
+func newSessionStore(db *sql.DB) *SessionStore {
 	return &SessionStore{db: db}
 }

@@ -8,17 +8,17 @@ import (
 var (
 	// ErrInvalidTokenLimits reports a non-positive published fact or a prompt
 	// maximum that exceeds a known context window.
-	ErrInvalidTokenLimits = errors.New("model token limits: invalid")
+	errInvalidTokenLimits = errors.New("model token limits: invalid")
 	// ErrInvalidOutputReservation reports a non-positive explicit generation
 	// reservation. Absence is represented by [OutputReservation] zero value,
 	// never by the number zero.
-	ErrInvalidOutputReservation = errors.New("model token limits: invalid output reservation")
+	errInvalidOutputReservation = errors.New("model token limits: invalid output reservation")
 	// ErrOutputTokenLimitExceeded reports an explicit generation request above
 	// the selected model's published output maximum.
-	ErrOutputTokenLimitExceeded = errors.New("model token limits: output maximum exceeded")
+	errOutputTokenLimitExceeded = errors.New("model token limits: output maximum exceeded")
 	// ErrOutputReservationExhaustsContext reports an explicit output reservation
 	// that leaves no room for the non-empty model input.
-	ErrOutputReservationExhaustsContext = errors.New("model token limits: output reservation exhausts context")
+	errOutputReservationExhaustsContext = errors.New("model token limits: output reservation exhausts context")
 )
 
 // TokenLimitValues is the explicit construction input for [TokenLimits]. A nil
@@ -85,7 +85,7 @@ func (t TokenLimits) validate() error {
 		{name: "max output", value: t.maxOutputTokens, present: t.maxOutputKnown},
 	} {
 		if fact.present && fact.value <= 0 {
-			return fmt.Errorf("%w: %s must be positive", ErrInvalidTokenLimits, fact.name)
+			return fmt.Errorf("%w: %s must be positive", errInvalidTokenLimits, fact.name)
 		}
 	}
 	if !t.contextWindowKnown {
@@ -94,7 +94,7 @@ func (t TokenLimits) validate() error {
 	if t.maxInputTokensKnown && t.maxInputTokens > t.contextWindow {
 		return fmt.Errorf(
 			"%w: max input %d exceeds context window %d",
-			ErrInvalidTokenLimits,
+			errInvalidTokenLimits,
 			t.maxInputTokens,
 			t.contextWindow,
 		)
@@ -137,7 +137,7 @@ func NewOutputReservation(tokens int64) (OutputReservation, error) {
 	if tokens <= 0 {
 		return OutputReservation{}, fmt.Errorf(
 			"%w: tokens must be positive",
-			ErrInvalidOutputReservation,
+			errInvalidOutputReservation,
 		)
 	}
 	return OutputReservation{tokens: tokens, present: true}, nil
@@ -154,7 +154,7 @@ func (t TokenLimits) InputCeiling(reservation OutputReservation) (int64, bool, e
 	if requested && t.maxOutputKnown && requestedOutput > t.maxOutputTokens {
 		return 0, false, fmt.Errorf(
 			"%w: requested %d, maximum %d",
-			ErrOutputTokenLimitExceeded,
+			errOutputTokenLimitExceeded,
 			requestedOutput,
 			t.maxOutputTokens,
 		)
@@ -166,7 +166,7 @@ func (t TokenLimits) InputCeiling(reservation OutputReservation) (int64, bool, e
 		if requestedOutput >= t.contextWindow {
 			return 0, false, fmt.Errorf(
 				"%w: requested %d, context window %d",
-				ErrOutputReservationExhaustsContext,
+				errOutputReservationExhaustsContext,
 				requestedOutput,
 				t.contextWindow,
 			)

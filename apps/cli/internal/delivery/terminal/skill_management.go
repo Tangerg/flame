@@ -29,7 +29,7 @@ func (a *app) skillDetailReaderQuery(name string) runtimeReaderQuery {
 		if err != nil {
 			return readerDocument{}, err
 		}
-		return readerDocument{Title: detail.Name, Detail: string(detail.Scope) + " · " + detail.Revision, Sections: []ToolSection{
+		return readerDocument{Title: detail.Name, Detail: string(detail.Scope) + " · " + detail.Revision, Sections: []toolSection{
 			{Title: "Source", Style: toolSectionParagraph, Text: detail.Path},
 			{Title: "Instructions", Style: toolSectionParagraph, Text: detail.Instructions},
 		}}, nil
@@ -134,7 +134,7 @@ func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument 
 	if len(proposals) == 0 {
 		return paragraphDocument("Skill proposals", "none pending", []string{"No Skill proposals are awaiting review."})
 	}
-	sections := make([]ToolSection, 0, len(proposals)*2)
+	sections := make([]toolSection, 0, len(proposals)*2)
 	for _, proposal := range proposals {
 		provenance := string(proposal.Origin)
 		if proposal.Revises {
@@ -144,8 +144,8 @@ func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument 
 			provenance += " · session " + shortIdentity(proposal.SourceSession)
 		}
 		sections = append(sections,
-			ToolSection{Title: proposal.Key(), Style: toolSectionParagraph, Text: proposal.Description + "\n" + provenance},
-			ToolSection{Title: "Instructions", Style: toolSectionParagraph, Text: proposal.Instructions, Links: true},
+			toolSection{Title: proposal.Key(), Style: toolSectionParagraph, Text: proposal.Description + "\n" + provenance},
+			toolSection{Title: "Instructions", Style: toolSectionParagraph, Text: proposal.Instructions, Links: true},
 		)
 	}
 	return readerDocument{Title: "Skill proposals", Detail: fmt.Sprintf("%d awaiting review", len(proposals)), Sections: sections}

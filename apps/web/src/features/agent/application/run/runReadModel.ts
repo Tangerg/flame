@@ -1,4 +1,4 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useMemo } from "react";
 import {
   type AgentProblem,
@@ -55,20 +55,20 @@ export class CurrentRootMaterial {
 }
 
 export function useCurrentRootMaterial(): CurrentRootMaterial {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const run = agentAccess.view.useCurrentRootRun();
   return useMemo(() => CurrentRootMaterial.from(run), [run]);
 }
 
 export function useIsCurrentRootRunning(): boolean {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return agentAccess.view.useCurrentRootRunning();
 }
 
 export function useActiveSessionProblem(): AgentProblem | null {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return agentAccess.view.useProblem();
 }

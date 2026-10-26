@@ -6,23 +6,22 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-func newUtilityRoleStore(t *testing.T) *UtilityRoleStore {
+func utilityRoleStoreFixture(t *testing.T) *utilityRoleStore {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewUtilityRoleStore(db)
+	return newUtilityRoleStore(db)
 }
 
 func TestUtilityRoleStore_RoundTrip(t *testing.T) {
-	s := newUtilityRoleStore(t)
+	s := utilityRoleStoreFixture(t)
 	ctx := context.Background()
 
 	// Unset → zero role, no error.
@@ -64,7 +63,7 @@ func TestUtilityRoleStoreRejectsPartialPersistedSelection(t *testing.T) {
 	if _, execErr := db.Exec(`INSERT INTO utility_role (id, provider, model) VALUES (1, ?, ?)`, "anthropic", ""); execErr != nil {
 		t.Fatalf("seed corrupt role: %v", execErr)
 	}
-	_, _, err = NewUtilityRoleStore(db).LoadUtilityRole(context.Background())
+	_, _, err = newUtilityRoleStore(db).LoadUtilityRole(context.Background())
 	if !errors.Is(err, modelchoice.ErrIncomplete) {
 		t.Fatalf("load partial role error = %v, want %v", err, modelchoice.ErrIncomplete)
 	}

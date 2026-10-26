@@ -35,7 +35,7 @@ func TestContractHasUniqueCompleteEndpoints(t *testing.T) {
 		}
 		if endpoint.Projects != "" {
 			method, found := delivery.Contract().Lookup(endpoint.Projects)
-			if endpoint.Kind != EndpointKindResource || !found || method.Operation != delivery.OperationQuery {
+			if endpoint.Kind != endpointKindResource || !found || method.Operation != delivery.OperationQuery {
 				t.Errorf("endpoint %q projects a non-query operation %q", endpoint.Name, endpoint.Projects)
 			}
 		}

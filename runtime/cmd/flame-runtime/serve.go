@@ -14,8 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
-	"github.com/Tangerg/flame/runtime/internal/infra/telemetry"
 )
 
 const (
@@ -25,7 +23,7 @@ const (
 )
 
 func run(ctx context.Context, errw io.Writer) (err error) {
-	shutdownTelemetry := telemetry.Configure(resolvedVersion())
+	shutdownTelemetry := configureTelemetry(resolvedVersion())
 	defer func() { err = errors.Join(err, shutdownTelemetry(context.WithoutCancel(ctx))) }()
 
 	instance, cfg, paths, err := bootstrapRuntime(ctx)
@@ -91,7 +89,7 @@ func closeRuntimeInstance(instance runtimeCloser) error {
 func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue string) (*flamehttp.Server, error) {
 	var web http.Handler
 	if srv.WebDirectory != "" {
-		assets, err := webassets.New(srv.WebDirectory)
+		assets, err := newWebAssets(srv.WebDirectory)
 		if err != nil {
 			return nil, err
 		}

@@ -18,14 +18,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 var ErrStaleCall = errors.New("plugin: callback call is no longer active")
 
-const callbackMetadataKey = "io.github.tangerg.flame/callback.v1"
+const CallbackMetadataKey = "io.github.tangerg.flame/callback.v1"
 
 type callbackRefKey struct{}
 
@@ -34,7 +34,7 @@ func CallbackMetadata(ref CallbackRef) (sdk.ParamsBase, error) {
 		return sdk.ParamsBase{}, err
 	}
 	var metadata sdk.ParamsBase
-	if err := metadata.Set(callbackMetadataKey, ref); err != nil {
+	if err := metadata.Set(CallbackMetadataKey, ref); err != nil {
 		return sdk.ParamsBase{}, err
 	}
 	return metadata, nil
@@ -49,7 +49,7 @@ func CallbackFromContext(ctx context.Context) (CallbackRef, error) {
 }
 
 func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Context, error) {
-	value, present := metadata[callbackMetadataKey]
+	value, present := metadata[CallbackMetadataKey]
 	if !present {
 		return ctx, nil
 	}
@@ -291,7 +291,7 @@ func (c *Callbacks) rpcHandler(callbacks []Callback) (http.Handler, error) {
 // OpenRPCWithInvocation binds backend-owned background work through an admission
 // projection. The authenticated activation owns the Actor; wire context cannot
 // replace it. The projection must validate retained calling-owner evidence.
-func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, project func(context.Context, capability.Invocation) (context.Context, error)) (CallbackRef, func(), error) {
+func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, project func(context.Context, extension.Invocation) (context.Context, error)) (CallbackRef, func(), error) {
 	if project == nil {
 		return CallbackRef{}, nil, errors.New("plugin: background invocation projection is required")
 	}
@@ -301,7 +301,7 @@ func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.Clie
 	}
 	return c.open(ctx, session, limits, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if value := r.Header.Get(InvocationHeader); value != "" {
-			var invocation capability.Invocation
+			var invocation extension.Invocation
 			if err := json.Unmarshal([]byte(value), &invocation, json.RejectUnknownMembers(true)); err != nil {
 				http.Error(w, "invalid background invocation", http.StatusBadRequest)
 				return
@@ -564,21 +564,21 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if method == nil {
 		return zero, errors.New("plugin: callback method is required")
 	}
-	if method.contract.Kind() == capability.Mutation {
+	if method.contract.Kind() == extension.Mutation {
 		if err := validateCommandID(id); err != nil {
 			return zero, err
 		}
 	} else if id != "" {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, err
 	}
 	if err := method.contract.ValidateInput(admitted); err != nil {
 		return zero, err
 	}
-	encoded, err := json.Marshal(invokeParams{Protocol: capability.Protocol, Method: method.Name(), Contract: method.contract.Identity().Digest(), Input: admitted.JSON(), CommandID: id})
+	encoded, err := json.Marshal(invokeParams{Protocol: extension.Protocol, Method: method.Name(), Contract: method.contract.Identity().Digest(), Input: admitted.JSON(), CommandID: id})
 	if err != nil {
 		return zero, err
 	}
@@ -613,7 +613,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 	if response.StatusCode != http.StatusOK {
 		return zero, fmt.Errorf("plugin: callback could not be confirmed (%d)", response.StatusCode)
 	}
-	var result Result[jsontext.Value]
+	var result methodResult[jsontext.Value]
 	if err := json.Unmarshal(body, &result, json.RejectUnknownMembers(true)); err != nil {
 		return zero, err
 	}
@@ -633,7 +633,7 @@ func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, 
 // Only activation-scoped RPC grants admit a projected background invocation.
 // Ordinary call/next grants keep their captured owner regardless of this header.
 func setCallbackInvocation(request *http.Request, ctx context.Context) error {
-	invocation, found := ctx.Value(invocationKey{}).(capability.Invocation)
+	invocation, found := ctx.Value(invocationKey{}).(extension.Invocation)
 	if !found {
 		return nil
 	}

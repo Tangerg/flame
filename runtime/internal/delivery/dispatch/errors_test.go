@@ -9,11 +9,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 )
 
 func TestBackendTransportErrorCannotBypassCoreProblemProjection(t *testing.T) {
-	failure := protocol.NewFailure(errors.Join(protocol.ErrInternalError, transport.NewError(0, "private downstream failure", nil)), "the runtime could not complete the request")
+	failure := protocol.NewFailure(errors.Join(protocol.ErrInternalError, protocol.NewRPCError(0, "private downstream failure", nil)), "the runtime could not complete the request")
 	rpcErr := errorToRPC(failure)
 	if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
 		t.Fatalf("backend transport replaced the Core error contract: %+v", rpcErr)
@@ -73,10 +72,7 @@ func TestMalformedStructuredProblemFailsClosedAsInternalError(t *testing.T) {
 	// capability_not_negotiated without its non-empty requirements is not a legal
 	// frame. The error boundary must not publish a payload whose recovery contract
 	// it cannot satisfy.
-	rpcErr := problemError(
-		protocol.ErrCapabilityNotNeg,
-		"missing structured requirements",
-	)
+	rpcErr := problemError(protocol.ErrCapabilityNotNeg, "missing structured requirements")
 	if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
 		t.Fatalf("fallback error = %+v, want internal_error", rpcErr)
 	}

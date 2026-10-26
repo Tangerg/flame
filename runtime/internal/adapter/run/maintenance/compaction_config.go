@@ -4,11 +4,8 @@ import (
 	"errors"
 	"math"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // compactionDefaults govern model-context reduction. Tunable via
@@ -85,7 +82,10 @@ func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat
 		window := tokenLimitInt(contextWindow)
 		whole := window / percentageScale * windowTriggerPct
 		fraction := window % percentageScale * windowTriggerPct / percentageScale
-		trigger = max(1, modeltext.SaturatedAdd(whole, fraction))
+		trigger = math.MaxInt
+		if whole <= math.MaxInt-fraction {
+			trigger = max(1, whole+fraction)
+		}
 	}
 	if inputLimitKnown {
 		trigger = min(trigger, tokenLimitInt(inputLimit))

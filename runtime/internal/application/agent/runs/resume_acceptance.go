@@ -5,9 +5,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -70,7 +70,7 @@ func (r ResumeAcceptance) Validate() error {
 	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("runs: resume acceptance Pending: %w", err)
 	}
-	if err := resourceid.ValidateSession(r.sessionID); err != nil {
+	if err := identity.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("runs: resume acceptance: %w", err)
 	}
 	interrupts, err := r.expected.ProjectInterrupts(r.items)
@@ -148,9 +148,9 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 		}
 		itemReplacement, err := transcript.Replace(expected, func(expected transcript.Item) (transcript.Item, error) {
 			switch open.Kind() {
-			case interrupt.Question:
+			case run.InterruptQuestion:
 				return expected.AnswerQuestion(answer.Resolution.Question().Answers())
-			case interrupt.Approval:
+			case run.InterruptApproval:
 				return expected.ResolveToolApproval(*answer.Resolution.Approval())
 			default:
 				return transcript.Item{}, fmt.Errorf("unknown interrupt kind %q", open.Kind())
@@ -169,7 +169,7 @@ func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
 func (r ResumeAcceptance) approvalCalls() map[string]string {
 	calls := make(map[string]string)
 	for index, open := range r.expected.Interrupts {
-		if open.Kind() != interrupt.Approval {
+		if open.Kind() != run.InterruptApproval {
 			continue
 		}
 		calls[open.ItemID] = r.expected.Bindings[index].ToolCallID

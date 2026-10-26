@@ -10,8 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -89,9 +88,9 @@ func TestFileRollbackRetiresOnlyDefinitiveRuntimeRefusals(t *testing.T) {
 	}
 }
 
-func protectedRollbackGuard(t *testing.T, namespace string, until time.Time) replay.Guard {
+func protectedRollbackGuard(t *testing.T, namespace string, until time.Time) authoring.ReplayGuard {
 	t.Helper()
-	guard, err := replay.NewProtectedGuard(namespace, until)
+	guard, err := authoring.NewProtectedGuard(namespace, until)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,11 +104,11 @@ func advertisedRollbackPolicy(
 	now func() time.Time,
 ) mutation.ReplayPolicy {
 	t.Helper()
-	capability, err := replay.NewCapability(namespace, retention)
+	capability, err := authoring.NewReplayCapability(namespace, retention)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := mutation.NewReplayPolicy(capability, now)
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: capability}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,9 +145,7 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 	}
 	stagedAt := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	replayGuard := protectedRollbackGuard(t, "idp_original", stagedAt.Add(time.Minute))
-	pending := preview.journal(
-		replay.CommandID("cli_99999999999999999999999999999999"), replayGuard, stagedAt,
-	)
+	pending := preview.journal(authoring.CommandID("cli_99999999999999999999999999999999"), replayGuard, stagedAt)
 	now := pending.Replay.Until().Add(-time.Nanosecond)
 	policy := advertisedRollbackPolicy(t, "idp_original", time.Minute, func() time.Time { return now })
 	runtime := &recordingRuntime{Runtime: underlying, reject: conversation.ErrDisconnected}
@@ -185,9 +182,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
-	pending := preview.journal(
-		replay.CommandID("cli_11111111111111111111111111111111"), replay.UnprotectedGuard(), now,
-	)
+	pending := preview.journal(authoring.CommandID("cli_11111111111111111111111111111111"), authoring.UnprotectedGuard(), now)
 	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -209,7 +204,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	if !exists || confirmed.Phase != workbench.SessionRollbackConfirmed {
 		t.Fatalf("confirmed rollback = %+v, present %t", confirmed, exists)
 	}
-	activation, err := store.ActivateSessionDraft(pending.SessionID, prompt.Message{})
+	activation, err := store.ActivateSessionDraft(pending.SessionID, authoring.Message{})
 	if err != nil || activation.Rollback == nil ||
 		activation.Rollback.Draft.Text != "Why is the cache expiry test flaky?" {
 		t.Fatalf("rollback activation = %+v, err %v", activation, err)
@@ -260,9 +255,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
-	pending := preview.journal(
-		replay.CommandID("cli_22222222222222222222222222222222"), replay.UnprotectedGuard(), now,
-	)
+	pending := preview.journal(authoring.CommandID("cli_22222222222222222222222222222222"), authoring.UnprotectedGuard(), now)
 	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -315,10 +308,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 				t.Fatal(err)
 			}
 			stagedAt := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-			pending := preview.journal(
-				replay.CommandID("cli_33333333333333333333333333333333"),
-				protectedRollbackGuard(t, "idp_original", stagedAt.Add(time.Minute)), stagedAt,
-			)
+			pending := preview.journal(authoring.CommandID("cli_33333333333333333333333333333333"), protectedRollbackGuard(t, "idp_original", stagedAt.Add(time.Minute)), stagedAt)
 			store, err := openTestWorkbench(t.TempDir())
 			if err != nil {
 				t.Fatal(err)
@@ -349,9 +339,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
-	pending := preview.journal(
-		replay.CommandID("cli_44444444444444444444444444444444"), replay.UnprotectedGuard(), now,
-	)
+	pending := preview.journal(authoring.CommandID("cli_44444444444444444444444444444444"), authoring.UnprotectedGuard(), now)
 	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -377,9 +365,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
 	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
-	pending := preview.journal(
-		replay.CommandID("cli_55555555555555555555555555555555"), replay.UnprotectedGuard(), now,
-	)
+	pending := preview.journal(authoring.CommandID("cli_55555555555555555555555555555555"), authoring.UnprotectedGuard(), now)
 	store, err := openTestWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)

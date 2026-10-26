@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 func TestCapacityRequiresAnExplicitPositiveBound(t *testing.T) {
@@ -71,10 +71,10 @@ func TestMemoryPersistenceNeverCreatesWorkbenchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Remember(prompt.Message{Text: "process-local prompt"}); err != nil {
+	if err := store.Remember(authoring.Message{Text: "process-local prompt"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveDraft("session", prompt.Message{Text: "process-local draft"}); err != nil {
+	if err := store.SaveDraft("session", authoring.Message{Text: "process-local draft"}); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(workingDirectory)

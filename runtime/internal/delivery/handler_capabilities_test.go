@@ -13,15 +13,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	t.Parallel()
 
 	caps := capabilitiesFor(featureAvailability{}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
-	want := []protocol.StreamEventType{
-		protocol.StreamSegmentStarted,
-		protocol.StreamSegmentProgress,
-		protocol.StreamSegmentFinished,
-		protocol.StreamItemStarted,
-		protocol.StreamItemDelta,
-		protocol.StreamItemCompleted,
-		protocol.StreamPlanUpdated,
-	}
+	want := []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 	if !slices.Equal(caps.RunEvents, want) {
 		t.Fatalf("events = %v, want %v", caps.RunEvents, want)
 	}
@@ -74,9 +66,7 @@ func TestCapabilitiesAdvertiseThePublishedVocabulary(t *testing.T) {
 
 	caps := capabilitiesFor(
 		featureAvailability{},
-		replayLimitsFrom(runs.DefaultRetention()),
-		protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace},
-		protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73},
+		replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73},
 	)
 	for _, feature := range protocol.FeatureKeys() {
 		if _, advertised := caps.Features[feature]; !advertised {

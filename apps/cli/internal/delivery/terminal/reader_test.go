@@ -24,7 +24,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 		Kind: conversation.ToolShell, Command: "long output", Status: conversation.ToolOK,
 		Output: strings.Join(lines, "\n"),
 	}
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	tool := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 	tool.SetExpanded(true)
 	inline := drawToolBlock(tool, 72)
@@ -49,7 +49,7 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 }
 
 func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	call := conversation.ToolCall{
 		Kind: conversation.ToolShell, Command: "stream", Status: conversation.ToolRunning,
 		Output: strings.Repeat("initial output row\n", 40),
@@ -82,12 +82,12 @@ func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 }
 
 func TestReaderSearchStepsAcrossFullContent(t *testing.T) {
-	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
+	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	reader := newReaderPane(presentation.Theme, presentation.Glyphs, presentation.Syntax, input.Wheel{}, nil)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{document: readerDocument{
 		Title:    "search contract",
-		Sections: []ToolSection{{Style: toolSectionCode, Text: "needle one\nother\nneedle two"}},
+		Sections: []toolSection{{Style: toolSectionCode, Text: "needle one\nother\nneedle two"}},
 	}})
 	headless.NewRoot(reader).Draw(grid.NewSurface(60, 10).View())
 	reader.Find("needle")
@@ -112,7 +112,7 @@ func TestReaderRejectsAResultFromAnEarlierIdenticalSearch(t *testing.T) {
 	reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, nil)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{document: readerDocument{
-		Title: "search ownership", Sections: []ToolSection{{Style: toolSectionCode, Text: "needle"}},
+		Title: "search ownership", Sections: []toolSection{{Style: toolSectionCode, Text: "needle"}},
 	}})
 	headless.NewRoot(reader).Draw(grid.NewSurface(60, 10).View())
 	reader.Find("needle")
@@ -142,7 +142,7 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{document: readerDocument{
 		Title:    "pointer ownership",
-		Sections: []ToolSection{{Style: toolSectionParagraph, Text: "copy only from the owned gesture"}},
+		Sections: []toolSection{{Style: toolSectionParagraph, Text: "copy only from the owned gesture"}},
 	}})
 	root := headless.NewRoot(reader)
 	root.Draw(grid.NewSurface(60, 10).View())

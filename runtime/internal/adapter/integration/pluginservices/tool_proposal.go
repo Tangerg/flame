@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/scope/core/chat"
@@ -35,7 +34,7 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 	if err != nil {
 		return chat.ToolCall{}, err
 	}
-	if invocation.ID != proposal.ID || invocation.Target.Scope != capability.ScopeCall || invocation.Target.Reference != proposal.ID {
+	if invocation.ID != proposal.ID || invocation.Target.Scope != extension.ScopeCall || invocation.Target.Reference != proposal.ID {
 		return chat.ToolCall{}, errors.New("tool proposal: calling owner differs from the captured proposal")
 	}
 	if err := o.ValidateToolProposals(ctx, bindings); err != nil {

@@ -8,12 +8,12 @@ import (
 
 const (
 	WorkspacesResolve    Name = "workspaces.resolve"
-	WorkspacesList       Name = "workspaces.list"
-	WorkspaceChangesList Name = "workspace.changes.list"
+	workspacesList       Name = "workspaces.list"
+	workspaceChangesList Name = "workspace.changes.list"
 	WorkspaceDiffGet     Name = "workspace.diff.get"
-	WorkspaceFilesSearch Name = "workspace.files.search"
-	WorkspaceFilesList   Name = "workspace.files.list"
-	WorkspaceFilesRead   Name = "workspace.files.read"
+	workspaceFilesSearch Name = "workspace.files.search"
+	workspaceFilesList   Name = "workspace.files.list"
+	workspaceFilesRead   Name = "workspace.files.read"
 )
 
 func registerWorkspace(registry *Registry) {
@@ -26,7 +26,7 @@ func registerWorkspace(registry *Registry) {
 		return service.ResolveWorkspace(ctx, request)
 	})
 
-	registry.query(MethodMeta{Name: WorkspacesList, GoName: "ListWorkspaces"},
+	registry.query(MethodMeta{Name: workspacesList, GoName: "ListWorkspaces"},
 		func(service interface {
 			ListWorkspaces(context.Context) (*protocol.Page[protocol.WorkspaceSummary], error)
 		}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.WorkspaceSummary], error) {
@@ -36,10 +36,10 @@ func registerWorkspace(registry *Registry) {
 	// Git reads require the advertised capability. Once negotiated, a path that is
 	// not a repository is the distinct vcs_unavailable domain answer.
 	registry.query(MethodMeta{
-		Name: WorkspaceChangesList, GoName: "ListWorkspaceFileChanges",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrVcsUnavailable.Error(),
+		Name: workspaceChangesList, GoName: "ListWorkspaceFileChanges",
+		Errors: []string{protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrVcsUnavailable.
+			Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureGit),
 	}, func(service interface {
@@ -50,10 +50,10 @@ func registerWorkspace(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name: WorkspaceDiffGet, GoName: "GetWorkspaceDiff",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrVcsUnavailable.Error(),
-			protocol.ErrPathOutsideRoot.Error(),
+		Errors: []string{protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrVcsUnavailable.
+			Error(), protocol.ErrPathOutsideRoot.
+			Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureGit),
 	}, func(service interface {
@@ -63,10 +63,10 @@ func registerWorkspace(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name: WorkspaceFilesSearch, GoName: "SearchWorkspaceFiles",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrPathOutsideRoot.Error(),
+		Name: workspaceFilesSearch, GoName: "SearchWorkspaceFiles",
+		Errors: []string{protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrPathOutsideRoot.
+			Error(),
 		},
 	}, func(service interface {
 		GrepWorkspace(context.Context, protocol.GrepRequest) (*protocol.GrepResult, error)
@@ -75,10 +75,10 @@ func registerWorkspace(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name: WorkspaceFilesList, GoName: "ListWorkspaceFiles",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrPathOutsideRoot.Error(),
+		Name: workspaceFilesList, GoName: "ListWorkspaceFiles",
+		Errors: []string{protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrPathOutsideRoot.
+			Error(),
 		},
 	}, func(service interface {
 		ListWorkspaceFiles(context.Context, protocol.ListFilesRequest) (*protocol.Page[protocol.FileEntry], error)
@@ -87,11 +87,11 @@ func registerWorkspace(registry *Registry) {
 	})
 
 	registry.query(MethodMeta{
-		Name: WorkspaceFilesRead, GoName: "ReadWorkspaceFile",
-		Errors: []string{
-			protocol.ErrWorkspaceUnavailable.Error(),
-			protocol.ErrPathOutsideRoot.Error(),
-			protocol.ErrUnsupportedMime.Error(),
+		Name: workspaceFilesRead, GoName: "ReadWorkspaceFile",
+		Errors: []string{protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrPathOutsideRoot.
+			Error(), protocol.ErrUnsupportedMime.
+			Error(),
 		},
 	}, func(service interface {
 		ReadWorkspaceFile(context.Context, protocol.ReadFileRequest) (*protocol.FileContent, error)

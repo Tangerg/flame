@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"

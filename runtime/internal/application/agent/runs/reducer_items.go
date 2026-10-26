@@ -7,8 +7,7 @@ import (
 	"strings"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -344,7 +343,7 @@ func (r *reducer) completeMessageContent(
 }
 
 func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
-	if err := runtimeidentity.ValidateEffect(e.CallID); err != nil {
+	if err := ValidateInvocation(e.CallID); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
@@ -472,7 +471,7 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 }
 
 func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, error) {
-	if err := runtimeidentity.ValidateEffect(e.CallID); err != nil {
+	if err := ValidateInvocation(e.CallID); err != nil {
 		return nil, nil, err
 	}
 	ref, ok := r.tools.get(e.CallID)
@@ -628,7 +627,7 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 				)
 			}
 		}
-		if err := resourceid.ValidateItem(applied.ItemID); err != nil {
+		if err := flameidentity.ValidateItem(applied.ItemID); err != nil {
 			return nil, fmt.Errorf("applied steer message %d Item: %w", messageIndex, err)
 		}
 		if applied.AlreadyProjected {

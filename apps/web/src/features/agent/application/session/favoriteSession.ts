@@ -1,4 +1,4 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useCallback } from "react";
 import {
   invalidateAgentSessions,
@@ -12,7 +12,7 @@ export function useToggleFavorite(): (
   expectedRevision: number,
   favorite: boolean,
 ) => Promise<void> {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return useCallback(
     async (id, expectedRevision, favorite) => {

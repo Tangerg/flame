@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Validate checks the CLI-owned construction of a Run projection. Runtime owns
@@ -61,7 +61,7 @@ func ValidateEvent(event Event) error {
 		if err := item.Run.Validate(); err != nil {
 			return fmt.Errorf("segment started: %w", err)
 		}
-		if item.Run.Status != runtimeprotocol.RunStatusRunning {
+		if item.Run.Status != protocol.RunStatusRunning {
 			return errors.New("segment started with a non-running run")
 		}
 		return nil
@@ -101,9 +101,9 @@ func (e SegmentFinished) validate() error {
 		return fmt.Errorf("segment finished: %w", err)
 	}
 	switch e.Run.Status {
-	case runtimeprotocol.RunStatusWaiting:
+	case protocol.RunStatusWaiting:
 		return nil
-	case runtimeprotocol.RunStatusFinished:
+	case protocol.RunStatusFinished:
 		if len(e.Interrupts) != 0 {
 			return errors.New("segment finished a finished run with interrupts")
 		}
@@ -254,11 +254,11 @@ func (t ToolStatus) blockStatus() BlockStatus {
 // validateUsageProgress protects the conversation fold: cumulative Run metering
 // may only move forward across the events and snapshots the CLI merges.
 func validateUsageProgress(previous, next Usage) error {
-	if err := validateModelUsageProgress("total", runtimeprotocol.ModelUsage{
+	if err := validateModelUsageProgress("total", protocol.ModelUsage{
 		InputTokens: previous.InputTokens, OutputTokens: previous.OutputTokens,
 		CacheReadTokens: previous.CacheReadTokens, CacheWriteTokens: previous.CacheWriteTokens,
 		ReasoningTokens: previous.ReasoningTokens, CostUSD: previous.CostUSD,
-	}, runtimeprotocol.ModelUsage{
+	}, protocol.ModelUsage{
 		InputTokens: next.InputTokens, OutputTokens: next.OutputTokens,
 		CacheReadTokens: next.CacheReadTokens, CacheWriteTokens: next.CacheWriteTokens,
 		ReasoningTokens: next.ReasoningTokens, CostUSD: next.CostUSD,
@@ -283,7 +283,7 @@ func validateUsageProgress(previous, next Usage) error {
 	return nil
 }
 
-func validateModelUsageProgress(label string, previous, next runtimeprotocol.ModelUsage) error {
+func validateModelUsageProgress(label string, previous, next protocol.ModelUsage) error {
 	switch {
 	case next.InputTokens < previous.InputTokens:
 		return fmt.Errorf("%s input-token usage regressed", label)

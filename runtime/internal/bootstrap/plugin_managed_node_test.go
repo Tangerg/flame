@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -25,11 +25,11 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}
-	method, err := pluginsdk.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](pluginsdk.MethodConfig{Name: "fixture.usage", Kind: capability.Query, Target: "installation", Description: "Read core accounting through the calling host."})
+	method, err := pluginsdk.NewMethod[protocol.UsageSummaryRequest, protocol.UsageSummary](pluginsdk.MethodConfig{Name: "fixture.usage", Kind: extension.Query, Target: "installation", Description: "Read core accounting through the calling host."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "flame.fixture.usage", Composition: capability.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "flame.fixture.usage", Composition: extension.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	for name, body := range map[string]string{
 		"plugin.json":                              `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"managed-probe","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/contract.json":    string(descriptor),
-		"io.github.tangerg.flame/declaration.json": `{"protocol":"` + capability.Protocol + `","managedBackends":[{"id":"managed","runtime":"node","entry":"start.mjs"}],"contributions":[{"id":"probe","server":"managed","export":"probe","contract":"io.github.tangerg.flame/contract.json"}]}`,
+		"io.github.tangerg.flame/declaration.json": `{"protocol":"` + extension.Protocol + `","managedBackends":[{"id":"managed","runtime":"node","entry":"start.mjs"}],"contributions":[{"id":"probe","server":"managed","export":"probe","contract":"io.github.tangerg.flame/contract.json"}]}`,
 	} {
 		path := filepath.Join(source, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
@@ -51,7 +51,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 		}
 	}
 	cfg := poMCPConfig(t)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.approvalMode = approval.ModeYolo
 	var toolName string
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		if len(request.Tools) == 0 {
@@ -75,7 +75,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	if len(installed.Selected.Servers) != 1 {
@@ -84,7 +84,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "managed"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	toolName = tools[0].ModelName
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "probe", Contract: contract.Identity().String(), Method: method.Name(), Input: `{"sinceDays":1}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	response := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var summary protocol.UsageSummary
 	if response.Failure != nil || json.Unmarshal([]byte(response.Output), &summary) != nil || summary.ObservedAt.IsZero() || summary.Since == nil {

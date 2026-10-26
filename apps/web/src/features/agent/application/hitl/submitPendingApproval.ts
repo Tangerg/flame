@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 
 import { getApprovalActions } from "@/features/agent/application/hitl/useApprovalSubmit";
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
@@ -6,7 +6,7 @@ import { resumeInterrupt } from "@/features/agent/application/hitl/useInterruptR
 
 import { selectAwaitingGroups } from "@/features/agent/application/view/awaitingInterrupts";
 export function submitPendingApproval(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   decision: ApprovalDecision,
 ): boolean {
   const sid = agentAccess.state.getActiveSessionId();

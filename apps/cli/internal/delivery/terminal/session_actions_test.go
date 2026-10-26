@@ -11,11 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -59,8 +57,8 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	}
 	prompts := newTestQueue(t, store)
 	for _, sessionID := range []string{"retired", "active"} {
-		enqueueTestPrompt(t, prompts, sessionID, prompt.Message{Text: sessionID + " queued"})
-		if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
+		enqueueTestPrompt(t, prompts, sessionID, authoring.Message{Text: sessionID + " queued"})
+		if saveDraftErr := store.SaveDraft(sessionID, authoring.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
 			t.Fatal(saveDraftErr)
 		}
 		approval := conversation.Approval{
@@ -68,9 +66,9 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 			Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 		}
 		if stagePendingResumeErr := store.StagePendingResume(sessionID, workbench.PendingResume{
-			Replay: replay.UnprotectedGuard(),
+			Replay: authoring.UnprotectedGuard(),
 			Command: conversation.ResumeRun{
-				CommandID: replay.CommandID("cli_" + map[string]string{
+				CommandID: authoring.CommandID("cli_" + map[string]string{
 					"retired": "11111111111111111111111111111111",
 					"active":  "22222222222222222222222222222222",
 				}[sessionID]),
@@ -118,9 +116,9 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	baseline := prompt.Message{Text: "source baseline"}
-	current := prompt.Message{Text: "source baseline plus input authored during navigation"}
-	destination := prompt.Message{Text: "destination draft"}
+	baseline := authoring.Message{Text: "source baseline"}
+	current := authoring.Message{Text: "source baseline plus input authored during navigation"}
+	destination := authoring.Message{Text: "destination draft"}
 	if err := store.SaveDraft("source", current); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +133,7 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantDestination := prompt.Message{Text: "destination draft\n\nsource baseline plus input authored during navigation"}
+	wantDestination := authoring.Message{Text: "destination draft\n\nsource baseline plus input authored during navigation"}
 	if !resolved.Equal(wantDestination) {
 		t.Fatalf("resolved draft = %+v, want %+v", resolved, wantDestination)
 	}
@@ -154,11 +152,11 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "keep authoring state"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(sessionID, authoring.Message{Text: "keep authoring state"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	prompts := newTestQueue(t, store)
-	enqueueTestPrompt(t, prompts, sessionID, prompt.Message{Text: "keep queued prompt"})
+	enqueueTestPrompt(t, prompts, sessionID, authoring.Message{Text: "keep queued prompt"})
 	entries, err := os.ReadDir(filepath.Join(directory, "sessions"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("session state files = %d, %v", len(entries), err)
@@ -206,7 +204,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft(target.ID, prompt.Message{Text: "must not survive deletion"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(target.ID, authoring.Message{Text: "must not survive deletion"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	backend := &postCommitSessionDeleteRuntime{Runtime: base, deleted: make(chan struct{}, 1)}
@@ -260,11 +258,11 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft(target.ID, prompt.Message{Text: "orphaned draft"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(target.ID, authoring.Message{Text: "orphaned draft"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	request := conversation.DeleteSession{
-		CommandID: replay.CommandID("cli_66666666666666666666666666666666"), SessionID: target.ID,
+		CommandID: authoring.CommandID("cli_66666666666666666666666666666666"), SessionID: target.ID,
 	}
 	if stageSessionDeletionErr := store.StageSessionDeletion(request, durableCommandReplayGuard(t)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
@@ -486,7 +484,7 @@ func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 	close(backend.release)
 	host.Shows(t, "Why is the cache expiry test flaky?")
 	host.Shows(t, "new thought")
-	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", authoring.Message{
 		Text: "Why is the cache expiry test flaky?\n\nnew thought",
 	})
 	stop()
@@ -557,7 +555,7 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 	host.Shows(t, "workbench:")
 	restoreWrites()
 	host.Type("!")
-	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{Text: "Why is the cache expiry test flaky?!"})
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", authoring.Message{Text: "Why is the cache expiry test flaky?!"})
 	host.Shows(t, "rolled back 1 runs; restored text was not saved")
 	host.Hides(t, "rolled back session · 1 runs removed")
 	stop()
@@ -667,19 +665,19 @@ type steeringRuntime struct {
 	*runtimefixture.Runtime
 
 	mu      sync.Mutex
-	request prompt.SteerRun
+	request authoring.SteerRun
 	err     error
 }
 
 type blockedSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	entered chan prompt.SteerRun
+	entered chan authoring.SteerRun
 	release chan struct{}
 	err     error
 }
 
-func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	select {
 	case b.entered <- request:
 	case <-ctx.Done():
@@ -693,14 +691,14 @@ func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request prompt.St
 	}
 }
 
-func (s *steeringRuntime) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (s *steeringRuntime) SteerRun(_ context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	s.mu.Lock()
 	s.request = request
 	s.mu.Unlock()
 	return protocol.SteerRunResponse{}, s.err
 }
 
-func (s *steeringRuntime) lastSteer() prompt.SteerRun {
+func (s *steeringRuntime) lastSteer() authoring.SteerRun {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	request := s.request
@@ -712,20 +710,20 @@ type uncertainSteeringRuntime struct {
 	*runtimefixture.Runtime
 
 	mu       sync.Mutex
-	requests []prompt.SteerRun
+	requests []authoring.SteerRun
 	receipt  protocol.SteerRunResponse
 }
 
 type committedThenCanceledSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	committed chan prompt.SteerRun
+	committed chan authoring.SteerRun
 	receipt   protocol.SteerRunResponse
 }
 
 func (c *committedThenCanceledSteeringRuntime) SteerRun(
 	ctx context.Context,
-	request prompt.SteerRun,
+	request authoring.SteerRun,
 ) (protocol.SteerRunResponse, error) {
 	receipt, err := c.Runtime.SteerRun(ctx, request)
 	if err != nil {
@@ -743,12 +741,12 @@ func (c *committedThenCanceledSteeringRuntime) SteerRun(
 type cachedSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	accepted prompt.SteerRun
-	attempts []prompt.SteerRun
+	accepted authoring.SteerRun
+	attempts []authoring.SteerRun
 	receipt  protocol.SteerRunResponse
 }
 
-func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	c.attempts = append(c.attempts, request.Clone())
 	if !request.Equal(c.accepted) {
 		return protocol.SteerRunResponse{}, errors.New("replayed steer does not match the accepted command")
@@ -756,7 +754,7 @@ func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request prompt.Steer
 	return c.receipt, nil
 }
 
-func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	u.mu.Lock()
 	u.requests = append(u.requests, request)
 	attempt := len(u.requests)
@@ -772,7 +770,7 @@ func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request prompt.
 	return u.receipt, nil
 }
 
-func (u *uncertainSteeringRuntime) steerAttempts() []prompt.SteerRun {
+func (u *uncertainSteeringRuntime) steerAttempts() []authoring.SteerRun {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	return slices.Clone(u.requests)
@@ -823,7 +821,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 		}}
 	}
 	backend := &blockedSteeringRuntime{
-		Runtime: base, entered: make(chan prompt.SteerRun, 1), release: make(chan struct{}), err: conversation.ErrStaleSegment,
+		Runtime: base, entered: make(chan authoring.SteerRun, 1), release: make(chan struct{}), err: conversation.ErrStaleSegment,
 	}
 	workspace := t.TempDir()
 	stateDirectory := t.TempDir()
@@ -840,7 +838,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	host.Type("/attach notes.txt")
 	host.Press(input.Enter)
 	host.Shows(t, "attached notes.txt")
-	var staged prompt.Message
+	var staged authoring.Message
 	awaitState(t, "the attachment draft to become durable", func() bool {
 		var found bool
 		var err error
@@ -909,7 +907,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 		}}
 	}
 	runtime := &committedThenCanceledSteeringRuntime{
-		Runtime: base, committed: make(chan prompt.SteerRun, 1),
+		Runtime: base, committed: make(chan authoring.SteerRun, 1),
 	}
 	workspace := t.TempDir()
 	stateDirectory := t.TempDir()
@@ -967,7 +965,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stopRestarted()
 }
 
-func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profile {
+func steerReplayTestProfile(t *testing.T, workspace string) runtimefixture.Profile {
 	t.Helper()
 	return terminalProfile(t, func(discovery *protocol.DiscoverResponse, _ *protocol.ClientCapabilities) {
 		discovery.ServerInfo.Name = "steer-test"
@@ -977,6 +975,7 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profi
 		discovery.Capabilities.Limits.MaxConcurrentRuns = new(1)
 		discovery.Capabilities.Limits.Idempotency.Namespace = terminalTestReplayNamespace
 		discovery.Capabilities.Limits.RunReplay.MaxEvents = 128
-		discovery.Capabilities.Limits.RuntimeSubscription = protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}
+		discovery.Capabilities.Limits.RuntimeSubscription.MaxTopics = 1
+		discovery.Capabilities.Limits.RuntimeSubscription.MaxWatches = 1
 	})
 }

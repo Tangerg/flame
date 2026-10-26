@@ -11,21 +11,21 @@ import (
 
 // PlanReader is the prompt composer's read-only view of the current Session
 // Plan.
-type PlanReader interface {
+type planReader interface {
 	List(ctx context.Context, sessionID string) ([]plan.Step, error)
 }
 
 // GoalReader is the working-context adapter's read-only view of the current
 // autonomous Goal aggregate. A found Goal is valid and belongs to the requested
 // Session.
-type GoalReader interface {
+type goalReader interface {
 	Current(ctx context.Context, sessionID string) (goal.Goal, bool, error)
 }
 
 // InteractionModelContextState supplies model-facing Session state whose value
 // may change while an Interaction is running. It is deliberately separate from
 // the frozen deployment instruction snapshot.
-type InteractionModelContextState interface {
+type interactionModelContextState interface {
 	CurrentSessionState(ctx context.Context, sessionID string) ([]corechat.Message, error)
 }
 
@@ -39,11 +39,11 @@ type MemoryPromptItem struct {
 }
 
 // AgentMemoryReader supplies the pinned memory included in every fresh root.
-type AgentMemoryReader interface {
+type agentMemoryReader interface {
 	Items(ctx context.Context, scope string, project string) ([]MemoryPromptItem, error)
 }
 
 // AgentMemorySearcher supplies prompt-relevant non-pinned memory.
-type AgentMemorySearcher interface {
+type agentMemorySearcher interface {
 	Search(ctx context.Context, project, query string, topK int) ([]MemoryPromptItem, error)
 }

@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -16,7 +17,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
-import { createFlameClient, createMutationPromise, RpcError } from "@flame/runtime-client";
+import { createFlameClient, RpcError } from "@flame/runtime-client";
 import { type CallPluginResponse } from "@flame/runtime-client/wire";
 import { Schedules } from "../../../plugins/schedules/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
@@ -80,7 +81,7 @@ function mountSchedules(subscribeError?: Error) {
       reads.push(read);
       return read.promise;
     }
-    return createMutationPromise(
+    return mutationResult(
       (_, attempt) => heldCall(attempt.signal).promise,
       `schedules-command-${++commands}`,
       { signal: options?.signal },

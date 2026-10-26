@@ -13,9 +13,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadPluginsForTest } from "@/test/kernel";
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
 import { type FlameClient } from "@flame/runtime-client";
-import { createMethods } from "@flame/runtime-client";
-import { type RpcClient, type RpcCallOptions } from "@flame/runtime-client";
-import { createMutationJournal, type MutationJournalStorage } from "@flame/runtime-client";
+import {
+  createRuntimeTestClient,
+  type RuntimeCall,
+  type RuntimeCallOptions,
+} from "@/test/runtimeClient";
+import { type MutationJournalStorage } from "@flame/runtime-client";
 import { RpcTransportError } from "@flame/runtime-client";
 import {
   type StartRunRequest,
@@ -40,7 +43,7 @@ const prefix = "cold-opening-test:";
 
 let disposeGateway: ReturnType<typeof createAgentGatewayFixture> | undefined;
 
-const journals: Array<ReturnType<typeof createMutationJournal>> = [];
+const clients: FlameClient[] = [];
 
 function storage(): MutationJournalStorage {
   return {
@@ -83,34 +86,22 @@ const requests = {
   } satisfies ResumeRunRequest,
 };
 
-function open(call: RpcClient["call"]) {
-  const journal = createMutationJournal({
-    storage: storage(),
-    scope: () => ({ namespace: "idp_opening_original", retentionSeconds: 86400 }),
+function open(call: RuntimeCall) {
+  const capabilities = structuredClone(discovery.capabilities) as ServerCapabilities;
+  const methods = createRuntimeTestClient(call, {
+    mutationStorage: storage(),
+    capabilities: () => capabilities,
   });
-  journals.push(journal);
-  const close = vi.fn();
-  const methods = createMethods(
-    {
-      call,
-      subscribe: vi.fn(() => close),
-      onStreamEnd: vi.fn(() => close),
-    } as unknown as RpcClient,
-    {
-      mutationJournal: journal,
-      capabilities: () => discovery.capabilities as ServerCapabilities,
-    },
-  );
-  return { journal, methods, close };
+  clients.push(methods);
+  return { methods };
 }
 
 async function seed(operation: "start" | "resume") {
   const first = open(
-    vi.fn(async (method: string, _params: unknown, options?: RpcCallOptions) => {
+    vi.fn(async (method: string, _params: unknown, _options?: RuntimeCallOptions) => {
       if (method === "runs.getAcceptance") return { type: "notRecorded" };
-      options?.onRequestRpcId?.("request_lost");
       throw new RpcTransportError("application exited after dispatch");
-    }) as RpcClient["call"],
+    }) as RuntimeCall,
   );
   const body = structuredClone(requests[operation]);
   const pending =
@@ -118,7 +109,7 @@ async function seed(operation: "start" | "resume") {
       ? first.methods.runs.start(body as StartRunRequest)
       : first.methods.runs.resume(body as ResumeRunRequest);
   await expect(pending).rejects.toBeInstanceOf(RpcTransportError);
-  first.journal.dispose();
+  await first.methods.close();
   return pending.idempotencyKey;
 }
 
@@ -182,27 +173,28 @@ function mountedClient(
       interrupts: [],
     };
   });
-  const call = vi.fn(async (method: string, _params: unknown, callOptions?: RpcCallOptions) => {
-    if (method === "runs.getAcceptance") {
-      if (options.queryFailure) throw new RpcTransportError("original receipt unavailable");
-      return accepted
-        ? {
-            type: options.retired ? "retired" : "accepted",
-            sessionId: SID,
-            runId: run.id,
-            segmentId: "seg_original",
-            userItemId: "item_original",
-            ...(!options.retired
-              ? { run: { ...run, status: "running", activeSegmentId: "seg_current" } }
-              : {}),
-          }
-        : { type: "notRecorded" };
-    }
-    accepted = true;
-    callOptions?.onRequestRpcId?.("request_retried");
-    return { runId: run.id, segmentId: "seg_original", userItemId: "item_original" };
-  });
-  const cold = open(call as RpcClient["call"]);
+  const call = vi.fn(
+    async (method: string, _params: unknown, _callOptions?: RuntimeCallOptions) => {
+      if (method === "runs.getAcceptance") {
+        if (options.queryFailure) throw new RpcTransportError("original receipt unavailable");
+        return accepted
+          ? {
+              type: options.retired ? "retired" : "accepted",
+              sessionId: SID,
+              runId: run.id,
+              segmentId: "seg_original",
+              userItemId: "item_original",
+              ...(!options.retired
+                ? { run: { ...run, status: "running", activeSegmentId: "seg_current" } }
+                : {}),
+            }
+          : { type: "notRecorded" };
+      }
+      accepted = true;
+      return { runId: run.id, segmentId: "seg_original", userItemId: "item_original" };
+    },
+  );
+  const cold = open(call as RuntimeCall);
   const subscribe = vi.fn(async (_params: unknown, signal: AbortSignal) => ({
     result: { runId: run.id, segmentId: "seg_current", snapshot: await snapshot() },
     events: {
@@ -235,10 +227,10 @@ beforeEach(async () => {
   testClient.agent.projection.store.getState().dropSession(SID);
 });
 
-afterEach(() => {
+afterEach(async () => {
   disposeGateway?.dispose();
   disposeGateway = undefined;
-  for (const journal of journals.splice(0)) journal.dispose();
+  await Promise.all(clients.splice(0).map((client) => client.close()));
   for (const key of storage().keys()) storage().remove(key);
   testClient.agent.projection.store.getState().dropSession(SID);
   vi.restoreAllMocks();
@@ -313,8 +305,12 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     );
     expect(cold.call.mock.calls.map(([method]) => method)).toEqual(["runs.getAcceptance"]);
     expect(storage().keys()).toHaveLength(1);
-    await revalidateAgentSessionMaterial(testClient.agent.access, SID, async () =>
-      runtimeSessionMaterial(testClient.agent.access.sharedMaterial, SID, await cold.snapshot()),
+    await revalidateAgentSessionMaterial(testClient.agent.dependencies, SID, async () =>
+      runtimeSessionMaterial(
+        testClient.agent.dependencies.sharedMaterial,
+        SID,
+        await cold.snapshot(),
+      ),
     );
     expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual([
       pending,
@@ -333,7 +329,7 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
       requests[operation],
       expect.objectContaining({
         idempotencyKey: key,
-        idempotencyNamespace: "idp_opening_original",
+        idempotencyNamespace: discovery.capabilities.limits.idempotency.namespace,
       }),
     ]);
     expect(cold.subscribe.mock.calls[0]?.[0]).toMatchObject({

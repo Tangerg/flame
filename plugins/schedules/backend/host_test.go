@@ -2,32 +2,34 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
+	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
+
+// The backend is independently exportable; its captured wire fixture must not
+// require a Runtime checkout to test the callback boundary.
+//
+//go:embed testdata/runtime-discovery.json
+var discoveryFixture []byte
 
 func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T) {
 	for _, outcome := range []string{"accepted", "wrong acknowledgement", "lost acknowledgement"} {
 		t.Run(outcome, func(t *testing.T) {
-			discovery, err := os.ReadFile("../../../runtime/contract/samples/method.discover.resp.json")
-			if err != nil {
-				t.Fatal(err)
-			}
 			var starts atomic.Int32
 			closed := make(chan struct{}, 4)
 			var mu sync.Mutex
@@ -45,7 +47,7 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 				w.Header().Set("Content-Type", "application/json")
 				switch request.Method {
 				case "runtime.discover":
-					fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, request.ID, discovery)
+					fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%q,"result":%s}`, request.ID, discoveryFixture)
 				case "runs.getAcceptance":
 					var query protocol.GetRunAcceptanceRequest
 					if err := json.Unmarshal(request.Params, &query); err != nil {
@@ -99,7 +101,7 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 				t.Fatal(err)
 			}
 			defer client.Close()
-			host := runHost{client: client}
+			host := remoteRuns{client: client}
 			activation, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			for index := range 4 {
@@ -107,7 +109,7 @@ func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T)
 				occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
 					ID: "sch_due:1700000000000", Execution: schedule.ExecutionSnapshot{Title: "Due", Instructions: "captured input"},
 					FiredAt: at, NextRunAt: at.Add(time.Hour), SessionID: fmt.Sprintf("ses_due_%d", index), RunID: fmt.Sprintf("run_due_%d", index),
-					Invocation: capability.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: capability.Automatic, Target: capability.Target{Scope: capability.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
+					Invocation: extension.Invocation{ID: fmt.Sprintf("trigger-%d", index), Origin: extension.Automatic, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "11111111-1111-4111-8111-111111111111"}},
 				})
 				if err != nil {
 					t.Fatal(err)

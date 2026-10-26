@@ -6,16 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestSnapshotHydratedItemsJoinBodiesWithoutMutatingSource(t *testing.T) {
@@ -84,10 +81,10 @@ func portableSnapshotWithCollections() Snapshot {
 		SessionID: "ses_1", RunID: "run_1", ID: "item_tool", Kind: transcript.ToolCall,
 		Status: transcript.ItemCompleted, OccurredAt: at, FinishedAt: at,
 		Tool: &transcript.ToolInvocation{
-			Name: "shell", Result: &result, Offload: &toolresult.Ref{ID: "BLOB234"},
+			Name: "shell", Result: &result, Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 		},
 	}))
-	snapshot.ToolResults = []toolresult.Blob{{
+	snapshot.ToolResults = []transcript.ToolResultBlob{{
 		ID: "BLOB234", SessionID: "ses_1", Body: "full body", CreatedAt: at,
 	}}
 	snapshot.Plan = []plan.Step{{Description: "keep ownership", Status: plan.StatusPending}}
@@ -192,7 +189,7 @@ func mutateSnapshotItem(snapshot *Snapshot, mutate func(*transcript.ItemSnapshot
 }
 
 func offloadedSnapshot(result string) Snapshot {
-	ref := &toolresult.Ref{ID: "BLOB234"}
+	ref := &transcript.ToolResultRef{ID: "BLOB234"}
 	value, err := tool.NewResult(result)
 	if err != nil {
 		panic(err)
@@ -204,7 +201,7 @@ func offloadedSnapshot(result string) Snapshot {
 			Status: transcript.ItemCompleted,
 			Tool:   &transcript.ToolInvocation{Name: "shell", Result: &value, Offload: ref},
 		})},
-		ToolResults: []toolresult.Blob{{
+		ToolResults: []transcript.ToolResultBlob{{
 			ID: "BLOB234", SessionID: "ses_1", Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
 		}},
 	}
@@ -285,7 +282,7 @@ func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
 func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 	}
 	at := time.Unix(1, 0).UTC()
 	selection := testsupport.MustModelSelection("provider", "model")

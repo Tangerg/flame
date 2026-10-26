@@ -3,7 +3,7 @@ package terminal
 import (
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -52,7 +52,7 @@ func newBrandBanner(
 	glyphs kit.Glyphs,
 	version string,
 	session conversation.Session,
-	options prompt.RunOptions,
+	options authoring.RunOptions,
 ) *brandBanner {
 	banner := &brandBanner{theme: theme, glyphs: glyphs, version: brandVersion(version)}
 	banner.SetSession(session)
@@ -66,7 +66,7 @@ func (b *brandBanner) SetSession(session conversation.Session) {
 	}
 }
 
-func (b *brandBanner) SetOptions(options prompt.RunOptions) {
+func (b *brandBanner) SetOptions(options authoring.RunOptions) {
 	if b != nil {
 		b.model = modelLabel(options)
 	}

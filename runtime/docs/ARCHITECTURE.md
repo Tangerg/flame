@@ -40,6 +40,34 @@ shape where a context has several peers. A namespace adds no facade or service
 locator. Cohesive workflows keep responsibility-named files together; an operation
 name alone does not justify a package.
 
+The executable owns static Web serving and telemetry setup. Bootstrap owns the
+physical data-directory lease and shutdown sequence. Workspace isolation remains
+with the workspace adapter. Interrupt identity and decisions belong to `domain/run`;
+Session-retained Tool result blobs belong to `domain/run/transcript`.
+
+Run commit, checkpoint-build, executor-member and logical invocation identities
+belong to `application/agent/runs`. A logical model or Tool invocation is distinct
+from Scope's Effect identity. Physical provider-call identity belongs to
+`domain/modelref`; Delivery owns its process instance identity. These Host-only
+identities are not public SDK contracts.
+
+`application/operation` owns replay admission, the durable replay-store port,
+retention, namespace grammar and pending receipt settlement. Delivery projects
+wire requests and replies through that owner. Endpoint construction requires a
+complete store; volatile replay storage exists only in tests. A completed result
+whose receipt has not been acknowledged remains owned until settlement succeeds,
+including after admission closes.
+
+`adapter/integration/model` owns bounded transcript and Tool-output rendering.
+The public model package owns complete-request token estimation shared by real
+model consumers; maintenance owns the resource budget of its own workflows.
+
+Exported names in an internal package are cross-package contracts. Configuration
+helpers, same-package factories and implementation interfaces stay private.
+Required interface methods and serialized fields retain the names their contracts
+require. Generated protocol node validation is private; all consumers enter
+through `protocol.ValidateWireTree`.
+
 | Owner                       | Package                                         | Boundary                                                                          |
 | --------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
 | Product execution           | `application/agent/runs`                        | Admission, publication ordering, and durable Run transitions                      |
@@ -66,7 +94,7 @@ The workspace VCS adapter translates Git results and failures directly from
 eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
 `adapter/persistence` owns Runtime product schema, SQL, strict storage codecs and
 Application port translation in one database lifecycle. Public
-`packages/go-sdk/storage/sqlite` owns shared schema admission, connection and
+`packages/go-sdk/sqlite` owns shared schema admission, connection and
 transaction mechanisms; it carries no host or backend business tables.
 Workspace mutation intents commit independently before filesystem changes and
 retire independently after their effects; they never join an ambient business
@@ -322,7 +350,7 @@ plugin release bytes or backend directories. Plugin inspection owns resource ava
 observations; the connection supervisor owns live lifecycle and published tools. Backend
 loss or repair changes an observation or connection outcome, never registry membership.
 
-Plugin package file inputs use the shared `packages/go-sdk/fileinput` boundary for
+Plugin package file inputs use the shared `packages/go-sdk/filesystem` boundary for
 regular-file admission and identity across opening. Directory copies and release scans
 encode metadata from the opened file and verify its version after consuming its bytes;
 ZIP extraction verifies the archive's version before completing. The package adapter
@@ -396,7 +424,7 @@ dispatch. Internal Goal and automation admission keep their explicit origin fact
 
 The shared client captures immutable mutation parameters before dispatch. Its journal persists a salted request fingerprint and the original replay identity. Start, Resume and Steer additionally retain their complete frozen request and request metadata for original-command lookup and explicit retry after application restart; other mutations store no request body. Run command records include authored content, reviewed choices and original admission capabilities, using the client's existing storage lifetime. Current preferences cannot change a redelivered command's metadata. Receipt queries retain the current observation context. The SDK owns identity creation, authorization, and settlement. Recovery never reserves a replacement identity or restarts its age. The original expiry and the current retention applied to the original creation time both bound replay. Local authorization or storage failures preserve unresolved evidence; definitive settlement removes the record. Incompatible journal records remain intact and are refused without fallback decoding.
 
-The HTTP host may serve a built Web distribution on its origin. Bootstrap supplies the confined `infra/filesystem/webassets` handler; delivery owns routing and never opens filesystem paths. Static assets are independent of the protocol catalog and expose no product operations or credentials. The generated API routes retain their authentication and dispatch. Browser and CLI workspace references are opaque server paths; client-local files are separate input material.
+The HTTP host may serve a built Web distribution on its origin. `cmd/flame-runtime` supplies its confined static-asset handler; delivery owns routing and never opens filesystem paths. Static assets are independent of the protocol catalog and expose no product operations or credentials. The generated API routes retain their authentication and dispatch. Browser and CLI workspace references are opaque server paths; client-local files are separate input material.
 
 ## Composition and lifecycle
 
@@ -548,9 +576,12 @@ source withdrawal cannot cancel that accepted Run. Pending captures remain priva
 and are redelivered with stable identities after reenable or restart.
 
 Application builds use the repository workspace. First-party backend sources
-live beside their declarations and UI in `plugins/<name>/backend`, in the repository
-Go module alongside Runtime; they import only public Runtime APIs, which the plugins
-`architecture_test.go` enforces by rejecting any `runtime/internal` import. The author
+live beside their declarations and UI in `plugins/<name>/backend`, inside the
+`plugins` workspace module. Feature implementation packages stay under each
+`plugins/<name>/internal` directory; external consumers use published contracts
+and the installed executable. The plugin architecture gate rejects any
+`runtime/internal` import, and Runtime tests use generated consumer codecs rather
+than private plugin implementations. The author
 exporter repackages each plugin as one independent, separately versioned module with
 content-addressed SDK source archives and vendored dependencies. Its build runs with
 GOWORK=off and emits a precompiled installable ZIP.

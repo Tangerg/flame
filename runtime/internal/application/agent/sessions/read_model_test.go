@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type activityRunStore struct {
@@ -46,7 +45,7 @@ func TestActivitiesComeFromDurableRunLifecycle(t *testing.T) {
 	}
 	if activities["ses_running"] != ActivityRunning ||
 		activities["ses_waiting"] != ActivityWaiting ||
-		activities["ses_idle"] != ActivityIdle {
+		activities["ses_idle"] != activityIdle {
 		t.Fatalf("Activities = %+v, want durable running/waiting/idle", activities)
 	}
 }

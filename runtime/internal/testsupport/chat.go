@@ -12,7 +12,7 @@ import (
 // increment. Production providers build their own transport deltas; this helper
 // keeps Runtime tests on the same accumulator contract without duplicating a
 // synthetic provider in every package.
-func ResponseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
+func responseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
 	if response == nil {
 		return nil, errors.New("testsupport: nil chat response")
 	}
@@ -63,7 +63,7 @@ func StreamResponse(response *chat.Response, responseErr error) iter.Seq2[*chat.
 			yield(nil, responseErr)
 			return
 		}
-		delta, err := ResponseDelta(response)
+		delta, err := responseDelta(response)
 		yield(delta, err)
 	}
 }

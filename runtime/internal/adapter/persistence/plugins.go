@@ -5,16 +5,15 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type InstallationStore struct{ db *sql.DB }
 
-func NewInstallationStore(db *sql.DB) *InstallationStore { return &InstallationStore{db: db} }
+func newInstallationStore(db *sql.DB) *InstallationStore { return &InstallationStore{db: db} }
 
 const (
 	disabledServer = "server"
@@ -23,7 +22,7 @@ const (
 
 func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	var result []plugin.Snapshot
-	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations ORDER BY id`)
 		if err != nil {
 			return err
@@ -40,9 +39,9 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 	return result, err
 }
 
-func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *InstallationStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
-	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,enabled FROM plugin_installations WHERE id=?`, id.String())
 		if err != nil {
 			return err
@@ -60,7 +59,7 @@ func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationI
 }
 
 func (s *InstallationStore) records(ctx context.Context, query string, args ...any) ([]plugin.Record, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -73,14 +72,14 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 		if err := rows.Scan(&id, &record.Source, &selected, &staged, &record.Enabled); err != nil {
 			return nil, err
 		}
-		if record.ID, err = resourceid.ParseInstallation(id); err != nil {
+		if record.ID, err = identity.ParseInstallation(id); err != nil {
 			return nil, fmt.Errorf("sqlite: decode installation identity: %w", err)
 		}
-		if record.Selected, err = fingerprint.ParseDigest(selected); err != nil {
+		if record.Selected, err = identity.ParseDigest(selected); err != nil {
 			return nil, fmt.Errorf("sqlite: decode selected release: %w", err)
 		}
 		if staged.Valid {
-			digest, err := fingerprint.ParseDigest(staged.String)
+			digest, err := identity.ParseDigest(staged.String)
 			if err != nil {
 				return nil, fmt.Errorf("sqlite: decode staged release: %w", err)
 			}
@@ -93,7 +92,7 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 
 func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (plugin.Snapshot, error) {
 	id := record.ID.String()
-	values, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
+	values, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
 	if err != nil {
 		return plugin.Snapshot{}, err
 	}
@@ -109,7 +108,7 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	if err := values.Err(); err != nil {
 		return plugin.Snapshot{}, err
 	}
-	disabled, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
+	disabled, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
 	if err != nil {
 		return plugin.Snapshot{}, err
 	}
@@ -135,7 +134,7 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	if err := disabled.Err(); err != nil {
 		return plugin.Snapshot{}, err
 	}
-	catalog := NewReleaseStore(s.db)
+	catalog := newReleaseStore(s.db)
 	selected, err := catalog.Get(ctx, record.Selected)
 	if err != nil {
 		return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s selected release: %w", id, err)
@@ -166,8 +165,8 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 	if record.Staged != nil {
 		staged = record.Staged.String()
 	}
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		db := sqlitebase.Connection(ctx, s.db)
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		db := sqlite.Connection(ctx, s.db)
 		if _, err := db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,staged_digest,enabled) VALUES(?,?,?,?,?)
 		 ON CONFLICT(id) DO UPDATE SET source=excluded.source,selected_digest=excluded.selected_digest,staged_digest=excluded.staged_digest,enabled=excluded.enabled`,
 			id, record.Source, record.Selected.String(), staged, record.Enabled); err != nil {
@@ -208,8 +207,8 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 
 // Remove deletes the installation; its state, MCP sources and everything that
 // references them follow by cascade.
-func (s *InstallationStore) Remove(ctx context.Context, id resourceid.InstallationID) error {
-	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, id.String())
+func (s *InstallationStore) Remove(ctx context.Context, id identity.InstallationID) error {
+	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, id.String())
 	if err != nil {
 		return err
 	}
@@ -226,9 +225,9 @@ func (s *InstallationStore) Remove(ctx context.Context, id resourceid.Installati
 // Initialize commits the first-party catalog and its completion atomically.
 // Deleting all installations later does not make initialization pending again.
 func (s *InstallationStore) Initialize(ctx context.Context, install func(context.Context) error) error {
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var initialized bool
-		if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_initialization WHERE id=1)`).Scan(&initialized); err != nil {
+		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_initialization WHERE id=1)`).Scan(&initialized); err != nil {
 			return err
 		}
 		if initialized {
@@ -237,7 +236,7 @@ func (s *InstallationStore) Initialize(ctx context.Context, install func(context
 		if err := install(ctx); err != nil {
 			return err
 		}
-		_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1)`)
+		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1)`)
 		return err
 	})
 }

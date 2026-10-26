@@ -9,13 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -174,9 +173,9 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	if maxBytes > 0 && preflight.Size() > maxBytes {
 		return fingerprintObservation{}, false, fmt.Errorf("%w: file uses %d bytes", errRuntimeReadFileTooLarge, preflight.Size())
 	}
-	file, before, err := fileinput.OpenAtExpected(root.Root, path, preflight, maxBytes)
+	file, before, err := filesystem.OpenFileAtExpected(root.Root, path, preflight, maxBytes)
 	if err != nil {
-		if errors.Is(err, fileinput.ErrTooLarge) {
+		if errors.Is(err, filesystem.ErrFileTooLarge) {
 			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening: %w", errRuntimeReadFileTooLarge, err)
 		}
 		return fingerprintObservation{}, false, err
@@ -205,7 +204,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	if err != nil {
 		return fingerprintObservation{}, false, fmt.Errorf("file changed while fingerprinting: %w", err)
 	}
-	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
+	if !filesystem.SameVersion(before, after) || !filesystem.SameVersion(after, current) {
 		return fingerprintObservation{}, false, errors.New("file changed while fingerprinting")
 	}
 	var fingerprint contentFingerprint
@@ -214,7 +213,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 }
 
 func sameFingerprintObservation(left, right fingerprintObservation) bool {
-	return left.fingerprint == right.fingerprint && fileinput.SameVersion(left.info, right.info)
+	return left.fingerprint == right.fingerprint && filesystem.SameVersion(left.info, right.info)
 }
 
 // withMutationDiagnostics wraps a file-mutating tool so a successful change is

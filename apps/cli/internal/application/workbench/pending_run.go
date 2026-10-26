@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
@@ -25,11 +24,11 @@ const (
 type PendingRun struct {
 	InputDigest     inputDigest `json:"inputDigest,omitzero"`
 	inputFailure    error
-	State           PendingRunState  `json:"state"`
-	Command         prompt.StartRun  `json:"command"`
-	Replay          replay.Guard     `json:"replay"`
-	CancelCommandID replay.CommandID `json:"cancelCommandId,omitzero"`
-	CancelReplay    replay.Guard     `json:"cancelReplay"`
+	State           PendingRunState       `json:"state"`
+	Command         authoring.StartRun    `json:"command"`
+	Replay          authoring.ReplayGuard `json:"replay"`
+	CancelCommandID authoring.CommandID   `json:"cancelCommandId,omitzero"`
+	CancelReplay    authoring.ReplayGuard `json:"cancelReplay"`
 }
 
 // PendingResume is a HITL decision whose command may already have reached the
@@ -42,7 +41,7 @@ type PendingResume struct {
 	inputFailure error
 	Command      conversation.ResumeRun   `json:"-"`
 	Interrupts   []conversation.Interrupt `json:"interrupts"`
-	Replay       replay.Guard             `json:"replay"`
+	Replay       authoring.ReplayGuard    `json:"replay"`
 }
 
 func (p PendingResume) validate() error {
@@ -78,11 +77,11 @@ func (p PendingResume) validate() error {
 
 type pendingResumeJSON struct {
 	InputDigest inputDigest            `json:"inputDigest,omitzero"`
-	CommandID   replay.CommandID       `json:"commandId"`
+	CommandID   authoring.CommandID    `json:"commandId"`
 	RunID       string                 `json:"runId"`
-	Message     *prompt.Message        `json:"message,omitzero"`
+	Message     *authoring.Message     `json:"message,omitzero"`
 	Interrupts  []pendingInterruptJSON `json:"interrupts"`
-	Replay      replay.Guard           `json:"replay"`
+	Replay      authoring.ReplayGuard  `json:"replay"`
 }
 
 type pendingInterruptKind string
@@ -255,7 +254,7 @@ func (p PendingRun) validate(sessionID string) error {
 	return nil
 }
 
-func (p *PendingRun) beginDispatch(replayGuard replay.Guard) error {
+func (p *PendingRun) beginDispatch(replayGuard authoring.ReplayGuard) error {
 	if err := replayGuard.Validate(); err != nil {
 		return err
 	}
@@ -272,8 +271,8 @@ func (p *PendingRun) beginDispatch(replayGuard replay.Guard) error {
 }
 
 func (p *PendingRun) beginCancellation(
-	replayGuard replay.Guard,
-) (replay.CommandID, error) {
+	replayGuard authoring.ReplayGuard,
+) (authoring.CommandID, error) {
 	if err := replayGuard.Validate(); err != nil {
 		return "", err
 	}
@@ -291,7 +290,7 @@ func (p *PendingRun) beginCancellation(
 	}
 }
 
-func (p *PendingRun) requeue() (replay.CommandID, error) {
+func (p *PendingRun) requeue() (authoring.CommandID, error) {
 	if p.State != PendingRunDispatching {
 		return "", fmt.Errorf("pending run cannot be requeued from %q", p.State)
 	}
@@ -304,8 +303,8 @@ func (p *PendingRun) requeue() (replay.CommandID, error) {
 	p.Command.Input = nil
 	p.InputDigest = ""
 	p.CancelCommandID = ""
-	p.Replay = replay.UnprotectedGuard()
-	p.CancelReplay = replay.UnprotectedGuard()
+	p.Replay = authoring.UnprotectedGuard()
+	p.CancelReplay = authoring.UnprotectedGuard()
 	return replacement, nil
 }
 
@@ -317,7 +316,7 @@ func (p PendingRun) acknowledgeable() error {
 }
 
 func validatePendingRunSequence(sessionID string, pending []PendingRun) error {
-	seen := make(map[replay.CommandID]struct{}, len(pending))
+	seen := make(map[authoring.CommandID]struct{}, len(pending))
 	for index, command := range pending {
 		if err := command.validate(sessionID); err != nil {
 			return fmt.Errorf("pending run %d: %w", index+1, err)

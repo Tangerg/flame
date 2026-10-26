@@ -6,8 +6,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
-	"github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -64,11 +64,4 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	return server, nil
-}
-
-func classify(err error) string {
-	if errors.Is(err, errStoredPolicy) {
-		return ""
-	}
-	return rpc.Classify(err)
 }

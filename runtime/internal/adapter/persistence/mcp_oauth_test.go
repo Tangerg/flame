@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
@@ -17,8 +16,8 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewMCPServerStore(db)
-	authorization := NewMCPAuthorizationStore(db)
+	store := newMCPServerStore(db)
+	authorization := newMCPAuthorizationStore(db)
 	server := mcpserver.Server{
 		Source: mcpserver.UserSource(),
 		Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
@@ -96,8 +95,8 @@ func TestMCPCredentialsStopMatchingAChangedTarget(t *testing.T) {
 			if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM sqlite_master WHERE type = 'trigger' AND sql LIKE '%mcp_oauth_sessions%'`).Scan(&triggers); err != nil || triggers != 0 {
 				t.Fatalf("credential invalidation triggers = %d, %v", triggers, err)
 			}
-			store := NewMCPServerStore(db)
-			authorization := NewMCPAuthorizationStore(db)
+			store := newMCPServerStore(db)
+			authorization := newMCPAuthorizationStore(db)
 			initial := mcpserver.Server{
 				Source: mcpserver.UserSource(),
 				Name:   testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,

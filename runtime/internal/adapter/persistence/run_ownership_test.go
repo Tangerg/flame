@@ -4,9 +4,8 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -33,14 +32,14 @@ func TestRunWritesCannotRegressCommittedProgress(t *testing.T) {
 				if parkErr != nil {
 					t.Fatal(parkErr)
 				}
-				err = store.Suspend(t.Context(), parked, draft.SegmentID, runtimeidentity.CommitID{})
+				err = store.Suspend(t.Context(), parked, draft.SegmentID, runs.CommitID{})
 			case "terminal event", "terminal replacement":
 				terminal, terminalErr := stale.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: at, MessageMark: run.MessageMarkAt(0)})
 				if terminalErr != nil {
 					t.Fatal(terminalErr)
 				}
 				if operation == "terminal event" {
-					err = store.TerminalizeEvent(t.Context(), terminal, draft.SegmentID, runtimeidentity.NewCommit())
+					err = store.TerminalizeEvent(t.Context(), terminal, draft.SegmentID, testCommitID("run_commit_terminal"))
 				} else {
 					err = store.Terminalize(t.Context(), testsupport.MustRunReplacement(stale, testsupport.DecidedRun(terminal)))
 				}

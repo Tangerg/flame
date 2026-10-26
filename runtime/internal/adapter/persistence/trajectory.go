@@ -6,9 +6,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 )
 
-type TrajectoryReader struct{ store *trajectoryStore }
+type trajectoryReader struct{ store *trajectoryStore }
 
-func (r *TrajectoryReader) PageTrajectory(ctx context.Context, sessionID string, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]sessions.TrajectoryEntry, error) {
+func (r *trajectoryReader) PageTrajectory(ctx context.Context, sessionID string, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]sessions.TrajectoryEntry, error) {
 	var position *trajectoryPosition
 	if anchor != nil {
 		position = &trajectoryPosition{OccurredAt: anchor.OccurredAt, Kind: string(anchor.Kind), ID: anchor.ID}

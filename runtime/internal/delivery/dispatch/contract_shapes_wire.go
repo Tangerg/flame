@@ -112,12 +112,7 @@ func registerMCPUnions(s *Shapes) {
 			{Tag: string(protocol.MCPServerDisconnected)},
 			{Tag: string(protocol.MCPServerConnecting)},
 			{Tag: string(protocol.MCPServerConnected), Required: []string{"toolCount"}},
-			{Tag: string(protocol.MCPServerFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(
-				protocol.MCPStatusConfigurationFailed,
-				protocol.MCPStatusDialFailed,
-				protocol.MCPStatusToolDiscoveryFailed,
-				protocol.MCPStatusAuthorizationFailed,
-			)},
+			{Tag: string(protocol.MCPServerFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(protocol.MCPStatusConfigurationFailed, protocol.MCPStatusDialFailed, protocol.MCPStatusToolDiscoveryFailed, protocol.MCPStatusAuthorizationFailed)},
 			{Tag: string(protocol.MCPServerNeedsAuth), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(protocol.MCPStatusAuthorizationRequired)},
 		},
 	})
@@ -451,14 +446,7 @@ func registerArtifactUnions(s *Shapes) {
 			}, {
 				Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
 				AllowedValues: allowedArtifactProblemTypes(
-					"error.type",
-					protocol.ArtifactProblemInternalError,
-					protocol.ArtifactProblemAgentStuck,
-					protocol.ArtifactProblemRateLimited,
-					protocol.ArtifactProblemInvalidAPIKey,
-					protocol.ArtifactProblemTimeout,
-					protocol.ArtifactProblemProviderUnavailable,
-					protocol.ArtifactProblemProviderRejected,
+					"error.type", protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidAPIKey, protocol.ArtifactProblemTimeout, protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
 				),
 			},
 			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail", "unresolvedEffects"}},
@@ -493,12 +481,7 @@ func registerArtifactUnions(s *Shapes) {
 				AllowedValues: slices.Concat(
 					allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 					allowedArtifactProblemTypes(
-						"error.type",
-						protocol.ArtifactProblemInternalError,
-						protocol.ArtifactProblemDeniedByUser,
-						protocol.ArtifactProblemToolFailed,
-						protocol.ArtifactProblemChildRunCanceled,
-						protocol.ArtifactProblemToolCanceled,
+						"error.type", protocol.ArtifactProblemInternalError, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled,
 					),
 				),
 			}, {
@@ -591,13 +574,7 @@ func registerObjectConstraints(s *Shapes) {
 		When:      []delivery.FieldCondition{{Field: "inject", Operator: delivery.OperatorPresent}},
 		Forbidden: []string{"command", "matcher", "timeoutMillis"},
 	}}
-	for _, event := range []protocol.HookEvent{
-		protocol.HookEventUserPromptSubmit,
-		protocol.HookEventSessionStart,
-		protocol.HookEventPreCompact,
-		protocol.HookEventStop,
-		protocol.HookEventNotification,
-	} {
+	for _, event := range []protocol.HookEvent{protocol.HookEventUserPromptSubmit, protocol.HookEventSessionStart, protocol.HookEventPreCompact, protocol.HookEventStop, protocol.HookEventNotification} {
 		hookRules = append(hookRules, ConditionalRule{
 			When:      []delivery.FieldCondition{{Field: "event", Operator: delivery.OperatorEquals, Value: string(event)}},
 			Forbidden: []string{"matcher"},
@@ -686,10 +663,7 @@ func registerObjectConstraints(s *Shapes) {
 			When: []delivery.FieldCondition{{
 				Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.StreamItemCompleted),
 			}},
-			AllowedValues: allowedStreamItemStatuses(
-				protocol.ItemStatusCompleted,
-				protocol.ItemStatusIncomplete,
-			),
+			AllowedValues: allowedStreamItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 		}, {
 			When: []delivery.FieldCondition{{
 				Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.StreamPlanUpdated),
@@ -752,22 +726,13 @@ func registerObjectConstraints(s *Shapes) {
 			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalCompleting)}},
 			Forbidden: []string{"reason"},
 		}, {
-			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalPaused)}},
-			Required: []string{"reason"},
-			AllowedValues: allowedGoalReasonCodes(
-				protocol.GoalReasonStoppedByUser,
-				protocol.GoalReasonRuntimeRestarted,
-				protocol.GoalReasonRunStartFailed,
-				protocol.GoalReasonAwaitingInput,
-				protocol.GoalReasonTerminalOutcomeMissing,
-				protocol.GoalReasonRunNotCompleted,
-			),
+			When:          []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalPaused)}},
+			Required:      []string{"reason"},
+			AllowedValues: allowedGoalReasonCodes(protocol.GoalReasonStoppedByUser, protocol.GoalReasonRuntimeRestarted, protocol.GoalReasonRunStartFailed, protocol.GoalReasonAwaitingInput, protocol.GoalReasonTerminalOutcomeMissing, protocol.GoalReasonRunNotCompleted),
 		}, {
-			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalBlocked)}},
-			Required: []string{"reason"},
-			AllowedValues: allowedGoalReasonCodes(
-				protocol.GoalReasonBlockedByModel,
-			),
+			When:          []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalBlocked)}},
+			Required:      []string{"reason"},
+			AllowedValues: allowedGoalReasonCodes(protocol.GoalReasonBlockedByModel),
 		}},
 	})
 	goalReasonRules := []ConditionalRule{
@@ -779,13 +744,7 @@ func registerObjectConstraints(s *Shapes) {
 			Required: []string{"detail"},
 		},
 	}
-	for _, code := range []protocol.GoalReasonCode{
-		protocol.GoalReasonStoppedByUser,
-		protocol.GoalReasonRuntimeRestarted,
-		protocol.GoalReasonRunStartFailed,
-		protocol.GoalReasonAwaitingInput,
-		protocol.GoalReasonTerminalOutcomeMissing,
-	} {
+	for _, code := range []protocol.GoalReasonCode{protocol.GoalReasonStoppedByUser, protocol.GoalReasonRuntimeRestarted, protocol.GoalReasonRunStartFailed, protocol.GoalReasonAwaitingInput, protocol.GoalReasonTerminalOutcomeMissing} {
 		goalReasonRules = append(goalReasonRules, ConditionalRule{
 			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(code)}},
 			Forbidden: []string{"detail"},
@@ -993,17 +952,7 @@ func registerObjectConstraints(s *Shapes) {
 }
 
 func artifactProblemRetryRules() []ConditionalRule {
-	withoutRetry := []protocol.ArtifactProblemType{
-		protocol.ArtifactProblemInternalError,
-		protocol.ArtifactProblemRunLost,
-		protocol.ArtifactProblemAgentStuck,
-		protocol.ArtifactProblemInvalidAPIKey,
-		protocol.ArtifactProblemProviderRejected,
-		protocol.ArtifactProblemDeniedByUser,
-		protocol.ArtifactProblemToolFailed,
-		protocol.ArtifactProblemChildRunCanceled,
-		protocol.ArtifactProblemToolCanceled,
-	}
+	withoutRetry := []protocol.ArtifactProblemType{protocol.ArtifactProblemInternalError, protocol.ArtifactProblemRunLost, protocol.ArtifactProblemAgentStuck, protocol.ArtifactProblemInvalidAPIKey, protocol.ArtifactProblemProviderRejected, protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed, protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled}
 	rules := make([]ConditionalRule, 0, len(withoutRetry))
 	for _, kind := range withoutRetry {
 		rules = append(rules, ConditionalRule{

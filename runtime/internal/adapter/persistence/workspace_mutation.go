@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 // errWorkspaceMutationPending reports that an unfinished rollback still owns the
@@ -44,7 +44,7 @@ type WorkspaceMutationStore struct {
 
 // NewWorkspaceMutationStore wires a database opened via [openDatabase] to the
 // operation-log surface.
-func NewWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
+func newWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
 	return &WorkspaceMutationStore{db: db}
 }
 
@@ -62,8 +62,8 @@ func (s *WorkspaceMutationStore) recordMutation(ctx context.Context, m workspace
 		return false, err
 	}
 	created := false
-	err := sqlitebase.RunIndependentTx(ctx, s.db, func(ctx context.Context) error {
-		tx := sqlitebase.Connection(ctx, s.db)
+	err := sqlite.RunIndependentTx(ctx, s.db, func(ctx context.Context) error {
+		tx := sqlite.Connection(ctx, s.db)
 		recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
 		if err != nil || recorded {
 			return err
@@ -97,7 +97,7 @@ func (s *WorkspaceMutationStore) recordMutation(ctx context.Context, m workspace
 	return created, nil
 }
 
-func ownsPendingWorkspaceMutation(ctx context.Context, tx sqlitebase.Executor, m workspaceMutationRecord) (bool, error) {
+func ownsPendingWorkspaceMutation(ctx context.Context, tx sqlite.Executor, m workspaceMutationRecord) (bool, error) {
 	rows, err := tx.QueryContext(ctx,
 		`SELECT session_id, cwd, to_run_id, restore_history
 		   FROM pending_workspace_mutations

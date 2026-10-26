@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -44,7 +44,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			original := capability.Invocation{ID: "original-model", Origin: capability.Model, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: "original-model"}}
+			original := extension.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-model"}}
 			refs := make(chan pluginsdk.CallbackRef, 1)
 			beforeNext := func(ctx context.Context) (pluginsdk.CallbackRef, error) {
 				ref, err := pluginsdk.CallbackFromContext(ctx)

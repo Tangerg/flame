@@ -5,11 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newApprovalStore(t *testing.T) *ApprovalRuleStore {
@@ -19,7 +18,7 @@ func newApprovalStore(t *testing.T) *ApprovalRuleStore {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewApprovalRuleStore(db)
+	return newApprovalRuleStore(db)
 }
 
 // TestApprovalRuleStore_VisibleScopes verifies the WHERE-clause scope predicate:
@@ -114,7 +113,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewApprovalRuleStore(db)
+	store := newApprovalRuleStore(db)
 	ref := testsupport.BuiltInTool(t, "shell")
 	for _, subject := range []approval.Subject{
 		{Type: approval.SubjectGlob, Value: "echo *"},
@@ -125,7 +124,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		if subject.Type == approval.SubjectExact {
 			decision = approval.Allow
 		}
-		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, fingerprint.Digest{}, subject, decision)
+		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, identity.Digest{}, subject, decision)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -140,7 +139,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rules, err := NewApprovalRuleStore(db).Visible(t.Context(), "", "", approval.MaximumVisibleRules+1)
+	rules, err := newApprovalRuleStore(db).Visible(t.Context(), "", "", approval.MaximumVisibleRules+1)
 	if err != nil || len(rules) != 3 {
 		t.Fatalf("restored rules = %+v, %v; want three distinct matchers", rules, err)
 	}

@@ -17,7 +17,7 @@ import {
   useSetComposerText,
 } from "@/features/composer/public/draft";
 import { registerComposerFocusTarget } from "@/features/composer/public/focus";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import { writeToClipboard } from "@/lib/clipboard";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
@@ -32,12 +32,13 @@ vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   useActiveConversationMessages: () => material.messages,
 }));
 
-vi.mock("@/features/agent/public/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  activeAgentConversation: () => ({ sessionId: "menu-session", messages: material.messages }),
-  rollbackSessionToBeforeRun: material.rollback,
-  forkAgentSessionAtRun: material.fork,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    activeAgentConversation: () => ({ sessionId: "menu-session", messages: material.messages }),
+    rollbackSessionToBeforeRun: material.rollback,
+    forkAgentSessionAtRun: material.fork,
+  });
+});
 
 vi.mock("@/features/connection/public/capabilities", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/connection/public/capabilities")>()),
@@ -114,7 +115,7 @@ describe("messageContextMenu", () => {
       userInput: { parts: [{ kind: "text", text: "history edit" }] },
     });
     vi.mocked(writeToClipboard).mockClear();
-    selectAgentSession(testClient.agent.access, "menu-session");
+    testClient.agent.access.selectAgentSession("menu-session");
     replaceComposerDraft(testClient.composer.access, { text: "waiting draft" });
   });
   afterEach(async () => {
@@ -243,11 +244,7 @@ describe("messageContextMenu", () => {
     await openFocusMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: "Fork up to here" }));
     await settleMenu();
-    expect(material.fork).toHaveBeenCalledWith(
-      testClient.agent.access,
-      "menu-session",
-      "child-run",
-    );
+    expect(material.fork).toHaveBeenCalledWith("menu-session", "child-run");
     expect(material.rollback).not.toHaveBeenCalled();
   });
 
@@ -273,9 +270,7 @@ describe("messageContextMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(draft.value).toBe(action.text);
     expect(document.activeElement).toBe(draft);
-    expect(material.rollback.mock.calls).toEqual(
-      action.rollback.map((args) => [testClient.agent.access, ...args]),
-    );
+    expect(material.rollback.mock.calls).toEqual(action.rollback);
   });
 
   it.each(["Escape", "Copy plain text"])(

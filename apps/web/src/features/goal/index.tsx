@@ -17,8 +17,7 @@ import { installGoalRuntimeAdapter } from "@/features/goal/adapters/runtimeGoalC
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
 import { GoalModeIndicator } from "@/features/goal/ui/GoalModeIndicator";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
-import { getActiveSessionId } from "@/features/agent/public/session";
-import { getAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
+
 import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { startGoal } from "@/features/goal/application/goalCommands";
@@ -72,9 +71,9 @@ export function createGoalPlugin(
       ctx.contribute(
         COMPOSER_SUBMIT_MODE,
         createGoalComposerSubmitMode(composerMode, {
-          getActiveSessionId: getActiveSessionId.bind(null, agentAccess),
+          getActiveSessionId: agentAccess.getActiveSessionId,
           goalState: (sessionId) =>
-            getAgentSessionSharedMaterial<GoalState>(agentAccess, sessionId, "goal"),
+            agentAccess.getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
           runtimeAvailable: runtimeCommandsAvailable.bind(null, runtimeAccess),
           runOptions: resolveAgentRunStartOptions,
           start: startGoal,

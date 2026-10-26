@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates
@@ -83,7 +83,7 @@ func (r RunAdmission) Admit(runID string) bool {
 	if r.lease == nil {
 		return false
 	}
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return false
 	}
 	admitted := false

@@ -1,4 +1,4 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useMemo } from "react";
 import { type AgentPlan, type PlanStep } from "@/features/agent/public/sessionView";
 
@@ -47,7 +47,7 @@ export class SessionPlan {
 }
 
 export function useSessionPlan(): SessionPlan {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const sessionId = useActiveSessionId();
   const material = agentAccess.view.usePlan();

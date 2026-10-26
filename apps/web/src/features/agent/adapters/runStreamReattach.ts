@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type FlameClient } from "@flame/runtime-client";
 import { asRunId, asSegmentId, RpcConnectionError, RpcProtocolError } from "@flame/runtime-client";
 
@@ -20,7 +20,7 @@ interface RunStreamReattachOptions {
 }
 
 export function createRunStreamReattach(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   { sessionId, client, isCancelled, recoverProjection, onConnectionLost }: RunStreamReattachOptions,
 ) {
   return async function reattach(

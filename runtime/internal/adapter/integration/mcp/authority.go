@@ -5,12 +5,11 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -37,7 +36,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return toolcontract.Result{}, err
 	}
 	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
-		captured, err := operation.Capture(ctx, capability.Target{Scope: capability.ScopeInstallation, Reference: installation.String()})
+		captured, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
 		}

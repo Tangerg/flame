@@ -1,7 +1,7 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -19,7 +19,7 @@ type sessionState struct {
 
 type openingReceipt struct {
 	RunID     string
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 }
 
 // executionState owns the local observation lifetime. Opening retains the
@@ -59,7 +59,7 @@ type dialogState struct {
 	approvalDraft       *approvalDecisionDraft
 	approvalArguments   string
 	approvalOverride    *conversation.ToolArgumentOverride
-	approvalSections    []ToolSection
+	approvalSections    []toolSection
 	approvalEditor      *contextEditorSession
 	approvalForm        *headless.Form
 	approvalPane        approvalPane

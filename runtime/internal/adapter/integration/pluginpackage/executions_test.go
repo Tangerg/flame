@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )

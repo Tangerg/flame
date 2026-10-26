@@ -6,9 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/samber/lo"
 )
 
 const (
@@ -32,20 +30,17 @@ type skillArchivePolicy struct {
 }
 
 func newSkillArchivePolicy(values SkillArchivePolicyValues) (skillArchivePolicy, error) {
-	archiveAfter, err := optional.Positive(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
-	if err != nil {
-		return skillArchivePolicy{}, err
+	archiveAfter := lo.FromPtrOr(values.ArchiveAfter, defaultSkillArchiveAfter)
+	if archiveAfter <= 0 {
+		return skillArchivePolicy{}, errors.New("archive after must be positive")
 	}
-	checkInterval, err := optional.Positive(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
-	if err != nil {
-		return skillArchivePolicy{}, err
+	checkInterval := lo.FromPtrOr(values.CheckInterval, defaultSkillArchiveCheckInterval)
+	if checkInterval <= 0 {
+		return skillArchivePolicy{}, errors.New("check interval must be positive")
 	}
 	return skillArchivePolicy{archiveAfter: archiveAfter, checkInterval: checkInterval}, nil
 }
 
-// idleSkillArchiver is the Application capability consumed by this scheduling
-// adapter. It keeps the persistence mechanism and invalidation semantics out of
-// Run maintenance.
 type idleSkillArchiver interface {
 	ArchiveIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, error)
 }
@@ -54,6 +49,9 @@ type idleSkillArchiver interface {
 // checking at most once per CheckInterval. The managed Skill library is
 // user-scoped, so the check is process-wide rather than per Session. The first
 // Run after start performs a check, avoiding a startup-time filesystem mutation.
+// idleSkillArchiver is the Application capability consumed by this scheduling
+// adapter. It keeps the persistence mechanism and invalidation semantics out of
+// Run maintenance.
 type IdleSkillArchiver struct {
 	skills idleSkillArchiver
 	policy skillArchivePolicy
@@ -66,7 +64,7 @@ type IdleSkillArchiver struct {
 // NewIdleSkillArchiver builds a Run-boundary scheduler over the required
 // Application Skill-curation capability.
 func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyValues) (*IdleSkillArchiver, error) {
-	if dependency.Missing(skills) {
+	if lo.IsNil(skills) {
 		return nil, errors.New("idle skill archiver: skill curator is required")
 	}
 	policy, err := newSkillArchivePolicy(values)

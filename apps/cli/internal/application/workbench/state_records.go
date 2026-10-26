@@ -12,8 +12,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (
@@ -23,14 +23,14 @@ const (
 
 type sessionState struct {
 	SessionID       string                  `json:"sessionId"`
-	Draft           prompt.Message          `json:"draft"`
+	Draft           authoring.Message       `json:"draft"`
 	PendingRuns     []PendingRun            `json:"pendingRuns"`
 	PendingResume   *PendingResume          `json:"pendingResume,omitzero"`
 	PendingRollback *PendingSessionRollback `json:"pendingRollback,omitzero"`
 	PendingSteer    *pendingSteerRecord     `json:"pendingSteer,omitzero"`
 }
 
-func validateSessionDraft(draft prompt.Message) error {
+func validateSessionDraft(draft authoring.Message) error {
 	if draft.IsEmpty() {
 		return nil
 	}
@@ -183,7 +183,7 @@ func (s *Store) loadSessionState(name string) (sessionState, error) {
 	if err := s.load(filepath.Join("sessions", name), &state); err != nil {
 		return sessionState{}, fmt.Errorf("load %s: %w", name, err)
 	}
-	if err := runtimeprotocol.ValidateSessionID(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
+	if err := protocol.ValidateSessionID(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
 		return sessionState{}, fmt.Errorf("state %s has an invalid session identity", name)
 	}
 	return state, nil
@@ -237,7 +237,7 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 	return nil
 }
 
-func (s *Store) saveSessionState(sessionID string, draft prompt.Message, pending []PendingRun) error {
+func (s *Store) saveSessionState(sessionID string, draft authoring.Message, pending []PendingRun) error {
 	resume, ok := s.pendingResumes[sessionID]
 	if !ok {
 		return s.saveSessionStateWithResume(sessionID, draft, pending, nil)
@@ -247,7 +247,7 @@ func (s *Store) saveSessionState(sessionID string, draft prompt.Message, pending
 
 func (s *Store) saveSessionStateWithResume(
 	sessionID string,
-	draft prompt.Message,
+	draft authoring.Message,
 	pending []PendingRun,
 	resume *PendingResume,
 ) error {
@@ -266,7 +266,7 @@ func (s *Store) saveSessionStateWithResume(
 
 func (s *Store) saveSessionStateRecord(
 	sessionID string,
-	draft prompt.Message,
+	draft authoring.Message,
 	pending []PendingRun,
 	resume *PendingResume,
 	rollback *PendingSessionRollback,
@@ -280,13 +280,13 @@ func (s *Store) saveSessionStateRecord(
 
 func (s *Store) saveSessionStateRecordUnfenced(
 	sessionID string,
-	draft prompt.Message,
+	draft authoring.Message,
 	pending []PendingRun,
 	resume *PendingResume,
 	rollback *PendingSessionRollback,
 	steer *PendingSteer,
 ) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	if err := validateSessionDraft(draft); err != nil {

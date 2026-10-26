@@ -36,19 +36,18 @@ type Status struct {
 	APIVersion   int
 	Requires     []string
 	Capabilities []Capability
-	Trusted      bool
 	Phase        LifecyclePhase
 	Detail       string
 }
 
 // Host owns discovered manifests and loaded plugin lifetimes. Its zero value
-// is not usable because a registry is an explicit composition dependency.
+// is not usable; NewHost creates its private command registry.
 type Host struct {
 	lifecycleMu sync.Mutex
 	stateMu     sync.RWMutex
-	registry    *Registry
+	registry    *commandRegistry
 	plugins     map[string]Plugin
-	loaded      map[string]*Loaded
+	loaded      map[string]*loadedPlugin
 	states      map[string]LifecycleResult
 	order       []string
 	phase       hostPhase
@@ -65,17 +64,17 @@ const (
 	hostClosed
 )
 
-func NewHost(registry *Registry) (*Host, error) {
-	if registry == nil {
-		return nil, errors.New("extensions: registry is required")
-	}
+func NewHost() *Host {
 	return &Host{
-		registry: registry,
+		registry: new(commandRegistry),
 		plugins:  make(map[string]Plugin),
-		loaded:   make(map[string]*Loaded),
+		loaded:   make(map[string]*loadedPlugin),
 		states:   make(map[string]LifecycleResult),
-	}, nil
+	}
 }
+
+// Commands returns detached command descriptors in resolved registration order.
+func (h *Host) Commands() []OwnedCommand { return h.registry.commands() }
 
 // Activate validates, orders, and loads one discovered plugin set. Individual
 // failures are isolated and returned as results; calling Activate twice would
@@ -148,7 +147,7 @@ func (h *Host) statusLocked(id string) Status {
 	return Status{
 		ID: plugin.ID, Version: plugin.Version, APIVersion: plugin.APIVersion,
 		Requires: slices.Clone(plugin.Requires), Capabilities: slices.Clone(plugin.Capabilities),
-		Trusted: plugin.Trusted, Phase: state.Phase, Detail: detail,
+		Phase: state.Phase, Detail: detail,
 	}
 }
 
@@ -257,7 +256,7 @@ func (h *Host) dependentClosureLocked(id string) map[string]bool {
 
 type pluginDisposal struct {
 	id     string
-	loaded *Loaded
+	loaded *loadedPlugin
 }
 
 func (h *Host) unloadSet(ids map[string]bool) error {
@@ -276,7 +275,7 @@ func (h *Host) unloadSet(ids map[string]bool) error {
 	h.stateMu.Unlock()
 	var failures []error
 	for _, disposable := range disposables {
-		if err := disposable.loaded.Dispose(); err != nil {
+		if err := disposable.loaded.dispose(); err != nil {
 			failure := fmt.Errorf("unload plugin %q: %w", disposable.id, err)
 			failures = append(failures, failure)
 			h.stateMu.Lock()
@@ -312,7 +311,7 @@ func (h *Host) load(id string) LifecycleResult {
 		}
 	}
 	h.stateMu.Unlock()
-	loaded, err := Load(h.registry, plugin)
+	loaded, err := load(h.registry, plugin)
 	h.stateMu.Lock()
 	defer h.stateMu.Unlock()
 	if err != nil {

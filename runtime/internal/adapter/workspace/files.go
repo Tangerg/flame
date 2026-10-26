@@ -13,8 +13,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
@@ -29,10 +28,10 @@ import (
 var (
 	// ErrListingTooLarge asks the caller to narrow Path or Glob instead of
 	// returning an incomplete result that looks authoritative.
-	ErrListingTooLarge = errors.New("workspace: file listing too large")
+	errListingTooLarge = errors.New("workspace: file listing too large")
 	// ErrInvalidGlob distinguishes malformed match syntax from a valid pattern
 	// that simply has no matching files.
-	ErrInvalidGlob = errors.New("workspace: invalid file glob")
+	errInvalidGlob = errors.New("workspace: invalid file glob")
 	// errInvalidListPath reports an invalid selection for browsing or search.
 	// Permission and I/O failures remain operational errors.
 	errInvalidListPath = errors.New("workspace: invalid file listing path")
@@ -59,7 +58,7 @@ var backstopExclude = map[string]bool{
 // immediate children (files + dirs) of opts.Path, for a lazy file tree.
 // The complete, deterministically ordered result is returned for use-case
 // pagination. Oversized trees fail explicitly with ErrListingTooLarge.
-func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
+func listFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
 	scope, err := resolveFileSelection(root, opts.Path)
 	if err != nil {
 		return nil, err
@@ -95,7 +94,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	scope.handle = rootHandle
 	if opts.Glob != "" {
 		if _, err := matchGlob(opts.Glob, ""); err != nil {
-			return nil, fmt.Errorf("%w %q: %w", ErrInvalidGlob, opts.Glob, err)
+			return nil, fmt.Errorf("%w %q: %w", errInvalidGlob, opts.Glob, err)
 		}
 	}
 	for _, part := range strings.Split(scope.physical, "/") {
@@ -117,7 +116,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 			// Git-aware listing is unavailable for this workspace. The
 			// filesystem fallback below remains authoritative in this case.
 		case errors.Is(err, git.ErrResultTooLarge):
-			return nil, fmt.Errorf("%w: %w", ErrListingTooLarge, err)
+			return nil, fmt.Errorf("%w: %w", errListingTooLarge, err)
 		default:
 			return nil, err
 		}
@@ -153,7 +152,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 		}
 	}
 	if len(files) > maxListEntries {
-		return nil, fmt.Errorf("%w: more than %d files", ErrListingTooLarge, maxListEntries)
+		return nil, fmt.Errorf("%w: more than %d files", errListingTooLarge, maxListEntries)
 	}
 
 	if opts.Recursive || opts.Glob != "" {
@@ -181,15 +180,15 @@ func resolveFileSelection(root, sub string) (fileSelection, error) {
 	if path.IsAbs(sub) {
 		return fileSelection{}, fmt.Errorf("%w: %q is not relative to the workspace", errInvalidListPath, sub)
 	}
-	physicalRoot, err := pathidentity.Resolve("", root)
+	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return fileSelection{}, fmt.Errorf("inspect listing root %q: %w", root, err)
 	}
-	physicalPath, err := pathidentity.Resolve(physicalRoot, filepath.FromSlash(sub))
+	physicalPath, err := filesystem.ResolvePath(physicalRoot, filepath.FromSlash(sub))
 	if err != nil {
 		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
-	inside, err := pathidentity.Contains(physicalRoot, physicalPath)
+	inside, err := filesystem.ContainsPath(physicalRoot, physicalPath)
 	if err != nil {
 		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
@@ -295,9 +294,9 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 		return nil, errors.New("workspace: directory entry limit must not be negative")
 	}
 	name := rootPath(directory)
-	dir, _, err := fileinput.OpenDirectoryAt(root, name)
+	dir, _, err := filesystem.OpenDirectoryAt(root, name)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) || errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, filesystem.ErrNotDirectory) || errors.Is(err, filesystem.ErrChanged) {
 			return nil, fmt.Errorf("%w: %q: %w", errInvalidListPath, directory, err)
 		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
@@ -316,7 +315,7 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
 	if len(children) > limit {
-		return nil, fmt.Errorf("%w: more than %d entries in %q", ErrListingTooLarge, limit, directory)
+		return nil, fmt.Errorf("%w: more than %d entries in %q", errListingTooLarge, limit, directory)
 	}
 	slices.SortFunc(children, func(left, right fs.DirEntry) int {
 		return strings.Compare(left.Name(), right.Name())
@@ -378,7 +377,7 @@ func recursiveFiles(scope fileSelection, files []string, glob string) ([]workspa
 			}
 			matched, err := matchGlob(glob, candidate)
 			if err != nil {
-				return nil, fmt.Errorf("%w %q: %w", ErrInvalidGlob, glob, err)
+				return nil, fmt.Errorf("%w %q: %w", errInvalidGlob, glob, err)
 			}
 			if !matched {
 				continue

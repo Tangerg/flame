@@ -15,8 +15,8 @@ func TestNewDiscoveryRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		scope     *Scope
-		catalog   Catalog
-		documents AgentDocFinder
+		catalog   catalog
+		documents agentDocFinder
 	}{
 		{name: "scope", catalog: workspaceCatalogStub{}, documents: staticAgentDocFinder{}},
 		{name: "catalog", scope: scope, documents: staticAgentDocFinder{}},
@@ -32,7 +32,7 @@ func TestNewDiscoveryRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newDiscovery(t *testing.T, scope *Scope, catalog Catalog, documents AgentDocFinder) *Discovery {
+func newDiscovery(t *testing.T, scope *Scope, catalog catalog, documents agentDocFinder) *Discovery {
 	t.Helper()
 	discovery, err := NewDiscovery(scope, catalog, documents)
 	if err != nil {

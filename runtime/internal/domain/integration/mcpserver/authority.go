@@ -4,12 +4,12 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:
 // a token rotation does not grant authority to a different endpoint.
-func (s Server) AuthorityFingerprint() fingerprint.Digest {
+func (s Server) AuthorityFingerprint() identity.Digest {
 	fields := []string{string(s.Transport)}
 	if _, authority, found := s.Source.Release(); found {
 		fields = append(fields, authority.String())
@@ -23,7 +23,7 @@ func (s Server) AuthorityFingerprint() fingerprint.Digest {
 			fields = append(fields, s.ExecutionEnvironment)
 		}
 	}
-	return fingerprint.Strings(fields...)
+	return identity.DigestStrings(fields...)
 }
 
 // SameConnection compares the descriptor realized by an executable. Enablement

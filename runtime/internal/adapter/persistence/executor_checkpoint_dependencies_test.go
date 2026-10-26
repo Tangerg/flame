@@ -7,16 +7,14 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func testInstallationID(t *testing.T, text string) resourceid.InstallationID {
+func testInstallationID(t *testing.T, text string) identity.InstallationID {
 	t.Helper()
-	id, err := resourceid.ParseInstallation(text)
+	id, err := identity.ParseInstallation(text)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +37,7 @@ func TestCheckpointDependencyQueryReadsOnlyTheProjection(t *testing.T) {
 	checkpointInstallation := testInstallationID(t, "940ac827-b431-455b-af4b-e3a170bcfda0")
 	otherInstallation := testInstallationID(t, "1d7f3c2e-6a1b-4f0e-9c3d-2b8a7e5f4c10")
 	db, store := newExecutorCheckpointStorage(t)
-	storage := NewExecutorCheckpointStore(db)
+	storage := newExecutorCheckpointStore(db)
 	dependency := plugin.Dependency{InstallationID: checkpointInstallation, Digest: testsupport.Digest("1")}
 	waiting := storedExecutorCheckpoint("member_waiting", "ses_waiting", "\x00not a continuation")
 	waiting.Installations = []plugin.Dependency{dependency}
@@ -54,7 +52,7 @@ func TestCheckpointDependencyQueryReadsOnlyTheProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		installation resourceid.InstallationID
+		installation identity.InstallationID
 		want         bool
 	}{
 		{checkpointInstallation, true},
@@ -110,7 +108,7 @@ func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			store := NewExecutorCheckpointStore(db)
+			store := newExecutorCheckpointStore(db)
 			if err := store.SaveCheckpoint(t.Context(), storedExecutorCheckpoint("member_old", "ses_old", "payload")); err != nil {
 				t.Fatal(err)
 			}
@@ -136,7 +134,7 @@ type pendingDependencies interface {
 	PendingCheckpointDependencies(context.Context) ([]plugin.Dependency, error)
 }
 
-func pendingDependsOn(t *testing.T, store pendingDependencies, installation resourceid.InstallationID) (bool, error) {
+func pendingDependsOn(t *testing.T, store pendingDependencies, installation identity.InstallationID) (bool, error) {
 	t.Helper()
 	dependencies, err := store.PendingCheckpointDependencies(t.Context())
 	if err != nil {

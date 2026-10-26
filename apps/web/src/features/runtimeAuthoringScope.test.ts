@@ -5,7 +5,8 @@ import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { type RuntimeServerScope } from "@/features/connection/public/services";
-import { createAgent, type AgentOwner } from "@/features/agent/adapters/agent";
+import { createAgentFixture } from "@/test/agentFixture";
+type AgentOwner = ReturnType<typeof createAgentFixture>;
 import {
   createComposer,
   type ComposerOwner,
@@ -23,6 +24,7 @@ import {
   forgetWorkspaceSessionScopes,
   openWorkspaceFile,
 } from "@/features/workspace/public/navigation";
+
 import {
   closeActiveAgentSession,
   getActiveSessionId,
@@ -31,7 +33,7 @@ import {
   subscribeActiveSessionId,
   subscribeAgentSessionLifecycle,
   subscribeDeletedAgentSession,
-} from "@/features/agent/public/session";
+} from "@/features/agent/application/session/activeSession";
 import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
 
 let testClient: {
@@ -86,16 +88,16 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
     subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
     reportConnectionLoss: () => undefined,
   };
-  const agent = createAgent(client, navigation, runtime, stream, scope);
+  const agent = createAgentFixture(client, navigation, runtime, stream, scope);
   const sessions = {
-    getActiveSessionId: () => getActiveSessionId(agent.access),
-    getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(agent.access),
+    getActiveSessionId: () => getActiveSessionId(agent.dependencies),
+    getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(agent.dependencies),
     subscribeActiveSessionId: (listener: (id: string) => void) =>
-      subscribeActiveSessionId(agent.access, listener),
+      subscribeActiveSessionId(agent.dependencies, listener),
     subscribeLifecycle: (listener: Parameters<typeof subscribeAgentSessionLifecycle>[1]) =>
-      subscribeAgentSessionLifecycle(agent.access, listener),
+      subscribeAgentSessionLifecycle(agent.dependencies, listener),
     subscribeDeleted: (listener: (id: string) => void) =>
-      subscribeDeletedAgentSession(agent.access, listener),
+      subscribeDeletedAgentSession(agent.dependencies, listener),
   };
   const composer = createComposer(sessions, () => endpoint, scope);
   const workspace = createWorkspace(
@@ -115,7 +117,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
   );
   const deleteSession = vi.fn().mockResolvedValue(undefined);
   disposers.push(
-    stubInstance(agent.access.runtime, { deleteSession } as unknown as AgentRuntimeGateway),
+    stubInstance(agent.dependencies.runtime, { deleteSession } as unknown as AgentRuntimeGateway),
   );
   agent.start();
   composer.start();
@@ -141,7 +143,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
 describe("Runtime target authoring ownership", () => {
   it("preserves each target's drafts and file context when Session IDs coincide", () => {
     const targets = installTargets("roundtrip");
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("history on A");
     composer().captureSubmission().consume("history on A");
     composer().setValue("draft on A");
@@ -168,7 +170,7 @@ describe("Runtime target authoring ownership", () => {
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(localStorage.getItem(keyA)).toBe(storedA);
 
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/only-on-B.ts", 24);
     const keyB = testClient.composer.store.persist.getOptions().name!;
@@ -179,7 +181,7 @@ describe("Runtime target authoring ownership", () => {
 
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toEqual(["shared"]);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     expect(composer().composer.draft).toMatchObject({
       value: "draft on A",
       images: [{ mime: "image/png", data: "image-on-A" }],
@@ -190,7 +192,7 @@ describe("Runtime target authoring ownership", () => {
     expect(dock().fileViewer).toEqual({ path: "src/only-on-A.ts", line: 12 });
 
     targets.replace(targets.targetB);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     expect(composer().composer.draft.value).toBe("draft on B");
     expect(composer().composer.draft.images).toEqual([]);
     expect(dock().fileViewer).toEqual({ path: "src/only-on-B.ts", line: 24 });
@@ -198,7 +200,7 @@ describe("Runtime target authoring ownership", () => {
 
   it("keeps authoring and image work for replacement at the same endpoint", async () => {
     const targets = installTargets("same-endpoint");
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("retained during token refresh or process restart");
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
@@ -209,7 +211,7 @@ describe("Runtime target authoring ownership", () => {
     reading.resolve({ mime: "image/png", data: "accepted", name: "pending.png" });
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
 
-    expect(getActiveSessionId(testClient.agent.access)).toBe("shared");
+    expect(getActiveSessionId(testClient.agent.dependencies)).toBe("shared");
     expect(composer().composer.draft.value).toBe(
       "retained during token refresh or process restart",
     );
@@ -218,15 +220,15 @@ describe("Runtime target authoring ownership", () => {
 
   it("retires delayed image results even after switching away and back to the same Session", async () => {
     const targets = installTargets("delayed-image");
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     composer().addImageFiles([new File([""], "pending.png")]);
 
     targets.replace(targets.targetB);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     targets.replace(targets.targetA);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     reading.resolve({ mime: "image/png", data: "retired", name: "pending.png" });
     await reading.promise;
     await Promise.resolve();
@@ -247,41 +249,41 @@ describe("Runtime target authoring ownership", () => {
       },
     };
     const targets = installTargets("delayed-route", delayed);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
     refs().holdOpen("shared");
     memory.go({ settings: "connection" });
-    expect(getActiveSessionId(testClient.agent.access)).toBe("shared");
+    expect(getActiveSessionId(testClient.agent.dependencies)).toBe("shared");
     for (const navigate of pending.splice(0)) navigate();
 
-    expect(getActiveSessionId(testClient.agent.access)).toBe("");
+    expect(getActiveSessionId(testClient.agent.dependencies)).toBe("");
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("important unsent input");
     composer().addPaste("unsent source text");
     composer().addImages([{ mime: "image/png", data: "unsent-image" }]);
     const draft = composer().composer.draft;
     targets.deleteSession.mockClear();
-    selectAgentSession(testClient.agent.access, "another");
+    selectAgentSession(testClient.agent.dependencies, "another");
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toContain("shared");
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     expect(composer().composer.draft).toEqual(draft);
-    expect(closeActiveAgentSession(testClient.agent.access)).toBe(true);
+    expect(closeActiveAgentSession(testClient.agent.dependencies)).toBe(true);
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     expect(composer().composer.draft).toEqual(draft);
-    testClient.agent.access.state.deleteSession("shared");
-    selectAgentSession(testClient.agent.access, "shared");
+    testClient.agent.dependencies.state.deleteSession("shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(composer().composer.durableDraftTexts().has("shared")).toBe(false);
   });
 
   it("hydrates only the restored endpoint after renderer replacement and discards unscoped state", async () => {
     const targets = installTargets("cold-renderer");
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("cold draft on A");
     openWorkspaceFile(testClient.workspace.access, "src/A.ts", 1);
     const unscopedAgent = localStorage.getItem(
@@ -294,7 +296,7 @@ describe("Runtime target authoring ownership", () => {
       testClient.workspace.dock.store.persist.getOptions().name!,
     )!;
     targets.replace(targets.targetB);
-    selectAgentSession(testClient.agent.access, "shared");
+    selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("cold draft on B");
     openWorkspaceFile(testClient.workspace.access, "src/B.ts", 2);
     localStorage.setItem("flame.agent-session", unscopedAgent);

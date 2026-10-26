@@ -73,7 +73,7 @@ func TestSkillWorkspaceFailuresMatchPublishedContract(t *testing.T) {
 		{SkillsDiscoveredGet, protocol.SkillDetailRequest{Workspace: workspace, Name: "example"}},
 		{SkillsProposalsList, protocol.WorkspaceQuery{Workspace: workspace}},
 		{SkillsProposalsApprove, proposal},
-		{SkillsProposalsReject, proposal},
+		{skillsProposalsReject, proposal},
 	} {
 		t.Run(string(tc.method), func(t *testing.T) {
 			result := endpoint.Invoke(t.Context(), tc.method, tc.params, Options{})

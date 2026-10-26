@@ -3,18 +3,18 @@ package sessions
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // DeletePlan removes exactly one addressed conversation. User-created forks
 // are independent conversations and delegated work belongs to child Runs.
 type DeletePlan struct {
-	sessionID resourceid.SessionID
+	sessionID identity.SessionID
 }
 
 // NewDeletePlan owns one canonical Session identity before lifecycle effects.
 func NewDeletePlan(sessionID string) (DeletePlan, error) {
-	id, err := resourceid.ParseSession(sessionID)
+	id, err := identity.ParseSession(sessionID)
 	if err != nil {
 		return DeletePlan{}, fmt.Errorf("sessions: delete plan: %w", err)
 	}

@@ -12,12 +12,16 @@ import { forgetApprovalRules } from "@/features/approvals/application/approvalCo
 const { forgetRules } = vi.hoisted(() => ({ forgetRules: vi.fn() }));
 
 vi.mock("@/features/agent/public/approvalPolicy", () => ({
-  forgetRule: vi.fn(),
-  forgetRules,
-  setApprovalMode: vi.fn(),
   useApprovalMode: vi.fn(),
   useApprovalRules: vi.fn(),
 }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    forgetRule: vi.fn(),
+    forgetRules,
+    setApprovalMode: vi.fn(),
+  });
+});
 
 afterEach(() => {
   forgetRules.mockReset();
@@ -32,7 +36,7 @@ describe("approval configuration", () => {
     ).resolves.toBeUndefined();
 
     expect(forgetRules).toHaveBeenCalledOnce();
-    expect(forgetRules).toHaveBeenCalledWith(testClient.agent.access, ["rule-1", "rule-2"]);
+    expect(forgetRules).toHaveBeenCalledWith(["rule-1", "rule-2"]);
   });
 });
 

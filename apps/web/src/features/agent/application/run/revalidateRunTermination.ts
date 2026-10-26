@@ -1,7 +1,7 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { revalidateAgentSessionProjection } from "@/features/agent/application/session/refreshSessionProjection";
 export async function revalidateRunTermination(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   runId: string,
 ): Promise<boolean> {

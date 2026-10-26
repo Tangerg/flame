@@ -13,7 +13,7 @@ func TestTrustStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	s := NewTrustStore(db)
+	s := newTrustStore(db)
 
 	const root = "/home/me/project"
 

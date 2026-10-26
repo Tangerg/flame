@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -84,7 +83,7 @@ func testGoalRunContext() context.Context {
 func testGoalRunCapabilities() run.Capabilities {
 	return run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}
 }
 

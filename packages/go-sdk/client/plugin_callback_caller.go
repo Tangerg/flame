@@ -6,7 +6,7 @@ import (
 	"iter"
 	"sync/atomic"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -59,7 +59,7 @@ func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protoco
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return struct{}{}, nil, err
 	}
-	input, err := jsoninput.Parse([]byte(request.Input))
+	input, err := jsonvalue.Parse([]byte(request.Input))
 	if err != nil {
 		return struct{}{}, nil, err
 	}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -15,7 +15,7 @@ import (
 
 func TestBackgroundNoticesRequireTheirOwnEnabledContribution(t *testing.T) {
 	name := testsupport.ServerName("records")
-	contract, err := capability.New(capability.Config{Reference: "records", Scope: "installation", Composition: capability.Selection}, capability.MethodDescriptor{Name: "records.read", Kind: capability.Query, Target: "installation", Description: "Read records.", Input: []byte(`{"type":"object","additionalProperties":false}`), Output: []byte(`{"type":"string"}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Scope: "installation", Composition: extension.Selection}, extension.MethodDescriptor{Name: "records.read", Kind: extension.Query, Target: "installation", Description: "Read records.", Input: []byte(`{"type":"object","additionalProperties":false}`), Output: []byte(`{"type":"string"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

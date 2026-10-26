@@ -9,12 +9,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -37,19 +37,19 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "guardrails"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.GuardrailsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode(rpc.ReplaceInput{ExpectedRevision: 1, Phrases: []string{protected}})
+	input, err := jsonvalue.Encode(testsupport.GuardrailsReplacePolicyV1Input{ExpectedRevision: 1, Phrases: []string{protected}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Capability.Identity().String(), Method: contracts.Replace.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
+	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
 	if result.Failure != nil || strings.Contains(result.Output, protected) {
 		t.Fatalf("policy result leaked or refused: %+v", result)
 	}

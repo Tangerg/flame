@@ -8,8 +8,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -27,17 +26,17 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 		terminalTestReplayNamespace,
 		time.Now().UTC().Add(-time.Minute),
 	)
-	command := prompt.SteerRun{
+	command := authoring.SteerRun{
 		CommandID: "cli_55555555555555555555555555555555",
 		RunID:     "run_expired",
 		SegmentID: "seg_expired",
-		Message:   prompt.Message{Text: "preserve me"},
+		Message:   authoring.Message{Text: "preserve me"},
 	}
 	pending, err := workbench.NewPendingSteer("ses_expired", command, stagedAt, guard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := prompt.Message{Text: "/steer preserve me"}
+	source := authoring.Message{Text: "/steer preserve me"}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +91,7 @@ func TestRestartKeepsEveryStartupNoticeVisible(t *testing.T) {
 	host, stop, _ := runUIFromConfig(t, Config{
 		Runtime: runtimefixture.New(), RuntimeProfile: &profile, Workspace: "/tmp/flame-cli-test",
 		SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory),
-		Plugins: []extensions.Plugin{broken},
+		PluginSources: []extensions.Source{testPluginSource{Plugins: []extensions.Plugin{broken}}},
 	})
 	showsPlain(t, host, "steer sent before restart was refused")
 	showsPlain(t, host, "1 plugin did not load")
@@ -105,17 +104,17 @@ func stageSteerRuntimeWillRefuse(t *testing.T, stateDirectory string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.SteerRun{
+	command := authoring.SteerRun{
 		CommandID: "cli_66666666666666666666666666666666",
 		RunID:     "run_gone",
 		SegmentID: "seg_gone",
-		Message:   prompt.Message{Text: "refused while away"},
+		Message:   authoring.Message{Text: "refused while away"},
 	}
 	pending, err := workbench.NewPendingSteer("ses_demo_1", command, time.Now().UTC(), durableCommandReplayGuard(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := prompt.Message{Text: "/steer refused while away"}
+	source := authoring.Message{Text: "/steer refused while away"}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +142,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveDraft(created.ID, prompt.Message{Text: "existing draft"}); err != nil {
+	if err := store.SaveDraft(created.ID, authoring.Message{Text: "existing draft"}); err != nil {
 		t.Fatal(err)
 	}
 	pending := workbench.PendingSessionRollback{
@@ -155,7 +154,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		BeforeRunIDs:   []string{"run_1"},
 		OpeningText:    "restored opening",
 		StagedAt:       time.Now().UTC(),
-		Replay:         replay.UnprotectedGuard(),
+		Replay:         authoring.UnprotectedGuard(),
 	}
 	if err := store.StageSessionRollback(pending); err != nil {
 		t.Fatal(err)
@@ -178,7 +177,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := prompt.Message{Text: "restored opening\n\nexisting draft\n\nfrom argv"}
+	want := authoring.Message{Text: "restored opening\n\nexisting draft\n\nfrom argv"}
 	if !prepared.draft.Equal(want) {
 		t.Fatalf("prepared draft = %+v, want %+v", prepared.draft, want)
 	}

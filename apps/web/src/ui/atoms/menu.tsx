@@ -5,7 +5,8 @@ import { MENU_SURFACE, useHiddenPopupRelease, useHiddenRootRetirement } from "@f
 import { cn } from "@/lib/classNames";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
-import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives/index";
+import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "@/ui/atoms/option-row";
 const menuStyles = stylex.create({

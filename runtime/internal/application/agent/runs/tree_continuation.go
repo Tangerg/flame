@@ -6,7 +6,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -96,7 +96,7 @@ func treeContinuationFromPending(
 // all is the caller's question, asked where a fresh Run and a resumed tree
 // diverge; every path here holds a value newTreeContinuation returned.
 func (t *treeContinuation) validate() error {
-	if err := resourceid.ValidateRun(t.rootRunID); err != nil {
+	if err := identity.ValidateRun(t.rootRunID); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
 	}
 	if _, parked := t.runs[t.rootRunID]; !parked {

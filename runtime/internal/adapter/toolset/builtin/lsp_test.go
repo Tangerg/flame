@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // lspTool returns the combined `lsp` tool from a fresh Build.

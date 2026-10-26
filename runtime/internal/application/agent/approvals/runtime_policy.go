@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/samber/lo"
 )
 
 // NewRuntimePolicy constructs permission policy over durable permission modes
@@ -18,8 +17,8 @@ import (
 func NewRuntimePolicy(
 	initialDefault approval.Mode,
 	store RuleStore,
-	modeStore ModeStore,
-	authorities SourceAuthorities,
+	modeStore modeStore,
+	authorities sourceAuthorities,
 	invalidations invalidation.Publish,
 ) (*RuntimePolicy, error) {
 	if !initialDefault.ValidDefault() {
@@ -31,7 +30,7 @@ func NewRuntimePolicy(
 	}{
 		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("approvals: %s is required", required.name)
 		}
 	}
@@ -50,7 +49,7 @@ func NewRuntimePolicy(
 // Retiring a deleted Session's state is not here: the session write-set owns
 // that, transactionally with everything else the delete removes, through its
 // own cleaner port.
-type ModeStore interface {
+type modeStore interface {
 	DefaultMode(ctx context.Context) (mode approval.Mode, found bool, err error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 	PlanModeActive(ctx context.Context, sessionID string) (bool, error)
@@ -64,8 +63,8 @@ type ModeStore interface {
 // stance a user chose.
 type RuntimePolicy struct {
 	initialDefault approval.Mode
-	authorities    SourceAuthorities
-	modeStore      ModeStore
+	authorities    sourceAuthorities
+	modeStore      modeStore
 	store          RuleStore
 	invalidations  invalidation.Publish
 }
@@ -100,7 +99,7 @@ func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) 
 // default; a Session outside Plan mode follows that default.
 func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mode, error) {
 	if sessionID != "" {
-		if err := resourceid.ValidateSession(sessionID); err != nil {
+		if err := identity.ValidateSession(sessionID); err != nil {
 			return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
 		}
 		planning, err := r.modeStore.PlanModeActive(ctx, sessionID)
@@ -117,7 +116,7 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mo
 // EnterPlanMode narrows one session to read-only. It returns changed=false
 // when already active.
 func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error) {
-	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
+	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
 		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	return r.modeStore.StartPlanMode(ctx, sessionID)
@@ -127,7 +126,7 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 // it now follows. It returns changed=false when the session is not in Plan
 // mode.
 func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error) {
-	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
+	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	changed, err = r.modeStore.EndPlanMode(ctx, sessionID)
@@ -190,9 +189,9 @@ func (r *RuntimePolicy) put(ctx context.Context, rule approval.Rule) error {
 	return nil
 }
 
-type SourceAuthorities interface {
-	Fingerprint(context.Context, tool.Ref) (fingerprint.Digest, bool, error)
-	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]fingerprint.Digest, error)
+type sourceAuthorities interface {
+	Fingerprint(context.Context, tool.Ref) (identity.Digest, bool, error)
+	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]identity.Digest, error)
 }
 type RuleView struct {
 	ID         string

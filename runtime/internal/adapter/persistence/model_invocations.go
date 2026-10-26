@@ -9,16 +9,16 @@ import (
 )
 
 // ModelInvocationReader translates the stored journal into application observations.
-type ModelInvocationReader struct{ store *ModelInvocationStore }
+type modelInvocationReader struct{ store *ModelInvocationStore }
 
-func NewModelInvocationReader(store *ModelInvocationStore) (*ModelInvocationReader, error) {
+func NewModelInvocationReader(store *ModelInvocationStore) (*modelInvocationReader, error) {
 	if store == nil {
 		return nil, errors.New("persistence: model invocation store is required")
 	}
-	return &ModelInvocationReader{store: store}, nil
+	return &modelInvocationReader{store: store}, nil
 }
 
-func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
+func (m modelInvocationReader) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
 	rows, err := m.store.PageModelInvocations(ctx, runID, beforeStartedAt, beforeCallID, limit)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 	return records, nil
 }
 
-func modelInvocationFromRecord(row ModelInvocationRecord) (runs.ModelInvocationCommit, error) {
+func modelInvocationFromRecord(row modelInvocationRecord) (runs.ModelInvocationCommit, error) {
 	record := runs.ModelInvocationCommit{
 		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage, KnownResponse: row.KnownResponse.Clone(),
 		CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State),

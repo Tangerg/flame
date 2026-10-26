@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	sdk "github.com/Tangerg/scope/skills"
-
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
+	sdk "github.com/Tangerg/scope/skills"
 )
 
 // Skills lists project Skills layered over one configured user

@@ -1,9 +1,10 @@
 package plugin
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -17,7 +18,7 @@ func TestModelSelectionContractRequiresExactProposalAndPreservesInputAbsence(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != capability.Selection || method.Descriptor().Kind != capability.Query {
+	if contract.Descriptor().Composition != extension.Selection || method.Descriptor().Kind != extension.Query {
 		t.Fatal("model route does not use explicit query selection")
 	}
 	proposal := ModelSelection{Provider: "provider", Model: "model", ReasoningEffort: "high"}
@@ -33,5 +34,19 @@ func TestModelSelectionContractRequiresExactProposalAndPreservesInputAbsence(t *
 	}
 	if err := (ModelSelection{Provider: "provider"}).Validate(); err == nil {
 		t.Fatal("incomplete route admitted")
+	}
+}
+
+func TestModelSelectionUsesTheModelIdentityOwner(t *testing.T) {
+	for _, selection := range []ModelSelection{
+		{Provider: "open ai", Model: "model"},
+		{Provider: "provider", Model: "model name"},
+		{Provider: strings.Repeat("p", model.MaximumProviderIdentityCharacters+1), Model: "model"},
+		{Provider: "provider", Model: "model", ReasoningEffort: "very high"},
+		{Provider: "provider", Model: "model", ReasoningEffort: strings.Repeat("e", model.MaximumReasoningEffortCharacters+1)},
+	} {
+		if err := selection.Validate(); err == nil {
+			t.Fatalf("invalid model identity admitted: %+v", selection)
+		}
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -23,7 +23,7 @@ func TestTransactionFailureRetainsRollbackDiagnostic(t *testing.T) {
 	retirement := errors.New("transaction rollback failed")
 	faults := &transactionFaults{rollback: func() error { return retirement }}
 	db := settlementDatabase(t, faults)
-	err := sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { return failure })
+	err := sqlite.RunInTx(t.Context(), db, func(context.Context) error { return failure })
 	if !errors.Is(err, failure) || !errors.Is(err, retirement) {
 		t.Fatalf("transaction = %v, want write-set and rollback failures", err)
 	}
@@ -45,7 +45,7 @@ func TestFailedTransactionSettlementCannotRecycleItsConnection(t *testing.T) {
 				faults.commitFailure = failure
 			}
 			db := settlementDatabase(t, faults)
-			err := sqlitebase.RunInTx(t.Context(), db, body)
+			err := sqlite.RunInTx(t.Context(), db, body)
 			if !errors.Is(err, failure) || db.Stats().Idle != 0 || db.Stats().InUse != 0 {
 				t.Fatalf("settlement = %v, idle=%d, in-use=%d; want retained failure and discarded connection", err, db.Stats().Idle, db.Stats().InUse)
 			}
@@ -67,7 +67,7 @@ func TestTransactionCancellationJoinsOwnedRollback(t *testing.T) {
 		finishBody := make(chan struct{})
 		done := make(chan error, 1)
 		go func() {
-			done <- sqlitebase.RunInTx(ctx, db, func(context.Context) error {
+			done <- sqlite.RunInTx(ctx, db, func(context.Context) error {
 				close(entered)
 				<-finishBody
 				return failure
@@ -110,7 +110,7 @@ func TestTransactionAcquisitionRetainsCancellation(t *testing.T) {
 		cause := errors.New("connection acquisition stopped")
 		done := make(chan error, 1)
 		go func() {
-			done <- sqlitebase.RunInTx(ctx, db, func(context.Context) error {
+			done <- sqlite.RunInTx(ctx, db, func(context.Context) error {
 				t.Error("canceled acquisition started a write-set")
 				return nil
 			})
@@ -134,10 +134,10 @@ func TestTransactionRejectsUnstartedPhasesAfterCancellation(t *testing.T) {
 				faults.afterBegin = func() { stop(cause) }
 			}
 			db := settlementDatabase(t, faults)
-			err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+			err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 				if phase == "nested write-set" {
 					stop(cause)
-					return sqlitebase.RunInTx(ctx, db, func(context.Context) error {
+					return sqlite.RunInTx(ctx, db, func(context.Context) error {
 						t.Error("canceled transaction started a nested write-set")
 						return nil
 					})
@@ -158,7 +158,7 @@ func TestTransactionBeginFailureRetainsCancellation(t *testing.T) {
 	cause := errors.New("write request stopped")
 	failure := errors.New("begin failed")
 	db := settlementDatabase(t, &transactionFaults{beforeBegin: func() error { stop(cause); return failure }})
-	err := sqlitebase.RunInTx(ctx, db, func(context.Context) error {
+	err := sqlite.RunInTx(ctx, db, func(context.Context) error {
 		t.Error("failed begin started a write-set")
 		return nil
 	})
@@ -173,8 +173,8 @@ func TestTransactionRetainsAcceptedCommitAfterLateCancellation(t *testing.T) {
 	cause := errors.New("write request stopped during commit")
 	faults := &transactionFaults{beforeCommit: func() { stop(cause) }}
 	db := settlementDatabase(t, faults)
-	err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
-		_, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
+	err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `CREATE TABLE accepted_commit (id INTEGER PRIMARY KEY)`)
 		return err
 	})
 	if err != nil {
@@ -200,7 +200,7 @@ func TestTransactionPanicRetainsRollbackFailure(t *testing.T) {
 				t.Errorf("panic = %v, want write-set and rollback failures", recovered)
 			}
 		}()
-		_ = sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { panic(failure) })
+		_ = sqlite.RunInTx(t.Context(), db, func(context.Context) error { panic(failure) })
 	}()
 	if faults.rollbacks.Load() != 1 || db.Stats().InUse != 0 {
 		t.Fatal("panic retained its transaction resource")
@@ -217,7 +217,7 @@ func TestTransactionPreservesPanicAfterSuccessfulRollback(t *testing.T) {
 					t.Errorf("panic = %v, want original %v", recovered, value)
 				}
 			}()
-			_ = sqlitebase.RunInTx(t.Context(), db, func(context.Context) error { panic(value) })
+			_ = sqlite.RunInTx(t.Context(), db, func(context.Context) error { panic(value) })
 		}()
 		if faults.rollbacks.Load() != 1 || db.Stats().InUse != 0 {
 			t.Fatal("panic retained its transaction resource")
@@ -233,8 +233,8 @@ func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
 		finished := make(chan struct{})
 		go func() {
 			defer close(finished)
-			_ = sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
-				transaction <- sqlitebase.Connection(ctx, db).(*sql.Tx)
+			_ = sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+				transaction <- sqlite.Connection(ctx, db).(*sql.Tx)
 				runtime.Goexit()
 				return nil
 			})
@@ -259,7 +259,7 @@ func TestTransactionSettlesBeforeGoroutineExit(t *testing.T) {
 func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {
 	failure := errors.New("installation read commit failed")
 	db := settlementDatabase(t, &transactionFaults{commitFailure: failure})
-	snapshot, found, err := NewInstallationStore(db).Get(t.Context(), testsupport.InstallationID(t))
+	snapshot, found, err := newInstallationStore(db).Get(t.Context(), testsupport.InstallationID(t))
 	if found || snapshot.Installation != nil || !errors.Is(err, failure) {
 		t.Fatalf("installation = (%v, %t, %v), want rejected read settlement", snapshot.Installation, found, err)
 	}
@@ -267,13 +267,13 @@ func TestMissingInstallationReadRequiresAcceptedSettlement(t *testing.T) {
 
 func TestInstallationLookupSeparatesAbsentRecordFromMissingRelease(t *testing.T) {
 	db := settlementDatabase(t, &transactionFaults{})
-	store := NewInstallationStore(db)
+	store := newInstallationStore(db)
 	id := testsupport.InstallationID(t)
 	if _, found, err := store.Get(t.Context(), id); err != nil || found {
 		t.Fatalf("absent installation = (%t, %v), want admitted absence", found, err)
 	}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
-	if err := NewReleaseStore(db).Admit(t.Context(), release); err != nil {
+	if err := newReleaseStore(db).Admit(t.Context(), release); err != nil {
 		t.Fatal(err)
 	}
 	installation, err := plugin.New(id, "/package", release)
@@ -300,7 +300,7 @@ func TestSchemaRejectionRetainsRollbackFailure(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `CREATE TABLE obsolete_schema (id INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	err := sqlitebase.InstallSchema(t.Context(), db, currentSchema())
+	err := sqlite.InstallSchema(t.Context(), db, currentSchema())
 	if !errors.Is(err, retirement) || !strings.Contains(err.Error(), "incompatible schema") {
 		t.Fatalf("schema rejection = %v, want admission and rollback failures", err)
 	}
@@ -309,7 +309,7 @@ func TestSchemaRejectionRetainsRollbackFailure(t *testing.T) {
 func TestWorkspaceIntentRejectionRetainsRollbackFailure(t *testing.T) {
 	retirement := errors.New("workspace intent rollback failed")
 	db := settlementDatabase(t, &transactionFaults{rollback: func() error { return retirement }})
-	created, err := NewWorkspaceMutationStore(db).recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_missing", CWD: t.TempDir(), ToRunID: "run_missing"})
+	created, err := newWorkspaceMutationStore(db).recordMutation(t.Context(), workspaceMutationRecord{SessionID: "ses_missing", CWD: t.TempDir(), ToRunID: "run_missing"})
 	if created || !errors.Is(err, retirement) || !strings.Contains(err.Error(), "no matching Run boundary") {
 		t.Fatalf("intent = (%t, %v), want rejection and rollback failure", created, err)
 	}
@@ -320,7 +320,7 @@ func TestAdoptedWorkspaceIntentRequiresTransactionSettlement(t *testing.T) {
 	db := settlementDatabase(t, faults)
 	seedWorkspaceMutationSession(t, db, "ses_intent", "/repo")
 	seedWorkspaceMutationRun(t, db, "ses_intent", "run_intent")
-	store := NewWorkspaceMutationStore(db)
+	store := newWorkspaceMutationStore(db)
 	intent := workspaceMutationRecord{SessionID: "ses_intent", CWD: "/repo", ToRunID: "run_intent"}
 	if created, err := store.recordMutation(t.Context(), intent); !created || err != nil {
 		t.Fatalf("initial intent = (%t, %v)", created, err)

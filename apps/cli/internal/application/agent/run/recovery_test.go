@@ -9,7 +9,7 @@ import (
 	"time"
 
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -118,9 +118,9 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
-			SessionID: session.ID, Message: prompt.Message{Text: "wait for approval"},
-			Options: prompt.RunOptions{},
+		opened, err := runtime.StartRun(t.Context(), authoring.StartRun{
+			SessionID: session.ID, Message: authoring.Message{Text: "wait for approval"},
+			Options: authoring.RunOptions{},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -145,9 +145,9 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
-			SessionID: session.ID, Message: prompt.Message{Text: "finish"},
-			Options: prompt.RunOptions{},
+		opened, err := runtime.StartRun(t.Context(), authoring.StartRun{
+			SessionID: session.ID, Message: authoring.Message{Text: "finish"},
+			Options: authoring.RunOptions{},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -179,10 +179,10 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 	})
 }
 
-func testRunStart(sessionID, text string) prompt.StartRun {
-	return prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: text},
-		Options: prompt.RunOptions{},
+func testRunStart(sessionID, text string) authoring.StartRun {
+	return authoring.StartRun{
+		SessionID: sessionID, Message: authoring.Message{Text: text},
+		Options: authoring.RunOptions{},
 	}
 }
 

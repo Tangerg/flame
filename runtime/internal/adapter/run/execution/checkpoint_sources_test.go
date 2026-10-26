@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -78,7 +77,7 @@ func TestWaitingRecoveryDefersOnlyCapturedPendingSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	continuation := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 	trees := testTrees(t)
 	for _, pending := range []mcpserver.ID{source, testsupport.UserMCPServer("unrelated")} {
 		t.Run(pending.String(), func(t *testing.T) {
@@ -143,7 +142,7 @@ func TestWaitingRecoveryKeepsMCPManifestsPerGroup(t *testing.T) {
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: catalog, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	start.ChildRunAdmissionEnabled = true
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
@@ -156,7 +155,7 @@ func TestWaitingRecoveryKeepsMCPManifestsPerGroup(t *testing.T) {
 	for _, group := range []domaintool.Group{domaintool.GroupRoot, domaintool.GroupDelegated} {
 		catalog.byGroup[group] = toolset.Manifest{Visible: []toolcontract.Tool{question}, Deferred: []toolcontract.Tool{memoryTool, schedulesTool}}
 	}
-	continuation := rootInteractionExecutionContinuation(barrier.Checkpoint(), workspace, ref.ExecutorID, run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}, ChildRuns: true})
+	continuation := rootInteractionExecutionContinuation(barrier.Checkpoint(), workspace, ref.ExecutorID, run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}, ChildRuns: true})
 	verdict, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	if err != nil || !verdict.Resumable() {
 		t.Fatalf("late connection changed captured waiting authority: %+v, %v", verdict, err)

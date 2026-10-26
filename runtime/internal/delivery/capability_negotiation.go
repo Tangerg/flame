@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // Capability negotiation: what a request is entitled to, resolved once.
@@ -29,7 +28,7 @@ import (
 // Absent capabilities select the Minimal Profile, which supports sending a
 // message, watching the reply, and reloading history.
 func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, error) {
-	caps, ok := ClientCapabilitiesFrom(ctx)
+	caps, ok := clientCapabilitiesFrom(ctx)
 	if !ok {
 		return run.Capabilities{}, nil
 	}
@@ -84,7 +83,7 @@ func (s *Handler) missingFeatureRequirements(
 	required ...string,
 ) []protocol.CapabilityRequirement {
 	var client *protocol.ClientCapabilities
-	if declared, ok := ClientCapabilitiesFrom(ctx); ok {
+	if declared, ok := clientCapabilitiesFrom(ctx); ok {
 		client = declared
 	}
 	return protocol.MissingFeatureRequirements(
@@ -127,12 +126,12 @@ func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 // interruptKindFromWire maps a declared interrupt type onto the durable kind the
 // runtime raises. It reports false for a type no kind backs — which is not the
 // same as an unknown value, and the caller distinguishes them.
-func interruptKindFromWire(kind protocol.InterruptType) (interrupt.Kind, bool) {
+func interruptKindFromWire(kind protocol.InterruptType) (run.InterruptKind, bool) {
 	switch kind {
 	case protocol.InterruptApproval:
-		return interrupt.Approval, true
+		return run.InterruptApproval, true
 	case protocol.InterruptQuestion:
-		return interrupt.Question, true
+		return run.InterruptQuestion, true
 	default:
 		return "", false
 	}
@@ -140,11 +139,11 @@ func interruptKindFromWire(kind protocol.InterruptType) (interrupt.Kind, bool) {
 
 // presentInterruptType is the same mapping read outward, for a protocol profile or an
 // interrupt on its way to the wire.
-func presentInterruptType(kind interrupt.Kind) protocol.InterruptType {
+func presentInterruptType(kind run.InterruptKind) protocol.InterruptType {
 	switch kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		return protocol.InterruptApproval
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		return protocol.InterruptQuestion
 	default:
 		panic("delivery: unknown interrupt kind")

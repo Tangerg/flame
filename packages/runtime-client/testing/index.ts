@@ -1,3 +1,13 @@
 export { WIRE_SAMPLES } from "./generated/wire.samples.generated";
-export * from "../src/transports/memory";
-export * from "./memoryTransport";
+export { createMemoryTransport } from "../src/transports/memory";
+export type { MemoryTransport } from "../src/transports/memory";
+export {
+  waitForRequest,
+  respondSuccess,
+  injectRunEvent,
+  finishedSegment,
+  injectRunFinished,
+  openingEvents,
+  respondNotRecorded,
+} from "./memoryTransport";
+export type { SegmentFinish } from "./memoryTransport";

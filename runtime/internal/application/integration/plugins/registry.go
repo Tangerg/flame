@@ -7,21 +7,21 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/samber/lo"
 )
 
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
-	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, bool, error)
+	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
 	Save(context.Context, *plugin.Installation) error
-	Remove(context.Context, resourceid.InstallationID) error
+	Remove(context.Context, identity.InstallationID) error
 }
-type PackageSources interface {
+type packageSources interface {
 	Definitions(context.Context, *plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
 	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
 	Connection(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
@@ -50,12 +50,12 @@ type userServers interface {
 type Registry struct {
 	user          userServers
 	installations Store
-	packages      PackageSources
+	packages      packageSources
 	selections    SelectionStore
 	compositions  CompositionStore
 }
 
-func NewRegistry(user userServers, installations Store, packages PackageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+func NewRegistry(user userServers, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -63,7 +63,7 @@ func NewRegistry(user userServers, installations Store, packages PackageSources,
 		{"user server store", user}, {"installation store", installations}, {"package sources", packages}, {"selection store", selections},
 		{"composition store", compositions},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
 		}
 	}
@@ -138,7 +138,7 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 		}
 		var requirements *plugin.RequiredBindings
 		if snapshot.Installation.ServerEnabled(id.Name()) {
-			requirements, err = ResolveEntryRequirements(ctx, r.installations, r.selections, r.compositions, snapshot, id.Name())
+			requirements, err = resolveEntryRequirements(ctx, r.installations, r.selections, r.compositions, snapshot, id.Name())
 			if err != nil {
 				return mcpapp.Launch{}, err
 			}
@@ -146,7 +146,7 @@ func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.La
 		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
 		if err == nil && found {
 			connection.Requirements = requirements
-			connection.Exports = make(map[string]jsoninput.Input)
+			connection.Exports = make(map[string]jsonvalue.Value)
 			for _, contribution := range snapshot.Selected.Declaration().Contributions {
 				if contribution.Server == id.Name() {
 					connection.Exports[contribution.Export] = contribution.Contract

@@ -127,7 +127,7 @@ func TestArchiveDirectoryDeclarationsDoNotChangeReleaseIdentity(t *testing.T) {
 func TestArchiveAdmissionCountsImplicitDirectories(t *testing.T) {
 	r := testReleases(t)
 	entries := []archiveEntry{{name: "plugin.json", body: portableManifest}}
-	for index := range MaxFiles / 2 {
+	for index := range maxFiles / 2 {
 		entries = append(entries, archiveEntry{name: fmt.Sprintf("directory-%d/notes.txt", index), body: "bounded"})
 	}
 	if _, err := publishPackage(t.Context(), r, writeArchive(t, entries)); !errors.Is(err, plugin.ErrInvalid) {

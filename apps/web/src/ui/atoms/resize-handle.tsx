@@ -1,10 +1,10 @@
+import { Separator } from "@base-ui/react/separator";
+import { type ComponentProps } from "react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useCallback, useEffect, useRef } from "react";
-import { type SeparatorPrimitiveProps } from "@/ui/primitives/index";
-import { SeparatorPrimitive } from "@/ui/primitives/index";
 const STEP_PX = 8;
 
 const COARSE_STEP_PX = 24;
@@ -12,7 +12,7 @@ const COARSE_STEP_PX = 24;
 const RESIZE_KEYS = ["ArrowLeft", "ArrowRight", "Home", "End"];
 
 export interface ResizeHandleProps extends Omit<
-  SeparatorPrimitiveProps,
+  ComponentProps<typeof Separator>,
   | "orientation"
   | "role"
   | "tabIndex"
@@ -259,7 +259,7 @@ export function ResizeHandle({
   }, [detach]);
 
   return (
-    <SeparatorPrimitive
+    <Separator
       {...props}
       data-focus-inset=""
       ref={handleRef}

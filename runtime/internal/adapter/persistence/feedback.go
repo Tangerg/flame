@@ -6,29 +6,29 @@ import (
 	"fmt"
 	"time"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 
 // FeedbackStore persists the append-only quality ledger. The DB must have been
 // opened via Open so the feedback_entries table exists.
-type FeedbackStore struct {
+type feedbackStore struct {
 	db *sql.DB
 }
 
 // NewFeedbackStore wires db to the feedback receiver.
-func NewFeedbackStore(db *sql.DB) *FeedbackStore {
-	return &FeedbackStore{db: db}
+func newFeedbackStore(db *sql.DB) *feedbackStore {
+	return &feedbackStore{db: db}
 }
 
 // Append stores a validated immutable feedback entry. It joins any ambient
 // lifecycle write set through conn, even though feedback is normally an
 // independent user action.
-func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error {
+func (f *feedbackStore) Append(ctx context.Context, entry feedback.Entry) error {
 	if err := entry.Validate(); err != nil {
 		return err
 	}
-	if _, err := sqlitebase.Connection(ctx, f.db).ExecContext(ctx,
+	if _, err := sqlite.Connection(ctx, f.db).ExecContext(ctx,
 		`INSERT INTO feedback_entries(session_id, run_id, item_id, rating, text, created_at_ns)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		entry.SessionID, entry.RunID, entry.ItemID, entry.Rating, entry.Text, entry.CreatedAt.UnixNano()); err != nil {
@@ -39,8 +39,8 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 
 // ListSession includes observations whose optional references name the Session
 // or its retained Runs and Items. References remain user claims, not foreign keys.
-func (f *FeedbackStore) ListSession(ctx context.Context, sessionID string) ([]feedback.Entry, error) {
-	rows, err := sqlitebase.Connection(ctx, f.db).QueryContext(ctx,
+func (f *feedbackStore) ListSession(ctx context.Context, sessionID string) ([]feedback.Entry, error) {
+	rows, err := sqlite.Connection(ctx, f.db).QueryContext(ctx,
 		`SELECT session_id, run_id, item_id, rating, text, created_at_ns FROM feedback_entries WHERE `+
 			sessionFeedbackPredicate+` ORDER BY created_at_ns, id`, sessionID, sessionID, sessionID)
 	if err != nil {

@@ -76,7 +76,7 @@ function entry(value: AgentSessionView): AgentSessionViewEntry {
 function wire(initial: AgentSessionView) {
   let sessions: Record<string, AgentSessionViewEntry> = { "session-1": entry(initial) };
   let listener: ((next: Record<string, AgentSessionViewEntry>) => void) | undefined;
-  disposePort = stubInstance(testClient.agent.access.view, {
+  disposePort = stubInstance(testClient.agent.dependencies.view, {
     getSessions: () => sessions,
     subscribeSessions: (next: (sessions: Record<string, AgentSessionViewEntry>) => void) => {
       listener = next;
@@ -106,7 +106,7 @@ describe("root Run attention", () => {
   it("publishes the current any-running state immediately and only on change", () => {
     const publish = wire(view(root("running")));
     const onChange = vi.fn();
-    subscribeAnySessionRunning(testClient.agent.access, onChange);
+    subscribeAnySessionRunning(testClient.agent.dependencies, onChange);
 
     expect(onChange).toHaveBeenCalledWith(true);
     publish(view(root("running")));
@@ -118,7 +118,7 @@ describe("root Run attention", () => {
   it("reports waiting and terminal transitions for the same root without treating resume as settle", () => {
     const publish = wire(view(root("running")));
     const onSettled = vi.fn();
-    subscribeRootRunSettlements(testClient.agent.access, onSettled);
+    subscribeRootRunSettlements(testClient.agent.dependencies, onSettled);
 
     publish(view(root("waiting")));
     expect(onSettled).toHaveBeenLastCalledWith({
@@ -142,7 +142,7 @@ describe("root Run attention", () => {
   it.each(terminalCases)("maps $outcome.type to the $status settlement", ({ outcome, status }) => {
     const publish = wire(view(root("running")));
     const onSettled = vi.fn();
-    subscribeRootRunSettlements(testClient.agent.access, onSettled);
+    subscribeRootRunSettlements(testClient.agent.dependencies, onSettled);
 
     publish(view(root("finished", outcome)));
 

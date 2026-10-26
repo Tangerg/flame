@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
@@ -103,7 +102,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 		return fmt.Errorf("list runs: %w", err)
 	}
 	if r.asJSON {
-		return render.WriteRunPageJSON(cmd.OutOrStdout(), page)
+		return writeRunPageJSON(cmd.OutOrStdout(), page)
 	}
 	if err := writeRunList(cmd, page); err != nil {
 		return err
@@ -146,7 +145,7 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 				return fmt.Errorf("show run: %w", err)
 			}
 			if asJSON {
-				return render.WriteRunJSON(cmd.OutOrStdout(), run)
+				return writeRunJSON(cmd.OutOrStdout(), run)
 			}
 			return writeRunDetails(cmd, run)
 		},
@@ -223,7 +222,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 				return fmt.Errorf("cancel run: %w", validateTargetErr)
 			}
 			if asJSON {
-				return render.WriteRunCancellationJSON(cmd.OutOrStdout(), result)
+				return writeRunCancellationJSON(cmd.OutOrStdout(), result)
 			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "canceled\t%s\t%s\nroot\t%s\t%s\n",
 				result.Canceled.ID, result.Canceled.Outcome.Status, result.Root.ID, result.Root.Status,

@@ -29,6 +29,24 @@ is feedback against an older base, not native acceptance evidence or executable
 instructions. Current source, callers, tests and actual Wails behavior determine
 which findings need a repair.
 
+The latest explicit user-requested synchronization integrates **16 main commits**
+through `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9`, after local image-reading
+commit `961e4da4c3ba8dea9a6bb2306a3e20d2c3da74e1`. The only content conflict is
+the generated Schedules ESM. The normal component builder regenerates it from
+merged source; the other ten resources remain unchanged by regeneration. Main's
+new method-test helper and contract source paths are retained. The seven-command
+scoped chain passes in **10.84 s**: icon/UI prerequisites, all resources, Web and
+plugin typechecks, **5 files / 43 image/lightbox/Mermaid/Schedules tests**, and
+resource consistency. There is no broad native or full-product revalidation for
+this main sync; preceding native receipts keep their stated frozen scope.
+The three new output/cache roots are removed, all 34 output-presence baselines,
+three pre-existing files, **5,829** merged non-Markdown inputs and eleven accepted
+resources are preserved, and the owned check process is dead. Its root is absent;
+the verified ten-record gzip SHA-256 is
+`545b6063ed5f0199539c6b48286fedf9f0bb39e509cd755cde6dafef43e430ba`.
+This merge stays on the owned local UI branch; no push or primary checkout
+integration is authorized or performed.
+
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
 preserves whitespace-only captured Tool source. It also reveals the beginning of

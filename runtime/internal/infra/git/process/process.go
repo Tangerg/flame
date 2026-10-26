@@ -17,7 +17,7 @@ import (
 // a version-sensitive denylist. Ordinary Git config discovery through HOME and
 // the explicitly selected repository remains available unless the caller
 // overrides it.
-func Environment(overrides ...string) []string {
+func environment(overrides ...string) []string {
 	overridden := make(map[string]struct{}, len(overrides))
 	for _, entry := range overrides {
 		if key, _, ok := strings.Cut(entry, "="); ok {

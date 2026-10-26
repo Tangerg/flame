@@ -5,7 +5,7 @@ import (
 	"image"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -140,7 +140,7 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 	return 0
 }
 
-func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index int, selected bool) []queueHit {
+func (q *queueDrawer) drawEntry(view grid.View, entry authoring.QueueEntry, index int, selected bool) []queueHit {
 	width, _ := view.Size()
 	row := grid.Area(0, 0, width, 1)
 	rowTarget := queueTarget{kind: queueTargetRow, id: entry.ID}
@@ -168,7 +168,7 @@ func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index int, se
 	return hits
 }
 
-func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id queue.EntryID, right int, rowStyle grid.Style, hits *[]queueHit) int {
+func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id authoring.QueueEntryID, right int, rowStyle grid.Style, hits *[]queueHit) int {
 	buttons := []struct {
 		label  string
 		target queueTarget

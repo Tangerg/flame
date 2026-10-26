@@ -10,7 +10,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { act, cleanup, createEvent, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isImeKey } from "@flame/ui";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import {
   captureComposerSubmission,
   replaceComposerDraft,
@@ -162,7 +162,7 @@ beforeEach(() => {
       ? ([] as unknown as DOMRectList)
       : ([new DOMRect(900, 400, 480, 140)] as unknown as DOMRectList);
   });
-  selectAgentSession(testClient.agent.access, "selection-quote");
+  testClient.agent.access.selectAgentSession("selection-quote");
   replaceComposerDraft(testClient.composer.access, { text: "Existing draft" });
 });
 

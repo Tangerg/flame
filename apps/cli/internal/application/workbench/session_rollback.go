@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // SessionRollbackPhase separates a command whose runtime outcome is unknown
@@ -29,18 +28,18 @@ const (
 // outcomes without replay; file-affecting commands additionally bind replay to
 // one runtime idempotency store and its advertised retention window.
 type PendingSessionRollback struct {
-	Phase          SessionRollbackPhase        `json:"phase"`
-	CommandID      replay.CommandID            `json:"commandId"`
-	SessionID      string                      `json:"sessionId"`
-	ToRunID        string                      `json:"toRunId,omitzero"`
-	Scope          runtimeprotocol.RestoreType `json:"scope"`
-	BeforeRevision uint64                      `json:"beforeRevision"`
-	BeforeRunIDs   []string                    `json:"beforeRunIds"`
-	AfterRunIDs    []string                    `json:"afterRunIds"`
-	OpeningText    string                      `json:"openingText,omitzero"`
-	OpeningImages  int                         `json:"openingImages,omitzero"`
-	StagedAt       time.Time                   `json:"stagedAt"`
-	Replay         replay.Guard                `json:"replay"`
+	Phase          SessionRollbackPhase  `json:"phase"`
+	CommandID      authoring.CommandID   `json:"commandId"`
+	SessionID      string                `json:"sessionId"`
+	ToRunID        string                `json:"toRunId,omitzero"`
+	Scope          protocol.RestoreType  `json:"scope"`
+	BeforeRevision uint64                `json:"beforeRevision"`
+	BeforeRunIDs   []string              `json:"beforeRunIds"`
+	AfterRunIDs    []string              `json:"afterRunIds"`
+	OpeningText    string                `json:"openingText,omitzero"`
+	OpeningImages  int                   `json:"openingImages,omitzero"`
+	StagedAt       time.Time             `json:"stagedAt"`
+	Replay         authoring.ReplayGuard `json:"replay"`
 }
 
 func (p PendingSessionRollback) Validate() error {
@@ -124,7 +123,7 @@ func pendingSessionRollbackEqual(left, right PendingSessionRollback) bool {
 func validateRunIDs(name string, ids []string) error {
 	seen := make(map[string]struct{}, len(ids))
 	for index, id := range ids {
-		if err := runtimeprotocol.ValidateRunID(id); err != nil {
+		if err := protocol.ValidateRunID(id); err != nil {
 			return fmt.Errorf("%s item %d: %w", name, index+1, err)
 		}
 		if _, duplicate := seen[id]; duplicate {
@@ -138,7 +137,7 @@ func validateRunIDs(name string, ids []string) error {
 // SessionRollbackRecovery is the one-time local authoring result consumed
 // when a session with a confirmed rollback becomes active.
 type SessionRollbackRecovery struct {
-	Draft         prompt.Message
+	Draft         authoring.Message
 	DroppedCount  int
 	OpeningImages int
 	Merged        bool
@@ -148,7 +147,7 @@ type SessionRollbackRecovery struct {
 // Session becomes active. Rollback is present exactly once, on the activation
 // that materializes a confirmed rollback journal.
 type SessionDraftActivation struct {
-	Draft    prompt.Message
+	Draft    authoring.Message
 	Rollback *SessionRollbackRecovery
 }
 
@@ -203,8 +202,8 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 // ConfirmSessionRollback upgrades the exact prepared command to a durable
 // local recovery record. Draft materialization remains a separate activation
 // transition so a non-active session cannot replace the visible composer.
-func (s *Store) ConfirmSessionRollback(sessionID string, commandID replay.CommandID) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.CommandID) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -229,8 +228,8 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID replay.Comman
 
 // RejectSessionRollback retires only the exact prepared command after a
 // definitive runtime refusal.
-func (s *Store) RejectSessionRollback(sessionID string, commandID replay.CommandID) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.CommandID) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -256,8 +255,8 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID replay.Command
 // a confirmed rollback opening, and retires that journal. Existing Session
 // input precedes incoming input; a recovered opening precedes both. The caller
 // therefore receives the only draft value it may install in the composer.
-func (s *Store) ActivateSessionDraft(sessionID string, incoming prompt.Message) (SessionDraftActivation, error) {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Message) (SessionDraftActivation, error) {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return SessionDraftActivation{}, err
 	}
 	incoming = incoming.Clone()
@@ -314,8 +313,8 @@ func (s *Store) pendingResumePointer(sessionID string) *PendingResume {
 
 // MergeSessionRollbackDraft restores one journal's opening text without
 // discarding a newer draft authored while the runtime mutation was settling.
-func MergeSessionRollbackDraft(current prompt.Message, pending PendingSessionRollback) (prompt.Message, bool) {
-	recovered := prompt.Message{Text: pending.OpeningText}
+func MergeSessionRollbackDraft(current authoring.Message, pending PendingSessionRollback) (authoring.Message, bool) {
+	recovered := authoring.Message{Text: pending.OpeningText}
 	current = current.Clone()
 	recovered = recovered.Clone()
 	if recovered.IsEmpty() {

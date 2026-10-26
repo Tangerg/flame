@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -83,9 +83,9 @@ func TestRunsListConsumesFiltersAndStableJSON(t *testing.T) {
 func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 	runtime := instantRuntime()
 	runtime.Script = shortCompletedScript
-	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "newer run"},
-		Options: prompt.RunOptions{},
+	stream, err := runtime.StartRun(t.Context(), authoring.StartRun{
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "newer run"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -177,9 +177,9 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 			Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
-	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "keep running"},
-		Options: prompt.RunOptions{},
+	opened, err := runtime.StartRun(t.Context(), authoring.StartRun{
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "keep running"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -283,9 +283,9 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
-	opened, err := base.StartRun(t.Context(), prompt.StartRun{
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel through subcommand"},
-		Options: prompt.RunOptions{},
+	opened, err := base.StartRun(t.Context(), authoring.StartRun{
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "cancel through subcommand"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)

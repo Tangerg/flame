@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -83,7 +82,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 	if namespace == "" {
 		t.Fatal("runtime.discover omitted idempotency namespace")
 	}
-	if _, _, err := OpenInstance(t.Context(), cfg); !errors.Is(err, ownershipadapter.ErrDataDirectoryInUse) {
+	if _, _, err := OpenInstance(t.Context(), cfg); !errors.Is(err, errDataDirectoryInUse) {
 		t.Fatalf("second OpenInstance = %v, want exclusive directory refusal", err)
 	}
 
@@ -182,7 +181,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext, IdempotencyStore: testReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +263,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext, IdempotencyStore: testReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@
       "description": "Delete a document and its index at the inspected revision.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL3JwYw_DocumentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_DocumentInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -74,7 +74,30 @@
       "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Content": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_ImportInput": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Content"
+              },
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "content",
+              "expectedRevision"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Content": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -105,36 +128,13 @@
               "text"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL3JwYw_ImportInput": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Content"
-              },
-              "expectedRevision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 0,
-                "type": "integer"
-              }
-            },
-            "required": [
-              "content",
-              "expectedRevision"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
           "content": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Content"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Content"
           },
           "expectedRevision": {
             "allOf": [
@@ -155,7 +155,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Header": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -258,7 +258,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Header": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -305,7 +305,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Header"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Header"
         },
         "type": "array"
       }
@@ -317,7 +317,7 @@
       "description": "Retrieve cited chunks from indexed user documents through the configured embedding role.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL3JwYw_SearchInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_SearchInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {
@@ -372,7 +372,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Header": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Header": {
             "additionalProperties": false,
             "properties": {
               "chunks": {
@@ -416,7 +416,7 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Match": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Match": {
             "additionalProperties": false,
             "properties": {
               "chunk": {
@@ -429,7 +429,7 @@
                 "type": "integer"
               },
               "document": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Header"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Header"
               },
               "score": {
                 "type": "number"
@@ -449,7 +449,7 @@
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9iYWNrZW5kL2RvbWFpbg_Match"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_Match"
         },
         "type": "array"
       }

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -94,8 +94,8 @@ func TestMockSteerRevisionExhaustionDoesNotEmitPartialEvent(t *testing.T) {
 	runtime.runs[run.id] = run
 	session.active = run.id
 
-	_, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
-		RunID: run.id, SegmentID: segment.id, Message: prompt.Message{Text: "do not partially emit"},
+	_, err := runtime.SteerRun(t.Context(), authoring.SteerRun{
+		RunID: run.id, SegmentID: segment.id, Message: authoring.Message{Text: "do not partially emit"},
 	})
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("steer after revision exhaustion error = %v", err)
@@ -304,14 +304,14 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 			ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}},
-		Message: &prompt.Message{Text: resumeText},
+		Message: &authoring.Message{Text: resumeText},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
+	if _, err := runtime.SteerRun(t.Context(), authoring.SteerRun{
 		RunID: opened.RunID, SegmentID: continued.SegmentID,
-		Message: prompt.Message{Text: steerText},
+		Message: authoring.Message{Text: steerText},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -397,10 +397,10 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	}
 }
 
-func testStartRun(sessionID, text string) prompt.StartRun {
-	return prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: text},
-		Options: prompt.RunOptions{},
+func testStartRun(sessionID, text string) authoring.StartRun {
+	return authoring.StartRun{
+		SessionID: sessionID, Message: authoring.Message{Text: text},
+		Options: authoring.RunOptions{},
 	}
 }
 
@@ -456,9 +456,9 @@ func TestProjectApprovalRulesFollowTheResolvedProjectRoot(t *testing.T) {
 
 func startWaitingRun(t *testing.T, runtime *Runtime, sessionID string) (conversation.SegmentStream, *conversation.Conversation) {
 	t.Helper()
-	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: "fix the flaky test"},
-		Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
+	opened, err := runtime.StartRun(t.Context(), authoring.StartRun{
+		SessionID: sessionID, Message: authoring.Message{Text: "fix the flaky test"},
+		Options: authoring.RunOptions{Provider: "mock", Model: "balanced"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -829,9 +829,9 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 		}
 	}
 	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
-	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: session.ID, Message: prompt.Message{Text: "run safely"},
-		Options: prompt.RunOptions{},
+	opened, err := runtime.StartRun(t.Context(), authoring.StartRun{
+		SessionID: session.ID, Message: authoring.Message{Text: "run safely"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)

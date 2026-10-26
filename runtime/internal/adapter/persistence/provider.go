@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
@@ -17,7 +17,7 @@ type ProviderStore struct {
 	db *sql.DB
 }
 
-func NewProviderStore(db *sql.DB) *ProviderStore {
+func newProviderStore(db *sql.DB) *ProviderStore {
 	return &ProviderStore{db: db}
 }
 
@@ -57,7 +57,7 @@ func scanProvider(row scanRow) (provider.Provider, error) {
 }
 
 func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
-	rows, err := sqlitebase.Connection(ctx, p.db).QueryContext(ctx,
+	rows, err := sqlite.Connection(ctx, p.db).QueryContext(ctx,
 		`SELECT id, api_key, base_url FROM providers ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list providers: %w", err)
@@ -79,7 +79,7 @@ func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
 }
 
 func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
-	entry, err := scanProvider(sqlitebase.Connection(ctx, p.db).QueryRowContext(ctx,
+	entry, err := scanProvider(sqlite.Connection(ctx, p.db).QueryRowContext(ctx,
 		`SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return provider.Provider{}, false, nil
@@ -105,7 +105,7 @@ func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 // to the storage adapter.
 func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	var updated provider.Provider
-	err := sqlitebase.RunInTx(ctx, p.db, func(txCtx context.Context) error {
+	err := sqlite.RunInTx(ctx, p.db, func(txCtx context.Context) error {
 		current, found, getErr := p.Get(txCtx, id)
 		if getErr != nil {
 			return getErr
@@ -123,7 +123,7 @@ func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Pa
 			return applyErr
 		}
 		apiKey, baseURL := storedProviderValues(updated)
-		_, writeErr := sqlitebase.Connection(txCtx, p.db).ExecContext(txCtx,
+		_, writeErr := sqlite.Connection(txCtx, p.db).ExecContext(txCtx,
 			`INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   api_key = excluded.api_key,

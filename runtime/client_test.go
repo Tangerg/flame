@@ -14,12 +14,13 @@ import (
 	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 )
 
@@ -153,7 +154,7 @@ func (opaqueNullToolService) InvokeTool(context.Context, protocol.InvokeToolRequ
 }
 
 func TestClientPreservesOpaqueNullToolResult(t *testing.T) {
-	endpoint, err := delivery.NewEndpoint(opaqueNullToolService{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(opaqueNullToolService{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testDeliveryReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +216,7 @@ func TestClientRetainsUnknownAcknowledgementAfterCommittedMutation(t *testing.T)
 
 func TestClientCarriesSnapshotAndOpaqueReplayCursor(t *testing.T) {
 	target := &remoteRunTarget{}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testDeliveryReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,18 +321,18 @@ func TestClientDistinguishesPostAcknowledgementLossFromMalformedStream(t *testin
 					t.Error(err)
 					return
 				}
-				message, err := transport.DecodeMessage(body)
+				message, err := protocol.DecodeRPCMessage(body)
 				if err != nil {
 					t.Error(err)
 					return
 				}
-				request := message.(*transport.Request)
-				ack, err := transport.NewResponseResult(request.ID, &protocol.StartRunResponse{RunID: "run_test", SegmentID: "seg_test", UserItemID: "item_test"})
+				request := message.(*jsonrpc.Request)
+				ack, err := protocol.NewRPCResult(request.ID, &protocol.StartRunResponse{RunID: "run_test", SegmentID: "seg_test", UserItemID: "item_test"})
 				if err != nil {
 					t.Error(err)
 					return
 				}
-				encoded, err := transport.EncodeMessage(ack)
+				encoded, err := jsonrpc.EncodeMessage(ack)
 				if err != nil {
 					t.Error(err)
 					return
@@ -530,4 +531,18 @@ func (r *remoteRunTarget) SubscribeRun(ctx context.Context, request protocol.Sub
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: request.RunID, SessionID: "ses_test", Provider: "mock", Model: "balanced", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()}}},
 		}, nil)
 	}, nil
+}
+
+func testDeliveryReplayStore(t *testing.T) operation.ReplayStore {
+	t.Helper()
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return stores.Idempotency
 }

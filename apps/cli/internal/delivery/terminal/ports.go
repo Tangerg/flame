@@ -6,8 +6,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
@@ -19,7 +18,7 @@ import (
 // capabilities remain separate so an unavailable negotiated feature is nil
 // instead of a partially functioning Runtime method set.
 type Runtime interface {
-	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 	CreateSession(context.Context, conversation.CreateSession) (conversation.Session, error)
@@ -29,10 +28,10 @@ type Runtime interface {
 	DeleteSession(context.Context, conversation.DeleteSession) error
 	GetRun(context.Context, string) (conversation.Run, error)
 	GetRunAcceptance(context.Context, protocol.GetRunAcceptanceRequest) (protocol.RunAcceptance, error)
-	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
+	StartRun(context.Context, authoring.StartRun) (conversation.SegmentStream, error)
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
-	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	SteerRun(context.Context, authoring.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)
@@ -115,7 +114,7 @@ type Schedules interface {
 	PrepareUpdate(context.Context, schedule.UpdateV1Input) (protocol.CallPluginRequest, error)
 	DecodeUpdate(string, *protocol.CallPluginResponse) (schedule.UpdateV1Output, error)
 	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
-	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
+	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 	PrepareRunNow(context.Context, string) (protocol.CallPluginRequest, error)
 	DecodeRunNow(*protocol.CallPluginResponse) (conversation.RunReference, error)
 }

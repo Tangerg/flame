@@ -6,22 +6,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
-type Resolver struct{ directories.Resolver }
+type Resolver struct{ filesystem.DirectoryResolver }
 
 // ResolveInRoot lexically confines a client path to root and returns its
 // root-relative form. The workspace application owns the input-policy errors;
 // this adapter owns filesystem path spelling and cleaning.
 func (Resolver) ResolveInRoot(root, path string) (string, error) {
 	if !filepath.IsAbs(root) {
-		return "", workspacepaths.ErrAbsolutePathRequired
+		return "", filesystem.ErrAbsolutePathRequired
 	}
 	if path == "" {
 		return "", workspaceapp.ErrPathRequired
@@ -46,15 +43,15 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	physicalRoot, err := pathidentity.Resolve("", root)
+	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return "", err
 	}
-	physicalTarget, err := pathidentity.Resolve(physicalRoot, rel)
+	physicalTarget, err := filesystem.ResolvePath(physicalRoot, rel)
 	if err != nil {
 		return "", err
 	}
-	inside, err := pathidentity.Contains(physicalRoot, physicalTarget)
+	inside, err := filesystem.ContainsPath(physicalRoot, physicalTarget)
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +65,7 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 // A path that disappeared (or was replaced by a non-directory) is a normal
 // workspace projection, not an error. Other filesystem failures remain explicit.
 func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
-	cwd, err := directories.Canonical(path)
+	cwd, err := filesystem.CanonicalPath(path)
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}

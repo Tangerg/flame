@@ -5,7 +5,7 @@ import {
   readInstalledMemory,
   reviewInstalledMemory,
   updateInstalledMemory,
-} from "../../../../plugins/memory/component/client";
+} from "./memoryOperations";
 import { execFile, spawn } from "node:child_process";
 import {
   chmod,
@@ -30,8 +30,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createMutationJournal } from "@flame/runtime-client";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { RpcError } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
@@ -1698,15 +1697,12 @@ for await (const line of lines) {
     });
     const entries = new Map<string, unknown>();
     let now = Date.now();
-    const journalOptions = {
-      storage: {
-        get: (key: string) => structuredClone(entries.get(key)),
-        set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
-        remove: (key: string) => void entries.delete(key),
-        keys: () => [...entries.keys()],
-      },
-      scope: () => ({ namespace: negotiated!.limits.idempotency.namespace, retentionSeconds: 1 }),
-      now: () => now,
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const mutationStorage = {
+      get: (key: string) => structuredClone(entries.get(key)),
+      set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
+      remove: (key: string) => void entries.delete(key),
+      keys: () => [...entries.keys()],
     };
     const requestMeta = (): RequestMeta => ({
       protocolVersion: PROTOCOL_VERSION,
@@ -1727,7 +1723,7 @@ for await (const line of lines) {
     const first = createFlameClient(createHttpTransport({ baseUrl, fetch: lostLookup }), {
       requestMeta,
       capabilities: () => negotiated,
-      mutationJournal: createMutationJournal(journalOptions),
+      mutationStorage,
     });
     let cold: FlameClient | undefined;
     const params = {
@@ -1741,11 +1737,11 @@ for await (const line of lines) {
       expect(entries.size).toBe(1);
       const evidence = structuredClone([...entries]);
       await first.close();
-      now += 1_000;
+      now += negotiated!.limits.idempotency.retentionSeconds * 1_000;
       cold = createFlameClient(createHttpTransport({ baseUrl, fetch: isolatedFetch }), {
         requestMeta,
         capabilities: () => negotiated,
-        mutationJournal: createMutationJournal(journalOptions),
+        mutationStorage,
       });
       const recovered = cold.runs.start(params);
       expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
@@ -1785,6 +1781,7 @@ for await (const line of lines) {
       providerGate = undefined;
       await first.close();
       await cold?.close();
+      clock.mockRestore();
       await client.sessions.delete(params.sessionId);
     }
   }, 30_000);

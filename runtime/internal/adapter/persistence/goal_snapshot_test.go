@@ -12,11 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -31,8 +30,8 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = writer.Close() })
-			goals := NewGoalStore(writer)
-			seedSession(t, NewSessionStore(writer), "ses_goal_snapshot")
+			goals := newGoalStore(writer)
+			seedSession(t, newSessionStore(writer), "ses_goal_snapshot")
 			now := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
 			initial, err := goal.New("ses_goal_snapshot", "finish", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "goal_snapshot", now)
 			if err != nil {
@@ -56,8 +55,8 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			snapshotDriver := goalSnapshotDriver{
 				Driver: writer.Driver(),
 				afterGoalRead: func() error {
-					return sqlitebase.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-						if err := NewRunStore(writer).Restore(ctx, terminal); err != nil {
+					return sqlite.RunInTx(t.Context(), writer, func(ctx context.Context) error {
+						if err := newRunStore(writer).Restore(ctx, terminal); err != nil {
 							return err
 						}
 						applied, err := goals.Save(ctx, change)
@@ -74,7 +73,7 @@ func TestGoalReadsKeepLifecycleAndUsageInOneSnapshot(t *testing.T) {
 			})
 			reader.SetMaxOpenConns(1)
 			t.Cleanup(func() { _ = reader.Close() })
-			readStore := NewGoalStore(reader)
+			readStore := newGoalStore(reader)
 			var observed goal.Goal
 			if list {
 				values, err := readStore.List(t.Context())

@@ -8,7 +8,6 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 

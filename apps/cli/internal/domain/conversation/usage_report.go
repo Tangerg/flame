@@ -1,27 +1,25 @@
 package conversation
 
-import (
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
-)
+import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 type SessionUsageReport struct {
 	SessionID       string
-	Total           runtimeprotocol.ModelUsage
-	Coverage        runtimeprotocol.UsageCoverage
+	Total           protocol.ModelUsage
+	Coverage        protocol.UsageCoverage
 	RecordedCostUSD *float64
-	ByModel         []runtimeprotocol.UsageBucket
+	ByModel         []protocol.UsageBucket
 }
 
 type UsageSummary struct {
 	Period          UsageSummaryPeriod
-	Total           runtimeprotocol.ModelUsage
-	Coverage        runtimeprotocol.UsageCoverage
+	Total           protocol.ModelUsage
+	Coverage        protocol.UsageCoverage
 	RecordedCostUSD *float64
-	ByProvider      []runtimeprotocol.UsageBucket
-	ByModel         []runtimeprotocol.UsageBucket
-	ByDay           []runtimeprotocol.UsageBucket
-	ByOrigin        []runtimeprotocol.UsageBucket
-	ByScope         []runtimeprotocol.UsageBucket
+	ByProvider      []protocol.UsageBucket
+	ByModel         []protocol.UsageBucket
+	ByDay           []protocol.UsageBucket
+	ByOrigin        []protocol.UsageBucket
+	ByScope         []protocol.UsageBucket
 	Sessions        int
 	Runs            int
 }

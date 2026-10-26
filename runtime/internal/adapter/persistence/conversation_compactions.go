@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 type conversationHistory interface {
@@ -22,7 +22,7 @@ type conversationRuns interface {
 
 // ConversationCompactions applies an Application-decided conversation rewrite
 // and all of its Run-watermark replacements in one storage transaction.
-type ConversationCompactions struct {
+type conversationCompactions struct {
 	history conversationHistory
 	runs    conversationRuns
 	tx      Transactor
@@ -35,7 +35,7 @@ func NewConversationCompactions(
 	history conversationHistory,
 	runs conversationRuns,
 	tx Transactor,
-) (*ConversationCompactions, error) {
+) (*conversationCompactions, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -44,20 +44,20 @@ func NewConversationCompactions(
 		{name: "Run store", value: runs},
 		{name: "transactor", value: tx},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("persistence: conversation compaction %s is required", required.name)
 		}
 	}
-	return &ConversationCompactions{history: history, runs: runs, tx: tx}, nil
+	return &conversationCompactions{history: history, runs: runs, tx: tx}, nil
 }
 
-var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
+var _ runsapp.ConversationCompactionStore = (*conversationCompactions)(nil)
 
-func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
+func (c *conversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
 	return c.tx(ctx, func(ctx context.Context) error { return c.applyCompaction(ctx, plan) })
 }
 
-func (c *ConversationCompactions) applyCompaction(
+func (c *conversationCompactions) applyCompaction(
 	ctx context.Context,
 	plan runsapp.ConversationCompactionPlan,
 ) error {

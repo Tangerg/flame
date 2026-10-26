@@ -20,7 +20,7 @@ type Activity string
 const (
 	ActivityRunning Activity = "running"
 	ActivityWaiting Activity = "waiting"
-	ActivityIdle    Activity = "idle"
+	activityIdle    Activity = "idle"
 )
 
 // WorkspaceView is the live filesystem projection of a Session's exact
@@ -61,7 +61,7 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 	requested := make(map[string]struct{}, len(sessionIDs))
 	for _, id := range sessionIDs {
 		requested[id] = struct{}{}
-		activities[id] = ActivityIdle
+		activities[id] = activityIdle
 	}
 	activeRuns, err := c.runs.ListNonTerminalRuns(ctx)
 	if err != nil {
@@ -90,7 +90,7 @@ func (a Activity) with(value run.Run) Activity {
 	case run.StatusRunning:
 		return ActivityRunning
 	case run.StatusWaiting:
-		if a == ActivityIdle {
+		if a == activityIdle {
 			return ActivityWaiting
 		}
 	}
@@ -192,7 +192,7 @@ func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, 
 	if err != nil {
 		return View{}, err
 	}
-	return c.view(value, ActivityIdle)
+	return c.view(value, activityIdle)
 }
 
 // UpdateView applies an edit and returns its fully resolved read model.
@@ -215,7 +215,7 @@ func (c *Coordinator) ForkView(ctx context.Context, spec ForkSpec) (View, error)
 	if err != nil {
 		return View{}, err
 	}
-	return c.view(value, ActivityIdle)
+	return c.view(value, activityIdle)
 }
 
 func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]View, error) {

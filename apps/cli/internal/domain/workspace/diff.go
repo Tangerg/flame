@@ -62,10 +62,10 @@ func (d DiffRequest) Validate() error {
 	if rows := d.RowLimit.Rows(); rows > 0 {
 		limit = &rows
 	}
-	if err := (protocol.GetDiffRequest{
+	if err := protocol.ValidateWireTree((protocol.GetDiffRequest{
 		Workspace: protocol.WorkspaceRef{Path: d.Workspace}, Path: d.Path,
 		Mode: d.Mode, Format: d.Format, Limit: limit,
-	}).ValidateWire(); err != nil {
+	})); err != nil {
 		return fmt.Errorf("workspace diff: %w", err)
 	}
 	return nil

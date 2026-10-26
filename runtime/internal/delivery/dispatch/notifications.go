@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 const (
@@ -26,8 +26,8 @@ const (
 // rides this same stream — there is no separate run-closed
 // notification. runId + eventId let the client filter by stream and
 // de-duplicate on reconnect (Last-Event-Id).
-func encodeRunEvent(event protocol.RunEvent) (transport.Message, error) {
-	return transport.NewNotification(NotificationRunEvent, event)
+func encodeRunEvent(event protocol.RunEvent) (jsonrpc.Message, error) {
+	return protocol.NewRPCNotification(NotificationRunEvent, event)
 }
 
 // encodeRuntimeEvent wraps one RuntimeEvent into a notifications.runtime.event
@@ -35,15 +35,15 @@ func encodeRunEvent(event protocol.RunEvent) (transport.Message, error) {
 // signal in the `event` field; clients branch on event.type. Ephemeral by design — no
 // SSE id, no replay: every frame is "this moved, read it again", and a client that
 // missed one refetches rather than replays.
-func encodeRuntimeEvent(event protocol.RuntimeEvent) (transport.Message, error) {
-	return transport.NewNotification(NotificationRuntimeEvent, protocol.RuntimeEventNotification{
+func encodeRuntimeEvent(event protocol.RuntimeEvent) (jsonrpc.Message, error) {
+	return protocol.NewRPCNotification(NotificationRuntimeEvent, protocol.RuntimeEventNotification{
 		Event: event,
 	})
 }
 
 // Client notifications currently have no public methods. Unknown
 // notifications are intentionally ignored as required by JSON-RPC.
-func (r *Router) handleNotification(context.Context, *transport.Request) {}
+func (r *Router) handleNotification(context.Context, *jsonrpc.Request) {}
 
 // runEventToFrameFor returns the per-request encoder for RunEvent stream
 // notifications. Every authoritative event goes out; a client's opt-out only
@@ -78,7 +78,7 @@ func frameOperationEvent(event any) (StreamFrame, bool) {
 	case protocol.RuntimeEvent:
 		return runtimeEventToFrame(typed)
 	case protocol.PluginStreamEvent:
-		notification, err := transport.NewNotification(NotificationPluginStream, typed)
+		notification, err := protocol.NewRPCNotification(NotificationPluginStream, typed)
 		return StreamFrame{Notification: notification}, err == nil
 	default:
 		return StreamFrame{}, false

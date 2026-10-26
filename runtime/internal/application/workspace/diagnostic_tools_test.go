@@ -6,9 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type toolRegistryFixture struct {
@@ -50,8 +49,8 @@ func (r *rootRecorder) ResolveRoot(cwd string) (string, error) {
 func TestNewDiagnosticToolsRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		registry DiagnosticToolRegistry
-		roots    DiagnosticToolRoots
+		registry diagnosticToolRegistry
+		roots    diagnosticToolRoots
 	}{
 		{name: "registry", roots: &rootRecorder{}},
 		{name: "typed nil registry", registry: (*toolRegistryFixture)(nil), roots: &rootRecorder{}},
@@ -66,7 +65,7 @@ func TestNewDiagnosticToolsRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newDiagnosticTools(t *testing.T, registry DiagnosticToolRegistry, roots DiagnosticToolRoots) *DiagnosticTools {
+func newDiagnosticTools(t *testing.T, registry diagnosticToolRegistry, roots diagnosticToolRoots) *DiagnosticTools {
 	t.Helper()
 	useCases, err := NewDiagnosticTools(registry, roots)
 	if err != nil {

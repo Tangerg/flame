@@ -71,7 +71,6 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -118,10 +117,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-architecture.20261026.2
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-node.20261024.1
-	github.com/Tangerg/flame/plugins v0.1.0-architecture.20261026.3
-	github.com/Tangerg/flame/runtime v0.1.0-architecture.20261026.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-consolidation.20261026.2
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
+	github.com/Tangerg/flame/runtime v0.1.0-consolidation.20261026.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	golang.org/x/mod v0.42.0
 	golang.org/x/tools v0.52.0

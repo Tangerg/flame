@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -244,7 +243,7 @@ func TestViewPresentsExactSessionSelectionAndWorkspace(t *testing.T) {
 
 	view, err := c.view(testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"), Selection: selection,
-	}), ActivityIdle)
+	}), activityIdle)
 	if err != nil {
 		t.Fatalf("view: %v", err)
 	}
@@ -472,7 +471,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	ghost := "/no/such/dir"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &ghost}); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("ghost cwd err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {
@@ -480,7 +479,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	title := "Renamed"
-	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
+	if _, err := c.Update(t.Context(), "ses_1", Patch{Title: &title, WorkspacePath: &ghost}); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("mixed patch err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.saved.ID() != "" {
@@ -488,7 +487,7 @@ func TestCoordinatorUpdateRejectsInvalidPatch(t *testing.T) {
 	}
 
 	missing := "/missing/project"
-	if _, err := c.Create(context.Background(), "New", missing); !errors.Is(err, workspacepaths.ErrCWDUnavailable) {
+	if _, err := c.Create(context.Background(), "New", missing); !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
 		t.Fatalf("missing create cwd err = %v, want ErrCWDUnavailable", err)
 	}
 	if store.inserted.ID() != "" {

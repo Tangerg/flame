@@ -3,20 +3,18 @@ package dispatch
 import (
 	"reflect"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -123,17 +121,17 @@ func runEventIdentity(field string) []FieldConstraint {
 }
 
 func modelSelectionIdentities() []FieldConstraint {
-	constraints := boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)
-	constraints = append(constraints, boundedIdentity("model", protocol.MaximumModelIdentityCharacters)...)
+	constraints := boundedIdentity("provider", model.MaximumProviderIdentityCharacters)
+	constraints = append(constraints, boundedIdentity("model", model.MaximumModelIdentityCharacters)...)
 	constraints = append(constraints,
-		boundedIdentity("reasoningEffort", protocol.MaximumReasoningEffortIdentityCharacters)...)
+		boundedIdentity("reasoningEffort", model.MaximumReasoningEffortCharacters)...)
 	return constraints
 }
 
 func modelUsageMapIdentities(field string) []FieldConstraint {
 	return []FieldConstraint{
 		{Field: field, Kind: ConstraintIdentityPropertyNames},
-		{Field: field, Kind: ConstraintMaxPropertyNameLength, Limit: protocol.MaximumModelIdentityCharacters},
+		{Field: field, Kind: ConstraintMaxPropertyNameLength, Limit: model.MaximumModelIdentityCharacters},
 	}
 }
 
@@ -220,7 +218,7 @@ func registerArtifactValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactToolResult](),
 		Constraints: append([]FieldConstraint{
-			{Field: "id", Kind: ConstraintPattern, Value: toolresult.IDPattern},
+			{Field: "id", Kind: ConstraintPattern, Value: transcript.ToolResultIDPattern},
 			{Field: "body", Kind: ConstraintNonEmpty},
 		}, requiredResourceIdentity("itemId")...),
 	})
@@ -402,7 +400,7 @@ func registerRunValues(s *Shapes) {
 			GoType: shape,
 			Constraints: []FieldConstraint{
 				{Field: "namespace", Kind: ConstraintNonEmpty},
-				{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
+				{Field: "namespace", Kind: ConstraintPattern, Value: operation.ReplayNamespacePattern()},
 				{Field: "key", Kind: ConstraintNonEmpty},
 				{Field: "key", Kind: ConstraintMaxLength, Limit: protocol.MaximumIdempotencyKeyCharacters},
 			},
@@ -640,7 +638,7 @@ func registerApprovalValues(s *Shapes) {
 func registerMCPValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.MCPOrigin](),
-		Constraints: []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()}},
+		Constraints: []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()}},
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPServerID](), Constraints: mcpServerName("name")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPToolExposure](), Constraints: mcpRemoteToolItems("disabledTools")})
@@ -702,14 +700,14 @@ func mcpServerName(field string) []FieldConstraint {
 }
 
 func mcpRemoteToolIdentity(field string) []FieldConstraint {
-	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.RemoteToolNamePattern}}
+	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.RemoteToolNamePattern()}}
 }
 
 func mcpRemoteToolItems(field string) []FieldConstraint {
 	return []FieldConstraint{
 		{Field: field, Kind: ConstraintMaxItems, Limit: mcpserver.MaxRemoteToolsPerServer},
 		{Field: field, Kind: ConstraintUniqueItems},
-		{Field: field, Kind: ConstraintPatternItems, Value: mcpserver.RemoteToolNamePattern},
+		{Field: field, Kind: ConstraintPatternItems, Value: mcpserver.RemoteToolNamePattern()},
 	}
 }
 
@@ -717,20 +715,20 @@ func registerProviderValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Provider](),
 		Constraints: append(append([]FieldConstraint{{Field: "id", Kind: ConstraintNonEmpty}},
-			boundedIdentity("id", protocol.MaximumProviderIdentityCharacters)...),
-			boundedIdentity("defaultEmbeddingModel", protocol.MaximumModelIdentityCharacters)...),
+			boundedIdentity("id", model.MaximumProviderIdentityCharacters)...),
+			boundedIdentity("defaultEmbeddingModel", model.MaximumModelIdentityCharacters)...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.UpdateProviderRequest](),
 		Constraints: append([]FieldConstraint{{Field: "provider", Kind: ConstraintNonEmpty}},
-			boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)...),
+			boundedIdentity("provider", model.MaximumProviderIdentityCharacters)...),
 	})
 	nonEmpty[protocol.ProviderConfigChange](s, "value")
 	nonEmpty[protocol.ProviderCredential](s, "masked")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.TestProviderRequest](),
 		Constraints: append([]FieldConstraint{{Field: "provider", Kind: ConstraintNonEmpty}},
-			boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)...),
+			boundedIdentity("provider", model.MaximumProviderIdentityCharacters)...),
 	})
 }
 
@@ -746,29 +744,29 @@ func registerModelValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{
 			GoType: roleType,
 			Constraints: append(
-				boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters),
-				boundedIdentity("model", protocol.MaximumModelIdentityCharacters)...,
+				boundedIdentity("provider", model.MaximumProviderIdentityCharacters),
+				boundedIdentity("model", model.MaximumModelIdentityCharacters)...,
 			),
 		})
 	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.ListModelsRequest](),
-		Constraints: boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters),
+		Constraints: boundedIdentity("provider", model.MaximumProviderIdentityCharacters),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Model](),
 		Constraints: append(append([]FieldConstraint{
 			{Field: "id", Kind: ConstraintNonEmpty},
 			{Field: "provider", Kind: ConstraintNonEmpty},
-		}, boundedIdentity("id", protocol.MaximumModelIdentityCharacters)...),
-			boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)...),
+		}, boundedIdentity("id", model.MaximumModelIdentityCharacters)...),
+			boundedIdentity("provider", model.MaximumProviderIdentityCharacters)...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ModelCapabilities](),
 		Constraints: append([]FieldConstraint{
 			{Field: "reasoningLevels", Kind: ConstraintIdentityItems},
-			{Field: "reasoningLevels", Kind: ConstraintMaxItemLength, Limit: protocol.MaximumReasoningEffortIdentityCharacters},
-		}, boundedIdentity("reasoningDefaultLevel", protocol.MaximumReasoningEffortIdentityCharacters)...),
+			{Field: "reasoningLevels", Kind: ConstraintMaxItemLength, Limit: model.MaximumReasoningEffortCharacters},
+		}, boundedIdentity("reasoningDefaultLevel", model.MaximumReasoningEffortCharacters)...),
 	})
 }
 
@@ -930,7 +928,7 @@ func registerRuntimeValues(s *Shapes) {
 		Constraints: []FieldConstraint{
 			{Field: "retentionSeconds", Kind: ConstraintPositive},
 			{Field: "retentionSeconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
-			{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
+			{Field: "namespace", Kind: ConstraintPattern, Value: operation.ReplayNamespacePattern()},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
@@ -962,8 +960,8 @@ func registerTrajectoryValues(s *Shapes) {
 	for _, owner := range []reflect.Type{typeOf[protocol.ModelInvocation](), typeOf[protocol.ToolAttempt]()} {
 		constraints := append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...)
 		constraints = append(constraints,
-			FieldConstraint{Field: "callId", Kind: ConstraintPattern, Value: runtimeidentity.URISafeASCIIPattern},
-			FieldConstraint{Field: "callId", Kind: ConstraintMaxLength, Limit: runtimeidentity.MaximumExecutorIdentityBytes},
+			FieldConstraint{Field: "callId", Kind: ConstraintPattern, Value: identity.URISafeASCIIPattern},
+			FieldConstraint{Field: "callId", Kind: ConstraintMaxLength, Limit: runs.MaximumIdentityBytes},
 		)
 		if owner == typeOf[protocol.ToolAttempt]() {
 			constraints = append(constraints, requiredResourceIdentity("itemId")...)
@@ -998,18 +996,18 @@ func registerPluginValues(s *Shapes) {
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginPointReference](), typeOf[protocol.PluginPointBinding]()} {
 		constraints := []FieldConstraint{
-			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+			{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
 			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginPointBinding]() {
-			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: identity.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.ResolvePluginRequirementsRequest](), typeOf[protocol.PluginOperationBinding]()} {
 		constraints := []FieldConstraint{
-			{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
-			{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()},
+			{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
+			{Field: "digest", Kind: ConstraintPattern, Value: identity.DigestPattern()},
 			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		}
 		if shape == typeOf[protocol.PluginOperationBinding]() {
@@ -1028,8 +1026,8 @@ func registerPluginValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CallPluginRequest](), Constraints: []FieldConstraint{
 		{Field: "contract", Kind: ConstraintNonEmpty},
 		{Field: "input", Kind: ConstraintNonEmpty},
-		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
-		{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()},
+		{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
+		{Field: "digest", Kind: ConstraintPattern, Value: identity.DigestPattern()},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "method", Kind: ConstraintNonEmpty},
 		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
@@ -1083,12 +1081,12 @@ func registerPluginValues(s *Shapes) {
 			FieldConstraint{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 			FieldConstraint{Field: "role", Kind: ConstraintNonEmpty},
 			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: 256},
-			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCompositionMember](), Constraints: []FieldConstraint{
-		{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()},
+		{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 	}})
 	for _, shape := range []reflect.Type{typeOf[protocol.PluginComposition](), typeOf[protocol.SetPluginCompositionRequest](), typeOf[protocol.ResolvePluginCompositionRequest]()} {
@@ -1099,10 +1097,10 @@ func registerPluginValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
 	for _, shape := range []reflect.Type{typeOf[protocol.StagePluginRequest](), typeOf[protocol.PluginRequest](), typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.SetPluginEnablementRequest](), typeOf[protocol.ConfigurePluginRequest]()} {
-		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()}}
+		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()}}
 		switch shape {
 		case typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.ConfigurePluginRequest]():
-			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: fingerprint.DigestPattern()})
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: identity.DigestPattern()})
 		}
 		switch shape {
 		case typeOf[protocol.StagePluginRequest]():

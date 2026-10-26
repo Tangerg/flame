@@ -6,7 +6,6 @@ import (
 	"io"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -343,8 +342,8 @@ func (t *transcriptView) mutateTrackedTool(tracked trackedTool, mutate func(muta
 	return t.focused && tracked.id == t.selected && before && !tracked.block.Expanded()
 }
 
-func (t *transcriptView) appendCompleted(block conversation.Block, registry *extensions.Registry) error {
-	rendered, err := t.present(block, registry)
+func (t *transcriptView) appendCompleted(block conversation.Block) error {
+	rendered, err := t.present(block)
 	if err != nil {
 		return err
 	}
@@ -383,7 +382,7 @@ func (t *transcriptView) appendCompleted(block conversation.Block, registry *ext
 	return nil
 }
 
-func (t *transcriptView) beginTool(block conversation.Block, registry *extensions.Registry) error {
+func (t *transcriptView) beginTool(block conversation.Block) error {
 	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, exists := t.tools[key]; exists {
 		return fmt.Errorf("terminal transcript: tool block %s started twice", block.ID)
@@ -391,7 +390,7 @@ func (t *transcriptView) beginTool(block conversation.Block, registry *extension
 	if _, exists := t.textStreams[key]; exists {
 		return fmt.Errorf("terminal transcript: block %s is already a live text block", block.ID)
 	}
-	rendered, err := t.present(block, registry)
+	rendered, err := t.present(block)
 	if err != nil {
 		return err
 	}
@@ -470,16 +469,30 @@ func (t *transcriptView) finishToolGroupIfReady(group *trackedToolGroup) {
 // A live event stream closes it naturally on the next semantic boundary.
 func (t *transcriptView) SealToolGroups() { t.sealToolGroup() }
 
-func (t *transcriptView) present(block conversation.Block, registry *extensions.Registry) ([]headless.Block, error) {
-	for _, presenter := range registry.Values(BlockPresenters) {
-		if presenter.Kind == block.Kind {
-			return presentSafely(presenter, BlockPresentation{
-				Theme: t.theme, Glyphs: t.glyphs, Look: t.look, Syntax: t.syntax,
-				Tools: registry.Values(ToolPresenters), Speaker: t.history.Speaker(block), Image: t.presentImage,
-			}, block)
-		}
+func (t *transcriptView) present(block conversation.Block) ([]headless.Block, error) {
+	var present func(blockPresentation, conversation.Block) []headless.Block
+	switch block.Kind {
+	case conversation.BlockUser:
+		present = presentUser
+	case conversation.BlockAssistant:
+		present = presentMarkdown("flame")
+	case conversation.BlockReasoning:
+		present = presentMarkdown("thinking")
+	case conversation.BlockQuestion:
+		present = presentQuestion
+	case conversation.BlockTool:
+		present = presentTool
+	case conversation.BlockNotice:
+		present = presentNotice
+	case conversation.BlockError:
+		present = presentFailure
+	default:
+		return nil, fmt.Errorf("terminal transcript: no presenter for block kind %q", block.Kind)
 	}
-	return nil, fmt.Errorf("terminal transcript: no presenter for block kind %q", block.Kind)
+	return presentSafely(present, blockPresentation{
+		Theme: t.theme, Glyphs: t.glyphs, Look: t.look, Syntax: t.syntax,
+		Tools: defaultToolPresenters(), Speaker: t.history.Speaker(block), Image: t.presentImage,
+	}, block)
 }
 
 func (t *transcriptView) presentImage(image conversation.InlineImage) headless.Block {
@@ -489,13 +502,13 @@ func (t *transcriptView) presentImage(image conversation.InlineImage) headless.B
 	return fallbackInlineImage(t.theme, image)
 }
 
-func presentSafely(presenter BlockPresenter, presentation BlockPresentation, block conversation.Block) (rendered []headless.Block, err error) {
+func presentSafely(presenter func(blockPresentation, conversation.Block) []headless.Block, presentation blockPresentation, block conversation.Block) (rendered []headless.Block, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("terminal transcript: presenter for %q panicked: %v", presenter.Kind, recovered)
+			err = fmt.Errorf("terminal transcript: presenter for %q panicked: %v", block.Kind, recovered)
 		}
 	}()
-	return presenter.Present(presentation, block), nil
+	return presenter(presentation, block), nil
 }
 
 func (t *transcriptView) Append(block headless.Block) {

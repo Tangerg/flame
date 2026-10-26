@@ -11,8 +11,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -222,10 +221,10 @@ func TestLateSteerACKCannotHideAnotherUnappliedInstructionInTheSameRun(t *testin
 
 func receiptTestResult(t *testing.T, sessionID, runID, segmentID, itemID string) runworkflow.SteerResult {
 	t.Helper()
-	pending, err := workbench.NewPendingSteer(sessionID, prompt.SteerRun{
+	pending, err := workbench.NewPendingSteer(sessionID, authoring.SteerRun{
 		CommandID: "cli_55555555555555555555555555555555", RunID: runID, SegmentID: segmentID,
-		Message: prompt.Message{Text: "same text"},
-	}, time.Date(2026, 9, 26, 1, 0, 0, 0, time.UTC), replay.UnprotectedGuard())
+		Message: authoring.Message{Text: "same text"},
+	}, time.Date(2026, 9, 26, 1, 0, 0, 0, time.UTC), authoring.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,14 +236,14 @@ type delayedSteerReceiptRuntime struct {
 	mu          sync.Mutex
 	target      string
 	applyInput  bool
-	requests    chan prompt.SteerRun
+	requests    chan authoring.SteerRun
 	acknowledge chan struct{}
 	read        chan struct{}
 	allowRead   chan struct{}
 	readError   error
 }
 
-func (r *delayedSteerReceiptRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (r *delayedSteerReceiptRuntime) SteerRun(ctx context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	r.mu.Lock()
 	r.target = request.RunID
 	r.mu.Unlock()
@@ -411,6 +410,6 @@ func delayedSteerRuntime(t *testing.T) *delayedSteerReceiptRuntime {
 		}}
 	}
 	return &delayedSteerReceiptRuntime{
-		Runtime: base, requests: make(chan prompt.SteerRun, 1), acknowledge: make(chan struct{}), read: make(chan struct{}, 1),
+		Runtime: base, requests: make(chan authoring.SteerRun, 1), acknowledge: make(chan struct{}), read: make(chan struct{}, 1),
 	}
 }

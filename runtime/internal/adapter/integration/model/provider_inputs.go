@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
-var ErrCredentialUnavailable = errors.New("model: provider credential is unavailable")
+var errCredentialUnavailable = errors.New("model: provider credential is unavailable")
 
 // providerClientInputs is the adapter-owned construction boundary. It keeps
 // validated domain values intact until the exact call that needs primitives.
@@ -30,7 +30,7 @@ func resolveProviderClientInputs(expectedID string, entry provider.Provider) (pr
 func (i providerClientInputs) clientSpec() (clientSpec, error) {
 	apiKey, configured := i.entry.APIKey()
 	if !configured {
-		return clientSpec{}, ErrCredentialUnavailable
+		return clientSpec{}, errCredentialUnavailable
 	}
 	spec, err := newClientSpec(i.profile.ID(), apiKey)
 	if err != nil {

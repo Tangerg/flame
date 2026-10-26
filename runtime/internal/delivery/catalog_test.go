@@ -78,7 +78,7 @@ func TestReplayPolicyCoversEveryCommand(t *testing.T) {
 				t.Errorf("%s: command has no replay protection", meta.Name)
 			}
 		case OperationExtension:
-			if meta.Idempotency != IdempotencyOwnerResponse {
+			if meta.Idempotency != idempotencyOwnerResponse {
 				t.Errorf("%s: extension may not acquire a competing outcome", meta.Name)
 			}
 		case OperationQuery, OperationSubscription:
@@ -104,7 +104,7 @@ func TestRunReplayCursorPolicyNamesOnlyReplayableRunStreams(t *testing.T) {
 			got = append(got, meta.Name)
 		}
 	}
-	want := []Name{RunsResume, RunsStart, RunsSubscribe}
+	want := []Name{RunsResume, RunsStart, runsSubscribe}
 	slices.Sort(got)
 	if !slices.Equal(got, want) {
 		t.Fatalf("run replay cursor methods = %v, want %v", got, want)
@@ -114,7 +114,7 @@ func TestRunReplayCursorPolicyNamesOnlyReplayableRunStreams(t *testing.T) {
 func TestGoalManagementCommandsArePublished(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []Name{GoalsUpdate, GoalsClear} {
+	for _, name := range []Name{goalsUpdate, goalsClear} {
 		method, ok := Contract().Lookup(name)
 		if !ok {
 			t.Errorf("%s is not registered", name)

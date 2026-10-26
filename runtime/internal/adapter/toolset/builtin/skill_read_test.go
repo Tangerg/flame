@@ -14,13 +14,12 @@ import (
 	"testing"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-	skillspec "github.com/Tangerg/scope/skills"
-	skillstool "github.com/Tangerg/scope/tools/skills"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	skillspec "github.com/Tangerg/scope/skills"
+	skillstool "github.com/Tangerg/scope/tools/skills"
 )
 
 type recordingProbe struct{ names []string }

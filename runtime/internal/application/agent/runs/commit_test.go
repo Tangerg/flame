@@ -5,10 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -77,7 +74,7 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("terminal commit awaiting transactional watermark: %v", err)
 	}
-	commit.CommitID = runtimeidentity.CommitID{}
+	commit.CommitID = CommitID{}
 	if err := commit.Validate(); err == nil {
 		t.Fatal("terminal commit without an immutable commit identity passed validation")
 	}
@@ -407,7 +404,7 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	admission := run.Draft{
 		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
-		Capabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		Capabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 	}
 	initialSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
@@ -428,18 +425,18 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
 	}
 
-	admission.Capabilities.InterruptKinds[0] = interrupt.Question
+	admission.Capabilities.InterruptKinds[0] = run.InterruptQuestion
 	initialSession = session.Session{}
 	events[0].ConversationMessages[0].Parts[0].Text = "changed"
 	projectedAdmission, _ := opening.Admission()
-	projectedAdmission.Capabilities.InterruptKinds[0] = interrupt.Question
+	projectedAdmission.Capabilities.InterruptKinds[0] = run.InterruptQuestion
 	projectedEvents := opening.Events()
 	projectedEvents[0].ConversationMessages[0].Parts[0].Text = "projected"
 
 	ownedAdmission, admitted := opening.Admission()
 	ownedSession, initialized := opening.InitialSession()
 	ownedEvents := opening.Events()
-	if !admitted || ownedAdmission.Capabilities.InterruptKinds[0] != interrupt.Approval {
+	if !admitted || ownedAdmission.Capabilities.InterruptKinds[0] != run.InterruptApproval {
 		t.Fatalf("owned admission = %+v", ownedAdmission)
 	}
 	if !initialized || ownedSession.ID() != "session" {

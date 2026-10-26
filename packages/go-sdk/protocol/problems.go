@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 )
 
 type problemSpec struct {
@@ -89,7 +87,7 @@ type Failure struct {
 
 var _ ProblemError = (*Failure)(nil)
 
-type ProblemDetailed interface {
+type problemDetailed interface {
 	error
 	Enrich(*ProblemData)
 }
@@ -118,7 +116,7 @@ func NewFailure(cause error, detail string) *Failure {
 	failure := newFailure(spec, cause, detail)
 	// Internal output defects retain their diagnostic cause without projecting
 	// that cause's input fields onto the internal-error wire shape.
-	if detailed, ok := errors.AsType[ProblemDetailed](cause); ok && spec.sentinel != ErrInternalError {
+	if detailed, ok := errors.AsType[problemDetailed](cause); ok && spec.sentinel != ErrInternalError {
 		detailed.Enrich(&failure.data)
 	}
 	if spec.sentinel == ErrInvalidParams {
@@ -207,7 +205,9 @@ func DecodeFailure(data ProblemData) (*Failure, error) {
 func cloneProblemData(data ProblemData) ProblemData {
 	data.RequiredCapabilities = slices.Clone(data.RequiredCapabilities)
 	data.Errors = slices.Clone(data.Errors)
-	data.ActiveRun = optional.Clone(data.ActiveRun)
+	if data.ActiveRun != nil {
+		data.ActiveRun = new(*data.ActiveRun)
+	}
 	return data
 }
 

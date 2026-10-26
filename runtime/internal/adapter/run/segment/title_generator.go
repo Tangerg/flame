@@ -30,7 +30,7 @@ type modelTitleGenerator struct {
 
 // NewTitleGenerator builds the Run-boundary title generator over a per-call
 // utility-model resolver.
-func NewTitleGenerator(client modeladapter.AuxiliaryResolver) TitleGenerator {
+func NewTitleGenerator(client modeladapter.AuxiliaryResolver) titleGenerator {
 	return &modelTitleGenerator{client: client}
 }
 

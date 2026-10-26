@@ -2,8 +2,6 @@ package delivery
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
 	"errors"
 	"fmt"
 	"iter"
@@ -11,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -26,14 +23,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -134,7 +128,7 @@ func serverPending(
 		open = []transcript.Interrupt{{
 			ItemID: "interrupt_" + runID, ItemOccurredAt: createdAt,
 			RunID:    runID,
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 		}}
 	} else {
@@ -155,7 +149,7 @@ func serverPending(
 			MemberID:        memberID,
 			RequestID:       fmt.Sprintf("request_%s_%d", memberID, index),
 		}
-		if request.Kind == interrupt.Approval {
+		if request.Kind == run.InterruptApproval {
 			bindings[index].ToolCallID = fmt.Sprintf("call_%s_%d", memberID, index)
 		}
 	}
@@ -706,7 +700,7 @@ func (s stubLifecycleStores) ReadSnapshot(ctx context.Context, id string) (sessi
 	if err != nil {
 		return sessions.Snapshot{}, err
 	}
-	var toolResults []toolresult.Blob
+	var toolResults []transcript.ToolResultBlob
 	if s.rt.toolResults != nil {
 		toolResults, err = s.rt.toolResults.List(ctx, id)
 		if err != nil {
@@ -1384,7 +1378,7 @@ func (stubRunState) RequireActiveSegment(context.Context, string, string, string
 	return nil
 }
 
-func (stubRunState) Suspend(context.Context, run.Run, string, runtimeidentity.CommitID) error {
+func (stubRunState) Suspend(context.Context, run.Run, string, runs.CommitID) error {
 	return nil
 }
 
@@ -1392,19 +1386,19 @@ func (stubRunState) Terminalize(context.Context, run.Replacement) error {
 	return nil
 }
 
-func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, runtimeidentity.CommitID) error {
+func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, runs.CommitID) error {
 	return nil
 }
 
-func (stubRunState) RecordRunCommit(context.Context, string, string, string, runtimeidentity.CommitID) error {
+func (stubRunState) RecordRunCommit(context.Context, string, string, string, runs.CommitID) error {
 	return nil
 }
 
-func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
+func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, runs.CommitID) error {
 	return nil
 }
 
-func (stubRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
+func (stubRunState) RunCommitCommitted(context.Context, string, string, string, runs.CommitID) (bool, error) {
 	return false, nil
 }
 
@@ -1551,7 +1545,9 @@ func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return n
 
 type inertSegmentToolResults struct{}
 
-func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+func (inertSegmentToolResults) Discard(context.Context, string, transcript.ToolResultRef) error {
+	return nil
+}
 
 type inertSegmentRememberedRules struct{}
 

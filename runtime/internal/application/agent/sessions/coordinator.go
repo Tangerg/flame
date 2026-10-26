@@ -15,16 +15,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // Store is the coordinator's consumer-owned Session persistence port. Domain
@@ -41,7 +40,7 @@ type Store interface {
 
 // ModelAdmitter validates an exact model choice before it becomes durable
 // Session policy.
-type ModelAdmitter interface {
+type modelAdmitter interface {
 	AdmitSelection(selection modelchoice.Selection) error
 }
 
@@ -69,7 +68,7 @@ type TranscriptStore interface {
 // false ok is "never recorded", not "empty" — see [PlanBoundary]. nil disables it
 // (no Plan to move with a boundary).
 // Boundary transfers the recorded steps to the caller.
-type PlanBoundaries interface {
+type planBoundaries interface {
 	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
 }
 
@@ -79,7 +78,7 @@ type PlanBoundaries interface {
 // inferring them from the items they produced.
 type RunStore interface {
 	runs.ToolResultPublications
-	RunReader
+	runReader
 	// ListNonTerminalRuns returns the durable activity facts for every Session in
 	// admission order in one read. Session list pages filter this set to their own
 	// IDs; keeping the read batched avoids one Run query per visible Session.
@@ -134,7 +133,7 @@ type MaterialSnapshotReader interface {
 // effective model context, or its shared working tree changes. Whole-Session
 // deletion also retires lifecycle markers; restore and rollback retain those
 // markers while discarding only context-derived authority.
-type TransientState interface {
+type transientState interface {
 	QuiesceSession(sessionID string) error
 	QuiesceWorkspace(root string) error
 	ForgetSession(sessionID string)
@@ -151,7 +150,7 @@ type Snapshot struct {
 	// replaced its body, and ToolResults own the bodies.
 	Items       []transcript.Item
 	Runs        []run.Run
-	ToolResults []toolresult.Blob
+	ToolResults []transcript.ToolResultBlob
 	// Plan is the session-scoped Plan as a semantic VALUE — items only, no
 	// revision and no update time. Those are this runtime's ordering tokens: a
 	// snapshot that carried them could hand a restored value a position in the
@@ -184,7 +183,7 @@ type WorkspaceCheckpoints interface {
 // discards before commit so its replacement can never resolve to the old copy;
 // deletion may discard post-commit because no later Run can address the removed
 // Session. nil disables it (no-op — isolation is off).
-type SandboxDiscarder interface {
+type sandboxDiscarder interface {
 	Discard(sessionID string) error
 }
 
@@ -194,7 +193,7 @@ type SandboxDiscarder interface {
 // A returned error is always the commit's — settlement after a successful
 // commit is recorded rather than returned, so a caller cannot project a
 // committed mutation as one that never happened.
-type GoalMutationGuard interface {
+type goalMutationGuard interface {
 	WithSessionMutation(
 		ctx context.Context,
 		sessionIDs []string,
@@ -215,7 +214,7 @@ type GoalMutationGuard interface {
 // A logged intent owns recovery for its working tree until it completes, so
 // Record reports [ErrWorkspaceMutationPending] for any other operation on that
 // Session or tree and Complete clears only the operation it is given.
-type WorkspaceMutations interface {
+type workspaceMutations interface {
 	// Record returns true only when this call created the durable intent.
 	Record(ctx context.Context, m WorkspaceMutation) (bool, error)
 	Complete(ctx context.Context, m WorkspaceMutation) error
@@ -225,7 +224,7 @@ type WorkspaceMutations interface {
 // ExecutionReleaser is the engine-neutral resource lifecycle slice the Session
 // coordinator uses when delete or rollback abandons parked executions. Product
 // resume, cancel, and steer orchestration belongs to application/agent/runs.
-type ExecutionReleaser interface {
+type executionReleaser interface {
 	Release(ctx context.Context, ref runs.ExecutorRef) error
 }
 
@@ -243,10 +242,10 @@ type Coordinator struct {
 	snapshots             SnapshotReader
 	materialSnapshots     MaterialSnapshotReader
 	writes                WriteSets
-	transientState        TransientState
-	executionReleaser     ExecutionReleaser
-	paths                 WorkspaceResolver
-	models                ModelAdmitter
+	transientState        transientState
+	executionReleaser     executionReleaser
+	paths                 workspaceResolver
+	models                modelAdmitter
 	defaultModelSelection modelchoice.Selection
 	// checkpoints restores the working tree to a run-boundary checkpoint for a file
 	// rollback and drops a deleted session's snapshots; nil disables both (file
@@ -254,13 +253,13 @@ type Coordinator struct {
 	checkpoints WorkspaceCheckpoints
 	// sandbox destroys a session's isolated working copy when its execution
 	// policy or durable history stops owning that scratch state; nil disables it.
-	sandbox SandboxDiscarder
+	sandbox sandboxDiscarder
 	// goals serializes a session write-set with Goal lifecycle commands and
 	// quiesces its loop after a successful commit.
-	goals GoalMutationGuard
+	goals goalMutationGuard
 	// mutations is the recoverable operation log guarding a file+history
 	// rollback across the working tree and the durable history.
-	mutations WorkspaceMutations
+	mutations workspaceMutations
 	// admissions is shared with Runs and owns the process-local session and
 	// working-tree facts.
 	admissions Admissions
@@ -287,15 +286,15 @@ type Dependencies struct {
 	Snapshots             SnapshotReader
 	MaterialSnapshots     MaterialSnapshotReader
 	Writes                WriteSets
-	TransientState        TransientState
-	ExecutionReleaser     ExecutionReleaser
-	Paths                 WorkspaceResolver
-	Models                ModelAdmitter
+	TransientState        transientState
+	ExecutionReleaser     executionReleaser
+	Paths                 workspaceResolver
+	Models                modelAdmitter
 	DefaultModelSelection modelchoice.Selection
 	Checkpoints           WorkspaceCheckpoints
-	Sandbox               SandboxDiscarder
-	Goals                 GoalMutationGuard
-	Mutations             WorkspaceMutations
+	Sandbox               sandboxDiscarder
+	Goals                 goalMutationGuard
+	Mutations             workspaceMutations
 	Admissions            Admissions
 	// Invalidations publishes post-commit invalidations for the session projections a
 	// mutation moved. nil disables them (no runtime change stream wired).
@@ -344,7 +343,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"item id generator", deps.NewItemID},
 	}
 	for _, required := range required {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("sessions: %s is required", required.name)
 		}
 	}
@@ -356,7 +355,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"sandbox discarder", deps.Sandbox},
 	}
 	for _, required := range optional {
-		if required.value != nil && dependency.Missing(required.value) {
+		if required.value != nil && lo.IsNil(required.value) {
 			return nil, fmt.Errorf("sessions: optional %s must not be typed nil", required.name)
 		}
 	}

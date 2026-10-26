@@ -9,37 +9,36 @@ import (
 	"strings"
 	"sync"
 
-	"go.opentelemetry.io/otel/attribute"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // ErrPromptRejected reports that a lifecycle hook explicitly blocked a fresh
 // root prompt. Broken or timed-out hooks remain non-blocking in the hooks
 // application policy and therefore do not produce this error.
-var ErrPromptRejected = errors.New("execution: prompt rejected by lifecycle hook")
+var errPromptRejected = errors.New("execution: prompt rejected by lifecycle hook")
 
 // WorkingContextConfig supplies the Runtime-owned prompt layers used to build
 // one self-contained fresh-root context. Every reader is required; absent user
 // content is an empty result from its owner, not a missing implementation.
 type WorkingContextConfig struct {
 	UserHome          string
-	AgentMemory       AgentMemoryReader
-	AgentMemorySearch AgentMemorySearcher
-	Plan              PlanReader
-	Goal              GoalReader
-	Hooks             WorkingContextHookResolver
+	AgentMemory       agentMemoryReader
+	AgentMemorySearch agentMemorySearcher
+	Plan              planReader
+	Goal              goalReader
+	Hooks             workingContextHookResolver
 }
 
 // WorkingContextHookResolver resolves the trusted lifecycle hooks for one
 // execution directory. Management inspection is intentionally absent.
-type WorkingContextHookResolver interface {
+type workingContextHookResolver interface {
 	For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 }
 
@@ -68,7 +67,7 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 		{"goal reader", config.Goal},
 		{"hook resolver", config.Hooks},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("execution: working context %s is required", required.name)
 		}
 	}
@@ -86,7 +85,7 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) ([]corechat.Message, error) {
-	if err := resourceid.ValidateSession(input.SessionID); err != nil {
+	if err := identity.ValidateSession(input.SessionID); err != nil {
 		return nil, fmt.Errorf("execution: working context: %w", err)
 	}
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {
@@ -145,7 +144,7 @@ func (p promptHookResult) applyTo(message *corechat.Message) error {
 		if reason == "" {
 			reason = "blocked by a lifecycle hook"
 		}
-		return fmt.Errorf("%w: %s", ErrPromptRejected, reason)
+		return fmt.Errorf("%w: %s", errPromptRejected, reason)
 	}
 	injected := strings.TrimSpace(p.decision.InjectContext)
 	if injected == "" {
@@ -241,17 +240,17 @@ func (w *WorkingContextComposer) BeforeToolUse(
 		},
 	})
 	if decision.Verdict == domainhooks.VerdictBlock {
-		return DenyToolHook(decision.Reason), nil
+		return denyToolHook(decision.Reason), nil
 	}
 	var rewrittenArguments *tool.Arguments
 	if rewritten := strings.TrimSpace(decision.RewriteArguments); rewritten != "" {
 		arguments, err := tool.ParseArguments(rewritten)
 		if err != nil {
-			return DenyToolHook(fmt.Sprintf("invalid pre-Tool hook argument rewrite: %v", err)), nil
+			return denyToolHook(fmt.Sprintf("invalid pre-Tool hook argument rewrite: %v", err)), nil
 		}
 		rewrittenArguments = &arguments
 	}
-	return AllowToolHook(decision.Verdict == domainhooks.VerdictAsk, rewrittenArguments), nil
+	return allowToolHook(decision.Verdict == domainhooks.VerdictAsk, rewrittenArguments), nil
 }
 
 // AfterToolUse runs the observe-only post-call hook. Its decision cannot alter
@@ -378,7 +377,7 @@ func (w *WorkingContextComposer) recallPart(
 		return corechat.Part{}, false, nil
 	}
 	loadRecallCounter().Add(ctx, int64(injected))
-	part := corechat.NewTextPart(FrameRuntimeContext(RuntimeContextRecalledMemory, strings.TrimSuffix(body.String(), "\n")))
+	part := corechat.NewTextPart(FrameRuntimeContext(runtimeContextRecalledMemory, strings.TrimSuffix(body.String(), "\n")))
 	if err := sources.attach(&part.Metadata, "recalled-memory part"); err != nil {
 		return corechat.Part{}, false, err
 	}
@@ -387,7 +386,7 @@ func (w *WorkingContextComposer) recallPart(
 
 var (
 	_ runs.WorkingContextComposer        = (*WorkingContextComposer)(nil)
-	_ InteractionToolHooks               = (*WorkingContextComposer)(nil)
-	_ InteractionLifecycleHooks          = (*WorkingContextComposer)(nil)
+	_ interactionToolHooks               = (*WorkingContextComposer)(nil)
+	_ interactionLifecycleHooks          = (*WorkingContextComposer)(nil)
 	_ interface{ ForgetSession(string) } = (*WorkingContextComposer)(nil)
 )

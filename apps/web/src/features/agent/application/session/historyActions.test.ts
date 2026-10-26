@@ -47,13 +47,13 @@ afterEach(() => {
 describe("rollbackSessionToBeforeRun", () => {
   it("does not issue a rollback when the session is authoritatively absent", async () => {
     const rollbackSession = vi.fn();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn().mockResolvedValue(null),
       rollbackSession,
     } as unknown as AgentRuntimeGateway);
 
     await expect(
-      rollbackSessionToBeforeRun(testClient.agent.access, "ses_gone", "run_gone"),
+      rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_gone", "run_gone"),
     ).resolves.toEqual({
       status: "unavailable",
     });
@@ -68,7 +68,7 @@ describe("rollbackSessionToBeforeRun", () => {
       spawnedByItemId: "item_delegate",
     };
     const rollbackSession = vi.fn();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi
         .fn()
         .mockResolvedValue(material({ ...snapshot(), runs: [...snapshot().runs, child] })),
@@ -76,7 +76,7 @@ describe("rollbackSessionToBeforeRun", () => {
     } as unknown as AgentRuntimeGateway);
 
     await expect(
-      rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", child.id),
+      rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", child.id),
     ).resolves.toEqual({
       status: "unavailable",
     });
@@ -85,7 +85,7 @@ describe("rollbackSessionToBeforeRun", () => {
 
   it("returns the Runtime-authored input dropped by the committed rollback", async () => {
     const synchronize = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
-    restoreView = stubInstance(testClient.agent.access.view, {
+    restoreView = stubInstance(testClient.agent.dependencies.view, {
       getSession: () => ({ synchronize }),
     } as unknown as AgentSessionViewPort);
     const rollbackSession = vi.fn().mockResolvedValue({
@@ -101,13 +101,13 @@ describe("rollbackSessionToBeforeRun", () => {
         },
       ],
     });
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn().mockResolvedValue(material(snapshot())),
       rollbackSession,
     } as unknown as AgentRuntimeGateway);
 
     await expect(
-      rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", "run_2"),
+      rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", "run_2"),
     ).resolves.toEqual({
       status: "committed",
       userInput: {
@@ -127,17 +127,17 @@ describe("rollbackSessionToBeforeRun", () => {
       release = resolve;
     });
     const rollbackSession = vi.fn().mockResolvedValue({ droppedRuns: [] });
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => firstRead),
       rollbackSession,
     } as unknown as AgentRuntimeGateway);
-    restoreView = stubInstance(testClient.agent.access.view, {
+    restoreView = stubInstance(testClient.agent.dependencies.view, {
       getSession: () => ({ synchronize: vi.fn().mockResolvedValue(true) }),
     } as unknown as AgentSessionViewPort);
 
-    const first = rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", "run_2");
+    const first = rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", "run_2");
     await expect(
-      rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", "run_2"),
+      rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", "run_2"),
     ).resolves.toEqual({
       status: "inFlight",
     });
@@ -148,16 +148,16 @@ describe("rollbackSessionToBeforeRun", () => {
 
   it("does not attach an old snapshot inspection to the successor rollback writer", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
-    restoreView = stubInstance(testClient.agent.access.view, {
+    restoreView = stubInstance(testClient.agent.dependencies.view, {
       getSession: () => ({ synchronize: vi.fn().mockResolvedValue(true) }),
     } as unknown as AgentSessionViewPort);
     const successorRollback = vi.fn().mockResolvedValue({ droppedRuns: [] });
     runtimeClient = () => ({ sessions: { rollback: successorRollback } }) as unknown as FlameClient;
 
-    const retired = rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", "run_2");
+    const retired = rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", "run_2");
     const disposeSuccessor = createAgentGatewayFixture(testClient, getRuntimeClient);
     let retiredSettled = false;
     void retired.then(() => {
@@ -179,7 +179,7 @@ describe("rollbackSessionToBeforeRun", () => {
     "does not degrade first-turn %s restore into destructive history rollback",
     async (restoreType) => {
       const rollbackSession = vi.fn();
-      restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+      restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
         loadSessionSnapshot: vi.fn().mockResolvedValue(
           material({
             runs: [run("run_1", "2026-08-12T00:00:00.000Z")],
@@ -191,7 +191,7 @@ describe("rollbackSessionToBeforeRun", () => {
       } as unknown as AgentRuntimeGateway);
 
       await expect(
-        rollbackSessionToBeforeRun(testClient.agent.access, "ses_1", "run_1", restoreType),
+        rollbackSessionToBeforeRun(testClient.agent.dependencies, "ses_1", "run_1", restoreType),
       ).resolves.toEqual({
         status: "unavailable",
       });
@@ -203,15 +203,15 @@ describe("rollbackSessionToBeforeRun", () => {
 describe("forkAgentSessionAtRun", () => {
   it("does not join an old fork or let its response navigate the successor", async () => {
     const retiredFork = Promise.withResolvers<{ id: string }>();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       forkSession: vi.fn(() => retiredFork.promise),
     } as unknown as AgentRuntimeGateway);
     const successorFork = vi.fn().mockResolvedValue({ id: "fork_successor" });
     runtimeClient = () => ({ sessions: { fork: successorFork } }) as unknown as FlameClient;
 
-    const retired = forkAgentSessionAtRun(testClient.agent.access, "ses_1", "run_1");
+    const retired = forkAgentSessionAtRun(testClient.agent.dependencies, "ses_1", "run_1");
     const disposeSuccessor = createAgentGatewayFixture(testClient, getRuntimeClient);
-    const successor = forkAgentSessionAtRun(testClient.agent.access, "ses_1", "run_1");
+    const successor = forkAgentSessionAtRun(testClient.agent.dependencies, "ses_1", "run_1");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorFork.mock.calls.length;
     let retiredSettled = false;

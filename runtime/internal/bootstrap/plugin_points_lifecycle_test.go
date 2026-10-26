@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -45,7 +45,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	consumer := activate(consumerSource, "consumer")
 	consumerServer := wait(consumer, "reviews")
 	contribution := consumer.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: consumer.ID}}
+	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: extension.Target{Scope: "installation", Reference: consumer.ID}}
 	type analysis struct {
 		Review struct {
 			ID       string `json:"id"`
@@ -86,7 +86,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	mutation := request
 	mutation.Method = "io.github.tangerg.flame.examples/reviews.update"
 	mutation.Input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
-	calling := operation.Start(t.Context(), capability.Human, "point-lifecycle", "withdrawn-provider-update")
+	calling := operation.Start(t.Context(), extension.Human, "point-lifecycle", "withdrawn-provider-update")
 	_, invoke, err := r.api.PreparePluginCall(calling, mutation)
 	if err == nil {
 		_, err = invoke(calling)
@@ -94,7 +94,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	if !errors.Is(err, protocol.ErrPluginUnavailable) {
 		t.Fatalf("unavailable activation before command admission lost its definite refusal: %v", err)
 	}
-	if _, found, err := cfg.Stores.PluginCommands.Get(t.Context(), operation.Identity(calling)); err != nil || found {
+	if _, found, err := cfg.stores.PluginCommands.Get(t.Context(), operation.Identity(calling)); err != nil || found {
 		t.Fatalf("unavailable activation admitted a command route: found=%t, %v", found, err)
 	}
 	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, mutation, delivery.Options{IdempotencyKey: "withdrawn-provider-update", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})

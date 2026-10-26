@@ -11,11 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	guardrailsrpc "github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
-	reports "github.com/Tangerg/flame/plugins/usagereports"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
 
@@ -108,17 +106,13 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if contract == "" {
 		t.Fatal("author did not publish its own contract")
 	}
-	contracts, err := guardrailsrpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: contracts.Replace.Name(), Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	if name == "memory" {
-		published, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
+		published, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}
-		exported, err := capability.Parse([]byte(contract))
+		exported, err := extension.ParseCapability([]byte(contract))
 		if err != nil || exported.Identity() != published.Identity() {
 			t.Fatalf("module relocation changed the host's Memory contract: %v", err)
 		}
@@ -135,14 +129,14 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
 	}
 	if name == "usagereports" {
-		published, err := reports.NewContracts[protocol.UsageSummary]()
+		published, err := extension.ParseCapability([]byte(UsageReportsCapabilityJSON))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if published.Capability.Identity().String() != contract {
+		if published.Identity().String() != contract {
 			t.Fatal("independent TypeScript author changed the original usage contract")
 		}
-		request.Contribution, request.Method, request.Input = "usage-reports", published.Capture.Name(), `{"period":"daily"}`
+		request.Contribution, request.Method, request.Input = "usage-reports", UsageReportsCaptureV1Method, `{"period":"daily"}`
 	}
 	options := protocol.PluginCallOptions{IdempotencyKey: "standalone-command"}
 	original, err := host.CallPlugin(t.Context(), request, options)

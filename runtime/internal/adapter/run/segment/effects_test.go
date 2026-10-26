@@ -9,26 +9,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chat"
 )
 
 var (
@@ -62,7 +56,7 @@ func singleRunPending(
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: barrierCreatedAt,
 			RunID:    runID,
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: question,
 		}}),
 		Bindings: []runs.InterruptBinding{{
@@ -92,7 +86,7 @@ func singleRunQuestionItem(t testing.TB, sessionID string, pending runs.Pending)
 
 func mustTreeBarrier(
 	t testing.TB,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 	pending runs.Pending,
 	commits []runs.EventCommit,
 	checkpoint runs.ExecutorCheckpoint,
@@ -107,7 +101,7 @@ func mustTreeBarrier(
 
 func mustAdmissionOpening(
 	t testing.TB,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 	admission run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
@@ -127,7 +121,7 @@ func mustAdmissionOpening(
 
 func mustResumeOpening(
 	t testing.TB,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 	resume run.TreeResumeDraft,
 	events []runs.EventCommit,
 	acceptance ...runs.ResumeAcceptance,
@@ -201,7 +195,7 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 			return want
 		},
 	})
-	ref := &toolresult.Ref{ID: "BLOB234"}
+	ref := &transcript.ToolResultRef{ID: "BLOB234"}
 	preview, err := tool.NewResult("preview")
 	if err != nil {
 		t.Fatal(err)
@@ -496,7 +490,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 			checkpoint := testRootExecutorCheckpoint()
 			mutation.mutate(&checkpoint)
 			_, err := runs.NewTreeBarrierCommit(
-				testCommitID(runtimeidentity.CommitPrefix+"barrier_binding_"+mutation.identity),
+				testCommitID("run_commit_"+"barrier_binding_"+mutation.identity),
 				pending,
 				[]runs.EventCommit{{
 					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
@@ -527,11 +521,11 @@ func TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark(t *testing.T) {
 		ModelSelection: testsupport.DefaultModelSelection(),
 		State:          run.Waiting,
 		Metrics:        testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
-		Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		Capabilities:   run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 		CreatedAt:      createdAt,
 		MessageMark:    run.UnknownMessageMark()})
 	_, err := runs.NewTreeBarrierCommit(
-		testCommitID(runtimeidentity.CommitPrefix+"barrier_unadmitted_kind"),
+		testCommitID("run_commit_"+"barrier_unadmitted_kind"),
 		pending,
 		[]runs.EventCommit{{
 			RunID: parked.ID(), SessionID: parked.SessionID(), SegmentID: "segment_1",
@@ -795,7 +789,7 @@ func testFinalizer(stores *fakeStores, cfg FinalizerConfig) *Finalizer {
 func (f *fakeStores) Interrupts() InterruptStore   { return f.interrupts }
 func (f *fakeStores) Session() SessionStore        { return f.session }
 func (f *fakeStores) Transcript() TranscriptStore  { return f.transcript }
-func (f *fakeStores) ToolResults() ToolResultStore { return f.toolResults }
+func (f *fakeStores) ToolResults() toolResultStore { return f.toolResults }
 func (f *fakeStores) Count(context.Context, string) (int, error) {
 	return f.mark, f.markErr
 }
@@ -876,7 +870,7 @@ func (f *fakeRunState) Suspend(
 	_ context.Context,
 	value run.Run,
 	_ string,
-	_ runtimeidentity.CommitID,
+	_ runs.CommitID,
 ) error {
 	f.suspended = append(f.suspended, value)
 	return nil
@@ -891,18 +885,18 @@ func (*fakeRunState) UpdateProgress(context.Context, run.Run) error {
 	return nil
 }
 
-func (f *fakeRunState) TerminalizeEvent(_ context.Context, run run.Run, _ string, _ runtimeidentity.CommitID) error {
+func (f *fakeRunState) TerminalizeEvent(_ context.Context, run run.Run, _ string, _ runs.CommitID) error {
 	f.terminalized = append(f.terminalized, run)
 	return nil
 }
 
-func (*fakeRunState) RecordRunCommit(context.Context, string, string, string, runtimeidentity.CommitID) error {
+func (*fakeRunState) RecordRunCommit(context.Context, string, string, string, runs.CommitID) error {
 	return nil
 }
-func (*fakeRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
+func (*fakeRunState) RecordWaitingRunCommit(context.Context, string, string, runs.CommitID) error {
 	return nil
 }
-func (*fakeRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
+func (*fakeRunState) RunCommitCommitted(context.Context, string, string, string, runs.CommitID) (bool, error) {
 	return false, nil
 }
 
@@ -952,14 +946,14 @@ type fakeTranscript struct {
 
 type discardedToolResult struct {
 	sessionID string
-	ref       toolresult.Ref
+	ref       transcript.ToolResultRef
 }
 
 type fakeToolResults struct {
 	discarded []discardedToolResult
 }
 
-func (f *fakeToolResults) Discard(_ context.Context, sessionID string, ref toolresult.Ref) error {
+func (f *fakeToolResults) Discard(_ context.Context, sessionID string, ref transcript.ToolResultRef) error {
 	f.discarded = append(f.discarded, discardedToolResult{sessionID: sessionID, ref: ref})
 	return nil
 }

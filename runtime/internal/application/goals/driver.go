@@ -17,13 +17,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 var (
@@ -117,13 +117,13 @@ func NewDriver(
 	mutations *SessionMutations,
 	instructions RunInstructionBuilder,
 ) (*Driver, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("goals: store is required")
 	}
-	if dependency.Missing(autonomousRuns) {
+	if lo.IsNil(autonomousRuns) {
 		return nil, errors.New("goals: autonomous runs are required")
 	}
-	if dependency.Missing(sessions) {
+	if lo.IsNil(sessions) {
 		return nil, errors.New("goals: session policy reader is required")
 	}
 	if mutations == nil {

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -386,8 +386,8 @@ func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	if err != nil || discovery.ProtocolVersion != protocol.Version {
 		t.Fatalf("Discover = (%+v, %v)", discovery, err)
 	}
-	if discovery.ServerInfo.Name != runtimeidentity.ProductName {
-		t.Fatalf("Discover server brand = %q, want %q", discovery.ServerInfo.Name, runtimeidentity.ProductName)
+	if discovery.ServerInfo.Name != identity.ProductName {
+		t.Fatalf("Discover server brand = %q, want %q", discovery.ServerInfo.Name, identity.ProductName)
 	}
 	if _, discoverErr := runtime.Discover(t.Context(), protocol.CallOptions{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: "1900-01-01",

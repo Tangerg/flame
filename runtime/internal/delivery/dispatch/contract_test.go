@@ -9,8 +9,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 // capabilityRuntime is a Runtime that only answers discovery — enough to drive
@@ -21,7 +22,16 @@ type capabilityRuntime struct {
 
 func newOperationEndpoint(t *testing.T, target any) *delivery.Endpoint {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context()})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +71,7 @@ func (c *capabilityRuntime) UsageSummary(context.Context, protocol.UsageSummaryR
 func TestRetiredBusinessViewMethodsAreUnknown(t *testing.T) {
 	for _, method := range []string{"plugins.readView", "plugins.readSchedules"} {
 		response := call(t, map[string]bool{protocol.FeaturePlugins: true}, method, `{}`)
-		failure, ok := response.Error.(*transport.Error)
+		failure, ok := response.Error.(*jsonrpc.Error)
 		if !ok || failure.Code != -32601 {
 			t.Fatalf("retired %s remains callable: %+v", method, response)
 		}
@@ -75,7 +85,7 @@ func TestUsageSummaryIsIndependentOfPluginPresentation(t *testing.T) {
 			t.Fatalf("canonical usage with plugin presentation=%t: %+v", enabled, response.Error)
 		}
 		retired := call(t, map[string]bool{protocol.FeaturePlugins: enabled}, "plugins.readUsage", `{}`)
-		failure, ok := retired.Error.(*transport.Error)
+		failure, ok := retired.Error.(*jsonrpc.Error)
 		if !ok || failure.Code != -32601 {
 			t.Fatalf("retired usage entrance survived: %+v", retired.Error)
 		}
@@ -90,10 +100,10 @@ func (c *capabilityRuntime) RollbackSession(context.Context, protocol.RollbackSe
 	return &protocol.RollbackSessionResponse{DroppedRuns: []protocol.DroppedRun{}}, nil
 }
 
-func call(t *testing.T, features map[string]bool, method, params string) *transport.Response {
+func call(t *testing.T, features map[string]bool, method, params string) *jsonrpc.Response {
 	t.Helper()
 	d := newTestRouter(t, &capabilityRuntime{features: features})
-	res := d.Dispatch(t.Context(), &transport.Request{
+	res := d.Dispatch(t.Context(), &jsonrpc.Request{
 		ID: testID("1"), Method: method, Params: jsontext.Value(params),
 	}, delivery.Options{})
 	if res.Response == nil {
@@ -102,12 +112,12 @@ func call(t *testing.T, features map[string]bool, method, params string) *transp
 	return res.Response
 }
 
-func problemType(t *testing.T, resp *transport.Response) string {
+func problemType(t *testing.T, resp *jsonrpc.Response) string {
 	t.Helper()
 	if resp.Error == nil {
 		return ""
 	}
-	rpcErr, ok := resp.Error.(*transport.Error)
+	rpcErr, ok := resp.Error.(*jsonrpc.Error)
 	if !ok {
 		t.Fatalf("response error is %T, want *transport.Error", resp.Error)
 	}

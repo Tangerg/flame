@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -69,7 +69,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "knowledge-entry", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "knowledge"}})
+	owner, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "knowledge"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	input := rpc.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple apple apple"}}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	query := rpc.SearchInput{Query: "apple", Limit: 2}
-	queryJSON, err := jsoninput.Encode(query)
+	queryJSON, err := jsonvalue.Encode(query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	toolMeta := maps.Clone(metadata.Meta)
-	if err := toolMeta.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "model-search", Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := toolMeta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model-search", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -127,7 +127,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	toolJSON, err := jsoninput.Parse(encoded)
+	toolJSON, err := jsonvalue.Parse(encoded)
 	if err != nil || toolJSON != typed {
 		t.Fatalf("typed and Tool retrieval diverged: %s, %s, %v", typed.String(), toolJSON.String(), err)
 	}
@@ -150,11 +150,11 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	request := pluginsdk.ModelContextRequest{Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
 	request.UserMessage = new(request.Request.Messages[0].Clone())
 	request.Request.Messages = append(request.Request.Messages, chat.NewUserMessage(chat.NewTextPart("host-owned catalog tail")))
-	contextInput, err := jsoninput.Encode(request)
+	contextInput, err := jsonvalue.Encode(request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	contextOwner, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "context-entry", Origin: capability.Model, Target: capability.Target{Scope: "call", Reference: "context-entry"}})
+	contextOwner, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "context-entry", Origin: extension.Model, Target: extension.Target{Scope: "call", Reference: "context-entry"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	space.Store("space-b")
 	if _, err := searchMethod.InvokeWithMetadata(owner, "", queryJSON, metadata); err == nil {
 		t.Fatal("changed space became a successful retrieval")
-	} else if refusal, ok := errors.AsType[*capability.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
+	} else if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
 		t.Fatalf("changed space refusal = %v", err)
 	}
 	result, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
@@ -186,7 +186,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	deleteInput, err := jsoninput.Encode(rpc.DocumentInput{ID: "fruit", ExpectedRevision: 1})
+	deleteInput, err := jsonvalue.Encode(rpc.DocumentInput{ID: "fruit", ExpectedRevision: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

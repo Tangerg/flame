@@ -9,14 +9,14 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -28,15 +28,15 @@ var (
 	unrelatedInstallation = mustInstallationID("1d7f3c2e-6a1b-4f0e-9c3d-2b8a7e5f4c10")
 )
 
-func mustInstallationID(text string) resourceid.InstallationID {
-	id, err := resourceid.ParseInstallation(text)
+func mustInstallationID(text string) identity.InstallationID {
+	id, err := identity.ParseInstallation(text)
 	if err != nil {
 		panic(err)
 	}
 	return id
 }
 
-type pendingInstallationCheckpoints map[resourceid.InstallationID]bool
+type pendingInstallationCheckpoints map[identity.InstallationID]bool
 
 func (p pendingInstallationCheckpoints) PendingCheckpointDependencies(context.Context) ([]plugin.Dependency, error) {
 	var dependencies []plugin.Dependency
@@ -52,7 +52,7 @@ func dependedRelease() []plugin.Dependency {
 	return []plugin.Dependency{{InstallationID: dependedInstallation, Digest: testsupport.Digest("depended release")}}
 }
 
-func newInstallationTestExecutor(t *testing.T, checkpoints InstallationCheckpoints) *InteractionExecutor {
+func newInstallationTestExecutor(t *testing.T, checkpoints installationCheckpoints) *InteractionExecutor {
 	t.Helper()
 	return newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("installation admission invoked the model")
@@ -179,7 +179,7 @@ func TestWaitingCheckpointCarriesTheDependencyProjection(t *testing.T) {
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)

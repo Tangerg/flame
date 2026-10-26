@@ -49,7 +49,7 @@ no old executable, alias or automatic retargeting. Finish waiting work captured
 by an older build with that original build. The method-selectable HTTP tool keeps
 its separately owned host allowlist.
 
-Regenerate contracts with `go generate ./plugins/web/backend/rpc`.
+Regenerate contracts with `go generate ./plugins/web/internal/contract`.
 Provider contracts: [Scope web](https://github.com/Tangerg/scope/tree/main/tools/web),
 [Jina Reader](https://jina.ai/reader/) and
 [Tavily Search](https://docs.tavily.com/documentation/api-reference/endpoint/search).

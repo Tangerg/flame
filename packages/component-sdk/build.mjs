@@ -36,7 +36,7 @@ export async function buildComponent({ input, directory, compiler }) {
     },
   });
   try {
-    await bundle.write({
+    const emitted = await bundle.write({
       dir: directory,
       format: "esm",
       entryFileNames: "component.js",
@@ -44,6 +44,11 @@ export async function buildComponent({ input, directory, compiler }) {
       assetFileNames: "[name]-[hash][extname]",
       minify: true,
     });
+    const entry = emitted.output.find(
+      (output) => output.type === "chunk" && output.isEntry,
+    );
+    if (!entry) throw new Error("component build did not emit an entry module");
+    return { exports: entry.exports };
   } finally {
     await bundle.close();
   }

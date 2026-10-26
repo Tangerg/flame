@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func EncodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
+func encodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
 	payload := make([]contentPayload, len(content))
 	for index, block := range content {
 		if err := block.Validate(); err != nil {
@@ -27,7 +27,7 @@ func EncodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-func DecodeUserContent(encoded []byte) ([]transcript.ContentBlock, error) {
+func decodeUserContent(encoded []byte) ([]transcript.ContentBlock, error) {
 	var payload []contentPayload
 	if err := json.Unmarshal(encoded, &payload, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err

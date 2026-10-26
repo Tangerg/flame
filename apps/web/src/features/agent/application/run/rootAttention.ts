@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
 import { type AgentSessionViewEntry } from "@/features/agent/application/session/sessionAccess";
 import { type AgentRootAttention } from "@/features/agent/application/view/runTree";
@@ -38,7 +38,7 @@ export function terminalSettlementStatus(
 }
 
 export function subscribeAnySessionRunning(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   onChange: (running: boolean) => void,
 ): () => void {
   let lastRunning = anySessionRunning(agentAccess.view.getSessions());
@@ -52,7 +52,7 @@ export function subscribeAnySessionRunning(
 }
 
 export function subscribeRootRunSettlements(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   onSettled: (settlement: RootRunSettlement) => void,
 ): () => void {
   const previousBySession = new Map<string, AgentRootAttention>();

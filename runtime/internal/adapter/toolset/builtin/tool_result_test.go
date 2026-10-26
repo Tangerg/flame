@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 type fakeStore struct {
@@ -16,10 +16,10 @@ type fakeStore struct {
 	found       bool
 	err         error
 	lastSession string
-	lastID      resultoffload.ID
+	lastID      transcript.ToolResultID
 }
 
-func (f *fakeStore) Fetch(_ context.Context, session string, id resultoffload.ID) (string, bool, error) {
+func (f *fakeStore) Fetch(_ context.Context, session string, id transcript.ToolResultID) (string, bool, error) {
 	f.lastSession, f.lastID = session, id
 	return f.body, f.found, f.err
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 type runtimeLifetime struct {
@@ -27,9 +26,9 @@ type runtimeLifetime struct {
 	runCoordinator shutdownComponent
 	executor       shutdownComponent
 	runEffectTasks taskOwner
-	toolResources  []*teardown.Step
-	hostResources  []*teardown.Step
-	resourceGraph  *teardown.Sequence
+	toolResources  []*teardownStep
+	hostResources  []*teardownStep
+	resourceGraph  *shutdownSequence
 }
 
 // lifetimePhase orders Runtime shutdown. Stopping is entered once, by the first
@@ -43,7 +42,7 @@ const (
 	lifetimeClosed
 )
 
-func newRuntimeLifetime(ctx context.Context, resources []TerminalResource) *runtimeLifetime {
+func newRuntimeLifetime(ctx context.Context, resources []terminalResource) *runtimeLifetime {
 	return &runtimeLifetime{
 		context:       ctx,
 		shutdownWait:  defaultShutdownWaitPolicy(),
@@ -207,14 +206,14 @@ func runShutdown(
 		// host resources are acquired before tool resources; concatenating them
 		// in creation order lets the Sequence own the whole reverse dependency
 		// graph in one self-continuing generation.
-		steps := make([]*teardown.Step, 0, len(lifetime.hostResources)+len(lifetime.toolResources))
+		steps := make([]*teardownStep, 0, len(lifetime.hostResources)+len(lifetime.toolResources))
 		steps = append(steps, lifetime.hostResources...)
 		steps = append(steps, lifetime.toolResources...)
-		lifetime.resourceGraph = teardown.NewSequence(steps)
+		lifetime.resourceGraph = newShutdownSequence(steps)
 	}
 	resourceGraph := lifetime.resourceGraph
 	lifetime.closeMu.Unlock()
-	settled, resourceErr := resourceGraph.Shutdown(ownerCtx)
+	settled, resourceErr := resourceGraph.shutdown(ownerCtx)
 	if !settled {
 		finishShutdown(lifetime, attempt, false, resourceErr)
 		return

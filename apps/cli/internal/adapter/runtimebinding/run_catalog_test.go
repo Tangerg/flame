@@ -52,10 +52,9 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	runtime := &Connection{
 		runCatalog: stub, meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureSubagents: {
-				Enabled: true, ClientOptIn: true,
-			},
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureSubagents: {
+			Enabled: true, ClientOptIn: true,
+		},
 		}),
 	}
 	got, err := runtime.GetRun(t.Context(), "run_1")
@@ -94,9 +93,8 @@ func TestRunCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T) {
 	oversized := strings.Repeat("x", maximumPaginationCursorBytes+1)
 	called := false
 	runtime := &Connection{runCatalog: runCatalogBindingStub{list: func(
-		context.Context,
-		protocol.ListRunsRequest,
-		protocol.CallOptions,
+		context.Context, protocol.ListRunsRequest, protocol.CallOptions,
+
 	) (*protocol.Page[protocol.RunRef], error) {
 		called = true
 		return protocol.NewPage([]protocol.RunRef{}), nil
@@ -240,7 +238,7 @@ func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 			if request.Statuses != nil {
 				t.Fatalf("statuses = %#v, want absent", request.Statuses)
 			}
-			if err := request.ValidateWire(); err != nil {
+			if err := protocol.ValidateWireTree(request); err != nil {
 				t.Fatalf("wire query = %v", err)
 			}
 			return protocol.NewPage([]protocol.RunRef{}), nil

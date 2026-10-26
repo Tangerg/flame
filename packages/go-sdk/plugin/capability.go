@@ -6,20 +6,20 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type CapabilityExport struct {
-	Name     string                `json:"name"`
-	Contract capability.Descriptor `json:"contract"`
+	Name     string                         `json:"name"`
+	Contract extension.CapabilityDescriptor `json:"contract"`
 }
 
 // BindCapability associates the consumer contract with existing handlers.
 // The Backend remains the sole publication and invocation owner.
-func (b *Backend) BindCapability(name string, contract *capability.Contract) error {
-	if b == nil || contract == nil || contract.Identity().Validate() != nil || !capability.ValidExportName(name) {
+func (b *Backend) BindCapability(name string, contract *extension.Capability) error {
+	if b == nil || contract == nil || contract.Identity().Validate() != nil || !extension.ValidExportName(name) {
 		return errors.New("plugin: backend, capability and valid export name are required")
 	}
 	b.mu.Lock()
@@ -73,20 +73,20 @@ func (b *Backend) checkCapability(params *invokeParams) error {
 type CapabilityBinding struct {
 	session  *sdk.ClientSession
 	export   string
-	contract *capability.Contract
+	contract *extension.Capability
 }
 
 // NewCapabilityBinding restores the originally captured contract and export.
 // The backend checks both before executing; restoration never discovers a new
 // provider. Installation/release retention belongs to the host routing owner.
-func NewCapabilityBinding(session *sdk.ClientSession, name string, contract *capability.Contract) (*CapabilityBinding, error) {
-	if session == nil || contract == nil || contract.Identity().Validate() != nil || !capability.ValidExportName(name) {
+func NewCapabilityBinding(session *sdk.ClientSession, name string, contract *extension.Capability) (*CapabilityBinding, error) {
+	if session == nil || contract == nil || contract.Identity().Validate() != nil || !extension.ValidExportName(name) {
 		return nil, errors.New("plugin: session, capability and valid export name are required")
 	}
 	return &CapabilityBinding{session: session, export: name, contract: contract}, nil
 }
 
-func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name string, required *capability.Contract) (*CapabilityBinding, error) {
+func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name string, required *extension.Capability) (*CapabilityBinding, error) {
 	binding, err := NewCapabilityBinding(session, name, required)
 	if err != nil {
 		return nil, err
@@ -121,11 +121,11 @@ func VerifyCapabilities(ctx context.Context, session *sdk.ClientSession, require
 	}
 	seen := make(map[string]bool, len(required))
 	for _, exported := range required {
-		if !capability.ValidExportName(exported.Name) || seen[exported.Name] {
+		if !extension.ValidExportName(exported.Name) || seen[exported.Name] {
 			return errors.New("plugin: invalid or duplicate declared capability export")
 		}
 		seen[exported.Name] = true
-		contract, err := capability.FromDescriptor(exported.Contract)
+		contract, err := extension.AdmitCapability(exported.Contract)
 		if err != nil {
 			return err
 		}
@@ -136,24 +136,24 @@ func VerifyCapabilities(ctx context.Context, session *sdk.ClientSession, require
 	return nil
 }
 
-func admitDescription(description Description) (map[string]*capability.Contract, error) {
-	methods := make(map[string]jsoninput.Input, len(description.Methods))
+func admitDescription(description Description) (map[string]*extension.Capability, error) {
+	methods := make(map[string]jsonvalue.Value, len(description.Methods))
 	for _, descriptor := range description.Methods {
 		if _, exists := methods[descriptor.Name]; exists {
 			return nil, errors.New("plugin: duplicate published method")
 		}
-		method, err := capability.AdmitMethod(descriptor)
+		method, err := extension.AdmitMethod(descriptor)
 		if err != nil {
 			return nil, err
 		}
 		methods[descriptor.Name] = method.Identity()
 	}
-	exports := make(map[string]*capability.Contract, len(description.Capabilities))
+	exports := make(map[string]*extension.Capability, len(description.Capabilities))
 	for _, published := range description.Capabilities {
-		if !capability.ValidExportName(published.Name) || exports[published.Name] != nil {
+		if !extension.ValidExportName(published.Name) || exports[published.Name] != nil {
 			return nil, errors.New("plugin: invalid or duplicate published capability export")
 		}
-		actual, err := capability.FromDescriptor(published.Contract)
+		actual, err := extension.AdmitCapability(published.Contract)
 		if err != nil {
 			return nil, err
 		}

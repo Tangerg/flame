@@ -10,21 +10,19 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 // callbackPayloadLimits caps a plugin callback's request and response bodies at 4 MiB.
@@ -55,7 +53,7 @@ func Open(
 	publish invalidation.Publish,
 	commands *plugins.Commands,
 ) (*Pool, error) {
-	if dependency.Missing(registry) {
+	if lo.IsNil(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
 	}
 	configs := make([]ServerConfig, len(servers))
@@ -142,7 +140,7 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 		exports := make([]pluginsdk.CapabilityExport, 0, len(connection.Exports))
 		for _, name := range slices.Sorted(maps.Keys(connection.Exports)) {
 			identity := connection.Exports[name]
-			contract, err := capability.Parse(identity.JSON())
+			contract, err := extension.ParseCapability(identity.JSON())
 			if err != nil {
 				if retire != nil {
 					err = errors.Join(err, retire())
@@ -185,7 +183,7 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 					if p.commands == nil {
 						return errors.New("mcp: background role requires original invocation routing")
 					}
-					ref, closeRPC, err = p.callbacks.OpenRPCWithInvocation(calling, session, limits, func(ctx context.Context, invocation capability.Invocation) (context.Context, error) {
+					ref, closeRPC, err = p.callbacks.OpenRPCWithInvocation(calling, session, limits, func(ctx context.Context, invocation extension.Invocation) (context.Context, error) {
 						ctx, err := p.commands.RestoreInvocation(ctx, invocation)
 						if err != nil {
 							return nil, err
@@ -266,13 +264,13 @@ func setupContributions(connection mcpapp.Launch) ([]pluginsdk.SetupContribution
 			if !found {
 				return nil, errors.New("mcp: background role requires an installed entry")
 			}
-			value.Background = &capability.Target{Scope: capability.ScopeInstallation, Reference: installation.String()}
+			value.Background = &extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}
 		}
 		for _, required := range connection.Requirements.Snapshot() {
 			if required.Contribution != contribution.ID {
 				continue
 			}
-			contract, err := capability.Parse(required.Contract.JSON())
+			contract, err := extension.ParseCapability(required.Contract.JSON())
 			if err != nil {
 				return nil, err
 			}
@@ -332,7 +330,7 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (plu
 	return activation, err
 }
 
-func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority fingerprint.Digest) (*sdk.ClientSession, error) {
+func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (*sdk.ClientSession, error) {
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
 		return nil, err
@@ -407,7 +405,7 @@ func (p *Pool) toolHost(executable Executable) ToolHost {
 	}
 }
 
-func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *pluginsdk.Binding, command string, input jsoninput.Input, metadata sdk.ParamsBase) iter.Seq2[pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error] {
+func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *pluginsdk.Binding, command string, input jsonvalue.Value, metadata sdk.ParamsBase) iter.Seq2[pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error] {
 	return func(yield func(pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		if _, err := p.SessionActor(ctx, id, session); err != nil {
 			yield(pluginsdk.StreamValue[jsontext.Value, jsontext.Value]{}, err)

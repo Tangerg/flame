@@ -3,10 +3,9 @@ package toolset
 import (
 	"testing"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // resolveRootManifest builds one exact root visibility snapshot.

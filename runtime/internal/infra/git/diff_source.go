@@ -26,7 +26,7 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 		if berr != nil {
 			return nil, nil, Baseline{}, berr
 		}
-		baseline = Baseline{Type: BaselineMergeBase, Commit: base}
+		baseline = Baseline{Type: baselineMergeBase, Commit: base}
 		args = append(args, base)
 	default: // Worktree
 		head, headErr := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
@@ -39,10 +39,10 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 			if emptyErr != nil {
 				return nil, nil, Baseline{}, emptyErr
 			}
-			baseline = Baseline{Type: BaselineEmptyTree}
+			baseline = Baseline{Type: baselineEmptyTree}
 			args = append(args, strings.TrimSpace(string(empty)))
 		} else {
-			baseline = Baseline{Type: BaselineHead, Commit: commit}
+			baseline = Baseline{Type: baselineHead, Commit: commit}
 			args = append(args, commit)
 		}
 	}

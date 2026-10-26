@@ -9,7 +9,7 @@ prepareTestClient(() => {
 import { act, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Message } from "@/features/agent/public/sessionView";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import {
   editAndRerunMessage,
   editMessageInComposer,
@@ -36,13 +36,14 @@ const model = vi.hoisted(() => ({
   send: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  activeAgentConversation: () => model.conversation,
-  forkAgentSessionAtRun: model.fork,
-  rollbackSessionToBeforeRun: model.rollback,
-  sendToAgentSession: model.send,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    activeAgentConversation: () => model.conversation,
+    forkAgentSessionAtRun: model.fork,
+    rollbackSessionToBeforeRun: model.rollback,
+    sendToAgentSession: model.send,
+  });
+});
 
 vi.mock("@/features/notifications/public/notifications", async (importOriginal) => {
   const actual =
@@ -60,7 +61,7 @@ beforeEach(() => {
   model.send.mockReset();
   model.send.mockReturnValue(true);
   vi.mocked(notifyInfo).mockClear();
-  selectAgentSession(testClient.agent.access, "ses_1");
+  testClient.agent.access.selectAgentSession("ses_1");
   replaceComposerDraft(testClient.composer.access, { text: "waiting draft" });
   const prompt = message({
     id: "user_1",
@@ -156,7 +157,7 @@ describe("message history actions", () => {
 
     forkFromMessage(testClient.agent.access, message({ id: "fork-target", role: "user", runId }));
 
-    expect(model.fork).toHaveBeenCalledWith(testClient.agent.access, "ses_1", runId);
+    expect(model.fork).toHaveBeenCalledWith("ses_1", runId);
     expect(model.rollback).not.toHaveBeenCalled();
     expect(readDraft()).toEqual(before);
   });
@@ -174,12 +175,7 @@ describe("message history actions", () => {
       restoreCheckpoint(testClient.agent.access, prompt, restoreType);
       await model.rollback.mock.results[0]!.value;
 
-      expect(model.rollback).toHaveBeenCalledWith(
-        testClient.agent.access,
-        "ses_1",
-        "run_1",
-        restoreType,
-      );
+      expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", restoreType);
       expect(readDraft()).toEqual(before);
       expect(notifyInfo).toHaveBeenCalledWith(`session.restore.${restoreType}`, {
         source: "session",
@@ -201,7 +197,7 @@ describe("message history actions", () => {
     regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
 
     await vi.waitFor(() =>
-      expect(model.send).toHaveBeenCalledWith(testClient.agent.access, "ses_1", {
+      expect(model.send).toHaveBeenCalledWith("ses_1", {
         parts: [
           { kind: "text", text: "authoritative prompt" },
           { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
@@ -239,12 +235,7 @@ describe("message history actions", () => {
 
     await vi.waitFor(() => expect(readDraft().value).toBe("canonical edit"));
     expect(readDraft().images).toMatchObject([{ mime: "image/jpeg", data: "anBlZw==" }]);
-    expect(model.rollback).toHaveBeenCalledWith(
-      testClient.agent.access,
-      "ses_1",
-      "run_1",
-      "history",
-    );
+    expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", "history");
     expect(notifyInfo).not.toHaveBeenCalled();
   });
 
@@ -322,7 +313,7 @@ describe("message history actions", () => {
       testClient.composer.access,
       model.conversation!.messages[0]!,
     );
-    selectAgentSession(testClient.agent.access, "ses_2");
+    testClient.agent.access.selectAgentSession("ses_2");
     replaceComposerDraft(testClient.composer.access, { text: "keep this second draft" });
     const current = readDraft();
 
@@ -330,7 +321,7 @@ describe("message history actions", () => {
     await rollback.promise;
 
     expect(readDraft()).toEqual(current);
-    selectAgentSession(testClient.agent.access, "ses_1");
+    testClient.agent.access.selectAgentSession("ses_1");
     expect(readDraft()).toEqual(original);
     expect(notifyInfo).toHaveBeenCalledOnce();
   });

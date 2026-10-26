@@ -14,9 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
-	"github.com/Tangerg/flame/plugins/github/backend/rpc"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 )
 
 const (
@@ -29,10 +28,10 @@ const (
 type connector struct {
 	cache      *cache
 	http       *http.Client
-	credential resource.Credential
+	credential credential
 }
 
-func newConnector(cache *cache, transport http.RoundTripper, credential resource.Credential) (*connector, error) {
+func newConnector(cache *cache, transport http.RoundTripper, credential credential) (*connector, error) {
 	if cache == nil || cache.db == nil || transport == nil {
 		return nil, errors.New("github: cache and HTTP transport are required")
 	}
@@ -41,7 +40,7 @@ func newConnector(cache *cache, transport http.RoundTripper, credential resource
 }
 
 func refused(code, message string) error {
-	return &capability.Refusal{Code: code, Message: "github: " + message}
+	return &extension.Refusal{Code: code, Message: "github: " + message}
 }
 
 func query[T any](ctx context.Context, c *connector, path string, parameters url.Values, decode func(response) (T, error)) (T, error) {
@@ -50,7 +49,7 @@ func query[T any](ctx context.Context, c *connector, path string, parameters url
 	if len(parameters) != 0 {
 		address += "?" + parameters.Encode()
 	}
-	key := c.credential.CacheKey(apiVersion + "\n" + address)
+	key := c.credential.cacheKey(apiVersion + "\n" + address)
 	result, err := c.load(ctx, address, key)
 	if err != nil {
 		return zero, err
@@ -77,8 +76,8 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("X-GitHub-Api-Version", apiVersion)
 	request.Header.Set("User-Agent", "Flame-GitHub-Plugin/1.0")
-	if c.credential.Configured() {
-		request.Header.Set("Authorization", c.credential.Authorization())
+	if c.credential.configured() {
+		request.Header.Set("authorization", c.credential.authorization())
 	}
 	if previous.etag != "" {
 		request.Header.Set("If-None-Match", previous.etag)
@@ -140,7 +139,7 @@ type issueWire struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (wire issueWire) admit(repository resource.Repository) (rpc.Issue, error) {
+func (wire issueWire) admit(repository repository) (rpc.Issue, error) {
 	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
 		return rpc.Issue{}, errors.New("github: invalid issue representation")
 	}
@@ -155,12 +154,12 @@ func (wire issueWire) admit(repository resource.Repository) (rpc.Issue, error) {
 }
 
 func (c *connector) listIssues(ctx context.Context, input rpc.ListInput) (rpc.IssuePage, error) {
-	repository, err := resource.NewRepository(input.Repository)
+	repository, err := newRepository(input.Repository)
 	if err != nil {
 		return rpc.IssuePage{}, err
 	}
 	parameters := url.Values{"state": {string(input.State)}, "page": {strconv.FormatInt(input.Page, 10)}, "per_page": {strconv.Itoa(input.Limit)}, "sort": {"updated"}, "direction": {"desc"}}
-	path := repository.APIPath() + "/issues"
+	path := repository.apiPath() + "/issues"
 	return query(ctx, c, path, parameters, func(result response) (rpc.IssuePage, error) {
 		var wire []issueWire
 		if err := json.Unmarshal(result.body, &wire); err != nil {
@@ -222,11 +221,11 @@ func nextPage(header string, current int64) (*int64, error) {
 }
 
 func (c *connector) getIssue(ctx context.Context, input rpc.IssueInput) (rpc.Issue, error) {
-	repository, err := resource.NewRepository(input.Repository)
+	repository, err := newRepository(input.Repository)
 	if err != nil {
 		return rpc.Issue{}, err
 	}
-	return query(ctx, c, repository.APIPath()+"/issues/"+strconv.FormatInt(input.Number, 10), nil, func(result response) (rpc.Issue, error) {
+	return query(ctx, c, repository.apiPath()+"/issues/"+strconv.FormatInt(input.Number, 10), nil, func(result response) (rpc.Issue, error) {
 		var wire issueWire
 		if err := json.Unmarshal(result.body, &wire); err != nil {
 			return rpc.Issue{}, err
@@ -239,11 +238,11 @@ func (c *connector) getIssue(ctx context.Context, input rpc.IssueInput) (rpc.Iss
 }
 
 func (c *connector) readFile(ctx context.Context, input rpc.FileInput) (rpc.File, error) {
-	repository, err := resource.NewRepository(input.Repository)
+	repository, err := newRepository(input.Repository)
 	if err != nil {
 		return rpc.File{}, err
 	}
-	path, err := resource.NewFilePath(input.Path)
+	path, err := newFilePath(input.Path)
 	if err != nil {
 		return rpc.File{}, err
 	}
@@ -251,7 +250,7 @@ func (c *connector) readFile(ctx context.Context, input rpc.FileInput) (rpc.File
 	if input.Ref != nil {
 		parameters.Set("ref", *input.Ref)
 	}
-	return query(ctx, c, repository.APIPath()+"/contents/"+path.APIPath(), parameters, func(result response) (rpc.File, error) {
+	return query(ctx, c, repository.apiPath()+"/contents/"+path.apiPath(), parameters, func(result response) (rpc.File, error) {
 		var wire struct {
 			Type     string `json:"type"`
 			Path     string `json:"path"`

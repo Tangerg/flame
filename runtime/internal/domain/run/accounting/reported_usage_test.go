@@ -1,6 +1,7 @@
 package accounting
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -28,10 +29,10 @@ func TestNewTokensFoldsAbsentBreakdownsAndRejectsImpossibleReports(t *testing.T)
 func TestReportedUsageKeepsAbsentDistinctFromReportedZero(t *testing.T) {
 	absent := chat.Usage{InputTokens: 5, OutputTokens: 1}
 	zero := chat.Usage{InputTokens: 5, OutputTokens: 1, CacheReadInputTokens: new(int64(0))}
-	if ReportedUsageEqual(absent, zero) {
+	if reflect.DeepEqual(absent, zero) {
 		t.Fatal("an unsupported dimension compared equal to a reported zero")
 	}
-	if !ReportedUsageEqual(zero, CloneReportedUsage(zero)) {
+	if !reflect.DeepEqual(zero, CloneReportedUsage(zero)) {
 		t.Fatal("clone changed the reported fact")
 	}
 

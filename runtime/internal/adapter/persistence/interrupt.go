@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -93,10 +93,10 @@ func (i pendingRecord) validateStorageShape() error {
 	if err := instant.Validate(i.CreatedAt); err != nil {
 		return fmt.Errorf("creation time: %w", err)
 	}
-	if err := resourceid.ValidateRun(i.RootRunID); err != nil {
+	if err := identity.ValidateRun(i.RootRunID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateExecutor(i.ExecutorID); err != nil {
+	if err := runs.ValidateExecutor(i.ExecutorID); err != nil {
 		return err
 	}
 	switch {
@@ -113,7 +113,7 @@ func (i pendingRecord) validateStorageShape() error {
 	if !ok {
 		return errors.New("root continuation and member ID are required")
 	}
-	if err := runtimeidentity.ValidateMember(root.MemberID); err != nil {
+	if err := runs.ValidateMember(root.MemberID); err != nil {
 		return err
 	}
 	return nil
@@ -153,7 +153,7 @@ type interruptBindingRow struct {
 
 // NewInterruptStore binds the SQLite interrupt registry to a database opened via
 // [openDatabase].
-func NewInterruptStore(db *sql.DB) *InterruptStore {
+func newInterruptStore(db *sql.DB) *InterruptStore {
 	return &InterruptStore{db: db}
 }
 
@@ -182,7 +182,7 @@ func (s *InterruptStore) insertPending(ctx context.Context, p pendingRecord) err
 	if err := s.requireTreeRuns(ctx, p); err != nil {
 		return err
 	}
-	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO interrupts(root_run_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at, state)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.RootRunID,
@@ -224,7 +224,7 @@ const interruptColumns = `root_run_id, executor_id,
 // are a root Run and that root's descendants.
 func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) error {
 	var members sql.NullString
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT (SELECT json_group_array(member.run_id)
 		           FROM runs AS member
 		          WHERE member.session_id = root.session_id
@@ -295,7 +295,7 @@ func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 		args = append(args, limit)
 	}
 
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list interrupts: %w", err)
 	}
@@ -319,7 +319,7 @@ func (s *InterruptStore) loadPending(ctx context.Context, runID string) (pending
 	if err := validateRunResource("read interrupt", runID); err != nil {
 		return pendingRecord{}, false, err
 	}
-	row := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
+	row := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = ?`,
 		runID, interruptStateOpen.databaseValue())
 	p, err := scanPending(row)
@@ -338,10 +338,10 @@ func (s *InterruptStore) loadPending(ctx context.Context, runID string) (pending
 // observe the same open interrupt: one claims it, the other gets ok=false, so a
 // non-idempotent tool never re-fires.
 func (s *InterruptStore) consumePending(ctx context.Context, runID string) (pendingRecord, bool, error) {
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return pendingRecord{}, false, fmt.Errorf("sqlite: consume interrupt: %w", err)
 	}
-	row := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
+	row := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 		`DELETE FROM interrupts WHERE root_run_id = ? AND state = ?
 		 RETURNING `+interruptColumns,
 		runID, interruptStateOpen.databaseValue())
@@ -356,10 +356,10 @@ func (s *InterruptStore) consumePending(ctx context.Context, runID string) (pend
 }
 
 func (s *InterruptStore) Delete(ctx context.Context, runID string) error {
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
 	}
-	if _, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
+	if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`DELETE FROM interrupts WHERE root_run_id = ?`, runID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)

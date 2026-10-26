@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -23,7 +22,7 @@ type parkedFacts struct {
 // fixtureFacts is the contract a fixture hand-off implies: exactly the interrupt
 // kinds it parks on, and child Runs when it has more than one member.
 func fixtureFacts(pending Pending) parkedFacts {
-	var kinds []interrupt.Kind
+	var kinds []run.InterruptKind
 	for _, value := range pending.Interrupts {
 		if !slices.Contains(kinds, value.Kind()) {
 			kinds = append(kinds, value.Kind())
@@ -38,7 +37,7 @@ func fixtureFacts(pending Pending) parkedFacts {
 // resumedTreeCapabilities is the contract of the question tree fixtures, held
 // even when a fixture has been reduced to fewer members or kinds.
 func resumedTreeCapabilities() run.Capabilities {
-	return run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	return run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 }
 
 // fixtureLineage is the topology every tree fixture in this package shares:

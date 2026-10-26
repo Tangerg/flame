@@ -6,11 +6,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestDefaultModeGetSet(t *testing.T) {
@@ -294,7 +293,7 @@ func mustRuntimePolicy(t *testing.T, mode approval.Mode) *RuntimePolicy {
 	return policy
 }
 
-func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes ModeStore, publish invalidation.Publish) (*RuntimePolicy, error) {
+func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes modeStore, publish invalidation.Publish) (*RuntimePolicy, error) {
 	if rules == nil {
 		rules = ruleStoreStub{}
 	}
@@ -309,7 +308,7 @@ func TestNewPolicyRequiresDurableStores(t *testing.T) {
 	var typedNil *memoryModeStore
 	for _, test := range []struct {
 		rules RuleStore
-		modes ModeStore
+		modes modeStore
 	}{
 		{nil, modes}, {ruleStoreStub{}, nil}, {ruleStoreStub{}, typedNil},
 	} {

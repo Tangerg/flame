@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 const (
@@ -19,14 +19,14 @@ const (
 	// before JSON decoding or management projection.
 	MaxConfigurationFileBytes int64 = 256 << 10
 	// MaxHooksPerFile bounds one authored policy document.
-	MaxHooksPerFile = 128
+	maxHooksPerFile = 128
 	// MaxHooksPerCascade bounds the complete global + project policy resolved
 	// for one workspace.
 	MaxHooksPerCascade = 256
 	// MaxMatcherBytes bounds one tool-name glob.
-	MaxMatcherBytes = 256
+	maxMatcherBytes = 256
 	// MaxActionBytes bounds one shell command or declarative injection.
-	MaxActionBytes = 8 << 10
+	maxActionBytes = 8 << 10
 	// MaxPromptBytes bounds user and sub-agent prompt material presented to one
 	// command hook. Longer prompt material is projected as a marked prefix.
 	MaxPromptBytes = 256 << 10
@@ -36,10 +36,10 @@ const (
 	MaxArgumentsBytes = 256 << 10
 	// MaxResultBytes bounds Tool and sub-agent result material presented to one
 	// command hook. The original result remains owned by its normal consumer.
-	MaxResultBytes = 128 << 10
+	maxResultBytes = 128 << 10
 	// MaxReasonBytes bounds failure, terminal, and descriptive material exposed
 	// to one command hook.
-	MaxReasonBytes = 8 << 10
+	maxReasonBytes = 8 << 10
 	// MaxTimeoutMillis prevents authored policy from replacing the Runtime's
 	// bounded command lifecycle with an arbitrarily long wait.
 	MaxTimeoutMillis = 5 * 60 * 1_000
@@ -108,11 +108,11 @@ var ErrConfigurationTooLarge = errors.New("hooks: configuration too large")
 
 // ErrCommandInputTooLarge reports semantic invocation material that cannot be
 // projected into the private command contract without changing policy input.
-var ErrCommandInputTooLarge = errors.New("hooks: command input too large")
+var errCommandInputTooLarge = errors.New("hooks: command input too large")
 
 // ErrInvalidCommandInput reports command material that cannot enter the
 // private JSON contract without silent text replacement.
-var ErrInvalidCommandInput = errors.New("hooks: invalid command input")
+var errInvalidCommandInput = errors.New("hooks: invalid command input")
 
 // ValidateConfigurationFileSize checks the encoded envelope before a loader
 // allocates or decodes one authored policy document.
@@ -130,12 +130,12 @@ func ValidateConfigurationFileSize(size int64) error {
 
 // ValidateHooksPerFile checks the complete entry count of one hooks.json.
 func ValidateHooksPerFile(count int) error {
-	if count < 0 || count > MaxHooksPerFile {
+	if count < 0 || count > maxHooksPerFile {
 		return fmt.Errorf(
 			"%w: file contains %d hooks, maximum %d",
 			ErrConfigurationTooLarge,
 			count,
-			MaxHooksPerFile,
+			maxHooksPerFile,
 		)
 	}
 	return nil
@@ -173,11 +173,11 @@ func (h Hook) Validate() error {
 	if !utf8.ValidString(h.Matcher) || !utf8.ValidString(h.Command) || !utf8.ValidString(h.Inject) {
 		return fmt.Errorf("%w: text must be valid UTF-8", ErrInvalidHook)
 	}
-	if len(h.Matcher) > MaxMatcherBytes {
-		return fmt.Errorf("%w: matcher exceeds %d bytes", ErrInvalidHook, MaxMatcherBytes)
+	if len(h.Matcher) > maxMatcherBytes {
+		return fmt.Errorf("%w: matcher exceeds %d bytes", ErrInvalidHook, maxMatcherBytes)
 	}
-	if len(h.Command) > MaxActionBytes || len(h.Inject) > MaxActionBytes {
-		return fmt.Errorf("%w: action exceeds %d bytes", ErrInvalidHook, MaxActionBytes)
+	if len(h.Command) > maxActionBytes || len(h.Inject) > maxActionBytes {
+		return fmt.Errorf("%w: action exceeds %d bytes", ErrInvalidHook, maxActionBytes)
 	}
 	if h.TimeoutMillis < 0 || h.TimeoutMillis > MaxTimeoutMillis {
 		return fmt.Errorf(
@@ -228,12 +228,12 @@ type ToolInput struct {
 func (i Input) CommandProjection() (Input, error) {
 	out := i
 	out.Prompt, out.PromptTruncated = boundedCommandText(i.Prompt, MaxPromptBytes, i.PromptTruncated)
-	out.Reason, _ = boundedCommandText(i.Reason, MaxReasonBytes, false)
+	out.Reason, _ = boundedCommandText(i.Reason, maxReasonBytes, false)
 	if i.Tool != nil {
 		if len(i.Tool.Arguments) > MaxArgumentsBytes {
 			return Input{}, fmt.Errorf(
 				"%w: tool arguments use %d bytes, maximum %d",
-				ErrCommandInputTooLarge,
+				errCommandInputTooLarge,
 				len(i.Tool.Arguments),
 				MaxArgumentsBytes,
 			)
@@ -241,7 +241,7 @@ func (i Input) CommandProjection() (Input, error) {
 		tool := *i.Tool
 		tool.Result, tool.ResultTruncated = boundedCommandText(
 			i.Tool.Result,
-			MaxResultBytes,
+			maxResultBytes,
 			i.Tool.ResultTruncated,
 		)
 		out.Tool = &tool
@@ -256,24 +256,24 @@ func (i Input) CommandProjection() (Input, error) {
 // bypass CommandProjection. It rejects lossy or oversized semantic input before
 // JSON encoding and process creation.
 func (i Input) ValidateCommandMaterial() error {
-	if len(i.Prompt) > MaxPromptBytes || len(i.Reason) > MaxReasonBytes {
-		return ErrCommandInputTooLarge
+	if len(i.Prompt) > MaxPromptBytes || len(i.Reason) > maxReasonBytes {
+		return errCommandInputTooLarge
 	}
 	values := []string{string(i.Event), i.SessionID, i.CWD, i.Prompt, i.Reason}
 	if i.Tool != nil {
-		if len(i.Tool.Arguments) > MaxArgumentsBytes || len(i.Tool.Result) > MaxResultBytes {
-			return ErrCommandInputTooLarge
+		if len(i.Tool.Arguments) > MaxArgumentsBytes || len(i.Tool.Result) > maxResultBytes {
+			return errCommandInputTooLarge
 		}
 		values = append(values, i.Tool.Name, i.Tool.Arguments, i.Tool.Result)
 	}
 	if i.SessionID != "" {
-		if err := resourceid.ValidateSession(i.SessionID); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidCommandInput, err)
+		if err := identity.ValidateSession(i.SessionID); err != nil {
+			return fmt.Errorf("%w: %v", errInvalidCommandInput, err)
 		}
 	}
 	for _, value := range values {
 		if !utf8.ValidString(value) {
-			return fmt.Errorf("%w: material must be valid UTF-8", ErrInvalidCommandInput)
+			return fmt.Errorf("%w: material must be valid UTF-8", errInvalidCommandInput)
 		}
 	}
 	return nil

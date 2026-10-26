@@ -14,7 +14,7 @@ import (
 
 	runapplication "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -57,9 +57,9 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	opened, err := connection.StartRun(ctx, prompt.StartRun{
-		SessionID: session.ID, Message: prompt.Message{Text: "delegate approval probe"},
-		Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
+	opened, err := connection.StartRun(ctx, authoring.StartRun{
+		SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+		Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -124,9 +124,9 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	if err := runapplication.Execute(ctx, runapplication.Invocation{
-		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard, ApproveAll: true, Start: prompt.StartRun{
-			SessionID: session.ID, Message: prompt.Message{Text: "delegate approval probe"},
-			Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
+		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard, ApproveAll: true, Start: authoring.StartRun{
+			SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+			Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 		},
 	}); err != nil {
 		t.Fatal(err)
@@ -169,7 +169,7 @@ type interruptedRootStream struct {
 	resumptions   int
 }
 
-func (r *interruptedRootStream) StartRun(ctx context.Context, request prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *interruptedRootStream) StartRun(ctx context.Context, request authoring.StartRun) (conversation.SegmentStream, error) {
 	stream, err := r.Connection.StartRun(ctx, request)
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -202,9 +202,9 @@ func (r *interruptedRootStream) ResumeRun(ctx context.Context, request conversat
 
 type recoveryRenderer struct{ events []conversation.RunEvent }
 
-func (*recoveryRenderer) Begin(conversation.Run, prompt.RunOptions) error { return nil }
-func (*recoveryRenderer) Reconcile(conversation.SessionSnapshot) error    { return nil }
-func (*recoveryRenderer) Close() error                                    { return nil }
+func (*recoveryRenderer) Begin(conversation.Run, authoring.RunOptions) error { return nil }
+func (*recoveryRenderer) Reconcile(conversation.SessionSnapshot) error       { return nil }
+func (*recoveryRenderer) Close() error                                       { return nil }
 func (r *recoveryRenderer) Render(event conversation.RunEvent) error {
 	r.events = append(r.events, event.Clone())
 	return nil

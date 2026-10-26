@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 // PlanServices supplies boundary reads and aggregate replacement decisions.
 type PlanServices struct {
-	Boundaries   PlanBoundaries
+	Boundaries   planBoundaries
 	Replacements *PlanCoordinator
 }
 
@@ -34,7 +34,7 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 	if runID == "" {
 		return newPlanBoundary(nil, true)
 	}
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
 	}
 	steps, recorded, err := c.plan.Boundaries.Boundary(ctx, runID)

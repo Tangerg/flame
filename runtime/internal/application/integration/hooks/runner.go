@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/samber/lo"
 )
 
 // DefaultTimeout bounds a single hook command — a hook must not wedge execution
 // it gates. A hook that exceeds it is killed and treated as a non-blocking error
 // (the action proceeds), so a hung hook degrades to "no hook" rather than a
 // frozen agent.
-const DefaultTimeout = 30 * time.Second
+const defaultTimeout = 30 * time.Second
 
 // blockExitCode is the one non-zero exit a hook uses to BLOCK the action
 // (stderr becomes the reason fed to the model). Every other non-zero exit is a
@@ -52,20 +52,20 @@ const (
 	// CommandAllow lets a hook inject or rewrite while
 	// allowing the operation to continue.
 	CommandAllow CommandVerdict = "allow"
-	CommandDeny  CommandVerdict = "deny"
-	CommandAsk   CommandVerdict = "ask"
+	commandDeny  CommandVerdict = "deny"
+	commandAsk   CommandVerdict = "ask"
 )
 
 // Valid reports whether c is one supported hook command decision.
 func (c CommandVerdict) Valid() bool {
-	return c == CommandAllow || c == CommandDeny || c == CommandAsk
+	return c == CommandAllow || c == commandDeny || c == commandAsk
 }
 
 func (c CommandVerdict) domain() domain.Verdict {
 	switch c {
-	case CommandDeny:
+	case commandDeny:
 		return domain.VerdictBlock
-	case CommandAsk:
+	case commandAsk:
 		return domain.VerdictAsk
 	default:
 		return domain.VerdictAllow
@@ -83,14 +83,14 @@ type CommandDecision struct {
 
 // CommandRunner executes hook commands with borrowed request data. It neither
 // mutates the request nor retains it after the synchronous call returns.
-type CommandRunner interface {
+type commandRunner interface {
 	RunHookCommand(ctx context.Context, req CommandRequest) CommandResult
 }
 
 // Runner executes a trust-filtered hook set for one event and folds their
 // outcomes into a single Decision.
 type Runner struct {
-	commands CommandRunner
+	commands commandRunner
 	// onError, when set, is called for a hook that failed to run (spawn error,
 	// timeout, or a non-blocking non-zero exit). The caller owns diagnostics;
 	// lifecycle hooks can run without an active tracing span.
@@ -100,8 +100,8 @@ type Runner struct {
 // NewRunner builds a Runner. commands executes imperative hooks; onError may be
 // nil. A nil commands runner means declarative inject hooks still work and
 // command hooks degrade to non-blocking errors.
-func NewRunner(commands CommandRunner, onError func(ctx context.Context, source string, err error)) *Runner {
-	if dependency.Missing(commands) {
+func NewRunner(commands commandRunner, onError func(ctx context.Context, source string, err error)) *Runner {
+	if lo.IsNil(commands) {
 		commands = nil
 	}
 	return &Runner{commands: commands, onError: onError}
@@ -146,7 +146,7 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 		r.fail(ctx, h.Source, errors.New("hook command runner is not configured"))
 		return
 	}
-	timeout := DefaultTimeout
+	timeout := defaultTimeout
 	if h.TimeoutMillis > 0 {
 		timeout = time.Duration(h.TimeoutMillis) * time.Millisecond
 	}

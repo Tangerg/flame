@@ -6,9 +6,9 @@ import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { t } from "@/lib/i18n/index";
 import { failureText } from "@/lib/rpcErrors";
-import { getActiveSessionId, selectAgentSession } from "@/features/agent/public/session";
+
 import { invalidateAgentSessions } from "@/features/agent/public/session";
-import { rehydrateSessionView } from "@/features/agent/public/session";
+
 import { runtimeCapability } from "@/features/connection/public/capabilities";
 import { notifyError } from "@/features/notifications/public/notifications";
 import { toast } from "sonner";
@@ -43,7 +43,7 @@ export function createConversationArchive(agentAccess: AgentAccess, runtimeAcces
 
     async export(format: ExportFormat): Promise<void> {
       try {
-        const sessionId = getActiveSessionId(agentAccess);
+        const sessionId = agentAccess.getActiveSessionId();
         if (!sessionId) return;
         if (!runtimeCapability(runtimeAccess, "sessionExport")) {
           notifyError(t("convExport.unsupported"), { source: "session" });
@@ -65,7 +65,7 @@ export function createConversationArchive(agentAccess: AgentAccess, runtimeAcces
 
     async exportTrajectory(): Promise<void> {
       try {
-        const sessionId = getActiveSessionId(agentAccess);
+        const sessionId = agentAccess.getActiveSessionId();
         if (!sessionId) return;
         if (!runtimeCapability(runtimeAccess, "sessionExport")) {
           notifyError(t("convExport.unsupported"), { source: "session" });
@@ -127,10 +127,10 @@ export function createConversationArchive(agentAccess: AgentAccess, runtimeAcces
         }
 
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
-        await this.#cohort.run(() => rehydrateSessionView(agentAccess, session.id));
+        await this.#cohort.run(() => agentAccess.rehydrateSessionView(session.id));
         await this.#repairSessionList();
         this.#cohort.assertCurrent();
-        selectAgentSession(agentAccess, session.id);
+        agentAccess.selectAgentSession(session.id);
         toast.success(
           t("convExport.importSuccess", { title: session.title?.trim() || t("session.untitled") }),
         );

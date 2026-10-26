@@ -6,18 +6,16 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/go-sdk/jsonrpc"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-func testID(value string) transport.ID {
+func testID(value string) jsonrpc.ID {
 	id, _ := jsonrpc.MakeID(value)
 	return id
 }
@@ -29,7 +27,7 @@ func TestMetadataExtractionCannotNormalizeInvalidParameters(t *testing.T) {
 		`{"_meta":{"ProtocolVersion":"ignored"},"provider":"deepseek"}`,
 		`{"_meta":{},"provider":"deepseek","APIKEY":null}`,
 	} {
-		request := &transport.Request{ID: testID("strict"), Method: "providers.update", Params: jsontext.Value(raw)}
+		request := &jsonrpc.Request{ID: testID("strict"), Method: "providers.update", Params: jsontext.Value(raw)}
 		failure := dispatchMetadataFailure(t, request)
 		if failure == nil || failure.Code != codeInvalidParams {
 			t.Fatalf("invalid parameters accepted: %q: %+v", raw, failure)
@@ -38,7 +36,7 @@ func TestMetadataExtractionCannotNormalizeInvalidParameters(t *testing.T) {
 }
 
 func TestExtractRequestMetaStripsTransportMember(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
 		Params: jsontext.Value(fmt.Sprintf(`{
@@ -74,7 +72,7 @@ func TestExtractRequestMetaStripsTransportMember(t *testing.T) {
 }
 
 func TestExtractRequestMetaRejectsMalformedMeta(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
 		Params: jsontext.Value(`{"_meta":"bad","runId":"run_1"}`),
@@ -90,7 +88,7 @@ func TestExtractRequestMetaRejectsMalformedMeta(t *testing.T) {
 }
 
 func TestExtractRequestMetaRejectsNullMeta(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
 		Params: jsontext.Value(`{"_meta":null,"runId":"run_1"}`),
@@ -113,7 +111,7 @@ func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 		"not-a-date",
 	} {
 		t.Run(version, func(t *testing.T) {
-			req := &transport.Request{
+			req := &jsonrpc.Request{
 				ID:     testID("1"),
 				Method: "runs.cancel",
 				Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"runId":"run_1"}`, version)),
@@ -146,7 +144,7 @@ func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 }
 
 func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "unknown.method",
 		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.Version)),
@@ -164,7 +162,7 @@ func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
 // receiving — and a runtime that honored it would break the guarantee that
 // discarding every ephemeral event still converges.
 func TestDispatchRefusesANonSuppressibleEvent(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
 		Params: jsontext.Value(`{
@@ -207,7 +205,7 @@ func TestDispatchValidatesMetadataWireShape(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			req := &transport.Request{
+			req := &jsonrpc.Request{
 				ID:     testID("1"),
 				Method: "runs.cancel",
 				Params: jsontext.Value(`{"_meta":` + test.meta + `,"runId":"run_1"}`),
@@ -232,7 +230,7 @@ func TestDispatchValidatesMetadataWireShape(t *testing.T) {
 }
 
 func TestExtractRequestMetaRejectsUnknownFields(t *testing.T) {
-	req := &transport.Request{
+	req := &jsonrpc.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
 		Params: jsontext.Value(`{"_meta":{"capabilities":{}},"runId":"run_1"}`),
@@ -251,13 +249,13 @@ func TestExtractRequestMetaRejectsUnknownFields(t *testing.T) {
 	}
 }
 
-func dispatchMetadataFailure(t *testing.T, request *transport.Request) *transport.Error {
+func dispatchMetadataFailure(t *testing.T, request *jsonrpc.Request) *jsonrpc.Error {
 	t.Helper()
 	result := newTestRouter(t, nil).Dispatch(t.Context(), request, delivery.Options{})
 	if result.Response == nil {
 		return nil
 	}
-	rpcError, _ := errors.AsType[*transport.Error](result.Response.Error)
+	rpcError, _ := errors.AsType[*jsonrpc.Error](result.Response.Error)
 	return rpcError
 }
 
@@ -276,7 +274,7 @@ func TestEnvelopeMetadataReplacesCallerAndContextMetadata(t *testing.T) {
 				raw = fmt.Sprintf(`{"sinceDays":7,"_meta":{"protocolVersion":%q,"clientInfo":{"name":"envelope","version":"1"}}}`, protocol.Version)
 				expected = protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientInfo: &protocol.ClientInfo{Name: "envelope", Version: "1"}}
 			}
-			result := router.Dispatch(ctx, &transport.Request{ID: testID("metadata"), Method: "usage.summary", Params: jsontext.Value(raw)}, delivery.Options{RequestMeta: supplied})
+			result := router.Dispatch(ctx, &jsonrpc.Request{ID: testID("metadata"), Method: "usage.summary", Params: jsontext.Value(raw)}, delivery.Options{RequestMeta: supplied})
 			if result.Response == nil || result.Response.Error != nil {
 				t.Fatalf("dispatch failed: %+v", result.Response)
 			}

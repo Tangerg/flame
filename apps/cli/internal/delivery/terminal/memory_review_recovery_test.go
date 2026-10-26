@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 )
 
@@ -20,11 +22,11 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits, err := replay.NewCapability("original-store", time.Hour)
+	limits, err := authoring.NewReplayCapability("original-store", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := mutation.NewReplayPolicy(limits, time.Now)
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: limits}, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,7 @@ type unconfirmedMemoryReview struct {
 	cancel context.CancelFunc
 }
 
-func (c *unconfirmedMemoryReview) CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (c *unconfirmedMemoryReview) CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	c.cancel()
 	return nil, conversation.ErrDisconnected
 }

@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -23,7 +22,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	putTestSession(t, rt)
 
 	createdAt := time.Date(2026, 8, 14, 2, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
@@ -34,7 +33,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark(),
-	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
+	}), "seg_waiting", runs.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	question := transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
@@ -56,7 +55,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err := rt.openPending(t.Context(), t, "ses_1", serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting",
 		[]transcript.Interrupt{{
-			ItemID: "item_question", Kind: interrupt.Question, Question: &question,
+			ItemID: "item_question", Kind: run.InterruptQuestion, Question: &question,
 		}},
 		createdAt,
 	)); err != nil {
@@ -130,7 +129,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 3, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
@@ -141,7 +140,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark(),
-	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
+	}), "seg_waiting", runs.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -172,7 +171,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 4, 0, 0, 0, time.UTC)
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
@@ -183,7 +182,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark(),
-	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
+	}), "seg_waiting", runs.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	if err := rt.openPendingWithoutItems(t.Context(), t, "ses_1", serverPending(

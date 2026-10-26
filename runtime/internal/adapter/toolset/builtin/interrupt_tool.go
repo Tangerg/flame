@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	corejsonschema "github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -22,14 +22,14 @@ type interruptTool[Args any] struct {
 	definition chat.ToolDefinition
 	interrupt  runs.InterruptFunc
 	plan       func(context.Context, Args) (runs.Interrupt, string, error)
-	resolve    func(context.Context, Args, interrupt.Resolution) (string, error)
+	resolve    func(context.Context, Args, run.InterruptResolution) (string, error)
 }
 
 func newInterruptTool[Args any](
 	config toolcontract.FuncConfig,
 	interrupt runs.InterruptFunc,
 	plan func(context.Context, Args) (runs.Interrupt, string, error),
-	resolve func(context.Context, Args, interrupt.Resolution) (string, error),
+	resolve func(context.Context, Args, run.InterruptResolution) (string, error),
 ) (toolcontract.Tool, error) {
 	schema, err := corejsonschema.For[Args]()
 	if err != nil {

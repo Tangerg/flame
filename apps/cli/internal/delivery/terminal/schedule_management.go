@@ -39,7 +39,7 @@ func schedulesDocument(schedules []schedule.CreateV1Output) readerDocument {
 	if len(schedules) == 0 {
 		return paragraphDocument("Scheduled runs", "none configured", []string{"No scheduled runs are configured."})
 	}
-	sections := make([]ToolSection, 0, len(schedules)*2)
+	sections := make([]toolSection, 0, len(schedules)*2)
 	for _, scheduled := range schedules {
 		title := scheduled.Title
 		if title == "" {
@@ -72,8 +72,8 @@ func schedulesDocument(schedules []schedule.CreateV1Output) readerDocument {
 			metadata = append(metadata, "last     "+scheduled.LastRunAt.Format(time.RFC3339))
 		}
 		sections = append(sections,
-			ToolSection{Title: title, Style: toolSectionParagraph, Text: scheduled.Instructions, Links: true},
-			ToolSection{Title: "Configuration", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
+			toolSection{Title: title, Style: toolSectionParagraph, Text: scheduled.Instructions, Links: true},
+			toolSection{Title: "Configuration", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
 		)
 	}
 	return readerDocument{Title: "Scheduled runs", Detail: fmt.Sprintf("%d configured", len(schedules)), Sections: sections}

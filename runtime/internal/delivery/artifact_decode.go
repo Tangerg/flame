@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
@@ -70,13 +69,13 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	}
 	toolResults := make([]sessions.PortableToolResult, 0, len(art.ToolResults))
 	for index, encoded := range art.ToolResults {
-		id, parseIDErr := toolresult.ParseID(encoded.ID)
+		id, parseIDErr := transcript.ParseToolResultID(encoded.ID)
 		if parseIDErr != nil {
 			return sessions.PortableSnapshot{}, invalidArtifact(fmt.Sprintf("artifact.toolResults[%d].id", index), "%v", parseIDErr)
 		}
 		toolResults = append(toolResults, sessions.PortableToolResult{
 			ItemID: encoded.ItemID,
-			Blob: toolresult.Blob{
+			Blob: transcript.ToolResultBlob{
 				ID: id, SessionID: art.Session.ID, Body: encoded.Body, CreatedAt: encoded.CreatedAt,
 			},
 		})

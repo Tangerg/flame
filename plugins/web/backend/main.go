@@ -9,17 +9,16 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func configuredKey(name string) (capture.APIKey, error) {
+func configuredKey(name string) (apiKey, error) {
 	value, present := os.LookupEnv(name)
 	if !present {
-		return capture.NewAPIKey(nil)
+		return newAPIKey(nil)
 	}
-	return capture.NewAPIKey(&value)
+	return newAPIKey(&value)
 }
 
 func run(ctx context.Context) (err error) {
@@ -35,7 +34,7 @@ func run(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	lease, err := advisorylock.AcquireDirectory(ctx, data)
+	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
 	if err != nil {
 		return err
 	}

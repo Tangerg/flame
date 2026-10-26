@@ -17,8 +17,8 @@ func TestHookValidate(t *testing.T) {
 		{
 			name: "exact resource boundary",
 			hook: Hook{
-				Event: PreToolUse, Matcher: strings.Repeat("x", MaxMatcherBytes),
-				Command: strings.Repeat("x", MaxActionBytes), TimeoutMillis: MaxTimeoutMillis,
+				Event: PreToolUse, Matcher: strings.Repeat("x", maxMatcherBytes),
+				Command: strings.Repeat("x", maxActionBytes), TimeoutMillis: MaxTimeoutMillis,
 			},
 			ok: true,
 		},
@@ -52,10 +52,10 @@ func TestHookConfigurationCollectionEnvelope(t *testing.T) {
 	if err := ValidateConfigurationFileSize(MaxConfigurationFileBytes + 1); !errors.Is(err, ErrConfigurationTooLarge) {
 		t.Fatalf("oversized file error = %v, want ErrConfigurationTooLarge", err)
 	}
-	if err := ValidateHooksPerFile(MaxHooksPerFile); err != nil {
+	if err := ValidateHooksPerFile(maxHooksPerFile); err != nil {
 		t.Fatalf("exact file hook count: %v", err)
 	}
-	if err := ValidateHooksPerFile(MaxHooksPerFile + 1); !errors.Is(err, ErrConfigurationTooLarge) {
+	if err := ValidateHooksPerFile(maxHooksPerFile + 1); !errors.Is(err, ErrConfigurationTooLarge) {
 		t.Fatalf("overfull file error = %v, want ErrConfigurationTooLarge", err)
 	}
 	if err := ValidateHookCascade(MaxHooksPerCascade); err != nil {
@@ -102,10 +102,10 @@ func TestCommandProjectionBoundsDynamicMaterialWithoutMutatingInput(t *testing.T
 	input := Input{
 		Event:  PostToolUse,
 		Prompt: strings.Repeat("p", MaxPromptBytes+1),
-		Reason: strings.Repeat("e", MaxReasonBytes+1),
+		Reason: strings.Repeat("e", maxReasonBytes+1),
 		Tool: &ToolInput{
 			Name: "shell", Arguments: `{"command":"go test ./..."}`,
-			Result: strings.Repeat("r", MaxResultBytes+1),
+			Result: strings.Repeat("r", maxResultBytes+1),
 		},
 	}
 
@@ -116,17 +116,17 @@ func TestCommandProjectionBoundsDynamicMaterialWithoutMutatingInput(t *testing.T
 	if len(projected.Prompt) != MaxPromptBytes || !projected.PromptTruncated {
 		t.Fatalf("prompt = %d bytes truncated=%v", len(projected.Prompt), projected.PromptTruncated)
 	}
-	if len(projected.Reason) != MaxReasonBytes {
-		t.Fatalf("reason = %d bytes, want %d", len(projected.Reason), MaxReasonBytes)
+	if len(projected.Reason) != maxReasonBytes {
+		t.Fatalf("reason = %d bytes, want %d", len(projected.Reason), maxReasonBytes)
 	}
 	if projected.Tool == input.Tool ||
-		len(projected.Tool.Result) != MaxResultBytes ||
+		len(projected.Tool.Result) != maxResultBytes ||
 		!projected.Tool.ResultTruncated ||
 		projected.Tool.Arguments != input.Tool.Arguments {
 		t.Fatalf("projected tool = %+v", projected.Tool)
 	}
 	if len(input.Prompt) != MaxPromptBytes+1 ||
-		len(input.Tool.Result) != MaxResultBytes+1 {
+		len(input.Tool.Result) != maxResultBytes+1 {
 		t.Fatal("CommandProjection mutated its input")
 	}
 }
@@ -138,7 +138,7 @@ func TestCommandProjectionRejectsLossyToolArguments(t *testing.T) {
 			Name: "shell", Arguments: strings.Repeat("a", MaxArgumentsBytes+1),
 		},
 	}).CommandProjection()
-	if !errors.Is(err, ErrCommandInputTooLarge) {
+	if !errors.Is(err, errCommandInputTooLarge) {
 		t.Fatalf("CommandProjection error = %v, want ErrCommandInputTooLarge", err)
 	}
 
@@ -146,7 +146,7 @@ func TestCommandProjectionRejectsLossyToolArguments(t *testing.T) {
 		Event: PreToolUse,
 		Tool:  &ToolInput{Name: "shell", Arguments: "{\xff}"},
 	}).CommandProjection()
-	if !errors.Is(err, ErrInvalidCommandInput) {
+	if !errors.Is(err, errInvalidCommandInput) {
 		t.Fatalf("invalid UTF-8 arguments error = %v, want ErrInvalidCommandInput", err)
 	}
 }
@@ -154,14 +154,14 @@ func TestCommandProjectionRejectsLossyToolArguments(t *testing.T) {
 func TestValidateCommandMaterialAcceptsExactBoundaries(t *testing.T) {
 	tests := []Input{
 		{Event: UserPromptSubmit, Prompt: strings.Repeat("p", MaxPromptBytes)},
-		{Event: Stop, Reason: strings.Repeat("e", MaxReasonBytes)},
+		{Event: Stop, Reason: strings.Repeat("e", maxReasonBytes)},
 		{
 			Event: PreToolUse,
 			Tool:  &ToolInput{Name: "shell", Arguments: strings.Repeat("a", MaxArgumentsBytes)},
 		},
 		{
 			Event: PostToolUse,
-			Tool:  &ToolInput{Name: "shell", Result: strings.Repeat("r", MaxResultBytes)},
+			Tool:  &ToolInput{Name: "shell", Result: strings.Repeat("r", maxResultBytes)},
 		},
 	}
 	for index, input := range tests {
@@ -177,7 +177,7 @@ func TestValidateCommandMaterialRejectsCorruptResourceReferences(t *testing.T) {
 	for _, input := range []Input{
 		{Event: SessionStart, SessionID: "ses_ one"},
 	} {
-		if err := input.ValidateCommandMaterial(); !errors.Is(err, ErrInvalidCommandInput) {
+		if err := input.ValidateCommandMaterial(); !errors.Is(err, errInvalidCommandInput) {
 			t.Errorf("ValidateCommandMaterial(%+v) = %v, want ErrInvalidCommandInput", input, err)
 		}
 	}

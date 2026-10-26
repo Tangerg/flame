@@ -11,10 +11,9 @@ import (
 	"os"
 	"path/filepath"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 func readSkill(root *os.Root, dir string) ([]byte, bool, error) {
@@ -27,21 +26,21 @@ func readSkill(root *os.Root, dir string) ([]byte, bool, error) {
 }
 
 func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
-	file, opened, err := fileinput.OpenAt(root, path, skills.MaxAuthoredSkillDocumentBytes)
+	file, opened, err := filesystem.OpenFileAt(root, path, skills.MaxAuthoredSkillDocumentBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
-	if errors.Is(err, fileinput.ErrNotRegular) {
+	if errors.Is(err, filesystem.ErrNotRegular) {
 		return nil, false, fmt.Errorf("skill document admission: %w", err)
 	}
-	if errors.Is(err, fileinput.ErrTooLarge) {
+	if errors.Is(err, filesystem.ErrFileTooLarge) {
 		return nil, false, fmt.Errorf("%w: document admission: %w", skills.ErrDocumentTooLarge, err)
 	}
 	if err != nil {
 		return nil, false, err
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, skills.MaxAuthoredSkillDocumentBytes+1))
-	verifyErr := fileinput.VerifyAtVersion(file, opened, root, path)
+	verifyErr := filesystem.VerifyAtVersion(file, opened, root, path)
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
 		return nil, false, errors.Join(readErr, verifyErr, closeErr)

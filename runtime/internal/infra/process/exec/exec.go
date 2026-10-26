@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
@@ -70,12 +70,12 @@ type Shells struct {
 
 var (
 	// ErrShellsClosed reports a launch attempted after the shell owner shut down.
-	ErrShellsClosed = errors.New("exec: shells closed")
+	errShellsClosed = errors.New("exec: shells closed")
 	// ErrShellNotFound reports a command addressed outside this owner's shell set.
 	ErrShellNotFound = errors.New("exec: shell not found")
 	// ErrShellIdentityExhausted reports that one process-local Shells owner has
 	// consumed every addressable sequence value.
-	ErrShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
+	errShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
 )
 
 const (
@@ -209,7 +209,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	// StopWorkspace already skips.
 	treeIdentity := ""
 	if cwd != "" {
-		resolved, resolveErr := pathidentity.Resolve("", cwd)
+		resolved, resolveErr := filesystem.ResolvePath("", cwd)
 		if resolveErr != nil {
 			return "", fmt.Errorf("exec: resolve shell working tree %q: %w", cwd, resolveErr)
 		}
@@ -253,7 +253,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	if s.closed {
 		s.mu.Unlock()
 		cancel()
-		return "", ErrShellsClosed
+		return "", errShellsClosed
 	}
 	if cause := context.Cause(ctx); cause != nil {
 		s.mu.Unlock()
@@ -263,7 +263,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	if s.nextID == math.MaxUint64 {
 		s.mu.Unlock()
 		cancel()
-		return "", ErrShellIdentityExhausted
+		return "", errShellIdentityExhausted
 	}
 	s.nextID++
 	id := newShellID(s.epoch, s.nextID)
@@ -410,7 +410,7 @@ func (s *Shells) StopWorkspace(root string) error {
 	// Match on the same physical identity Launch stored: a Session restoring its
 	// tree names it the way that Session does, and a sibling Session's shell may
 	// hold the same tree through another spelling.
-	physicalRoot, err := pathidentity.Resolve("", root)
+	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return fmt.Errorf("exec: resolve workspace root %q: %w", root, err)
 	}
@@ -418,7 +418,7 @@ func (s *Shells) StopWorkspace(root string) error {
 		if sh.cwd == "" {
 			return false, nil
 		}
-		inside, err := pathidentity.Contains(physicalRoot, sh.cwd)
+		inside, err := filesystem.ContainsPath(physicalRoot, sh.cwd)
 		if err != nil {
 			return false, fmt.Errorf("exec: compare shell %q workspace: %w", id, err)
 		}

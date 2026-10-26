@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -9,7 +10,7 @@ prepareTestClient(() => {
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createFlameClient, MutationLookupError } from "@flame/runtime-client";
-import { createMutationPromise } from "@flame/runtime-client";
+
 import { type CallPluginRequest, type CallPluginResponse } from "@flame/runtime-client/wire";
 import { type ComponentContext } from "@flame/component-sdk";
 import { Memory } from "../../../plugins/memory/component/component";
@@ -64,7 +65,7 @@ async function openMemory() {
   const call = vi.spyOn(runtime.plugins, "call").mockImplementation((request, options) => {
     if (request.method === "flame.memory/list.v1") return original(request, options);
     const key = `memory-command-${++count}`;
-    return createMutationPromise((key) => settle(request, key), key);
+    return mutationResult((key) => settle(request, key), key);
   });
   const context: ComponentContext = {
     component: { ...VISUAL_MEMORY_BINDING, componentId: "memory" },

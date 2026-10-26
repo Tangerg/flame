@@ -17,7 +17,7 @@ afterEach(() => {
 describe("Session shared material contributors", () => {
   it("projects a bounded context into the winning Agent material value", () => {
     disposals.push(
-      testClient.agent.access.sharedMaterial.register<{ revision: number }>(
+      testClient.agent.dependencies.sharedMaterial.register<{ revision: number }>(
         "companion",
         (sessionId, value) => ({
           sessionId,
@@ -25,7 +25,7 @@ describe("Session shared material contributors", () => {
         }),
       ),
     );
-    const project = testClient.agent.access.sharedMaterial.stage("ses_1", { revision: 4 });
+    const project = testClient.agent.dependencies.sharedMaterial.stage("ses_1", { revision: 4 });
 
     expect(project({ plan: { revision: 2 } })).toEqual({
       plan: { revision: 2 },
@@ -34,11 +34,11 @@ describe("Session shared material contributors", () => {
   });
 
   it("withdraws a staged value when its plugin owner retires before commit", () => {
-    const dispose = testClient.agent.access.sharedMaterial.register<{ revision: number }>(
+    const dispose = testClient.agent.dependencies.sharedMaterial.register<{ revision: number }>(
       "companion",
       (_sessionId, value) => value,
     );
-    const project = testClient.agent.access.sharedMaterial.stage("ses_1", { revision: 4 });
+    const project = testClient.agent.dependencies.sharedMaterial.stage("ses_1", { revision: 4 });
 
     dispose();
 
@@ -46,10 +46,10 @@ describe("Session shared material contributors", () => {
   });
 
   it("rejects a second owner for the same material key", () => {
-    disposals.push(testClient.agent.access.sharedMaterial.register("companion", () => null));
+    disposals.push(testClient.agent.dependencies.sharedMaterial.register("companion", () => null));
 
-    expect(() => testClient.agent.access.sharedMaterial.register("companion", () => null)).toThrow(
-      'Agent Session shared material "companion" already has an owner',
-    );
+    expect(() =>
+      testClient.agent.dependencies.sharedMaterial.register("companion", () => null),
+    ).toThrow('Agent Session shared material "companion" already has an owner');
   });
 });

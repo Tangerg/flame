@@ -7,16 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 type TranscriptStore struct{ db *sql.DB }
 
-func NewTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
+func newTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
 
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
 	offloadID, err := transcriptOffloadID(item)
@@ -27,12 +26,12 @@ func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) 
 	if err != nil {
 		return fmt.Errorf("sqlite: encode history item: %w", err)
 	}
-	return sqlitebase.RunInTx(ctx, t.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
 		return t.appendItemRecord(ctx, item, payload, offloadID)
 	})
 }
 
-func transcriptOffloadID(item transcript.Item) (toolresult.ID, error) {
+func transcriptOffloadID(item transcript.Item) (transcript.ToolResultID, error) {
 	invocation, present := item.ToolInvocation()
 	if !present || invocation.Offload == nil {
 		return "", nil
@@ -53,9 +52,9 @@ func (t *TranscriptStore) appendItemRecord(
 	ctx context.Context,
 	item transcript.Item,
 	payload []byte,
-	offloadID toolresult.ID,
+	offloadID transcript.ToolResultID,
 ) error {
-	q := sqlitebase.Connection(ctx, t.db)
+	q := sqlite.Connection(ctx, t.db)
 	var sessionID, runID, currentPayload, currentOffloadID string
 	var occurredAt int64
 	err := q.QueryRowContext(ctx,
@@ -119,14 +118,14 @@ func (t *TranscriptStore) appendItemRecord(
 func (t *TranscriptStore) explainItemAppendError(
 	ctx context.Context,
 	sessionID, itemID string,
-	offloadID toolresult.ID,
+	offloadID transcript.ToolResultID,
 	appendErr error,
 ) error {
 	if offloadID == "" {
 		return fmt.Errorf("sqlite: append history item: %w", appendErr)
 	}
 	var ownerItemID string
-	ownerErr := sqlitebase.Connection(ctx, t.db).QueryRowContext(ctx,
+	ownerErr := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
 		`SELECT item_id FROM history_items WHERE session_id = ? AND offload_id = ?`, sessionID, offloadID,
 	).Scan(&ownerItemID)
 	if ownerErr == nil && ownerItemID != itemID {
@@ -141,10 +140,10 @@ func (t *TranscriptStore) explainItemAppendError(
 // Item resolves one durable transcript Item by its globally unique identity.
 // The returned value is the same fully hydrated projection as List/Page reads.
 func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.Item, bool, error) {
-	if err := resourceid.ValidateItem(itemID); err != nil {
+	if err := identity.ValidateItem(itemID); err != nil {
 		return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
 	}
-	row := sqlitebase.Connection(ctx, t.db).QueryRowContext(ctx,
+	row := sqlite.Connection(ctx, t.db).QueryRowContext(ctx,
 		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
 		        (SELECT body FROM tool_result_blobs WHERE id = history_items.offload_id
 		          AND session_id = history_items.session_id)
@@ -179,7 +178,7 @@ func (t *TranscriptStore) ReplaceItem(
 		(replacementHasTool && replacementTool.Offload != nil) {
 		return errors.New("sqlite: replace history item does not support offloaded tool results")
 	}
-	return sqlitebase.RunInTx(ctx, t.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
 		current, found, err := t.Item(ctx, expected.ID())
 		if err != nil {
 			return err
@@ -267,7 +266,7 @@ func storedTranscriptItem(
 	if rawOffloadID == "" {
 		return snapshot, nil
 	}
-	id, err := toolresult.ParseID(rawOffloadID)
+	id, err := transcript.ParseToolResultID(rawOffloadID)
 	if err != nil {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q offload: %w", itemID, err)
 	}
@@ -280,7 +279,7 @@ func storedTranscriptItem(
 	if _, ok := snapshot.Tool.Result.String(); !ok {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview string", itemID)
 	}
-	snapshot.Tool.Offload = &toolresult.Ref{ID: id}
+	snapshot.Tool.Offload = &transcript.ToolResultRef{ID: id}
 	return snapshot, nil
 }
 
@@ -293,8 +292,8 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 	if err := validateRunResource("delete history Run", runID); err != nil {
 		return err
 	}
-	return sqlitebase.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		q := sqlitebase.Connection(ctx, t.db)
+	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
+		q := sqlite.Connection(ctx, t.db)
 		if _, err := q.ExecContext(ctx,
 			`DELETE FROM tool_result_blobs
 			 WHERE session_id = ? AND id IN (
@@ -316,8 +315,8 @@ func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID string) e
 	if err := validateSessionResource("delete history Session", sessionID); err != nil {
 		return err
 	}
-	return sqlitebase.RunInTx(ctx, t.db, func(ctx context.Context) error {
-		q := sqlitebase.Connection(ctx, t.db)
+	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
+		q := sqlite.Connection(ctx, t.db)
 		if _, err := q.ExecContext(ctx, `DELETE FROM history_items WHERE session_id = ?`, sessionID); err != nil {
 			return fmt.Errorf("sqlite: delete session items: %w", err)
 		}
@@ -342,7 +341,7 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID string) ([]transcr
 // an offloaded Tool result keeps its preview instead of the joined body. A
 // portable Session snapshot captures this form beside the bodies it offloads.
 func (t *TranscriptStore) ListStored(ctx context.Context, sessionID string) ([]transcript.Item, error) {
-	rows, err := sqlitebase.Connection(ctx, t.db).QueryContext(ctx,
+	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx,
 		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id
 		   FROM history_items
 		  WHERE session_id = ?
@@ -452,7 +451,7 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 		query += ` LIMIT ?`
 		args = append(args, limit)
 	}
-	rows, err := sqlitebase.Connection(ctx, t.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, t.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list history items: %w", err)
 	}

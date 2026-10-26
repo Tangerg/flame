@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var ErrInvalidUsageSummaryPeriod = errors.New("sessions: usage summary period is invalid")
+var errInvalidUsageSummaryPeriod = errors.New("sessions: usage summary period is invalid")
 
 // UsageSummaryPeriod is either all durable history or the preceding positive number
 // of calendar days. Its zero value is the named all-time period; numeric zero
@@ -19,7 +19,7 @@ func AllTimeUsage() UsageSummaryPeriod { return UsageSummaryPeriod{} }
 
 func RecentUsageDays(days int) (UsageSummaryPeriod, error) {
 	if days <= 0 {
-		return UsageSummaryPeriod{}, ErrInvalidUsageSummaryPeriod
+		return UsageSummaryPeriod{}, errInvalidUsageSummaryPeriod
 	}
 	return UsageSummaryPeriod{recent: true, days: days}, nil
 }
@@ -29,12 +29,12 @@ func RecentUsageDays(days int) (UsageSummaryPeriod, error) {
 func (p UsageSummaryPeriod) Since(now time.Time) (time.Time, error) {
 	if !p.recent {
 		if p.days != 0 {
-			return time.Time{}, ErrInvalidUsageSummaryPeriod
+			return time.Time{}, errInvalidUsageSummaryPeriod
 		}
 		return time.Time{}, nil
 	}
 	if p.days <= 0 {
-		return time.Time{}, ErrInvalidUsageSummaryPeriod
+		return time.Time{}, errInvalidUsageSummaryPeriod
 	}
 	return now.UTC().AddDate(0, 0, -p.days), nil
 }

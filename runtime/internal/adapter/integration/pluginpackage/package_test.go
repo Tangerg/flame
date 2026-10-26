@@ -6,7 +6,6 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,18 +13,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	flameextension "github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 type emptySelections struct{ plugins.SelectionStore }
@@ -197,7 +194,7 @@ func TestInvalidContributionMapRefusesFlameEntriesAndPreservesPortableServers(t 
 		t.Run(raw, func(t *testing.T) {
 			releases := testReleases(t)
 			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}],"contributes":` + raw + ``),
 				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
 			}))
@@ -217,7 +214,7 @@ func TestInvalidContributionMapRefusesFlameEntriesAndPreservesPortableServers(t 
 func TestUnsupportedFlameFieldIsReportedNotAdmitted(t *testing.T) {
 	releases := testReleases(t)
 	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"requests":[{"capability":"tools.invoke","targets":["backend/read"]}],"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}]`),
 		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
 	}))
@@ -244,7 +241,7 @@ func TestNullCannotBecomeAnImplicitDeclarationDefault(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			releases := testReleases(t)
 			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/declaration.json": flameDeclaration(`` + test.extension + ``),
 				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + test.mcp + `,"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
 			}))
@@ -264,7 +261,7 @@ func TestNullCannotBecomeAnImplicitDeclarationDefault(t *testing.T) {
 func TestOptionalEmptyInputsReachTheirDeclaredBindings(t *testing.T) {
 	releases := testReleases(t)
 	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"environment","server":"process","target":"env","key":"OPTION"},{"id":"header","server":"remote","target":"header","key":"X-Option","secret":true}]`),
 		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"process":{"type":"stdio","command":"fixture"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
 	})
@@ -357,7 +354,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := users.Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: user, Transport: mcpserver.TransportStdio, Command: "fixture"}); err != nil {
 		t.Fatal(err)
 	}
-	source := writePackage(t, map[string]string{"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`, "io.github.tangerg.flame/declaration.json": flameDeclaration(""), "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
+	source := writePackage(t, map[string]string{"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`, "io.github.tangerg.flame/declaration.json": flameDeclaration(""), "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
 	release, err := publishPackage(t.Context(), releases, source)
 	if err != nil {
 		t.Fatal(err)
@@ -496,7 +493,7 @@ func TestMaterializationFreezesBytesAndDetectsTampering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
+	got, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
 	if err != nil || string(got) != "original" {
 		t.Fatalf("immutable resource = %q, %v", got, err)
 	}
@@ -508,7 +505,7 @@ func TestMaterializationFreezesBytesAndDetectsTampering(t *testing.T) {
 	if err = os.WriteFile(file, []byte("tampered"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes); err == nil {
+	if _, err = r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes); err == nil {
 		t.Fatal("served a changed content-addressed resource")
 	}
 }
@@ -532,7 +529,7 @@ func TestColdResourceReadAfterAdmissionPressure(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	content, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
+	content, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
 	if err != nil || string(content) != "original" {
 		t.Fatalf("cold immutable resource = %q, %v", content, err)
 	}
@@ -583,11 +580,11 @@ func TestVerifiedResourceRetainsItsDirectoryAuthority(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "notes.txt"), []byte("replacement"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	content, err := read(t.Context(), verified, "notes.txt", MaxPackageBytes)
+	content, err := read(t.Context(), verified, "notes.txt", maxPackageBytes)
 	if err != nil || string(content) != "original" {
 		t.Fatalf("verified resource = %q, %v; want original directory", content, err)
 	}
-	if _, err := r.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("replacement release admission = %v, want unavailable", err)
 	}
 }
@@ -745,7 +742,7 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"tenant","server":"backend","target":"header","key":"x-tenant","secret":true}]`),
 		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp","headers":{"X-Tenant":"fixed"}}}}`,
 	})
@@ -772,7 +769,7 @@ func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 func TestOversizedFileAdmissionRetiresStaging(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "oversized": ""})
-	if err := os.Truncate(filepath.Join(source, "oversized"), MaxPackageBytes+1); err != nil {
+	if err := os.Truncate(filepath.Join(source, "oversized"), maxPackageBytes+1); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := publishPackage(t.Context(), r, source); err == nil {
@@ -786,7 +783,7 @@ func TestOversizedFileAdmissionRetiresStaging(t *testing.T) {
 
 func TestRetiredViewsDeclarationIsRefused(t *testing.T) {
 	r := testReleases(t)
-	manifest := `{"$schema":"` + ManifestSchema + `","name":"test.retired","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+	manifest := `{"$schema":"` + manifestSchema + `","name":"test.retired","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
 	source := writePackage(t, map[string]string{
 		"plugin.json": manifest,
 		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"contributes":{"views":[{"id":"schedules","type":"schedules","entry":"view.html"}]}`),
@@ -809,7 +806,7 @@ func TestInvalidRendererDoesNotWithdrawIndependentContributions(t *testing.T) {
 	} {
 		t.Run(renderer, func(t *testing.T) {
 			r := testReleases(t)
-			manifest := `{"$schema":"` + ManifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+			manifest := `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
 			declaration := flameDeclaration(`"contributes":{"themes":[{"id":"healthy","title":"Healthy","scheme":"dark","colors":{"background":"#101010"}}]},"components":[` + renderer + `]`)
 			source := writePackage(t, map[string]string{"plugin.json": manifest, "io.github.tangerg.flame/declaration.json": declaration, "io.github.tangerg.flame/ui/index.html": "<html></html>"})
 			release, err := publishPackage(t.Context(), r, source)
@@ -900,7 +897,7 @@ func mustServerName(t *testing.T, raw string) mcpserver.ServerName {
 	return name
 }
 
-func mustInstallationOrigin(t *testing.T, id resourceid.InstallationID) mcpserver.Origin {
+func mustInstallationOrigin(t *testing.T, id identity.InstallationID) mcpserver.Origin {
 	t.Helper()
 	origin, err := mcpserver.InstallationOrigin(id)
 	if err != nil {
@@ -952,5 +949,5 @@ func flameDeclaration(fields string) string {
 	if fields != "" {
 		fields = "," + fields
 	}
-	return `{"protocol":"` + capability.Protocol + `"` + fields + `}`
+	return `{"protocol":"` + flameextension.Protocol + `"` + fields + `}`
 }

@@ -9,32 +9,22 @@ import (
 )
 
 func manifest(id string, setup func(*Scope) error) Plugin {
-	return Plugin{ID: id, Version: "1.0.0", APIVersion: HostAPIVersion, Setup: setup}
+	return Plugin{ID: id, Version: "1.0.0", APIVersion: HostAPIVersion, Capabilities: []Capability{CommandsCapability}, Setup: setup}
 }
 
-func TestCapabilityProtectedPointDefaultsRestrictedPluginsToDeny(t *testing.T) {
-	point := NewCapabilityKeyedPoint("test.command", Capability("commands"), func(value format) string { return value.ID })
-	registry := new(Registry)
-	denied := manifest("test.denied", func(scope *Scope) error {
-		_, err := scope.Contribute(point, format{ID: "hello"}, Contribution{})
-		return err
-	})
-	if _, err := Load(registry, denied); err == nil {
-		t.Fatal("restricted plugin contributed without declaring the capability")
+func TestCommandRegistrationRequiresDeclaredCapability(t *testing.T) {
+	host := NewHost()
+	denied := manifest("test.denied", func(scope *Scope) error { return scope.ContributeCommand(testCommand("hello")) })
+	denied.Capabilities = nil
+	results, err := host.Activate([]Plugin{denied})
+	if err != nil || len(results) != 1 || results[0].Phase != PluginFailed || len(host.Commands()) != 0 {
+		t.Fatalf("undeclared command capability = %+v, %v", results, err)
 	}
-
-	allowed := manifest("test.allowed", func(scope *Scope) error {
-		_, err := scope.Contribute(point, format{ID: "hello"}, Contribution{})
-		return err
-	})
-	allowed.Capabilities = []Capability{"commands"}
-	loaded, err := Load(registry, allowed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = loaded.Dispose() }()
-	if values := registry.Values(point); len(values) != 1 || values[0].ID != "hello" {
-		t.Fatalf("values = %+v", values)
+	allowed := NewHost()
+	t.Cleanup(func() { _ = allowed.Close() })
+	results, err = allowed.Activate([]Plugin{manifest("test.allowed", func(scope *Scope) error { return scope.ContributeCommand(testCommand("hello")) })})
+	if err != nil || !allLoaded(results) || len(allowed.Commands()) != 1 {
+		t.Fatalf("declared command capability = %+v, %v", results, err)
 	}
 }
 
@@ -50,7 +40,8 @@ func TestManifestValidationRejectsIncompatibleOrAmbiguousMetadata(t *testing.T) 
 		{"self dependency", func(plugin *Plugin) { plugin.Requires = []string{plugin.ID} }},
 		{"noncanonical dependency", func(plugin *Plugin) { plugin.Requires = []string{" test.base "} }},
 		{"duplicate dependency", func(plugin *Plugin) { plugin.Requires = []string{"test.base", "test.base"} }},
-		{"duplicate capability", func(plugin *Plugin) { plugin.Capabilities = []Capability{"commands", "commands"} }},
+		{"unsupported capability", func(plugin *Plugin) { plugin.Capabilities = []Capability{"terminal.presentation"} }},
+		{"duplicate capability", func(plugin *Plugin) { plugin.Capabilities = []Capability{CommandsCapability, CommandsCapability} }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -62,16 +53,13 @@ func TestManifestValidationRejectsIncompatibleOrAmbiguousMetadata(t *testing.T) 
 		})
 	}
 	invalid := Plugin{ID: "test.partial", Setup: func(*Scope) error { return nil }}
-	if _, err := Load(new(Registry), invalid); err == nil {
+	if _, err := load(new(commandRegistry), invalid); err == nil {
 		t.Fatal("Load bypassed full manifest validation")
 	}
 }
 
 func TestHostRejectsDuplicatePluginIdentity(t *testing.T) {
-	host, err := NewHost(new(Registry))
-	if err != nil {
-		t.Fatal(err)
-	}
+	host := NewHost()
 	defer func() { _ = host.Close() }()
 	plugin := manifest("test.duplicate", func(*Scope) error { return nil })
 	results, err := host.Activate([]Plugin{plugin, plugin})
@@ -97,9 +85,9 @@ func (f failingSource) Discover(context.Context) (SourceResult, error) {
 func TestDiscoveryPreservesSourceOrderAndIsolatesFailures(t *testing.T) {
 	want := errors.New("offline")
 	result, err := Discover(t.Context(),
-		StaticSource{Name: "first", Plugins: []Plugin{manifest("test.first", func(*Scope) error { return nil })}},
+		testSource{Name: "first", Plugins: []Plugin{manifest("test.first", func(*Scope) error { return nil })}},
 		failingSource{err: want},
-		StaticSource{Name: "last", Plugins: []Plugin{manifest("test.last", func(*Scope) error { return nil })}},
+		testSource{Name: "last", Plugins: []Plugin{manifest("test.last", func(*Scope) error { return nil })}},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -114,18 +102,14 @@ func TestDiscoveryPreservesSourceOrderAndIsolatesFailures(t *testing.T) {
 }
 
 func TestHostOrdersDependenciesAndReloadsTheirClosure(t *testing.T) {
-	registry := new(Registry)
-	host, err := NewHost(registry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	host := NewHost()
+	registry := host.registry
 	defer func() { _ = host.Close() }()
-	point := newTestMultiPoint[string]("test.lifecycle")
 	var lifecycle []string
 	results, err := host.Activate([]Plugin{
-		lifecyclePlugin(point, &lifecycle, "test.dependent", "test.base"),
-		lifecyclePlugin(point, &lifecycle, "test.independent"),
-		lifecyclePlugin(point, &lifecycle, "test.base"),
+		lifecyclePlugin(&lifecycle, "test.dependent", "test.base"),
+		lifecyclePlugin(&lifecycle, "test.independent"),
+		lifecyclePlugin(&lifecycle, "test.base"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +129,7 @@ func TestHostOrdersDependenciesAndReloadsTheirClosure(t *testing.T) {
 		"unload:test.dependent", "unload:test.base",
 		"load:test.base", "load:test.dependent",
 	})
-	if values := registry.Values(point); len(values) != 3 {
+	if values := registry.commands(); len(values) != 3 {
 		t.Fatalf("reload left %d contributions, want 3", len(values))
 	}
 }
@@ -166,17 +150,14 @@ func requireAffected(t *testing.T, host *Host, pluginID string, want []string) {
 	requireLifecycle(t, got, want)
 }
 
-func lifecyclePlugin(point Point[string], lifecycle *[]string, id string, requires ...string) Plugin {
+func lifecyclePlugin(lifecycle *[]string, id string, requires ...string) Plugin {
 	item := manifest(id, func(scope *Scope) error {
 		*lifecycle = append(*lifecycle, "load:"+id)
-		if err := scope.OnDispose(func() error {
+		addTestCleanup(scope, func() error {
 			*lifecycle = append(*lifecycle, "unload:"+id)
 			return nil
-		}); err != nil {
-			return err
-		}
-		_, err := scope.Contribute(point, id, Contribution{})
-		return err
+		})
+		return scope.ContributeCommand(testCommand(id))
 	})
 	item.Requires = requires
 	return item
@@ -193,10 +174,7 @@ func TestHostSkipsMissingCyclesAndDependentsOfFailedSetup(t *testing.T) {
 	cycleA.Requires = []string{cycleB.ID}
 	cycleB.Requires = []string{cycleA.ID}
 
-	host, err := NewHost(new(Registry))
-	if err != nil {
-		t.Fatal(err)
-	}
+	host := NewHost()
 	defer func() { _ = host.Close() }()
 	results, err := host.Activate([]Plugin{dependent, broken, missing, cycleA, cycleB})
 	if err != nil {
@@ -212,15 +190,13 @@ func TestHostSkipsMissingCyclesAndDependentsOfFailedSetup(t *testing.T) {
 }
 
 func TestSetupRollbackRunsOwnedCleanup(t *testing.T) {
-	registry := new(Registry)
+	registry := new(commandRegistry)
 	cleaned := false
 	plugin := manifest("test.rollback", func(scope *Scope) error {
-		if err := scope.OnDispose(func() error { cleaned = true; return nil }); err != nil {
-			return err
-		}
+		addTestCleanup(scope, func() error { cleaned = true; return nil })
 		return errors.New("setup failed")
 	})
-	if _, err := Load(registry, plugin); err == nil {
+	if _, err := load(registry, plugin); err == nil {
 		t.Fatal("setup failure was accepted")
 	}
 	if !cleaned {
@@ -241,44 +217,39 @@ func TestCleanupFailuresAreJoinedAfterEveryCleanupRuns(t *testing.T) {
 			{name: "middle"},
 			{name: "last", err: lastFailure},
 		} {
-			if err := scope.OnDispose(func() error {
+			addTestCleanup(scope, func() error {
 				order = append(order, cleanup.name)
 				return cleanup.err
-			}); err != nil {
-				return err
-			}
+			})
 		}
 		return nil
 	})
-	loaded, err := Load(new(Registry), plugin)
+	loaded, err := load(new(commandRegistry), plugin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	disposeErr := loaded.Dispose()
+	disposeErr := loaded.dispose()
 	if !errors.Is(disposeErr, firstFailure) || !errors.Is(disposeErr, lastFailure) {
 		t.Fatalf("Dispose error = %v", disposeErr)
 	}
 	if !slices.Equal(order, []string{"last", "middle", "first"}) {
 		t.Fatalf("cleanup order = %v", order)
 	}
-	if repeated := loaded.Dispose(); !errors.Is(repeated, firstFailure) || !errors.Is(repeated, lastFailure) || repeated.Error() != disposeErr.Error() {
+	if repeated := loaded.dispose(); !errors.Is(repeated, firstFailure) || !errors.Is(repeated, lastFailure) || repeated.Error() != disposeErr.Error() {
 		t.Fatalf("repeated Dispose returned %v, want stable %v", repeated, disposeErr)
 	}
 }
 
 func TestHostUnloadSurfacesCleanupFailureAfterReleasingContributions(t *testing.T) {
 	want := errors.New("cleanup failed")
-	point := newTestMultiPoint[string]("test.cleanup-point")
-	registry := new(Registry)
-	host, err := NewHost(registry)
-	if err != nil {
-		t.Fatal(err)
-	}
+	host := NewHost()
+	registry := host.registry
 	plugin := manifest("test.cleanup-host", func(scope *Scope) error {
-		if _, err := scope.Contribute(point, "owned", Contribution{}); err != nil {
+		if err := scope.ContributeCommand(testCommand("owned")); err != nil {
 			return err
 		}
-		return scope.OnDispose(func() error { return want })
+		addTestCleanup(scope, func() error { return want })
+		return nil
 	})
 	if results, err := host.Activate([]Plugin{plugin}); err != nil || !allLoaded(results) {
 		t.Fatalf("Activate = %+v, %v", results, err)
@@ -286,7 +257,7 @@ func TestHostUnloadSurfacesCleanupFailureAfterReleasingContributions(t *testing.
 	if err := host.Unload(plugin.ID); !errors.Is(err, want) {
 		t.Fatalf("Unload error = %v", err)
 	}
-	if values := registry.Values(point); len(values) != 0 {
+	if values := registry.commands(); len(values) != 0 {
 		t.Fatalf("failed cleanup leaked contributions: %v", values)
 	}
 	requireFailedPluginInfo(t, host, plugin.ID)
@@ -306,45 +277,42 @@ func requireFailedPluginInfo(t *testing.T, host *Host, pluginID string) {
 func TestSetupFailureReportsRollbackFailureWithoutLeakingOwnership(t *testing.T) {
 	setupFailure := errors.New("setup failed")
 	rollbackFailure := errors.New("rollback failed")
-	registry := new(Registry)
+	registry := new(commandRegistry)
 	plugin := manifest("test.rollback-errors", func(scope *Scope) error {
-		if err := scope.OnDispose(func() error { return rollbackFailure }); err != nil {
-			return err
-		}
+		addTestCleanup(scope, func() error { return rollbackFailure })
 		return setupFailure
 	})
-	_, err := Load(registry, plugin)
+	_, err := load(registry, plugin)
 	if !errors.Is(err, setupFailure) || !errors.Is(err, rollbackFailure) {
 		t.Fatalf("Load error = %v", err)
 	}
-	loaded, err := Load(registry, manifest(plugin.ID, func(*Scope) error { return nil }))
+	loaded, err := load(registry, manifest(plugin.ID, func(*Scope) error { return nil }))
 	if err != nil {
 		t.Fatalf("rollback leaked the plugin claim: %v", err)
 	}
-	if err := loaded.Dispose(); err != nil {
+	if err := loaded.dispose(); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestPluginPanicsAreIsolatedDuringSetupAndCleanup(t *testing.T) {
-	registry := new(Registry)
+	registry := new(commandRegistry)
 	setupPanic := manifest("test.setup-panic", func(*Scope) error { panic("setup boom") })
-	if _, err := Load(registry, setupPanic); err == nil {
+	if _, err := load(registry, setupPanic); err == nil {
 		t.Fatal("setup panic escaped as success")
 	}
 
 	var cleaned bool
 	cleanupPanic := manifest("test.cleanup-panic", func(scope *Scope) error {
-		if err := scope.OnDispose(func() error { cleaned = true; return nil }); err != nil {
-			return err
-		}
-		return scope.OnDispose(func() error { panic("cleanup boom") })
+		addTestCleanup(scope, func() error { cleaned = true; return nil })
+		addTestCleanup(scope, func() error { panic("cleanup boom") })
+		return nil
 	})
-	loaded, err := Load(registry, cleanupPanic)
+	loaded, err := load(registry, cleanupPanic)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := loaded.Dispose(); err == nil {
+	if err := loaded.dispose(); err == nil {
 		t.Fatal("cleanup panic was not surfaced")
 	}
 	if !cleaned {
@@ -353,13 +321,11 @@ func TestPluginPanicsAreIsolatedDuringSetupAndCleanup(t *testing.T) {
 }
 
 func TestHostDoesNotHoldStateLockWhileCallingPluginCode(t *testing.T) {
-	host, err := NewHost(new(Registry))
-	if err != nil {
-		t.Fatal(err)
-	}
+	host := NewHost()
 	plugin := manifest("test.introspect", func(scope *Scope) error {
 		_ = host.Statuses()
-		return scope.OnDispose(func() error { _ = host.Statuses(); return nil })
+		addTestCleanup(scope, func() error { _ = host.Statuses(); return nil })
+		return nil
 	})
 	done := make(chan error, 1)
 	go func() {
@@ -381,4 +347,23 @@ func TestHostDoesNotHoldStateLockWhileCallingPluginCode(t *testing.T) {
 
 func allLoaded(results []LifecycleResult) bool {
 	return len(results) > 0 && !slices.ContainsFunc(results, func(result LifecycleResult) bool { return result.Phase != PluginLoaded })
+}
+
+type testSource struct {
+	Name    string
+	Plugins []Plugin
+}
+
+func (s testSource) ID() string { return s.Name }
+func (s testSource) Discover(context.Context) (SourceResult, error) {
+	return SourceResult{Plugins: s.Plugins}, nil
+}
+
+func testCommand(name string) SlashCommand {
+	return SlashCommand{Descriptor: CommandDescriptor{Name: name, Title: name}, Execute: func(context.Context, CommandRequest) (CommandResult, error) { return CommandResult{}, nil }}
+}
+
+// Fault injection exercises the owned disposal stack without exposing cleanup registration.
+func addTestCleanup(scope *Scope, cleanup func() error) {
+	scope.disposables = append(scope.disposables, &disposal{do: cleanup})
 }

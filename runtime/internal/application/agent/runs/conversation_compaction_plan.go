@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
@@ -16,19 +16,19 @@ import (
 // can reject a lifecycle transition that raced the plan instead of committing
 // history and Run projections derived from different snapshots.
 type ConversationCompactionPlan struct {
-	sessionID  resourceid.SessionID
+	sessionID  identity.SessionID
 	compaction conversation.Compaction
 	runs       []run.Replacement
 }
 
 // NewConversationCompactionPlan binds one conversation rewrite to the exact
 // same-Session Run set from which its watermark replacements were derived.
-func NewConversationCompactionPlan(
+func newConversationCompactionPlan(
 	sessionID string,
 	compaction conversation.Compaction,
 	runs []run.Replacement,
 ) (ConversationCompactionPlan, error) {
-	id, err := resourceid.ParseSession(sessionID)
+	id, err := identity.ParseSession(sessionID)
 	if err != nil {
 		return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction session: %w", err)
 	}
@@ -90,7 +90,7 @@ func PlanConversationCompaction(sessionID string, compaction conversation.Compac
 		}
 		planned[index] = replacement
 	}
-	return NewConversationCompactionPlan(sessionID, compaction, planned)
+	return newConversationCompactionPlan(sessionID, compaction, planned)
 }
 
 func (p ConversationCompactionPlan) validateOwner(runID, segmentID string) error {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ErrInvalidTree reports a set of Run identities that cannot form one
@@ -51,7 +51,7 @@ type Tree struct {
 // present exactly once, every child must name the same root and an existing
 // parent, and no disconnected component or cycle is accepted.
 func NewTree(rootRunID string, members []TreeMember) (Tree, error) {
-	if err := resourceid.ValidateRun(rootRunID); err != nil {
+	if err := identity.ValidateRun(rootRunID); err != nil {
 		return Tree{}, fmt.Errorf("%w: root %v", ErrInvalidTree, err)
 	}
 	if len(members) == 0 {

@@ -7,9 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // SessionMutations serializes session lifecycle write-sets with Goal commands

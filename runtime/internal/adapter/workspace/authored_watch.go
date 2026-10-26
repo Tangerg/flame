@@ -7,13 +7,12 @@ import (
 	"slices"
 	"strings"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 const (

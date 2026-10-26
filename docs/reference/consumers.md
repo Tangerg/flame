@@ -58,7 +58,7 @@ reads, empties build/module caches and runs test/generate/build using vendor.
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
 TypeScript-only exports have no Go module or DTO source prerequisite. They include
-host-specific prebuilt contractgen/archive development programs and the selected
+the host-specific prebuilt `flame-sdk` author command and the selected
 Node test companion; their generated JavaScript ZIP remains portable. The
 independent check denies Go execution through the author PATH as well as network
 and checkout reads while regenerating, checking, testing and packaging that project.

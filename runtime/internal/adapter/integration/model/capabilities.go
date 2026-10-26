@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
-	catalog "github.com/Tangerg/scope/models/catalog"
-
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/scope/core/chat"
+	catalog "github.com/Tangerg/scope/models/catalog"
 )
 
 // Capabilities implements the three model-configuration ports consumed by
@@ -121,7 +120,7 @@ func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string,
 	}
 	spec, err := inputs.clientSpec()
 	if err != nil {
-		if errors.Is(err, ErrCredentialUnavailable) {
+		if errors.Is(err, errCredentialUnavailable) {
 			return nil, fmt.Errorf("%w: provider %q: %w", modelsapp.ErrProviderUnconfigured, inputs.entry.ID(), err)
 		}
 		return nil, err

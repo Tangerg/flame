@@ -7,7 +7,7 @@ import (
 )
 
 func TestSessionActionComponentAndRetiredActionAdmission(t *testing.T) {
-	manifest := `{"$schema":"` + ManifestSchema + `","name":"test.actions","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
+	manifest := `{"$schema":"` + manifestSchema + `","name":"test.actions","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`
 	for _, test := range []struct {
 		name, declaration string
 		count             int

@@ -6,8 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -36,7 +35,7 @@ func testMCPRef(t *testing.T, origin mcpserver.Origin, server, remote string) Re
 
 func testInstallationOrigin(t *testing.T) mcpserver.Origin {
 	t.Helper()
-	id, err := resourceid.ParseInstallation(testInstallation)
+	id, err := identity.ParseInstallation(testInstallation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,11 +141,11 @@ func TestRefFingerprintFollowsSourceKind(t *testing.T) {
 		t.Fatal(err)
 	}
 	mcp := testMCPRef(t, mcpserver.UserOrigin(), "files", "read")
-	authority := fingerprint.Strings("endpoint")
-	if builtIn.ValidateFingerprint(fingerprint.Digest{}) != nil || builtIn.ValidateFingerprint(authority) == nil {
+	authority := identity.DigestStrings("endpoint")
+	if builtIn.ValidateFingerprint(identity.Digest{}) != nil || builtIn.ValidateFingerprint(authority) == nil {
 		t.Fatal("built-in fingerprint rule")
 	}
-	if mcp.ValidateFingerprint(authority) != nil || mcp.ValidateFingerprint(fingerprint.Digest{}) == nil {
+	if mcp.ValidateFingerprint(authority) != nil || mcp.ValidateFingerprint(identity.Digest{}) == nil {
 		t.Fatal("MCP fingerprint rule")
 	}
 }

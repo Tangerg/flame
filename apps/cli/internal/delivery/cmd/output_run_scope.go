@@ -1,0 +1,118 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+)
+
+// outputRunScope protects a renderer from mixing unrelated streams while allowing a
+// root stream to carry events from its negotiated child-run tree.
+type outputRunScope struct {
+	rootID  string
+	members map[string]conversation.RunLineage
+}
+
+func (r *outputRunScope) bind(run conversation.Run) error {
+	if err := run.Validate(); err != nil {
+		return err
+	}
+	if !run.Lineage.IsRoot() {
+		return fmt.Errorf("run %s is not a root", run.ID)
+	}
+	if r.rootID != "" && r.rootID != run.ID {
+		return fmt.Errorf("run %s does not match %s", run.ID, r.rootID)
+	}
+	r.ensureMembers()
+	r.rootID = run.ID
+	r.members[run.ID] = run.Lineage
+	return nil
+}
+
+func (r *outputRunScope) accept(envelope conversation.RunEvent) error {
+	if started, opening := envelope.Event.(conversation.SegmentStarted); opening {
+		return r.acceptSegmentStarted(envelope.RunID, started.Run)
+	}
+	if _, exists := r.members[envelope.RunID]; !exists {
+		return fmt.Errorf("event references unknown run %s", envelope.RunID)
+	}
+	return validateRunEventOwnership(envelope)
+}
+
+func (r *outputRunScope) acceptSegmentStarted(envelopeRunID string, run conversation.Run) error {
+	if run.ID != envelopeRunID {
+		return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelopeRunID)
+	}
+	if run.Lineage.IsRoot() {
+		return r.bind(run)
+	}
+	if r.rootID == "" || run.Lineage.RootRunID() != r.rootID {
+		return fmt.Errorf("child run %s does not belong to root %s", run.ID, r.rootID)
+	}
+	r.ensureMembers()
+	if _, exists := r.members[run.Lineage.ParentRunID()]; !exists {
+		return fmt.Errorf("child run %s has unknown parent %s", run.ID, run.Lineage.ParentRunID())
+	}
+	if lineage, exists := r.members[run.ID]; exists && lineage != run.Lineage {
+		return fmt.Errorf("child run %s changed lineage", run.ID)
+	}
+	r.members[run.ID] = run.Lineage
+	return nil
+}
+
+func validateRunEventOwnership(envelope conversation.RunEvent) error {
+	switch event := envelope.Event.(type) {
+	case conversation.BlockStarted:
+		if event.Block.RunID != envelope.RunID {
+			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
+		}
+	case conversation.BlockCompleted:
+		if event.Block.RunID != envelope.RunID {
+			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
+		}
+	case conversation.SegmentFinished:
+		if event.Run.ID != envelope.RunID {
+			return fmt.Errorf("segment of run %s finished run %s", envelope.RunID, event.Run.ID)
+		}
+		for _, interrupt := range event.Interrupts {
+			if conversation.InterruptRunID(interrupt) != envelope.RunID {
+				return fmt.Errorf("interrupt for run %s carries an interrupt from run %s", envelope.RunID, conversation.InterruptRunID(interrupt))
+			}
+		}
+	}
+	return nil
+}
+
+func (r *outputRunScope) restore(snapshot conversation.SessionSnapshot, rootID string) error {
+	run, exists := snapshot.RunByID(rootID)
+	if !exists {
+		return fmt.Errorf("run %s is absent from the snapshot", rootID)
+	}
+	if err := r.bind(run); err != nil {
+		return err
+	}
+	for _, member := range snapshot.Runs {
+		if member.Lineage.RootRunID() == rootID {
+			r.members[member.ID] = member.Lineage
+		}
+	}
+	return nil
+}
+
+func (r *outputRunScope) contains(runID string) bool {
+	_, exists := r.members[runID]
+	return exists
+}
+
+func (r *outputRunScope) isRoot(runID string) bool { return runID != "" && runID == r.rootID }
+
+func (r *outputRunScope) isChild(runID string) bool {
+	lineage, exists := r.members[runID]
+	return exists && !lineage.IsRoot()
+}
+
+func (r *outputRunScope) ensureMembers() {
+	if r.members == nil {
+		r.members = make(map[string]conversation.RunLineage)
+	}
+}

@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { asRunId, asSegmentId, type FlameClient } from "@flame/runtime-client";
 import { revalidateAgentSessionMaterial } from "@/features/agent/application/session/refreshSessionProjection";
 import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
@@ -7,7 +7,7 @@ import {
   settleRunStreamOpening,
 } from "@/features/agent/adapters/runStreamOpening";
 export async function snapshotRunStream(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   client: Pick<FlameClient, "runs">,
   sessionId: string,
   runId: string,

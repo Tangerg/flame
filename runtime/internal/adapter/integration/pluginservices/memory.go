@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -19,20 +16,21 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 type Memory struct {
-	contract      *capability.Contract
+	contract      *extension.Capability
 	installations plugins.Store
 	pool          *mcp.Pool
 	callbacks     *pluginsdk.Callbacks
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (models.TextEmbedder, error)
-	history       ConversationReader
+	history       conversationReader
 	commands      *CommandCalls
 }
 
-type ConversationReader interface {
+type conversationReader interface {
 	Read(context.Context, string) ([]chat.Message, error)
 }
 type MemoryConfig struct {
@@ -41,7 +39,7 @@ type MemoryConfig struct {
 	Callbacks     *pluginsdk.Callbacks
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (models.TextEmbedder, error)
-	Conversation  ConversationReader
+	Conversation  conversationReader
 	Commands      *CommandCalls
 }
 
@@ -50,14 +48,14 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 		name  string
 		value any
 	}{{"installation store", config.Installations}, {"connections", config.Connections}, {"callbacks", config.Callbacks}, {"utility resolver", config.Utility}, {"embedding resolver", config.Embeddings}, {"conversation reader", config.Conversation}} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("memory: %s is required", required.name)
 		}
 	}
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	contract, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
+	contract, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +63,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 }
 
 func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.MemoryPromptItem, error) {
-	ctx = operation.Start(ctx, capability.Automatic, "memory.context", uuid.NewString())
+	ctx = operation.Start(ctx, extension.Automatic, "memory.context", uuid.NewString())
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
@@ -142,8 +140,8 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	}
 	request := memorycontract.MaintainV1Input{SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted}
 	request.Conversation.MessageCount = int64(len(messages))
-	request.Conversation.Transcript = modeltext.RenderTranscript(messages)
-	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, capability.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
+	request.Conversation.Transcript = models.RenderTranscript(messages)
+	_, err = invokeResolvedCommand[memorycontract.MaintainV1Input, memorycontract.MaintainV1Output](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err

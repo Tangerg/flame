@@ -7,7 +7,7 @@ import (
 
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -27,7 +27,7 @@ const (
 // Item and terminal-read evidence may both arrive before the acknowledgement.
 type steerReceipt struct {
 	sessionID         string
-	commandID         replay.CommandID
+	commandID         authoring.CommandID
 	runID             string
 	receipt           protocol.SteerRunResponse
 	userItems         map[string]struct{}

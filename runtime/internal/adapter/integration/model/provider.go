@@ -16,31 +16,31 @@ const (
 	// Named vendors with a model catalog. Each routes through its own adapter,
 	// which encodes the vendor endpoint. IAM-only vendors (amazonbedrock, vertexai) are
 	// intentionally absent — they don't fit the "paste an API key" model.
-	ProviderAnthropic   Provider = "anthropic"
-	ProviderOpenAI      Provider = "openai"
-	ProviderMoonshot    Provider = "moonshot" // Kimi (OpenAI-compatible)
-	ProviderDeepSeek    Provider = "deepseek" // DeepSeek (OpenAI-compatible)
-	ProviderAlibaba     Provider = "alibaba"  // Qwen
-	ProviderAzureOpenAI Provider = "azureopenai"
-	ProviderFireworks   Provider = "fireworks"
-	ProviderGoogle      Provider = "google" // Gemini
-	ProviderGroq        Provider = "groq"
-	ProviderHuggingface Provider = "huggingface"
-	ProviderMinimax     Provider = "minimax"
-	ProviderMistral     Provider = "mistral"
-	ProviderOpenRouter  Provider = "openrouter"
-	ProviderPerplexity  Provider = "perplexity"
-	ProviderTogether    Provider = "together"
-	ProviderXAI         Provider = "xai" // Grok
-	ProviderXiaomi      Provider = "xiaomi"
-	ProviderZhipu       Provider = "zhipu" // GLM
+	providerAnthropic   Provider = "anthropic"
+	providerOpenAI      Provider = "openai"
+	providerMoonshot    Provider = "moonshot" // Kimi (OpenAI-compatible)
+	providerDeepSeek    Provider = "deepseek" // DeepSeek (OpenAI-compatible)
+	providerAlibaba     Provider = "alibaba"  // Qwen
+	providerAzureOpenAI Provider = "azureopenai"
+	providerFireworks   Provider = "fireworks"
+	providerGoogle      Provider = "google" // Gemini
+	providerGroq        Provider = "groq"
+	providerHuggingface Provider = "huggingface"
+	providerMinimax     Provider = "minimax"
+	providerMistral     Provider = "mistral"
+	providerOpenRouter  Provider = "openrouter"
+	providerPerplexity  Provider = "perplexity"
+	providerTogether    Provider = "together"
+	providerXAI         Provider = "xai" // Grok
+	providerXiaomi      Provider = "xiaomi"
+	providerZhipu       Provider = "zhipu" // GLM
 
 	// Generic "bring-your-own-endpoint" providers: the user supplies the base
 	// URL + key + model id, and the Run executes through the OpenAI- / Anthropic-
 	// wire adapter. They cover any compatible gateway not named above (and have
 	// no catalog — the model id is user-supplied).
-	ProviderOpenAICompatible    Provider = "openai-compatible"
-	ProviderAnthropicCompatible Provider = "anthropic-compatible"
+	providerOpenAICompatible    Provider = "openai-compatible"
+	providerAnthropicCompatible Provider = "anthropic-compatible"
 )
 
 // ProviderProfile is the immutable constructed view of one provider

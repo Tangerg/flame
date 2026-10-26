@@ -84,7 +84,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				t.Fatal(err)
 			}
 			cfg := protocolRuntimeConfig(t, stores, model)
-			cfg.ApprovalMode = approval.ModeSafe
+			cfg.approvalMode = approval.ModeSafe
 			host, api := buildProtocolRuntime(t, cfg, home)
 			t.Cleanup(func() {
 				if err := host.Close(); err != nil {

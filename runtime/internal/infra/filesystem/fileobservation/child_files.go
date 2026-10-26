@@ -9,8 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // ChildFileTarget identifies a bounded collection of authored files. FileName
@@ -114,7 +113,7 @@ func resolveChildFileBoundary(index int, boundary string) (string, error) {
 	if !filepath.IsAbs(boundary) {
 		return "", fmt.Errorf("observe child files: target %d boundary must be absolute", index)
 	}
-	resolved, err := pathidentity.Resolve("", boundary)
+	resolved, err := filesystem.ResolvePath("", boundary)
 	if err != nil {
 		return "", fmt.Errorf("observe child files: resolve target %d boundary: %w", index, err)
 	}
@@ -209,7 +208,7 @@ func resolveChildFileRoot(
 	candidate childFileTarget,
 	roots *observationRoots,
 ) (string, os.FileInfo, []string, error) {
-	physical, err := pathidentity.Resolve("", candidate.path)
+	physical, err := filesystem.ResolvePath("", candidate.path)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("observe child files: resolve %q: %w", candidate.path, err)
 	}
@@ -349,9 +348,9 @@ func readChildFileEntries(
 	}
 	var directory *os.File
 	if root != nil {
-		directory, _, err = fileinput.OpenDirectoryAtExpected(root, name, info)
+		directory, _, err = filesystem.OpenDirectoryAtExpected(root, name, info)
 	} else {
-		directory, _, err = fileinput.OpenDirectoryExpected(name, info)
+		directory, _, err = filesystem.OpenDirectoryExpected(name, info)
 	}
 	if err != nil {
 		return nil, false, err
@@ -378,7 +377,7 @@ func fingerprintChildFile(
 	maxBytes int64,
 	roots *observationRoots,
 ) (fingerprint, string, error) {
-	resolved, err := pathidentity.Resolve("", physical)
+	resolved, err := filesystem.ResolvePath("", physical)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: resolve file %q: %w", logical, err)
 	}
@@ -431,9 +430,9 @@ func fingerprintResolvedChildFile(
 	var file *os.File
 	var opened os.FileInfo
 	if root != nil {
-		file, opened, err = fileinput.OpenAtExpected(root, name, info, maxBytes)
+		file, opened, err = filesystem.OpenFileAtExpected(root, name, info, maxBytes)
 	} else {
-		file, opened, err = fileinput.OpenExpected(name, info, maxBytes)
+		file, opened, err = filesystem.OpenFileExpected(name, info, maxBytes)
 	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: open %q: %w", logical, err)

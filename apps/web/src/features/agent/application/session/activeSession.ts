@@ -1,4 +1,5 @@
-import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 import { useAgentSessions } from "@/features/agent/application/session/sessionQueries";
 
@@ -22,45 +23,47 @@ export function isWorkspaceResolving(selection: ActiveSessionWorkspaceSelection)
 }
 
 export function useActiveSessionId(): string {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return agentAccess.state.useActiveSessionId();
 }
 
-export function getActiveSessionId(agentAccess: AgentAccess): string {
+export function getActiveSessionId(agentAccess: AgentDependencies): string {
   return agentAccess.state.getActiveSessionId();
 }
 
-export function getAgentSessionLifecycleSnapshot(agentAccess: AgentAccess): AgentOpenSessions {
+export function getAgentSessionLifecycleSnapshot(
+  agentAccess: AgentDependencies,
+): AgentOpenSessions {
   return agentAccess.state.getLifecycleSnapshot();
 }
 
 export function subscribeActiveSessionId(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   onChange: (sessionId: string) => void,
 ): () => void {
   return agentAccess.state.subscribeActiveSessionId(onChange);
 }
 
 export function subscribeAgentSessionLifecycle(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   onChange: (snapshot: AgentOpenSessions) => void,
 ): () => void {
   return agentAccess.state.subscribeLifecycle(onChange);
 }
 
 export function subscribeDeletedAgentSession(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   onDeleted: (sessionId: string) => void,
 ): () => void {
   return agentAccess.state.subscribeDeletedSession(onDeleted);
 }
 
-export function selectAgentSession(agentAccess: AgentAccess, id: string): void {
+export function selectAgentSession(agentAccess: AgentDependencies, id: string): void {
   agentAccess.state.selectSession(id);
 }
 
-export function closeActiveAgentSession(agentAccess: AgentAccess): boolean {
+export function closeActiveAgentSession(agentAccess: AgentDependencies): boolean {
   const id = getActiveSessionId(agentAccess);
   if (!id) return false;
   agentAccess.state.closeSession(id);

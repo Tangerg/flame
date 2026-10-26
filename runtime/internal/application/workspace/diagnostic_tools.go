@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/samber/lo"
 )
 
 // DiagnosticToolRegistry is the directly invocable diagnostic-tool catalog. It is deliberately
 // distinct from the agent's full tool set: every entry must be safe to run
 // outside a Run and must honor the supplied workspace root. List transfers
 // ownership of the returned tool definitions to the caller.
-type DiagnosticToolRegistry interface {
+type diagnosticToolRegistry interface {
 	List(ctx context.Context) ([]toolsvc.Tool, error)
 	Invoke(ctx context.Context, root, name string, arguments toolsvc.Arguments) (toolsvc.Result, error)
 }
@@ -22,7 +22,7 @@ type DiagnosticToolRegistry interface {
 // DiagnosticToolRoots resolves the workspace root an external diagnostic invocation is
 // allowed to inspect. The workspace use case owns cwd admission; tools never
 // accept an unchecked client path as their filesystem root.
-type DiagnosticToolRoots interface {
+type diagnosticToolRoots interface {
 	ResolveRoot(cwd string) (string, error)
 }
 
@@ -35,13 +35,13 @@ type DiagnosticToolInvocation struct {
 
 // DiagnosticTools drives direct diagnostic-tool use cases.
 type DiagnosticTools struct {
-	registry DiagnosticToolRegistry
-	roots    DiagnosticToolRoots
+	registry diagnosticToolRegistry
+	roots    diagnosticToolRoots
 }
 
 // NewDiagnosticTools returns diagnostic tool use cases over the direct registry and workspace-root
 // admission boundary.
-func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoots) (*DiagnosticTools, error) {
+func NewDiagnosticTools(registry diagnosticToolRegistry, roots diagnosticToolRoots) (*DiagnosticTools, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -49,7 +49,7 @@ func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoo
 		{name: "registry", value: registry},
 		{name: "roots", value: roots},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: diagnostic tool %s is required", required.name)
 		}
 	}

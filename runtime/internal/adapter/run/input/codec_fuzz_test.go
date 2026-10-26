@@ -97,7 +97,7 @@ func FuzzResolutionCodec(f *testing.F) {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, raw []byte) {
-		resolution, err := DecodeResolution(raw)
+		resolution, err := decodeResolution(raw)
 		if err != nil {
 			return
 		}
@@ -105,7 +105,7 @@ func FuzzResolutionCodec(f *testing.F) {
 		if err != nil {
 			t.Fatalf("encode decoded resolution: %v", err)
 		}
-		roundTripped, err := DecodeResolution(encoded)
+		roundTripped, err := decodeResolution(encoded)
 		if err != nil {
 			t.Fatalf("decode re-encoded resolution: %v", err)
 		}

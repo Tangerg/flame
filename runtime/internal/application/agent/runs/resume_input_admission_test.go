@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -27,9 +26,9 @@ func TestResumeRejectsStructurallyInvalidMediaBeforeConsumingWait(t *testing.T) 
 	coordinator := newUseCaseCoordinator(&fakeExecutor{block: true}, control, sessions, effects)
 	command := ResumeCommand{
 		RunID:              "run_1",
-		CallerCapabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		CallerCapabilities: run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: interrupt.Approval,
+			ItemID: "item_1", Kind: run.InterruptApproval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 		Input: []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: nil}},

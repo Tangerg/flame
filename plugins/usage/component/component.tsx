@@ -80,7 +80,7 @@ const GROUPS = [
   "byScope",
 ] as const;
 
-export function UsageReport({
+function UsageReport({
   report,
   group,
   filter,

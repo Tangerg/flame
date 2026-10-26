@@ -22,7 +22,7 @@ func (f failingHookTrust) IsTrusted(context.Context, string) (bool, error) {
 func TestNewHookResolverPreservesTrustStoreFailure(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	wantErr := errors.New("trust store unavailable")
-	resolver, err := NewHookResolver(t.TempDir(), failingHookTrust{err: wantErr})
+	resolver, err := newHookResolver(t.TempDir(), failingHookTrust{err: wantErr})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,8 +33,8 @@ func TestNewHookResolverPreservesTrustStoreFailure(t *testing.T) {
 }
 
 func TestNewHookResolverRequiresTrustStore(t *testing.T) {
-	for _, trust := range []HookTrust{nil, (*failingHookTrust)(nil)} {
-		if resolver, err := NewHookResolver(t.TempDir(), trust); err == nil || resolver != nil {
+	for _, trust := range []hookTrust{nil, (*failingHookTrust)(nil)} {
+		if resolver, err := newHookResolver(t.TempDir(), trust); err == nil || resolver != nil {
 			t.Fatalf("NewHookResolver = (%v, %v), want missing trust rejected", resolver, err)
 		}
 	}
@@ -53,7 +53,7 @@ func TestHookCommandFailureIsReportedWithoutAnActiveSpan(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte(`{"hooks":[{"event":"Stop","command":"exit 7"}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	resolver, err := NewHookResolver(home, failingHookTrust{})
+	resolver, err := newHookResolver(home, failingHookTrust{})
 	if err != nil {
 		t.Fatal(err)
 	}

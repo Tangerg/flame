@@ -8,12 +8,10 @@ import (
 	"reflect"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 // ReserveChildRunStart durably records one invisible child identity. It does
@@ -299,7 +297,7 @@ func (e *Effects) reconcileRunCommit(
 	sessionID string,
 	runID string,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) (bool, error) {
 	reconcileCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(ctx),

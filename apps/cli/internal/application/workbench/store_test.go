@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -24,7 +23,7 @@ func TestStoreRejectsInvalidAuthoringMessagesBeforePersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invalid := prompt.Message{Attachments: []prompt.Attachment{{ID: "invalid"}}}
+	invalid := authoring.Message{Attachments: []authoring.Attachment{{ID: "invalid"}}}
 	if err := store.Remember(invalid); err == nil || !strings.Contains(err.Error(), "remember prompt") {
 		t.Fatalf("Remember invalid message error = %v", err)
 	}
@@ -50,7 +49,7 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	invalid := prompt.Message{Attachments: []prompt.Attachment{{ID: "invalid"}}}
+	invalid := authoring.Message{Attachments: []authoring.Attachment{{ID: "invalid"}}}
 	encoded, err := json.Marshal(sessionState{SessionID: sessionID, Draft: invalid})
 	if err != nil {
 		t.Fatal(err)
@@ -74,15 +73,15 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, text := range []string{"one", "two", "three"} {
-		if rememberErr := store.Remember(prompt.Message{Text: text}); rememberErr != nil {
+		if rememberErr := store.Remember(authoring.Message{Text: text}); rememberErr != nil {
 			t.Fatal(rememberErr)
 		}
 	}
-	draft := prompt.Message{Text: "unfinished", Attachments: []prompt.Attachment{{ID: "attachment", Path: "/tmp/a.go", Name: "a.go", Kind: protocol.ContentBlockText}}}
+	draft := authoring.Message{Text: "unfinished", Attachments: []authoring.Attachment{{ID: "attachment", Path: "/tmp/a.go", Name: "a.go", Kind: protocol.ContentBlockText}}}
 	if saveDraftErr := store.SaveDraft("../../session", draft); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if _, stashPromptErr := store.StashPrompt(prompt.Message{Text: "saved prompt"}); stashPromptErr != nil {
+	if _, stashPromptErr := store.StashPrompt(authoring.Message{Text: "saved prompt"}); stashPromptErr != nil {
 		t.Fatal(stashPromptErr)
 	}
 	for _, workspace := range []string{"one", "two", "three"} {
@@ -162,7 +161,7 @@ func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) })
-	if err := store.Remember(prompt.Message{Text: "should fail"}); err == nil {
+	if err := store.Remember(authoring.Message{Text: "should fail"}); err == nil {
 		t.Skip("filesystem permits writes despite directory mode")
 	}
 	if history := store.History(); len(history) != 0 {
@@ -177,7 +176,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	want := prompt.Message{Text: "keep this draft"}
+	want := authoring.Message{Text: "keep this draft"}
 	if saveDraftErr := store.SaveDraft(sessionID, want); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -192,7 +191,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	if discardDraftErr := store.SaveDraft(sessionID, prompt.Message{}); discardDraftErr == nil {
+	if discardDraftErr := store.SaveDraft(sessionID, authoring.Message{}); discardDraftErr == nil {
 		t.Fatal("durable draft deletion unexpectedly succeeded")
 	}
 	got, ok := store.Draft(sessionID)
@@ -209,11 +208,11 @@ func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.StashPrompt(prompt.Message{Text: "older stash"}); err != nil {
+	if _, err := store.StashPrompt(authoring.Message{Text: "older stash"}); err != nil {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	draft := prompt.Message{Text: "draft must keep one owner"}
+	draft := authoring.Message{Text: "draft must keep one owner"}
 	if err := store.SaveDraft(sessionID, draft); err != nil {
 		t.Fatal(err)
 	}
@@ -247,12 +246,12 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	}
 	const sessionID = "session"
 	pending := PendingRun{
-		State: PendingRunQueued, Replay: replay.UnprotectedGuard(),
-		CancelReplay: replay.UnprotectedGuard(),
-		Command: prompt.StartRun{
-			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
-			SessionID: sessionID, Message: prompt.Message{Text: "pending run"},
-			Options: prompt.RunOptions{},
+		State: PendingRunQueued, Replay: authoring.UnprotectedGuard(),
+		CancelReplay: authoring.UnprotectedGuard(),
+		Command: authoring.StartRun{
+			CommandID: authoring.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: sessionID, Message: authoring.Message{Text: "pending run"},
+			Options: authoring.RunOptions{},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(pending); stagePendingRunErr != nil {
@@ -264,15 +263,15 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{
-			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
+			CommandID: authoring.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
-	draft := prompt.Message{Text: "stash only this draft"}
+	draft := authoring.Message{Text: "stash only this draft"}
 	if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -310,11 +309,11 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, stashPromptErr := store.StashPrompt(prompt.Message{Text: "older stash"}); stashPromptErr != nil {
+			if _, stashPromptErr := store.StashPrompt(authoring.Message{Text: "older stash"}); stashPromptErr != nil {
 				t.Fatal(stashPromptErr)
 			}
 			const sessionID = "session"
-			draft := prompt.Message{Text: "restart-safe draft transfer"}
+			draft := authoring.Message{Text: "restart-safe draft transfer"}
 			if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
 				t.Fatal(saveDraftErr)
 			}
@@ -335,7 +334,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 				}
 			}
 			if phase == "source retired" || phase == "source retired before stash survived" {
-				if saveSessionStateErr := store.saveSessionState(sessionID, prompt.Message{}, nil); saveSessionStateErr != nil {
+				if saveSessionStateErr := store.saveSessionState(sessionID, authoring.Message{}, nil); saveSessionStateErr != nil {
 					t.Fatal(saveSessionStateErr)
 				}
 			}
@@ -381,7 +380,7 @@ func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testi
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	draft := prompt.Message{Text: "same text must not become the old owner again"}
+	draft := authoring.Message{Text: "same text must not become the old owner again"}
 	if err := store.SaveDraft(sessionID, draft); err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +426,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	old := prompt.Message{Text: "old transfer source"}
+	old := authoring.Message{Text: "old transfer source"}
 	if saveDraftErr := store.SaveDraft(sessionID, old); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -438,7 +437,7 @@ func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
 	if saveErr := store.save(stashTransferName, transfer); saveErr != nil {
 		t.Fatal(saveErr)
 	}
-	newer := prompt.Message{Text: "new owner"}
+	newer := authoring.Message{Text: "new owner"}
 	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -474,7 +473,7 @@ func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.SaveDraft(sessionID, prompt.Message{}); err != nil {
+	if err := store.SaveDraft(sessionID, authoring.Message{}); err != nil {
 		t.Fatalf("saving the already-empty draft rewrote session state: %v", err)
 	}
 }
@@ -487,12 +486,12 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	}
 	const sessionID = "session"
 	command := PendingRun{
-		State: PendingRunQueued, Replay: replay.UnprotectedGuard(),
-		CancelReplay: replay.UnprotectedGuard(),
-		Command: prompt.StartRun{
-			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
-			SessionID: sessionID, Message: prompt.Message{Text: "pending run"},
-			Options: prompt.RunOptions{},
+		State: PendingRunQueued, Replay: authoring.UnprotectedGuard(),
+		CancelReplay: authoring.UnprotectedGuard(),
+		Command: authoring.StartRun{
+			CommandID: authoring.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: sessionID, Message: authoring.Message{Text: "pending run"},
+			Options: authoring.RunOptions{},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(command); stagePendingRunErr != nil {
@@ -504,15 +503,15 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 	}
 	resume := PendingResume{
 		Command: conversation.ResumeRun{
-			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
+			CommandID: authoring.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
-	draft := prompt.Message{Text: "unsent draft"}
+	draft := authoring.Message{Text: "unsent draft"}
 	if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -598,12 +597,12 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 	}
 	const sessionID = "session"
 	request := conversation.DeleteSession{
-		CommandID: replay.CommandID("cli_33333333333333333333333333333333"), SessionID: sessionID,
+		CommandID: authoring.CommandID("cli_33333333333333333333333333333333"), SessionID: sessionID,
 	}
-	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "owned until runtime confirmation"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(sessionID, authoring.Message{Text: "owned until runtime confirmation"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if stageSessionDeletionErr := store.StageSessionDeletion(request, replay.UnprotectedGuard()); stageSessionDeletionErr != nil {
+	if stageSessionDeletionErr := store.StageSessionDeletion(request, authoring.UnprotectedGuard()); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
 
@@ -639,10 +638,10 @@ func TestStoreDoesNotNormalizeSessionDeletionIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := conversation.DeleteSession{
-		CommandID: replay.CommandID("cli_33333333333333333333333333333334"),
+		CommandID: authoring.CommandID("cli_33333333333333333333333333333334"),
 		SessionID: " session ",
 	}
-	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err == nil {
+	if err := store.StageSessionDeletion(request, authoring.UnprotectedGuard()); err == nil {
 		t.Fatal("StageSessionDeletion accepted an identity that requires trimming")
 	}
 	if deletions := store.PendingSessionDeletions(); len(deletions) != 0 {
@@ -657,10 +656,10 @@ func TestStoreRejectsNonExactSessionIdentityInDeletionJournal(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := conversation.DeleteSession{
-		CommandID: replay.CommandID("cli_33333333333333333333333333333335"),
+		CommandID: authoring.CommandID("cli_33333333333333333333333333333335"),
 		SessionID: "session",
 	}
-	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err != nil {
+	if err := store.StageSessionDeletion(request, authoring.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
 	journalPath := filepath.Join(directory, sessionDeletionsName)
@@ -686,12 +685,12 @@ func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := conversation.DeleteSession{
-		CommandID: replay.CommandID("cli_44444444444444444444444444444444"), SessionID: "session",
+		CommandID: authoring.CommandID("cli_44444444444444444444444444444444"), SessionID: "session",
 	}
-	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err != nil {
+	if err := store.StageSessionDeletion(request, authoring.UnprotectedGuard()); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.RejectSessionDeletion(request.SessionID, replay.CommandID("cli_55555555555555555555555555555555")); err == nil {
+	if err := store.RejectSessionDeletion(request.SessionID, authoring.CommandID("cli_55555555555555555555555555555555")); err == nil {
 		t.Fatal("stale rejection removed another deletion intent")
 	}
 	if err := store.RejectSessionDeletion(request.SessionID, request.CommandID); err != nil {
@@ -709,13 +708,13 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "new thought"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(sessionID, authoring.Message{Text: "new thought"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
-		CommandID: replay.CommandID("cli_66666666666666666666666666666666"),
-		Replay:    replay.UnprotectedGuard(),
+		CommandID: authoring.CommandID("cli_66666666666666666666666666666666"),
+		Replay:    authoring.UnprotectedGuard(),
 		SessionID: sessionID, ToRunID: "run_1", Scope: protocol.RestoreHistory,
 		BeforeRevision: 7, BeforeRunIDs: []string{"run_1", "run_2"}, AfterRunIDs: []string{"run_1"},
 		OpeningText: "restored opening", OpeningImages: 2,
@@ -740,7 +739,7 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 	if confirmSessionRollbackErr := reopened.ConfirmSessionRollback(sessionID, pending.CommandID); confirmSessionRollbackErr != nil {
 		t.Fatal(confirmSessionRollbackErr)
 	}
-	activation, err := reopened.ActivateSessionDraft(sessionID, prompt.Message{})
+	activation, err := reopened.ActivateSessionDraft(sessionID, authoring.Message{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -769,7 +768,7 @@ func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T
 func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
 	pending := PendingSessionRollback{
 		Phase:          SessionRollbackPrepared,
-		CommandID:      replay.CommandID("cli_66666666666666666666666666666667"),
+		CommandID:      authoring.CommandID("cli_66666666666666666666666666666667"),
 		SessionID:      "session",
 		ToRunID:        " run_1",
 		Scope:          protocol.RestoreHistory,
@@ -777,7 +776,7 @@ func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
 		BeforeRunIDs:   []string{" run_1"},
 		AfterRunIDs:    []string{" run_1"},
 		StagedAt:       time.Now().UTC(),
-		Replay:         replay.UnprotectedGuard(),
+		Replay:         authoring.UnprotectedGuard(),
 	}
 	if err := pending.Validate(); err == nil {
 		t.Fatal("PendingSessionRollback accepted a run identity that requires trimming")
@@ -791,8 +790,8 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 	}
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
-		CommandID: replay.CommandID("cli_77777777777777777777777777777777"),
-		Replay:    replay.UnprotectedGuard(),
+		CommandID: authoring.CommandID("cli_77777777777777777777777777777777"),
+		Replay:    authoring.UnprotectedGuard(),
 		SessionID: "session", Scope: protocol.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"}, OpeningText: "opening",
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
@@ -800,13 +799,13 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 	if stageSessionRollbackErr := store.StageSessionRollback(pending); stageSessionRollbackErr != nil {
 		t.Fatal(stageSessionRollbackErr)
 	}
-	if saveDraftErr := store.SaveDraft(pending.SessionID, prompt.Message{Text: "opening!"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(pending.SessionID, authoring.Message{Text: "opening!"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if confirmSessionRollbackErr := store.ConfirmSessionRollback(pending.SessionID, pending.CommandID); confirmSessionRollbackErr != nil {
 		t.Fatal(confirmSessionRollbackErr)
 	}
-	activation, err := store.ActivateSessionDraft(pending.SessionID, prompt.Message{})
+	activation, err := store.ActivateSessionDraft(pending.SessionID, authoring.Message{})
 	if err != nil || activation.Rollback == nil || activation.Rollback.Merged ||
 		activation.Rollback.Draft.Text != "opening!" {
 		t.Fatalf("edited rollback activation = %+v, err %v", activation, err)
@@ -820,8 +819,8 @@ func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
 	}
 	pending := PendingSessionRollback{
 		Phase:     SessionRollbackPrepared,
-		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
-		Replay:    replay.UnprotectedGuard(),
+		CommandID: authoring.CommandID("cli_88888888888888888888888888888888"),
+		Replay:    authoring.UnprotectedGuard(),
 		SessionID: "session", Scope: protocol.RestoreHistory,
 		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"},
 		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
@@ -842,7 +841,7 @@ func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := prompt.Message{Text: "inspect", Attachments: []prompt.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: protocol.ContentBlockText}}}
+	first := authoring.Message{Text: "inspect", Attachments: []authoring.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: protocol.ContentBlockText}}}
 	second := first.Clone()
 	second.Attachments[0].Name = "new.go"
 	if err := store.Remember(first); err != nil {
@@ -969,7 +968,7 @@ func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveDraft("session", prompt.Message{Text: strings.Repeat("x", maximumStateBytes)}); err == nil {
+	if err := store.SaveDraft("session", authoring.Message{Text: strings.Repeat("x", maximumStateBytes)}); err == nil {
 		t.Fatal("oversized workbench snapshot was written")
 	}
 	if draft, found := store.Draft("session"); found {
@@ -983,10 +982,10 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandID := replay.CommandID("cli_0123456789abcdef0123456789abcdef")
-	pending := prompt.StartRun{
-		CommandID: commandID, SessionID: "ses_1", Message: prompt.Message{Text: "recover this start"},
-		Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Generation: protocol.GenerationParams{Stop: []string{"done"}}},
+	commandID := authoring.CommandID("cli_0123456789abcdef0123456789abcdef")
+	pending := authoring.StartRun{
+		CommandID: commandID, SessionID: "ses_1", Message: authoring.Message{Text: "recover this start"},
+		Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Generation: protocol.GenerationParams{Stop: []string{"done"}}},
 	}
 	if saveDraftErr := store.SaveDraft("ses_1", pending.Message); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -1007,7 +1006,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	if len(restored) != 1 || restored[0].State != PendingRunDispatching || restored[0].Command.Message.Text != "recover this start" || restored[0].Command.Options.Generation.Stop[0] != "done" {
 		t.Fatalf("restored pending runs = %+v", restored)
 	}
-	if err := reopened.AcknowledgePendingRun("ses_1", replay.CommandID("cli_ffffffffffffffffffffffffffffffff")); err == nil {
+	if err := reopened.AcknowledgePendingRun("ses_1", authoring.CommandID("cli_ffffffffffffffffffffffffffffffff")); err == nil {
 		t.Fatal("mismatched acknowledgement removed pending run")
 	}
 	if len(reopened.PendingRuns("ses_1")) != 1 {
@@ -1027,9 +1026,9 @@ func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailur
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_99999999999999999999999999999999"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "commit this prompt exactly once"},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_99999999999999999999999999999999"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "commit this prompt exactly once"},
 	}
 	stageDispatchingPendingRun(t, store, command)
 
@@ -1097,9 +1096,9 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_abababababababababababababababab"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "unsettled accepted prompt"},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_abababababababababababababababab"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "unsettled accepted prompt"},
 	}
 	stageDispatchingPendingRun(t, store, command)
 
@@ -1118,7 +1117,7 @@ func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
 	if acknowledgePendingRunErr := store.AcknowledgePendingRun(command.SessionID, command.CommandID); acknowledgePendingRunErr == nil {
 		t.Fatal("acknowledgement unexpectedly retired the blocked outbox")
 	}
-	if rememberErr := store.Remember(prompt.Message{Text: "newer plain history"}); rememberErr != nil {
+	if rememberErr := store.Remember(authoring.Message{Text: "newer plain history"}); rememberErr != nil {
 		t.Fatal(rememberErr)
 	}
 	if history := store.History(); len(history) != 2 || !history[0].Equal(command.Message) || history[1].Text != "newer plain history" {
@@ -1160,7 +1159,7 @@ func testCapacity(t *testing.T, value int) *Capacity {
 
 func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
-	commandID := replay.CommandID("cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd")
+	commandID := authoring.CommandID("cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd")
 	encoded := fmt.Sprintf(`[{"Text":"one","commandId":%q},{"Text":"two","commandId":%q}]`, commandID, commandID)
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(encoded), 0o600); err != nil {
 		t.Fatal(err)
@@ -1175,11 +1174,11 @@ func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pending := PendingRun{State: PendingRunQueued, Command: prompt.StartRun{
-		CommandID: replay.CommandID("cli_33333333333333333333333333333333"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "original"},
-		Options: prompt.RunOptions{Provider: "deepseek", Model: "v4"},
-	}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()}
+	pending := PendingRun{State: PendingRunQueued, Command: authoring.StartRun{
+		CommandID: authoring.CommandID("cli_33333333333333333333333333333333"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "original"},
+		Options: authoring.RunOptions{Provider: "deepseek", Model: "v4"},
+	}, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard()}
 	if err := store.StagePendingRun(pending); err != nil {
 		t.Fatal(err)
 	}
@@ -1206,9 +1205,9 @@ func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	original := replay.CommandID("cli_11111111111111111111111111111111")
-	command := prompt.StartRun{
-		CommandID: original, SessionID: "ses_1", Message: prompt.Message{Text: "wait behind active run"},
+	original := authoring.CommandID("cli_11111111111111111111111111111111")
+	command := authoring.StartRun{
+		CommandID: original, SessionID: "ses_1", Message: authoring.Message{Text: "wait behind active run"},
 	}
 	stageDispatchingPendingRun(t, store, command)
 	replacement, err := store.RequeuePendingRun(command.SessionID, original)
@@ -1230,9 +1229,9 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_44444444444444444444444444444444"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "must be delivered before settlement"},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_44444444444444444444444444444444"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "must be delivered before settlement"},
 	}
 	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 		t.Fatal(err)
@@ -1243,7 +1242,7 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 	if _, err := store.RequeuePendingRun(command.SessionID, command.CommandID); err == nil {
 		t.Fatal("queued run was reidentified before delivery")
 	}
-	if _, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard()); err == nil {
+	if _, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, authoring.UnprotectedGuard()); err == nil {
 		t.Fatal("queued run entered cancellation before delivery")
 	}
 	pending := store.PendingRuns(command.SessionID)
@@ -1254,10 +1253,10 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 		t.Fatalf("invalid acknowledgement committed history: %+v", history)
 	}
 
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatalf("idempotent dispatch returned %v", err)
 	}
 	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
@@ -1276,12 +1275,12 @@ func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_55555555555555555555555555555555"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "canceling delivery"},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_55555555555555555555555555555555"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "canceling delivery"},
 	}
 	stageDispatchingPendingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard())
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, authoring.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1303,16 +1302,16 @@ func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "cancel this uncertain start"},
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_88888888888888888888888888888888"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "cancel this uncertain start"},
 	}
 	stageDispatchingPendingRun(t, store, command)
-	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard())
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, authoring.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard()); markPendingRunCancelingErr != nil || replayed != cancelID {
+	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, authoring.UnprotectedGuard()); markPendingRunCancelingErr != nil || replayed != cancelID {
 		t.Fatalf("idempotent cancel transition = %q, %v; want %q", replayed, markPendingRunCancelingErr, cancelID)
 	}
 	if err := store.Close(); err != nil {
@@ -1335,19 +1334,19 @@ func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing
 		t.Fatal(err)
 	}
 	commands := []PendingRun{
-		{State: PendingRunQueued, Command: prompt.StartRun{
-			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
-			SessionID: "ses_1", Message: prompt.Message{Text: "first"}, Options: prompt.RunOptions{},
-		}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()},
-		{State: PendingRunQueued, Command: prompt.StartRun{
-			CommandID: replay.CommandID("cli_22222222222222222222222222222222"),
-			SessionID: "ses_1", Message: prompt.Message{Text: "second"}, Options: prompt.RunOptions{},
-		}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()},
+		{State: PendingRunQueued, Command: authoring.StartRun{
+			CommandID: authoring.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: "ses_1", Message: authoring.Message{Text: "first"}, Options: authoring.RunOptions{},
+		}, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard()},
+		{State: PendingRunQueued, Command: authoring.StartRun{
+			CommandID: authoring.CommandID("cli_22222222222222222222222222222222"),
+			SessionID: "ses_1", Message: authoring.Message{Text: "second"}, Options: authoring.RunOptions{},
+		}, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard()},
 	}
 	if err := store.SavePendingRuns("ses_1", commands); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, replay.UnprotectedGuard(), nil); err == nil {
+	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, authoring.UnprotectedGuard(), nil); err == nil {
 		t.Fatal("non-front command entered dispatching state")
 	}
 	if got := store.PendingRuns("ses_1"); len(got) != 2 || got[0].State != PendingRunQueued || got[1].State != PendingRunQueued {
@@ -1365,11 +1364,11 @@ func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{SessionID: "ses_1", Message: prompt.Message{Text: "missing identity"}}
+	command := authoring.StartRun{SessionID: "ses_1", Message: authoring.Message{Text: "missing identity"}}
 	if err := store.StagePendingRun(queuedPendingRun(command)); err == nil {
 		t.Fatal("pending run without a command identity was staged")
 	}
-	command.CommandID = replay.CommandID("cli_99999999999999999999999999999999")
+	command.CommandID = authoring.CommandID("cli_99999999999999999999999999999999")
 	invalidDispatch := queuedPendingRun(command)
 	invalidDispatch.State = PendingRunDispatching
 	if err := store.StagePendingRun(invalidDispatch); err == nil {
@@ -1381,27 +1380,27 @@ func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
 }
 
 func TestInvalidPendingRunTransitionsPreserveMutationIdentity(t *testing.T) {
-	pending := PendingRun{State: PendingRunQueued, Command: prompt.StartRun{
-		CommandID: replay.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-		SessionID: "ses_1", Message: prompt.Message{Text: "still queued"},
-	}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()}
-	if _, err := pending.beginCancellation(replay.UnprotectedGuard()); err == nil {
+	pending := PendingRun{State: PendingRunQueued, Command: authoring.StartRun{
+		CommandID: authoring.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		SessionID: "ses_1", Message: authoring.Message{Text: "still queued"},
+	}, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard()}
+	if _, err := pending.beginCancellation(authoring.UnprotectedGuard()); err == nil {
 		t.Fatal("queued run began cancellation")
 	}
 	if _, err := pending.requeue(); err == nil {
 		t.Fatal("queued run was reidentified")
 	}
-	if pending.State != PendingRunQueued || pending.Command.CommandID != replay.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
+	if pending.State != PendingRunQueued || pending.Command.CommandID != authoring.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
 		t.Fatalf("invalid transitions mutated pending run: %+v", pending)
 	}
 }
 
-func stageDispatchingPendingRun(t *testing.T, store *Store, command prompt.StartRun) {
+func stageDispatchingPendingRun(t *testing.T, store *Store, command authoring.StartRun) {
 	t.Helper()
 	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, authoring.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1423,7 +1422,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 	}
 	pending := PendingResume{
 		Command: conversation.ResumeRun{
-			CommandID: replay.CommandID("cli_33333333333333333333333333333333"), RunID: approval.RunID,
+			CommandID: authoring.CommandID("cli_33333333333333333333333333333333"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{
 				ItemID: approval.ItemID,
 				Answer: conversation.ApprovalAnswer{
@@ -1431,7 +1430,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 				},
 			}},
 		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1448,7 +1447,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 		t.Fatal(err)
 	}
 	restored, ok := reopened.PendingResume("ses_1")
-	if !ok || restored.Command.CommandID != replay.CommandID("cli_33333333333333333333333333333333") ||
+	if !ok || restored.Command.CommandID != authoring.CommandID("cli_33333333333333333333333333333333") ||
 		restored.Command.RunID != approval.RunID || len(restored.Interrupts) != 1 {
 		t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
 	}
@@ -1457,7 +1456,7 @@ func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 		string(answer.ArgumentOverride.JSON()) != `{"path":"generated/fixture.go"}` {
 		t.Fatalf("restored pending answer = %#v", restored.Command.Answers[0].Answer)
 	}
-	if err := reopened.AcknowledgePendingResume("ses_1", replay.CommandID("cli_44444444444444444444444444444444")); err == nil {
+	if err := reopened.AcknowledgePendingResume("ses_1", authoring.CommandID("cli_44444444444444444444444444444444")); err == nil {
 		t.Fatal("mismatched acknowledgement retired pending resume")
 	}
 	if _, ok := reopened.PendingResume("ses_1"); !ok {
@@ -1482,10 +1481,10 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	}
 	pending := PendingResume{
 		Command: conversation.ResumeRun{
-			CommandID: replay.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
+			CommandID: authoring.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}}},
 		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
 	}
 	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatal(err)
@@ -1509,7 +1508,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	if err := store.StagePendingResume("ses_1", changedInterrupt, nil); err == nil {
 		t.Fatal("same resume identity accepted a different interrupt")
 	}
-	message := prompt.Message{Text: "additional guidance"}
+	message := authoring.Message{Text: "additional guidance"}
 	changedMessage := clonePendingResume(pending)
 	changedMessage.Command.Message = &message
 	if err := store.StagePendingResume("ses_1", changedMessage, nil); err == nil {
@@ -1539,7 +1538,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 			}},
 		},
-		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: authoring.UnprotectedGuard(),
 	}
 
 	if err := store.StagePendingResume("ses_1", pending, nil); err == nil {
@@ -1569,7 +1568,7 @@ func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	}
 	pending := PendingResume{
 		Command: conversation.ResumeRun{
-			CommandID: replay.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1",
+			CommandID: authoring.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1",
 			Answers: []conversation.InterruptAnswer{
 				{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{
 					Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "protect generated output",
@@ -1577,7 +1576,7 @@ func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 				{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
 			},
 		},
-		Interrupts: []conversation.Interrupt{approval, question}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval, question}, Replay: authoring.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)

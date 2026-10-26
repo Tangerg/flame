@@ -5,8 +5,7 @@ import (
 	"image"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -27,7 +26,7 @@ const (
 
 type queueTarget struct {
 	kind queueTargetKind
-	id   queue.EntryID
+	id   authoring.QueueEntryID
 }
 
 type queueHit struct {
@@ -68,12 +67,12 @@ func (q *queuePointerGesture) release(target queueTarget) bool {
 func (q *queuePointerGesture) cancel() { *q = queuePointerGesture{} }
 
 type queueDrawerActions struct {
-	BeginEdit  func(queue.Entry) error
-	SaveEdit   func(queue.Entry, prompt.Message, bool) error
-	CancelEdit func(queue.Entry) error
-	Remove     func(queue.EntryID) error
-	Move       func(queue.EntryID, int) error
-	SendNow    func(queue.EntryID) error
+	BeginEdit  func(authoring.QueueEntry) error
+	SaveEdit   func(authoring.QueueEntry, authoring.Message, bool) error
+	CancelEdit func(authoring.QueueEntry) error
+	Remove     func(authoring.QueueEntryID) error
+	Move       func(authoring.QueueEntryID, int) error
+	SendNow    func(authoring.QueueEntryID) error
 	Dismiss    func()
 }
 
@@ -86,12 +85,12 @@ type queueDrawer struct {
 	keys    *keymap.Map
 	actions queueDrawerActions
 
-	entries  []queue.Entry
+	entries  []authoring.QueueEntry
 	selected int
 	scroll   headless.Scroll
 
-	editingEntry   *queue.Entry
-	editingMessage prompt.Message
+	editingEntry   *authoring.QueueEntry
+	editingMessage authoring.Message
 	editor         kit.Composer
 	focused        bool
 
@@ -115,7 +114,7 @@ func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipbo
 
 func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actions }
 
-func (q *queueDrawer) Set(snapshot queue.Snapshot) {
+func (q *queueDrawer) Set(snapshot authoring.QueueSnapshot) {
 	q.hovered = queueTarget{}
 	q.pointerGesture.cancel()
 	selected, hasSelected := q.selectedEntry()
@@ -135,7 +134,7 @@ func (q *queueDrawer) Set(snapshot queue.Snapshot) {
 	}
 	q.entries = entries
 	if q.Editing() && editingIndex < 0 {
-		if err := q.releaseEdit(); err != nil && !errors.Is(err, queue.ErrEntryNotFound) {
+		if err := q.releaseEdit(); err != nil && !errors.Is(err, authoring.ErrEntryNotFound) {
 			q.notice = err.Error()
 		}
 	}
@@ -330,9 +329,9 @@ func (q *queueDrawer) Closed() {
 	q.pointerGesture.cancel()
 }
 
-func (q *queueDrawer) selectedEntry() (queue.Entry, bool) {
+func (q *queueDrawer) selectedEntry() (authoring.QueueEntry, bool) {
 	if q.selected < 0 || q.selected >= len(q.entries) {
-		return queue.Entry{}, false
+		return authoring.QueueEntry{}, false
 	}
 	return q.entries[q.selected], true
 }
@@ -387,7 +386,7 @@ func (q *queueDrawer) releaseEdit() error {
 
 func (q *queueDrawer) cancelEditState() {
 	q.editingEntry = nil
-	q.editingMessage = prompt.Message{}
+	q.editingMessage = authoring.Message{}
 	q.editor.Editor().Clear()
 	q.editor.Focus(false)
 }
@@ -428,7 +427,7 @@ func (q *queueDrawer) moveSelected(offset int) {
 		return
 	}
 	if err := q.actions.Move(entry.ID, offset); err != nil {
-		if !errors.Is(err, queue.ErrMoveUnavailable) {
+		if !errors.Is(err, authoring.ErrMoveUnavailable) {
 			q.notice = err.Error()
 		}
 		return
@@ -443,7 +442,7 @@ func (q *queueDrawer) sendSelected() {
 	}
 }
 
-func (q *queueDrawer) send(id queue.EntryID) {
+func (q *queueDrawer) send(id authoring.QueueEntryID) {
 	if q.actions.SendNow == nil {
 		return
 	}
@@ -473,7 +472,7 @@ func (q *queueDrawer) activate(target queueTarget) {
 	}
 }
 
-func (q *queueDrawer) selectID(id queue.EntryID) {
+func (q *queueDrawer) selectID(id authoring.QueueEntryID) {
 	if index := queueEntryIndex(q.entries, id); index >= 0 {
 		q.selectIndex(index)
 	}
@@ -489,6 +488,6 @@ func (q *queueDrawer) hitAt(point image.Point) queueTarget {
 	return queueTarget{}
 }
 
-func queueEntryIndex(entries []queue.Entry, id queue.EntryID) int {
-	return slices.IndexFunc(entries, func(entry queue.Entry) bool { return entry.ID == id })
+func queueEntryIndex(entries []authoring.QueueEntry, id authoring.QueueEntryID) int {
+	return slices.IndexFunc(entries, func(entry authoring.QueueEntry) bool { return entry.ID == id })
 }
