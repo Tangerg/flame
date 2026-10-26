@@ -78,18 +78,7 @@ export function Skills({ context }: { context: ComponentContext }) {
         if (review) setReview(undefined);
         else closeDocument();
       }}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={
-            opened
-              ? undefined
-              : target === "library"
-                ? t("header.library")
-                : t("header.workspace")
-          }
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         opened ? (
           <>

@@ -20,6 +20,9 @@ lifecycle with Archive/Restore directly available; they have no disclosure for
 repeated facts. Proposal rows expand supporting facts and proposed instructions,
 and their commands stay beside the summary.
 
+Hosted catalogs begin with catalog navigation and search. The workspace path and
+personal-library ownership guidance provide their respective scope.
+
 Reading a named document is a child of Available Skills, not another catalog. The
 catalog keeps its accepted snapshot, query and canonical reads while hidden. The
 catalog begins at its first result when the user changes or clears the query;

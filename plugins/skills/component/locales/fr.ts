@@ -1,8 +1,5 @@
 export const fr: Record<string, string> = {
   "panel.title": "Skills",
-  "header.library": "Instructions réutilisables que vous gérez.",
-  "header.workspace":
-    "Instructions et propositions pour cet espace de travail.",
   refresh: "Actualiser",
   "nav.label": "Navigation des Skills",
   "nav.catalog": "Catalogue",

@@ -1,7 +1,5 @@
 export const ko: Record<string, string> = {
   "panel.title": "스킬",
-  "header.library": "직접 관리하는 재사용 가능한 지침입니다.",
-  "header.workspace": "이 작업 공간의 지침과 제안입니다.",
   refresh: "새로 고침",
   "nav.label": "스킬 탐색",
   "nav.catalog": "카탈로그",

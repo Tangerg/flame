@@ -1,7 +1,5 @@
 export const zh: Record<string, string> = {
   "panel.title": "技能",
-  "header.library": "你管理的可复用指令。",
-  "header.workspace": "此工作区的指令与提议。",
   refresh: "刷新",
   "nav.label": "技能导航",
   "nav.catalog": "目录",

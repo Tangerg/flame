@@ -1,7 +1,5 @@
 export const zhTW: Record<string, string> = {
   "panel.title": "技能",
-  "header.library": "你管理的可重複使用指令。",
-  "header.workspace": "此工作區的指令與提議。",
   refresh: "重新整理",
   "nav.label": "技能導覽",
   "nav.catalog": "目錄",

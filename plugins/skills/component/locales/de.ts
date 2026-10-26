@@ -1,7 +1,5 @@
 export const de: Record<string, string> = {
   "panel.title": "Skills",
-  "header.library": "Wiederverwendbare Anweisungen, die du verwaltest.",
-  "header.workspace": "Anweisungen und Vorschläge für diesen Arbeitsbereich.",
   refresh: "Aktualisieren",
   "nav.label": "Skill-Navigation",
   "nav.catalog": "Katalog",

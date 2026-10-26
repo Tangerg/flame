@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result filters now reveal their first matching row while preserving unchanged reading, qualified below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result and Skills filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs now begin with navigation and search, qualified below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33,12 +33,14 @@ The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
 preserves whitespace-only captured Tool source. It also reveals the beginning of
 a changed Skills catalog query while retaining document-return and refresh
-positions. Each batch has completed its scoped native qualification and resource
-retirement. The latest Skills repair uses frozen base
-`8e424815d422da89f9c8487fb6d6e942083db99d`; see Skills catalog query and reading
-return below. The preceding source-presence repair is recorded under Generic
-Tool source presence. These local commits have not been pushed or merged into
-the primary checkout.
+positions. Hosted Skills catalogs also retire their generic introductions while
+retaining the actual workspace and library ownership guidance. Each batch has
+completed its scoped native qualification and resource retirement. The latest
+Skills composition refinement uses frozen base
+`26e796431f56ea3616a69e3f4fb62eeeff951d4b`; see Skills catalog introductions
+below. Its preceding query repair and the source-presence repair are recorded
+under Skills catalog query and reading return and Generic Tool source presence.
+These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -8389,6 +8391,147 @@ The verified in-memory gzip retains **73** flat UTF-8 records, **33** screenshot
 digests and artifact maps (**596** assets per baseline/candidate, **16** immutable
 module artifacts and **4** native binaries); SHA-256 is
 `088cc40d21a7e471922fc288733ec2a8ab28582cd873f856440f532727576009`.
+The primary parallel checkout, user data, installed dependencies, compiler caches
+and unrelated processes remain untouched. Delivery stays local on
+`codex/ui-feedback-local-1026`.
+
+### Skills catalog introductions
+
+This feedback G04 refinement uses frozen base
+`26e796431f56ea3616a69e3f4fb62eeeff951d4b`. The goal's instruction to remove
+redundant introductions applies to two generic Skills descriptions. The
+source-matched native DE 18 px/320 px observation shows the workspace description
+occupying two lines above catalog navigation. The selected catalog, its section
+title and actual workspace path already identify the material. The personal
+library also repeats a generic introduction above its distinct package-ownership
+guidance. This is a LOW writing and hierarchy refinement, not a newly discovered
+blocking layout or navigation defect.
+
+The consumer now supplies only `PanelHeader`'s title. Its existing heading-only
+hosted form retains the semantic Skills heading while the host supplies the
+visible title. Both redundant descriptions and their sixteen entries across
+eight locales are removed. The actual workspace path, selected catalog, catalog
+totals, document identity and source, personal-library ownership guidance,
+lifecycle and action controls remain. The existing shared component owns this
+composition; no CSS, token, geometry, state, hook, timer, listener, dependency or
+SDK/Runtime contract changes. The README records the resulting composition and
+the normal builder regenerates only the Skills ESM resource.
+
+#### Scope and coverage
+
+Fresh read-only ZCode `settings/PluginStoreListView.tsx:135` starts its real list
+composition with catalog/source selection and search before the material. This
+supports the control-first composition; no upstream component, style or behavior
+is copied. Existing ChatGPT, HeroUI/Radix, Arc and Ace reference studies retain
+their earlier limits. No new upstream browser or static-image comparison ran.
+The better-writing and better-layout instructions guide the subtraction; all six
+better-interface domains cover the actual task below.
+
+| Domain        | Evidence inspected                                                                           | Result                                                                             |
+| ------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Accessibility | Retained Skills heading, named search, Back, Shift-Tab/Return, Escape and draft continuation | Semantic context and observed focus return retained; VoiceOver/OS IME not verified |
+| Layout        | EN 523 px Dock, DE 18 px/320 px/narrow host and ZH 18 px/200% full-width material            | Catalog controls precede content; actual scope and reading/return remain reachable |
+| Writing       | Two generic descriptions versus real workspace, catalog and unique library guidance          | Redundant copy removed; ownership and action meaning retained                      |
+| Typography    | Three locales, 14/18 px text, full document names, instructions and wrapped DE provenance    | Existing reading scale retained; no measured pixel-gain claim                      |
+| Colors        | Orange/light, custom purple/light and custom blue/dark with observed focus states            | Existing semantic surfaces retained; contrast not remeasured                       |
+| UI polish     | Catalog changes, document opening/return, source disclosure and original draft continuation  | Existing interactions retained without additional decoration or motion             |
+
+| Severity | Domain              | Location                                                   | Before                                                   | After                                                                  | Why                                                                        |
+| -------- | ------------------- | ---------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| LOW      | Writing / hierarchy | `plugins/skills/component/component.tsx:81`, eight locales | Generic introduction precedes already identified catalog | Navigation and search begin the hosted catalog; specific scope remains | Remove words that repeat context while retaining information needed to act |
+
+#### Verification
+
+Before editing, all **5,819** non-Markdown input hashes and **11** resource hashes
+match the preceding accepted source. Its EN normal, DE 18 px/320 px and ZH 200%
+native before observations are reused from verified archive
+`088cc40d21a7e471922fc288733ec2a8ab28582cd873f856440f532727576009`.
+The eighty ordinary canonical Skill fixtures are identical. No fourth baseline
+app is built for an identical source. The after observations below are fresh.
+
+The first check attempt stops before tests in **0.76 s** because the component
+builder cannot resolve the cleaned `@flame/icons/react` output. This is an omitted
+harness prerequisite, acknowledged and corrected by running the existing icons
+and UI builds before the component builder. No assertion or gate is weakened.
+The corrected twelve-command serial chain passes in **8.75 s**: formatting,
+icons/UI/resource builds, **4 files / 25 tests** (**2.87 s** wall time), plugin
+typecheck/lint/i18n/resource checks and Web typecheck/lint/design-system checks.
+The unchanged tests cover Skills presentation, installed workspace/subagent
+continuity and renderer ownership. No new string-matching tests are added for
+this reversible copy retirement. All eleven shipped resources match the builder;
+only Skills differs from the frozen base, the other ten remain byte-identical.
+
+Private candidate assets and three actual Wails v3 beta.34 apps build in
+**16.44 s**, using immutable module artifacts from the frozen base. Only known
+non-failing chunk-size and duplicate `-lobjc` warnings remain. The private native
+overlay changes asset hosting, application identity and scene entry only; the
+private Web import applies existing window chrome. Canonical discovery/get use
+the existing fixture transport with the eighty ordinary documents. No production
+handler, input driver or focus/scroll behavior is replaced.
+
+- EN/light/14 px/Orange/full motion: the **523 px** Dock starts with catalog
+  navigation/search. Searching `runtime`, opening `runtime-review-001` and
+  Shift-Tab/Return on Back retain the query and original row focus. Skill
+  proposals retain their workspace and expandable proposed instructions.
+  Personal Skill library retains its user-managed/package-ownership guidance,
+  active/archived lifecycle and Archive/Restore controls. Those commands and
+  Approve/Reject are not invoked. Native Left-arrow navigation returns through
+  the catalogs. The original draft continues exactly as
+  `Keep the catalog reading draft. Continue after reviewing the Skills.`.
+- DE/light/18 px/custom purple/motion off: native Tab/Home sets a true **320 px**
+  Dock, retained through native Left placement with the fixture sidebar open.
+  The generic two-line introduction is absent; controls, real workspace and the
+  first document precede the rest of the material. A `runtime` search and
+  `runtime-review-001` reading retain named Back, identity and User scope.
+  Expanding provenance shows its complete wrapped path and revision. Escape
+  returns to the same query and row focus. The draft continues exactly as
+  `Nach dem Lesen der Skills weiterarbeiten. Geprüft, weiter.`.
+- ZH/dark/18 px/custom blue/motion off: native Left placement, sidebar collapse
+  and twenty Zoom In actions from Actual Size establish **200%**. The existing
+  explicit full-width entry shows navigation/search, actual workspace and the
+  first document without the introduction. Search, named-document instructions
+  and Shift-Tab/Return on Back retain `runtime` and original row focus. Ordinary
+  full-pane Close returns to Conversation, where the draft continues exactly as
+  `阅读技能后继续。 已阅读，继续。`.
+
+All apps exit with Cmd+Q. These are isolated native UI tasks, not live Runtime
+installation, filesystem discovery, provider, proposal mutation, durable command
+or Send acceptance. The prior `make check-native` remains evidence for unchanged
+native sources; it and complete unchanged Web/UI/SDK/Runtime/CLI suites were not
+rerun. The pre-existing main `check:layers` violation recorded under Generic Tool
+source presence is unchanged, not rerun or weakened. Browser visual/performance
+suites, other-platform GUI, RTL, VoiceOver, OS IME, quantitative contrast and
+animation timing are not freshly qualified. No Claude CLI, subagent, main fetch,
+push or primary integration is used.
+
+| Goal CHECK        | Scoped result                                                                             |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| Typography        | Existing scale, complete names/instructions and wrapped provenance retained               |
+| Whitespace        | Redundant introductory block removed; existing catalog gutters retained                   |
+| Visual hierarchy  | Navigation/search precede material; real scope and document identity remain distinct      |
+| Color             | Existing neutral surfaces, semantic accents and visible native focus retained             |
+| Motion            | Existing full/off states inspected; no new motion                                         |
+| Micro interaction | Catalog switching, search, document Back/Escape, Close and draft continuation pass        |
+| Responsive        | DE true 320 px Dock and ZH native narrow/200% full-width material qualified               |
+| Originality       | Existing Flame workbench identity retained through its own shared PanelHeader composition |
+
+Verdict: **Approve for the inspected catalog composition and reading-return
+task**. This is bounded progress; whole-product and award-level acceptance remain
+open. Continue from fresh task evidence rather than reopening these completed
+introductions or the preceding query transition without a new finding.
+
+Owned-resource retirement is complete. All **6** recorded process IDs are dead;
+three exact bundles are unregistered and the private root is absent. Cleanup
+removes three new checkout output/cache roots, six bundle-specific Library paths
+and three bundle temporary directories. All **34** output-presence baselines,
+**3** pre-existing output files, **18** Library-presence baselines, **11** accepted
+resources, the fresh read-only ZCode reference and **5,819** accepted non-Markdown
+inputs are preserved. Accepted-input SHA-256 is
+`abec2829c7b5b5029b9dd2ce06e42a8b8e5cd8484471644bf85c133796bd0b6b`.
+The verified in-memory gzip retains **55** flat UTF-8 records, **23** screenshot
+digests and artifact maps (**596** candidate assets, **16** immutable module
+artifacts and **3** native binaries); SHA-256 is
+`ed8cef958e37e758d3964a0d2d95f2ce7f5d62f910bd2624046a5783999a7ac9`.
 The primary parallel checkout, user data, installed dependencies, compiler caches
 and unrelated processes remain untouched. Delivery stays local on
 `codex/ui-feedback-local-1026`.

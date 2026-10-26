@@ -1,7 +1,5 @@
 export const ja: Record<string, string> = {
   "panel.title": "スキル",
-  "header.library": "あなたが管理する再利用可能な指示。",
-  "header.workspace": "このワークスペースの指示と提案。",
   refresh: "更新",
   "nav.label": "スキルナビゲーション",
   "nav.catalog": "カタログ",
