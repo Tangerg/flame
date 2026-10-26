@@ -9022,9 +9022,38 @@ resolved. This remains **progress**, not whole-product or award-tier completion.
 Accepted **5,784 non-Markdown inputs** have SHA-256
 `5f7fe340e7edd4772055383c3f6756205533ab8bb3c529185831f492503b9096`;
 **1,200** final compiled assets, **11** product ESM resources and **four** read-only
-reference files are frozen. Publication and exact owned-resource retirement
-remain to be recorded below. Continue from fresh reading/Dock task evidence
-after this batch; do not reopen these repaired error paths without a new finding.
+reference files are frozen. Publication and exact owned-resource retirement are
+recorded below. Continue from fresh reading/Dock task evidence after this batch;
+do not reopen these repaired error paths without a new finding.
+
+**Delivery receipt**
+
+Implementation `1d8bfdd8084171aac8a330f18e1df840fee0229c` is published to remote
+main. The single publication fetch finds no incoming commit beyond frozen main
+`74026e0085b71e5f2be0652ea86b710b03db3dc7`; no unrelated validation loop is
+started. Normal formatting and workspace-lint hooks pass while preserving all
+accepted product inputs. Independent `ls-remote` matches the implementation;
+the owned checkout is clean with ahead/behind **0 / 0**.
+
+All **16** recorded processes are dead. Independent process-table and native
+registration queries find no owned command or any of the four apps. Cleanup
+removes **seven** new checkout output paths, **eight** owned Library paths and
+**four** bundle-temp paths. All **36** output-presence baselines and inventories
+of **three** original files are restored, including the original native-check
+binary. The existing Vite configuration directory and shared UI test cache are
+preserved. All **11** product ESM resources and **four** read-only references
+match. Primary parallel work, user data, dependencies and shared compiler/package
+caches remain preserved.
+
+The guarded private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-plugin-errors-1026-aqBRNH`
+is absent. Its independently round-trip-verified in-memory archive retains
+**104 UTF-8 files**, **46 screenshot digests**, original/native binary metadata,
+source/asset maps, original failures and publication/retirement proofs; gzip
+SHA-256 `58638e496f76688ed18f6ba3ad3dc1f68d15befc5e59d57ae86dd1a387920668`.
+Post-retirement verification again preserves all **5,784** non-Markdown inputs
+and their hash above. This documentation-only receipt changes no qualified
+product source. The continuous UI goal remains active.
 
 ### Plugin render recovery
 
