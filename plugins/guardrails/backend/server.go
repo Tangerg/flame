@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	"github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
 	sdk "github.com/Tangerg/go-sdk/mcp"

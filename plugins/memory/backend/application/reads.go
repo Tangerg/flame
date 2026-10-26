@@ -8,7 +8,7 @@ import (
 	"time"
 
 	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 const managementPageNamespace = "agentMemory.management"

@@ -3,8 +3,8 @@ package routing
 import (
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	"github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/invopop/jsonschema"
 )
 

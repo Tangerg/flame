@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {

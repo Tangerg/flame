@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

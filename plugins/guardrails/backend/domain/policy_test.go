@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
 func TestPolicyOwnsExactMatchingAndDetachedRevisions(t *testing.T) {

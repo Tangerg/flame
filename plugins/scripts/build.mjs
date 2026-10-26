@@ -205,7 +205,7 @@ export async function buildPlugin({
         ? archiveArgs
         : [
             "tool",
-            "github.com/Tangerg/flame/plugins/scripts/archive",
+            "github.com/Tangerg/flame/packages/go-sdk/cmd/archive",
             ...archiveArgs,
           ],
       {

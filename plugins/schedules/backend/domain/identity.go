@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 const IDPrefix = "sch_"

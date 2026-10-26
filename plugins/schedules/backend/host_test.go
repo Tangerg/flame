@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRunAdmissionReleasesObservationAndRetainsOriginalIdentity(t *testing.T) {

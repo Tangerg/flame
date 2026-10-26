@@ -11,42 +11,10 @@
       "description": "Create one schedule definition.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_Draft": {
-            "additionalProperties": false,
-            "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "Cron": {
-                "type": "string"
-              },
-              "Enabled": {
-                "type": "boolean"
-              },
-              "Instructions": {
-                "type": "string"
-              },
-              "ModelSelection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
-              },
-              "Title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "Enabled"
-            ],
-            "type": "object"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
             "additionalProperties": false,
             "properties": {
               "model": {
@@ -63,6 +31,38 @@
               "model",
               "provider",
               "reasoningEffort"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_Draft": {
+            "additionalProperties": false,
+            "properties": {
+              "CWD": {
+                "type": "string"
+              },
+              "Cron": {
+                "type": "string"
+              },
+              "Enabled": {
+                "type": "boolean"
+              },
+              "Instructions": {
+                "type": "string"
+              },
+              "ModelSelection": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
+              },
+              "Title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Title",
+              "Instructions",
+              "CWD",
+              "ModelSelection",
+              "Cron",
+              "Enabled"
             ],
             "type": "object"
           }
@@ -83,7 +83,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
           },
           "Title": {
             "type": "string"
@@ -101,6 +101,29 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -125,7 +148,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -157,29 +180,6 @@
               "Revision"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -206,7 +206,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
           },
           "NextRunAt": {
             "format": "date-time",
@@ -338,6 +338,29 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -362,7 +385,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -411,29 +434,6 @@
             "required": [
               "Rows",
               "NextCursor"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
             ],
             "type": "object"
           }
@@ -633,6 +633,29 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_selectionJSON[string]": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "reasoningEffort": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "model",
+              "provider",
+              "reasoningEffort"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -657,7 +680,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
               },
               "NextRunAt": {
                 "format": "date-time",
@@ -689,29 +712,6 @@
               "Revision"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_selectionJSON[string]": {
-            "additionalProperties": false,
-            "properties": {
-              "model": {
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "reasoningEffort": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "model",
-              "provider",
-              "reasoningEffort"
-            ],
-            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -738,7 +738,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvbW9kZWw_Selection"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA_Selection"
           },
           "NextRunAt": {
             "format": "date-time",

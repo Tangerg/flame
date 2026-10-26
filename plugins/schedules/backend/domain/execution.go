@@ -1,7 +1,7 @@
 package schedule
 
 import (
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 // Capturing instructions independently prevents later definition edits or deletion from changing pending work.

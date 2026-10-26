@@ -11,8 +11,8 @@ import (
 
 	"github.com/Tangerg/flame/plugins/memory/backend/sqlite"
 	"github.com/Tangerg/flame/plugins/memory/backend/transport"
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
-	"github.com/Tangerg/flame/runtime/storage/directories"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

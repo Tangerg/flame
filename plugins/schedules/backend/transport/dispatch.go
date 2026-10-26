@@ -6,10 +6,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 type RunHost interface {

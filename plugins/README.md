@@ -115,7 +115,7 @@ projected from this repository's respective compiler configurations.
 New features publish one owned descriptor; implementations of
 existing consumer contracts reuse the
 published exact schemas. Memory uses the public
-[`plugin-sdk/memory`](../packages/plugin-sdk/memory/README.md) contract, so its
+[`plugin-sdk/memory`](../packages/go-sdk/plugin/memory/README.md) contract, so its
 author namespace cannot redefine the host's role. Go
 production and tool dependencies are vendored from immutable standard root/nested
 module artifacts; SDK source and manifests are never rewritten or trimmed.

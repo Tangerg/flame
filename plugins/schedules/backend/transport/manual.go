@@ -9,13 +9,13 @@ import (
 	"errors"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-	"github.com/Tangerg/flame/runtime/identity"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 // Captured execution remains in the private queue. Stable identities locate that

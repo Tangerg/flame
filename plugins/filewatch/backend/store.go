@@ -7,9 +7,9 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 const (

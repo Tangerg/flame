@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"runtime"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
-	"github.com/Tangerg/flame/runtime/protocol"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
 	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	processsandbox "github.com/Tangerg/flame/runtime/sandbox"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 

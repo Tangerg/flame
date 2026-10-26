@@ -1,13 +1,13 @@
 package usagereports
 
-//go:generate go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature contracts/capability.json --out package/io.github.tangerg.flame/contracts --ts component
+//go:generate go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --feature contracts/capability.json --out package/io.github.tangerg.flame/contracts --ts component
 
 import (
 	_ "embed"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 //go:embed contracts/capability.json

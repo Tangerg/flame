@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
 var (

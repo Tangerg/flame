@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 var ErrNotFound = errors.New("schedule: not found")

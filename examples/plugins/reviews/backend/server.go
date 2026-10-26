@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
-	"github.com/Tangerg/flame/runtime/capability"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"

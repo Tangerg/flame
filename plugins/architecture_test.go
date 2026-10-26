@@ -32,8 +32,8 @@ func TestPluginPoliciesStayIndependentOfInfrastructure(t *testing.T) {
 		fixture := strings.Contains(location, "/internal/testsupport/")
 		for _, imported := range file.Imports {
 			dependency := strings.Trim(imported.Path.Value, `"`)
-			if strings.HasPrefix(dependency, "github.com/Tangerg/flame/runtime/internal/") {
-				t.Errorf("%s imports private Runtime implementation %s", path, dependency)
+			if dependency == "github.com/Tangerg/flame/runtime" || strings.HasPrefix(dependency, "github.com/Tangerg/flame/runtime/") {
+				t.Errorf("%s imports Runtime host implementation %s", path, dependency)
 			}
 			if !fixture && strings.Contains(dependency, "/internal/testsupport") {
 				t.Errorf("%s imports a test fixture in production", path)
@@ -53,8 +53,8 @@ func outwardDependency(path string) bool {
 	for _, prefix := range []string{
 		"database/sql", "net/http", "os", "github.com/Tangerg/go-sdk/mcp",
 		"github.com/Tangerg/scope/agent", "github.com/Tangerg/scope/core/chatclient",
-		"github.com/Tangerg/flame/packages/plugin-sdk", "github.com/Tangerg/flame/runtime/storage",
-		"github.com/Tangerg/flame/runtime/sandbox", "github.com/Tangerg/flame/runtime/transport",
+		"github.com/Tangerg/flame/packages/go-sdk/plugin", "github.com/Tangerg/flame/packages/go-sdk/storage",
+		"github.com/Tangerg/flame/packages/go-sdk/sandbox", "github.com/Tangerg/flame/packages/go-sdk/httpresponse",
 	} {
 		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
@@ -69,12 +69,12 @@ func outwardDependency(path string) bool {
 }
 
 func TestPluginPolicyBoundaryRejectsConcreteAdapters(t *testing.T) {
-	for _, dependency := range []string{"net/http", "database/sql", "github.com/Tangerg/flame/plugins/memory/backend/sqlite", "github.com/Tangerg/flame/packages/plugin-sdk"} {
+	for _, dependency := range []string{"net/http", "database/sql", "github.com/Tangerg/flame/plugins/memory/backend/sqlite", "github.com/Tangerg/flame/packages/go-sdk/plugin"} {
 		if !outwardDependency(dependency) {
 			t.Fatalf("policy boundary admitted %s", dependency)
 		}
 	}
-	if outwardDependency("github.com/Tangerg/flame/runtime/model") {
+	if outwardDependency("github.com/Tangerg/flame/packages/go-sdk/model") {
 		t.Fatal("policy boundary refused the public immutable model choice")
 	}
 }

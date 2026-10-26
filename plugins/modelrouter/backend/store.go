@@ -6,9 +6,9 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 type store struct{ db *sql.DB }

@@ -13,8 +13,8 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	"github.com/Tangerg/flame/runtime/instant"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 const (

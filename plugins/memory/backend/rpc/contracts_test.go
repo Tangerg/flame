@@ -10,8 +10,8 @@ import (
 
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {

@@ -4,15 +4,15 @@ import (
 	"errors"
 	"strconv"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/invopop/jsonschema"
 
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/runtime/exactjson"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 const (

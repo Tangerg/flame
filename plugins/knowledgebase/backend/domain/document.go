@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/invopop/jsonschema"
 )
 

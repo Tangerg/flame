@@ -11,7 +11,7 @@ import (
 	"time"
 
 	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 func newMemoryItemID() agentmemory.ItemID {

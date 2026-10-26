@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	"github.com/Tangerg/flame/runtime/dependency"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 // Only a pre-store refusal proves that a failed command caused no write; store errors retain an unknown outcome.

@@ -1,7 +1,7 @@
 package rpc
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/knowledgebase/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
-//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/modelcontracts context > ../../package/io.github.tangerg.flame/contracts/context.generated.json"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/knowledgebase/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --model-contract context > ../../package/io.github.tangerg.flame/contracts/context.generated.json"
 
 import (
 	"errors"
@@ -9,11 +9,11 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/exactjson"
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 )
 
 type ImportInput struct {

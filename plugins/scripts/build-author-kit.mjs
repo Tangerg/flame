@@ -6,14 +6,22 @@ import {
   readdir,
   realpath,
   rm,
-  symlink,
   writeFile,
 } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createConsumerLock } from "../../tooling/npm-consumer-lock.mjs";
-import { moduleArtifacts, root, run } from "../../tooling/workspace.mjs";
-import { prepareGoKit, prepareDevelopmentTools } from "./build-go-kit.mjs";
+import {
+  moduleArtifacts,
+  root,
+  run,
+  linkDependencies,
+} from "../../tooling/workspace.mjs";
+import {
+  prepareGoKit,
+  prepareDevelopmentTools,
+  authorSDK,
+} from "./build-go-kit.mjs";
 import { validateDestination, readBuildPlan } from "./build.mjs";
 import { stageNode } from "../../tooling/node-companion.mjs";
 
@@ -71,14 +79,17 @@ const inputs = [
   "tooling",
   "packages/icons",
   "packages/ui",
-  "packages/runtime-client/typescript",
+  "packages/runtime-client",
   "packages/component-sdk",
-  "packages/plugin-sdk/typescript",
+  "packages/backend-sdk",
   "packages/local-runtime/node-release.json",
   "package.json",
   "package-lock.json",
-  "go.mod",
-  "go.sum",
+  "go.work",
+  "module-candidates.json",
+  "packages/go-sdk",
+  "plugins/go.mod",
+  "plugins/go.sum",
   "examples/plugins/reviews/backend/go.mod",
 ];
 try {
@@ -114,7 +125,7 @@ const artifacts = await moduleArtifacts({
   output: join(root, "out/module-proxy"),
   offline,
 });
-artifacts.modulePath = modulePath;
+const sdk = authorSDK(artifacts);
 const exists = async (path) => {
   try {
     await access(path);
@@ -168,7 +179,9 @@ try {
   await rm(tarball);
   await cp(new URL("./build.mjs", import.meta.url), join(output, "build.mjs"));
   const backend = await exists(join(output, "backend"));
-  const tools = new Set(["github.com/Tangerg/flame/plugins/scripts/archive"]);
+  const tools = new Set([
+    "github.com/Tangerg/flame/packages/go-sdk/cmd/archive",
+  ]);
   async function rewrite(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
@@ -180,12 +193,16 @@ try {
           `${modulePath}/backend`,
         );
         text = text.replaceAll(
-          /go run (github\.com\/Tangerg\/flame\/runtime\/cmd\/[a-zA-Z0-9_-]+)/g,
+          /go run (github\.com\/Tangerg\/flame\/packages\/go-sdk\/cmd\/[a-zA-Z0-9_-]+)/g,
           (_, tool) => {
             tools.add(tool);
             return `go tool ${tool}`;
           },
         );
+        if (/go run github\.com\/Tangerg\/flame\//.test(text))
+          throw new Error(
+            `author source retains an unsupported Flame command: ${path}`,
+          );
         await writeFile(path, text);
       }
     }
@@ -197,6 +214,7 @@ try {
       output,
       artifacts,
       offline,
+      modulePath,
       tools: [...tools],
     });
   if (managed) {
@@ -218,11 +236,11 @@ try {
   const component = await exists(join(output, "component/component.tsx"));
   if (component || managed) {
     const packageDirectories = [
-      "packages/runtime-client/typescript",
+      "packages/runtime-client",
       ...(component
         ? ["packages/icons", "packages/ui", "packages/component-sdk"]
         : []),
-      ...(managed ? ["packages/plugin-sdk/typescript"] : []),
+      ...(managed ? ["packages/backend-sdk"] : []),
     ];
     const npmArtifacts = join(output, "artifacts/npm");
     await mkdir(npmArtifacts, { recursive: true });
@@ -243,9 +261,9 @@ try {
         "--",
         "packages/icons",
         "packages/ui",
-        "packages/runtime-client/typescript",
+        "packages/runtime-client",
         "packages/component-sdk",
-        "packages/plugin-sdk/typescript",
+        "packages/backend-sdk",
         "package.json",
         "package-lock.json",
         "plugins/tsconfig.json",
@@ -258,7 +276,17 @@ try {
     await mkdir(frozenTree);
     run("tar", ["-xf", frozenTar, "-C", frozenTree], root, process.env, true);
     await rm(frozenTar);
-    await symlink(join(root, "node_modules"), join(frozenTree, "node_modules"));
+    await linkDependencies(
+      frozenTree,
+      await Promise.all(
+        packageDirectories.map(async (directory) => ({
+          directory: join(frozenTree, directory),
+          ...JSON.parse(
+            await readFile(join(frozenTree, directory, "package.json"), "utf8"),
+          ),
+        })),
+      ),
+    );
     const dependencies = {};
     const packedDependencies = [];
     for (const directory of packageDirectories) {
@@ -408,7 +436,7 @@ try {
     join(output, "README.md"),
     managed && !plan.native
       ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. Prebuilt contractgen and archive tools are development-only programs; the included selected Node companion runs backend storage tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects contracts/capability.json without changing existing opaque schema names. Rebuild and explicitly select a new release after edits. Preserve prior installations and data; Usage Reports uses a fresh archive at the pre-release cutover.\n`
-      : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${artifacts.version} from ${artifacts.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
+      : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${sdk.path}@${sdk.version} from ${sdk.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);
 } catch (error) {

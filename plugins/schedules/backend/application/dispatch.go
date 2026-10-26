@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 type RunReference struct{ SessionID, RunID string }

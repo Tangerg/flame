@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {

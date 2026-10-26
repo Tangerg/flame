@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	"github.com/Tangerg/flame/runtime/model"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestPolicyRoutesCapturedUsesAndBudgetsWithoutChangingTheProposal(t *testing.T) {

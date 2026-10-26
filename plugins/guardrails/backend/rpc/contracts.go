@@ -1,15 +1,15 @@
 package rpc
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/guardrails/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
-//go:generate sh -c "go run github.com/Tangerg/flame/runtime/cmd/modelcontracts input > ../../package/io.github.tangerg.flame/contracts/input.generated.json"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/guardrails/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --model-contract input > ../../package/io.github.tangerg.flame/contracts/input.generated.json"
 
 import (
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 )
 
 type ReplaceInput struct {

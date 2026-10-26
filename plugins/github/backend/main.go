@@ -13,7 +13,7 @@ import (
 	"time"
 
 	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

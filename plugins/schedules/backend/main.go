@@ -11,9 +11,9 @@ import (
 
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/plugins/schedules/backend/transport"
-	models "github.com/Tangerg/flame/runtime/model/catalog"
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
-	"github.com/Tangerg/flame/runtime/storage/directories"
+	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

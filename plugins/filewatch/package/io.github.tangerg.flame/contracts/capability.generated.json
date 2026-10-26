@@ -240,6 +240,45 @@
       },
       "output": {
         "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9jYXBhYmlsaXR5_Invocation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "parent": {
+                "type": "string"
+              },
+              "target": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9jYXBhYmlsaXR5_Target"
+              }
+            },
+            "required": [
+              "id",
+              "origin",
+              "target"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9jYXBhYmlsaXR5_Target": {
+            "additionalProperties": false,
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "reference"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2JhY2tlbmQvZG9tYWlu_Capture": {
             "additionalProperties": false,
             "properties": {
@@ -247,7 +286,7 @@
                 "type": "string"
               },
               "invocation": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9jYXBhYmlsaXR5_Invocation"
               },
               "kind": {
                 "enum": [
@@ -370,45 +409,6 @@
             "required": [
               "capture",
               "accepted"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Invocation": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "origin": {
-                "type": "string"
-              },
-              "parent": {
-                "type": "string"
-              },
-              "target": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target"
-              }
-            },
-            "required": [
-              "id",
-              "origin",
-              "target"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3J1bnRpbWUvY2FwYWJpbGl0eQ_Target": {
-            "additionalProperties": false,
-            "properties": {
-              "reference": {
-                "type": "string"
-              },
-              "scope": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "scope",
-              "reference"
             ],
             "type": "object"
           }

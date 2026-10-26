@@ -7,8 +7,8 @@ import (
 	"time"
 
 	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/transport/httpresponse"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 	"github.com/Tangerg/scope/tools/web/tavily"

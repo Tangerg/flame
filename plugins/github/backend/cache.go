@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 const maxCacheBytes = 64 << 20

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 type RootResolver interface {

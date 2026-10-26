@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	contractsdk "github.com/Tangerg/flame/runtime/capability"
+	contractsdk "github.com/Tangerg/flame/packages/go-sdk/capability"
 
-	"github.com/Tangerg/flame/runtime/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

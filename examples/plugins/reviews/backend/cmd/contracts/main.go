@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func main() {

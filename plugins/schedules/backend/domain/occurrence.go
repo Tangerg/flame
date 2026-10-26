@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // The ID already encodes Schedule and due cursor; storing either again would add a competing representation.

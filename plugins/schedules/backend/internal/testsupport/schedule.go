@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )

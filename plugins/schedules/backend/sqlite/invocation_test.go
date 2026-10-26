@@ -8,7 +8,7 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/internal/testsupport"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func TestCapturedTriggerSurvivesRestartAndCannotBeRewritten(t *testing.T) {

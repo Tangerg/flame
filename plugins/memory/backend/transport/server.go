@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/backend/application"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/maintenance"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/plugins/memory/backend/tools"
-	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

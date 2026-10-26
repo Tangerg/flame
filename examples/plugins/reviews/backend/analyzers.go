@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
-	"github.com/Tangerg/flame/runtime/protocol"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	"github.com/Tangerg/flame/runtime/point"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/point"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 

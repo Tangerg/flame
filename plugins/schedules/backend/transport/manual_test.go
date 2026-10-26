@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/storage/directories"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	models "github.com/Tangerg/flame/runtime/model/catalog"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

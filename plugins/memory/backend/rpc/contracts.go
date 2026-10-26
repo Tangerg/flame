@@ -1,13 +1,13 @@
 package rpc
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/memory/backend/cmd/contracts | go run github.com/Tangerg/flame/runtime/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/memory/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/memory/backend/cmd/contracts --caller-json ../../package/io.github.tangerg.flame/contracts/caller-policy.generated.json > /dev/null"
 
 import (
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 type Contracts struct {
