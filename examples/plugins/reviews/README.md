@@ -11,7 +11,7 @@ Skill. It runs through Flame's existing installation-origin MCP connection,
 deferred Tool discovery, approval Interrupt, Run execution and result storage.
 It declares an ordinary React board bound to the same operations.
 
-The backend uses the public Go binding in `github.com/Tangerg/flame/packages/plugin-sdk`.
+The backend uses the public Go binding in `github.com/Tangerg/flame/packages/go-sdk/plugin`.
 Its typed list and update operations share the same private use cases and receipt
 owner as the model Tools. The public installed operation entrance is available
 through Runtime Go, Runtime Protocol, `plugins call`, and the TypeScript client.
@@ -23,8 +23,8 @@ starting MCP. Discovery carries the current backend protocol and exact generated
 method schemas; the former per-operation MCP endpoints are not registered.
 
 `backend/contracts.go` owns the method descriptions, typed bindings and
-the consumer's callable capability contract. The pure public `runtime/capability`
-package admits that contract; `packages/plugin-sdk` binds it to MCP without a second
+the consumer's callable capability contract. The pure public `packages/go-sdk/capability`
+package admits that contract; `packages/go-sdk/plugin` binds it to MCP without a second
 schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
 derivation. From `backend`, `go generate ./...` projects the same methods into

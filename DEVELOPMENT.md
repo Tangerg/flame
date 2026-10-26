@@ -49,8 +49,8 @@ Run from the repository root:
 | Command                                 | Responsibility                                                                                                               |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies/hooks and shared assets              |
-| `make generate`                         | Invoke real Go and npm output owners in dependency order                                                                     |
-| `make check`                            | SDK closure/direction guards, clean generated drift, every non-native Go member and npm workspace check                      |
+| `make generate`                         | Invoke SDK, publisher, Host, consumer and Native generators in dependency order                                              |
+| `make check`                            | SDK source/test/tool closure guards, clean generated drift, independent Go member and npm checks                             |
 | `make check-native`                     | Stage the same Web build, test/vet/build Desktop and run its Wails macOS build                                               |
 | `make check-author`                     | Export independent author namespaces, pack JS dependencies and verify Go vendor execution without network or checkout access |
 | `make dev-web` / `make dev-desktop`     | Browser/native development of the same Web product                                                                           |
@@ -59,7 +59,8 @@ Run from the repository root:
 
 The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a
-non-native check does not claim that member passed. CI runs clean workspace
+non-native check runs only its pure `cmd/bridgegen` and `internal/bridge` packages;
+full native verification still requires macOS. CI runs clean workspace
 installation and checks on macOS and Linux, plus the macOS native job.
 Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
 workspace substitution cannot hide missing dependencies. Package tests run

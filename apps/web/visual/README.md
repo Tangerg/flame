@@ -67,7 +67,7 @@ Useful routes:
 `vite preview`, and runs `*.perf.spec.ts` in one Chromium worker with motion on.
 Each scenario is repeated `FLAME_PERF_SAMPLES` times (default 5) on a fresh
 navigation and reported as p50/p90/max, both on the console and as JSON under
-`desktop/.cache/perf/`. Compare runs only from the same machine and build.
+`out/web/perf/`. Compare runs only from the same machine and build.
 
 Measured per scenario: wall time, Chromium task/script/layout/style time from
 `Performance.getMetrics`, long tasks, the slowest input-to-next-paint from Event

@@ -26,7 +26,7 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    outDir: "../.cache/visual-dist",
+    outDir: "../../out/web/visual",
     emptyOutDir: true,
     rollupOptions: { input: path.resolve(import.meta.dirname, "visual/index.html") },
   },

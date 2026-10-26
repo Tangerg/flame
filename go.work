@@ -1,8 +1,12 @@
 go 1.27.3
 
 use (
-	.
+	./apps/cli
 	./apps/desktop
 	./examples/plugins/reviews/backend
+	./packages/go-sdk
 	./packages/local-runtime
+	./plugins
+	./runtime
+	./tooling
 )

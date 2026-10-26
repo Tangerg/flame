@@ -10,7 +10,7 @@ export default defineConfig({
   retries: 0,
   workers: 2,
   reporter: "line",
-  outputDir: "../.cache/playwright-results",
+  outputDir: "../../out/web/playwright-results",
   use: {
     baseURL: `http://127.0.0.1:${BROWSER_PORT}`,
     browserName: "chromium",

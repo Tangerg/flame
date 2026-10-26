@@ -33,7 +33,7 @@ export default defineConfig({
   plugins: [...visual.plugins!, pluginModules(), providerResource()],
   build: {
     ...visual.build,
-    outDir: "../.cache/composition-dist",
+    outDir: "../../out/web/composition",
     rollupOptions: { input: path.resolve(import.meta.dirname, "visual/composition.html") },
   },
   preview: { host: "127.0.0.1", port: 4176, strictPort: true },

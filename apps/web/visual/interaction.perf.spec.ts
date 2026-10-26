@@ -8,7 +8,7 @@ const SAMPLES = Number(process.env.FLAME_PERF_SAMPLES ?? 5);
 
 const REVIEW_FILES = 200;
 
-const REPORT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../.cache/perf");
+const REPORT_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../../out/web/perf");
 
 type Metrics = Record<string, number>;
 

@@ -1,16 +1,16 @@
 # Public consumers
 
-| Consumer                   | Entry                                                                           |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| Local Go host              | `github.com/Tangerg/flame/runtime`                                              |
-| Remote Go client           | `github.com/Tangerg/flame/packages/runtime-client/go` (package `runtimeclient`) |
-| Go backend author          | `github.com/Tangerg/flame/packages/plugin-sdk`                                  |
-| TypeScript backend author  | `@flame/backend-sdk`                                                            |
-| Memory role implementation | `github.com/Tangerg/flame/packages/plugin-sdk/memory`                           |
-| Shared wire/options        | `github.com/Tangerg/flame/runtime/protocol`                                     |
-| TypeScript Runtime client  | `@flame/runtime-client`                                                         |
-| Installed React component  | `@flame/component-sdk`                                                          |
-| Shared controls and glyphs | `@flame/ui`, `@flame/icons/react`                                               |
+| Consumer                   | Entry                                                                |
+| -------------------------- | -------------------------------------------------------------------- |
+| Local Go host              | `github.com/Tangerg/flame/runtime`                                   |
+| Remote Go client           | `github.com/Tangerg/flame/packages/go-sdk/client` (package `client`) |
+| Go backend author          | `github.com/Tangerg/flame/packages/go-sdk/plugin`                    |
+| TypeScript backend author  | `@flame/backend-sdk`                                                 |
+| Memory role implementation | `github.com/Tangerg/flame/packages/go-sdk/plugin/memory`             |
+| Shared wire/options        | `github.com/Tangerg/flame/packages/go-sdk/protocol`                  |
+| TypeScript Runtime client  | `@flame/runtime-client`                                              |
+| Installed React component  | `@flame/component-sdk`                                               |
+| Shared controls and glyphs | `@flame/ui`, `@flame/icons/react`                                    |
 
 Rebuild all in-repository consumers after this source/package migration. Former
 Go modules, TS package names, wildcard implementation exports and source-layout
@@ -26,8 +26,8 @@ author projects. Raw JSON sample copies are generated from Runtime-owned bytes.
 
 Freeze a reviewed commit after selecting a fresh candidate version in dependent
 manifests. `tooling/moduleproxy` uses official `x/mod/zip` rules to publish immutable
-`.mod`, `.info` and `.zip` artifacts. Nested modules are archived separately;
-root source is never trimmed or rewritten for authors. Candidate versions cannot
+`.mod`, `.info` and `.zip` artifacts. Every module is archived from its own immutable source directory; root coordination
+files are not shipped inside the public SDK. Candidate versions cannot
 be reused for changed source, and any release tag must identify that frozen source.
 `make setup` populates the task-local file proxy from the checked-out commit.
 
@@ -40,13 +40,13 @@ node plugins/scripts/build-author-kit.mjs \
 ```
 
 Use an author's own module namespace; the Flame first-party prefix overlaps the
-root module and is rejected. Only that author's backend imports/generation identity
+maintained module namespace and is rejected. Only that author's backend imports/generation identity
 are rewritten. Public consumer contracts retain their publisher's namespace and
 exact schemas. Its Go manifest declares actual generator tools and includes their
 vendor dependencies. The standard SDK module retains its identity and manifest.
 The author uses the same `backend/component/package` layout and explicit builder.
 Contract-definition tools stay with the publisher. Memory author exports bind the
-public `packages/plugin-sdk/memory` contract, including after regeneration, and
+public `packages/go-sdk/plugin/memory` contract, including after regeneration, and
 can be selected by the unchanged host consumer. Source relocation is not a new
 capability identity. Build scripts convert file URLs with Node's `fileURLToPath`;
 author directories may contain spaces, Unicode and URL-reserved characters.
