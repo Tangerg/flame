@@ -7,8 +7,10 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/stored-output-identity-1026`. Read-family evidence qualification uses
-frozen base `1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see Read-family evidence and
+is on `codex/stored-output-identity-1026`. Read-family evidence implementation
+`feff7ca5d735aa3fb104b0e01bae5c127973e023` is published to remote main and its
+owned resources are retired. Qualification uses frozen base
+`1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see Read-family evidence and
 stored-output identity below. Canonical Tool-evidence implementation
 `0e523350ef2c54985271cdbe22e344ff58921cba` and receipt
 `1304b6b6421a104d26959d0d3b8b205a0ccb0832` remain published and retired.
@@ -10944,8 +10946,13 @@ files, 15 dead processes and six unchanged reference files. The primary parallel
 checkout, user data and unrelated resources are preserved.
 
 Publication-time fetch completed once with **0 / 0** divergence from the frozen
-main base. Implementation publication and its independent remote proof follow
-in the final delivery receipt.
+main base. Implementation `feff7ca5d735aa3fb104b0e01bae5c127973e023` is committed
+with normal Prettier/workspace-lint hooks and pushed normally as HEAD:main. An
+independent ls-remote confirms that exact remote main object. The owned checkout
+is clean with **0 / 0** ahead/behind at implementation publication, and post-hook
+preservation again passes all recorded source/resource/output/process checks.
+This documentation receipt follows as a separate normal commit and push; no
+whole-product completion or pause is claimed.
 
 ### Recorded Tool failure layout
 
