@@ -14,7 +14,10 @@ const styles = stylex.create({
   editor: { maxHeight: "40dvh" },
 });
 
-interface TextEditorDialogProps {
+interface TextEditorDialogProps extends Pick<
+  ComponentProps<typeof TextArea>,
+  "autoCapitalize" | "autoCorrect" | "spellCheck"
+> {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   icon?: ReactNode;
@@ -29,6 +32,7 @@ interface TextEditorDialogProps {
   savingLabel: string;
   busy?: boolean;
   error?: string;
+  invalid?: boolean;
   saveDisabled?: boolean;
   onSave: () => void;
   font?: "sans" | "mono";
@@ -51,11 +55,15 @@ export function TextEditorDialog({
   savingLabel,
   busy = false,
   error,
+  invalid = false,
   saveDisabled = false,
   onSave,
   font = "sans",
   secondaryAction,
   finalFocus,
+  autoCapitalize,
+  autoCorrect,
+  spellCheck,
 }: TextEditorDialogProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -113,7 +121,10 @@ export function TextEditorDialog({
           font={font}
           aria-label={label}
           aria-describedby={error ? errorId : undefined}
-          invalid={Boolean(error)}
+          invalid={invalid}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          spellCheck={spellCheck}
           value={value}
           pending={busy}
           onKeyDown={submitShortcut}

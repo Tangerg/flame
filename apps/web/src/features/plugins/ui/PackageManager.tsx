@@ -33,6 +33,7 @@ import {
 } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
+import { failureText } from "@/lib/rpcErrors";
 import { type PackageOperations, usePackages } from "@/features/plugins/adapters/packages";
 import { ProviderSelections } from "@/features/plugins/ui/ProviderSelections";
 import { ContributionRequirements } from "@/features/plugins/ui/ContributionRequirements";
@@ -54,7 +55,7 @@ const styles = stylex.create({
 
 // The dialog presents the identity captured when the edit opened, so a live
 // catalog replacement cannot relabel a task that still submits the old target.
-type PackageEdit = { name: string; version?: string; value: string } & (
+type PackageEdit = { name: string; version?: string; value: string; invalid?: boolean } & (
   { type: "configure"; target: PluginReleaseRequest } | { type: "stage"; target: PluginRequest }
 );
 
@@ -81,7 +82,7 @@ export function PackageManager() {
   const [source, setSource] = useState("");
   const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
   const operations = packages.useOperations();
-  const { feedback, run } = useAsyncFeedback(operations?.signal);
+  const { feedback, reset, run } = useAsyncFeedback(operations?.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const install = () => {
@@ -103,7 +104,14 @@ export function PackageManager() {
             aria-label={t("packages.source")}
             placeholder={t("packages.source")}
             value={source}
-            onChange={(event) => setSource(event.target.value)}
+            onChange={(event) => {
+              reset();
+              setInstalled(undefined);
+              setSource(event.target.value);
+            }}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             pending={busy}
           />
           <Button
@@ -171,7 +179,7 @@ function PackageRow({
   const t = useT();
   const codeLabels = useCodeActionLabels();
   const [edit, setEdit] = useState<PackageEdit>();
-  const { feedback, reset, run: runFeedback } = useAsyncFeedback(operations.signal);
+  const { feedback, reset, fail, run: runFeedback } = useAsyncFeedback(operations.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
@@ -221,19 +229,21 @@ function PackageRow({
   );
   const save = () => {
     if (!edit) return;
-    return run(t(EDIT_LABEL[edit.type]), async () => {
-      if (edit.type === "configure") {
-        const changes = z.record(z.string(), z.unknown()).parse(parseJSON(edit.value));
-        for (const field of Object.keys(edit.target)) {
-          if (Object.hasOwn(changes, field))
-            throw new Error(t("packages.reviewedField", { field }));
-        }
-        return operations.configure(
-          checkRequest("plugins.configure", { ...edit.target, ...changes }),
-        );
+    if (edit.type === "stage")
+      return run(t("packages.stage"), () =>
+        operations.stage({ ...edit.target, source: edit.value }),
+      );
+    try {
+      const changes = z.record(z.string(), z.unknown()).parse(parseJSON(edit.value));
+      for (const field of Object.keys(edit.target)) {
+        if (Object.hasOwn(changes, field)) throw new Error(t("packages.reviewedField", { field }));
       }
-      return operations.stage({ ...edit.target, source: edit.value });
-    });
+      const configuration = checkRequest("plugins.configure", { ...edit.target, ...changes });
+      return run(t("packages.configure"), () => operations.configure(configuration));
+    } catch (error) {
+      setEdit((current) => current && { ...current, invalid: true });
+      fail(failureText(error, t("packages.configure")));
+    }
   };
   const editTitle =
     edit &&
@@ -372,14 +382,21 @@ function PackageRow({
         closeLabel={t("common.close")}
         label={edit ? t(EDIT_INPUT[edit.type]) : ""}
         value={edit?.value ?? ""}
-        onChange={(value) => setEdit((current) => current && { ...current, value })}
+        onChange={(value) => {
+          reset();
+          setEdit((current) => current && { ...current, value, invalid: false });
+        }}
         cancelLabel={t("common.cancel")}
         saveLabel={edit ? t(EDIT_SAVE[edit.type]) : ""}
         savingLabel={t("packages.loading")}
         busy={busy}
         error={error}
+        invalid={edit?.invalid}
         onSave={() => void save()}
         font="mono"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
       />
     </ListRow>
   );

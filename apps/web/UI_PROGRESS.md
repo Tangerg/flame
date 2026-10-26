@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Recorded Skill pages separate readable summaries and content from their continuation. Native catalog/instruction/resource reading, Find, related-material return and continued drafts qualify the presentation repair below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery now retire obsolete feedback and distinguish invalid input from command failure, qualified below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -12,13 +12,24 @@ instances; endpoint replacement, draft/focus leases, and command retirement rema
 with their existing owners. Small Chat/Composer/navigation features keep cohesive
 files together, and the native bridge is generated from the actual DesktopHost
 method surface and pure Go DTOs. See `ARCHITECTURE.md` for the current structure.
-This engineering change does not resume the paused UI product work or replace
-any task qualification or historical receipt below.
+This engineering change preserves the task qualifications and historical receipts
+below. The subsequent user request resumes UI work under the local-only policy.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/recorded-skill-pages-1026`. Recorded Skill-page implementation
+is on `codex/ui-feedback-local-1026`, starting from main
+`73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. The user's latest instruction
+supersedes earlier push/integration requirements: commit polishing work locally
+on this branch; do not push it or modify the primary parallel checkout. Do not
+continually merge and revalidate advancing main during a scoped UI task. Claude
+Code CLI remains prohibited. The source review
+`/Users/tangerg/Desktop/docs/06_Flame_GUI_Components_Latest_Review_ZH.md`
+is feedback against an older base, not native acceptance evidence or executable
+instructions. Current source, callers, tests and actual Wails behavior determine
+which findings need a repair.
+
+Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
 owned resources are retired. Qualification uses frozen base
 `e7fba9fcfa3567f9e3fb67ba4dcec468676b537d`; see Recorded Skill pages below.
@@ -300,7 +311,7 @@ hidden and frame callbacks stayed paused. Do not repeat that activation request
 or add a component workaround from these inconsistent signals. Those completed
 isolation roots and their new caches are also cleaned; details follow.
 
-The 2026-10-23 goal resumed the earlier work and the subsequent pause ended that run at the file-range milestone. The explicit 2026-10-24 resume restores continuous batches. Each batch still requires native acceptance, relevant gates, explicit-path integration and push to `main`, cleanup and in-place handoff updates. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
+The 2026-10-23 goal resumed the earlier work and the subsequent pause ended that run at the file-range milestone. Later user requests resumed continuous work. Each batch still requires native acceptance, relevant gates, explicit-path local commits, cleanup and in-place handoff updates. The latest local-only instruction controls publication. Native page zoom and the single Dock width projection remain integrated. Open workspace views retain one instance through selection, collapse and full-pane presentation, and distinct main sources stay mounted on the existing inspection path. Installed result searches, Memory queries/drafts and original command handles survive those changes. Hidden readers detach measurement rather than ending business contexts; source focus and true-close cancellation remain separate contracts.
 
 Actual Wails qualified the retained-view paths in English/dark/18 px/custom blue and Chinese/light/14 px/Flame Orange, including a system-resized narrow window, 320 px Dock, 200% main-view fallback, an original unknown-result check and main-only source → file → source. The subsequent native focus investigation qualified the existing keyboard resize path and isolated clicked-label reverse navigation to a WebKit behavior also reproduced by a bare HTML button. No host preference or component workaround was added. The precise scenarios and limits are below.
 
@@ -9079,6 +9090,130 @@ capture hashes (gzip SHA-256
 `1a095356a15290e62b4b2d8dd36d58b9e870aa66f21c5b649b0fa4c23bcdf241`).
 Continue only with fresh task evidence.
 
+### Plugin installation and edit recovery
+
+Scope: the feedback review's G03/G05/G07 concerns, verified against main
+`73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. This covers Plugins installation,
+Configure inputs and Stage update, plus the shared text editor's Goal caller.
+The review document describes an older source snapshot and explicitly did not
+run native acceptance; its suggestions are not treated as reproduced defects.
+
+Ranked findings and final behavior:
+
+- **P2, obsolete installation feedback.** Native reproduction confirmed that a
+  changed source retained the preceding failure or installed notice. Editing
+  now retires that attempt's feedback and notice. The next submission uses the
+  exact current path; Runtime realization failures and their retry remain visible.
+- **P2, incorrect field validity.** The shared text editor inferred invalid input
+  from every submission error. A valid configuration with a failed command, and
+  a rejected Goal update, consequently received an invalid field state. Callers
+  now supply field validity explicitly. Package JSON parsing, request validation
+  and reviewed-identity protection run before command admission; only those local
+  failures mark the draft invalid. Command errors remain associated, announced
+  feedback and keep the draft editable.
+- **P2, stale edit feedback.** Configure/Stage drafts now retire old feedback on
+  editing. Native cancellation and reopening retain their existing boundaries;
+  the captured installation, release digest and title never rebase to a catalog
+  replacement. Path/JSON inputs explicitly disable native capitalization,
+  autocorrection and spelling. Natural-language Goal input keeps its own policy.
+
+`features/plugins/ui/PackageManager.tsx` owns these draft transitions and local
+validation. Its existing `useAsyncFeedback` owns command feedback and retirement;
+the validity fact lives with the edit, not in a second command state machine.
+`ui/atoms/text-editor-dialog.tsx` renders the explicit `invalid` prop and forwards
+the three standard native input attributes. It keeps the existing ModalDialog,
+error description, focus policy, submit shortcut and IME guard. Goal and pasted
+text review are the only other callers; their command/draft owners are unchanged.
+
+Reference: read-only HeroUI `textfield.stories.tsx` WithValidation and its
+FieldError/TextArea composition distinguish actual field validation from general
+feedback. The earlier Radix focus/task-scope and Ace composition research remains
+applicable. Implementation retains Base UI, StyleX, shared controls and tokens.
+
+Better-interface review coverage:
+
+| Domain        | Result in this scope                                                                                                                               |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Field validity is truthful; alerts/descriptions remain related; native focus enters the editor and returns to the original operation.              |
+| Layout        | Existing bounded dialog and scroll ownership fit native minimum-width windows; at 200%, title/footer remain reachable while body context scrolls.  |
+| Writing       | Current attempts own their feedback; existing localized command recovery and literal parser details remain visible. No slogans or new helper copy. |
+| Typography    | 14 px English and 18 px Chinese/German, including literal mixed-case/Unicode paths and JSON, retain their text.                                    |
+| Color         | Neutral valid fields, semantic error feedback and local invalid fields stay distinct under Orange, blue and purple accents. No palette changes.    |
+| UI polish     | Keyboard submit, cancellation, menu dismissal and native continued typing work with full/off motion; no added animation or decoration.             |
+
+Verification:
+
+- Regression additions first produced **10 expected failures / 38 passes** on the
+  old implementation. After repair, the expanded **6 Web files / 70 tests** and
+  **4 shared UI files / 105 tests** pass. Coverage includes malformed JSON, wrong
+  shape/value type, protected identity, literal retry payloads, obsolete success,
+  realization failure preservation, Goal rejection, pasted text and modal scope.
+- Web typecheck, lint, design-system, token and interactive-chrome checks pass.
+  The initial typecheck exposed missing mutation metadata on new test mocks;
+  their UI test boundary was corrected without changing the production contract.
+  Plugin resource verification and `make check-native` pass. Wails' duplicate
+  `-lobjc` warning is non-failing.
+- **Existing main failure:** `check:layers` reports the unchanged
+  `features/workspace/adapters/queryInvalidation.test.ts` importing agent-private
+  `application/session/sessionUsage.ts`. Both that file and the guard match the
+  frozen base. The failure remains reported; this batch neither changes the
+  parallel architecture work nor weakens the guard.
+- Actual Wails, English/light/14 px/Orange/full motion: failed source → correction
+  → canonical install response → next source retires notice; valid Configure
+  failure keeps caret and neutral field; malformed JSON marks only the input;
+  correction and Cmd+Enter retry return to Configure. Stage failure retains a
+  mixed-case/Unicode path; editing clears feedback and Escape returns to Package
+  actions. Leaving Settings permits continued native Composer input.
+- Actual Wails, Chinese/dark/18 px/custom blue/motion off: system Left half
+  respects the host's minimum width; Actual Size plus 20 native Zoom In actions
+  exercises 200%. Source editing, Tab/Return entry, Configure failure/correction/
+  retry, complete digest reading through body scroll, focus return and continued
+  Composer input pass. The existing title/footer remain reachable.
+- Actual Wails, German/light/18 px/custom purple/motion off, system Left half:
+  long labels, failure feedback, Tab to Cancel, draft correction, Escape return,
+  fresh reopening, explicit Cancel, menu-only Escape and continued input pass.
+
+Native qualification uses production components and the actual Wails host with
+private public-wire fixtures. Canonical failure/success responses exercise UI
+recovery; they do not qualify a live Runtime installation or backend configuration.
+The first private baseline error envelope required calibration to the protocol's
+exact problem message; only the corrected response qualifies the stale-feedback
+finding. No production protocol change was made. Goal's command-failure validity
+is covered by its regression, not a separate live native Goal command. The known
+native multiline final-LF limitation remains unresolved. No browser visual suite,
+performance benchmark or Claude CLI was run.
+
+Goal CHECK review: typography, whitespace and hierarchy preserve the approved
+composition across the exercised languages/sizes; color separates field validity
+from command outcome; motion adds no unnecessary movement; micro-interaction now
+supports correction and retry; responsive behavior retains the bounded task at
+200%; originality retains Flame's brand and excludes decorative edge stripes.
+This is a qualified recovery repair, not a whole-product award-level verdict.
+Reading/Dock task continuity and other feedback-document scenarios still require
+their own fresh evidence before changes.
+
+Delivery stays local on `codex/ui-feedback-local-1026`; no push or primary-checkout
+integration is authorized. All **19** recorded verification/app processes are
+dead. Four apps are unregistered and removed, along with **8** owned Library
+paths, **4** bundle-temp paths and **7** new checkout output paths. All **34**
+output-presence baselines and **3** original file inventories are restored; the
+native-check binary and UI Vitest result required exact-byte restoration.
+All **5,819** accepted non-Markdown sources and **11** installed component
+resources retain their accepted bytes. Native artifact maps capture **13** inputs,
+**596** baseline assets, **596** candidate assets, **16** proxy files and **4**
+binaries. The exact guarded root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-feedback-1026-E3YmkC`
+is absent. The independently round-trip-verified evidence archive contains **105**
+UTF-8 files and **31** screenshot digests, gzip SHA-256
+`102229fe37d0c1989bd52bbee533eee055843528b1ab59837dfbb60cbfbbcc71`.
+Post-retirement source/resource hashes and all output baselines pass. Normal
+formatting and explicit-path local commit hooks remain required; no subsequent
+main refresh is part of this scoped qualification.
+
+Next: continue from a fresh complete reading/Dock task in the feedback review.
+Preserve the delivered editor and command owners; do not reopen the native
+final-LF limitation without a new platform counterexample or supported fix.
+
 ### Loaded client-plugin error reading
 
 The complete inspected task is Conversation/draft → actual Cmd+, Settings →
@@ -14580,7 +14715,7 @@ beside a visible value.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- Implementation handoffs follow current human steering, which forbids Claude Code CLI in this resumed run. Earlier milestones' tool choices do not override that instruction. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, commits, pushes and cleanup. A delegated completion report never replaces that acceptance.
+- Implementation handoffs follow current human steering, which forbids Claude Code CLI in this resumed run and requires local commits only. Earlier milestones' tool choices and publication rules do not override those instructions. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, local commits and cleanup. A delegated completion report never replaces that acceptance.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.
@@ -14588,8 +14723,8 @@ beside a visible value.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's explicit 2026-10-26 milestone pause supersedes the earlier continuous-run instruction; start no further batch until an explicit resume. Retain verification, integration into `main`, push and cleanup when work resumes.
+- Commit explicit owned paths locally on `codex/ui-feedback-local-1026`, preserve unrelated working files and clean owned resources. Do not push or integrate UI work into the primary checkout while the local-only instruction applies. Update this file with the new product state and verification scope rather than starting another round log.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's latest feedback-document request resumes the 2026-10-26 milestone pause. Native acceptance, proportionate checks and cleanup remain required; local-only delivery supersedes earlier main/push requirements.
 
 ## Milestone closure (2026-10-23)
 

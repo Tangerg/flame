@@ -171,6 +171,7 @@ describe("Goal status surface", () => {
     const dialog = screen.getByRole("dialog", { name: "Edit goal" });
     const alert = await within(dialog).findByRole("alert");
     expect(alert.textContent).toContain("objective rejected");
+    expect(objective.getAttribute("aria-invalid")).not.toBe("true");
     expect(objective.getAttribute("aria-describedby")).toBe(alert.id);
     expect(objective.value).toBe("Ship beta");
     await saveSettled();

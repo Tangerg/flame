@@ -153,6 +153,164 @@ function reviewedInstallation(): PluginInstallation {
 }
 
 describe("PluginsPane installation facts", () => {
+  async function renderPackages(
+    operations: Partial<
+      Record<"install" | "configure", (request: unknown) => Promise<PluginInstallation>>
+    >,
+  ) {
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-feedback",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
+          ctx.contribute(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [reviewedInstallation()],
+          });
+          ctx.cleanup(
+            testClient.installedPlugins.access.publishOperations({
+              signal: ctx.signal,
+              pendingCommands: () => [],
+              ...operations,
+            } as unknown as PackageOperations),
+          );
+        },
+      }),
+    ]);
+    testClient.render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("clears installation feedback on editing without clearing a realization failure", async () => {
+    const install = vi
+      .fn(async (_request: unknown) => reviewedInstallation())
+      .mockRejectedValueOnce(new Error("Source unreadable"));
+    await renderPackages({ install });
+    const retry = vi.fn();
+    act(() => testClient.installedPlugins.access.setFailure({ reason: "stream closed", retry }));
+    const source = screen.getByRole("textbox", {
+      name: "Absolute package directory or ZIP path on the Runtime",
+    });
+    fireEvent.change(source, { target: { value: "/runtime/Missing.Package.zip" } });
+    fireEvent.click(screen.getByRole("button", { name: "Install" }));
+    await screen.findByText("Source unreadable");
+    expect(source).toHaveProperty("value", "/runtime/Missing.Package.zip");
+
+    const nextSource = "/runtime/我的 Package/Review.ZIP";
+    fireEvent.change(source, { target: { value: nextSource } });
+    expect(screen.queryByText("Source unreadable")).toBeNull();
+    expect(screen.getByText(/stream closed/)).toBeTruthy();
+    expect(source.getAttribute("autocapitalize")).toBe("none");
+    expect(source.getAttribute("autocorrect")).toBe("off");
+    expect(source.getAttribute("spellcheck")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Install" }));
+    await screen.findByText(/Installed Reviewed package\./);
+    expect(install.mock.calls).toEqual([
+      [{ source: "/runtime/Missing.Package.zip" }],
+      [{ source: nextSource }],
+    ]);
+    expect(source).toHaveProperty("value", "");
+    expect(screen.getByText(/stream closed/)).toBeTruthy();
+    expect(retry).not.toHaveBeenCalled();
+  });
+
+  it("retires an installed notice when another package source is entered", async () => {
+    const install = vi
+      .fn(async (_request: unknown) => reviewedInstallation())
+      .mockResolvedValueOnce(reviewedInstallation())
+      .mockRejectedValueOnce(new Error("Next source unreadable"));
+    await renderPackages({ install });
+    const source = screen.getByRole("textbox", {
+      name: "Absolute package directory or ZIP path on the Runtime",
+    });
+    fireEvent.change(source, { target: { value: "/first.zip" } });
+    fireEvent.click(screen.getByRole("button", { name: "Install" }));
+    await screen.findByText(/Installed Reviewed package\./);
+
+    fireEvent.change(source, { target: { value: "/next.zip" } });
+    expect(screen.queryByText(/Installed Reviewed package\./)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Install" }));
+    await screen.findByText("Next source unreadable");
+    expect(screen.queryByText(/Installed Reviewed package\./)).toBeNull();
+    expect(source).toHaveProperty("value", "/next.zip");
+    expect(install.mock.calls).toEqual([[{ source: "/first.zip" }], [{ source: "/next.zip" }]]);
+  });
+
+  it("keeps valid configuration editable after a command failure and retries its revised draft", async () => {
+    const configure = vi
+      .fn(async (_request: unknown) => reviewedInstallation())
+      .mockRejectedValueOnce(new Error("Connection lost"));
+    await renderPackages({ configure });
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    const dialog = screen.getByRole("dialog", { name: "Configure inputs: Reviewed package" });
+    const field = within(dialog).getByRole("textbox", { name: "Input changes (JSON)" });
+    const initial = (field as HTMLTextAreaElement).value;
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert.textContent).toBe("Connection lost");
+    expect(field.getAttribute("aria-invalid")).not.toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(field).toHaveProperty("value", initial);
+
+    const changes = {
+      valueChanges: { root: { type: "set", value: "/Workspace/我的 Project" } },
+      serverChanges: {},
+      skillChanges: {},
+    };
+    const revised = JSON.stringify(changes, null, 2);
+    fireEvent.change(field, { target: { value: revised } });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    expect(field.getAttribute("aria-describedby")).toBeNull();
+    expect(field).toHaveProperty("value", revised);
+    expect(field.getAttribute("autocapitalize")).toBe("none");
+    expect(field.getAttribute("autocorrect")).toBe("off");
+    expect(field.getAttribute("spellcheck")).toBe("false");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(configure.mock.calls).toEqual([
+      [
+        {
+          installationId: reviewedInstallation().id,
+          digest: "1".repeat(64),
+          valueChanges: {},
+          serverChanges: {},
+          skillChanges: {},
+        },
+      ],
+      [{ installationId: reviewedInstallation().id, digest: "1".repeat(64), ...changes }],
+    ]);
+  });
+
+  it.each([
+    "{",
+    "[]",
+    '{"valueChanges":{"root":{"type":"set","value":5}},"serverChanges":{},"skillChanges":{}}',
+  ])("marks invalid configuration and clears its feedback on correction: %s", async (draft) => {
+    const configure = vi.fn(async (_request: unknown) => reviewedInstallation());
+    await renderPackages({ configure });
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    const dialog = screen.getByRole("dialog");
+    const field = within(dialog).getByRole("textbox");
+    const valid = (field as HTMLTextAreaElement).value;
+    fireEvent.change(field, { target: { value: draft } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    const alert = await within(dialog).findByRole("alert");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(field.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(field).toHaveProperty("value", draft);
+    expect(configure).not.toHaveBeenCalled();
+
+    fireEvent.change(field, { target: { value: valid } });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    expect(field.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(configure).toHaveBeenCalledOnce();
+  });
+
   it.each(["Configure"])("binds %s to the release opened for review", async () => {
     const reviewedDigest = "1".repeat(64);
     const replacementDigest = "2".repeat(64);
@@ -280,6 +438,10 @@ describe("PluginsPane installation facts", () => {
     expect(field.getAttribute("aria-describedby")).toBe(message.id);
     expect(submit).not.toHaveBeenCalled();
     expect(field).toHaveProperty("value", encoded);
+    fireEvent.change(field, { target: { value: "{}" } });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    expect(field.getAttribute("aria-invalid")).not.toBe("true");
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it("stages a path for the opened installation and keeps the draft after a failure", async () => {
@@ -333,6 +495,7 @@ describe("PluginsPane installation facts", () => {
     expect(screen.getByRole("dialog", { name: title })).toBe(dialog);
     fireEvent.click(within(dialog).getByRole("button", { name: "Stage update" }));
     expect((await within(dialog).findByRole("alert")).textContent).toContain("Source unreadable");
+    expect(field.getAttribute("aria-invalid")).not.toBe("true");
     expect(field).toHaveProperty("value", "/next.zip");
     fireEvent.click(within(dialog).getByRole("button", { name: "Stage update" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
