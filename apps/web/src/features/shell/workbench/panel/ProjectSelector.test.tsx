@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ComposerProjectTray,
@@ -43,7 +43,15 @@ vi.mock("@/features/navigation/public/workIndex", () => ({
   useWorkIndexActions: () => mocks.actions,
 }));
 
+const defaultGroups = mocks.workIndex.groups;
+const sameNameGroups = [
+  { project: { id: "/repo/main/flame", name: "flame" }, sessions: [] },
+  { project: { id: "/repo/worktrees/visual/flame", name: "flame" }, sessions: [] },
+  defaultGroups[1]!,
+];
+
 beforeEach(() => {
+  mocks.workIndex.groups = defaultGroups;
   mocks.workIndex.activeSessionId = "";
   mocks.workIndex.activeCwd = undefined;
   mocks.workIndex.isLoading = false;
@@ -71,6 +79,25 @@ describe("ComposerProjectTray", () => {
     fireEvent.click(await screen.findByText("other"));
 
     expect(mocks.actions.startSessionInFolder).toHaveBeenCalledWith("/repo/other");
+  });
+
+  it("distinguishes same-name projects by visible paths and selects their exact folder", async () => {
+    mocks.workIndex.groups = sameNameGroups;
+    testClient.render(<ComposerProjectTray />);
+    fireEvent.click(screen.getByRole("button", { name: "Choose project" }));
+
+    const menu = await screen.findByRole("menu");
+    const primary = within(menu).getByRole("menuitem", { name: /\/repo\/main\/flame/ });
+    const worktree = within(menu).getByRole("menuitem", {
+      name: /\/repo\/worktrees\/visual\/flame/,
+    });
+    expect(within(primary).getByText("/repo/main/flame")).toBeTruthy();
+    expect(within(worktree).getByText("/repo/worktrees/visual/flame")).toBeTruthy();
+    expect(within(menu).getByRole("menuitem", { name: "other" })).toBeTruthy();
+    expect(within(menu).queryByText("/repo/other")).toBeNull();
+    fireEvent.click(worktree);
+
+    expect(mocks.actions.startSessionInFolder).toHaveBeenCalledWith("/repo/worktrees/visual/flame");
   });
 
   it("routes New project to the native folder owner", async () => {
@@ -110,5 +137,43 @@ describe("EmptyChatHeading", () => {
     await waitFor(() =>
       expect(mocks.actions.startSessionInFolder).toHaveBeenCalledWith("/repo/other"),
     );
+  });
+
+  it("identifies the current folder among same-name projects without creating another Session", async () => {
+    mocks.workIndex.groups = sameNameGroups;
+    mocks.workIndex.activeSessionId = "session-current";
+    mocks.workIndex.activeCwd = "/repo/main/flame";
+    testClient.render(<EmptyChatHeading />);
+    const trigger = screen.getByRole("button", { name: "Change project: flame" });
+    fireEvent.click(trigger);
+
+    const current = await screen.findByRole("menuitem", { name: /\/repo\/main\/flame/ });
+    const other = screen.getByRole("menuitem", { name: /\/repo\/worktrees\/visual\/flame/ });
+    expect(current.getAttribute("aria-current")).toBe("true");
+    expect(other.getAttribute("aria-current")).toBeNull();
+    fireEvent.click(current);
+    expect(mocks.actions.startSessionInFolder).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    fireEvent.click(trigger);
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /\/repo\/worktrees\/visual\/flame/ }),
+    );
+    expect(mocks.actions.startSessionInFolder).toHaveBeenCalledWith("/repo/worktrees/visual/flame");
+  });
+
+  it("keeps named folder choices inert when creating a Session is unavailable", async () => {
+    mocks.workIndex.groups = sameNameGroups;
+    mocks.workIndex.activeSessionId = "session-current";
+    mocks.workIndex.activeCwd = "/repo/main/flame";
+    mocks.actions.canCreateSessionInFolder = false;
+    testClient.render(<EmptyChatHeading />);
+    fireEvent.click(screen.getByRole("button", { name: "Change project: flame" }));
+
+    const worktree = await screen.findByRole("menuitem", {
+      name: /\/repo\/worktrees\/visual\/flame/,
+    });
+    expect(worktree.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(worktree);
+    expect(mocks.actions.startSessionInFolder).not.toHaveBeenCalled();
   });
 });

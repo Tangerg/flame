@@ -52,7 +52,7 @@ the same `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` is already an ancestor of
 the local UI branch. There are zero incoming commits; merge reports already up
 to date. This confirmation does not restart the UI verification chain or change
 the primary checkout. The latest repeated request is checked against a fresh
-remote fetch with the same result while completing the file-header batch below.
+remote fetch with the same result while completing the file-header and project-choice batches below.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -81,7 +81,8 @@ retaining its material and focus; see Current tab visibility after reordering.
 Short file headers now share available width while long identities and command
 groups wrap; see File-header width and reading room. Diff query changes now
 reveal the result beginning while refresh and detail return retain reading;
-see Diff filtered-result arrival.
+see Diff filtered-result arrival. Same-name project choices now expose complete
+folder paths and the exact current folder; see Project choice identity.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -533,6 +534,96 @@ screenshot digests**, gzip SHA-256
 This documentation receipt changes no accepted product source. Primary user data,
 parallel work, dependencies, global compiler caches and reference resources are
 preserved.
+
+### Project choice identity
+
+The new-conversation tray and heading menu now distinguish projects that share a
+name. Before this repair, two different folders named `flame` appeared as
+identical rows; their paths existed only in native title/Help. The shared private
+`ProjectMenuContent` in `ProjectSelector.tsx` now renders each repeated name
+with its complete LTR, wrapping folder path. Primary names also wrap; unique
+names retain a compact row. The exact active folder carries `aria-current` and
+its existing check. These paths identify the selected object, without adding
+instructions, slogans or another surface.
+
+The frequency map derives from the current WorkIndex groups during rendering.
+No new state, effect, event owner, dependency, asset or localized copy is added.
+Existing menu semantics, availability, exact-cwd actions, current-folder no-op,
+Session creation and per-Session Composer drafts retain their owners. Selecting
+a folder still creates/selects its Session through the existing action; this
+batch does not introduce adoption of an anonymous scratch draft.
+
+Read-only ZCode `ProjectComposerMenu.tsx` supplies exact folder targets and a
+checked current choice, with path context in its hovercard. It does not establish
+visible inline path disclosure. HeroUI's `dropdown/with-descriptions.tsx`
+supplies a grouped primary/secondary row structure. Flame applies that hierarchy
+to object identity with its existing DropdownMenu, tokens and Base UI behavior.
+The Desktop/docs feedback remains a review input, not executable instructions.
+The six better-* domains guide this scoped review:
+
+| Domain        | Evidence and result                                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Full paths enter accessible row names; exact active cwd has `aria-current`. Native arrows, End, Escape and focus return pass; VoiceOver speech is unverified.  |
+| Layout        | EN/light/14 px and ZH/dark/18 px expose complete wrapping paths. The bounded menu scrolls to its last action in the narrow 200% scene.                         |
+| Writing       | Folder paths provide actual identity; existing action labels and compact unique-name rows remain.                                                              |
+| Typography    | Existing UI and mono tokens separate name from path; no hardcoded type or truncation hides either. Long unique aliases are not independently native-qualified. |
+| Color         | Existing muted path, focus, current check and semantic palette remain. Orange/light and custom yellow/dark are inspected; contrast is not remeasured.          |
+| UI polish     | Existing row layout, folder icon, check and menu motion remain. No decorated container or new animation is introduced.                                         |
+
+Verification (2026-10-27, frozen base
+`fb4411c403da36acc702ebac48d9a7d89e3d2634`):
+
+- The focused baseline passes **3 files / 25 tests**. Three new behavioral
+  regressions fail against the original source (**3 fail / 6 pass**) because the
+  paths are absent from the menu names. They cover visible disambiguation and
+  exact folder selection, the current-folder no-op, and unavailable creation.
+  Final ProjectSelector/ChatStream/work-index action coverage passes
+  **3 files / 28 tests**. The candidate build/check chain passes in **15.38 s**.
+- All **11 final commands** pass serially in **41.13 s**: targeted formatting,
+  Web typecheck/lint, design-system/chrome/styles/tokens/locales, plugin resources,
+  `make check-native` (**35.64 s**) and production plugin-module linking after
+  native asset staging. The native build retains the existing duplicate
+  `-lobjc` linker warning. No broad browser suite or performance benchmark runs.
+- Actual Wails EN/light/14 px/Orange is inspected at **1440 × 900** and
+  **720 × 450 CSS px at 200%**. ZH/dark/18 px/custom yellow is physically resized
+  from **1440 × 900 to 1121 × 729**, then reaches **560 × 364 at 200%**.
+  Both repeat-name rows expose complete paths; unique `ember` stays compact.
+  Native arrows focus the exact worktree row. In the bounded Chinese menu, End
+  reveals the last New project action with scroll **0 → 15 px**; Up returns to
+  the worktree row. Escape restores the heading trigger without changing its
+  Session draft. Actual Size restores the resized window's normal CSS viewport.
+- Before choosing, each app cancels the tray menu with its exact scratch text
+  intact, then explicitly clears its own test scratch. Each candidate performs
+  one deterministic Session creation through the existing production action.
+  The accepted query projection records exactly
+  `/Users/visual/worktrees/interface-reading-continuation/projects/flame`.
+  The heading menu marks that folder current, while the other `flame` is not.
+  New Session drafts continue to
+  `Continue in the selected project. Continue after choosing.` and
+  `在选定项目中继续。 已核对，继续。`; input focus remains with the Composer.
+- The **38 capture digests** and passive reports qualify production views over
+  private canonical Agent inputs and an in-memory gateway. No live Runtime,
+  provider, Send, filesystem project creation or native folder picker is claimed.
+  Passive menu observations can capture the entry transform; transient
+  elementFromPoint samples do not certify settled pointer geometry. Real native
+  mouse selection and the keyboard paths above supply interaction evidence.
+  OS IME, RTL, VoiceOver speech and other-platform GUIs are not exercised. Paper
+  and motion are off; this is not a fresh full contrast/motion or awards audit.
+- All **7 recorded processes** are dead and three apps are unregistered.
+  Retirement removes **7 checkout outputs, 6 Library directories and 3 bundle
+  temp directories**, restores the overwritten original native binary, and
+  preserves **39 output-presence baselines, 4 original hashes, 18 Library
+  baselines, 5,831 accepted non-Markdown inputs, 11 unchanged resources and 3
+  read-only references**. Both **598-file asset maps**, all three app maps and
+  the frozen native module graph match the snapshots accepted before candidate
+  launch. The exact private root `flame-project-choice-1027-kh90at` is absent.
+  Its round-trip-verified in-memory gzip retains **73 UTF-8 records** and the
+  capture digests, SHA-256
+  `2b1170913fb362add474fc39dc5c2abb4bd9df2b2e114940bb29e9fa59ad5280`.
+  User data, primary parallel work and reference resources are preserved.
+
+Approved for inspected project-choice identity and selection continuity. This
+batch remains a local commit; the whole-product UI goal stays open.
 
 ## Goal rail and Plan reading
 

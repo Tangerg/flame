@@ -9,7 +9,7 @@ import { DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Button, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
-import { space } from "@flame/ui/tokens.stylex";
+import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 interface ProjectMenuContentProps {
   groups: readonly WorkGroup[] | undefined;
   activeCwd: string | undefined;
@@ -39,6 +39,13 @@ const pl = stylex.create({
   },
   chooseLabel: { maxWidth: "240px" },
   full: { maxWidth: "100%" },
+  projectIdentity: {
+    display: "grid",
+    minWidth: 0,
+    gap: space.s0_5,
+    whiteSpace: "normal",
+    overflowWrap: "anywhere",
+  },
 });
 
 function ProjectMenuContent({
@@ -51,6 +58,9 @@ function ProjectMenuContent({
   align,
 }: ProjectMenuContentProps) {
   const t = useT();
+  const nameCounts = new Map<string, number>();
+  for (const { project } of groups ?? [])
+    nameCounts.set(project.name, (nameCounts.get(project.name) ?? 0) + 1);
   return (
     <DropdownMenu.Content
       side="top"
@@ -68,6 +78,7 @@ function ProjectMenuContent({
           <DropdownMenu.Item
             key={project.id}
             disabled={project.cwdMissing || !canCreate}
+            aria-current={project.id === activeCwd ? "true" : undefined}
             onClick={() => {
               if (project.id !== activeCwd) onSelect(project.id);
             }}
@@ -75,7 +86,14 @@ function ProjectMenuContent({
             layout="pick"
           >
             <Icon name="folder" size="sm" className={stylex.props(vocab.muted).className} />
-            <span {...stylex.props(vocab.min, vocab.truncate)}>{project.name}</span>
+            <span {...stylex.props(pl.projectIdentity)}>
+              <span>{project.name}</span>
+              {nameCounts.get(project.name)! > 1 && (
+                <span dir="ltr" {...stylex.props(face.mono, typeStep.uiXs, vocab.muted)}>
+                  {project.id}
+                </span>
+              )}
+            </span>
             {project.id === activeCwd ? (
               <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             ) : (

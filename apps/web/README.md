@@ -72,6 +72,12 @@ The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.
 
+Project choices retain complete wrapping names. When projects share a display
+name, both the new-conversation tray and active-project menu show their full
+folder paths in the same row. Unique names keep their compact row. The current
+folder carries `aria-current`; exact folder actions, availability and Session
+draft ownership retain their existing owners.
+
 Background-task progress keeps complete names, messages and errors in one named
 keyboard reader. The popup and its scrolling body fit the available viewport;
 progress updates retain the same reader and native position. Task lifecycle
