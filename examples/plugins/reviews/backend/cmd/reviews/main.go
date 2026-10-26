@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -22,12 +21,12 @@ func main() {
 func run() (err error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	store, err := reviews.OpenStore(ctx, os.Getenv("PLUGIN_DATA"))
+	store, err := openStore(ctx, os.Getenv("PLUGIN_DATA"))
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, store.Close()) }()
-	server, err := reviews.NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		return err
 	}

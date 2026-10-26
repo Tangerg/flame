@@ -1,4 +1,4 @@
-package reviews
+package main
 
 import (
 	json "encoding/json/v2"
@@ -10,8 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -20,7 +22,7 @@ func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
 	var meta sdk.Meta
 	if id != "" {
-		if err := meta.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: id, Origin: capability.Model, Target: capability.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+		if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: id, Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -29,7 +31,7 @@ func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 
 func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
-	server, err := NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +60,14 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		}
 		return result
 	}
-	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
+	input := reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: reviews.Resolved}
 	if result := call("", input); !result.IsError {
 		t.Fatalf("missing identity = %+v", result)
 	}
 	for _, args := range []any{
-		map[string]any{"id": ExampleReviewID, "status": Resolved},
-		map[string]any{"id": ExampleReviewID, "expectedRevision": nil, "status": Resolved},
-		map[string]any{"id": ExampleReviewID, "expectedRevision": 1, "status": Resolved, "unexpected": true},
+		map[string]any{"id": reviews.ExampleReviewID, "status": reviews.Resolved},
+		map[string]any{"id": reviews.ExampleReviewID, "expectedRevision": nil, "status": reviews.Resolved},
+		map[string]any{"id": reviews.ExampleReviewID, "expectedRevision": 1, "status": reviews.Resolved, "unexpected": true},
 	} {
 		if result := call("bad", args); !result.IsError {
 			t.Fatalf("invalid arguments = %+v", result)
@@ -79,11 +81,11 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result UpdateResult
+	var result reviews.UpdateResult
 	if err := json.Unmarshal(encoded, &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Type != Updated || result.Review == nil || result.Review.Revision != 2 {
+	if result.Type != reviews.Updated || result.Review == nil || result.Review.Revision != 2 {
 		t.Fatalf("result = %+v", result)
 	}
 	replayed := call("original", input)
@@ -99,7 +101,7 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 		t.Fatalf("list = %+v, %v", listed, err)
 	}
 	var current struct {
-		Reviews []Snapshot `json:"reviews"`
+		Reviews []reviews.Snapshot `json:"reviews"`
 	}
 	encoded, err = json.Marshal(listed.StructuredContent)
 	if err != nil {
@@ -108,18 +110,18 @@ func TestMCPContractOwnsInputsResultsAndInvocationReceipts(t *testing.T) {
 	if err := json.Unmarshal(encoded, &current); err != nil {
 		t.Fatal(err)
 	}
-	if len(current.Reviews) != 1 || current.Reviews[0].Revision != 2 || current.Reviews[0].Status != Resolved {
+	if len(current.Reviews) != 1 || current.Reviews[0].Revision != 2 || current.Reviews[0].Status != reviews.Resolved {
 		t.Fatalf("current = %+v", current)
 	}
 }
 
 func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
-	contracts, err := NewContracts()
+	contracts, err := reviews.NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
 	store := openTestStore(t, t.TempDir())
-	server, err := NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,9 +152,9 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}
+	input := reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: reviews.Resolved}
 	accepted, err := updateMethod.CallCommand(t.Context(), "shared-command", input)
-	if err != nil || accepted.Type != Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
+	if err != nil || accepted.Type != reviews.Updated || accepted.Review == nil || accepted.Review.Revision != 2 {
 		t.Fatalf("typed update = %+v, %v", accepted, err)
 	}
 	replayed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: modelToolMetadata(t, "shared-command")})
@@ -163,48 +165,48 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var observed UpdateResult
+	var observed reviews.UpdateResult
 	if err := json.Unmarshal(encoded, &observed); err != nil || observed.Type != accepted.Type || observed.Review == nil || *observed.Review != *accepted.Review {
 		t.Fatalf("Tool entrance created a different business result: %+v, %v", observed, err)
 	}
 	conflict, err := updateMethod.CallCommand(t.Context(), "second-command", input)
-	if err != nil || conflict.Type != Conflict || conflict.Review == nil || conflict.Review.Revision != 2 {
+	if err != nil || conflict.Type != reviews.Conflict || conflict.Review == nil || conflict.Review.Revision != 2 {
 		t.Fatalf("typed business refusal lost its current-review evidence: %+v, %v", conflict, err)
 	}
 	changed := input
-	changed.Status = Open
+	changed.Status = reviews.Open
 	identityConflict, err := updateMethod.CallCommand(t.Context(), "shared-command", changed)
-	if err != nil || identityConflict.Type != IdentityConflict {
+	if err != nil || identityConflict.Type != reviews.IdentityConflict {
 		t.Fatalf("identity conflict = %+v, %v", identityConflict, err)
 	}
-	assertToolOutcome := func(identity string, input Update, expected UpdateResult) {
+	assertToolOutcome := func(identity string, input reviews.Update, expected reviews.UpdateResult) {
 		t.Helper()
 		result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: input, Meta: modelToolMetadata(t, identity)})
-		if err != nil || result.IsError != (expected.Type != Updated) {
+		if err != nil || result.IsError != (expected.Type != reviews.Updated) {
 			t.Fatalf("Tool refusal classification: %+v, %v", result, err)
 		}
 		encoded, err := json.Marshal(result.StructuredContent)
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsoninput.Parse(encoded)
+		actual, err := jsonvalue.Parse(encoded)
 		if err != nil {
 			t.Fatal(err)
 		}
-		want, err := jsoninput.Encode(expected)
+		want, err := jsonvalue.Encode(expected)
 		if err != nil || actual != want {
 			t.Fatalf("Tool changed the typed business result: %s, want %s, %v", actual.JSON(), want.JSON(), err)
 		}
 	}
 	assertToolOutcome("tool-stale", input, conflict)
 	assertToolOutcome("shared-command", changed, identityConflict)
-	for _, invalid := range []Update{
-		{ID: ExampleReviewID, ExpectedRevision: 0, Status: Resolved},
-		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Resolved},
+	for _, invalid := range []reviews.Update{
+		{ID: reviews.ExampleReviewID, ExpectedRevision: 0, Status: reviews.Resolved},
+		{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: reviews.Resolved},
 	} {
 		identity := fmt.Sprintf("invalid-%s-%d", invalid.ID, invalid.ExpectedRevision)
 		refused, err := updateMethod.CallCommand(t.Context(), identity, invalid)
-		if err != nil || refused.Type != Invalid || refused.Review != nil {
+		if err != nil || refused.Type != reviews.Invalid || refused.Review != nil {
 			t.Fatalf("typed invalid-input refusal = %+v, %v", refused, err)
 		}
 		assertToolOutcome(identity, invalid, refused)
@@ -214,8 +216,8 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		}
 	}
 
-	missing := Update{ID: "history-missing", ExpectedRevision: 1, Status: Open}
-	admitted, err := jsoninput.Encode(missing)
+	missing := reviews.Update{ID: "history-missing", ExpectedRevision: 1, Status: reviews.Open}
+	admitted, err := jsonvalue.Encode(missing)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,19 +226,19 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	for index := receipts; index < 4096; index++ {
-		result, err := store.Update(t.Context(), fmt.Sprintf("history-%d", index), missing, admitted)
-		if err != nil || result.Type != NotFound {
+		result, err := store.update(t.Context(), fmt.Sprintf("history-%d", index), missing, admitted)
+		if err != nil || result.Type != reviews.NotFound {
 			t.Fatalf("retain receipt history: %+v, %v", result, err)
 		}
 	}
 	changed.ExpectedRevision = accepted.Review.Revision
 	advanced, err := updateMethod.CallCommand(t.Context(), "typed-after-history", changed)
-	if err != nil || advanced.Type != Updated || advanced.Review == nil || advanced.Review.Revision != 3 || advanced.Review.Status != Open {
+	if err != nil || advanced.Type != reviews.Updated || advanced.Review == nil || advanced.Review.Revision != 3 || advanced.Review.Status != reviews.Open {
 		t.Fatalf("history exhausted the typed entrance: %+v, %v", advanced, err)
 	}
 	assertToolOutcome("typed-after-history", changed, advanced)
 	refused, err := updateMethod.CallCommand(t.Context(), "refused-after-history", changed)
-	if err != nil || refused.Type != Conflict || refused.Review == nil || *refused.Review != *advanced.Review {
+	if err != nil || refused.Type != reviews.Conflict || refused.Review == nil || *refused.Review != *advanced.Review {
 		t.Fatalf("typed refusal after history lost its evidence: %+v, %v", refused, err)
 	}
 	assertToolOutcome("tool-refused-after-history", changed, refused)
@@ -258,17 +260,17 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}
-	if _, classified := errors.AsType[*capability.Refusal](err); classified {
+	if _, classified := errors.AsType[*extension.Refusal](err); classified {
 		t.Fatalf("unexpected storage error became a known refusal: %v", err)
 	}
 }
 
 func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
-	store, err := OpenStore(t.Context(), t.TempDir())
+	store, err := openStore(t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +289,7 @@ func TestUnexpectedStoreFailureRemainsProtocolFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: Resolved}, Meta: modelToolMetadata(t, "original")})
+	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "update_review", Arguments: reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: reviews.Resolved}, Meta: modelToolMetadata(t, "original")})
 	if err == nil || result != nil {
 		t.Fatalf("unexpected store failure became a definite tool result: %+v, %v", result, err)
 	}

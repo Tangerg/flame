@@ -9,8 +9,8 @@ import (
 	"os"
 	"strconv"
 
-	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 func main() {
@@ -44,7 +44,7 @@ func run() error {
 		_, err = os.Stdout.Write(append(data, '\n'))
 		return err
 	}
-	var contract *capability.Contract
+	var contract *extension.Capability
 	if *analyzerCapability {
 		contracts, err := reviews.NewAnalyzerContracts()
 		if err != nil {

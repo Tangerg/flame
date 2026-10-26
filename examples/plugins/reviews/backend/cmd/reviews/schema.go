@@ -1,4 +1,4 @@
-package reviews
+package main
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 )
 
 // The private format changed from a re-encoded DTO to the admitted request.
@@ -53,7 +55,7 @@ func admitSchema(ctx context.Context, db *sql.DB, schema map[string]string) (err
 			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO reviews VALUES (?, 'Inspect the plugin ownership boundary', ?, 1)`, ExampleReviewID, Open); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO reviews VALUES (?, 'Inspect the plugin ownership boundary', ?, 1)`, reviews.ExampleReviewID, reviews.Open); err != nil {
 		return err
 	}
 	return tx.Commit()

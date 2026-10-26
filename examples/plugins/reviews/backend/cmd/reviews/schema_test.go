@@ -1,4 +1,4 @@
-package reviews
+package main
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 
 func TestFormerTypedArgumentsDirectoryIsRefusedWithoutChangingPrivateFacts(t *testing.T) {
 	directory := t.TempDir()
-	current, err := OpenStore(t.Context(), directory)
+	current, err := openStore(t.Context(), directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ INSERT INTO invocations VALUES('original','{"id":"example-review","expectedRevis
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if store, err := OpenStore(t.Context(), directory); err == nil {
+	if store, err := openStore(t.Context(), directory); err == nil {
 		_ = store.Close()
 		t.Fatal("former private format was opened or converted")
 	}

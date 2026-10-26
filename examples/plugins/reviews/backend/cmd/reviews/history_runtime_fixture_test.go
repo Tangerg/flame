@@ -1,4 +1,4 @@
-package reviews
+package main
 
 import (
 	"context"
@@ -12,7 +12,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -23,28 +25,28 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 		return
 	}
 	store := openTestStore(t, directory)
-	initial, err := store.List(t.Context())
+	initial, err := store.list(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := Update{ID: "history-missing", ExpectedRevision: 1, Status: Open}
-	admitted, err := jsoninput.Encode(input)
+	input := reviews.Update{ID: "history-missing", ExpectedRevision: 1, Status: reviews.Open}
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Retain the former cutoff through real business calls before publishing the
 	// endpoint, so history setup cannot consume Runtime's handshake window.
 	for index := range 4096 {
-		result, err := store.Update(t.Context(), fmt.Sprintf("runtime-history-%d", index), input, admitted)
-		if err != nil || result.Type != NotFound {
+		result, err := store.update(t.Context(), fmt.Sprintf("runtime-history-%d", index), input, admitted)
+		if err != nil || result.Type != reviews.NotFound {
 			t.Fatalf("prepare receipt history: %+v, %v", result, err)
 		}
 	}
-	server, err := NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	contracts, err := NewContracts()
+	contracts, err := reviews.NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +89,7 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 	if _, err := io.Copy(io.Discard, os.Stdin); err != nil {
 		t.Fatal(err)
 	}
-	current, err := store.List(t.Context())
+	current, err := store.list(t.Context())
 	if err != nil || !reflect.DeepEqual(current, initial) {
 		t.Fatalf("history refusal changed private review: %+v, %v", current, err)
 	}

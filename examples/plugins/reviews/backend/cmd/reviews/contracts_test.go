@@ -1,4 +1,4 @@
-package reviews
+package main
 
 import (
 	"encoding/json/jsontext"
@@ -8,40 +8,41 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 func TestGeneratedAnalyzerPointPreservesTheConsumerContract(t *testing.T) {
-	owner, err := NewAnalyzerPoint()
+	owner, err := reviews.NewAnalyzerPoint()
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join("..", "package", "io.github.tangerg.flame", "contracts", "analyzers.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "package", "io.github.tangerg.flame", "contracts", "analyzers.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact, err := point.Parse(data)
+	artifact, err := extension.ParsePoint(data)
 	if err != nil || artifact.Identity() != owner.Identity() {
 		t.Fatalf("packaged analyzer point differs from its consumer owner: %v", err)
 	}
 }
 
 func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
-	contracts, err := NewContracts()
+	contracts, err := reviews.NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
-	directory := filepath.Join("..", "package", "io.github.tangerg.flame", "contracts")
+	directory := filepath.Join("..", "..", "..", "package", "io.github.tangerg.flame", "contracts")
 	capabilityData, err := os.ReadFile(filepath.Join(directory, "capability.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.Parse(capabilityData)
+	contract, err := extension.ParseCapability(capabilityData)
 	if err != nil || contract.Identity() != contracts.Capability.Identity() {
 		t.Fatalf("generated capability differs from the backend owner: %v", err)
 	}
@@ -50,12 +51,12 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name        string                `json:"name"`
-		Kind        capability.MethodKind `json:"kind"`
-		Target      string                `json:"target"`
-		Description string                `json:"description"`
-		Input       string                `json:"input"`
-		Output      string                `json:"output"`
+		Name        string               `json:"name"`
+		Kind        extension.MethodKind `json:"kind"`
+		Target      string               `json:"target"`
+		Description string               `json:"description"`
+		Input       string               `json:"input"`
+		Output      string               `json:"output"`
 	}
 	if err := json.Unmarshal(methodsData, &methods, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
@@ -111,7 +112,7 @@ func TestGeneratedContractsPreserveBackendAdmission(t *testing.T) {
 }
 
 func TestUpdateStructuralAdmissionBoundsInputBeforeBusinessDecision(t *testing.T) {
-	contracts, err := NewContracts()
+	contracts, err := reviews.NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,20 +122,20 @@ func TestUpdateStructuralAdmissionBoundsInputBeforeBusinessDecision(t *testing.T
 	}
 	for _, scenario := range []struct {
 		name            string
-		input           Update
+		input           reviews.Update
 		shape, business bool
 	}{
-		{"ascii_boundary", Update{ID: strings.Repeat("x", 128), ExpectedRevision: 1, Status: Open}, true, true},
-		{"ascii_overflow", Update{ID: strings.Repeat("x", 129), ExpectedRevision: 1, Status: Open}, false, false},
-		{"unicode_inside_byte_bound", Update{ID: strings.Repeat("界", 42), ExpectedRevision: 1, Status: Open}, true, true},
-		{"unicode_outside_byte_bound", Update{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: Open}, true, false},
-		{"unicode_shape_overflow", Update{ID: strings.Repeat("界", 129), ExpectedRevision: 1, Status: Open}, false, false},
-		{"empty_identifier", Update{ID: "", ExpectedRevision: 1, Status: Open}, true, false},
-		{"zero_revision", Update{ID: ExampleReviewID, ExpectedRevision: 0, Status: Open}, true, false},
-		{"unknown_status", Update{ID: ExampleReviewID, ExpectedRevision: 1, Status: "unknown"}, false, false},
+		{"ascii_boundary", reviews.Update{ID: strings.Repeat("x", 128), ExpectedRevision: 1, Status: reviews.Open}, true, true},
+		{"ascii_overflow", reviews.Update{ID: strings.Repeat("x", 129), ExpectedRevision: 1, Status: reviews.Open}, false, false},
+		{"unicode_inside_byte_bound", reviews.Update{ID: strings.Repeat("界", 42), ExpectedRevision: 1, Status: reviews.Open}, true, true},
+		{"unicode_outside_byte_bound", reviews.Update{ID: strings.Repeat("界", 43), ExpectedRevision: 1, Status: reviews.Open}, true, false},
+		{"unicode_shape_overflow", reviews.Update{ID: strings.Repeat("界", 129), ExpectedRevision: 1, Status: reviews.Open}, false, false},
+		{"empty_identifier", reviews.Update{ID: "", ExpectedRevision: 1, Status: reviews.Open}, true, false},
+		{"zero_revision", reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 0, Status: reviews.Open}, true, false},
+		{"unknown_status", reviews.Update{ID: reviews.ExampleReviewID, ExpectedRevision: 1, Status: "unknown"}, false, false},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			admitted, err := jsoninput.Encode(scenario.input)
+			admitted, err := jsonvalue.Encode(scenario.input)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +150,7 @@ func TestUpdateStructuralAdmissionBoundsInputBeforeBusinessDecision(t *testing.T
 }
 
 func TestRetiredReceiptCapacityOutcomeIsRefused(t *testing.T) {
-	contracts, err := NewContracts()
+	contracts, err := reviews.NewContracts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,14 +161,14 @@ func TestRetiredReceiptCapacityOutcomeIsRefused(t *testing.T) {
 	if err := method.ValidateOutput(jsontext.Value(`{"type":"receiptCapacity"}`)); err == nil {
 		t.Fatal("retired receipt quota still belongs to the operation contract")
 	}
-	if err := (UpdateResult{Type: Outcome("receiptCapacity")}).Validate(); err == nil {
+	if err := (reviews.UpdateResult{Type: reviews.Outcome("receiptCapacity")}).Validate(); err == nil {
 		t.Fatal("retired receipt quota still belongs to the business vocabulary")
 	}
 }
 
 func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 	store := openTestStore(t, t.TempDir())
-	server, err := NewServer(store)
+	server, err := newServer(store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,11 +187,11 @@ func TestLiveCapabilityMatchesGeneratedReviewsContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	data, err := os.ReadFile(filepath.Join("..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "package", "io.github.tangerg.flame", "contracts", "capability.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.Parse(data)
+	contract, err := extension.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
