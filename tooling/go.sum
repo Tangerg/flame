@@ -17,8 +17,8 @@ github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.1 h1:ZHiyY3SX
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.1/go.mod h1:0IJ4UKfynAQHmKrZkftyfplLcDEebopLuqHA3DX7oMQ=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1 h1:ePjJ67B5EfJJSw16thu5IA/tMoM45lBNYovPyiiO8v8=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
-github.com/Tangerg/flame/runtime v0.1.0-memory.20261027.2 h1:I3XYYlGvzvj0o7kUg4GBSXqWvj/8CqV5VjwqwDvEJqI=
-github.com/Tangerg/flame/runtime v0.1.0-memory.20261027.2/go.mod h1:DsdghNpupI3K5SjOqPMA44mJwIzc/DlQfnvw0VhznjM=
+github.com/Tangerg/flame/runtime v0.1.0-schedules.20261027.1 h1:BOpJgS66hofJGeIZHYN+qz03VqkD4OOo6z1v6ns0ruA=
+github.com/Tangerg/flame/runtime v0.1.0-schedules.20261027.1/go.mod h1:bnyyH37R0X99K/5Fuz0eH6WKiuysIDx/hb8AYSaTBkQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3 h1:hMC4qrvwu38L4/bLwnPiCYi9BTRFQxGb6Cs97pa/CzQ=
 github.com/Tangerg/go-sdk v1.8.1-scope.3/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/scope/a2a v0.57.1 h1:0JtIWQywThqPApkDlvGhq4/yddb+hVaU1oyS0WhoYAk=
