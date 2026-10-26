@@ -7,9 +7,11 @@ This user-requested file is the maintained progress and handoff record for the d
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/recorded-skill-pages-1026`. Recorded Skill-page qualification uses
-frozen base `e7fba9fcfa3567f9e3fb67ba4dcec468676b537d`; see Recorded Skill pages
-below. Read-family evidence implementation
+is on `codex/recorded-skill-pages-1026`. Recorded Skill-page implementation
+`c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
+owned resources are retired. Qualification uses frozen base
+`e7fba9fcfa3567f9e3fb67ba4dcec468676b537d`; see Recorded Skill pages below.
+Read-family evidence implementation
 `feff7ca5d735aa3fb104b0e01bae5c127973e023` and receipt
 `e7fba9fcfa3567f9e3fb67ba4dcec468676b537d` remain published and retired. Their
 qualification uses base `1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see
@@ -10961,8 +10963,13 @@ binary digests; gzip SHA-256 is
 baselines, three original files and 17 dead processes. The four read-only
 references match, and the primary parallel checkout and user data are preserved.
 
-Implementation publication and its independent remote proof follow in the final
-delivery receipt.
+Implementation `c45862fee7292849307f8b15e6da2e4b696b4f1d` is committed with normal
+Prettier/workspace-lint hooks and pushed normally as HEAD:main. An independent
+ls-remote confirms that exact remote main object. The owned checkout is clean
+with **0 / 0** ahead/behind at implementation publication, and post-hook
+preservation passes all accepted source/resource/output/process checks. This
+documentation receipt follows as a separate normal commit and push. The overall
+UI goal remains active.
 
 ### Read-family evidence and stored-output identity
 
