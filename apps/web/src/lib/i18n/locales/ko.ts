@@ -1,6 +1,8 @@
 export const ko: Record<string, string> = {
   "packages.installTitle": "플러그인 설치",
   "packages.installedTitle": "설치된 패키지",
+  "packages.refreshError.title": "설치된 패키지를 새로 고칠 수 없습니다",
+  "packages.refreshError.sub": "마지막으로 불러온 패키지를 표시합니다.",
   "packages.details": "릴리스 세부 정보",
   "packages.manifest": "릴리스 매니페스트",
   "packages.actions": "패키지 작업",

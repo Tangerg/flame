@@ -1,6 +1,8 @@
 export const zhTW: Record<string, string> = {
   "packages.installTitle": "安裝外掛",
   "packages.installedTitle": "已安裝的外掛",
+  "packages.refreshError.title": "無法重新整理已安裝的外掛",
+  "packages.refreshError.sub": "顯示上次載入的外掛。",
   "packages.details": "發佈版本詳情",
   "packages.manifest": "發佈清單",
   "packages.actions": "外掛操作",

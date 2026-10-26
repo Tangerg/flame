@@ -1,6 +1,8 @@
 export const fr: Record<string, string> = {
   "packages.installTitle": "Installer une extension",
   "packages.installedTitle": "Paquets installés",
+  "packages.refreshError.title": "Impossible d’actualiser les paquets installés",
+  "packages.refreshError.sub": "Les derniers paquets chargés sont affichés.",
   "packages.details": "Détails de la version",
   "packages.manifest": "Manifeste de la version",
   "packages.actions": "Actions du paquet",

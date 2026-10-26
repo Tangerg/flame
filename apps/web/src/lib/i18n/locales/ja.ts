@@ -1,6 +1,8 @@
 export const ja: Record<string, string> = {
   "packages.installTitle": "プラグインをインストール",
   "packages.installedTitle": "インストール済みパッケージ",
+  "packages.refreshError.title": "インストール済みパッケージを更新できませんでした",
+  "packages.refreshError.sub": "前回読み込んだパッケージを表示しています。",
   "packages.details": "リリースの詳細",
   "packages.manifest": "リリースマニフェスト",
   "packages.actions": "パッケージの操作",

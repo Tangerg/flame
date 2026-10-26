@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -11063,6 +11063,96 @@ SHA-256 `58638e496f76688ed18f6ba3ad3dc1f68d15befc5e59d57ae86dd1a387920668`.
 Post-retirement verification again preserves all **5,784** non-Markdown inputs
 and their hash above. This documentation-only receipt changes no qualified
 product source. The continuous UI goal remains active.
+
+#### Installed package refresh and independent draft continuity
+
+Scope: G03/T06/T21 from the read-only feedback review, traced on local base
+`9a6910af91128387e96e0a05d8b4b4ce53b3a5ea`. Native reproduction confirms a
+P2 continuity defect: A package operation can finish while B's Configure/Stage
+editor is open. The resulting catalog refetch can fail with accepted query data
+still present; the generic DataView error branch nevertheless unmounted every
+PackageRow, discarded B's draft and moved focus to the document.
+
+PackageManager now retains this query's accepted, nonempty catalog through a
+failed refetch. The same keyed PackageRow and its existing edit remain mounted;
+the query cache stays the only catalog owner. A compact, announced failed-refresh
+notice identifies these as the last loaded packages, with Retry in all eight
+locales. Pending recovery uses the existing compact loading presentation. Retry
+retires only its own focus to the surviving Installed packages heading. A
+successful empty catalog still removes rows and editors; data-provider generation
+retirement still clears accepted data through DataQueryOwner. Initial-read error,
+empty and unsupported semantics retain their existing owners. Shared DataView,
+command admission, Runtime validation, operations signals and captured edit
+identity/digest are unchanged; no last-good copy or global fallback was added.
+
+Reference: Flame's FileBrowser already retains accepted files with scoped refresh
+feedback. Read-only ZCode PluginsSection distinguishes loading with no visible
+plugins from rendering loaded rows; that branch is not evidence of failed-read
+recovery. HeroUI's form/render-function example separates field validation from
+submission, and is not evidence of asynchronous fallback. Earlier Radix, Arc and
+Ace research remains qualified as recorded above. This repair uses Flame's
+existing DataError, SkeletonList, PanelSection, Base UI and semantic tokens.
+
+Verification:
+
+- Baseline: **4 files / 51 tests** pass. On the original implementation the two
+  independent Configure/Stage regressions fail because the dialog disappears,
+  with **22 other tests passing**. Final coverage is **4 files / 55 passing
+  tests**, including the same editor, literal draft, focus and selection through
+  failed/pending/successful reads, exact B-target submission, accepted removal and
+  focus during Retry. Existing provider-retirement and generic DataView tests pass.
+- The final **11-gate chain passes in 43.79 s**, including formatting, Web
+  typecheck/lint, design-system/chrome/styles/tokens/locales, installed resources,
+  **make check-native (36.68 s)** and independent plugin modules. Wails' duplicate
+  `-lobjc` warning remains non-failing. The complete serial test/build/check chain
+  takes **54.49 s**. No checks or valid assertions were disabled.
+- Early private/test setup failures were corrected: optional wire arrays must be
+  omitted rather than empty; the Configure sample needs a typed value change;
+  expected empty/loading copy and asynchronous DOM observations must follow the
+  actual components. Typecheck also rejected spreading an unknown JSON value in
+  the new test; it now constructs one explicit request object. Rebuilt candidate
+  assets remain byte-identical across all **598 files**, so the native runtime
+  acceptance is unchanged by that test-only correction.
+- Actual Wails, English/light/14 px/Orange/contrast 25/motion off: pending A Enable
+  → B Configure → failed catalog refresh preserves B's exact draft and caret;
+  continued editing, Escape return, visible retained-result notice, Retry,
+  heading focus, fresh Configure/Save and original Composer draft continuation
+  all pass. The acknowledged Enable appears only after an accepted catalog read.
+- Actual Wails, Chinese/dark/18 px/custom yellow/contrast 100/motion off: native
+  resize and twenty Zoom In steps reach a **560 × 364 CSS viewport at 200%**.
+  Settings search keeps the active task reachable; A Enable → B Stage preserves
+  its mixed-script path and caret after refresh failure. Continued typing,
+  Tab/Enter cancellation, Shift+Tab to Retry, heading focus, recovered Stage with
+  Cmd+Enter, Actual Size and continued original Composer input pass. The editor's
+  title, bounded body and fixed actions remain reachable. Keyboard-driven catalog
+  scrolling is covered; there is no new manual-wheel qualification in this batch.
+
+Native acceptance uses the actual Wails host and production Web component graph,
+with isolated public-wire package responses and a passive observer. It qualifies
+UI command/recovery boundaries, not a live package executable, trust approval or
+backend installation. The invalid initial native sample is excluded from the
+reproduction; only corrected, wire-validated data qualifies it. No browser visual
+suite, performance benchmark or Claude CLI ran. The previously documented huge
+pasted-text native initialization/font limitation is unchanged; its failed mount
+and typography experiments are not repeated without new evidence.
+
+Cleanup: all **16 owned PIDs** are dead. Seven new output/cache roots, six exact
+Library entries and three temporary bundle directories are removed; the original
+native-check binary is restored. All **39 output-presence baselines**, four
+original files, eighteen Library-presence baselines, **5,832 accepted non-Markdown
+inputs**, eleven installed resources and three read-only reference files remain
+preserved. The three acceptance applications are unregistered and their private
+root is absent. In-memory archival round-trips **73 UTF-8 records / 20 capture
+digests** with gzip SHA-256
+`c07fd4f42a15f0578450a32aa9e41748831fc121d819437ade7ee4f1b6339ace`.
+
+Goal CHECK review: typography and whitespace retain the existing reading axis;
+hierarchy keeps failure and accepted-result scope distinct; color uses existing
+semantic feedback and user accents; motion adds no new effects; micro-interaction
+preserves editing and local recovery; responsive controls remain reachable in the
+qualified narrow/200% task; originality retains Flame's approved brand without
+edge stripes or decoration. This is a scoped recovery repair, not whole-product
+award acceptance. Delivery stays local-only; the wider UI goal remains active.
 
 ### Plugin render recovery
 

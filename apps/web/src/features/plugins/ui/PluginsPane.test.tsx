@@ -155,8 +155,12 @@ function reviewedInstallation(): PluginInstallation {
 describe("PluginsPane installation facts", () => {
   async function renderPackages(
     operations: Partial<
-      Record<"install" | "configure", (request: unknown) => Promise<PluginInstallation>>
+      Record<
+        "install" | "configure" | "stage" | "setEnablement",
+        (request: unknown) => Promise<PluginInstallation>
+      >
     >,
+    read: () => Promise<PluginInstallation[]> = async () => [reviewedInstallation()],
   ) {
     host = await startKernel([
       definePlugin({
@@ -165,7 +169,7 @@ describe("PluginsPane installation facts", () => {
           ctx.contribute(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: async () => [] });
           ctx.contribute(DATA_PROVIDER, {
             key: PACKAGES_KEY,
-            fetcher: async () => [reviewedInstallation()],
+            fetcher: read,
           });
           ctx.cleanup(
             testClient.installedPlugins.access.publishOperations({
@@ -183,6 +187,146 @@ describe("PluginsPane installation facts", () => {
       </QueryClientProvider>,
     );
   }
+
+  it.each(["configure", "stage"] as const)(
+    "retains an independent %s draft through a failed catalog refresh and retry",
+    async (kind) => {
+      const first = reviewedInstallation();
+      const second: PluginInstallation = {
+        ...first,
+        id: "940ac827-b431-455b-af4b-e3a170bcfda1",
+        selected: { ...first.selected, name: "Other package", digest: "2".repeat(64) },
+      };
+      const enablement = Promise.withResolvers<PluginInstallation>();
+      const recovery = Promise.withResolvers<PluginInstallation[]>();
+      let read: () => Promise<PluginInstallation[]> = async () => [first, second];
+      const submit = vi.fn(async (_request: unknown) => second);
+      await renderPackages({ setEnablement: () => enablement.promise, [kind]: submit }, () =>
+        read(),
+      );
+      const firstRow = (await screen.findByText(first.selected.name)).closest("article")!;
+      fireEvent.click(within(firstRow).getByRole("button", { name: "Package actions" }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Enable" }));
+
+      const secondRow = screen.getByText(second.selected.name).closest("article")!;
+      if (kind === "configure") {
+        fireEvent.click(within(secondRow).getByRole("button", { name: "Configure inputs" }));
+      } else {
+        fireEvent.click(within(secondRow).getByRole("button", { name: "Package actions" }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: "Stage update" }));
+      }
+      const title = `${kind === "configure" ? "Configure inputs" : "Stage update"}: Other package`;
+      const dialog = screen.getByRole("dialog", { name: title });
+      const field = within(dialog).getByRole("textbox") as HTMLTextAreaElement;
+      const changes = {
+        valueChanges: { note: { type: "set", value: "保留这个配置草稿" } },
+        serverChanges: {},
+        skillChanges: {},
+      };
+      const value =
+        kind === "configure" ? JSON.stringify(changes) : "/runtime/保留这个更新草稿.zip";
+      fireEvent.change(field, { target: { value } });
+      act(() => {
+        field.focus();
+        field.setSelectionRange(4, 12);
+      });
+      read = async () => {
+        throw new Error("Catalog refresh rejected");
+      };
+      await act(async () => {
+        enablement.resolve({ ...first, enabled: true });
+      });
+      await waitFor(() => expect(queryClient.getQueryState([PACKAGES_KEY])?.status).toBe("error"), {
+        timeout: 2_000,
+      });
+
+      expect(queryClient.getQueryData([PACKAGES_KEY])).toEqual([first, second]);
+      expect(screen.getByRole("dialog", { name: title })).toBe(dialog);
+      expect(field.value).toBe(value);
+      expect(document.activeElement).toBe(field);
+      expect([field.selectionStart, field.selectionEnd]).toEqual([4, 12]);
+      expect(screen.getByText("Showing the last loaded packages.")).toBeTruthy();
+      expect(submit).not.toHaveBeenCalled();
+
+      read = () => recovery.promise;
+      act(() => {
+        void queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+      });
+      await waitFor(() =>
+        expect(queryClient.getQueryState([PACKAGES_KEY])?.fetchStatus).toBe("fetching"),
+      );
+      expect(screen.getByRole("dialog", { name: title })).toBe(dialog);
+      expect(field.value).toBe(value);
+      expect(document.activeElement).toBe(field);
+      await act(async () => {
+        recovery.resolve([{ ...first, enabled: true }, second]);
+      });
+      await waitFor(() =>
+        expect(queryClient.getQueryState([PACKAGES_KEY])?.status).toBe("success"),
+      );
+      expect(screen.getByRole("dialog", { name: title })).toBe(dialog);
+      expect(field.value).toBe(value);
+      expect(document.activeElement).toBe(field);
+
+      fireEvent.click(
+        within(dialog).getByRole("button", {
+          name: kind === "configure" ? "Save" : "Stage update",
+        }),
+      );
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        kind === "configure"
+          ? { installationId: second.id, digest: second.selected.digest, ...changes }
+          : { installationId: second.id, source: value },
+      );
+    },
+  );
+
+  it("retires a reviewed installation when an accepted catalog no longer contains it", async () => {
+    let rows = [reviewedInstallation()];
+    const configure = vi.fn(async () => reviewedInstallation());
+    await renderPackages({ configure }, async () => rows);
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    rows = [];
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+    });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(await screen.findByText("No Runtime packages installed")).toBeTruthy();
+    expect(screen.queryByText("Showing the last loaded packages.")).toBeNull();
+    expect(configure).not.toHaveBeenCalled();
+  });
+
+  it("returns retry focus to the retained catalog while its recovery is pending", async () => {
+    const installation = reviewedInstallation();
+    const recovery = Promise.withResolvers<PluginInstallation[]>();
+    let read: () => Promise<PluginInstallation[]> = async () => [installation];
+    await renderPackages({}, () => read());
+    await screen.findByText(installation.selected.name);
+    read = async () => {
+      throw new Error("Catalog refresh rejected");
+    };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+    });
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    read = () => recovery.promise;
+
+    fireEvent.click(retry);
+
+    expect(document.activeElement).toBe(screen.getByText("Installed packages"));
+    expect(screen.getByText(installation.selected.name)).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("status").getAttribute("aria-busy")).toBe("true"));
+    expect(screen.getByRole("status").textContent).toBe("Loading");
+    await act(async () => recovery.resolve([installation]));
+    await waitFor(() => expect(queryClient.getQueryState([PACKAGES_KEY])?.status).toBe("success"));
+    expect(document.activeElement).toBe(screen.getByText("Installed packages"));
+    expect(screen.queryByText("Showing the last loaded packages.")).toBeNull();
+  });
 
   it("clears installation feedback on editing without clearing a realization failure", async () => {
     const install = vi

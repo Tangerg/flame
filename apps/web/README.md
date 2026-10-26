@@ -195,6 +195,14 @@ succeeds, each role stays unread; a successful empty read confirms it is unselec
 A failed refresh identifies retained selections as the last read. Candidate drafts,
 explicit selection and command recovery keep their existing owners.
 
+The installed-package catalog retains this query's accepted, nonempty result after
+a failed refresh and identifies it as the last load beside Retry. Independent
+Configure/Stage editors remain mounted with their captured identity, draft and
+caret through refresh failure and retry. Retry hands its own focus to the installed
+packages heading before replacing the notice. A successful empty catalog or data
+provider retirement still removes obsolete installations and their editors; no
+second catalog cache or command owner is introduced.
+
 Loaded client-plugin errors show their complete message before source/time metadata.
 Long traces use the shared named keyboard reader; each Copy action describes its
 error and reports accepted or failed writes through the existing clipboard owner.

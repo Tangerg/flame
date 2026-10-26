@@ -2,7 +2,7 @@ import { useInstalledPlugins } from "@/features/plugins/context";
 import { pluginContract } from "@flame/runtime-client";
 import { parseJSON } from "@flame/runtime-client";
 import { checkRequest } from "@flame/runtime-client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { z } from "zod";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@flame/runtime-client/wire";
 import { useT } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
-import { DataView } from "@/ui/index";
+import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
 import {
@@ -78,6 +78,8 @@ export function PackageManager() {
   const packages = useInstalledPlugins();
   const t = useT();
   const catalog = usePackages();
+  const catalogTitle = useRef<HTMLSpanElement>(null);
+  const retained = catalog.data !== undefined && catalog.data.length > 0;
   const realization = packages.useFailure();
   const [source, setSource] = useState("");
   const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
@@ -136,11 +138,38 @@ export function PackageManager() {
           </SystemMessage>
         )}
       </PanelSection>
-      <PanelSection title={t("packages.installedTitle")}>
+      <PanelSection
+        title={
+          <span ref={catalogTitle} tabIndex={-1}>
+            {t("packages.installedTitle")}
+          </span>
+        }
+      >
+        {retained &&
+          catalog.error != null &&
+          (catalog.isFetching ? (
+            <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+          ) : (
+            <div role="status">
+              <DataError
+                failure={catalog.error}
+                focusTarget={catalogTitle}
+                title={t("packages.refreshError.title")}
+                sub={t("packages.refreshError.sub")}
+                size="compact"
+                unsupported={{
+                  icon: "blocks",
+                  sub: t("packages.refreshError.sub"),
+                  size: "compact",
+                }}
+                onRetry={catalog.refetch}
+              />
+            </div>
+          ))}
         <DataView
           items={catalog.data ?? []}
           isLoading={catalog.isLoading}
-          failure={catalog.error}
+          failure={retained ? undefined : catalog.error}
           onRetry={catalog.refetch}
           empty={{ icon: "blocks", title: t("packages.empty") }}
         >

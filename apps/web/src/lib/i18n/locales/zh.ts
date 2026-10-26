@@ -1,6 +1,8 @@
 export const zh: Record<string, string> = {
   "packages.installTitle": "安装插件",
   "packages.installedTitle": "已安装的插件",
+  "packages.refreshError.title": "无法刷新已安装的插件",
+  "packages.refreshError.sub": "显示上次加载的插件。",
   "packages.details": "发布版本详情",
   "packages.manifest": "发布清单",
   "packages.actions": "插件操作",

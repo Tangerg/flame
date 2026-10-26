@@ -1,6 +1,8 @@
 export const es: Record<string, string> = {
   "packages.installTitle": "Instalar un complemento",
   "packages.installedTitle": "Paquetes instalados",
+  "packages.refreshError.title": "No se pudieron actualizar los paquetes instalados",
+  "packages.refreshError.sub": "Se muestran los últimos paquetes cargados.",
   "packages.details": "Detalles de la versión",
   "packages.manifest": "Manifiesto de la versión",
   "packages.actions": "Acciones del paquete",

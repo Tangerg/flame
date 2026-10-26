@@ -1,6 +1,8 @@
 export const en: Record<string, string> = {
   "packages.installTitle": "Install a plugin",
   "packages.installedTitle": "Installed packages",
+  "packages.refreshError.title": "Couldn't refresh installed packages",
+  "packages.refreshError.sub": "Showing the last loaded packages.",
   "packages.details": "Release details",
   "packages.manifest": "Release manifest",
   "packages.actions": "Package actions",
