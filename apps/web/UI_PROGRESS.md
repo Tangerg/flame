@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -44,7 +44,7 @@ three pre-existing files, **5,829** merged non-Markdown inputs and eleven accept
 resources are preserved, and the owned check process is dead. Its root is absent;
 the verified ten-record gzip SHA-256 is
 `545b6063ed5f0199539c6b48286fedf9f0bb39e509cd755cde6dafef43e430ba`.
-This merge stays on the owned local UI branch; no push or primary checkout
+Merge commit `b3d041efbef3ce7988e543f573f2aa1abd8005e5` stays on the owned local UI branch; no push or primary checkout
 integration is authorized or performed.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
@@ -62,7 +62,9 @@ arrival and retained reading and its Immediate Escape follow-up below. The
 preceding Skills composition/query and
 source-presence repairs retain their corresponding sections. Image descriptions now retain complete wrapping, native scrolling and reader focus
 through gallery selection, qualified under Image descriptions and bounded gallery
-reading. These local commits have not been pushed or merged into the primary checkout.
+reading. The subsequent save-feedback follow-up shows the command reason before
+its captured image description; both inspected native 200% scenes reach the
+complete feedback tail and return to the original draft. These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -2551,6 +2553,84 @@ baseline/candidate, 16 immutable module artifacts and four native hashes;
 SHA-256 `8d3246c81166628dde718813ad5a75925b735acc7f471ab31f47f80e4af94bd0`.
 The primary checkout, user data, dependencies, compiler caches and unrelated
 processes remain untouched. This batch is committed locally before main merges.
+
+**Save-failure reading order follow-up**
+
+At merged base `b3d041efbef3ce7988e543f573f2aa1abd8005e5`, an actual Wails
+DE/light/18 px/purple/motion-off scene at native **200%** exposes a second
+reading problem. The 287-character captured description precedes the failure
+reason in a 53 px feedback viewport with 236 px content. The initial visible
+body contains only the description; users must scroll past it to learn what
+failed. This is a HIGH writing/hierarchy finding in the inspected error state.
+
+`ImagePreviewGallery.tsx` now renders the command reason first and the captured
+image description second. This changes one interpolation order. The existing
+gallery owns the captured failure, the command owner retains error translation
+and busy/duplicate-submit behavior, and shared SystemMessage/ScrollRegion retain
+announcement, wrapping and native scrolling. Selection still identifies the
+image whose save failed, even when a different image is current. README and the
+existing captured-failure regression record that contract. No extra state,
+retry handler, copy, CSS, shared component or Runtime behavior is introduced.
+
+Read-only HeroUI `packages/react/src/components/alert/alert.tsx` and its actual
+`alert.stories.tsx:88-106` danger example put the outcome before supporting
+context. The previously identified actual ChatGPT image-lightbox implementation
+remains scoped to captured image text and navigation. Better-writing and the
+other loaded better domains guide outcome-first reading and the cheapest
+sufficient repair; no foreign component system is copied. Existing Arc, Ace and
+award-reference qualifications remain unchanged.
+
+- DE/light/18 px/purple/motion off, native **200%**, **720 × 450 CSS px**:
+  the localized reason is fully visible at feedback scrollTop 0. Tab from
+  Download through Close reaches the same named feedback reader; Page Down
+  reaches scrollTop **184** and the complete context tail. Left changes the
+  current image while retaining the original failed-image context; a new save
+  replaces it with the newly captured context. Pointer Close returns to the
+  original second-image trigger. The exact draft continues as
+  `Nach der Bildprüfung weiterarbeiten. Fehler geprüft, weiter.`.
+- ZH/dark/18 px/blue/motion off, native **200%**, **720 × 450 CSS px**:
+  `无法保存图片` is visible first. The feedback reader has the same 53/236 px
+  bounds and reaches scrollTop **184**, with its complete terminal sentence
+  visibly readable. Left selects the first image while keeping the second
+  image's failed-save context and feedback focus. Escape returns to the
+  original second-image trigger. The exact draft continues as
+  `核对保存反馈后继续。 已核对，继续。`.
+
+These observations independently confirm the feedback tail for the two current
+scenes; they do not retroactively qualify the earlier 561 × 475 scene. Native
+menus establish Actual Size followed by twenty Zoom In actions. Production
+gallery controls handle every action; a passive observer only records geometry.
+The unchanged private input deliberately rejects the public save capability,
+so no real file save, live Runtime/provider call or Send occurs.
+
+Baseline checks pass **2 files / 23 tests**; prerequisites, assets and baseline
+native build pass in **14.84 s**. The strengthened regression fails on original
+production (**1 failure / 15 skipped**, 3.31 s wrapper), then passes after the
+order repair. Final focused checks pass **3 files / 29 tests** (3.01 s Vitest);
+formatting, Web typecheck/lint, design-system and chrome checks, assets and both
+candidate native builds pass in a serial **nine-command / 22.59 s** chain.
+Existing chunk-size/-lobjc warnings remain non-failing. No check is weakened.
+
+Verdict: **Approve for the inspected save-failure reading and return flow**.
+The eight goal dimensions retain existing type, spacing, semantic color, motion
+and media composition; error hierarchy and constrained reading improve. This is
+scoped progress, not whole-product or award-level acceptance. VoiceOver speech,
+real OS IME, RTL, quantitative contrast, actual save-file integration, other
+platforms and broad native/Runtime/CLI suites are not rerun. No browser visual or
+performance suite, Claude CLI or subagent runs.
+
+All **6** recorded PIDs are dead, three bundles are unregistered and the private
+root is absent. Three new checkout output/cache roots, six bundle Library paths
+and three bundle temp directories are removed. All **34** output-presence
+baselines, **3** pre-existing files, **18** Library baselines, **5,829** accepted
+non-Markdown inputs, eleven unchanged installed resources and three read-only
+references are preserved. Verified in-memory gzip retains **53** flat UTF-8
+records, **19** screenshot digests, 598 assets per baseline/candidate,
+12 immutable module artifacts and three native hashes; SHA-256
+`cc71ebe15c61fddd45703d534f5e21be4c83d46d259618a3a71c6dae25d98fb7`.
+The primary checkout and unrelated data/processes remain untouched. This repair
+is committed locally under the current policy; no push occurs. The next batch
+requires fresh task evidence rather than broader claims from this gallery check.
 
 ### Conversation import file reads
 

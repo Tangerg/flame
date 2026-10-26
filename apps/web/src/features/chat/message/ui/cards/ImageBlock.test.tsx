@@ -178,6 +178,7 @@ describe("ImageBlock", () => {
     expect(mocks.saveImage).toHaveBeenCalledWith(`data:image/png;base64,${FIRST_PNG}`);
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
     const alert = within(dialog).getByRole("alert");
+    expect(alert.textContent?.startsWith("Could not save image")).toBe(true);
     expect(alert.textContent).toContain("Architecture");
     expect(alert.textContent).not.toContain("Image preview");
     expect(dialog.querySelector("img")?.getAttribute("src")).toBe(

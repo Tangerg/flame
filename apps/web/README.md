@@ -106,7 +106,9 @@ Image galleries keep the complete captured description in a named, keyboard
 scroll region. The header takes its natural height, and long descriptions stay
 bounded while the existing image viewport fits the remaining space. Selection
 keeps that description reader and its focus; source return and image zoom retain
-their existing owners.
+their existing owners. Save failures lead with the command reason, followed by
+the captured image description, so changing the current image cannot misidentify
+the failed save.
 
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns

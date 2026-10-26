@@ -554,7 +554,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
           {failure && (
             <ScrollRegion label={t("message.image.downloadFailed")} styles={ig.feedback}>
               <SystemMessage id={failureId} variant="error">
-                {`${failure.label}\n${failure.message}`}
+                {`${failure.message}\n${failure.label}`}
               </SystemMessage>
             </ScrollRegion>
           )}
