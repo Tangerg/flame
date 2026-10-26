@@ -34,3 +34,29 @@ func TestStoredMemoryPersistsRevisionAndFencesStaleIntent(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestMemoryEditRefusesAnotherContentIdentityWithoutChangingEitherItem(t *testing.T) {
+	store := newAgentMemoryStore(t)
+	now := time.Now().UTC()
+	first, _, err := store.Add(t.Context(), memory.ScopeUser, "", "first", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, err := store.Add(t.Context(), memory.ScopeUser, "", "second", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = store.Update(t.Context(), first.ID(), first.Revision(), new("  second  "), new(true), now)
+	if !errors.Is(err, memory.ErrDuplicateContent) {
+		t.Fatalf("content collision did not refuse explicitly: %v", err)
+	}
+	for _, original := range []memory.Item{first, second} {
+		stored, found, err := store.Get(t.Context(), original.ID())
+		if err != nil || !found || stored.Content() != original.Content() || stored.Revision() != original.Revision() || stored.Pinned() != original.Pinned() {
+			t.Fatalf("refused edit changed memory: %+v %v", stored, err)
+		}
+	}
+	if _, err := store.Update(t.Context(), first.ID(), first.Revision(), new(" first "), new(true), now); err != nil {
+		t.Fatalf("same item's content was treated as a collision: %v", err)
+	}
+}

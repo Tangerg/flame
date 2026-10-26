@@ -96,6 +96,52 @@ func TestMemoryMutationToolsRequireTheObservedExactRevision(t *testing.T) {
 	assertMemoryRevisionAdmission[reviewMemoryArgs](t, true)
 }
 
+func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	store, session, closeBackend := connectMemoryBackend(t, path)
+	now := time.Now().UTC()
+	first, _, err := store.Add(t.Context(), memory.ScopeUser, "", "first", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, err := store.Add(t.Context(), memory.ScopeUser, "", "second", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	humanInput := rpc.UpdateInput{ID: first.ID().String(), ExpectedRevision: first.Revision(), Content: new(second.Content()), Pinned: new(true)}
+	_, err = callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput, sdk.ParamsBase{})
+	refusal, known := errors.AsType[*extension.Refusal](err)
+	if !known || refusal.Code != "duplicate_content" {
+		t.Fatalf("human content conflict remained unconfirmed: %v", err)
+	}
+	model, admitted := callMemoryModelTool(t, session, "", "model-collision", "update_memory", updateMemoryArgs{memoryItemArgs: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
+	if !model.IsError {
+		t.Fatal("model content conflict was accepted")
+	}
+	before, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model-collision", "update_memory", admitted)
+	if _, failed := errors.AsType[*tool.Failure](err); !failed || before == nil {
+		t.Fatalf("model content conflict has no original refusal: %+v %v", before, err)
+	}
+	if err := store.Delete(t.Context(), second.ID(), second.Revision()); err != nil {
+		t.Fatal(err)
+	}
+	closeBackend()
+	store, session, _ = connectMemoryBackend(t, path)
+	_, found, err := receiptMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput)
+	refusal, known = errors.AsType[*extension.Refusal](err)
+	if !found || !known || refusal.Code != "duplicate_content" {
+		t.Fatalf("restart lost the human refusal: found=%v %v", found, err)
+	}
+	after, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model-collision", "update_memory", admitted)
+	if _, failed := errors.AsType[*tool.Failure](err); !failed || !reflect.DeepEqual(after, before) {
+		t.Fatalf("restart reevaluated the model refusal: %+v %v", after, err)
+	}
+	stored, exists, err := store.Get(t.Context(), first.ID())
+	if err != nil || !exists || stored.Content() != first.Content() || stored.Revision() != first.Revision() || stored.Pinned() {
+		t.Fatalf("content conflict changed the original item: %+v %v", stored, err)
+	}
+}
+
 func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testing.T) {
 	project := t.TempDir()
 	path := filepath.Join(t.TempDir(), "memory.db")

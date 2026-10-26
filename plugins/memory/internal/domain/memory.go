@@ -74,6 +74,8 @@ var ErrInvalidRevision = errors.New("agentmemory: revision must be a positive ex
 
 var ErrRevisionConflict = errors.New("agentmemory: item revision changed")
 
+var ErrDuplicateContent = errors.New("agentmemory: content already belongs to another item in this target")
+
 type Scope string
 
 const (

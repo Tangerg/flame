@@ -332,6 +332,16 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, ex
 			updated = current
 			return nil
 		}
+		item := change.Item()
+		if item.Content() != current.Content() {
+			existing, found, err := a.itemByDigest(ctx, item.Scope(), item.Project(), agentmemory.Digest(item.Content()))
+			if err != nil {
+				return err
+			}
+			if found && existing.ID() != item.ID() {
+				return agentmemory.ErrDuplicateContent
+			}
+		}
 		if err := a.replaceItem(ctx, change); err != nil {
 			return err
 		}

@@ -12,7 +12,10 @@ or explicitly reactivating a record advances that revision; derived embeddings
 and unchanged edits do not. Update, review and deletion require the caller's
 observed `ExpectedRevision`. A stale command is refused before changing data,
 while replay of an acknowledged command returns its original receipt. The
-published item operations use `v2`; the former methods are removed. The private
+content identity is unique within each target. Editing into another item's content
+refuses with `duplicate_content` and retains that refusal in the original receipt;
+neither item's content, pinning nor revision changes. The published item operations
+use `v2`; the former methods are removed. The private
 schema requires revisions and refuses older data directories without conversion.
 Retain the old directory separately and open a fresh directory for this build.
 
