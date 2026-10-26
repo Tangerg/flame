@@ -26,7 +26,7 @@ func TestStoredMemoryPersistsRevisionAndFencesStaleIntent(t *testing.T) {
 	if err := store.Delete(t.Context(), original.ID(), original.Revision()); !errors.Is(err, memory.ErrRevisionConflict) {
 		t.Fatalf("stale delete: %v", err)
 	}
-	stored, found, err := store.get(t.Context(), original.ID())
+	stored, found, err := store.Get(t.Context(), original.ID())
 	if err != nil || !found || stored.Revision() != current.Revision() || stored.Content() != current.Content() {
 		t.Fatalf("stale intent changed persisted content: %+v, %v", stored, err)
 	}

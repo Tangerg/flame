@@ -163,7 +163,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	if err != nil || decodeErr != nil || !reflect.DeepEqual(body, authored) {
 		t.Fatalf("memory resource differs from admitted bytes: %v", err)
 	}
-	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, memoryToolsReady)
 	for _, content := range []string{"first fact", "second fact"} {
 		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: content}), content)
 	}

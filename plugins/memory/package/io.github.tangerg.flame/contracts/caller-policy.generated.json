@@ -1,4 +1,5 @@
 {
+  "searchToolName": "search_memory",
   "maxModelInputBytes": 524288,
   "maxModelOutputTokens": 2048,
   "maxModelCalls": 2,

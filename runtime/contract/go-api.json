@@ -3611,6 +3611,11 @@
           "value": "\"flame.memory/review.v2\""
         },
         {
+          "name": "SearchToolName",
+          "type": "untyped string",
+          "value": "\"search_memory\""
+        },
+        {
           "name": "SearchV2Method",
           "type": "untyped string",
           "value": "\"flame.memory/search.v2\""

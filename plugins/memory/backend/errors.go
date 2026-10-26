@@ -14,7 +14,7 @@ import (
 
 var errorCodes = map[string]error{"workspace": app.ErrWorkspaceUnavailable, "command_conflict": extension.ErrInvocationConflict,
 	"not_found": memory.ErrNotFound, "not_visible": memory.ErrNotVisible, "not_pending": memory.ErrNotPending,
-	"target_full": memory.ErrTargetFull, "invalid_revision": memory.ErrInvalidRevision, "revision_conflict": memory.ErrRevisionConflict, "revision_exhausted": exactint.ErrExhausted, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit,
+	"target_full": memory.ErrTargetFull, "invalid_input": app.ErrInvalidInput, "revision_conflict": memory.ErrRevisionConflict, "revision_exhausted": exactint.ErrExhausted, "cursor": pagination.ErrInvalidCursor, "limit": pagination.ErrInvalidLimit,
 }
 
 func classify(err error) string {

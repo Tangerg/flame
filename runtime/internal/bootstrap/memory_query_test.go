@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	json "encoding/json/v2"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
@@ -89,4 +90,8 @@ func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key stri
 	}
 	item := memorycontract.UpdateV2Output(result.Item)
 	return &item
+}
+
+func memoryToolsReady(tools []protocol.MCPTool) bool {
+	return slices.ContainsFunc(tools, func(value protocol.MCPTool) bool { return value.Name == memorycontract.SearchToolName })
 }

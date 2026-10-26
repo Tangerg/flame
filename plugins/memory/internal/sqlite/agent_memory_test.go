@@ -213,7 +213,7 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	if err := store.Delete(t.Context(), reject.ID(), reject.Revision()+1); !errors.Is(err, agentmemory.ErrNotVisible) {
 		t.Fatalf("rejected delete = %v, want ErrNotVisible", err)
 	}
-	tombstone, found, err := store.get(t.Context(), reject.ID())
+	tombstone, found, err := store.Get(t.Context(), reject.ID())
 	if err != nil || !found || tombstone.Content() == rewritten || tombstone.Pinned() {
 		t.Fatalf("rejected update changed tombstone = (%+v, %t, %v)", tombstone, found, err)
 	}
@@ -274,7 +274,7 @@ func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
 				if err := store.Review(t.Context(), item.ID(), item.Revision(), decision, clock.now); err == nil {
 					t.Error("review accepted a time before the current item")
 				}
-				stored, found, err := store.get(t.Context(), item.ID())
+				stored, found, err := store.Get(t.Context(), item.ID())
 				if err != nil || !found || stored.Status() != agentmemory.StatusPending || !stored.Pinned() ||
 					stored.Content() != item.Content() || !stored.CreatedAt().Equal(createdAt) || !stored.UpdatedAt().Equal(editedAt) {
 					t.Fatalf("failed review changed pending item = (%+v, %t, %v)", stored, found, err)
@@ -409,7 +409,7 @@ func TestRejectedMemoryContentEditPreservesTheCompleteProposal(t *testing.T) {
 	if _, err := store.Update(t.Context(), items[0].ID(), items[0].Revision(), &content, &pinned, now.Add(time.Minute)); err == nil {
 		t.Fatal("content edit overwrote another item's digest identity")
 	}
-	retained, found, err := store.get(t.Context(), items[0].ID())
+	retained, found, err := store.Get(t.Context(), items[0].ID())
 	if err != nil || !found || retained.Content() != items[0].Content() || retained.Pinned() ||
 		retained.Origin() != agentmemory.OriginAuto || retained.Status() != agentmemory.StatusPending ||
 		!retained.UpdatedAt().Equal(items[0].UpdatedAt()) {
@@ -443,7 +443,7 @@ func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			original, _, err = store.get(t.Context(), original.ID())
+			original, _, err = store.Get(t.Context(), original.ID())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -458,7 +458,7 @@ func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
 			if published, err := store.Reconcile(t.Context(), next); err != nil || !published {
 				t.Fatalf("next curation = %t, %v", published, err)
 			}
-			stored, found, err := store.get(t.Context(), original.ID())
+			stored, found, err := store.Get(t.Context(), original.ID())
 			if err != nil || !found {
 				t.Fatalf("curation lost user-edited memory: found=%t, error=%v", found, err)
 			}
@@ -506,7 +506,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 		t.Fatal(updateErr)
 	}
 	item = updated
-	got, ok, err := store.get(t.Context(), item.ID())
+	got, ok, err := store.Get(t.Context(), item.ID())
 	if err != nil || !ok || !got.Pinned() || got.Content() != "always run make lint before commit" {
 		t.Fatalf("after edit = (%+v, %v, %v)", got, ok, err)
 	}
@@ -528,7 +528,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	if _, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &blank, &pinned, now.Add(time.Second)); updateErr == nil {
 		t.Fatal("Update accepted blank content")
 	}
-	unchanged, ok, err := store.get(t.Context(), item.ID())
+	unchanged, ok, err := store.Get(t.Context(), item.ID())
 	if err != nil || !ok || unchanged.Pinned() {
 		t.Fatalf("failed Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}
@@ -536,7 +536,7 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	if _, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &oversized, &pinned, now.Add(2*time.Second)); updateErr == nil {
 		t.Fatal("Update accepted oversized content")
 	}
-	unchanged, ok, err = store.get(t.Context(), item.ID())
+	unchanged, ok, err = store.Get(t.Context(), item.ID())
 	if err != nil || !ok || unchanged.Pinned() {
 		t.Fatalf("oversized Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}

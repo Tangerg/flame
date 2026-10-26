@@ -20,8 +20,18 @@ The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusi
 process lease. Its local declaration binds `memory-provider` to the `memory`
 server and export with the exact [public consumer contract](../../packages/go-sdk/plugin/memory/README.md). The first-party and independent backends bind this same published contract; changing an implementation module does not redefine its schemas. Multiple candidates may be enabled; product composition explicitly
 selects one installation/contribution for new calls. Runtime connects human `plugins.call` operations, Run context reads and
-source-qualified `search_memory`
-Tool to that exact generation. Closing a component cannot stop this process.
+source-qualified Memory Tools to that exact generation. Closing a component cannot stop this process.
+
+`search_memory` returns content with its exact item ID, scope and revision.
+`list_memories` pages through active and pending items in the current project or
+the shared user scope. `add_memory`, `update_memory`, `delete_memory` and
+`review_memory` enter the same application and domain owners as human commands.
+Writes require the user's corresponding intent. Item mutations carry the scope
+and observed revision; project scope always resolves the captured Run workspace,
+and a model cannot supply a different workspace path. User memory remains shared.
+The original Tool JSON, result or business refusal commits in the same private
+receipt database as the mutation. Read-only recovery returns that original
+outcome after later edits, deletion or backend restart without redispatching.
 
 Optional model work uses the public SDK's invocation-scoped `CallbackRef`, bound
 to this concrete backend generation. Runtime owns one lazily opened loopback
@@ -29,6 +39,10 @@ callback endpoint, shared by concurrent calls. Memory publishes its caller budge
 from the Go business owner as `contracts/caller-policy.generated.json`; the same
 generation emits the Core caller's compiled projection. The calling operation
 allocates two calls for extraction plus curation or query plus corpus embedding.
+The published `SearchToolName` identifies the only model Tool that receives this
+embedding grant. Memory management receives its captured workspace without model
+authority and does not resolve an embedder. Installed Memory Tool completion,
+including an unconfirmed reply, invalidates human reads so they reread the owner.
 The shared callback endpoint imposes no Memory policy. The reference carries no Runtime bearer
 or provider credential and expires when the owning call or backend generation
 ends. Withdrawal cancels and joins admitted callbacks, including incomplete

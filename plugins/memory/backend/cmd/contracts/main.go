@@ -68,6 +68,13 @@ func writeCallerPolicy(jsonPath, goPath string) error {
 	value := reflect.ValueOf(policy)
 	for i := range value.NumField() {
 		field := value.Field(i)
+		if field.Kind() == reflect.String {
+			if field.String() == "" {
+				return errors.New("caller policy tool name is required")
+			}
+			fmt.Fprintf(&source, "%s = %q\n", value.Type().Field(i).Name, field.String())
+			continue
+		}
 		if field.Kind() != reflect.Int && field.Kind() != reflect.Int64 || field.Int() <= 0 {
 			return errors.New("caller policy values must be positive integers")
 		}

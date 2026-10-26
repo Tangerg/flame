@@ -18,6 +18,10 @@ identity. Invalid input is refused before business execution; invalid output
 remains an unconfirmed protocol failure. The backend still owns all Memory
 mutations, persistence and original command receipts.
 
+The generated caller policy publishes `SearchToolName`. Runtime supplies the
+narrow embedding grant only to that remote Tool. Other Memory Tools receive the
+captured workspace without model authority; they do not depend on an embedder.
+
 Author exports carry the implementation, component and package resources. This
 public contract comes from their pinned, vendored Flame module. Running their
 `go generate` only reprojects that contract; it cannot republish a different role

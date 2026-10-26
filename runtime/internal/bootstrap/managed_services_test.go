@@ -114,7 +114,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 	server := func(id string) *protocol.MCPServerID {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
-	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first.ID), memoryToolsReady)
 	fact := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "owned fact"}), "fact")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
@@ -144,7 +144,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 		t.Fatalf("withdrawn owner remained callable=%v", unavailable.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
-	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first.ID), memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *fact) {
 		t.Fatalf("reenable lost private facts=%+v", page)
@@ -200,7 +200,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("response-loss fixture admission=%+v", installed.Selected.Diagnostics)
 	}
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&server, memoryToolsReady)
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "committed before transport loss"})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -248,7 +248,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 		t.Fatalf("disabled original command became a definite result: %v", pending.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
-	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&server, memoryToolsReady)
 	replay := mustMemoryAdd(r, request, "lost")
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {

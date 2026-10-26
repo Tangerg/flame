@@ -34,6 +34,36 @@ type fakeStore struct {
 	addChanged  bool
 }
 
+func (f *fakeStore) Get(_ context.Context, id domain.ItemID) (domain.Item, bool, error) {
+	for _, item := range f.listed {
+		if item.ID() == id {
+			return item, true, f.err
+		}
+	}
+	return domain.Item{}, false, f.err
+}
+
+func TestItemReadFencesItsResolvedTarget(t *testing.T) {
+	now := time.Date(2026, 10, 27, 0, 0, 0, 0, time.UTC)
+	item := validMemoryItem(testMemoryItemID('1'), domain.ScopeProject, "/canonical", "project fact", false, now)
+	store := &fakeStore{listed: []domain.Item{item}}
+	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical"}})
+	if actual, err := c.Item(t.Context(), domain.ScopeProject, "/alias", item.ID().String()); err != nil || actual.ID() != item.ID() {
+		t.Fatalf("resolved item: %+v, %v", actual, err)
+	}
+	if _, err := c.Item(t.Context(), domain.ScopeUser, "", item.ID().String()); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("project item escaped into user scope: %v", err)
+	}
+	c = newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/other"}})
+	if _, err := c.Item(t.Context(), domain.ScopeProject, "/other", item.ID().String()); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("item escaped into another workspace: %v", err)
+	}
+	store.err = errors.New("storage unavailable")
+	if _, err := c.Item(t.Context(), domain.ScopeProject, "/canonical", item.ID().String()); !errors.Is(err, store.err) || errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("storage failure became an input refusal: %v", err)
+	}
+}
+
 func validMemoryItem(id domain.ItemID, scope domain.Scope, project, content string, pinned bool, now time.Time) domain.Item {
 	item, err := domain.NewUserItem(id, scope, project, content, now)
 	if err != nil {

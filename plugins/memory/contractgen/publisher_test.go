@@ -20,6 +20,7 @@ func TestPublishedCallerPolicyHasOneSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	compiled := rpc.CallerPolicy{
+		SearchToolName:     memorycontract.SearchToolName,
 		MaxModelInputBytes: memorycontract.MaxModelInputBytes, MaxModelOutputTokens: memorycontract.MaxModelOutputTokens,
 		MaxModelCalls: memorycontract.MaxModelCalls, MaxEmbeddingTexts: memorycontract.MaxEmbeddingTexts,
 		MaxEmbeddingInputBytes: memorycontract.MaxEmbeddingInputBytes, MaxCallbackInputBytes: memorycontract.MaxCallbackInputBytes,

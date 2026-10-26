@@ -24,8 +24,8 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	server := func(value *protocol.PluginInstallation) *protocol.MCPServerID {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: value.ID}, Name: "memory"}
 	}
-	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first), memoryToolsReady)
+	r.poMCPTools(server(second), memoryToolsReady)
 	list := func() delivery.Result {
 		return memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
 	}
@@ -60,7 +60,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, first)
-	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first), memoryToolsReady)
 	r.must(delivery.PluginsCall, request, "uncertain")
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 0 {
@@ -68,7 +68,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	}
 	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
 	r = reopenCommandRuntime(t, r, &cfg)
-	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(second), memoryToolsReady)
 	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {
 		t.Fatalf("restart changed provider choice or private data: %+v", page.Data)

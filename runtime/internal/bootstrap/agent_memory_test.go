@@ -16,7 +16,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	source := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
-	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&source, memoryToolsReady)
 	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
 	content := "user correction"
 	pinned := true
@@ -39,7 +39,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
-	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&source, memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
 
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], edited) {

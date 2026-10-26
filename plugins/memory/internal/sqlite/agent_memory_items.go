@@ -302,7 +302,7 @@ func (a *AgentMemoryStore) listItems(
 	return items, nil
 }
 
-func (a *AgentMemoryStore) get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error) {
+func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error) {
 	item, err := scanItem(sqlite.Connection(ctx, a.db).QueryRowContext(ctx,
 		`SELECT `+agentMemoryItemColumns+` FROM agent_memory_items WHERE id = ?`, id.String()))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -317,7 +317,7 @@ func (a *AgentMemoryStore) get(ctx context.Context, id agentmemory.ItemID) (agen
 func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
 	err := sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
-		current, found, err := a.get(ctx, id)
+		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,7 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, ex
 
 func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, decision agentmemory.ReviewDecision, now time.Time) error {
 	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
-		current, found, err := a.get(ctx, id)
+		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -393,7 +393,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 
 func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64) error {
 	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
-		item, found, err := a.get(ctx, id)
+		item, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
 		}
