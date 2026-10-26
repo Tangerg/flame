@@ -4,8 +4,9 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"reflect"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 var ErrInvalidResponse = errors.New("runtime: invalid response")

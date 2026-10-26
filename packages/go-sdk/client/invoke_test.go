@@ -2,8 +2,9 @@ package client
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // A contract that cannot be parsed, or a valid contract missing the named

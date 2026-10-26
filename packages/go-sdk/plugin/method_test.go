@@ -104,7 +104,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := sdk.AddSendingCustomMethod[*malformedParams, *methodResult[jsontext.Value]](client, invokeMethod); err != nil {
+	if err := sdk.AddSendingCustomMethod[*malformedParams, *methodResult[jsontext.Value]](client, InvokeMethod); err != nil {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
@@ -123,7 +123,7 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		params.Protocol = extension.Protocol
 		params.Method = "flame.test/admission"
 		params.Contract = contract.Digest()
-		if result, err := sdk.CallCustomMethod[*malformedParams, *methodResult[jsontext.Value]](t.Context(), session, invokeMethod, &params); err == nil || result != nil {
+		if result, err := sdk.CallCustomMethod[*malformedParams, *methodResult[jsontext.Value]](t.Context(), session, InvokeMethod, &params); err == nil || result != nil {
 			t.Fatalf("malformed command reached a result: %+v, %v", result, err)
 		}
 	}
@@ -244,12 +244,12 @@ func replySession(t *testing.T, result *methodResult[string]) *sdk.ClientSession
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {
+	if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {
 		return reply(Description{Protocol: extension.Protocol, Methods: []extension.MethodDescriptor{method.Descriptor()}}, nil, nil)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*methodResult[string], error) {
+	if err := sdk.AddReceivingCustomMethod(server, InvokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*methodResult[string], error) {
 		return result, nil
 	}); err != nil {
 		t.Fatal(err)

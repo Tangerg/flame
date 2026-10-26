@@ -49,11 +49,11 @@ func (b *Binding) ValidateInput(ctx context.Context, input jsonvalue.Value) erro
 	if err := b.method.ValidateInput(input); err != nil {
 		return errors.Join(ErrInvalidInput, err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[string]](ctx, b.session, validateMethod, &invokeParams{Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON()})
+	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[string]](ctx, b.session, ValidateMethod, &invokeParams{Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON()})
 	if err != nil {
 		return err
 	}
-	problem, err := result.value(validateMethod)
+	problem, err := result.value(ValidateMethod)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (b *Binding) invokeMode(ctx context.Context, id string, input jsonvalue.Val
 	if err := b.method.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
 	}
-	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[jsontext.Value]](ctx, b.session, invokeMethod, &invokeParams{ParamsBase: meta, Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
+	result, err := sdk.CallCustomMethod[*invokeParams, *methodResult[jsontext.Value]](ctx, b.session, InvokeMethod, &invokeParams{ParamsBase: meta, Protocol: extension.Protocol, Method: b.method.Name(), Contract: b.method.Identity().Digest(), Export: b.export, Capability: b.capability, Input: input.JSON(), CommandID: id})
 	if err != nil {
 		return nil, err
 	}

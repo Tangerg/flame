@@ -10,7 +10,7 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-const toolCommandPrefix = "tool:"
+const ToolCommandPrefix = "tool:"
 
 // RegisterTools retains Scope's frozen Tool contracts and failure semantics.
 // MCP metadata carries Runtime's logical identity; model arguments never own it.
@@ -65,7 +65,7 @@ func toolCommandID(id string) (string, error) {
 	if err := validateCommandID(id); err != nil {
 		return "", err
 	}
-	command := toolCommandPrefix + id
+	command := ToolCommandPrefix + id
 	if err := validateCommandID(command); err != nil {
 		return "", err
 	}

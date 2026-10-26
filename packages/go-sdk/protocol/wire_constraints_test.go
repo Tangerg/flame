@@ -3,11 +3,12 @@ package protocol
 import (
 	json "encoding/json/v2"
 	"errors"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"math"
 	"strings"
 	"testing"
 	"time"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestPluginThemeColorsRejectNonHexValues(t *testing.T) {

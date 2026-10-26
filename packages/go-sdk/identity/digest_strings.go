@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// Strings preserves field boundaries, including empty fields and UTF-8 bytes.
+// Length framing preserves field boundaries, including empty fields and UTF-8 bytes.
 // Callers own field selection and order; this package owns only their encoding.
 func DigestStrings(fields ...string) Digest {
 	h := sha256.New()

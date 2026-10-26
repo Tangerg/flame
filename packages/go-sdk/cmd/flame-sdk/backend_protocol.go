@@ -5,13 +5,8 @@ import (
 	json "encoding/json/v2"
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -19,6 +14,26 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 )
+
+// These fields are the consumed language-binding projection. Every protocol
+// value is compiled with the same SDK as the schemas; source paths are not authority.
+type backendProtocolConstants struct {
+	Protocol              string `json:"protocol"`
+	DeclarationPattern    string `json:"declarationPattern"`
+	InstallationPattern   string `json:"installationPattern"`
+	NodeTarget            string `json:"nodeTarget"`
+	InvokeMethod          string `json:"invokeMethod"`
+	DescribeMethod        string `json:"describeMethod"`
+	ValidateMethod        string `json:"validateMethod"`
+	SetupMethod           string `json:"setupMethod"`
+	ActivateMethod        string `json:"activateMethod"`
+	CallbackMetadataKey   string `json:"callbackMetadataKey"`
+	StreamMetadataKey     string `json:"streamMetadataKey"`
+	ToolCommandPrefix     string `json:"toolCommandPrefix"`
+	InvocationHeader      string `json:"InvocationHeader"`
+	InvocationMetadataKey string `json:"InvocationMetadataKey"`
+	ReceiptMethod         string `json:"ReceiptMethod"`
+}
 
 func runBackendProtocol(args []string) error {
 	flags := flag.NewFlagSet("flame-sdk backend-protocol", flag.ContinueOnError)
@@ -30,17 +45,10 @@ func runBackendProtocol(args []string) error {
 	if flags.NArg() != 0 || *nodeRelease == "" || *out == "" {
 		return fmt.Errorf("node-release and out are required")
 	}
-	_, source, _, ok := runtime.Caller(0)
-	if !ok || !filepath.IsAbs(source) {
-		return fmt.Errorf("backend protocol generation requires its matching SDK sources; run go run without -trimpath")
-	}
-	return generateBackendProtocol(filepath.Join(filepath.Dir(source), "..", "..", "plugin"), *nodeRelease, *out)
+	return generateBackendProtocol(*nodeRelease, *out)
 }
 
-func generateBackendProtocol(sourceDirectory, nodeReleasePath, output string) error {
-	constants := map[string]string{"protocol": extension.Protocol}
-	constants["declarationPattern"] = identity.DeclarationIDPattern
-	constants["installationPattern"] = identity.InstallationIDPattern()
+func generateBackendProtocol(nodeReleasePath, output string) error {
 	nodeRelease, err := os.ReadFile(nodeReleasePath)
 	if err != nil {
 		return err
@@ -54,44 +62,22 @@ func generateBackendProtocol(sourceDirectory, nodeReleasePath, output string) er
 	if node.Version == "" {
 		return fmt.Errorf("node distribution version is required")
 	}
-	constants["nodeTarget"] = "node" + strings.Split(node.Version, ".")[0]
-	// The command reads the package from the SDK sources that built it. An arbitrary
-	// second checkout could publish constants from a different protocol version.
-	files, err := os.ReadDir(sourceDirectory)
-	if err != nil {
-		return err
-	}
-	for _, source := range files {
-		if source.IsDir() || !strings.HasSuffix(source.Name(), ".go") || strings.HasSuffix(source.Name(), "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(sourceDirectory, source.Name()), nil, 0)
-		if err != nil {
-			return err
-		}
-		if file.Name.Name != "plugin" {
-			continue
-		}
-		for _, declaration := range file.Decls {
-			constantsDeclaration, ok := declaration.(*ast.GenDecl)
-			if !ok || constantsDeclaration.Tok != token.CONST {
-				continue
-			}
-			for _, specification := range constantsDeclaration.Specs {
-				value := specification.(*ast.ValueSpec)
-				for index, expression := range value.Values {
-					literal, ok := expression.(*ast.BasicLit)
-					if !ok || literal.Kind != token.STRING {
-						continue
-					}
-					text, err := strconv.Unquote(literal.Value)
-					if err != nil {
-						return err
-					}
-					constants[value.Names[index].Name] = text
-				}
-			}
-		}
+	constants := backendProtocolConstants{
+		Protocol:              extension.Protocol,
+		DeclarationPattern:    identity.DeclarationIDPattern,
+		InstallationPattern:   identity.InstallationIDPattern(),
+		NodeTarget:            "node" + strings.Split(node.Version, ".")[0],
+		InvokeMethod:          pluginsdk.InvokeMethod,
+		DescribeMethod:        pluginsdk.DescribeMethod,
+		ValidateMethod:        pluginsdk.ValidateMethod,
+		SetupMethod:           pluginsdk.SetupMethod,
+		ActivateMethod:        pluginsdk.ActivateMethod,
+		CallbackMetadataKey:   pluginsdk.CallbackMetadataKey,
+		StreamMetadataKey:     pluginsdk.StreamMetadataKey,
+		ToolCommandPrefix:     pluginsdk.ToolCommandPrefix,
+		InvocationHeader:      pluginsdk.InvocationHeader,
+		InvocationMetadataKey: pluginsdk.InvocationMetadataKey,
+		ReceiptMethod:         pluginsdk.ReceiptMethod,
 	}
 	receipt, err := pluginsdk.ReceiptQuery()
 	if err != nil {
@@ -141,14 +127,14 @@ func generateBackendProtocol(sourceDirectory, nodeReleasePath, output string) er
 		return err
 	}
 	data, err := json.Marshal(struct {
-		Constants          map[string]string `json:"constants"`
-		Receipt            string            `json:"receipt"`
-		ReceiptIdentity    string            `json:"receiptIdentity"`
-		ToolReceipt        string            `json:"toolReceipt"`
-		StreamDelivery     string            `json:"streamDelivery"`
-		Inputs             []inputVector     `json:"inputs"`
-		Capability         string            `json:"capability"`
-		CapabilityIdentity string            `json:"capabilityIdentity"`
+		Constants          backendProtocolConstants `json:"constants"`
+		Receipt            string                   `json:"receipt"`
+		ReceiptIdentity    string                   `json:"receiptIdentity"`
+		ToolReceipt        string                   `json:"toolReceipt"`
+		StreamDelivery     string                   `json:"streamDelivery"`
+		Inputs             []inputVector            `json:"inputs"`
+		Capability         string                   `json:"capability"`
+		CapabilityIdentity string                   `json:"capabilityIdentity"`
 	}{constants, receiptJSON.String(), receiptContract(receipt.Descriptor()), toolReceiptJSON.String(), deliveryJSON.String(), vectors, contractJSON.String(), contract.Identity().Digest()}, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return err

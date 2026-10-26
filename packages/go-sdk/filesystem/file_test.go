@@ -24,7 +24,7 @@ func TestOpenAndOpenAtAdmitOnlyBoundedRegularFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := OpenFile(path, 6); !errors.Is(err, ErrFileTooLarge) {
-		t.Fatalf("Open oversized error = %v, want ErrTooLarge", err)
+		t.Fatalf("Open oversized error = %v, want ErrFileTooLarge", err)
 	}
 	if _, _, err := OpenFile(rootPath, 0); !errors.Is(err, ErrNotRegular) {
 		t.Fatalf("Open directory error = %v, want ErrNotRegular", err)
@@ -62,7 +62,7 @@ func TestOpenExpectedRejectsAReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := OpenFileExpected(path, expected, 0); !errors.Is(err, ErrChanged) {
-		t.Fatalf("OpenExpected replacement error = %v, want ErrChanged", err)
+		t.Fatalf("OpenFileExpected replacement error = %v, want ErrChanged", err)
 	}
 }
 

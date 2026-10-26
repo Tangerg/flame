@@ -1,5 +1,3 @@
-// Package capability owns immutable callable contracts without transport or
-// activation. Local metadata and live bindings use the same invariants.
 package extension
 
 import (

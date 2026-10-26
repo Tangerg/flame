@@ -31,8 +31,8 @@ type CapabilityDescriptor struct {
 	Methods     []MethodDescriptor `json:"methods"`
 }
 
-// Contract owns the consumer's required semantics. Producer identity, execution
-// location and availability belong to the concrete contribution and binding.
+// Producer identity, execution location and availability cannot change the
+// consumer's required semantics; those facts belong to the concrete binding.
 type Capability struct {
 	config   CapabilityConfig
 	methods  []*Method

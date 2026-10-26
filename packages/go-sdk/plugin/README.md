@@ -3,7 +3,7 @@
 The public package `github.com/Tangerg/flame/packages/go-sdk/plugin` supplies the typed MCP
 method binding for authoring a plugin's Go backend, used by Memory, Schedules and the
 independent Reviews example.
-It lives in the root module and imports only public contracts and pure mechanisms; its production closure contains no Runtime host/business implementation.
+It lives in the independent `packages/go-sdk` module and imports only public contracts and pure mechanisms; its production closure contains no Runtime host/business implementation.
 Use the ordinary MCP SDK server and transport; this package does not create a
 second process supervisor or lifecycle. React UI components are authored separately
 through [`component-sdk`](../component-sdk).
@@ -12,10 +12,16 @@ protocol for TypeScript implementations, including ordinary MCP Tools.
 
 ## MCP metadata
 
-The root `go.mod` selects Scope and native MCP SDK releases. Native SDK `Meta`
+The SDK's `go.mod` selects Scope and native MCP SDK releases. Native SDK `Meta`
 values are encoded JSON: write typed
 values with `Meta.Set`, check its error, and decode a consumed entry directly into
 its declared type. Do not round-trip metadata through `map[string]any`.
+
+The transport method names, callback and stream metadata keys, and Tool command
+prefix are published protocol constants because independent language bindings
+must use the same values. `flame-sdk backend-protocol` projects direct compiled
+references together with this SDK's schemas; it never inspects another source
+tree or a changed checkout after the command was built.
 
 Scope owns detached request metadata snapshots. Flame's invocation and callback
 bindings retain strict decoding, calling-owner identity, target and callback
@@ -494,7 +500,7 @@ formats are unchanged.
 Core `CallPluginRequest.Input`, `CallPluginResponse.Output`, stream values and
 point attributes/values are JSON text strings. Contribution, requirement and
 resolved-binding contracts retain their canonical JSON strings too. Typed Go
-bindings encode and decode the same original source through `jsoninput` and the
+bindings encode and decode the same original source through `jsonvalue` and the
 feature contract, preserving full-width integers and receipt lexemes. Rebuild
 public Go/CLI/TS consumers together; former inline Core payloads are refused.
 The backend's existing MCP value/receipt envelopes are unchanged.

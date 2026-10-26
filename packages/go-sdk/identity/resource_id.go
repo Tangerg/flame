@@ -1,5 +1,4 @@
-// Package resourceid owns exact opaque identities for Flame's durable runtime
-// resources. Values are compared and projected verbatim; construction never
+// Identities are compared and projected verbatim; construction never
 // trims, case-folds, normalizes, or otherwise repairs caller material.
 package identity
 

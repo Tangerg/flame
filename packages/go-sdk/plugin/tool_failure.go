@@ -1,5 +1,3 @@
-// Package toolfailure classifies the unsuccessful outcome of one Runtime Tool
-// call for the toolset adapters.
 package plugin
 
 import (
@@ -10,9 +8,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Definite settles cause as this call's definite outcome, so the model is told
-// and can act on it. Only a call that provably performed no external mutation
-// may use it: a rejected argument, a local search, a read.
+// Only a call that provably performed no external mutation may settle as a
+// definite failure: a rejected argument, a local search, a read.
 //
 // The alternative is what makes this matter. The Host reads an unclassified Tool
 // error as an operation whose durable outcome it cannot prove, and settles the

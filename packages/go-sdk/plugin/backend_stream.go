@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const streamMetadataKey = "io.github.tangerg.flame/stream.v1"
+const StreamMetadataKey = "io.github.tangerg.flame/stream.v1"
 
 type deliveredChunk struct {
 	Sequence uint64         `json:"sequence"`
@@ -45,7 +45,7 @@ func (m *StreamingMethod[P, C, R]) RegisterServer(backend *Backend, handler func
 
 func invokeBackendStream(ctx context.Context, session *sdk.ServerSession, method boundMethod, wire *invokeParams) (*methodResult[jsontext.Value], error) {
 	var ref CallbackRef
-	if err := json.Unmarshal(wire.Meta[streamMetadataKey], &ref, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(wire.Meta[StreamMetadataKey], &ref, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
 	if err := ref.Validate(); err != nil {
@@ -168,7 +168,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			return
 		}
 		defer release()
-		if err := metadata.Set(streamMetadataKey, ref); err != nil {
+		if err := metadata.Set(StreamMetadataKey, ref); err != nil {
 			fail(err)
 			return
 		}

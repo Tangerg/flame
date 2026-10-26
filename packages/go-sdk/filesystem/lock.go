@@ -1,5 +1,3 @@
-// Package advisorylock provides process-scoped filesystem leases for Infra
-// components that need one cross-process linearization point.
 package filesystem
 
 import (
@@ -11,10 +9,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 )
 
-// ErrUnsupported reports a platform without the required locking primitive.
 var ErrLockUnsupported = errors.New("advisory lock: unsupported platform")
 
-// Lease owns one advisory lock's release and its settled cleanup result.
+// Release must settle once even when competing callers initiate shutdown.
 type DirectoryLease struct {
 	mu      sync.Mutex
 	release func() (done bool, err error)
@@ -44,9 +41,7 @@ func (l *DirectoryLease) Release() error {
 	return err
 }
 
-// TryDirectory acquires a non-blocking exclusive lease for the physical
-// directory identity. It creates no files in the target tree. A nil lease and
-// nil error mean contention; failures include owned-descriptor cleanup errors.
+// A nil lease with no error denotes contention. Cleanup failures remain errors.
 func TryDirectoryLease(directory string) (*DirectoryLease, error) {
 	physical, err := resolveDirectory(directory)
 	if err != nil {
@@ -55,8 +50,7 @@ func TryDirectoryLease(directory string) (*DirectoryLease, error) {
 	return tryDirectory(physical)
 }
 
-// AcquireDirectory waits until the physical directory identity is exclusively
-// leased or ctx ends. Directory leases create no files in the target tree.
+// Directory leases create no files in the target tree.
 func AcquireDirectoryLease(ctx context.Context, directory string) (*DirectoryLease, error) {
 	if ctx == nil {
 		return nil, errors.New("advisory lock: context is required")

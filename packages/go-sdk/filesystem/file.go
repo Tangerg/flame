@@ -1,8 +1,3 @@
-// Package fileinput opens verified filesystem inputs without blocking on
-// special nodes. It is the single public boundary shared by Runtime and the
-// CLI: it owns source identity, kind, and file-size admission, while callers
-// retain content validation and translation into their own error vocabulary.
-//
 // An open admits a path only when the opened descriptor still identifies the
 // exact unchanged file observed before the open (SameVersion, not merely the
 // same inode), so an in-place rewrite between stat and open is rejected here
@@ -22,8 +17,8 @@ var (
 	ErrChanged      = errors.New("file input: source changed")
 )
 
-// SizeLimitError carries the observed size and configured bound while
-// retaining ErrTooLarge identity for consumer-specific presentation.
+// The limit and observed size remain available for consumer presentation
+// without changing the shared rejection identity.
 type FileSizeLimitError struct {
 	Size  int64
 	Limit int64
@@ -35,8 +30,7 @@ func (s FileSizeLimitError) Error() string {
 
 func (s FileSizeLimitError) Unwrap() error { return ErrFileTooLarge }
 
-// Open returns one read-only file only when the path still names the same
-// bounded regular file observed before opening it. A zero limit is unbounded.
+// A zero limit leaves size admission to the caller.
 func OpenFile(path string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	return open(
 		func() (os.FileInfo, error) { return os.Stat(path) },
@@ -45,14 +39,12 @@ func OpenFile(path string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	)
 }
 
-// OpenExpected opens path only when it still identifies expected. This keeps a
-// caller's earlier lstat/stat decision authoritative across the open boundary.
+// The caller's earlier lstat/stat decision stays authoritative across the open boundary.
 func OpenFileExpected(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	return openExpected(expected, func() (*os.File, error) { return openPath(path) }, maximumBytes)
 }
 
-// OpenAt applies Open's admission policy through an os.Root, retaining the
-// root's traversal and symlink confinement.
+// File admission must retain the root's traversal and symlink confinement.
 func OpenFileAt(root *os.Root, name string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	if root == nil {
 		return nil, nil, errors.New("file input: root is required")
@@ -64,7 +56,6 @@ func OpenFileAt(root *os.Root, name string, maximumBytes int64) (*os.File, os.Fi
 	)
 }
 
-// OpenAtExpected applies OpenExpected through an os.Root.
 func OpenFileAtExpected(
 	root *os.Root,
 	name string,
@@ -150,7 +141,7 @@ func SameVersion(left, right os.FileInfo) bool {
 }
 
 // VerifyPathVersion reports whether file and path still identify the unchanged
-// regular file returned by Open or OpenExpected. Call it after consuming a
+// regular file returned by OpenFile or OpenFileExpected. Call it after consuming a
 // complete value so an in-place mutation or path replacement cannot publish a
 // torn snapshot.
 func VerifyPathVersion(file *os.File, opened os.FileInfo, path string) error {

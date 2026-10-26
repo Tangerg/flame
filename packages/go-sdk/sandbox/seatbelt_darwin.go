@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 

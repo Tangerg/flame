@@ -1,5 +1,3 @@
-// Package pathidentity gives filesystem aliases one stable physical identity
-// for filesystem-facing adapters.
 package filesystem
 
 import (
@@ -27,9 +25,8 @@ func absolute(root, path string) (string, error) {
 	return filepath.Clean(filepath.Join(root, path)), nil
 }
 
-// Resolve resolves every existing symlink component while preserving a
-// not-yet-created suffix. This is the identity used by path locks and security
-// decisions, so aliases cannot disagree about the resource they target.
+// Path locks and security decisions must resolve aliases to the same resource,
+// including when a suffix has not been created yet.
 func ResolvePath(root, path string) (string, error) {
 	abs, err := absolute(root, path)
 	if err != nil {
@@ -38,9 +35,7 @@ func ResolvePath(root, path string) (string, error) {
 	return resolve(abs, 0)
 }
 
-// Contains reports whether target is root itself or lies below it. Callers at
-// a filesystem trust boundary must pass values produced by Resolve so symlink
-// aliases have already been eliminated.
+// Trust boundaries must pass resolved paths so symlink aliases cannot bypass confinement.
 func ContainsPath(root, target string) (bool, error) {
 	rel, err := filepath.Rel(root, target)
 	if err != nil {

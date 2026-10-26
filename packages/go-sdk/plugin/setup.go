@@ -15,8 +15,8 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const setupMethod = "io.github.tangerg.flame/operations.setup"
-const activateMethod = "io.github.tangerg.flame/operations.activate"
+const SetupMethod = "io.github.tangerg.flame/operations.setup"
+const ActivateMethod = "io.github.tangerg.flame/operations.activate"
 
 type SetupContribution struct {
 	Background *extension.Target `json:"background,omitzero"`
@@ -159,7 +159,7 @@ func (b *Backend) registerSetup() error {
 	if err := b.registerActivation(); err != nil {
 		return err
 	}
-	return sdk.AddReceivingCustomMethod(b.server, setupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*methodResult[bool], error) {
+	return sdk.AddReceivingCustomMethod(b.server, SetupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*methodResult[bool], error) {
 		var err error
 		if err := validateSetup(params.Contributions); err != nil {
 			return nil, err
@@ -292,11 +292,11 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 	if err := validateSetup(contributions); err != nil {
 		return err
 	}
-	result, err := sdk.CallCustomMethod[*setupParams, *methodResult[bool]](ctx, session, setupMethod, &setupParams{ParamsBase: metadata, Protocol: extension.Protocol, Contributions: slices.Clone(contributions)})
+	result, err := sdk.CallCustomMethod[*setupParams, *methodResult[bool]](ctx, session, SetupMethod, &setupParams{ParamsBase: metadata, Protocol: extension.Protocol, Contributions: slices.Clone(contributions)})
 	if err != nil {
 		return err
 	}
-	value, err := result.value(setupMethod)
+	value, err := result.value(SetupMethod)
 	if err == nil && !value {
 		return errors.New("plugin: backend setup was not accepted")
 	}
@@ -335,7 +335,7 @@ func validateSetupBindings(id string, bindings []SetupBinding) error {
 }
 
 func (b *Backend) registerActivation() error {
-	return sdk.AddReceivingCustomMethod(b.server, activateMethod, func(ctx context.Context, session *sdk.ServerSession, params *protocolParams) (*methodResult[bool], error) {
+	return sdk.AddReceivingCustomMethod(b.server, ActivateMethod, func(ctx context.Context, session *sdk.ServerSession, params *protocolParams) (*methodResult[bool], error) {
 		if params == nil || params.Protocol != extension.Protocol {
 			return nil, errors.New("plugin: current activation protocol is required")
 		}
@@ -377,11 +377,11 @@ func startActivation(resource ActivationResource) (err error) {
 	return resource.Start()
 }
 func Activate(ctx context.Context, session *sdk.ClientSession) error {
-	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[bool]](ctx, session, activateMethod, &protocolParams{Protocol: extension.Protocol})
+	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[bool]](ctx, session, ActivateMethod, &protocolParams{Protocol: extension.Protocol})
 	if err != nil {
 		return err
 	}
-	accepted, err := result.value(activateMethod)
+	accepted, err := result.value(ActivateMethod)
 	if err == nil && !accepted {
 		return errors.New("plugin: backend activation was not accepted")
 	}

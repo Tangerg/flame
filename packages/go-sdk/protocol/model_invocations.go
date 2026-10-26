@@ -1,8 +1,9 @@
 package protocol
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 type ListModelEndpointsRequest struct {

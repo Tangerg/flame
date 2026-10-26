@@ -1,4 +1,3 @@
-// Package jsoninput owns immutable admitted JSON and its request fingerprint.
 // Object order and spelling do not change identity; numeric lexemes do. Decoding
 // and re-encoding a DTO must not replace the original request evidence.
 package jsonvalue
@@ -31,7 +30,7 @@ func Encode[T any](value T) (Value, error) {
 
 func (i Value) Validate() error {
 	if i.value == "" {
-		return errors.New("json input: admitted value is required")
+		return errors.New("json value: admitted value is required")
 	}
 	return nil
 }

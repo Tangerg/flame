@@ -175,11 +175,11 @@ func RegisterClient(client *sdk.Client) error {
 		return errors.New("plugin: client is required")
 	}
 	return errors.Join(
-		sdk.AddSendingCustomMethod[*setupParams, *methodResult[bool]](client, setupMethod),
-		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[bool]](client, activateMethod),
-		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[jsontext.Value]](client, invokeMethod),
-		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[string]](client, validateMethod),
-		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[Description]](client, describeMethod),
+		sdk.AddSendingCustomMethod[*setupParams, *methodResult[bool]](client, SetupMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[bool]](client, ActivateMethod),
+		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[jsontext.Value]](client, InvokeMethod),
+		sdk.AddSendingCustomMethod[*invokeParams, *methodResult[string]](client, ValidateMethod),
+		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[Description]](client, DescribeMethod),
 	)
 }
 func validateCommandID(id string) error {

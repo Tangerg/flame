@@ -1,5 +1,3 @@
-// Package contractshape owns JSON field interpretation shared by public wire
-// admission and Host artifact generation.
 package jsonvalue
 
 import (

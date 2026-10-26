@@ -4,7 +4,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"maps"
 	"math"
 	"reflect"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 // Generated node checks share the registry's rules. Only complete JSON-tree

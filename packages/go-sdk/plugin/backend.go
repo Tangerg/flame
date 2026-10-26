@@ -15,9 +15,9 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const invokeMethod = "io.github.tangerg.flame/operations.invoke"
-const describeMethod = "io.github.tangerg.flame/operations.describe"
-const validateMethod = "io.github.tangerg.flame/operations.validate"
+const InvokeMethod = "io.github.tangerg.flame/operations.invoke"
+const DescribeMethod = "io.github.tangerg.flame/operations.describe"
+const ValidateMethod = "io.github.tangerg.flame/operations.validate"
 
 type invokeParams struct {
 	sdk.ParamsBase
@@ -101,7 +101,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	if err := b.registerSetup(); err != nil {
 		return nil, err
 	}
-	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*methodResult[jsontext.Value], error) {
+	if err := sdk.AddReceivingCustomMethod(server, InvokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*methodResult[jsontext.Value], error) {
 		method, err := b.resolveMethod(params)
 		if err != nil {
 			return nil, err
@@ -113,7 +113,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := sdk.AddReceivingCustomMethod(server, validateMethod, func(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*methodResult[string], error) {
+	if err := sdk.AddReceivingCustomMethod(server, ValidateMethod, func(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*methodResult[string], error) {
 		method, err := b.resolveMethod(params)
 		if err != nil {
 			return nil, err
@@ -128,7 +128,7 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 	}); err != nil {
 		return nil, err
 	}
-	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*methodResult[Description], error) {
+	if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*methodResult[Description], error) {
 		if params == nil || params.Protocol != extension.Protocol {
 			return nil, errors.New("plugin: current backend protocol is required")
 		}
@@ -210,11 +210,11 @@ func Describe(ctx context.Context, session *sdk.ClientSession) (Description, err
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
 	}
-	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[Description]](ctx, session, describeMethod, &protocolParams{Protocol: extension.Protocol})
+	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[Description]](ctx, session, DescribeMethod, &protocolParams{Protocol: extension.Protocol})
 	if err != nil {
 		return zero, err
 	}
-	value, err := result.value(describeMethod)
+	value, err := result.value(DescribeMethod)
 	if err != nil {
 		return zero, err
 	}

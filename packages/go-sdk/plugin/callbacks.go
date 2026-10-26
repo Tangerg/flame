@@ -25,7 +25,7 @@ import (
 
 var ErrStaleCall = errors.New("plugin: callback call is no longer active")
 
-const callbackMetadataKey = "io.github.tangerg.flame/callback.v1"
+const CallbackMetadataKey = "io.github.tangerg.flame/callback.v1"
 
 type callbackRefKey struct{}
 
@@ -34,7 +34,7 @@ func CallbackMetadata(ref CallbackRef) (sdk.ParamsBase, error) {
 		return sdk.ParamsBase{}, err
 	}
 	var metadata sdk.ParamsBase
-	if err := metadata.Set(callbackMetadataKey, ref); err != nil {
+	if err := metadata.Set(CallbackMetadataKey, ref); err != nil {
 		return sdk.ParamsBase{}, err
 	}
 	return metadata, nil
@@ -49,7 +49,7 @@ func CallbackFromContext(ctx context.Context) (CallbackRef, error) {
 }
 
 func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Context, error) {
-	value, present := metadata[callbackMetadataKey]
+	value, present := metadata[CallbackMetadataKey]
 	if !present {
 		return ctx, nil
 	}

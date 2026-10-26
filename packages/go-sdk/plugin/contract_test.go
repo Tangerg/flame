@@ -139,13 +139,13 @@ func TestMethodServerRejectsOriginalMissingMembersBeforeBusinessExecution(t *tes
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := sdk.AddSendingCustomMethod[*rawContractParams, *methodResult[jsontext.Value]](client, invokeMethod); err != nil {
+	if err := sdk.AddSendingCustomMethod[*rawContractParams, *methodResult[jsontext.Value]](client, InvokeMethod); err != nil {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
 	contract := method.contract.Identity()
 	for _, raw := range []string{`{"status":"open"}`, `{"status":"open","revision":null}`, `{"status":"unknown","revision":1}`} {
-		if _, err := sdk.CallCustomMethod[*rawContractParams, *methodResult[jsontext.Value]](t.Context(), session, invokeMethod, &rawContractParams{Protocol: extension.Protocol, Method: method.Name(), Contract: contract.Digest(), Input: []byte(raw), CommandID: "original"}); err == nil {
+		if _, err := sdk.CallCustomMethod[*rawContractParams, *methodResult[jsontext.Value]](t.Context(), session, InvokeMethod, &rawContractParams{Protocol: extension.Protocol, Method: method.Name(), Contract: contract.Digest(), Input: []byte(raw), CommandID: "original"}); err == nil {
 			t.Fatalf("malformed input admitted: %s", raw)
 		}
 	}

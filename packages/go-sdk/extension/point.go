@@ -1,5 +1,3 @@
-// Package point owns consumer-defined contribution values and composition.
-// Callable interfaces remain with capability; a value may reference one.
 package extension
 
 import (
@@ -92,7 +90,7 @@ func (c *Point) ValidateValue(value jsonvalue.Value) error {
 	return c.value.Validate(value.JSON())
 }
 
-// Context is a frozen caller projection. Applicability cannot discover or mutate
+// Applicability uses a frozen caller projection so it cannot discover or mutate
 // a screen, workspace or business owner while resolving contributions.
 type PointContext struct {
 	Target     Target         `json:"target"`

@@ -14,17 +14,17 @@ import (
 
 const directoryLockWaitMilliseconds uint32 = 10
 
-func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
+func acquireDirectory(ctx context.Context, directory string) (*DirectoryLease, error) {
 	return directoryLease(ctx, directory, false)
 }
 
-func tryDirectory(directory string) (*Lease, error) {
+func tryDirectory(directory string) (*DirectoryLease, error) {
 	return directoryLease(nil, directory, true)
 }
 
-func directoryLease(ctx context.Context, directory string, nonblocking bool) (*Lease, error) {
+func directoryLease(ctx context.Context, directory string, nonblocking bool) (*DirectoryLease, error) {
 	type result struct {
-		lease *Lease
+		lease *DirectoryLease
 		err   error
 	}
 	resultChannel := make(chan result, 1)

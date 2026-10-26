@@ -62,7 +62,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 		t.Fatalf("business calls=%d", calls)
 	}
 	var invalid sdk.ParamsBase
-	if err := invalid.Set(callbackMetadataKey, map[string]string{"endpoint": "https://example.test/"}); err != nil {
+	if err := invalid.Set(CallbackMetadataKey, map[string]string{"endpoint": "https://example.test/"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := binding.InvokeWithMetadata(ctx, "original", input, invalid); err == nil || calls != 2 {
@@ -95,7 +95,7 @@ func TestCallbackMetadataRefusesMalformedAuthority(t *testing.T) {
 			if strings.Contains(raw, "%q") {
 				raw = fmt.Sprintf(raw, strings.Repeat("a", 64), strings.Repeat("b", 64))
 			}
-			if _, err := bindCallbackMetadata(t.Context(), sdk.Meta{callbackMetadataKey: []byte(raw)}); err == nil {
+			if _, err := bindCallbackMetadata(t.Context(), sdk.Meta{CallbackMetadataKey: []byte(raw)}); err == nil {
 				t.Fatal("malformed callback authority was admitted")
 			}
 		})

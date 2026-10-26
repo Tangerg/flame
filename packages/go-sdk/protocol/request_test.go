@@ -3,10 +3,11 @@ package protocol_test
 import (
 	json "encoding/json/v2"
 	"errors"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRequestDecodingPreservesOpaqueEvidence(t *testing.T) {

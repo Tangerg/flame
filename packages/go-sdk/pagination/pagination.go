@@ -221,5 +221,3 @@ func PageOf[T any](rows []T, limit int, namespace string, filters []string, next
 		NextCursor: nextCursor,
 	}, nil
 }
-
-// Explicit projects the caller intent without resolving the read owner's ceiling.

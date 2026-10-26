@@ -109,10 +109,10 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 	var outer chat.ResponseAccumulator
 	var inner *ModelResult
 	sequence := method.StreamWithMetadata(t.Context(), binding, callbacks, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, "original-decorated-model", *request, metadata)
-	for index := range metadata.Meta[callbackMetadataKey] {
-		metadata.Meta[callbackMetadataKey][index] = ' '
+	for index := range metadata.Meta[CallbackMetadataKey] {
+		metadata.Meta[CallbackMetadataKey][index] = ' '
 	}
-	if err := metadata.Set(callbackMetadataKey, "replacement callback"); err != nil {
+	if err := metadata.Set(CallbackMetadataKey, "replacement callback"); err != nil {
 		t.Fatal(err)
 	}
 	for value, err := range sequence {

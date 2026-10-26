@@ -4,8 +4,9 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"reflect"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 // DecodeRequest preserves authored presence, typed nulls, and exact numbers.

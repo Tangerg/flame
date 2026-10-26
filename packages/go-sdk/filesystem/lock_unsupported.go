@@ -4,6 +4,8 @@ package filesystem
 
 import "context"
 
-func tryDirectory(string) (*Lease, error) { return nil, ErrUnsupported }
+func tryDirectory(string) (*DirectoryLease, error) { return nil, ErrLockUnsupported }
 
-func acquireDirectory(context.Context, string) (*Lease, error) { return nil, ErrUnsupported }
+func acquireDirectory(context.Context, string) (*DirectoryLease, error) {
+	return nil, ErrLockUnsupported
+}
