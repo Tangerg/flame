@@ -55,6 +55,11 @@ the primary checkout. The latest repeated request is checked against a fresh
 remote fetch with the same result while completing the file-header, project-choice
 and subagent-action batches below. Both local main and the freshly fetched remote
 still identify `e616e1a4c`; no incoming commits or new integration checks are needed.
+The latest requested fetch, from local base `36474d48`, again resolves to that
+same remote commit. `git merge --no-edit origin/main` reports `Already up to date`.
+No merge commit, push, primary-checkout write or new integration verification is
+needed. The in-flight fixture correction below is committed locally before
+resuming another UI task.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -12489,6 +12494,57 @@ This is a local documentation-only qualification, not another ToolGroup repair
 or whole-product Goal CHECK acceptance. Continue with other material tasks. Revisit
 this hypothesis only with a current native or assistive activation that actually
 opens a member without focus delivery and then loses its content on settlement.
+
+### Runtime categories in review inputs
+
+The preceding native follow-up's JSON source is traced to incomplete review
+inputs, not a reproduced production reader defect. Runtime delivery's
+`presentToolCategory` already supplies each invocation's category. Eighteen
+hand-authored invocations in `visual/agentSessionSnapshots.ts` omitted that fact,
+including streamed and approval payloads. They now use the existing test-only
+`toolCategoryForName`, as the fixture's settled and narrative constructors already
+do. The helper, production presenter, fold, UI and installed resources are unchanged.
+No production name inference or alternate category owner is added.
+
+Four semantic regressions exercise the real snapshot and event fold: two captured
+file bodies preserve six literal lines, command output retains its command and
+exit status, and edit output retains the authoritative change receipt. All four
+fail against the original input while its existing fifteen cases pass. The
+candidate passes **32 files / 394 tests** across visual-fixture and Agent-fold
+unit tests; this is not a browser visual suite. The four-file baseline passed
+**53 tests**. Serial prerequisite/test/assets/native baseline construction takes
+**12.53 s**; the candidate's format/test/type/assets/two-native-build chain passes
+in **23.66 s**. Final formatting, Web lint and installed-resource consistency pass
+in **1.35 s**. No full product check or production native coordinator is rerun.
+
+Actual Wails, English/light/14 px/Flame Orange/contrast 25/motion off at
+**1440 × 900 CSS px**, shows the original JSON envelope before correction and the
+literal six-line source afterward. The file range and current-file action now
+exist because the canonical input reaches the existing specialized projection.
+Native Find accepts `flushLocked`, presents its source line, and Escape closes
+the query. Composer retains and extends the draft to
+`Review the captured file. Continue reviewing.`; the passive observer records no
+window errors. Clicking current-file leaves the fixture's existing DockResizer
+material visible, so current-file navigation and source return are not qualified
+by this scene. Check that route's target and fixture wiring before treating it as
+a product defect. The prepared Chinese/dark/18 px host builds but is not launched;
+narrow/200%, VoiceOver, OS IME and live Tool execution are not requalified. No
+browser suite or performance benchmark runs. Read-only ZCode's Read renderer
+provides comparison evidence for file identity/content; Flame retains Runtime's
+own category and result-envelope contracts.
+
+Cleanup confirms all **six owned PIDs** are dead and all three bundle registrations
+are absent. The unlaunched Chinese bundle's unregister reports `-10814`; an exact
+LaunchServices dump confirms it was not registered. Three new output/cache roots,
+four bundle-specific Library entries and two bundle-temporary directories are
+removed. All **39 output-presence baselines**, four original files, eighteen
+Library-presence baselines, **5,832 non-Markdown inputs**, eleven installed
+resources and three read-only references remain preserved. The private root is
+absent. In-memory archival round-trips **36 UTF-8 records / five capture digests**;
+gzip SHA-256 is
+`9036a12a8aa2f03e2a3d2eedccf3c6c122e1b67c182087444331a0c983f86b3a`.
+This local fixture correction improves subsequent evidence; it does not establish
+whole-product Goal CHECK acceptance.
 
 ### Member disclosure and canonical narrative evidence
 

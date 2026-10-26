@@ -14,6 +14,12 @@ Rules:
   use the production fold/projection before seeding a test adapter;
 - keep fixtures inert unless an interaction is the subject of the test.
 
+Hand-authored Tool invocations include the category supplied by Runtime delivery,
+including approval payloads and streamed items. The fixture category helper mirrors
+that presenter; it does not register or classify production Tools. Check resulting
+file bodies, command output and change receipts through the actual Agent fold so
+missing metadata cannot silently turn a specialized reading scene into generic JSON.
+
 The `foundation` fixture freezes geometry and primitive roles. The `shell`
 fixture installs test-only data providers, then renders the production sidebar
 plugins, application projections, workspace navigation port, and shell

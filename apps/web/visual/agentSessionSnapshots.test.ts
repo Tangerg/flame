@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-client/validation";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
+import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
 import {
+  AGENT_SESSION_TAIL_EVENTS,
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   RUNTIME_AGENT_SESSION_TAIL_EVENTS,
   VISUAL_AGENT_STATES,
@@ -9,6 +11,52 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it.each(["running", "tool-shells"] as const)(
+    "presents the captured file body in %s instead of its transport envelope",
+    (state) => {
+      let view = projectAgentSessionSnapshot(
+        projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]),
+      );
+      for (const event of AGENT_SESSION_TAIL_EVENTS[state]) view = reduceAgentEvent(view, event);
+      const read = Object.values(view.toolCalls).find((call) => call.name === "read");
+
+      expect(read?.result).toBe(
+        [
+          "package session",
+          "",
+          "func (s *Store) Commit(ctx context.Context, session *Session, records []Record, opts CommitOptions) (Receipt, error) {",
+          "\tif err := s.flushLocked(); err != nil {",
+          '\t\treturn Receipt{}, fmt.Errorf("commit: %w", err)',
+          "\t}",
+        ].join("\n"),
+      );
+      expect(read?.lines).toBe(6);
+    },
+  );
+
+  it("presents captured command output and exit status in the shell reader", () => {
+    const view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]),
+    );
+    const command = view.toolCalls.item_shells_command;
+
+    expect(command?.command).toBe("go test ./internal/session/...");
+    expect(command?.exitCode).toBe(1);
+    expect(command?.result?.startsWith("\u001b[1m=== RUN   TestCommitAtomicity")).toBe(true);
+  });
+
+  it("presents the Runtime's recorded change receipt independently of abbreviated patch input", () => {
+    const view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]),
+    );
+    const edit = view.toolCalls.item_shells_edit;
+
+    expect(edit?.files).toBe(3);
+    expect(edit?.changes?.map((change) => change.status)).toEqual(["modified", "moved", "deleted"]);
+    expect(edit?.changes?.[1]?.from).toBe("runtime/internal/session/store_atomicity.go");
+    expect([edit?.added, edit?.removed]).toEqual([0, 0]);
+  });
+
   it("retains each Skill page's incoming scope independently of its outgoing continuation", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-skill-pages"];
     const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
