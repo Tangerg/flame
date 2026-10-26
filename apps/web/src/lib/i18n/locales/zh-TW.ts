@@ -369,6 +369,8 @@ export const zhTW: Record<string, string> = {
   "plugins.errors_other": "{{count}} 個錯誤",
   "plugins.clear": "清除",
   "plugins.copyError": "複製錯誤",
+  "plugins.errorCopied": "錯誤已複製",
+  "plugins.copyFailed": "無法複製，請選取錯誤文字後複製。",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 算繪失敗。",
   "plugins.mainView": "主檢視",
   "plugins.errorSource.setup": "初始化",

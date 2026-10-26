@@ -379,6 +379,8 @@ export const ja: Record<string, string> = {
   "plugins.errors_other": "{{count}} 件のエラー",
   "plugins.clear": "クリア",
   "plugins.copyError": "エラーをコピー",
+  "plugins.errorCopied": "エラーをコピーしました",
+  "plugins.copyFailed": "コピーできませんでした。エラーのテキストを選択してコピーしてください。",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> の描画に失敗しました。",
   "plugins.mainView": "メインビュー",
   "plugins.errorSource.setup": "セットアップ",

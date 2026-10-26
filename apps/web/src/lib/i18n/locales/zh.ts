@@ -521,6 +521,8 @@ export const zh: Record<string, string> = {
   "plugins.errors_other": "{{count}} 个错误",
   "plugins.clear": "清除",
   "plugins.copyError": "复制错误",
+  "plugins.errorCopied": "错误已复制",
+  "plugins.copyFailed": "无法复制，请选中错误文本后复制。",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 渲染失败。",
   "plugins.mainView": "主视图",
   "plugins.errorSource.setup": "初始化",

@@ -1,15 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Conversation Find now follows rendered reply changes, retaining the current occurrence, query and reading position. Zero-result navigation retains focus and local Escape. Native update/file/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Loaded client-plugin errors now show their complete message, provide a named keyboard stack reader and report clipboard outcomes. Clearing transient errors returns to the list title; native reading/copy/clear/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/find-updates-1026`. Find refresh qualification uses frozen base
-`fe9c0ae4700b880a08fb66faab8eb76bab419d8f`; see Find follows rendered reply updates
-below. Selected-task implementation `c51f370baef7e2d3ebd08dbfba5e9abde9af1c40`
+is on `codex/plugin-error-reading-1026`. Loaded-plugin error qualification uses
+frozen base `74026e0085b71e5f2be0652ea86b710b03db3dc7`; see Loaded client-plugin
+error reading below. Find refresh implementation
+`ca19ef60a53d962f0f9c11fe8f489b662b71568c` and receipt
+`74026e0085b71e5f2be0652ea86b710b03db3dc7` remain published and retired.
+Selected-task implementation `c51f370baef7e2d3ebd08dbfba5e9abde9af1c40`
 and receipt `fe9c0ae4700b880a08fb66faab8eb76bab419d8f` remain published and retired.
 Shared
 disabled-command implementation `bae5b99cff298e4d7d42427e18f093cf139fc82a` and
@@ -8882,6 +8885,146 @@ confirmation. The retained archive contains 153 UTF-8 evidence files and six
 capture hashes (gzip SHA-256
 `1a095356a15290e62b4b2d8dd36d58b9e870aa66f21c5b649b0fa4c23bcdf241`).
 Continue only with fresh task evidence.
+
+### Loaded client-plugin error reading
+
+The complete inspected task is Conversation/draft → actual Cmd+, Settings →
+Plugins → expand a loaded plugin's errors → read its complete message and trace
+→ Copy → clear unloaded and installed error groups → list title → Close Settings
+→ continue the same draft. Package installation, provider selection and command
+recovery retain their independent owners and are excluded from new native
+qualification. This is a presentation and transient-error flow, with no Runtime
+mutation or protocol/persisted-data migration.
+
+On frozen `74026e0085b71e5f2be0652ea86b710b03db3dc7`, actual Wails shows the
+308-character multiline message in one ellipsized line: **21 px** high,
+**573 px** client width versus **2,259 px** scroll width. Its complete value is
+only in a native title. The raw trace has **224 / 1,480 px** client/scroll height,
+no named region and `tabIndex=-1`. Four native Tabs go from the error disclosure
+through Clear and two Copy buttons to the next plugin, skipping the trace.
+Clearing either an unloaded error-only row or an installed plugin's errors leaves
+focus on BODY. The original pointer probe used coordinates after Tab shifted the
+page; it is excluded from any pointer-to-bottom claim.
+
+`apps/web/src/features/plugins/ui/PluginsPane.tsx` owns the repair. Each complete
+message precedes its source/time/Copy row, preserves newlines and permits long
+paths to wrap. Plugin names also wrap inside a shrinking grid track. The existing
+`ScrollRegion` owns named keyboard scrolling and focus; the leaf retains its
+224 px cap, mono type and original trace text. Copy is described by the specific
+message and uses the existing `writeToClipboard` owner with localized accepted
+or denied feedback, preserving the exact source/message/detail payload. Clear
+still calls the transient store's `clearFor` and synchronously focuses the stable
+list title with `preventScroll`. The title sits inside PanelSection's existing
+heading; an initial whole-list focus outline was narrowed to this title after
+native review. No shared component API, extra state, listener, timer or automatic
+retry is introduced.
+
+Recon follows AGENTS.md, PROJECT_RULES.md, DEVELOPMENT.md, Web/Desktop and visual
+READMEs. The implementation uses existing React, Base UI-backed shared controls,
+StyleX, semantic tokens, settings groups and clipboard/notification owners. All
+six better-interface owning skills were loaded; no new component system or
+palette is added. Fresh read-only ZCode `ModelTrajectoryErrorBlock.tsx` informs
+message-before-trace hierarchy. Its raw pre does not establish keyboard access.
+`ToolCallBlocks/ToolLayout.tsx` informs action grouping, while its clipped tooltip
+pattern is unsuitable for persistent error reading. HeroUI's actual alert slots
+separate content, identity and status. Existing ChatGPT/Radix/Arc research remains
+scoped to the prior recorded paths; none is claimed as native proof here. Ace's
+original cached sheets remain absent and the fresh remote image cannot be opened
+by the reference tool; there is no fresh image-comparison or award-tier claim.
+
+| Domain        | Inspected evidence                                                                                          | Scoped result and limit                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Named ScrollRegion, error-described Copy, native Tab/End/Home, two Clear destinations and final title focus | Trace and return gaps resolved; native AX and pixels inspected, VoiceOver speech not verified                   |
+| Layout        | Intrinsic error grid, wrapping name/message/actions; 1440 × 900 and half-window/200% tasks                  | No message or document horizontal overflow in measured scenes; fresh 320 px viewport not verified               |
+| Writing       | Existing object/source vocabulary; two clipboard outcome keys complete across eight locales                 | Accepted and denied outcomes are distinct; denied native clipboard permission not exercised                     |
+| Typography    | Complete multiline message, CJK/blank lines, mono trace and final frame at 14/18 px                         | Exact text retained and readable in exercised themes/zoom                                                       |
+| Colors        | Native message #1b1b1b on #eaeaea, and #eeeeee on #242424; Orange/blue/purple focus                         | Measured message ratios 14.31:1 and 13.37:1; clean warm scene checked visually, no new all-token contrast claim |
+| UI            | Explicit inline disclosure, bounded persistent reader, copy feedback, compact title return, full/off motion | Complete task passes including observer-free repeat; no new animation or decorative treatment                   |
+
+#### Resolved findings
+
+| Severity | Domain        | Location                                               | Before                                                                          | After                                                        | Why                                                              |
+| -------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| HIGH     | Accessibility | `apps/web/src/features/plugins/ui/PluginsPane.tsx:220` | Pointer-scrollable trace is skipped by Tab                                      | Existing named keyboard reader exposes every frame           | Keyboard users must reach the same diagnostic evidence           |
+| HIGH     | Layout        | `apps/web/src/features/plugins/ui/PluginsPane.tsx:70`  | Full message depends on an ellipsized title; long identities constrain controls | Message and name wrap with original newlines before metadata | The visible failure must identify the affected object and cause  |
+| MEDIUM   | Accessibility | `apps/web/src/features/plugins/ui/PluginsPane.tsx:155` | Clear removes its focused action and returns to BODY                            | Focus returns to the surviving list title                    | Preserve the local reading destination after either row lifetime |
+| MEDIUM   | Writing       | `apps/web/src/features/plugins/ui/PluginsPane.tsx:194` | Copy has no explicit accepted/failed outcome                                    | Existing clipboard owner reports the actual result           | Avoid implying an unconfirmed copy succeeded                     |
+
+#### Verification
+
+- Original baseline passes **1 file / 10 tests**. Five observable regressions
+  fail against original production source (**5 fail / 10 pass**): named trace,
+  specific Copy description, both Clear lifetimes and accepted/denied clipboard
+  notices. Original assertions are retained. The first candidate passes all
+  **15** tests; no valid assertion or gate is weakened.
+- Affected consumer coverage passes **9 files / 158 tests**, covering PluginsPane,
+  provider reads, pending commands, installed/component composition, SettingsPage,
+  PluginBoundary, clipboard and Conversation inspection. All **16** selected Web
+  gates and serial `make check-native` pass; the latter includes normal Web
+  staging and Desktop test/vet/build. After the final title-only adjustment,
+  **4 files / 38 tests**, Web typecheck/lint/format and both private asset builds
+  pass again. The final formatter makes no source change. Existing linker,
+  loader and chunk warnings are non-failing.
+- Actual Wails EN/light/14 px/Flame Orange/full motion: complete message measures
+  **147 / 147 px** height and **786 / 786 px** client/scroll width. Four Tabs enter
+  the named trace; End reaches **1,264 px**, its exact bottom, revealing the
+  cause and final frame. Home returns to zero and native wheel reaches the
+  bottom. Copy shows `Error copied` and retains its action. Final source repeats
+  End/Copy and both Clear lifetimes with the compact title ring. The unloaded
+  row disappears while the other errors remain; clearing the installed row
+  preserves its plugin identity. Closing Settings preserves and continues
+  `Continue after reviewing the plugin error. — verified`.
+- Final ZH/dark/18 px/custom blue #5191ff/motion off: full-width message measures
+  **216 / 216 px**, width **786 / 786 px**. Native Window → Move & Resize → Left
+  and twenty native Zoom In actions produce **561 × 475 CSS px / 200%**. Message
+  width equals scroll width **451 px** and document width equals viewport
+  **561 px**. Four Tabs reach the named trace; End reaches its exact bottom
+  **3,580 px**, Home returns to zero, and wheel inside the reader advances to
+  **1,424 px**. Copy reports 错误已复制. Both Clear cases show the compact blue
+  title ring. Close returns to the original input and it continues as
+  `查看插件错误后继续这段草稿。 已验证。`.
+- Independent clean DE/18 px/warm #eee7db canvas/purple #7f52ff/motion off omits
+  the passive observer. Native pixels/AX repeat full-width error reading, then
+  half-window/200% Tab/End to the visible last frame, `Fehler kopiert`, both
+  Clear/title returns, Close and original draft continuation as
+  `Nach dem Prüfen des Pluginfehlers weiterschreiben. Geprüft.`. This supplies
+  independent interaction/pixel evidence, not DOM measurements. Both zoomed
+  apps restore Actual Size and all native apps exit through Quit.
+
+Private captured inputs enter the actual `usePluginErrorStore.push` API: two
+installed-plugin errors (one 74-line trace, one message without detail) and one
+unloaded-plugin error. Production settings commands, shortcuts, store, components,
+clipboard and draft/navigation owners remain active. The passive observer reports
+current geometry, focus and normalized sRGB message colors; it does not alter
+behavior. The long focused reader name truncates the native evidence JSON after
+the stack metrics, so those records supply no missing color/viewport values.
+Complete non-reader-focus records supply the reported pairs and widths instead.
+There is no native clipboard paste-back claim; exact payload and denied result
+are covered by unit contracts. Live plugin crashes, provider/Runtime recovery,
+Send, credentials, VoiceOver speech, OS IME, RTL, other-platform GUI and a fresh
+320 px viewport remain not verified. Browser visual suites, performance
+benchmarks, broader unchanged Runtime/CLI suites, Claude CLI and subagents do not
+run.
+
+| Goal CHECK        | Scoped result                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| Typography        | Complete CJK/newline message and mono trace remain readable at 14/18 px and 200%                 |
+| Whitespace        | Existing token spacing separates primary failure, metadata and bounded trace                     |
+| Visual hierarchy  | Plugin identity/disclosure, complete cause and supporting stack have separate roles              |
+| Color             | Existing status meaning and Orange/custom focus remain; measured message pairs pass              |
+| Motion            | Full/off-motion tasks pass; explicit reading and Clear add no animation or delayed focus         |
+| Micro-interaction | Tab/End/Home/wheel, copy feedback, Clear/title and draft continuation pass                       |
+| Responsive        | Half-window/200% wrapping retains full text and reachable actions; 320 px is not newly qualified |
+| Originality       | Flame's existing brand and quiet settings vocabulary remain; no decorative template added        |
+
+**Verdict: Approve for the inspected task and states.** The four findings are
+resolved. This remains **progress**, not whole-product or award-tier completion.
+Accepted **5,784 non-Markdown inputs** have SHA-256
+`5f7fe340e7edd4772055383c3f6756205533ab8bb3c529185831f492503b9096`;
+**1,200** final compiled assets, **11** product ESM resources and **four** read-only
+reference files are frozen. Publication and exact owned-resource retirement
+remain to be recorded below. Continue from fresh reading/Dock task evidence
+after this batch; do not reopen these repaired error paths without a new finding.
 
 ### Plugin render recovery
 

@@ -378,6 +378,8 @@ export const ko: Record<string, string> = {
   "plugins.errors_other": "오류 {{count}}건",
   "plugins.clear": "지우기",
   "plugins.copyError": "오류 복사",
+  "plugins.errorCopied": "오류가 복사됨",
+  "plugins.copyFailed": "복사할 수 없습니다. 오류 텍스트를 선택해 복사하세요.",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> 렌더링에 실패했습니다.",
   "plugins.mainView": "메인 뷰",
   "plugins.errorSource.setup": "설정",

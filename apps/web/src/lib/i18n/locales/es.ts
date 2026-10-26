@@ -399,6 +399,8 @@ export const es: Record<string, string> = {
   "plugins.errors_other": "{{count}} errores",
   "plugins.clear": "Borrar",
   "plugins.copyError": "Copiar error",
+  "plugins.errorCopied": "Error copiado",
+  "plugins.copyFailed": "No se pudo copiar. Selecciona el texto del error para copiarlo.",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> no se pudo renderizar.",
   "plugins.mainView": "vista principal",
   "plugins.errorSource.setup": "configuración",

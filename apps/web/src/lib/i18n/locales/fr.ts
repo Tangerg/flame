@@ -402,6 +402,8 @@ export const fr: Record<string, string> = {
   "plugins.errors_other": "{{count}} erreurs",
   "plugins.clear": "Effacer",
   "plugins.copyError": "Copier l'erreur",
+  "plugins.errorCopied": "Erreur copiée",
+  "plugins.copyFailed": "Impossible de copier. Sélectionnez le texte de l'erreur pour le copier.",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> n'a pas pu s'afficher.",
   "plugins.mainView": "vue principale",
   "plugins.errorSource.setup": "initialisation",

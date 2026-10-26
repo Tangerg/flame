@@ -395,6 +395,8 @@ export const de: Record<string, string> = {
   "plugins.errors_other": "{{count}} Fehler",
   "plugins.clear": "Löschen",
   "plugins.copyError": "Fehler kopieren",
+  "plugins.errorCopied": "Fehler kopiert",
+  "plugins.copyFailed": "Kopieren fehlgeschlagen. Wähle den Fehlertext aus, um ihn zu kopieren.",
   "plugins.renderFailed": "<strong>{{plugin}}</strong> konnte nicht gerendert werden.",
   "plugins.mainView": "Hauptansicht",
   "plugins.errorSource.setup": "Setup",

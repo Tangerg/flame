@@ -15,6 +15,9 @@ import { reportPluginError, usePluginErrorStore } from "@/extensions/errors";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { definePlugin } from "@/extensions/definePlugin";
 import { PluginsPane } from "@/features/plugins/ui/PluginsPane";
+import { toast } from "sonner";
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 let host: Host | undefined;
 
 const example = definePlugin({
@@ -30,10 +33,89 @@ afterEach(async () => {
   queryClient.clear();
   usePluginErrorStore.getState().clearAll();
   usePackageRealization.setState({ failure: null });
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
   if (!host) return;
   const owned = host;
   host = undefined;
   await stopKernel(owned);
+});
+
+describe("PluginsPane client error reading", () => {
+  const message =
+    "Could not load contribution /workspace/LongConfigurationReaderWithoutSoftBreaks.ts.\n\nRequired input: explicit selection.";
+  const detail = "Error: missing input\n    at load (reader.ts:4)\n\nLast recorded frame.";
+
+  async function openError(plugin = "flame.builtin.example") {
+    host = await startKernel([example]);
+    reportPluginError(plugin, "events", message, detail);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByTitle("Show error detail"));
+  }
+
+  it("names a keyboard-readable stack and relates Copy to its complete error", async () => {
+    await openError();
+
+    const reader = screen.getByRole<HTMLElement>("region", {
+      name: /Could not load contribution/,
+    });
+    expect(reader.tabIndex).toBe(0);
+    expect(reader.textContent).toBe(detail);
+    const plugin = screen.getByRole("group", { name: "flame.builtin.example" });
+    const copy = within(plugin).getByRole("button", { name: "Copy error" });
+    const description = document.getElementById(copy.getAttribute("aria-describedby") ?? "");
+    expect(description?.textContent).toBe(message);
+    expect(description?.getAttribute("title")).toBeNull();
+  });
+
+  it.each(["flame.builtin.example", "kernel"])(
+    "returns to the loaded-plugin list after clearing %s",
+    async (plugin) => {
+      await openError(plugin);
+      const clear = screen.getByRole("button", { name: "Clear" });
+      act(() => clear.focus());
+      fireEvent.click(clear);
+
+      const list = screen.getByRole("region", { name: "Loaded client plugins" });
+      expect(document.activeElement).toBe(within(list).getByText("Loaded client plugins"));
+      expect(usePluginErrorStore.getState().log).toEqual([]);
+      expect(screen.queryByRole("button", { name: "Copy error" })).toBeNull();
+      expect(screen.getByText("flame.builtin.example")).toBeTruthy();
+    },
+  );
+
+  it.each([
+    {
+      outcome: "accepted",
+      write: () => Promise.resolve(),
+      success: [["Error copied"]],
+      failure: [],
+    },
+    {
+      outcome: "denied",
+      write: () => Promise.reject(new Error("NotAllowedError: private detail")),
+      success: [],
+      failure: [["Couldn't copy. Select the error text to copy it."]],
+    },
+  ])("reports an $outcome copy without changing its payload or focus", async (result) => {
+    const writeText = vi.fn(result.write);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    await openError();
+    const copy = screen.getByRole("button", { name: "Copy error" });
+    act(() => copy.focus());
+    fireEvent.click(copy);
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(`[event handler] ${message}\n\n${detail}`);
+      expect(vi.mocked(toast.success).mock.calls).toEqual(result.success);
+      expect(vi.mocked(toast.error).mock.calls).toEqual(result.failure);
+    });
+    expect(document.activeElement).toBe(copy);
+  });
 });
 
 function reviewedInstallation(): PluginInstallation {

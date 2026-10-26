@@ -3,11 +3,11 @@ import { PackageManager } from "@/features/plugins/ui/PackageManager";
 import * as stylex from "@stylexjs/stylex";
 import { type PluginError, type PluginErrorSource } from "@/extensions/errors";
 import { formatClock } from "@/lib/i18n/relativeTime";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Icon } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Button, Badge, IconButton, PanelSection, vocab } from "@flame/ui";
-import { copyText } from "@flame/ui";
+import { Button, Badge, IconButton, PanelSection, ScrollRegion, vocab } from "@flame/ui";
+import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
 import { useInstalledPlugins } from "@/extensions/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
@@ -32,6 +32,7 @@ const pp = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   faulted: { backgroundColor: surface.negativeWash },
+  name: { overflowWrap: "anywhere" },
   head: {
     display: "grid",
     gridTemplateColumns: {
@@ -51,23 +52,26 @@ const pp = stylex.create({
     paddingBottom: space.s3,
   },
   errorCard: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    gap: space.s1_5,
     borderRadius: radius.card,
     backgroundColor: surface.sunken,
     paddingInline: space.s2_5,
     paddingBlock: space.s2,
   },
   errorHead: {
-    display: "grid",
-    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+    display: "flex",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: space.s2,
   },
+  errorActions: { marginInlineStart: "auto" },
+  message: { margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   stack: {
-    marginTop: space.s1_5,
     maxHeight: "calc(var(--spacing) * 56)",
-    overflow: "auto",
     whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
+    overflowWrap: "anywhere",
     fontFamily: "var(--font-mono)",
     lineHeight: leading.body,
     color: color.fgMuted,
@@ -79,6 +83,7 @@ export function PluginsPane() {
   const installed = useInstalledPlugins();
   const log = usePluginErrorStore((s) => s.log);
   const clearFor = usePluginErrorStore((s) => s.clearFor);
+  const loadedRef = useRef<HTMLSpanElement>(null);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   const errorsByPlugin = new Map<string, PluginError[]>();
@@ -105,17 +110,29 @@ export function PluginsPane() {
   return (
     <>
       <PackageManager />
-      <PanelSection title={t("plugins.loadedTitle")}>
+      <PanelSection
+        title={
+          <span ref={loadedRef} tabIndex={-1}>
+            {t("plugins.loadedTitle")}
+          </span>
+        }
+        aria-label={t("plugins.loadedTitle")}
+      >
         <SettingsGroup hidden={!rows.length}>
           {rows.map((name) => {
             const errors = errorsByPlugin.get(name) ?? [];
             const errCount = errors.length;
             const open = expanded.has(name);
             return (
-              <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
+              <div
+                key={name}
+                role="group"
+                aria-label={name}
+                {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}
+              >
                 <div {...stylex.props(pp.head)}>
-                  <div>
-                    <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
+                  <div {...stylex.props(vocab.min)}>
+                    <div {...stylex.props(pp.name, ss.label, typeStep.uiMd)}>{name}</div>
                     {errCount > 0 && (
                       <TextButton
                         tone="negative"
@@ -132,7 +149,14 @@ export function PluginsPane() {
                   </div>
                   <div {...stylex.props(vocab.lineTight)}>
                     {errCount > 0 && (
-                      <Button variant="outline" size="sm" onClick={() => clearFor(name)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          clearFor(name);
+                          loadedRef.current?.focus({ preventScroll: true });
+                        }}
+                      >
                         {t("plugins.clear")}
                       </Button>
                     )}
@@ -164,30 +188,39 @@ const SOURCE_LABEL_KEYS: Record<PluginErrorSource, string> = {
 
 function ErrorEntry({ err }: { err: PluginError }) {
   const t = useT();
+  const messageId = useId();
   const time = formatClock(err.timestamp);
   const source = t(SOURCE_LABEL_KEYS[err.source]);
   const copy = () =>
-    void copyText(`[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`);
+    void writeToClipboard(`[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`, {
+      successLabel: t("plugins.errorCopied"),
+      failureLabel: t("plugins.copyFailed"),
+    });
   return (
     <div {...stylex.props(pp.errorCard)}>
+      <p id={messageId} {...stylex.props(pp.message, ss.label, typeStep.uiMd)}>
+        {err.message}
+      </p>
       <div {...stylex.props(pp.errorHead)}>
         <Badge tone="negative" face="mono">
           {source}
         </Badge>
-        <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={err.message}>
-          {err.message}
-        </span>
-        <div {...stylex.props(vocab.lineTight)}>
+        <div {...stylex.props(pp.errorActions, vocab.lineTight)}>
           <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{time}</span>
           <IconButton
             icon={iconGlyph("copy")}
             size="xs"
             aria-label={t("plugins.copyError")}
+            aria-describedby={messageId}
             onClick={copy}
           />
         </div>
       </div>
-      {err.detail && <pre {...stylex.props(pp.stack, typeStep.uiSm)}>{err.detail}</pre>}
+      {err.detail && (
+        <ScrollRegion label={err.message} styles={[pp.stack, typeStep.uiSm]} data-focus-inset="">
+          {err.detail}
+        </ScrollRegion>
+      )}
     </div>
   );
 }
