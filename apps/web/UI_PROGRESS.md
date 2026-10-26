@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery now retire obsolete feedback and distinguish invalid input from command failure, qualified below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows now reveal complete names during focus and context-menu use, qualified below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -9210,8 +9210,8 @@ Post-retirement source/resource hashes and all output baselines pass. Normal
 formatting and explicit-path local commit hooks remain required; no subsequent
 main refresh is part of this scoped qualification.
 
-Next: continue from a fresh complete reading/Dock task in the feedback review.
-Preserve the delivered editor and command owners; do not reopen the native
+The subsequent reading/Dock task is qualified under Active file-tree identity
+below. Preserve the delivered editor and command owners; do not reopen the native
 final-LF limitation without a new platform counterexample or supported fix.
 
 ### Loaded client-plugin error reading
@@ -14111,6 +14111,130 @@ reading stays retained; preserve these qualifications.
   opt-in `tabIndex`/`role`/`aria-label`; the file viewer names its region by the
   file path so it is focusable and scrollable. The tree-list view (which has
   focusable treeitems) is unchanged.
+
+### Active file-tree identity
+
+Scope: the feedback document's G02/G04 reading and geometry concerns, narrowed
+to a reproduced file-list identity problem on local base
+`549cbabbb84fbb7c767631175844eb3adf4915f2`. The task is draft → identify a long
+directory → open its file → read the complete path/content → return to the same
+tree cursor → distinguish the sibling → continue the original draft. Existing
+material navigation, query continuity and file-selection owners remain intact.
+
+| Severity         | Domain            | Location                                                    | Before                                                                                                                                  | After                                                                                                                      | Why                                                                                                        |
+| ---------------- | ----------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| MEDIUM, repaired | Typography/layout | `features/workspace/ui/files/FileTree.tsx`, row/name styles | At an actual 320 px Dock, two long directory names share the same visible ellipsis even with keyboard focus or their context menu open. | The focused row wraps its complete name; opening its context menu retains that reading surface. Other rows remain compact. | Users can distinguish the current object before opening it, without relying on pointer-only native titles. |
+
+The complete names were already present in native AX. This is a visual identity
+and keyboard-reading repair, not a claim that screen readers lost those names.
+`FileTree` owns compact row presentation: its name inherited unconditional
+`nowrap` from `vocab.truncate`. The row now switches to normal whitespace under
+`:focus-within` or Base UI's existing `data-popup-open`; the name inherits that
+whitespace and permits wrapping inside long uninterrupted segments. Existing
+overflow/ellipsis still applies to inactive rows. No new tooltip, state, listener,
+observer, focus transition or navigation abstraction is introduced. Shared Tree,
+ContextMenu, sizing, semantic tokens and command/data boundaries are unchanged.
+
+Fresh read-only ZCode `WorkspaceFileTreeRowView.tsx` and
+`WorkspaceFileTreeRowName.tsx` inform compact hierarchy and exact path identity.
+Their native-tooltip truncation does not establish visible keyboard reading;
+Flame uses its existing row and menu state instead. Earlier HeroUI/Radix
+composition/focus and Ace hierarchy research remains applicable within its
+recorded limits. No fresh Ace image comparison or behavior claim is made.
+
+Better-interface review coverage:
+
+| Domain        | Evidence and scoped result                                                                                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native keyboard focus exposes the visible complete name; Shift+F10/Escape preserves the row destination. Existing full AX names and arrow navigation remain intact; VoiceOver speech was not exercised. |
+| Layout        | Only the active row gains height. True 320 px Dock and the narrow native window's full-width material presentation retain hierarchy and reachable return/actions.                                       |
+| Writing       | Literal mixed-case/CJK object names and existing localized actions remain exact. No labels, helper copy or slogans are added.                                                                           |
+| Typography    | Complete suffixes distinguish the two names at 14 px English and 18 px German/Chinese, including native 200% Chinese zoom. No type-scale change.                                                        |
+| Color         | Existing neutral hover, selected row and Orange/blue/purple focus treatments remain distinct in the inspected light/dark scenes. No new palette or all-token contrast qualification.                    |
+| UI polish     | Menu focus in the portal retains the name; dismissal and file return restore the existing cursor. Full/off motion adds no movement or decoration.                                                       |
+
+Verification:
+
+- Existing regression suites pass: `FileWorkspace.test.tsx`, `FileView.test.tsx`
+  and `ChatPanel.inspection.test.tsx`, **3 files / 187 tests**; shared-tree
+  contracts pass in `ui/primitives/tree.test.tsx`, **1 file / 8 tests**. Total:
+  **195 tests**. A CSS-class assertion would mirror this implementation; native
+  baseline/candidate comparison provides the visual regression evidence instead.
+- Web typecheck, lint, design-system, token, chrome and style checks pass.
+  Serial `make check-native` passes in **88.77 s**, including normal Web staging
+  and Desktop test/vet/build. Candidate assets and three isolated Wails apps
+  build successfully. Duplicate `-lobjc` remains a non-failing linker warning.
+  The previous batch's unchanged main `check:layers` failure remains recorded
+  under Plugin installation and edit recovery; this import-free CSS repair
+  does not claim that guard passed or rerun unrelated architecture work.
+- Actual Wails EN/light/14 px/Orange/full motion: the baseline's keyboard-sized
+  **320 px** Dock clips both distinguishing suffixes. The candidate displays
+  the focused complete `before-release` name, retains it while Shift+F10 opens
+  Copy path, and Escape returns to that row. Right/Down/Enter opens its
+  `Review.tsx`; the complete path and eight-line content are visible. Back
+  restores the selected file cursor; Down reveals the distinct `after-release`
+  directory and its matching file opens. Reading the existing transcript's raw
+  Read record does not replace the selected file. Back and continued Composer
+  input preserve `Directory review draft · 保留这段草稿` and append the new text.
+- Actual Wails ZH/dark/18 px/custom blue/motion off: native Window → Move &
+  Resize → Left respects the host's **1120 px** minimum width; Actual Size plus
+  twenty Zoom In actions exercises **200%**. The production narrow-window
+  trigger opens the same Files material full width. Tab reveals the full
+  directory name, Shift+F10 retains it, Escape returns, and arrow/Enter opens
+  its file. The named reader receives Tab and Page Down scrolls to the final
+  line while header actions remain reachable. Back restores the selected tree
+  item; explicit Close returns to Conversation and the original Chinese draft
+  continues. Escape on the persistent material itself is not a Close action.
+- Actual Wails DE/light/18 px/custom purple/motion off: a confirmed **320 px**
+  resizer value, full wrapped name, Pfad kopieren menu, Escape return,
+  arrow/Enter file reading, Zurück zu den Dateien cursor return and continued
+  German draft all pass. Early batched reverse-Tab probes did not move focus;
+  only the later individually observed focus transitions and confirmed width
+  qualify this scene. The similarly named baseline `baseline-320-dock` capture
+  stayed at 523 px and is excluded from 320 px claims; its later confirmed
+  baseline captures qualify the finding.
+
+Native qualification uses production components and the actual Wails host with
+private deterministic directory/read providers. Two long directories and their
+matching `Review.tsx` children are fixture data, not live filesystem reads. No
+production event, focus or input handlers are replaced. The transcript's raw
+record is inspected; this batch does not freshly qualify opening a current file
+from that record or a live Runtime/source-return chain. OS IME composition,
+VoiceOver speech, RTL, other-platform GUI, live Send and the known native final-LF
+limitation remain unverified here. No browser visual suite, performance benchmark,
+Claude CLI, subagent, main refresh or remote push runs.
+
+Source tracing also ruled out two guesses: Runtime's existing BOM/CRLF test
+explicitly counts the final empty line, matching the viewer's split contract;
+`useWorkspaceReadFile` already retains placeholders only for the same cwd/path,
+so a different file cannot adopt the previous file's content. Neither is reported
+as a new defect or changed. Existing tree cursor, refresh and source-return
+qualifications remain delivered.
+
+Goal CHECK review: typography reveals complete identity; whitespace and hierarchy
+give only the current row extra reading space; color preserves established
+selection/focus; motion adds no distracting transition; micro-interaction keeps
+the name through menu use and return; responsive behavior works at 320 px and in
+the exercised 200% full-width material; originality retains Flame's restrained
+brand. This closes the reproduced identity gap, not a whole-product award-level
+verdict or an assertion that every feedback-document scenario was exercised.
+
+All **8** recorded runner/app processes are dead. Four apps are unregistered and
+removed with **8** owned Library paths, **4** bundle-temp paths, **6** new checkout
+output roots and the one new native build file. The original native-check binary
+is restored byte for byte; all **34** output-presence baselines and **3** original
+file inventories pass. All **5,819** accepted non-Markdown sources and **11**
+installed component resources retain their accepted bytes. Artifact maps capture
+**596** baseline assets, **596** candidate assets, **16** proxy files and **4**
+binaries. The independently round-trip-verified in-memory evidence archive holds
+**64** UTF-8 files and **26** screenshot digests, gzip SHA-256
+`fc4a1d66a2e0c66a199e3e03bdb6117a406d84d30a2b8b9236583a96ac8d3071`.
+The guarded root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-material-reading-1026-eQkro1`
+is absent; post-retirement checks pass. Delivery remains a normal explicit-path
+local commit on `codex/ui-feedback-local-1026`, with the primary parallel checkout
+outside scope. Continue with a fresh complete reading task from the feedback
+review; preserve existing ownership and require a reproduced gap before editing.
 
 ## Notifications audit
 

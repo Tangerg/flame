@@ -30,9 +30,12 @@ const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
 };
 
 const ft = stylex.create({
+  row: {
+    whiteSpace: { default: "nowrap", ":is(:focus-within, [data-popup-open])": "normal" },
+  },
   indent: { width: space.s3, flexShrink: 0 },
   pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },
-  name: { flex: 1 },
+  name: { flex: 1, whiteSpace: "inherit", overflowWrap: "anywhere" },
   mark: {
     flexShrink: 0,
     fontFamily: "var(--font-mono)",
@@ -144,6 +147,7 @@ function TreeNode({
 
   const row = (
     <Tree.Item
+      {...stylex.props(ft.row)}
       ref={rowRef}
       level={depth + 1}
       expanded={isDir ? expanded : undefined}
