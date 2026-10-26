@@ -13,7 +13,6 @@ import { type AgentMessagePhase } from "@/features/agent/public/sessionView";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
 import { MessageBlock } from "@/features/chat/message/ui/MessageBlock";
 import { MessageVisibleMaterialOwner } from "@/features/chat/message/ui/messageVisibleMaterial";
-import * as agentInput from "@/features/agent/public/input";
 import { fireEvent } from "@testing-library/react";
 const { renderActionSlot } = vi.hoisted(() => ({ renderActionSlot: vi.fn() }));
 
@@ -60,7 +59,7 @@ function row(
 
 describe("MessageBlock turn identity", () => {
   it("shows uncertain acceptance and retries only its original command", () => {
-    const retry = vi.spyOn(agentInput, "retrySteerInput").mockReturnValue(true);
+    const retry = vi.spyOn(testClient.agent.access, "retrySteerInput").mockReturnValue(true);
     const uncertain = row("complete", "Original submitted input", "user");
     uncertain.inputFeedback = "unknown";
     uncertain.message = {
@@ -75,7 +74,7 @@ describe("MessageBlock turn identity", () => {
     expect(screen.queryByText("Accepted · waiting for model context")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry original submission" }));
     expect(retry).toHaveBeenCalledOnce();
-    expect(retry).toHaveBeenCalledWith(testClient.agent.access, uncertain.message.id);
+    expect(retry).toHaveBeenCalledWith(uncertain.message.id);
     rerender(
       <MessageBlock
         row={{

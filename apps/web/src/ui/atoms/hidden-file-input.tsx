@@ -1,10 +1,9 @@
+import { type ComponentPropsWithRef } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { type FileInputPrimitiveProps } from "@/ui/primitives/index";
-import { FileInputPrimitive } from "@/ui/primitives/index";
 const styles = stylex.create({ away: { display: "none" } });
 
-export type HiddenFileInputProps = Omit<FileInputPrimitiveProps, "className">;
+export type HiddenFileInputProps = Omit<ComponentPropsWithRef<"input">, "className" | "type">;
 
 export function HiddenFileInput(props: HiddenFileInputProps) {
-  return <FileInputPrimitive {...props} {...stylex.props(styles.away)} />;
+  return <input {...props} type="file" {...stylex.props(styles.away)} />;
 }

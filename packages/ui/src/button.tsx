@@ -14,7 +14,8 @@ import {
   type,
   weight,
 } from "./tokens.stylex";
-import { ButtonPrimitive, type ButtonPrimitiveProps } from "./primitives/index";
+import { ButtonPrimitive } from "./button-primitive";
+import { type ButtonPrimitiveProps } from "./button-primitive";
 import { toneInk } from "./tone-ink";
 
 type ButtonVariant =

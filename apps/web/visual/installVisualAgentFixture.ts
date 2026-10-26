@@ -1,8 +1,9 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { type VisualClient } from "./client";
 import { type FlameClient } from "@flame/runtime-client";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { type CommandResult, type ServerCapabilities } from "@flame/runtime-client/wire";
-import { createMutationPromise } from "@flame/runtime-client";
+
 import { subagentsView } from "@/features/chat/message/subagents";
 import { registerApprovalPolicyDataProviders } from "@/features/agent/adapters/runtimeDataProviders";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
@@ -13,12 +14,7 @@ import {
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
-import {
-  getActiveSessionId,
-  getAgentSessionLifecycleSnapshot,
-  subscribeActiveSessionId,
-  subscribeAgentSessionLifecycle,
-} from "@/features/agent/public/session";
+
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { APPROVAL_MODE_KEY } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
@@ -117,7 +113,7 @@ function visualAgentRuntimeGateway(
     loadSessionUsage: async () => ({}),
     rollbackSession: async () => ({ droppedRuns: [] }),
     steerRun: (runId, segmentId, input) => {
-      const mutation = createMutationPromise(async () => {
+      const mutation = mutationResult(async () => {
         document.documentElement.dataset.visualSteeredRun = runId;
         document.documentElement.dataset.visualSteeredSegment = segmentId;
         document.documentElement.dataset.visualSentInput = JSON.stringify(input);
@@ -183,12 +179,12 @@ const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameCli
       registerApprovalPolicyDataProviders(ctx, runtimeClient);
       return {
         sessions: {
-          getActiveSessionId: () => getActiveSessionId(visual.agent.access),
-          getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(visual.agent.access),
+          getActiveSessionId: () => visual.agent.access.getActiveSessionId(),
+          getLifecycleSnapshot: () => visual.agent.access.getAgentSessionLifecycleSnapshot(),
           subscribeActiveSessionId: (listener) =>
-            subscribeActiveSessionId(visual.agent.access, listener),
+            visual.agent.access.subscribeActiveSessionId(listener),
           subscribeLifecycle: (listener) =>
-            subscribeAgentSessionLifecycle(visual.agent.access, listener),
+            visual.agent.access.subscribeAgentSessionLifecycle(listener),
           subscribeDeleted: () => () => undefined,
         },
       };
@@ -225,8 +221,8 @@ export async function installVisualAgentFixture(
   queryClient.clear();
   visual.projection.store.setState({ capabilities });
   installVisualRuntimeServiceStatusPort(visual, state === "runtime-down" ? "unavailable" : "ready");
-  visual.agent.access = {
-    ...visual.agent.access,
+  visual.agent.dependencies = {
+    ...visual.agent.dependencies,
     runtime: visualAgentRuntimeGateway(snapshot, visualSession(state, snapshot), runtimeClient),
   };
 

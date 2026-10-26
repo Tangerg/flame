@@ -1,5 +1,4 @@
 export {
-  getActiveConversationMessages,
   useActiveConversationMessages,
   useActiveConversationRows,
 } from "@/features/agent/application/conversation/readModel";

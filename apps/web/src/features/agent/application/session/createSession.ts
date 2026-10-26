@@ -1,4 +1,5 @@
-import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { queryClient } from "@/lib/queryClient";
 import { useCallback } from "react";
 import {
@@ -49,7 +50,10 @@ function alreadyOnAnEmptySession(
   return loaded && loaded.messages.length === 0 ? sessionId : null;
 }
 
-function doCreate(agentAccess: AgentAccess, opts: CreateSessionOptions): Promise<string | null> {
+function doCreate(
+  agentAccess: AgentDependencies,
+  opts: CreateSessionOptions,
+): Promise<string | null> {
   if (opts.cwd.trim() === "") return Promise.resolve(null);
   const owner = agentAccess.commands.current();
   const runtime = agentAccess.runtime;
@@ -66,7 +70,7 @@ function doCreate(agentAccess: AgentAccess, opts: CreateSessionOptions): Promise
     });
 }
 
-export function createSession(agentAccess: AgentAccess): Promise<string | null> {
+export function createSession(agentAccess: AgentDependencies): Promise<string | null> {
   const sessionId = agentAccess.state.getActiveSessionId();
   if (!sessionId) return Promise.resolve(null);
   const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
@@ -76,7 +80,7 @@ export function createSession(agentAccess: AgentAccess): Promise<string | null> 
 }
 
 export function useCreateSession(): (opts: CreateSessionOptions) => Promise<string | null> {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return useCallback((opts) => doCreate(agentAccess, opts), [agentAccess]);
 }

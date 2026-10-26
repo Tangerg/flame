@@ -6,7 +6,8 @@ contracts. It has no publisher privilege, database connection or Runtime interna
 import. Reviews reads and admits its findings; the analyzer cannot change a review.
 
 The executable consumes the public types and contracts in the independent Reviews
-author module. Its `unresolvedReview` finding refers to the inspected review ID
+author module at `backend/contract`. Snapshot admission and finding validation
+are public pure contracts; private stores and review transitions are inaccessible. Its `unresolvedReview` finding refers to the inspected review ID
 and revision. A resolved snapshot has no findings. Invalid snapshots are refused.
 
 From the repository root, prepare current dependencies and contracts, then

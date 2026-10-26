@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { t } from "@/lib/i18n/index";
 import { describeRpcError } from "@/lib/rpcErrors";
 import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
@@ -12,7 +12,7 @@ import {
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
 import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "@/features/agent/application/view/optimisticMessageIdentity";
 export function steerRunningTurn(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   {
     sessionId,
     runId,
@@ -46,7 +46,7 @@ export function steerRunningTurn(
 }
 
 export function restoreUnresolvedSteers(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   commands: AgentUnresolvedSteer[],
 ): void {
@@ -73,7 +73,7 @@ export function restoreUnresolvedSteers(
 }
 
 function observeSteer(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   sessionId: string,
   runId: string,
   input: AgentInput,
@@ -182,6 +182,6 @@ function observeSteer(
   } else attempt(open);
 }
 
-export function retrySteerInput(agentAccess: AgentAccess, messageId: string): boolean {
+export function retrySteerInput(agentAccess: AgentDependencies, messageId: string): boolean {
   return agentAccess.commands.current().retrySteer(messageId);
 }

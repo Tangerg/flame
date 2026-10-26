@@ -17,7 +17,7 @@ import {
   APPROVAL_MODE_LABEL_KEY,
   describeApprovalMode,
 } from "@/features/agent/public/approvalPolicy";
-import { setApprovalMode } from "@/features/agent/public/approvalPolicy";
+
 import { useApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalMode } from "@/features/agent/public/approvalPolicy";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -129,7 +129,7 @@ function ApprovalModePill() {
   const onSelect = async (next: ApprovalMode) => {
     if (next === mode) return;
     try {
-      await setApprovalMode(agentAccess, next);
+      await agentAccess.setApprovalMode(next);
     } catch (err) {
       notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
     }

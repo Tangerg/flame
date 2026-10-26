@@ -106,10 +106,10 @@ describe("refreshAgentSessionProjection", () => {
           },
         ],
       };
-      restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+      restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
         loadSessionSnapshot: () => read.promise,
       } as unknown as AgentRuntimeGateway);
-      const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+      const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
       expect(useNotificationStore.getState().log).toHaveLength(0);
       if (superseded) writeNewerProjectionFact();
       read.resolve(material(terminal));
@@ -127,7 +127,7 @@ describe("refreshAgentSessionProjection", () => {
     testClient.agent.projection.store.getState().setSynchronize(SESSION_ID, () => pending.promise);
     try {
       expect(
-        synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+        synchronizeMountedAgentSession(testClient.agent.dependencies, SESSION_ID, "after-live"),
       ).toBe(pending.promise);
     } finally {
       pending.resolve(false);
@@ -139,7 +139,7 @@ describe("refreshAgentSessionProjection", () => {
     testClient.agent.projection.store.getState().setSynchronize(SESSION_ID, synchronize);
 
     await expect(
-      synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+      synchronizeMountedAgentSession(testClient.agent.dependencies, SESSION_ID, "after-live"),
     ).resolves.toBe(true);
     expect(synchronize).toHaveBeenCalledWith("after-live");
   });
@@ -148,7 +148,7 @@ describe("refreshAgentSessionProjection", () => {
     testClient.agent.projection.store.getState().dropSession(SESSION_ID);
 
     await expect(
-      synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+      synchronizeMountedAgentSession(testClient.agent.dependencies, SESSION_ID, "after-live"),
     ).resolves.toBe(false);
   });
 
@@ -157,11 +157,11 @@ describe("refreshAgentSessionProjection", () => {
     const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("complete");
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
     expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
 
     read.resolve(material(snapshot(1), projectCompanion));
@@ -182,12 +182,12 @@ describe("refreshAgentSessionProjection", () => {
       .fn()
       .mockImplementationOnce(() => older.promise)
       .mockImplementationOnce(() => newer.promise);
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot,
     } as unknown as AgentRuntimeGateway);
 
-    const olderRefresh = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
-    const newerRefresh = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    const olderRefresh = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
+    const newerRefresh = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
     newer.resolve(material(snapshot(2), projectNewer));
     await expect(newerRefresh).resolves.toMatchObject({
       plan: { revision: 2 },
@@ -206,11 +206,11 @@ describe("refreshAgentSessionProjection", () => {
   it("discards a read that raced with a live projection write", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("raced");
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
     writeNewerProjectionFact();
     read.resolve(material(snapshot(1), projectCompanion));
 
@@ -229,11 +229,14 @@ describe("refreshAgentSessionProjection", () => {
   it("returns authoritative facts even when a newer local write rejects their commit", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("authoritative-only");
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const revalidating = revalidateAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    const revalidating = revalidateAgentSessionProjection(
+      testClient.agent.dependencies,
+      SESSION_ID,
+    );
     writeNewerProjectionFact();
     read.resolve(material(snapshot(4), projectCompanion));
 
@@ -257,12 +260,12 @@ describe("refreshAgentSessionProjection", () => {
   it("leaves the prior projection intact when the durable read fails", async () => {
     writeNewerProjectionFact();
     const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn().mockRejectedValue(new Error("offline")),
     } as unknown as AgentRuntimeGateway);
 
     await expect(
-      refreshAgentSessionProjection(testClient.agent.access, SESSION_ID),
+      refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID),
     ).rejects.toThrow("offline");
     expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
   });
@@ -270,12 +273,12 @@ describe("refreshAgentSessionProjection", () => {
   it("treats an authoritatively missing session as no applicable projection", async () => {
     writeNewerProjectionFact();
     const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn().mockResolvedValue(null),
     } as unknown as AgentRuntimeGateway);
 
     await expect(
-      refreshAgentSessionProjection(testClient.agent.access, SESSION_ID),
+      refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID),
     ).resolves.toBeNull();
     expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
   });
@@ -284,11 +287,11 @@ describe("refreshAgentSessionProjection", () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("aborted");
     const controller = new AbortController();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID, {
+    const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID, {
       signal: controller.signal,
     });
     controller.abort();
@@ -304,12 +307,12 @@ describe("refreshAgentSessionProjection", () => {
   it("revokes an unsignaled snapshot at the Runtime connection boundary", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("retired");
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
-    synchronizeMountedAgentSessions(testClient.agent.access, { ownership: "retire-live" });
+    const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
+    synchronizeMountedAgentSessions(testClient.agent.dependencies, { ownership: "retire-live" });
     read.resolve(material(snapshot(11), projectCompanion));
 
     await expect(refreshing).resolves.toBeNull();
@@ -328,15 +331,15 @@ describe("refreshAgentSessionProjection", () => {
       .fn()
       .mockImplementationOnce(() => predecessor.promise)
       .mockImplementationOnce(() => successor.promise);
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot,
     } as unknown as AgentRuntimeGateway);
     testClient.agent.projection.store
       .getState()
       .setCommandError(SESSION_ID, { code: "old-server" });
 
-    const retiredRead = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
-    synchronizeMountedAgentSessions(testClient.agent.access, { ownership: "replace-server" });
+    const retiredRead = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
+    synchronizeMountedAgentSessions(testClient.agent.dependencies, { ownership: "replace-server" });
 
     expect(
       testClient.agent.projection.store.getState().sessions[SESSION_ID]!.problem.commandError,
@@ -363,13 +366,13 @@ describe("refreshAgentSessionProjection", () => {
   it("rejects an old port's snapshot and companion material after adapter replacement", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("retired-port");
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
     const disposeRetiredState = createAgentStateFixture(testClient).dispose;
     let disposeSuccessorState: (() => void) | undefined;
     try {
-      const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+      const refreshing = refreshAgentSessionProjection(testClient.agent.dependencies, SESSION_ID);
       disposeSuccessorState = createAgentStateFixture(testClient).dispose;
 
       read.resolve(material(snapshot(10), projectCompanion));

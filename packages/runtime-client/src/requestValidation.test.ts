@@ -27,23 +27,13 @@ describe("generated request validation", () => {
 
   it("refuses invalid mutations before reserving a durable replay identity", async () => {
     const transport = createMemoryTransport();
-    const reserve = vi.fn(() => {
-      throw new Error("unexpected mutation reservation");
-    });
+    const set = vi.fn();
     const client = createFlameClient(transport, {
-      mutationJournal: {
-        pendingCommands: () => [],
-        pendingPluginCommands: () => [],
-        reserve,
-        capturePluginCommand: async () => {
-          throw new Error("unexpected plugin command capture");
-        },
-        dispose: vi.fn(),
-      },
+      mutationStorage: { get: () => undefined, set, remove: vi.fn(), keys: () => [] },
     });
     const params = { ...configuration, unexpected: true };
     await expect(client.plugins.configure(params)).rejects.toBeInstanceOf(RpcProtocolError);
-    expect(reserve).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
     expect(transport.outbox()).toEqual([]);
     await client.close();
   });

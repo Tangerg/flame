@@ -7,17 +7,13 @@ export {
   RpcTransportError,
 } from "./errors";
 export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
-export type { ItemId, RunId, SegmentId } from "./ids";
+export type { ItemId, RunId, SegmentId, SessionId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
-export { createMutationJournal } from "./mutationJournal";
+export type { MutationJournalStorage } from "./mutationJournal";
 export type { PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
-export {
-  createMutationSettler,
-  MUTATION_ATTEMPT_TIMEOUT_MS,
-  MutationSettlementClosedError,
-} from "./mutationSettlement";
+export { createMutationSettler } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
 export type {
   Methods,
@@ -29,7 +25,7 @@ export type {
 } from "./methods";
 export type { ResourceSubscription } from "./resources";
 export { createFlameClient } from "./sdk";
-export type { FlameClient } from "./sdk";
+export type { FlameClient, FlameClientOptions } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-client/wire";
 export type {
   ClientCapabilities,
@@ -102,22 +98,28 @@ export { createSidecarClient } from "./sidecar";
 export type { LivenessStatus, ReadinessStatus, RuntimeInfo, SidecarClient } from "./sidecar";
 export { createHttpTransport } from "./transports/http";
 export { JSONRPC_VERSION } from "./types";
-export { ExactNumber, parseJSON, stringifyJSON } from "./json";
+export {
+  ExactNumber,
+  parseJSON,
+  stringifyJSON,
+  cloneJSON,
+  equalJSON,
+  isJSONInteger,
+  isJSONNumber,
+} from "./json";
 export type { JSONNumber } from "./json";
 export { normalizeRuntimeEndpoint } from "./endpoint";
 
-export * from "./client";
-export * from "./endpoint";
-export * from "./errors";
-export * from "./ids";
-export * from "./json";
-export * from "./methods";
-export * from "./mutation";
-export * from "./mutationJournal";
-export * from "./request";
-export * from "./sdk";
-export * from "./sidecar";
-export * from "./transport";
-export * from "./transports/http";
+export { errorMessage } from "./errors";
+export { checkRequest, pluginContract, pluginMethod } from "./request";
+export { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
+export type {
+  Transport,
+  TransportRequest,
+  TransportEvent,
+  TransportSendOptions,
+  TransportResponseMetadata,
+} from "./transport";
+export type { HttpTransportConfig } from "./transports/http";
 
 export { mutationSettlementIsUnknown } from "./mutation";

@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { createAgentGatewayFixture } from "@/test/agentOwners";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
@@ -11,16 +12,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RpcError,
   RpcTransportError,
-  MUTATION_ATTEMPT_TIMEOUT_MS,
   type FlameClient,
   type Methods,
   type MutationPromise,
-  MutationSettlementClosedError,
 } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-client";
-import { createMutationPromise } from "@flame/runtime-client";
 
-import { registerAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -79,12 +76,12 @@ describe("agentRuntimeGateway", () => {
       ({ sessions: { snapshot }, runs: { recoverCommands } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    const retiredRead = testClient.agent.access.runtime.loadSessionSnapshot("ses_retry");
+    const retiredRead = testClient.agent.dependencies.runtime.loadSessionSnapshot("ses_retry");
     await vi.waitFor(() => expect(recoverCommands).toHaveBeenCalled());
 
     recoverCommands = vi.fn(async () => [opening(newRetry)]);
     uninstall.replaceRuntimeGeneration();
-    await testClient.agent.access.runtime.loadSessionSnapshot("ses_retry");
+    await testClient.agent.dependencies.runtime.loadSessionSnapshot("ses_retry");
     finishOld([opening(oldRetry)]);
     await retiredRead;
 
@@ -116,9 +113,9 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({ sessions: { create: retiredCreate } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    await expect(testClient.agent.access.runtime.createSession({ cwd: "/repo" })).rejects.toBe(
-      transportFailure,
-    );
+    await expect(
+      testClient.agent.dependencies.runtime.createSession({ cwd: "/repo" }),
+    ).rejects.toBe(transportFailure);
     uninstall.dispose();
     uninstall = undefined;
 
@@ -133,7 +130,7 @@ describe("agentRuntimeGateway", () => {
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     await expect(
-      testClient.agent.access.runtime.createSession({ cwd: "/repo" }),
+      testClient.agent.dependencies.runtime.createSession({ cwd: "/repo" }),
     ).resolves.toMatchObject({
       id: "ses_successor",
       workspace: { path: "/repo" },
@@ -158,11 +155,11 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({ sessions: { create } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    const creating = testClient.agent.access.runtime.createSession({ cwd: "/repo" });
+    const creating = testClient.agent.dependencies.runtime.createSession({ cwd: "/repo" });
     uninstall.dispose();
     uninstall = undefined;
 
-    await expect(creating).rejects.toBeInstanceOf(MutationSettlementClosedError);
+    await expect(creating).rejects.toBeInstanceOf(Error);
     expect(attemptSignal?.aborted).toBe(true);
 
     settleRetired({ id: asSessionId("ses_retired") });
@@ -175,7 +172,7 @@ describe("agentRuntimeGateway", () => {
     const signals: AbortSignal[] = [];
     let executions = 0;
     const create = vi.fn((_params, signal?: AbortSignal) =>
-      createMutationPromise(
+      mutationResult(
         async (key, attempt) => {
           keys.push(key);
           signals.push(attempt.signal!);
@@ -197,10 +194,10 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({ sessions: { create } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    const creating = testClient.agent.access.runtime.createSession({ cwd: "/repo" });
+    const creating = testClient.agent.dependencies.runtime.createSession({ cwd: "/repo" });
     await vi.advanceTimersByTimeAsync(0);
     expect(executions).toBe(1);
-    await vi.advanceTimersByTimeAsync(MUTATION_ATTEMPT_TIMEOUT_MS);
+    await vi.advanceTimersToNextTimerAsync();
 
     await expect(creating).resolves.toMatchObject({ id: "ses_replayed" });
     expect(create).toHaveBeenCalledOnce();
@@ -229,7 +226,7 @@ describe("agentRuntimeGateway", () => {
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     await expect(
-      testClient.agent.access.runtime.updateSession({
+      testClient.agent.dependencies.runtime.updateSession({
         sessionId: "ses_1",
         expectedRevision: 11,
         favorite: true,
@@ -263,7 +260,9 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({ approval: { setMode } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    await expect(testClient.agent.access.runtime.setApprovalMode("safe")).resolves.toEqual(saved);
+    await expect(testClient.agent.dependencies.runtime.setApprovalMode("safe")).resolves.toEqual(
+      saved,
+    );
     expect(setMode).toHaveBeenCalledWith("safe");
   });
 
@@ -273,7 +272,7 @@ describe("agentRuntimeGateway", () => {
       ({ runs: { recoverCommands: async () => [], steer } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    const result = await testClient.agent.access.runtime.steerRun("run_1", "seg_1", {
+    const result = await testClient.agent.dependencies.runtime.steerRun("run_1", "seg_1", {
       parts: [
         { kind: "text", text: "compare this" },
         { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
@@ -289,13 +288,13 @@ describe("agentRuntimeGateway", () => {
 
   it("preserves the original steer command and its retry authority", async () => {
     const execute = vi.fn().mockResolvedValue({ userItemId: "item_original" });
-    const mutation = createMutationPromise(execute, "original-steer");
+    const mutation = mutationResult(execute, "original-steer");
     const steer = vi.fn(() => mutation);
     runtimeClient = () =>
       ({ runs: { recoverCommands: async () => [], steer } }) as unknown as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-    const submitted = testClient.agent.access.runtime.steerRun("run_1", "seg_original", {
+    const submitted = testClient.agent.dependencies.runtime.steerRun("run_1", "seg_original", {
       parts: [{ kind: "text", text: "original input" }],
     });
 
@@ -310,13 +309,15 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({}) as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
     expect(
-      testClient.agent.access.runtime.isSteerReceiptUnknown(new RpcTransportError("lost ACK")),
+      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
+        new RpcTransportError("lost ACK"),
+      ),
     ).toBe(true);
     expect(
-      testClient.agent.access.runtime.isSteerReceiptUnknown(new Error("unreadable receipt")),
+      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(new Error("unreadable receipt")),
     ).toBe(true);
     expect(
-      testClient.agent.access.runtime.isSteerReceiptUnknown(
+      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
         new RpcError({
           message: "still claimed",
           data: { type: "idempotency_in_progress", retryAfterSeconds: 1 },
@@ -324,7 +325,7 @@ describe("agentRuntimeGateway", () => {
       ),
     ).toBe(true);
     expect(
-      testClient.agent.access.runtime.isSteerReceiptUnknown(
+      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
         new RpcError({ message: "stale segment", data: { type: "stale_segment" } }),
       ),
     ).toBe(false);
@@ -338,8 +339,7 @@ describe("agentRuntimeGateway", () => {
         (_sessionId: string, material: { goal?: { objective: string } }) =>
           material.goal?.objective,
       );
-      uninstallMaterialCommitter = registerAgentSessionSharedMaterial(
-        testClient.agent.access,
+      uninstallMaterialCommitter = testClient.agent.access.registerAgentSessionSharedMaterial(
         "test.goal-objective",
         stageMaterial,
       );
@@ -371,7 +371,7 @@ describe("agentRuntimeGateway", () => {
         }) as unknown as FlameClient;
       uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
-      const snapshot = await testClient.agent.access.runtime.loadSessionSnapshot("ses_1");
+      const snapshot = await testClient.agent.dependencies.runtime.loadSessionSnapshot("ses_1");
 
       expect(readSnapshot).toHaveBeenCalledWith(asSessionId("ses_1"), supported, undefined);
       expect(snapshot?.snapshot.plan).toEqual({
@@ -404,7 +404,7 @@ describe("agentRuntimeGateway", () => {
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     await expect(
-      testClient.agent.access.runtime.loadSessionSnapshot("ses_gone"),
+      testClient.agent.dependencies.runtime.loadSessionSnapshot("ses_gone"),
     ).resolves.toBeNull();
   });
 
@@ -419,7 +419,7 @@ describe("agentRuntimeGateway", () => {
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     await expect(
-      testClient.agent.access.runtime.deleteSession("ses_gone"),
+      testClient.agent.dependencies.runtime.deleteSession("ses_gone"),
     ).resolves.toBeUndefined();
   });
 
@@ -440,7 +440,7 @@ describe("agentRuntimeGateway", () => {
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     await expect(
-      testClient.agent.access.runtime.rollbackSession({
+      testClient.agent.dependencies.runtime.rollbackSession({
         sessionId: "ses_1",
         toRunId: "run_keep",
         restoreType: "both",

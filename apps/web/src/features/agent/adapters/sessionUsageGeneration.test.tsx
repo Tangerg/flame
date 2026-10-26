@@ -97,7 +97,7 @@ afterEach(async () => {
 describe("mounted Session usage generation", () => {
   it("keeps the same Session ID in two client instances on independent cache writers", async () => {
     const first = testClient.renderHook(
-      () => testClient.agent.access.usage.useAgentSessionUsage("ses_shared"),
+      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
       { wrapper },
     );
     unmountHook = first.unmount;
@@ -109,7 +109,7 @@ describe("mounted Session usage generation", () => {
     const secondClient = createFlameClient(secondTransport);
     const secondOwner = createTestClient({ runtimeClient: () => secondClient });
     const second = secondOwner.renderHook(
-      () => secondOwner.agent.access.usage.useAgentSessionUsage("ses_shared"),
+      () => secondOwner.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
       { wrapper },
     );
     try {
@@ -144,7 +144,7 @@ describe("mounted Session usage generation", () => {
   it("does not cancel another instance's pending read when the first instance is disposed", async () => {
     const firstSend = vi.spyOn(transport, "send");
     const first = testClient.renderHook(
-      () => testClient.agent.access.usage.useAgentSessionUsage("ses_shared"),
+      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
       { wrapper },
     );
     unmountHook = first.unmount;
@@ -156,7 +156,7 @@ describe("mounted Session usage generation", () => {
     const secondClient = createFlameClient(secondTransport);
     const secondOwner = createTestClient({ runtimeClient: () => secondClient });
     const second = secondOwner.renderHook(
-      () => secondOwner.agent.access.usage.useAgentSessionUsage("ses_shared"),
+      () => secondOwner.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
       { wrapper },
     );
     try {
@@ -203,7 +203,7 @@ describe("mounted Session usage generation", () => {
     restoreGateway = createAgentGatewayFixture(testClient, getRuntimeClient);
 
     const hook = testClient.renderHook(
-      () => testClient.agent.access.usage.useAgentSessionUsage("ses_future"),
+      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_future"),
       { wrapper },
     );
     unmountHook = hook.unmount;
@@ -236,7 +236,7 @@ describe("mounted Session usage generation", () => {
   it("aborts the pre-event transport before committing the successor read", async () => {
     const send = vi.spyOn(transport, "send");
     const hook = testClient.renderHook(
-      () => testClient.agent.access.usage.useAgentSessionUsage("ses_usage"),
+      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_usage"),
       { wrapper },
     );
     unmountHook = hook.unmount;
@@ -245,11 +245,11 @@ describe("mounted Session usage generation", () => {
 
     act(() => {
       void queryClient.cancelQueries({
-        queryKey: testClient.agent.access.usage.queryKey("ses_usage"),
+        queryKey: testClient.agent.dependencies.usage.queryKey("ses_usage"),
         exact: true,
       });
       void queryClient.invalidateQueries({
-        queryKey: testClient.agent.access.usage.queryKey("ses_usage"),
+        queryKey: testClient.agent.dependencies.usage.queryKey("ses_usage"),
         exact: true,
       });
     });
@@ -293,7 +293,7 @@ describe("mounted Session usage generation", () => {
   it("hands the cache writer to the successor Runtime gateway", async () => {
     const retiredSend = vi.spyOn(transport, "send");
     const hook = testClient.renderHook(
-      () => testClient.agent.access.usage.useAgentSessionUsage("ses_usage"),
+      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_usage"),
       { wrapper },
     );
     unmountHook = hook.unmount;

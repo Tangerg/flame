@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { PopoverPrimitive } from "@/ui/primitives/index";
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;

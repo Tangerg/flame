@@ -25,10 +25,9 @@ vi.mock("@/features/approvals/ui/RulesRow", () => ({
   RulesRow: () => <div>Remembered rules fixture</div>,
 }));
 
-vi.mock("@/features/agent/public/approvalPolicy", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/approvalPolicy")>()),
-  setApprovalMode: model.setApprovalMode,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { setApprovalMode: model.setApprovalMode });
+});
 
 const LOAD_FAILED = "Couldn't load approval mode";
 const UNAVAILABLE = "Approval controls unavailable";

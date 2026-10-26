@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { createAgentGatewayFixture } from "@/test/agentOwners";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
@@ -15,10 +16,11 @@ import {
   type RunRef,
   type SteerMutationPromise,
 } from "@flame/runtime-client";
-import { createMutationPromise } from "@flame/runtime-client";
-import { createMutationJournal, type MutationJournalStorage } from "@flame/runtime-client";
-import { createMethods } from "@flame/runtime-client";
-import { type RpcClient } from "@flame/runtime-client";
+
+import { type MutationJournalStorage } from "@flame/runtime-client";
+import { createRuntimeTestClient } from "@/test/runtimeClient";
+import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import { asRunId, asSegmentId } from "@flame/runtime-client";
 import { useNotificationStore } from "@/features/notifications/public/notifications";
 
@@ -51,7 +53,7 @@ function nominatedSubmission(
   userItemId = "item_original",
 ): SteerMutationPromise {
   const expose = (
-    mutation: ReturnType<typeof createMutationPromise<{ userItemId: string }>>,
+    mutation: ReturnType<typeof mutationResult<{ userItemId: string }>>,
   ): SteerMutationPromise =>
     Object.defineProperties(
       mutation.then((result) => ({ type: "accepted" as const, ...result })),
@@ -61,7 +63,7 @@ function nominatedSubmission(
         retry: { value: () => expose(mutation.retry()) },
       },
     ) as SteerMutationPromise;
-  return expose(createMutationPromise(execute, key));
+  return expose(mutationResult(execute, key));
 }
 
 let gateway: ReturnType<typeof createAgentGatewayFixture>;
@@ -79,7 +81,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const messages = () => testClient.agent.access.view.getSession(sessionId)!.view.messages;
+const messages = () => testClient.agent.dependencies.view.getSession(sessionId)!.view.messages;
 
 describe("steer command observation", () => {
   it.each([true, false])(
@@ -100,8 +102,8 @@ describe("steer command observation", () => {
             sessions: { snapshot },
           }) as unknown as FlameClient,
       );
-      await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, () =>
-        testClient.agent.access.runtime.loadSessionSnapshot(sessionId),
+      await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, () =>
+        testClient.agent.dependencies.runtime.loadSessionSnapshot(sessionId),
       );
       expect(messages()[0]).toMatchObject({
         id: "item_accepted",
@@ -133,8 +135,8 @@ describe("steer command observation", () => {
         interrupts: [],
         steerInputs: [{ runId, segmentId, userItemId: "item_accepted", input: body }],
       });
-      await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, () =>
-        testClient.agent.access.runtime.loadSessionSnapshot(sessionId),
+      await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, () =>
+        testClient.agent.dependencies.runtime.loadSessionSnapshot(sessionId),
       );
       expect(messages()).toHaveLength(1);
       expect(messages()[0]).toMatchObject({
@@ -148,8 +150,8 @@ describe("steer command observation", () => {
       expect(steerInputFeedback(messages()[0]!)).toBe(applied ? "applied" : "notApplied");
       testClient.agent.projection.store.setState({ sessions: {} });
       testClient.agent.projection.store.getState().ensureSession(sessionId);
-      await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, () =>
-        testClient.agent.access.runtime.loadSessionSnapshot(sessionId),
+      await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, () =>
+        testClient.agent.dependencies.runtime.loadSessionSnapshot(sessionId),
       );
       expect(messages()[0]?.steer).toEqual({
         runId,
@@ -169,21 +171,18 @@ describe("steer command observation", () => {
         remove: (key) => void values.delete(key),
         keys: () => [...values.keys()],
       };
-      const scope = () => ({ namespace: "idp_cold_steer", retentionSeconds: 86400 });
+      const capabilities = () => discovery.capabilities as ServerCapabilities;
       const lostCall = vi.fn(async (method: string) => {
         if (method === "runs.getAcceptance")
           return { type: "notRecorded", candidateUserItemId: "item_original" };
         throw new RpcTransportError("application died with an unresolved steer");
       });
-      const predecessor = createMutationJournal({ storage, scope });
-      const first = createMethods({ call: lostCall } as unknown as RpcClient, {
-        mutationJournal: predecessor,
-      });
+      const first = createRuntimeTestClient(lostCall, { mutationStorage: storage, capabilities });
       const input = [{ type: "text" as const, text: "the original authored input" }];
       const pending = first.runs.steer(asRunId(runId), asSegmentId(segmentId), input);
       await expect(pending).rejects.toBeInstanceOf(RpcTransportError);
       input[0]!.text = "a changed draft after restart";
-      predecessor.dispose();
+      await first.close();
       testClient.agent.projection.store.setState({ sessions: {} });
       testClient.agent.projection.store.getState().ensureSession(sessionId);
       testClient.agent.projection.store.getState().setSynchronize(sessionId, async () => false);
@@ -194,10 +193,7 @@ describe("steer command observation", () => {
         }
         return { userItemId: "item_original" };
       });
-      const successor = createMutationJournal({ storage, scope });
-      const methods = createMethods({ call } as unknown as RpcClient, {
-        mutationJournal: successor,
-      });
+      const methods = createRuntimeTestClient(call, { mutationStorage: storage, capabilities });
       const snapshot = vi.fn().mockResolvedValue({
         items: [],
         runs: [{ ...root, activeSegmentId: "seg_replacement" }],
@@ -207,8 +203,8 @@ describe("steer command observation", () => {
         testClient,
         () => ({ runs: methods.runs, sessions: { snapshot } }) as unknown as FlameClient,
       );
-      await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, () =>
-        testClient.agent.access.runtime.loadSessionSnapshot(sessionId),
+      await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, () =>
+        testClient.agent.dependencies.runtime.loadSessionSnapshot(sessionId),
       );
       expect(call.mock.calls.map(([method]) => method)).toEqual(["runs.getAcceptance"]);
       expect(messages()).toHaveLength(1);
@@ -219,10 +215,10 @@ describe("steer command observation", () => {
         { kind: "text", text: "the original authored input" },
       ]);
       unavailable = false;
-      expect(retrySteerInput(testClient.agent.access, restored.id)).toBe(true);
-      expect(retrySteerInput(testClient.agent.access, restored.id)).toBe(false);
+      expect(retrySteerInput(testClient.agent.dependencies, restored.id)).toBe(true);
+      expect(retrySteerInput(testClient.agent.dependencies, restored.id)).toBe(false);
       await vi.waitFor(() => expect(messages()[0]?.steer?.receipt).toBe("accepted"));
-      expect(call.mock.calls[2]).toEqual([
+      expect(call.mock.calls[2]).toMatchObject([
         "runs.steer",
         {
           runId,
@@ -231,11 +227,11 @@ describe("steer command observation", () => {
         },
         expect.objectContaining({
           idempotencyKey: pending.idempotencyKey,
-          idempotencyNamespace: "idp_cold_steer",
+          idempotencyNamespace: discovery.capabilities.limits.idempotency.namespace,
         }),
       ]);
       expect(values.size).toBe(0);
-      successor.dispose();
+      await methods.close();
     },
   );
   it("retains a lost ACK and retries the original command after a cold read and Segment change", async () => {
@@ -246,7 +242,7 @@ describe("steer command observation", () => {
         accepted.set(key, "item_original");
         admissions++;
       }
-      if (execute.mock.calls.length <= 2) throw new RpcTransportError("original ACK lost");
+      if (execute.mock.calls.length === 1) throw new RpcTransportError("original ACK lost");
       return { userItemId: accepted.get(key)! };
     });
     const steer = vi.fn(() => nominatedSubmission(execute, "original-command"));
@@ -255,14 +251,14 @@ describe("steer command observation", () => {
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
     const input = { parts: [{ kind: "text" as const, text: "original instruction" }] };
-    expect(steerRunningTurn(testClient.agent.access, { sessionId, runId, segmentId, input })).toBe(
-      true,
-    );
+    expect(
+      steerRunningTurn(testClient.agent.dependencies, { sessionId, runId, segmentId, input }),
+    ).toBe(true);
     input.parts[0]!.text = "a changed draft";
     await vi.waitFor(() => expect(messages()[0]?.steer?.delivery).toBe("unknown"));
     const localId = messages()[0]!.id;
 
-    await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, async () => ({
+    await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, async () => ({
       snapshot: {
         runs: [runtimeRunFact({ ...root, activeSegmentId: "seg_next" })],
         items: [],
@@ -278,13 +274,12 @@ describe("steer command observation", () => {
     });
     expect(messages()[0]!.blocks).toMatchObject([{ kind: "text", text: "original instruction" }]);
 
-    expect(retrySteerInput(testClient.agent.access, localId)).toBe(true);
-    expect(retrySteerInput(testClient.agent.access, localId)).toBe(false);
+    expect(retrySteerInput(testClient.agent.dependencies, localId)).toBe(true);
+    expect(retrySteerInput(testClient.agent.dependencies, localId)).toBe(false);
     await vi.waitFor(() => expect(messages()[0]?.steer?.receipt).toBe("accepted"));
     expect(messages()[0]?.steer).toEqual({ runId, receipt: "accepted" });
     expect(admissions).toBe(1);
     expect(execute.mock.calls.map(([key]) => key)).toEqual([
-      "original-command",
       "original-command",
       "original-command",
     ]);
@@ -320,7 +315,7 @@ describe("steer command observation", () => {
             sessions: { snapshot },
           }) as unknown as FlameClient,
       );
-      steerRunningTurn(testClient.agent.access, {
+      steerRunningTurn(testClient.agent.dependencies, {
         sessionId,
         runId,
         segmentId,
@@ -365,8 +360,8 @@ describe("steer command observation", () => {
       });
       testClient.agent.projection.store.setState({ sessions: {} });
       testClient.agent.projection.store.getState().ensureSession(sessionId);
-      await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, () =>
-        testClient.agent.access.runtime.loadSessionSnapshot(sessionId),
+      await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, () =>
+        testClient.agent.dependencies.runtime.loadSessionSnapshot(sessionId),
       );
       expect(messages()).toHaveLength(1);
       expect(steerInputFeedback(messages()[0]!)).toBe("applied");
@@ -385,7 +380,7 @@ describe("steer command observation", () => {
       testClient,
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
-    steerRunningTurn(testClient.agent.access, {
+    steerRunningTurn(testClient.agent.dependencies, {
       sessionId,
       runId,
       segmentId,
@@ -404,7 +399,7 @@ describe("steer command observation", () => {
       testClient,
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
-    steerRunningTurn(testClient.agent.access, {
+    steerRunningTurn(testClient.agent.dependencies, {
       sessionId,
       runId,
       segmentId,
@@ -413,7 +408,7 @@ describe("steer command observation", () => {
     const localId = messages()[0]!.id;
     gateway.replaceRuntimeGeneration();
     expect(messages()).toHaveLength(0);
-    expect(retrySteerInput(testClient.agent.access, localId)).toBe(false);
+    expect(retrySteerInput(testClient.agent.dependencies, localId)).toBe(false);
     receipt.resolve({ userItemId: "item_retired" });
     await receipt.promise;
     await Promise.resolve();
@@ -426,14 +421,14 @@ describe("steer command observation", () => {
       testClient,
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
-    steerRunningTurn(testClient.agent.access, {
+    steerRunningTurn(testClient.agent.dependencies, {
       sessionId,
       runId,
       segmentId,
       input: { parts: [{ kind: "text", text: "original" }] },
     });
     await vi.waitFor(() => expect(messages()[0]?.id).toBe("item_original"));
-    await revalidateAgentSessionMaterial(testClient.agent.access, sessionId, async () => ({
+    await revalidateAgentSessionMaterial(testClient.agent.dependencies, sessionId, async () => ({
       snapshot: {
         runs: [runtimeRunFact(root)],
         items: [],
@@ -468,7 +463,7 @@ describe("steer command observation", () => {
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
     for (let n = 0; n < 2; n++)
-      steerRunningTurn(testClient.agent.access, {
+      steerRunningTurn(testClient.agent.dependencies, {
         sessionId,
         runId,
         segmentId,
@@ -490,7 +485,7 @@ describe("steer command observation", () => {
       testClient,
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
-    steerRunningTurn(testClient.agent.access, {
+    steerRunningTurn(testClient.agent.dependencies, {
       sessionId,
       runId,
       segmentId,

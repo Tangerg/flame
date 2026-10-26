@@ -24,7 +24,7 @@ describe("Agent session state adapter continuity", () => {
       lastSessionId: "ses_a",
     });
 
-    testClient.agent.access.state.closeSession("ses_a");
+    testClient.agent.dependencies.state.closeSession("ses_a");
 
     expect(testClient.navigation.get().session).toBe("ses_b");
     expect(testClient.navigation.get().view).toBeNull();
@@ -39,7 +39,7 @@ describe("Agent session state adapter continuity", () => {
       lastSessionId: "ses_gone",
     });
 
-    testClient.agent.access.state.reconcileSessions(["ses_live"]);
+    testClient.agent.dependencies.state.reconcileSessions(["ses_live"]);
 
     expect(testClient.navigation.get()).toMatchObject({
       session: "ses_live",
@@ -56,7 +56,7 @@ describe("Agent session state adapter continuity", () => {
       lastSessionId: "ses_a",
     });
 
-    testClient.agent.access.state.closeSession("ses_b");
+    testClient.agent.dependencies.state.closeSession("ses_b");
 
     expect(testClient.navigation.get()).toMatchObject({
       session: "ses_a",
@@ -73,7 +73,7 @@ describe("Agent session state adapter continuity", () => {
       lastSessionId: "ses_a",
     });
 
-    testClient.agent.access.state.reconcileSessions(["ses_a"]);
+    testClient.agent.dependencies.state.reconcileSessions(["ses_a"]);
 
     expect(testClient.navigation.get()).toMatchObject({
       session: "ses_a",
@@ -90,7 +90,7 @@ describe("Agent session state adapter continuity", () => {
       lastSessionId: "ses_gone",
     });
 
-    testClient.agent.access.state.reconcileSessions([]);
+    testClient.agent.dependencies.state.reconcileSessions([]);
 
     expect(testClient.navigation.get().session).toBe("");
     expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("");

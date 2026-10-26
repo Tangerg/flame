@@ -18,7 +18,6 @@ const selectAgentSession = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  selectAgentSession,
   useAgentSessions: () => ({
     data: [
       {
@@ -38,6 +37,9 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
     ],
   }),
 }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { selectAgentSession });
+});
 
 function open(): ReactElement {
   useSessionSearchStore.setState({ open: true });
@@ -74,9 +76,7 @@ describe("going to a session", () => {
     fireEvent.click(screen.getByText("Fix the retry loop"));
 
     expect(useSessionSearchStore.getState().open).toBe(false);
-    await waitFor(() =>
-      expect(selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "ses_a"),
-    );
+    await waitFor(() => expect(selectAgentSession).toHaveBeenCalledWith("ses_a"));
   });
 
   it("opens the highlighted session on Enter, after the arrows move it", async () => {
@@ -85,9 +85,7 @@ describe("going to a session", () => {
     fireEvent.keyDown(field(), { key: "ArrowDown" });
     fireEvent.keyDown(field(), { key: "Enter" });
 
-    await waitFor(() =>
-      expect(selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "ses_a"),
-    );
+    await waitFor(() => expect(selectAgentSession).toHaveBeenCalledWith("ses_a"));
   });
 
   it("marks exactly one row, and moves it with the query", () => {

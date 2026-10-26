@@ -29,6 +29,7 @@ export function atCompositionRoot(file) {
     file === "test/setup.ts" ||
     file === "test/renderClient.tsx" ||
     file === "test/agentOwners.ts" ||
+    file === "test/agentFixture.tsx" ||
     /^features\/[^/]+\.test\.tsx?$/.test(file)
   );
 }

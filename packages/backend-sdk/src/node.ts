@@ -19,7 +19,7 @@ export async function startBackend(options: {
   let stopping = false;
   const shutdown = () => {
     stopping = true;
-    void backend?.server.close().catch(() => {
+    void backend?.close().catch(() => {
       failure = true;
     });
   };
@@ -38,16 +38,7 @@ export async function startBackend(options: {
       throw new Error("plugin: module must export its Backend as default");
     backend = loaded.default;
     if (stopping) return;
-    backend.publish();
-    const closed = Promise.withResolvers<void>();
-    backend.server.onclose = () => closed.resolve();
-    backend.server.onerror = () => {
-      failure = true;
-    };
-    await backend.server.connect(
-      new StdioTransport(process.stdin, process.stdout),
-    );
-    await closed.promise;
+    await backend.serve(new StdioTransport(process.stdin, process.stdout));
   } catch {
     failure = true;
     process.stderr.write("plugin: backend startup or protocol failed\n");

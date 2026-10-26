@@ -52,10 +52,10 @@ function configureSessions(
   sessions: Record<string, AgentSessionViewEntry>,
 ): void {
   disposers.push(
-    stubInstance(testClient.agent.access.state, {
+    stubInstance(testClient.agent.dependencies.state, {
       getActiveSessionId: () => activeSessionId,
     } as unknown as AgentSessionStatePort),
-    stubInstance(testClient.agent.access.view, {
+    stubInstance(testClient.agent.dependencies.view, {
       getSession: (sessionId: string) => sessions[sessionId],
     } as unknown as AgentSessionViewPort),
   );
@@ -79,7 +79,7 @@ describe("active Session Run commands", () => {
       retryOpening: null,
     });
 
-    expect(stopCurrentRootRun(testClient.agent.access)).toBe(true);
+    expect(stopCurrentRootRun(testClient.agent.dependencies)).toBe(true);
     expect(stop).toHaveBeenCalledOnce();
     expect(cancelRun).not.toHaveBeenCalled();
   });
@@ -109,13 +109,22 @@ describe("active Session Run commands", () => {
     });
 
     expect(
-      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: running.id }),
+      cancelSessionRun(testClient.agent.dependencies, {
+        sessionId: "session-1",
+        runId: running.id,
+      }),
     ).toBe(true);
     expect(
-      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: finished.id }),
+      cancelSessionRun(testClient.agent.dependencies, {
+        sessionId: "session-1",
+        runId: finished.id,
+      }),
     ).toBe(false);
     expect(
-      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: "run-missing" }),
+      cancelSessionRun(testClient.agent.dependencies, {
+        sessionId: "session-1",
+        runId: "run-missing",
+      }),
     ).toBe(false);
     expect(cancelRun).toHaveBeenCalledOnce();
     expect(cancelRun).toHaveBeenCalledWith(running.id);
@@ -148,7 +157,7 @@ describe("active Session Run commands", () => {
     });
 
     expect(
-      cancelSessionRun(testClient.agent.access, {
+      cancelSessionRun(testClient.agent.dependencies, {
         sessionId: "session-predecessor",
         runId: "run-predecessor",
       }),

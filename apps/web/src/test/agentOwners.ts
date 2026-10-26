@@ -7,7 +7,7 @@ import { type TestClient } from "@/test/renderClient";
 
 /** Recompose an adapter against this test's retained view and generation owners. */
 export function createAgentGatewayFixture(client: TestClient, runtimeClient: () => FlameClient) {
-  const access = client.agent.access;
+  const access = client.agent.dependencies;
   const gateway = createAgentRuntimeGateway(
     runtimeClient,
     client.runtime,
@@ -15,7 +15,7 @@ export function createAgentGatewayFixture(client: TestClient, runtimeClient: () 
     access.commands,
     access.usage,
   );
-  client.agent.access = { ...access, runtime: gateway.gateway };
+  client.agent.dependencies = { ...access, runtime: gateway.gateway };
   client.agent.retries = gateway.retries;
   onTestFinished(gateway.dispose);
   return gateway;
@@ -23,15 +23,19 @@ export function createAgentGatewayFixture(client: TestClient, runtimeClient: () 
 
 export function createAgentStateFixture(client: TestClient) {
   const state = createAgentState(client.navigation, client.agent.sessions, client.agent.projection);
-  client.agent.access = { ...client.agent.access, state: state.state, view: state.view };
+  client.agent.dependencies = {
+    ...client.agent.dependencies,
+    state: state.state,
+    view: state.view,
+  };
   onTestFinished(state.dispose);
   return state;
 }
 
 export function createInterruptResponseFixture(client: TestClient) {
-  client.agent.access.interrupts.retire();
-  const coordinator = new InterruptResponseCoordinator(client.agent.access.view);
-  client.agent.access = { ...client.agent.access, interrupts: coordinator };
+  client.agent.dependencies.interrupts.retire();
+  const coordinator = new InterruptResponseCoordinator(client.agent.dependencies.view);
+  client.agent.dependencies = { ...client.agent.dependencies, interrupts: coordinator };
   const dispose = () => coordinator.retire();
   onTestFinished(dispose);
   return dispose;

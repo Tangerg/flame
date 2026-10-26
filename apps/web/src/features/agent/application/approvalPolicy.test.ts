@@ -54,7 +54,7 @@ describe("approval policy", () => {
       decision: "allow" as const,
     };
 
-    await allowMCPTool(testClient.agent.access, docs, "read");
+    await allowMCPTool(testClient.agent.dependencies, docs, "read");
 
     expect(setRule).toHaveBeenCalledWith(request);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [APPROVAL_RULES_KEY] });
@@ -67,13 +67,13 @@ describe("approval policy", () => {
       .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
-    uninstall = stubInstance(testClient.agent.access.runtime, {
+    uninstall = stubInstance(testClient.agent.dependencies.runtime, {
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
     queryClient.setQueryData([APPROVAL_MODE_KEY], saved("balanced"));
 
-    const safe = setApprovalMode(testClient.agent.access, "safe");
-    const yolo = setApprovalMode(testClient.agent.access, "yolo");
+    const safe = setApprovalMode(testClient.agent.dependencies, "safe");
+    const yolo = setApprovalMode(testClient.agent.dependencies, "yolo");
     await Promise.resolve();
     expect(setMode).toHaveBeenCalledTimes(1);
 
@@ -93,12 +93,12 @@ describe("approval policy", () => {
       .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
       .mockResolvedValueOnce(saved("yolo"));
-    uninstall = stubInstance(testClient.agent.access.runtime, {
+    uninstall = stubInstance(testClient.agent.dependencies.runtime, {
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
 
-    const rejected = setApprovalMode(testClient.agent.access, "safe");
-    const accepted = setApprovalMode(testClient.agent.access, "yolo");
+    const rejected = setApprovalMode(testClient.agent.dependencies, "safe");
+    const accepted = setApprovalMode(testClient.agent.dependencies, "yolo");
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
@@ -108,15 +108,15 @@ describe("approval policy", () => {
 
   it("does not serialize the successor behind an old Plugin Host mode change", async () => {
     const retiredMode = Promise.withResolvers<ApprovalModeResult>();
-    uninstall = stubInstance(testClient.agent.access.runtime, {
+    uninstall = stubInstance(testClient.agent.dependencies.runtime, {
       setApprovalMode: vi.fn(() => retiredMode.promise),
     } as unknown as AgentRuntimeGateway);
-    const retired = setApprovalMode(testClient.agent.access, "safe");
+    const retired = setApprovalMode(testClient.agent.dependencies, "safe");
 
     const successorSetMode = vi.fn().mockResolvedValue(saved("yolo"));
     runtimeClient = () => ({ approval: { setMode: successorSetMode } }) as unknown as FlameClient;
     const disposeSuccessor = createAgentGatewayFixture(testClient, getRuntimeClient);
-    const successor = setApprovalMode(testClient.agent.access, "yolo");
+    const successor = setApprovalMode(testClient.agent.dependencies, "yolo");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorSetMode.mock.calls.length;
     retiredMode.resolve(saved("safe"));
@@ -137,26 +137,28 @@ describe("approval policy", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(failure);
-    uninstall = stubInstance(testClient.agent.access.runtime, {
+    uninstall = stubInstance(testClient.agent.dependencies.runtime, {
       forgetApprovalRule,
     } as unknown as AgentRuntimeGateway);
     const key = [APPROVAL_RULES_KEY, { sessionId: "ses_1" }];
     queryClient.setQueryData(key, [rule("rule-1"), rule("rule-2")]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
 
-    await expect(forgetRules(testClient.agent.access, ["rule-1", "rule-2"])).rejects.toBe(failure);
+    await expect(forgetRules(testClient.agent.dependencies, ["rule-1", "rule-2"])).rejects.toBe(
+      failure,
+    );
     expect(queryClient.getQueryData(key)).toEqual([rule("rule-2")]);
   });
 
   it("keeps an accepted rule deletion successful when cache repair fails", async () => {
-    uninstall = stubInstance(testClient.agent.access.runtime, {
+    uninstall = stubInstance(testClient.agent.dependencies.runtime, {
       forgetApprovalRule: vi.fn().mockResolvedValue(undefined),
     } as unknown as AgentRuntimeGateway);
     const key = [APPROVAL_RULES_KEY, { sessionId: "ses_1" }];
     queryClient.setQueryData(key, [rule("rule-1")]);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("cache unavailable"));
 
-    await expect(forgetRules(testClient.agent.access, ["rule-1"])).resolves.toBeUndefined();
+    await expect(forgetRules(testClient.agent.dependencies, ["rule-1"])).resolves.toBeUndefined();
     expect(queryClient.getQueryData(key)).toEqual([]);
   });
 
@@ -166,7 +168,7 @@ describe("approval policy", () => {
     const forgetSuccessor = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ approval: { forgetRule: forgetRetired } }) as unknown as FlameClient;
     const retiredInstallation = createAgentGatewayFixture(testClient, getRuntimeClient);
-    const command = rejected(forgetRules(testClient.agent.access, ["rule-1", "rule-2"]));
+    const command = rejected(forgetRules(testClient.agent.dependencies, ["rule-1", "rule-2"]));
     await vi.waitFor(() => expect(forgetRetired).toHaveBeenCalledOnce());
 
     runtimeClient = () => ({ approval: { forgetRule: forgetSuccessor } }) as unknown as FlameClient;

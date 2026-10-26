@@ -20,9 +20,8 @@ import { queryClient } from "@/lib/queryClient";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
-import { createAgent } from "@/features/agent/adapters/agent";
+import { createAgentFixture } from "@/test/agentFixture";
 import { createAgentViewSelectors } from "@/features/agent/adapters/agentViewSelectors";
-import { AgentProvider } from "@/features/agent/public/agent";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -82,15 +81,15 @@ export function createTestClient(
     (() => {
       throw new Error("Runtime test client is not configured");
     });
-  const agent = createAgent(client, navigation, runtime, stream, scope);
+  const agent = createAgentFixture(client, navigation, runtime, stream, scope);
   if (options.start !== false) agent.start();
   const composer = createComposer(
     {
-      getActiveSessionId: agent.access.state.getActiveSessionId,
-      getLifecycleSnapshot: agent.access.state.getLifecycleSnapshot,
-      subscribeActiveSessionId: agent.access.state.subscribeActiveSessionId,
-      subscribeLifecycle: agent.access.state.subscribeLifecycle,
-      subscribeDeleted: agent.access.state.subscribeDeletedSession,
+      getActiveSessionId: agent.access.getActiveSessionId,
+      getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
+      subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
+      subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
+      subscribeDeleted: agent.access.subscribeDeletedAgentSession,
     },
     runtime.endpoint.currentRuntimeEndpoint,
     scope,
@@ -116,7 +115,7 @@ export function createTestClient(
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={theme.access}>
           <RuntimeProvider value={runtime}>
-            <AgentProvider value={agent.access}>
+            <agent.Provider>
               <ComposerProvider value={composer.access}>
                 <WorkspaceProvider value={workspace.access}>
                   <WorkingDirectoryProvider value={directory.access}>
@@ -130,7 +129,7 @@ export function createTestClient(
                   </WorkingDirectoryProvider>
                 </WorkspaceProvider>
               </ComposerProvider>
-            </AgentProvider>
+            </agent.Provider>
           </RuntimeProvider>
         </ThemeProvider>
       </QueryClientProvider>
@@ -162,7 +161,7 @@ export function createTestClient(
     Wrapper,
     get sessionDependencies() {
       return {
-        agentAccess: agent.access,
+        agentAccess: agent.dependencies,
         projection: agent.projection,
         sessions: agent.sessions,
         retries: agent.retries,

@@ -356,9 +356,9 @@ it("does not animate historical tools on initial testClient.render", () => {
 
 const agentRunCommands = vi.hoisted(() => ({ cancel: vi.fn() }));
 
-vi.mock("@/features/agent/public/run", () => ({
-  cancelSessionRun: agentRunCommands.cancel,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { cancelSessionRun: agentRunCommands.cancel });
+});
 
 vi.mock("@/features/connection/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => true,
@@ -498,7 +498,7 @@ describe("delegated Run rendering", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
 
     expect(agentRunCommands.cancel).toHaveBeenCalledOnce();
-    expect(agentRunCommands.cancel).toHaveBeenCalledWith(testClient.agent.access, {
+    expect(agentRunCommands.cancel).toHaveBeenCalledWith({
       sessionId: "session-1",
       runId: "child-run",
     });

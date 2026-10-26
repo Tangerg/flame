@@ -1,3 +1,5 @@
+import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -8,7 +10,7 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { createFlameClient, createMutationJournal, stringifyJSON } from "@flame/runtime-client";
+import { createFlameClient, stringifyJSON } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess, waitForRequest } from "@flame/runtime-client/testing";
 import { type CallPluginRequest } from "@flame/runtime-client/wire";
@@ -42,15 +44,13 @@ const original: CallPluginRequest = {
 function open() {
   transport = createMemoryTransport();
   client = createFlameClient(transport, {
-    mutationJournal: createMutationJournal({
-      storage: {
-        get: (key) => structuredClone(records.get(key)),
-        set: (key, value) => records.set(key, structuredClone(value)),
-        remove: (key) => records.delete(key),
-        keys: () => [...records.keys()],
-      },
-      scope: () => ({ namespace: "idp_" + "1".repeat(32), retentionSeconds: 3600 }),
-    }),
+    mutationStorage: {
+      get: (key) => structuredClone(records.get(key)),
+      set: (key, value) => records.set(key, structuredClone(value)),
+      remove: (key) => records.delete(key),
+      keys: () => [...records.keys()],
+    },
+    capabilities: () => discovery.capabilities as ServerCapabilities,
   });
   owner = new AbortController();
   operations = { ...client.plugins, signal: owner.signal, track: (operation) => operation };
@@ -79,7 +79,10 @@ afterEach(async () => {
 async function recoverOriginal() {
   fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
   const lookup = await waitForRequest(transport, "plugins.getCommand");
-  expect(lookup.params).toEqual({ namespace: "idp_" + "1".repeat(32), key });
+  expect(lookup.params).toEqual({
+    namespace: discovery.capabilities.limits.idempotency.namespace,
+    key,
+  });
   await act(async () => respondSuccess(transport, lookup.id, original));
   const request = await waitForRequest(transport, "plugins.call");
   expect(request.params).toEqual(original);
@@ -90,7 +93,10 @@ it("retires never-dispatched work using only its original identity", async () =>
   testClient.render(<PendingCommands operations={operations} />);
   fireEvent.click(screen.getByRole("button", { name: "Retire if never dispatched" }));
   const request = await waitForRequest(transport, "plugins.retireCommand");
-  expect(request.params).toEqual({ namespace: "idp_" + "1".repeat(32), key });
+  expect(request.params).toEqual({
+    namespace: discovery.capabilities.limits.idempotency.namespace,
+    key,
+  });
   await act(async () => respondSuccess(transport, request.id, {}));
   await waitFor(() => expect(records.size).toBe(0));
   expect(screen.getByRole("status").textContent).toContain("retired before dispatch");

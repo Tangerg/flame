@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { ChevronRight } from "@flame/icons/react";
-import { CollapsiblePrimitive } from "./primitives/collapsible";
+import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { layout, space, surface, type } from "./tokens.stylex";

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { DialogPrimitive as Dialog } from "./primitives/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import { X } from "@flame/icons/react";
 import {
   use,

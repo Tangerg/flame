@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import {
   beginComposerDraftReplacement,
   captureComposerSubmission,
@@ -127,7 +127,7 @@ function mount() {
 
 beforeEach(() => {
   material.rows = [userRow()];
-  selectAgentSession(testClient.agent.access, "stream-session");
+  testClient.agent.access.selectAgentSession("stream-session");
   replaceComposerDraft(testClient.composer.access, { text: "Keep this authored draft" });
 });
 
@@ -408,7 +408,7 @@ describe("ChatStream question focus handoff", () => {
 
     act(() => {
       material.rows = [userRow()];
-      selectAgentSession(testClient.agent.access, "other-session");
+      testClient.agent.access.selectAgentSession("other-session");
     });
 
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBeTruthy();

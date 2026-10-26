@@ -8,7 +8,7 @@ prepareTestClient(() => {
 });
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { TrajectoryReport } from "../../../plugins/trajectory/component/component";
+import { TrajectoryReport } from "../../../plugins/trajectory/component/report";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
 import { createTranslator, type ComponentContext } from "@flame/component-sdk";
 import { type ContentBlock, type TrajectoryEntry } from "@flame/runtime-client/wire";

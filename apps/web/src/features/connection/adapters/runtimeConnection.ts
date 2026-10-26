@@ -12,12 +12,7 @@ import { createRuntimeConnectionProjection } from "@/features/connection/adapter
 import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 
-import {
-  createHttpTransport,
-  createFlameClient,
-  createMutationJournal,
-  createSidecarClient,
-} from "@flame/runtime-client";
+import { createHttpTransport, createFlameClient, createSidecarClient } from "@flame/runtime-client";
 export function createRuntimeConnection(
   host: ClientHost,
   requestMeta: (surface: "desktop" | "web") => RequestMeta,
@@ -78,18 +73,7 @@ export function createRuntimeConnection(
     const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
       requestMeta: () => requestMeta(hostBootstrap?.kind ?? host.kind),
       capabilities: projection.capabilities.negotiated,
-      mutationJournal: createMutationJournal({
-        storage,
-        scope: () => {
-          const idempotency = projection.capabilities.negotiated()?.limits.idempotency;
-          return idempotency
-            ? {
-                namespace: idempotency.namespace,
-                retentionSeconds: idempotency.retentionSeconds,
-              }
-            : null;
-        },
-      }),
+      mutationStorage: storage,
     });
     shared = { signature, client };
     return client;

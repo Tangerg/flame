@@ -22,11 +22,11 @@ export function createAgentBootstrapPlugin(agent: AgentOwner, runtimeClient: () 
       ctx.cleanup(agent.dispose);
       return {
         sessions: {
-          getActiveSessionId: agent.access.state.getActiveSessionId,
-          getLifecycleSnapshot: agent.access.state.getLifecycleSnapshot,
-          subscribeActiveSessionId: agent.access.state.subscribeActiveSessionId,
-          subscribeLifecycle: agent.access.state.subscribeLifecycle,
-          subscribeDeleted: agent.access.state.subscribeDeletedSession,
+          getActiveSessionId: agent.access.getActiveSessionId,
+          getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
+          subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
+          subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
+          subscribeDeleted: agent.access.subscribeDeletedAgentSession,
         },
       };
     },

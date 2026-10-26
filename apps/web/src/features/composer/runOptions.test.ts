@@ -24,10 +24,9 @@ vi.mock("@/features/composer/public/modelPreference", () => ({
   useComposerModelPreference: () => state.preference,
 }));
 
-vi.mock("@/features/agent/public/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  getActiveSessionId: () => "session-1",
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { getActiveSessionId: () => "session-1" });
+});
 
 afterEach(async () => {
   await resetKernelForTest();

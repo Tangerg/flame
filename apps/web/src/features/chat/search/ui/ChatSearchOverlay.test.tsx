@@ -10,7 +10,7 @@ import { act, fireEvent, screen } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { ContentVisibility } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { selectAgentSession } from "@/features/agent/public/session";
+
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
 import { openChatSearch } from "@/features/chat/search/application/openChatSearch";
 import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
@@ -27,7 +27,7 @@ const nativeScrollIntoView = Object.getOwnPropertyDescriptor(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  selectAgentSession(testClient.agent.access, "session-a");
+  testClient.agent.access.selectAgentSession("session-a");
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
@@ -145,7 +145,7 @@ describe("ChatSearchOverlay", () => {
     expect(openSearch().value).toBe("");
 
     fireEvent.change(searchInput()!, { target: { value: "beta" } });
-    act(() => selectAgentSession(testClient.agent.access, "session-b"));
+    act(() => testClient.agent.access.selectAgentSession("session-b"));
     expect(searchInput()).toBeNull();
     expect(openSearch().value).toBe("");
   });
@@ -575,7 +575,7 @@ describe("ChatSearchOverlay", () => {
     const outside = screen.getByRole("button", { name: "Outside" });
     outside.focus();
     const clearCount = highlights.clear.mock.calls.length;
-    act(() => selectAgentSession(testClient.agent.access, "session-b"));
+    act(() => testClient.agent.access.selectAgentSession("session-b"));
     expect(searchInput()).toBeNull();
     expect(document.activeElement).toBe(outside);
     expect(highlights.clear.mock.calls.length).toBeGreaterThan(clearCount);

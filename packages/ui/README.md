@@ -1,5 +1,11 @@
 # Flame UI
 
+Controls import Base UI directly at their implementation owner. A package-wide
+primitive alias layer would republish the same semantics without owning them.
+`ButtonPrimitive` remains public because it owns Flame's disabled and loading
+interaction behavior. Font-scale and heading hooks used to implement controls,
+and the code-wrap preference setter, are private implementation details.
+
 `@flame/ui` owns the shared presentation vocabulary used by Desktop and portable views: Base UI interaction primitives, token-dressed controls, typography, icon layout, document focus rules and compact panel composition, record disclosures, facts, metrics and readable tables. `@flame/icons` remains the owner of drawings, optical masters, SVG exports and discovery metadata. Product icon-name mappings remain with their consumer.
 
 Appearance preferences and theme selection belong to the application. Installed

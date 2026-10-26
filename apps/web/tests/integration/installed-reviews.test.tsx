@@ -1,3 +1,5 @@
+import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import type { ServerCapabilities } from "@flame/runtime-client/wire";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -8,12 +10,7 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  createFlameClient,
-  createMutationJournal,
-  parseJSON,
-  stringifyJSON,
-} from "@flame/runtime-client";
+import { createFlameClient, parseJSON, stringifyJSON } from "@flame/runtime-client";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
@@ -89,10 +86,8 @@ describe("installed Reviews contextual actions", () => {
     };
     const openClient = () =>
       createFlameClient(transport, {
-        mutationJournal: createMutationJournal({
-          storage,
-          scope: () => ({ namespace: "idp_" + "1".repeat(32), retentionSeconds: 3600 }),
-        }),
+        mutationStorage: storage,
+        capabilities: () => discovery.capabilities as ServerCapabilities,
       });
     await client.close();
     transport = createMemoryTransport();

@@ -7,9 +7,9 @@ import { createContext, use, type ReactNode } from "react";
 // document (e.g. a settings page with no outer <h1>) sets `value={1}`.
 const HeadingLevelContext = createContext(2);
 
-export type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-export function useHeadingLevel(): number {
+function useHeadingLevel(): number {
   return Math.min(Math.max(use(HeadingLevelContext), 1), 6);
 }
 

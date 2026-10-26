@@ -29,10 +29,9 @@ const { synchronizeMountedAgentSession } = vi.hoisted(() => ({
   synchronizeMountedAgentSession: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@/features/agent/public/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  synchronizeMountedAgentSession,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { synchronizeMountedAgentSession });
+});
 
 afterEach(async () => {
   await resetKernelForTest();

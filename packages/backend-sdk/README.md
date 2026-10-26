@@ -49,6 +49,11 @@ handler receives original canonical input and digest, command ID, cancellation,
 invocation origin/parent/target and callback reference in its immutable
 `CallContext`. A method or export cannot register twice or change after publish.
 Every exported capability must have its complete exact implementation.
+`serve(transport)` validates the complete binding set, freezes registration and
+owns the MCP connection until it ends. `close()` aborts work, closes transport,
+joins admitted handlers and releases resources once; concurrent callers share
+its settlement. The MCP server and publication step are private to `Backend`.
+The Node entry point supplies stdio and signal handling to this lifecycle.
 
 `context.runtime()` creates the public Runtime client from this call's captured
 grant. It keeps the original invocation and fixed loopback endpoint, uses no

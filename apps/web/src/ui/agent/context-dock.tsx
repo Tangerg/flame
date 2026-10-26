@@ -17,7 +17,7 @@ import { IconButton } from "@flame/ui/icon-button";
 import { isImeKey, vocab } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
-import { TabsPrimitive } from "@/ui/primitives/index";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 export interface AgentDockTab {
   id: string;
   title: string;

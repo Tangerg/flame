@@ -11,7 +11,7 @@ import {
   type as typeStep,
   weight,
 } from "./tokens.stylex";
-import { TabsPrimitive } from "./primitives/tabs";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 
 export interface SegmentedOption<T> {
   value: T;

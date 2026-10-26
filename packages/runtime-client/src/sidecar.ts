@@ -10,7 +10,7 @@ import { parseJSON } from "./json";
 import {
   projectHTTPSidecarResponse,
   validateHTTPSidecarResponse,
-} from "@flame/runtime-client/validation";
+} from "./generated/wire.validate.generated";
 import {
   HTTP_ENDPOINTS,
   type HTTPSidecarEndpointName,

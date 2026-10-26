@@ -6,7 +6,6 @@ import { createInstalledPlugins } from "@/features/plugins/adapters/installedPlu
 import { InstalledPluginsProvider } from "@/features/plugins/context";
 import { PRODUCT_NAME } from "@/app/product";
 import { createAgent } from "@/features/agent/adapters/agent";
-import { AgentProvider } from "@/features/agent/public/agent";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -52,11 +51,11 @@ const agent = createAgent(
 );
 const composer = createComposer(
   {
-    getActiveSessionId: agent.access.state.getActiveSessionId,
-    getLifecycleSnapshot: agent.access.state.getLifecycleSnapshot,
-    subscribeActiveSessionId: agent.access.state.subscribeActiveSessionId,
-    subscribeLifecycle: agent.access.state.subscribeLifecycle,
-    subscribeDeleted: agent.access.state.subscribeDeletedSession,
+    getActiveSessionId: agent.access.getActiveSessionId,
+    getLifecycleSnapshot: agent.access.getAgentSessionLifecycleSnapshot,
+    subscribeActiveSessionId: agent.access.subscribeActiveSessionId,
+    subscribeLifecycle: agent.access.subscribeAgentSessionLifecycle,
+    subscribeDeleted: agent.access.subscribeDeletedAgentSession,
   },
   connection.access.endpoint.currentRuntimeEndpoint,
   connection.scope,
@@ -104,7 +103,7 @@ const renderer = new ClientRenderer({
       <RootBoundary>
         <ThemeProvider value={theme.access}>
           <RuntimeProvider value={connection.access}>
-            <AgentProvider value={agent.access}>
+            <agent.Provider>
               <ComposerProvider value={composer.access}>
                 <WorkspaceProvider value={workspace.access}>
                   <WorkingDirectoryProvider value={directory.access}>
@@ -118,7 +117,7 @@ const renderer = new ClientRenderer({
                   </WorkingDirectoryProvider>
                 </WorkspaceProvider>
               </ComposerProvider>
-            </AgentProvider>
+            </agent.Provider>
           </RuntimeProvider>
         </ThemeProvider>
       </RootBoundary>,

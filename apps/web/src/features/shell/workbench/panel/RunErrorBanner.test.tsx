@@ -17,10 +17,10 @@ const state = vi.hoisted(() => ({
   showWorkspaceDock: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/run", () => ({
-  useActiveSessionProblem: () => state.problem,
-  dismissActiveSessionProblem: vi.fn(),
-}));
+vi.mock("@/features/agent/public/run", () => ({ useActiveSessionProblem: () => state.problem }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { dismissActiveSessionProblem: vi.fn() });
+});
 
 vi.mock("@/features/agent/public/input", () => ({
   agentTextInput: (text: string) => ({ text }),
@@ -31,11 +31,13 @@ vi.mock("@/features/agent/public/input", () => ({
   },
 }));
 
-vi.mock("@/features/agent/public/conversation", () => ({
-  getActiveConversationMessages: () => [
-    { role: "user", blocks: [{ kind: "text", text: "Run the suite" }] },
-  ],
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    getActiveConversationMessages: () => [
+      { role: "user", blocks: [{ kind: "text", text: "Run the suite" }] },
+    ],
+  });
+});
 
 vi.mock("@/features/connection/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => true,

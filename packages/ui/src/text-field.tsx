@@ -23,12 +23,8 @@ import { Button } from "./button";
 import { isImeKey } from "./keyboard";
 import { FIELD_SIZE, FIELD_SURFACE } from "./control-surface";
 import { WELL_SURFACE } from "./well-surface";
-import {
-  InputPrimitive,
-  TextAreaPrimitive,
-  type InputPrimitiveProps,
-  type TextAreaPrimitiveProps,
-} from "./primitives/index";
+import { Input } from "@base-ui/react/input";
+import type { ComponentProps, ComponentPropsWithRef } from "react";
 
 type FieldEdge = "boxed" | "bare" | "inline";
 
@@ -124,7 +120,7 @@ function edge(variant: FieldEdge, invalid: boolean) {
 }
 
 export type TextFieldProps = Omit<
-  InputPrimitiveProps,
+  ComponentProps<typeof Input>,
   "size" | "className" | "aria-invalid"
 > &
   SharedProps & { size?: FieldSize };
@@ -152,7 +148,7 @@ export function TextField({
     extra,
   );
   return (
-    <InputPrimitive
+    <Input
       {...props}
       aria-invalid={invalid || undefined}
       data-chrome-focus={
@@ -171,7 +167,7 @@ export function TextField({
 type AreaSize = "sm" | "md" | "prose";
 
 export type TextAreaProps = Omit<
-  TextAreaPrimitiveProps,
+  ComponentPropsWithRef<"textarea">,
   "className" | "aria-invalid"
 > &
   Omit<SharedProps, "variant"> & {
@@ -283,7 +279,7 @@ export function TextArea({
     extra,
   );
   return (
-    <TextAreaPrimitive
+    <textarea
       {...props}
       ref={(node) => {
         element.current = node;

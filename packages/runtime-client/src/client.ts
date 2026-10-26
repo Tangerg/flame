@@ -40,7 +40,7 @@ import {
   validateWire,
   type WireNotificationName,
   type WireNotificationParams,
-} from "@flame/runtime-client/validation";
+} from "./generated/wire.validate.generated";
 import type { RpcId, RpcMessage } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 

@@ -2,8 +2,8 @@ import { type AgentAccess } from "@/features/agent/public/agent";
 import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { playCompletionChime } from "@/features/notifications/chime";
 import { t } from "@/lib/i18n/index";
-import { type RootRunSettlement, subscribeRootRunSettlements } from "@/features/agent/public/run";
-import { selectAgentSession } from "@/features/agent/public/session";
+import { type RootRunSettlement } from "@/features/agent/public/run";
+
 import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
@@ -25,7 +25,7 @@ function openSettledSession(
   void revealWindow().catch((error: unknown) =>
     console.error("[notify] reveal window failed:", error),
   );
-  selectAgentSession(agentAccess, sessionId);
+  agentAccess.selectAgentSession(sessionId);
   selectWorkspaceChat(workspaceAccess);
 }
 
@@ -54,8 +54,7 @@ export function startCompletionNotifications(
   revealWindow: () => Promise<void>,
   productName: string,
 ): () => void {
-  const unsubscribe = subscribeRootRunSettlements(
-    agentAccess,
+  const unsubscribe = agentAccess.subscribeRootRunSettlements(
     (settlement) =>
       void announceSettlement(notifications, settlement, productName).catch((error: unknown) =>
         console.error("[notify] system notification failed:", error),

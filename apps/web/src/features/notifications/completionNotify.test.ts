@@ -19,7 +19,9 @@ const calls = vi.hoisted(() => ({
   reveal: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock("@/features/agent/public/session", () => ({ selectAgentSession: calls.select }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { selectAgentSession: calls.select });
+});
 
 vi.mock("@/features/workspace/public/navigation", () => ({
   selectWorkspaceChat: calls.chat,
@@ -74,7 +76,7 @@ describe("announceSettlement", () => {
     expect(FakeNotification.last?.title).toMatch(/needs you/i);
     FakeNotification.last!.onclick!();
     expect(calls.reveal).toHaveBeenCalledOnce();
-    expect(calls.select).toHaveBeenCalledWith(testClient.agent.access, "s-b");
+    expect(calls.select).toHaveBeenCalledWith("s-b");
     expect(calls.chat).toHaveBeenCalledOnce();
   });
 

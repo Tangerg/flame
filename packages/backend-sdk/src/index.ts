@@ -28,7 +28,6 @@ export {
 export {
   Refusal,
   decodeReply,
-  connectCallback,
   callHost,
   type CallbackRef,
   type Invocation,

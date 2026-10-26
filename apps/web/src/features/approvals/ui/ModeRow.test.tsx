@@ -14,10 +14,9 @@ const model = vi.hoisted(() => ({
   setApprovalMode: vi.fn(),
 }));
 
-vi.mock("@/features/agent/public/approvalPolicy", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/agent/public/approvalPolicy")>()),
-  setApprovalMode: model.setApprovalMode,
-}));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { setApprovalMode: model.setApprovalMode });
+});
 
 beforeEach(() => {
   model.setApprovalMode.mockReset();
@@ -82,7 +81,7 @@ describe("ModeRow", () => {
     expect(balanced.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(safe);
 
-    expect(model.setApprovalMode.mock.calls.map(([, mode]) => mode)).toEqual(["yolo", "safe"]);
+    expect(model.setApprovalMode.mock.calls.map(([mode]) => mode)).toEqual(["yolo", "safe"]);
   });
 
   it("describes each mode with the gates the Runtime published", () => {

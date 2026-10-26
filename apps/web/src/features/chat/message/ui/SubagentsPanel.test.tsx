@@ -31,7 +31,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-vi.mock("@/features/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { cancelSessionRun: material.cancel });
+});
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
@@ -526,7 +528,7 @@ it("cancels the currently selected child and disables mutations while disconnect
   openWorkspaceSubagentRun(testClient.workspace.access, "child");
   const { rerender } = testClient.render(<SubagentsPanel />);
   fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-  expect(material.cancel).toHaveBeenLastCalledWith(testClient.agent.access, {
+  expect(material.cancel).toHaveBeenLastCalledWith({
     sessionId: "session",
     runId: "child",
   });
@@ -534,7 +536,7 @@ it("cancels the currently selected child and disables mutations while disconnect
   nested.run = { ...child, id: "nested", parentRunId: "child", spawnedByItemId: "nested" };
   act(() => openWorkspaceSubagentRun(testClient.workspace.access, "nested"));
   fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-  expect(material.cancel).toHaveBeenLastCalledWith(testClient.agent.access, {
+  expect(material.cancel).toHaveBeenLastCalledWith({
     sessionId: "session",
     runId: "nested",
   });

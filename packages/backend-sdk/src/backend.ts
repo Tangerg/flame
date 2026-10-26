@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
@@ -106,7 +107,7 @@ const declaration = new RegExp(wire.constants.declarationPattern!);
 const installation = new RegExp(wire.constants.installationPattern!);
 
 export class Backend {
-  readonly server: Server;
+  readonly #server: Server;
   readonly #methods = new Map<string, BoundMethod>();
   readonly #capabilities = new Map<string, Capability>();
   readonly #tools = new Map<
@@ -131,7 +132,7 @@ export class Backend {
   #closing?: Promise<void>;
 
   constructor(info: { name: string; version: string }) {
-    this.server = new Server(info, { capabilities: { tools: {} } });
+    this.#server = new Server(info, { capabilities: { tools: {} } });
     this.#receive("tools/list", (params) => {
       exactFields(params, [], ["cursor", "_meta"]);
       if (params.cursor !== undefined)
@@ -328,7 +329,7 @@ export class Backend {
       extra: Extra,
     ) => unknown | Promise<unknown>,
   ): void {
-    this.server.setRequestHandler(
+    this.#server.setRequestHandler(
       z.object({
         method: z.literal(name),
         params: z.record(z.string(), z.unknown()).optional(),
@@ -617,7 +618,7 @@ export class Backend {
       handler,
     });
   }
-  publish(): void {
+  #publish(): void {
     if (
       this.#published ||
       (!this.#methods.size && !this.#tools.size) ||
@@ -632,6 +633,30 @@ export class Backend {
         )
           throw new Error("plugin: capability implementation is incomplete");
     this.#published = true;
+  }
+  serve(transport: Transport): Promise<void> {
+    this.#publish();
+    const closed = Promise.withResolvers<void>();
+    const failures: unknown[] = [];
+    this.#server.onclose = () => closed.resolve();
+    this.#server.onerror = (error) => failures.push(error);
+    return (async () => {
+      try {
+        await this.#server.connect(transport);
+        await closed.promise;
+      } catch (error) {
+        failures.push(error);
+      } finally {
+        try {
+          await this.close();
+        } catch (error) {
+          failures.push(error);
+        }
+      }
+      if (failures.length) {
+        throw new AggregateError(failures, "plugin: backend service failed");
+      }
+    })();
   }
   async #deliver(
     bound: BoundMethod,
@@ -686,8 +711,20 @@ export class Backend {
   close(): Promise<void> {
     this.#closing ??= (async () => {
       this.#lifetime.abort(new Error("plugin: backend retired"));
+      const failures: unknown[] = [];
+      try {
+        await this.#server.close();
+      } catch (error) {
+        failures.push(error);
+      }
       await Promise.allSettled(this.#pending);
-      await this.#dispose();
+      try {
+        await this.#dispose();
+      } catch (error) {
+        failures.push(error);
+      }
+      if (failures.length)
+        throw new AggregateError(failures, "plugin: backend cleanup failed");
     })();
     return this.#closing;
   }

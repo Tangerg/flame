@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { clamp } from "@/lib/clamp";
 import { cn } from "@/lib/classNames";
 import { color, corner, motion, space, surface } from "@flame/ui/tokens.stylex";
-import { ProgressPrimitive } from "@/ui/primitives/index";
+import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
 type ProgressWeight = "bar" | "row" | "seam";
 
 interface ProgressBarProps {

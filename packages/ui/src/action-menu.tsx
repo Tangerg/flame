@@ -5,7 +5,7 @@ import { MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
 import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
-import { MenuPrimitive } from "./primitives/menu";
+import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import {
   useHiddenPopupRelease,
   useHiddenRootRetirement,

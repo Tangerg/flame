@@ -9,8 +9,7 @@ import {
   type MutationSettler,
 } from "@flame/runtime-client";
 import { runtimeCapability } from "@/features/connection/public/capabilities";
-import { synchronizeMountedAgentSession } from "@/features/agent/public/session";
-import { registerAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
+
 import {
   type GoalCommandReceipt,
   type GoalCommandsGateway,
@@ -112,10 +111,9 @@ export function installGoalRuntimeAdapter(
 ): GoalRuntimeAdapterInstallation {
   let gateway = hasRuntimeGeneration ? new RuntimeGoalCommandsGateway(runtimeClient()) : null;
   const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
-    synchronizeMountedAgentSession(agentAccess, sessionId, "replace-live"),
+    agentAccess.synchronizeMountedAgentSession(sessionId, "replace-live"),
   );
-  const disposeSharedMaterial = registerAgentSessionSharedMaterial<SessionSnapshot>(
-    agentAccess,
+  const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
     "goal",
     (_sessionId, snapshot) => {
       return runtimeGoalMaterial(snapshot.goal, runtimeCapability(runtimeAccess, "goals"));

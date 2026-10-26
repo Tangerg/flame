@@ -23,7 +23,6 @@ current ownership and dependency structure.
 | `src/extensions/`                | Generic point registration, contribution lifetimes, host contracts and selectors                                                              |
 | `src/features/`                  | Product feature owners and their plugin contributions                                                                                         |
 | `../../packages/ui/`             | Shared UI package: first-batch controls, token declarations, document rules and appearance projection                                         |
-| `src/ui/primitives/`             | Remaining product interaction primitives backed by Base UI                                                                                    |
 | `src/ui/atoms/`                  | Product presentation composites consuming `@flame/ui`                                                                                         |
 | `src/ui/agent/`                  | Presentation composites for the workbench and conversation                                                                                    |
 | `src/lib/`                       | Shared technical mechanisms, including query caching, navigation contracts, publication identity, task lifetimes, highlighting, and telemetry |
@@ -483,8 +482,8 @@ remain with Runtime.
 
 ## Design system and observability
 
-The presentation dependency direction is primitives, atoms, then Agent
-composites. Business UI consumes dressed controls, not headless library internals.
+The presentation dependency direction is atoms, then Agent composites. The
+control owner imports Base UI directly; business UI consumes dressed controls.
 Shared UI does not fetch Runtime data or read plugin-owned state. StyleX and the
 existing global stylesheets remain the styling mechanism; this ownership
 refactor does not introduce another visual system.
@@ -560,3 +559,23 @@ real public modules. Features independently contribute panes to Settings. Guards
 check resolved module cycles and private imports, rather than treating an entire
 feature directory as one coarse initialization node. Installed plugin component
 lifetimes belong to `features/plugins` and survive Settings page unmounts.
+
+## Owned consumer capabilities
+
+The Agent adapter retains its runtime gateway, commands, session projection,
+shared-material writers and interrupt coordinator. It publishes bound business
+operations and read subscriptions through `AgentAccess`. Its instance-owned
+React provider supplies the implementation context to Agent hooks; `useAgent`
+returns only the consumer capabilities. Composition owns `start` and `dispose`.
+Tests compose their mutable graphs in `src/test/agentFixture.tsx`; production has
+no testing backdoor to its dependency aggregate.
+
+Each extension host creates its own `Configuration` and `WindowTitle` service.
+Configuration retains values by copy and publishes copied notifications; callers
+cannot mutate the retained map or subscribers. Window title behavior owns its
+private title, badge and activity state.
+
+UI atoms own both control semantics and presentation. They import Base UI at
+the actual control owner, or implement native semantics when needed. Tree's
+keyboard, ARIA and styling live together in `ui/atoms/tree.tsx`. The design-system
+gate keeps native interaction and Base UI inside the design system.

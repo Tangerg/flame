@@ -209,7 +209,7 @@ describe("imperative New", () => {
     testClient.navigation.go({ session: "current" });
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [summary("current", "/tmp/current")]);
 
-    await expect(createSession(testClient.agent.access)).resolves.toBe("next");
+    await expect(createSession(testClient.agent.dependencies)).resolves.toBe("next");
 
     expect(create).toHaveBeenCalledWith(
       { workspace: { path: "/tmp/current" } },
@@ -221,9 +221,9 @@ describe("imperative New", () => {
     const create = vi.fn().mockResolvedValue(fakeSession("implicit-home"));
     stubCreate(create);
 
-    await expect(createSession(testClient.agent.access)).resolves.toBeNull();
+    await expect(createSession(testClient.agent.dependencies)).resolves.toBeNull();
     testClient.navigation.go({ session: "unresolved" });
-    await expect(createSession(testClient.agent.access)).resolves.toBeNull();
+    await expect(createSession(testClient.agent.dependencies)).resolves.toBeNull();
 
     expect(create).not.toHaveBeenCalled();
   });

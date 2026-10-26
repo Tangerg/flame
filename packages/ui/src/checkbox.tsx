@@ -5,7 +5,7 @@ import { color, motion, space, type } from "./tokens.stylex";
 import { CHOICE_SURFACE } from "./control-surface";
 import { Icon } from "./font-scale";
 import { Check } from "@flame/icons/react";
-import { CheckboxPrimitive } from "./primitives/index";
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 
 const styles = stylex.create({
   row: {

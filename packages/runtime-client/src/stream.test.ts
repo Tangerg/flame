@@ -14,7 +14,7 @@ import {
 import type {
   WireNotificationName,
   WireNotificationParams,
-} from "@flame/runtime-client/validation";
+} from "./generated/wire.validate.generated";
 
 function fakeClient() {
   const subs = new Map<WireNotificationName, Set<NotificationObserver>>();

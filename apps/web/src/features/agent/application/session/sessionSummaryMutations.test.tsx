@@ -66,7 +66,7 @@ describe("Session summary mutations", () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession: vi.fn().mockRejectedValue(new Error("deleted concurrently")),
     } as unknown as AgentRuntimeGateway);
 
@@ -84,7 +84,7 @@ describe("Session summary mutations", () => {
       .fn()
       .mockImplementationOnce(() => rename.promise)
       .mockImplementationOnce(() => favorite.promise);
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
     const renameHook = testClient.renderHook(() => useRenameSession());
@@ -129,7 +129,7 @@ describe("Session summary mutations", () => {
       .fn()
       .mockResolvedValueOnce(renamed)
       .mockRejectedValueOnce(new Error("remote writer won"));
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
     const renameHook = testClient.renderHook(() => useRenameSession());
@@ -149,7 +149,7 @@ describe("Session summary mutations", () => {
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     const retiredUpdate = Promise.withResolvers<AgentSessionSummary>();
     const retiredUpdateCall = vi.fn(() => retiredUpdate.promise);
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       updateSession: retiredUpdateCall,
     } as unknown as AgentRuntimeGateway);
     const renameHook = testClient.renderHook(() => useRenameSession());

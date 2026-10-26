@@ -16,10 +16,10 @@ import {
   subscribeWorkspaceReadTargets,
   workspaceReadTargets,
 } from "@/features/workspace/adapters/workspaceReadObservation";
-vi.mock("@/features/agent/public/session", () => ({
-  AGENT_SESSIONS_KEY: "agent-sessions",
-  synchronizeMountedAgentSessions: vi.fn(),
-}));
+vi.mock("@/features/agent/public/session", () => ({ AGENT_SESSIONS_KEY: "agent-sessions" }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { synchronizeMountedAgentSessions: vi.fn() });
+});
 
 const dispose: (() => void)[] = [];
 

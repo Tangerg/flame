@@ -53,10 +53,10 @@ describe("useDeleteSession", () => {
         }),
     );
     const localDeletion = vi.fn();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       deleteSession,
     } as unknown as AgentRuntimeGateway);
-    restoreState = stubInstance(testClient.agent.access.state, {
+    restoreState = stubInstance(testClient.agent.dependencies.state, {
       deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session("ses_a"), session("ses_b")]);
@@ -88,19 +88,19 @@ describe("useDeleteSession", () => {
         }),
     );
     const localDeletion = vi.fn();
-    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
+    restoreRuntime = stubInstance(testClient.agent.dependencies.runtime, {
       deleteSession,
     } as unknown as AgentRuntimeGateway);
-    restoreState = stubInstance(testClient.agent.access.state, {
+    restoreState = stubInstance(testClient.agent.dependencies.state, {
       deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
-    const retiredOwner = testClient.agent.access.commands.replace();
+    const retiredOwner = testClient.agent.dependencies.commands.replace();
     const { result } = testClient.renderHook(() => useDeleteSession());
     const deleting = result.current("ses_a");
     await Promise.resolve();
     expect(deleteSession).toHaveBeenCalledOnce();
 
-    const successor = testClient.agent.access.commands.replace();
+    const successor = testClient.agent.dependencies.commands.replace();
     let settled = false;
     void deleting.then(() => {
       settled = true;

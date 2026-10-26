@@ -8,8 +8,9 @@ prepareTestClient(() => {
 });
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PopoverPrimitive, TabsPrimitive } from "@/ui/primitives/index";
-import { CheckboxPrimitive } from "@flame/ui/primitives";
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 describe("the state attributes the design system styles against", () => {
   it("marks a checked checkbox with data-checked", () => {
     testClient.render(<CheckboxPrimitive.Root checked aria-label="ready" />);

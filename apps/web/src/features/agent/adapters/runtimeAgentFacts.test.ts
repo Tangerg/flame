@@ -89,7 +89,7 @@ describe("Runtime → Agent fact adapter", () => {
     const original = structuredClone(snapshot);
     const read = () => {
       const material = runtimeSessionMaterial(
-        testClient.agent.access.sharedMaterial,
+        testClient.agent.dependencies.sharedMaterial,
         run.sessionId,
         snapshot,
       );

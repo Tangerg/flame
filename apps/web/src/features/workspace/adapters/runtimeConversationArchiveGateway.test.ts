@@ -18,10 +18,7 @@ vi.mock("@/features/connection/public/capabilities", () => ({
 }));
 
 vi.mock("@/features/agent/public/session", () => ({
-  getActiveSessionId: () => "session-current",
   invalidateAgentSessions: vi.fn().mockResolvedValue(undefined),
-  rehydrateSessionView: vi.fn().mockResolvedValue(undefined),
-  selectAgentSession: vi.fn(),
 }));
 
 vi.mock("@/extensions/selectors/extensions", async (importOriginal) => {
@@ -40,6 +37,13 @@ const installations: Array<ReturnType<typeof createConversationArchiveGateway>> 
 
 beforeEach(() => {
   testClient = createTestClient({ start: false });
+  Object.assign(testClient.agent.access, {
+    getActiveSessionId: () => "session-current",
+    selectAgentSession: vi.fn(),
+  });
+  Object.assign(testClient.agent.access, {
+    rehydrateSessionView: vi.fn().mockResolvedValue(undefined),
+  });
   mocks.download.mockReset().mockResolvedValue(undefined);
   vi.mocked(notifyError).mockReset();
 });

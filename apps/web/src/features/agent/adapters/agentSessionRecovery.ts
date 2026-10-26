@@ -1,4 +1,4 @@
-import { type AgentAccess } from "@/features/agent/public/agent";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type FlameClient } from "@flame/runtime-client";
 import { asRunId, asSegmentId } from "@flame/runtime-client";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
@@ -20,7 +20,7 @@ interface AgentSessionRecoveryOptions {
 }
 
 export function startAgentSessionRecovery(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   options: AgentSessionRecoveryOptions,
 ): Promise<AgentSessionView | null> {
   return recover(agentAccess, options).catch((error: unknown) => {
@@ -34,7 +34,7 @@ function stale(options: AgentSessionRecoveryOptions): boolean {
 }
 
 async function recover(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   options: AgentSessionRecoveryOptions,
 ): Promise<AgentSessionView | null> {
   const view = await refreshAgentSessionProjection(agentAccess, options.sessionId, {
@@ -59,7 +59,7 @@ async function recover(
 }
 
 async function attachRootRun(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   options: AgentSessionRecoveryOptions,
   run: AgentRunView,
 ): Promise<void> {

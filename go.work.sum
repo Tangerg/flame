@@ -509,6 +509,7 @@ github.com/ProtonMail/go-crypto v1.3.0/go.mod h1:9whxjD8Rbs29b4XWbB8irEcE8KHMqaR
 github.com/Tangerg/flame v0.1.0-layout.20261021.2/go.mod h1:jW2tQD4IBOS99QB8owbyAkwiLrlHNOJQgQFdYju/MGo=
 github.com/Tangerg/flame/packages/go-sdk v0.1.0-architecture.20261026.1/go.mod h1:/GZrQrXJAoi7T/BabFX3ne8LtpA+OpvRaqfs4dzv1tw=
 github.com/Tangerg/flame/plugins v0.1.0-architecture.20261026.1/go.mod h1:IXMzma2z+8lHKDlvJNaKQSuxDwnFCLwev0EQ+j+bEjA=
+github.com/Tangerg/flame/plugins v0.1.0-consolidation.20261026.1/go.mod h1:0Rvkz5/ArFNzq1zTZyRQjbxm8C3T7LuRKKgxhtm6/n0=
 github.com/Tangerg/flame/runtime v0.1.0-architecture.20261026.1/go.mod h1:WF4syc1UK85VIyWoC0dEbvXv5DkaqOH/RFJQCvKUv1U=
 github.com/Tangerg/scope/a2a v0.47.0/go.mod h1:d1py4XE/5vEsukRJSAqVLxLpLdwSbqpw+SvJflnMQhc=
 github.com/Tangerg/scope/agent v0.47.0/go.mod h1:W44+R/XEdPiB+1I9yMz305DI/Olt5J4uFLqUN7A81xk=

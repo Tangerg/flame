@@ -1,4 +1,4 @@
-import { type IconGlyph } from "@flame/ui/font-scale";
+import { type IconGlyph } from "@flame/ui";
 import { memo } from "react";
 import {
   Activity,

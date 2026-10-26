@@ -1,3 +1,4 @@
+import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
 let testClient: TestClient;
@@ -14,7 +15,7 @@ import {
   stringifyJSON,
   type PluginCommandRecovery,
 } from "@flame/runtime-client";
-import { createMutationPromise } from "@flame/runtime-client";
+
 import { type CallPluginResponse } from "@flame/runtime-client/wire";
 import { type ComponentContext } from "@flame/component-sdk";
 import { UsageReports } from "../../../plugins/usagereports/component/component";
@@ -191,7 +192,7 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
   vi.spyOn(runtime.plugins, "pendingCommands").mockImplementation(() => pending);
   const call = vi.spyOn(runtime.plugins, "call").mockImplementation((request) => {
     if (request.method === "flame.usage-reports/capture.v1")
-      return createMutationPromise<CallPluginResponse>(capture, "original-capture");
+      return mutationResult<CallPluginResponse>(capture, "original-capture");
     return Promise.resolve({
       output: stringifyJSON(
         request.method === "flame.usage-reports/get.v1" ? report : saved ? [header] : [],
@@ -468,7 +469,7 @@ it("removes only the confirmed captured report after a named decision", async ()
       case "flame.usage-reports/get.v1":
         return reply(saved(reportId(request) === daily.id ? daily : weekly));
       default:
-        return createMutationPromise<CallPluginResponse>(async () => {
+        return mutationResult<CallPluginResponse>(async () => {
           const result = await removal.promise;
           members = members.filter(({ id }) => id !== reportId(request));
           return result;
@@ -539,7 +540,7 @@ it.each([
           case "flame.usage-reports/get.v1":
             return reply(saved(reportId(request) === daily.id ? daily : weekly));
           default:
-            return createMutationPromise<CallPluginResponse>(async () => {
+            return mutationResult<CallPluginResponse>(async () => {
               pending = [
                 original("flame.usage-reports/delete.v1", async (decode) => {
                   recover();

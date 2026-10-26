@@ -2,7 +2,8 @@ import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { createBrowserHost } from "@/platform/browserHost";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
-import { getConfig, hasConfig, setConfig, useConfigStore } from "@/extensions/config";
+import { Configuration } from "@/extensions/config";
+let config: Configuration;
 import { type ConfigService } from "@/extensions/config";
 import { type KeyValueStore } from "@/extensions/storage";
 import {
@@ -39,12 +40,7 @@ function connectionHost(initial?: unknown): {
     dispose: () => owner.dispose(),
     host: {
       cleanup: (cleanup) => owner.cleanup(cleanup),
-      config: {
-        get: getConfig,
-        set: setConfig,
-        has: hasConfig,
-        onChange: (key, fn) => useConfigStore.getState().subscribe(key, fn),
-      },
+      config,
       storage: {
         get: (key: string) => stored.get(key),
         set: (key: string, value: unknown) => {
@@ -88,7 +84,7 @@ beforeEach(async () => {
     createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );
   await runtimeConnection.initialize();
-  useConfigStore.setState({ values: new Map(), subscribers: new Map() });
+  config = new Configuration();
 });
 
 afterEach(async () => {
@@ -211,7 +207,7 @@ describe("runtime endpoint", () => {
 
     endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
     await connection.dispose();
-    setConfig("runtime.endpoint", "http://127.0.0.1:28181");
+    config.set("runtime.endpoint", "http://127.0.0.1:28181");
 
     expect(connection.stored.get("endpoint")).toBe("http://127.0.0.1:27171");
   });
@@ -276,6 +272,7 @@ describe("runtime endpoint", () => {
 describe("Runtime target credentials", () => {
   it("replaces the connection on token changes and never persists the token", () => {
     const { stored, binding } = bindConnection(DEFAULT_RUNTIME_ENDPOINT);
+    const publication = vi.spyOn(config, "set");
     const replacements = vi.spyOn(binding.owner, "replaceEndpoint");
     const first = runtimeConnection.client();
     expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
@@ -285,7 +282,7 @@ describe("Runtime target credentials", () => {
     expect(replacements).toHaveBeenCalledOnce();
     expect(runtimeConnection.client()).not.toBe(first);
     expect([...stored.values()]).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
-    expect([...useConfigStore.getState().values.values()]).not.toContain("window-secret");
+    expect(publication.mock.calls.map(([, value]) => value)).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
     expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
       kind: "applied",
       changed: false,

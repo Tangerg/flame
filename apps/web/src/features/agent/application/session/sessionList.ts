@@ -1,9 +1,9 @@
-import { useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useEffect, useRef } from "react";
 import { useAgentSessions } from "@/features/agent/application/session/sessionQueries";
 
 export function useReconcilePersistedAgentSessions(): void {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   const { data, isSuccess } = useAgentSessions();
   const restored = useRef(false);

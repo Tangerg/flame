@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ReactElement, ReactNode } from "react";
 import { leading, space, type } from "./tokens.stylex";
-import { TooltipPrimitive } from "./primitives/index";
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
 const tip = stylex.create({

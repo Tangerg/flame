@@ -37,7 +37,9 @@ const material = vi.hoisted(() => ({
 
 afterEach(() => vi.restoreAllMocks());
 
-vi.mock("@/features/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { cancelSessionRun: material.cancel });
+});
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),

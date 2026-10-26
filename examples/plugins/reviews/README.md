@@ -22,14 +22,16 @@ capability export, then publishes it before
 starting MCP. Discovery carries the current backend protocol and exact generated
 method schemas; the former per-operation MCP endpoints are not registered.
 
-`backend/contracts.go` owns the method descriptions, typed bindings and
-the consumer's callable capability contract. The pure public `packages/go-sdk/capability`
+`backend/contract` publishes only the consumer-facing types and contracts.
+Private review transitions, storage, receipts and analyzer orchestration live in
+`backend/cmd/reviews`. `backend/contract/contracts.go` owns the method descriptions, typed bindings and
+the consumer's callable capability contract. The pure public `packages/go-sdk/extension`
 package admits that contract; `packages/go-sdk/plugin` binds it to MCP without a second
 schema or fingerprint owner.
 The Status and Outcome types publish their closed vocabularies to Scope's schema
-derivation. From `backend`, `go generate ./...` projects the same methods into
+derivation. From `backend`, `go generate ./contract` projects the same methods into
 `package/io.github.tangerg.flame/contracts/{capability.generated.json,schema.json,methods.generated.json,API_REFERENCE.md}`
-and `component/methods.generated.ts` through Runtime's existing `contractgen`.
+and `component/methods.generated.ts` through the public `flame-sdk contract` command.
 Do not edit those generated files or maintain a second input/output schema.
 The canonical capability descriptor supplies the same contract for live export
 resolution, original-binding restoration and the generated TypeScript token.
@@ -100,7 +102,7 @@ flame --runtime-url http://127.0.0.1:17171 sessions show '<session-id>' --json
 ## Analyzer composition
 
 Reviews declares a consumer-owned collection point in
-`backend/analyzers.go`. The typed value names an analyzer contribution in the
+`backend/contract/analyzers.go`. The typed value names an analyzer contribution in the
 same installed release. The point owns its schema, installation scope, canonical
 key ordering, optional absence and applicability to an open review. Its generated
 contract is packaged with both the consumer and the independent analyzer.

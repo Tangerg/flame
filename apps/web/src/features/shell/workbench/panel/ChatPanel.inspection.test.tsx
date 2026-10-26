@@ -12,7 +12,6 @@ import { ActionMenu, ModalDialog, SearchField, Select } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { type Message } from "@/features/agent/public/sessionView";
-import { selectAgentSession } from "@/features/agent/public/session";
 
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
 import { MessageTranscript } from "@/features/chat/public/message/rendering";
@@ -135,9 +134,13 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   useActiveSession: () => null,
   useActiveSessionId: () => model.sessionId,
   useAgentSessions: () => ({ isLoading: false }),
-  activeAgentConversation: () => ({ sessionId: model.sessionId, messages: model.messages }),
-  rollbackSessionToBeforeRun: model.rollback,
 }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    activeAgentConversation: () => ({ sessionId: model.sessionId, messages: model.messages }),
+    rollbackSessionToBeforeRun: model.rollback,
+  });
+});
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
@@ -280,7 +283,7 @@ beforeEach(() => {
     userInput: { parts: [{ kind: "text", text: "Canonical root input" }] },
   });
   vi.mocked(writeToClipboard).mockClear();
-  selectAgentSession(testClient.agent.access, model.sessionId);
+  testClient.agent.access.selectAgentSession(model.sessionId);
   replaceComposerDraft(testClient.composer.access, { text: INITIAL_DRAFT });
   activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
   model.views = [
@@ -681,9 +684,7 @@ describe("draft intents in workspace presentations", () => {
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
     expect(draft.value).toBe("Delayed canonical input");
     expect(document.activeElement).toBe(control);
-    expect(model.rollback.mock.calls).toEqual([
-      [testClient.agent.access, "ses_first", "root-run", "history"],
-    ]);
+    expect(model.rollback.mock.calls).toEqual([["ses_first", "root-run", "history"]]);
   });
 
   it("keeps focus moved after a draft intent but before its reveal", () => {
@@ -730,7 +731,7 @@ describe("draft intents in workspace presentations", () => {
     act(() => {
       replaceComposerDraft(testClient.composer.access, { text: "Edited first Session" });
       model.sessionId = "ses_second";
-      selectAgentSession(testClient.agent.access, model.sessionId);
+      testClient.agent.access.selectAgentSession(model.sessionId);
       view.rerender(
         <>
           <button>Later draft control</button>

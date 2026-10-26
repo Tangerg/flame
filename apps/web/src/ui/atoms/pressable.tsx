@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
-import { ButtonPrimitive, type ButtonPrimitiveProps } from "@flame/ui/primitives";
+import { ButtonPrimitive } from "@flame/ui";
+import { type ButtonPrimitiveProps } from "@flame/ui";
 export type PressableProps = Omit<ButtonPrimitiveProps, "children"> & {
   children?: ReactNode;
 };

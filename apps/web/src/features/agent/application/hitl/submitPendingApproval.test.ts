@@ -61,9 +61,9 @@ describe("submitPendingApproval", () => {
     });
     testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
 
-    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
     expect(resume).not.toHaveBeenCalled();
-    expect(submitPendingApproval(testClient.agent.access, "deny")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.dependencies, "deny")).toBe(true);
     expect(resume).toHaveBeenCalledWith(
       ROOT_RUN_ID,
       [
@@ -79,13 +79,13 @@ describe("submitPendingApproval", () => {
       expect.any(Function),
       expect.any(Function),
     );
-    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
 
     accept?.();
     expect(
       testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.pendingInterrupts,
     ).toHaveLength(2);
-    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
     expect(resume).toHaveBeenCalledOnce();
   });
 
@@ -101,7 +101,7 @@ describe("submitPendingApproval", () => {
       vi.fn(() => true),
     );
 
-    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(false);
+    expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(false);
   });
 
   it("does not borrow a mounted approval card from another Session", () => {
@@ -123,7 +123,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -150,7 +150,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -177,7 +177,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.dependencies, "approve")).toBe(true);
       expect(approve).toHaveBeenCalledOnce();
       expect(resume).not.toHaveBeenCalled();
     } finally {

@@ -9,26 +9,26 @@ prepareTestClient(() => {
 import { type ComponentProps } from "react";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { TreePrimitive } from "@/ui/primitives/tree";
+import { Tree } from "@/ui/atoms/tree";
 describe("tree item selection semantics", () => {
   it("declares selection for selectable branches and omits it for nonselectable items", () => {
     testClient.render(
-      <TreePrimitive.Root>
-        <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
+      <Tree.Root>
+        <Tree.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Selectable branch
-        </TreePrimitive.Item>
-        <TreePrimitive.Group>
-          <TreePrimitive.Item level={2} selected={false} focusable={false} onActivate={vi.fn()}>
+        </Tree.Item>
+        <Tree.Group>
+          <Tree.Item level={2} selected={false} focusable={false} onActivate={vi.fn()}>
             Selectable leaf
-          </TreePrimitive.Item>
-        </TreePrimitive.Group>
-        <TreePrimitive.Item level={1} expanded={false} focusable={false} onActivate={vi.fn()}>
+          </Tree.Item>
+        </Tree.Group>
+        <Tree.Item level={1} expanded={false} focusable={false} onActivate={vi.fn()}>
           Nonselectable branch
-        </TreePrimitive.Item>
-        <TreePrimitive.Item level={1} focusable={false} onActivate={vi.fn()}>
+        </Tree.Item>
+        <Tree.Item level={1} focusable={false} onActivate={vi.fn()}>
           Nonselectable leaf
-        </TreePrimitive.Item>
-      </TreePrimitive.Root>,
+        </Tree.Item>
+      </Tree.Root>,
     );
     const selection = (name: string) =>
       screen.getByRole("treeitem", { name }).getAttribute("aria-selected");
@@ -45,14 +45,14 @@ describe("tree item selection semantics", () => {
 describe("tree keyboard navigation", () => {
   it("does not enter the next sibling when an expanded branch has no visible children", () => {
     testClient.render(
-      <TreePrimitive.Root>
-        <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
+      <Tree.Root>
+        <Tree.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Empty directory
-        </TreePrimitive.Item>
-        <TreePrimitive.Item level={1} selected={false} focusable={false} onActivate={vi.fn()}>
+        </Tree.Item>
+        <Tree.Item level={1} selected={false} focusable={false} onActivate={vi.fn()}>
           Sibling file
-        </TreePrimitive.Item>
-      </TreePrimitive.Root>,
+        </Tree.Item>
+      </Tree.Root>,
     );
     const directory = screen.getByRole("treeitem", { name: "Empty directory" });
     directory.focus();
@@ -62,16 +62,16 @@ describe("tree keyboard navigation", () => {
 
   it("enters a visible child and returns to its parent with the opposite arrow", () => {
     testClient.render(
-      <TreePrimitive.Root>
-        <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
+      <Tree.Root>
+        <Tree.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Directory
-        </TreePrimitive.Item>
-        <TreePrimitive.Group>
-          <TreePrimitive.Item level={2} selected={false} focusable={false} onActivate={vi.fn()}>
+        </Tree.Item>
+        <Tree.Group>
+          <Tree.Item level={2} selected={false} focusable={false} onActivate={vi.fn()}>
             Child
-          </TreePrimitive.Item>
-        </TreePrimitive.Group>
-      </TreePrimitive.Root>,
+          </Tree.Item>
+        </Tree.Group>
+      </Tree.Root>,
     );
     const directory = screen.getByRole("treeitem", { name: "Directory" });
     const child = screen.getByRole("treeitem", { name: "Child" });
@@ -84,25 +84,25 @@ describe("tree keyboard navigation", () => {
 });
 
 describe("tree focus entry", () => {
-  function renderTree(rootProps: ComponentProps<typeof TreePrimitive.Root> = {}) {
+  function renderTree(rootProps: ComponentProps<typeof Tree.Root> = {}) {
     const onActivate = vi.fn();
     testClient.render(
       <>
         <button>Outside</button>
-        <TreePrimitive.Root aria-label="Files" {...rootProps}>
-          <TreePrimitive.Item level={1} selected focusable={false} onActivate={onActivate}>
+        <Tree.Root aria-label="Files" {...rootProps}>
+          <Tree.Item level={1} selected focusable={false} onActivate={onActivate}>
             Selected
-          </TreePrimitive.Item>
-          <TreePrimitive.Item level={1} selected={false} focusable onActivate={onActivate}>
+          </Tree.Item>
+          <Tree.Item level={1} selected={false} focusable onActivate={onActivate}>
             Cursor
-          </TreePrimitive.Item>
-          <TreePrimitive.Item level={1} selected={false} focusable={false} onActivate={onActivate}>
+          </Tree.Item>
+          <Tree.Item level={1} selected={false} focusable={false} onActivate={onActivate}>
             Next
-          </TreePrimitive.Item>
-          <TreePrimitive.Group>
+          </Tree.Item>
+          <Tree.Group>
             <button>Retry</button>
-          </TreePrimitive.Group>
-        </TreePrimitive.Root>
+          </Tree.Group>
+        </Tree.Root>
       </>,
     );
     return { onActivate, tree: screen.getByRole("tree", { name: "Files" }) };
@@ -151,11 +151,11 @@ describe("tree focus entry", () => {
 
   it("keeps focus on a tree without a cursor row", () => {
     testClient.render(
-      <TreePrimitive.Root aria-label="Files">
-        <TreePrimitive.Item level={1} selected focusable={false} onActivate={vi.fn()}>
+      <Tree.Root aria-label="Files">
+        <Tree.Item level={1} selected focusable={false} onActivate={vi.fn()}>
           Only
-        </TreePrimitive.Item>
-      </TreePrimitive.Root>,
+        </Tree.Item>
+      </Tree.Root>,
     );
     const tree = screen.getByRole("tree", { name: "Files" });
     act(() => tree.focus());

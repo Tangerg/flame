@@ -59,7 +59,7 @@ describe("run stream reattach", () => {
     const error = new RpcProtocolError("runs.subscribe result", [], "request_invalid_ack");
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>().mockRejectedValue(error);
     const recoverProjection = vi.fn(async () => {});
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -83,7 +83,7 @@ describe("run stream reattach", () => {
         },
       };
     });
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -103,7 +103,7 @@ describe("run stream reattach", () => {
   it("replays from the last folded event while the cursor remains trustworthy", async () => {
     const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>(async () => emptyStream());
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -129,7 +129,7 @@ describe("run stream reattach", () => {
         data: { type: "run_finished" },
       }),
     );
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -152,7 +152,7 @@ describe("run stream reattach", () => {
         data: { type: "run_waiting" },
       }),
     );
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -173,7 +173,7 @@ describe("run stream reattach", () => {
       .fn<FlameClient["runs"]["subscribe"]>()
       .mockRejectedValue(new RpcConnectionError("fetch failed"));
     const onConnectionLost = vi.fn();
-    const reattach = createRunStreamReattach(testClient.agent.access, {
+    const reattach = createRunStreamReattach(testClient.agent.dependencies, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,

@@ -23,9 +23,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
-  selectAgentSession: vi.fn(),
-  getActiveSessionId: () => mocks.activeSessionId,
-  createSession: (_agentAccess: unknown) => mocks.create(),
   useActiveSessionId: () => mocks.activeSessionId,
   useActiveSessionWorkspace: () => mocks.activeWorkspace,
   useCreateSession: () => mocks.create,
@@ -34,6 +31,15 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   useRenameSession: () => vi.fn(),
   useToggleFavorite: () => vi.fn(),
 }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, {
+    selectAgentSession: vi.fn(),
+    getActiveSessionId: () => mocks.activeSessionId,
+  });
+});
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { createSession: () => mocks.create() });
+});
 
 vi.mock("@/features/composer/public/focus", () => ({
   focusComposer: mocks.focusComposer,

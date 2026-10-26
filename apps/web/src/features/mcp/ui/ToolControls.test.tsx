@@ -46,11 +46,10 @@ vi.mock("@/features/mcp/application/mcpServerConfig", () => ({
   setMCPToolExposure: model.setExposure,
 }));
 
-vi.mock("@/features/agent/public/approvalPolicy", () => ({
-  useApprovalRules: () => model.rules,
-  allowMCPTool: model.allow,
-  forgetRules: model.forget,
-}));
+vi.mock("@/features/agent/public/approvalPolicy", () => ({ useApprovalRules: () => model.rules }));
+prepareTestClient(() => {
+  Object.assign(testClient.agent.access, { allowMCPTool: model.allow, forgetRules: model.forget });
+});
 
 const docs = userMCPServer("docs");
 
@@ -96,9 +95,7 @@ it("keeps approval usable when exposure fails", async () => {
   expect(exposure!.getAttribute("aria-disabled")).toBe("true");
   expect(approval!.getAttribute("aria-disabled")).toBeNull();
   fireEvent.click(approval!);
-  await waitFor(() =>
-    expect(model.allow).toHaveBeenCalledWith(testClient.agent.access, docs, "read"),
-  );
+  await waitFor(() => expect(model.allow).toHaveBeenCalledWith(docs, "read"));
 });
 
 it("shows why a connected tool is excluded from model manifests", () => {

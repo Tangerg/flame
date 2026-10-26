@@ -27,7 +27,8 @@ let runtimeClient: () => FlameClient = () => {
 
 const getRuntimeClient = () => runtimeClient();
 
-vi.mock("@/features/agent/public/session", () => ({
+vi.mock("@/features/agent/application/session/activeSession", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/application/session/activeSession")>()),
   getActiveSessionId: () => "ses_1",
 }));
 

@@ -1,11 +1,12 @@
-import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { useCallback } from "react";
 import { invalidateAgentSessions } from "@/features/agent/application/session/sessionQueries";
 
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 
 export function forkSessionAt(
-  agentAccess: AgentAccess,
+  agentAccess: AgentDependencies,
   id: string,
   fromRunId?: string,
 ): Promise<void> {
@@ -26,7 +27,7 @@ export function forkSessionAt(
 }
 
 export function useForkSession(): (id: string) => Promise<void> {
-  const agentAccess = useAgent();
+  const agentAccess = useAgentDependencies();
 
   return useCallback((id) => forkSessionAt(agentAccess, id), [agentAccess]);
 }

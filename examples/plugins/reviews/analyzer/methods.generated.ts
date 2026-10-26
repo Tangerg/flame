@@ -2,27 +2,27 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@flame/runtime-client";
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFinding {
+export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding {
   code: string;
   message: string;
   reviewId: string;
   revision: JSONNumber;
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFindings {
-  findings: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFinding[];
+export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFindings {
+  findings: Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFinding[];
 }
 
-export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fSnapshot {
+export interface Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot {
   id: string;
   revision: JSONNumber;
   status: string & ("open" | "resolved");
   title: string;
 }
 
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fSnapshot;
+export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fSnapshot;
 
-export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_5fFindings;
+export type Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeOutput = Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_5fFindings;
 
 export interface MethodInputs {
   "io.github.tangerg.flame.examples/reviews.analyze": Method_io_2egithub_2etangerg_2eflame_2eexamples_2freviews_2eanalyzeInput;
@@ -33,5 +33,5 @@ export interface MethodOutputs {
 export const METHODS = {
   "io.github.tangerg.flame.examples/reviews.analyze": { kind: "query", target: "installation" },
 } as const;
-export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-15.3", reference: "io.github.tangerg.flame.examples/reviews.analyzer", composition: "collection", scope: "installation", contract: "70e5f58be7bdd15b0c2538cd838128b4b5b2055b78e604c7b8b43bd437267602" } as const;
-export const CAPABILITY_JSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"allOf\":[{\"enum\":[\"open\",\"resolved\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"allOf\":[{\"enum\":[\"open\",\"resolved\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"io.github.tangerg.flame.examples/reviews.analyze\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\":{\"additionalProperties\":false,\"properties\":{\"code\":{\"type\":\"string\"},\"message\":{\"type\":\"string\"},\"reviewId\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"code\",\"message\",\"reviewId\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Findings\":{\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5k_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/backend/2026-10-15.3\",\"reference\":\"io.github.tangerg.flame.examples/reviews.analyzer\",\"scope\":\"installation\"}";
+export const CAPABILITY = { protocol: "io.github.tangerg.flame/backend/2026-10-15.3", reference: "io.github.tangerg.flame.examples/reviews.analyzer", composition: "collection", scope: "installation", contract: "542c2089803e40ea5be396f805c1568c5eee6f2df7f1ed6e88fd39b5daa76297" } as const;
+export const CAPABILITY_JSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_Snapshot\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"allOf\":[{\"enum\":[\"open\",\"resolved\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"status\":{\"allOf\":[{\"enum\":[\"open\",\"resolved\"]}],\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"status\",\"revision\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"io.github.tangerg.flame.examples/reviews.analyze\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_Finding\":{\"additionalProperties\":false,\"properties\":{\"code\":{\"type\":\"string\"},\"message\":{\"type\":\"string\"},\"reviewId\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"code\",\"message\",\"reviewId\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_Findings\":{\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"findings\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL2V4YW1wbGVzL3BsdWdpbnMvcmV2aWV3cy9iYWNrZW5kL2NvbnRyYWN0_Finding\"},\"type\":\"array\"}},\"required\":[\"findings\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/backend/2026-10-15.3\",\"reference\":\"io.github.tangerg.flame.examples/reviews.analyzer\",\"scope\":\"installation\"}";
