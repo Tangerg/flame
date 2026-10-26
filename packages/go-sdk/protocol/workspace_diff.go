@@ -1,0 +1,102 @@
+package protocol
+
+// DiffMode selects the baseline workspace.diff.get compares against.
+//
+//flame:enum
+type DiffMode string
+
+const (
+	DiffModeWorktree DiffMode = "worktree" // changes vs HEAD, incl. untracked (default)
+	DiffModeBase     DiffMode = "base"     // vs merge-base with the default branch
+)
+
+// DiffFormat selects the workspace.diff.get result shape.
+//
+//flame:enum
+type DiffFormat string
+
+const (
+	DiffFormatRows DiffFormat = "rows" // per-file structured diff (default)
+	DiffFormatRaw  DiffFormat = "raw"  // unified patch string
+)
+
+// GetDiffRequest is the workspace.diff.get body. Mode selects the
+// baseline (worktree=changes vs HEAD incl. untracked; base=vs merge-base with
+// default branch). Format selects the shape (rows=structured; raw=unified patch
+// string). Limit caps the diff rows (rows format); over it the result is
+// truncated at a file boundary (Diff.Truncated) rather than silently dropped.
+type GetDiffRequest struct {
+	Workspace WorkspaceRef `json:"workspace"`
+	Path      string       `json:"path,omitempty"`
+	Mode      DiffMode     `json:"mode,omitempty"`   // "worktree" (default) | "base"
+	Format    DiffFormat   `json:"format,omitempty"` // "rows" (default) | "raw"
+	Limit     *int         `json:"limit,omitzero"`
+}
+
+// DiffBaseline names the exact comparison source. An unborn repository compares
+// against the empty tree; head and mergeBase carry resolved commit identities.
+//
+//flame:enum
+type DiffBaselineType string
+
+const (
+	DiffBaselineHead      DiffBaselineType = "head"
+	DiffBaselineMergeBase DiffBaselineType = "mergeBase"
+	DiffBaselineEmptyTree DiffBaselineType = "emptyTree"
+)
+
+type DiffBaseline struct {
+	Type   DiffBaselineType `json:"type"`
+	Commit string           `json:"commit,omitempty"`
+}
+
+// Diff is the workspace.diff.get result: a sum type where Files is
+// populated for format=rows (per-file structured diff), Patch for format=raw
+// (the unified patch string). Truncated self-describes a row-limit cut at a
+// file boundary, so a caller can distinguish a partial result from a complete diff.
+type Diff struct {
+	Baseline  DiffBaseline `json:"baseline"`
+	Files     []FileDiff   `json:"files,omitempty"`
+	Patch     string       `json:"patch,omitempty"`
+	Truncated bool         `json:"truncated,omitzero"`
+}
+
+// FileStatus is the past-tense working-tree status vocabulary shared by
+// WorkspaceFileChange and FileDiff.
+//
+//flame:enum
+type FileStatus string
+
+const (
+	FileStatusAdded     FileStatus = "added"
+	FileStatusModified  FileStatus = "modified"
+	FileStatusDeleted   FileStatus = "deleted"
+	FileStatusRenamed   FileStatus = "renamed"
+	FileStatusUntracked FileStatus = "untracked"
+)
+
+// FileDiff is one file's structured diff. Added/Removed are
+// omitted for a Binary file (Rows empty) rather than reported as a fake 0;
+// PreviousPath is set only for renames.
+type FileDiff struct {
+	Path         string     `json:"path"`
+	Status       FileStatus `json:"status"` // see FileStatus
+	PreviousPath string     `json:"previousPath,omitempty"`
+	Added        *int       `json:"added,omitzero"`
+	Removed      *int       `json:"removed,omitzero"`
+	Binary       bool       `json:"binary,omitzero"`
+	Rows         []DiffRow  `json:"rows"`
+}
+
+// WorkspaceFileChange is one entry in workspace.changes.list, whose complete
+// result is ordered by Path ascending.
+// Added/Removed are omitted for a Binary file (not a fake 0); PreviousPath is
+// set only for renames.
+type WorkspaceFileChange struct {
+	Path         string     `json:"path"`
+	Status       FileStatus `json:"status"` // see FileStatus
+	PreviousPath string     `json:"previousPath,omitempty"`
+	Added        *int       `json:"added,omitzero"`
+	Removed      *int       `json:"removed,omitzero"`
+	Binary       bool       `json:"binary,omitzero"`
+}
