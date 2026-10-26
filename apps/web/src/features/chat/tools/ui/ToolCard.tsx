@@ -67,7 +67,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         open={expanded}
         onToggle={onToggleExpand}
       >
-        {model.denied ? undefined : <ToolPreview tool={tool} />}
+        {model.disclosable ? <ToolPreview tool={tool} /> : undefined}
       </AgentActivityDisclosure>
       <ToolFailureLine model={model} />
     </>

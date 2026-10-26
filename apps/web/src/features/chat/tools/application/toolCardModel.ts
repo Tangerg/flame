@@ -13,6 +13,7 @@ export interface ToolCardModel {
   running: boolean;
   failed: boolean;
   denied: boolean;
+  disclosable: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
   error?: string;
@@ -32,6 +33,7 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     running: tool.status === "running",
     failed: tool.status === "err",
     denied: tool.status === "denied",
+    disclosable: tool.status !== "denied" || tool.args.length > 0,
     intent,
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,
     ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),

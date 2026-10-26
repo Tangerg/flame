@@ -83,6 +83,8 @@ groups wrap; see File-header width and reading room. Diff query changes now
 reveal the result beginning while refresh and detail return retain reading;
 see Diff filtered-result arrival. Same-name project choices now expose complete
 folder paths and the exact current folder; see Project choice identity.
+Denied Tool records with captured arguments also retain inline inspection while
+empty denied records stay static; see Denied Tool argument reading.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -12873,6 +12875,111 @@ remains valid, so no source checks or native builds are repeated for the pause.
 The owned checkout and retired-resource preservation are rechecked, and the
 primary parallel checkout remains untouched. User-requested state: **paused**;
 resume only after a new explicit instruction.
+
+### Denied Tool argument reading
+
+A recorded denial still contains the request parameters. At frozen base
+`3d2a95b5c54d18aa415adfae9af4ca96ec3aebd6`, actual Wails renders both a
+standalone declined patch and two grouped declined reads as static summaries.
+Copy arguments exists, but neither presentation offers inline parameter reading.
+Execution status was incorrectly being used as evidence that no detail exists.
+
+The existing `toolCardModel` now owns disclosability: a denied record with
+captured arguments can expand; one without arguments remains static. `ToolCard`
+and `ToolGroupMember` consume the same fact. Existing `ToolPreview` /
+`ToolInspector` render the original arguments using their current disclosure
+and named code reader. A refusal stays visibly denied, has no invented success
+result, and does not replay the Tool. Pending approvals, denial decisions,
+Runtime captures, result extensions, current-file/Diff openers, group pinning,
+retained reading and Composer drafts keep their existing owners. No new state,
+effect, surface, token, copy, asset, dependency or protocol rule is introduced.
+
+Read-only ZCode `ToolCallBody.tsx` separates input presence/showInput from
+output presentation. That is evidence for distinguishing request material from
+results, not proof of ZCode's denial policy. HeroUI's basic Disclosure example
+supplies the trigger/indicator/body composition. Flame retains its own shared
+AgentActivityDisclosure, Disclosure and code reader; prior Radix keyboard/focus
+research and the six better-* domains apply to this complete read/return task.
+
+| Domain        | Inspected result                                                                                                                                                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Named argument reader, real row button, expanded/controls relationship and denied text remain. Native keyboard opens, reads, closes and returns from current files; closed standalone parameters leave the AX tree. VoiceOver speech is not tested. |
+| Layout        | Existing inline hierarchy and code bounds work in normal windows, resized Chinese 18 px and 200% scenes. Native wheel and keyboard reach the long captured tail.                                                                                    |
+| Writing       | Existing act, path, denied state and Arguments label identify the record; no new helper text or success claim.                                                                                                                                      |
+| Typography    | Existing JSON/mono source treatment preserves captured whitespace and complete parameters; word wrap remains user-controlled.                                                                                                                       |
+| Color         | Existing neutral/denied ink, code surfaces and focus colors are inspected in light/Orange and dark/custom yellow. No palette change or fresh contrast measurement.                                                                                  |
+| UI polish     | The established disclosure affordance now corresponds to actual material. Original motion and grouping remain; no new decoration or animation.                                                                                                      |
+
+| Severity | Owner                                                                            | Before                                                      | After                                                                                | Why                                                                                  |
+| -------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| MEDIUM   | `chat/tools/application/toolCardModel.ts`, `ToolCard.tsx`, `ToolGroupMember.tsx` | Recorded denied parameters have no inline inspection entry. | Both row presentations expose captured parameters; empty denied records stay static. | Users must be able to inspect what was refused independently of whether it executed. |
+
+Verification (2026-10-27):
+
+- Focused baseline passes **6 files / 44 tests** in the **13.03 s** serial baseline
+  chain. The new standalone/grouped readable-arguments and literal-whitespace
+  regressions fail against the original (**4 fail / 2 pass**); the two passing
+  cases establish the empty denied record's static behavior.
+- Two candidate attempts fail only the new standalone-close assertion: its shared
+  body intentionally remains mounted and inert, and Happy DOM role queries still
+  return inert descendants. Waiting does not change that contract. The corrected
+  test asserts collapsed state and removed-or-inert content; actual Wails then
+  confirms closed AX retirement. Production behavior is not changed for that
+  test. Final **7 files / 50 tests**, private assets and both candidate hosts pass
+  serially in **15.10 s**. The existing empty-argument test's label is later
+  corrected with an exact one-string diff; formatting plus its **5 tests** pass
+  again in **2.99 s**, without changing accepted product code or native assets.
+- All **13 final commands** pass serially in **33.28 s**: private SDK validator
+  build, all **6 canonical Items / zero wire violations**, targeted formatting,
+  Web typecheck/lint, design-system/chrome/styles/tokens/locales, plugin resources,
+  `make check-native` (**27.94 s**) and production module linking after staging.
+  The existing duplicate `-lobjc` warning remains non-failing. No browser visual
+  suite, performance benchmark, Claude CLI or delegated agent runs.
+- Actual Wails EN/light/14 px/Orange is inspected at **1440 × 900** and
+  **720 × 450 CSS px at 200%**. The declined patch now opens Arguments. Native
+  Tab reaches wrap and its reader; End reaches the complete original CJK tail.
+  Keyboard close removes Arguments from the AX tree, and reopen retains wrapping.
+  A grouped denied read exposes its original path and line range. Keyboard Open
+  current file enters the current `runtime/session/store.go`; Escape returns to
+  that exact opener while preserving arguments and draft. This complete return
+  path also passes at 200%. Actual Size restores normal geometry and the input
+  continues exactly to
+  `Keep the denied-call review draft. Continue after inspection.`.
+- Actual Wails ZH/dark/18 px/custom yellow is physically resized from
+  **1440 × 900 to 1121 × 729**, then reaches **560 × 364 at 200%**. Wrap, reader
+  Tab, End and native wheel reach the declined patch's complete captured tail;
+  the retained reader reaches **411 / 651 px**, with a **240 px** viewport.
+  Keyboard closes that row, opens the group and its first denied read, opens its
+  current file and returns by Escape to 打开当前文件. Arguments and the source
+  draft remain. Actual Size restores the resized viewport; input continues to
+  `保留拒绝记录的阅读草稿。 已核对参数，继续。`. Both apps quit natively.
+- Native zoom can preserve focus while shifting its painted content. Explicit
+  Shift+Tab/Tab re-entry and outer wheel qualify the narrow reader above; this
+  batch does not repair the previously recorded WebKit hidden-zoom condition.
+  Passive region geometry can include clipped/inert retained DOM, so native AX
+  and inspected screenshots establish actual visible scope. The final Chinese
+  read-position capture returned AX without image bytes and is not counted as
+  a screenshot. A first baseline capture helper referenced the retired previous
+  root and failed before input; a fresh helper captured the accepted scenes.
+- These are private canonical inputs and deterministic transport through production
+  views and owners. No live Runtime/provider, Send, approval decision, Tool
+  execution, real filesystem change, VoiceOver speech, OS IME, RTL or other-platform
+  GUI is claimed. Paper and motion are off; no full contrast/motion matrix or
+  awards certification is claimed. Both native logs record no unhandled error.
+- Retirement verifies **10 recorded processes dead**, unregisters three apps and
+  removes **7 checkout outputs, 6 Library directories and 3 bundle temp paths**.
+  The overwritten original native binary is restored. All **39 output-presence
+  baselines, 4 original hashes, 18 Library baselines, 5,832 accepted non-Markdown
+  inputs, 11 unchanged resources and 3 read-only references** are preserved.
+  Both **598-file asset maps**, all three app maps and the frozen native module
+  graph match the snapshots accepted before candidate launch. The exact root
+  `flame-denied-reading-1027-Xmn6iG` is absent. The round-trip-verified in-memory
+  gzip retains **90 UTF-8 records** and **40 capture digests**, SHA-256
+  `67ecd72cb70beb892714ad6b1bedc217b17155391ab85378681b4cf60d8241ea`.
+  User data, primary parallel work and read-only references are preserved.
+
+Approved for inspected denied-parameter reading and source-return continuity.
+This batch stays local; the continuous whole-product UI goal remains open.
 
 ### Recorded Skill pages
 

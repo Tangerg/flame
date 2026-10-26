@@ -109,7 +109,10 @@ remains in the body.
 Recorded Tool arguments retain the complete accepted object independently of the
 compact summary. Live starts leave raw text accumulation to argument deltas;
 history and settled Items project their captured arguments directly. Rejected
-argument text remains literal. Result extensions replace only the result body,
+argument text remains literal. Denied records with captured arguments retain an
+inline disclosure; absent arguments leave the denied summary static. Reading
+those parameters does not imply execution or an empty successful result.
+Result extensions replace only the result body,
 so the host's secondary Arguments disclosure survives enhanced presentation,
 failure and withdrawal without losing its open state. Copy arguments uses the
 same complete capture; no Tool is replayed to inspect it.

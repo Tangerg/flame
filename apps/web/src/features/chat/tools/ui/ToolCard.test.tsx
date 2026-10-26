@@ -117,7 +117,7 @@ describe("ToolCard", () => {
     );
   });
 
-  it("offers no disclosure for a call that never ran", () => {
+  it("keeps a denied call without captured arguments static", () => {
     const { container } = card({
       name: "apply_patch",
       fn: "src/denied.ts",

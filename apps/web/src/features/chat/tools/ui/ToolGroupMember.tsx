@@ -69,9 +69,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const summaryId = useId();
   const bodyId = useId();
   const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
-  // Disclosability is one fact: a denied tool has no preview, so the row is a
-  // static summary, never a disclosure that claims aria-expanded with no panel.
-  const disclosable = !model.denied;
+  const disclosable = model.disclosable;
   const disclosed = disclosable && expanded;
   const rowClassName = stylex.props(gm.row, typeStep.uiSm, disclosed && gm.rowExpanded).className;
 
