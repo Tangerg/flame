@@ -31,11 +31,14 @@ which findings need a repair.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
-preserves whitespace-only captured Tool source. Each batch has completed its
-scoped native qualification and resource retirement. The latest source-presence
-repair uses frozen base `375e756088d0cfd85bbacf79f5297d3a4aef75eb`; see Generic
-Tool source presence below. These local commits have not been pushed or merged
-into the primary checkout.
+preserves whitespace-only captured Tool source. It also reveals the beginning of
+a changed Skills catalog query while retaining document-return and refresh
+positions. Each batch has completed its scoped native qualification and resource
+retirement. The latest Skills repair uses frozen base
+`8e424815d422da89f9c8487fb6d6e942083db99d`; see Skills catalog query and reading
+return below. The preceding source-presence repair is recorded under Generic
+Tool source presence. These local commits have not been pushed or merged into
+the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -8237,6 +8240,158 @@ Verification for this contract:
 - Native 200% zoom with a collapsed fixture sidebar produced a 720 × 450 CSS viewport and reachable main controls. Focus entered the named main region; Shift-Tab/Return reached Close and returned to the conversation with its unsent Composer text intact. System Move & Resize produced an approximately 1,122-point narrow window. Real pointer drags changed a 660 px Dock to 620 px and reached 320 px in the light scene, retaining the query/draft and seam. Editor Tab reached Cancel after scrolling, and Escape returned to Edit. Native keyboard resizing was not freshly qualified: the recorded tab-to-handle focus route needs investigation below.
 - These scenes use the production components and shared React graph through actual Wails asset/IPC hosting, canonical in-memory reads and bounded synthetic command observations. They qualify UI continuity and the SDK's original-handle mapping, not a live Runtime installation, durable receipt journal or provider restart. No live package selection or Runtime write was performed. No browser visual suite or performance baseline ran. VoiceOver, real OS IME composition and rendered contrast measurements remain outside this qualification.
 - Cleanup completed: all owned native/CLI/check/build processes exited. The app was unregistered; its bundle, fixture/data, overlays, production binary, logs, all four completed CLI reports and the acceptance root were removed. Newly created bundle-specific WebKit/cache paths were removed with preexistence/birth-time guards. No preview server was started. Existing shared outputs/compiler caches, read-only Ace references and unrelated worktrees/processes were retained. The primary agent owned research, boundaries, review and native acceptance; Claude Code CLI supplied the bounded implementation and regression work.
+
+### Skills catalog query and reading return
+
+This feedback G02/G04 batch starts from frozen base
+`8e424815d422da89f9c8487fb6d6e942083db99d`. The real Wails baseline reproduces
+a new-query reading defect with an 80-document canonical Skill catalog. After
+reading the middle of the catalog, searching `runtime` leaves
+`runtime-review-029` at the top of the visible results; fourteen earlier matches
+remain above the viewport. The query itself and its forty matches are correct.
+This is a catalog-reading transition defect, separate from the completed
+recorded-output filter repair and existing document-return ownership.
+
+Skills now routes typed changes and both shared clear actions through
+`searchCatalog`. A changed value starts the existing panel scroll ancestors at
+zero; an unchanged value does nothing. The same `scrollPositions` helper already
+owns document entry/return here. This explicit user action introduces no effect
+on mount, snapshot delivery, visibility or document navigation. No extra state,
+position cache, timer, listener or new shared API is added. Ordinary refresh,
+background reads, document Back/Escape and retained Dock navigation keep their
+existing reading positions. The component and its README use this intent-named
+action, and only Skills' declared ESM resource is regenerated; the other ten
+resources remain byte-identical.
+
+#### Scope and coverage
+
+The six better-interface domains guide the task: read the reply, browse/search
+Skills, read the selected instructions and provenance, return to the filtered
+catalog, inspect related Files, and continue the original draft. The freshly
+read ZCode `settings/PluginStorePage.tsx:318` separately captures store position
+for detail entry and restores it on return. Its `onQueryChange={setQuery}` is not
+evidence that it resets new queries; the repair follows Flame's native
+counterexample. Existing HeroUI/Radix input/disclosure/focus, Arc reduced-motion,
+ChatGPT material and Ace composition studies retain their recorded limits.
+No new upstream-browser or static-image comparison is claimed. Flame retains
+Base UI, @flame/ui, StyleX, semantic tokens and its existing host presentation.
+
+| Domain        | Evidence inspected                                                                                      | Result                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Accessibility | Named search, native Escape, Tab/Return/Shift-Tab, Back, source disclosure, Dock arrows and draft input | Scoped path clear; VoiceOver speech and OS IME not verified                |
+| Layout        | EN normal/320 px Dock, DE 18 px/320 px/narrow host and ZH 18 px/200% full-width material                | First match and document/return actions remain reachable                   |
+| Writing       | Existing query, catalog scope, document identity and clear/refresh/back labels                          | No new product copy or competing status; catalog total retains its meaning |
+| Typography    | Complete names, literal instructions, wrapped path/revision and 14/18 px scenes                         | Existing scale and reading hierarchy retained                              |
+| Colors        | Orange/light, blue/dark and purple/light with visible search/keyboard focus                             | Inspected task states clear; quantitative contrast not remeasured          |
+| UI polish     | New-query arrival, local clear, refresh retention, document return and native width/zoom transitions    | Navigation follows user intent; no new motion, decoration or timing claim  |
+
+#### Findings
+
+| Severity | Domain               | Location                                    | Before                                                                | After                                                                        | Why                                                                                  |
+| -------- | -------------------- | ------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| MEDIUM   | Layout / interaction | `plugins/skills/component/useSkills.ts:218` | New search reuses an unrelated catalog offset and hides early matches | A changed query reveals its beginning; unchanged reading and return stay put | A new result set and returning to an existing reading position are different intents |
+
+#### Verification
+
+The original focused baseline passes **1 file / 12 tests**. The new query and
+button/Escape-clear regressions fail on the original implementation with
+**3 failed / 12 passed**, specifically retaining offsets 280/125 instead of zero.
+The repaired suite passes **15 tests**. Existing pending-refresh assertions are
+strengthened to retain offset 125 through success, failure and later-focus
+completion; the existing document-return assertion still retains its offset and
+opener. No valid assertion or check is weakened.
+
+Final integration passes **4 files / 25 tests** in **2.93 s** wall time, covering
+Skills presentation, workspace/subagent installed continuity and renderer
+ownership. Plugin typecheck, lint, i18n and exact resource checks pass. Web
+typecheck, lint and design-system checks pass; changed handwritten files are
+formatted. The serial check chain completes in **7.34 s**. Candidate assets and
+three real Wails v3 beta.34 candidates build in **16.55 s**, using immutable
+module artifacts from the frozen base and the unchanged native host. Existing
+non-failing chunk-size and duplicate `-lobjc` warnings remain.
+
+All four private Wails apps use actual production Skills, its public SDK calls,
+shared controls and the current host. The only acceptance-data change is a
+private replacement of the canonical Skill-document fixture array with eighty
+ordinary documents; discovery and document reads use the existing transport.
+The only private Web import applies existing window chrome/font setup. There
+is no substituted production handler, focus/scroll driver, passive observer or
+polling hook.
+
+- EN/light/14 px/Orange/full motion: searching from the catalog middle reveals
+  `runtime-review-001` and retains search focus. Active reading later reaches
+  the `runtime-review-023` area; opening `runtime-review-035`, reading its
+  source and pressing Escape restores the query, same visible area and opener.
+  Refresh retains that reading. Search Escape returns to the complete catalog
+  beginning. Native Tab reaches the resizer; Home sets **320 px**, where a
+  changed query and the clear button also reveal the first row. The draft
+  continues exactly as
+  `Keep this Skills catalog draft. Continue after checking the catalog.`.
+- ZH/dark/18 px/custom blue/motion off: native Left placement, sidebar collapse
+  and twenty Zoom In actions from Actual Size establish **200%**. The existing
+  explicit full-width entry presents the same Skills material. Searching from
+  the middle reveals the first match. Reading `runtime-review-009` then using
+  Shift-Tab/Return on Back restores `runtime` and the same middle reading with
+  a visible opener focus ring. Ordinary full-pane Close returns to Conversation;
+  the retained draft continues exactly as `核对技能目录后继续。 已核对，继续。`.
+- DE/light/18 px/custom purple/motion off: native Tab/Home sets a **320 px**
+  Dock, retained through native Left placement with the fixture sidebar open.
+  A changed query reveals its first match. `runtime-review-011` retains readable
+  identity, scope, instructions and complete wrapped source path/revision.
+  Escape restores `runtime`, the `runtime-review-007` reading area and opener.
+  Switching to Files, then native Left-arrow back to Skills, retains that
+  query/area. The draft continues exactly as
+  `Nach dem Prüfen des Katalogs weiterarbeiten. Geprüft, weiter.`.
+
+All apps exit through native Cmd+Q. Initial attempts to wheel the entire long
+catalog container did not advance it reliably because its target extends beyond
+the window; the baseline acceptance uses a visible row and the observed filtered
+viewport. This is a harness targeting limit, not another product scroll defect.
+No exact pixel-retention measurement or live installation, discovery filesystem,
+provider, archive/restore, proposal mutation or durable command claim is made.
+The personal/proposal catalogs share the search action but were not separately
+requalified natively. No Send or destructive action was invoked.
+
+The preceding batch's `make check-native` covers the unchanged native source;
+it and complete unchanged Web/UI/SDK/Runtime/CLI suites were not rerun for this
+local search action. The pre-existing main `check:layers` violation remains
+recorded under Generic Tool source presence and was not rerun or weakened.
+Browser visual/performance suites, other-platform GUI, RTL, VoiceOver, OS IME,
+quantitative contrast and animation timing were not run. No Claude CLI, subagent,
+main fetch, push or primary integration was used.
+
+| Goal CHECK        | Scoped result                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Typography        | Existing scale, complete document values and wrapped provenance retained                    |
+| Whitespace        | Stable reading axis and existing page/compact gutters; no extra instruction surfaces        |
+| Visual hierarchy  | Query leads to the first result; document identity and secondary provenance stay distinct   |
+| Color             | Approved neutral surfaces, semantic accents and visible native focus retained               |
+| Motion            | Existing full/off states qualified without adding motion                                    |
+| Micro interaction | Query/clear arrival, refresh, keyboard Back/Escape, Dock return and draft continuation pass |
+| Responsive        | EN/DE 320 px Dock and ZH native narrow/200% full-width material qualified                   |
+| Originality       | Approved Flame workbench identity retained without a new component skin                     |
+
+Verdict: **Approve for the inspected catalog-query, document and return task**.
+This is bounded progress, not whole-product or award-level acceptance. Continue
+from fresh task evidence; preserve the intentional difference between new-query
+arrival and an unchanged read or return instead of widening this into a generic
+scroll-reset framework.
+
+Owned-resource retirement is complete. All **10** recorded process IDs are dead,
+four exact bundles are unregistered and the private root is absent. Cleanup
+removes three new checkout output/cache roots, eight bundle-specific Library
+paths and four bundle temporary directories. All **34** output-presence
+baselines, **3** pre-existing output files, **11** accepted resources, the fresh
+read-only ZCode reference and **5,819** accepted non-Markdown inputs are preserved.
+Accepted-input SHA-256 is
+`144fdeaa40646b0dfe5de2df6e2c23de180da96ab0db70818186f06412800ce9`.
+The verified in-memory gzip retains **73** flat UTF-8 records, **33** screenshot
+digests and artifact maps (**596** assets per baseline/candidate, **16** immutable
+module artifacts and **4** native binaries); SHA-256 is
+`088cc40d21a7e471922fc288733ec2a8ab28582cd873f856440f532727576009`.
+The primary parallel checkout, user data, installed dependencies, compiler caches
+and unrelated processes remain untouched. Delivery stays local on
+`codex/ui-feedback-local-1026`.
 
 ### Recorded output Find navigation
 

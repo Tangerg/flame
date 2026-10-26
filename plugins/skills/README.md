@@ -22,6 +22,8 @@ and their commands stay beside the summary.
 
 Reading a named document is a child of Available Skills, not another catalog. The
 catalog keeps its accepted snapshot, query and canonical reads while hidden. The
+catalog begins at its first result when the user changes or clears the query;
+refreshing an unchanged query preserves the current reading position. The
 document header holds Back, the document name and its compact scope; the
 instructions use `DocumentBody` around `RecordBody`, preserving recorded line breaks.
 The document has its own read lifetime: returning or choosing another document

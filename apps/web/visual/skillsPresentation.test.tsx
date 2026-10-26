@@ -108,6 +108,42 @@ const internalError = (detail: string) =>
 const instructions = (name: string) =>
   screen.queryByRole("region", { name: `Instructions for ${name}` });
 
+it("starts a changed catalog query at its first result and keeps search focus", async () => {
+  await mountSkills();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+  const viewport = screen.getByTestId("viewport");
+  viewport.scrollTop = 280;
+  search.focus();
+
+  fireEvent.change(search, { target: { value: "runtime" } });
+
+  expect(viewport.scrollTop).toBe(0);
+  expect(readButtons()).toHaveLength(1);
+  expect(readButtons()[0]!.textContent).toContain("runtime-boundaries");
+  expect(document.activeElement).toBe(search);
+});
+
+it.each(["button", "Escape"] as const)(
+  "reveals the catalog beginning when clearing its query with %s",
+  async (method) => {
+    const { outsideEscape } = await mountSkills();
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
+    fireEvent.change(search, { target: { value: "runtime" } });
+    const viewport = screen.getByTestId("viewport");
+    viewport.scrollTop = 125;
+    search.focus();
+
+    if (method === "button") fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    else fireEvent.keyDown(search, { key: "Escape" });
+
+    expect(viewport.scrollTop).toBe(0);
+    expect(search.value).toBe("");
+    expect(readButtons()).toHaveLength(2);
+    expect(outsideEscape).not.toHaveBeenCalled();
+    await waitFor(() => expect(document.activeElement).toBe(search));
+  },
+);
+
 const back = () =>
   fireEvent.click(screen.getByRole("button", { name: "Back to available Skills" }));
 
@@ -337,9 +373,12 @@ it("keeps a pending catalog Refresh focusable and inert while its query and acce
   const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this catalog" });
   fireEvent.change(search, { target: { value: "runtime" } });
   const refresh = screen.getByRole<HTMLElement>("button", { name: "Refresh" });
+  const viewport = screen.getByTestId("viewport");
+  viewport.scrollTop = 125;
 
   function expectAcceptedQuery() {
     expect(search.value).toBe("runtime");
+    expect(viewport.scrollTop).toBe(125);
     expect(readButtons()).toHaveLength(1);
     expect(listDiscovered).toHaveBeenLastCalledWith(expect.any(AbortSignal));
   }

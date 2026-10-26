@@ -214,6 +214,12 @@ export function useSkills(context: ComponentContext) {
     setNotice(undefined);
     setSearch("");
   }
+  function searchCatalog(next: string) {
+    if (next === search) return;
+    setSearch(next);
+    for (const position of scrollPositions(panel.current))
+      position.element.scrollTop = 0;
+  }
   function openDocument(name: string, opener: HTMLElement) {
     if (pending.current || context.signal.aborted) return;
     catalogReturn.current = { opener, scroll: scrollPositions(panel.current) };
@@ -343,7 +349,7 @@ export function useSkills(context: ComponentContext) {
     navigate,
     searchField,
     search,
-    setSearch,
+    searchCatalog,
     read,
     refresh,
     title,

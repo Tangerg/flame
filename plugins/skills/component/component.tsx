@@ -46,7 +46,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     navigate,
     searchField,
     search,
-    setSearch,
+    searchCatalog,
     read,
     refresh,
     title,
@@ -146,8 +146,8 @@ export function Skills({ context }: { context: ComponentContext }) {
                   aria-label={t("search.label")}
                   placeholder={t("search.placeholder")}
                   value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onClear={() => setSearch("")}
+                  onChange={(event) => searchCatalog(event.target.value)}
+                  onClear={() => searchCatalog("")}
                   clearLabel={t("search.clear")}
                 />
               }
