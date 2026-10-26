@@ -113,6 +113,8 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
     case "read_shell_output":
     case "stop_shell":
       return asString(a.shell_id);
+    case "read_tool_result":
+      return asString(a.result_id);
     case "load_skill":
     case "propose_skill":
       return asString(a.name);
@@ -242,6 +244,7 @@ function categoryFields(
         ...rawResult(tool.result),
       };
     case "read": {
+      if (tool.name !== "read") break;
       const content = asString(result?.content);
       const lines = asNumber(result?.total_lines);
       const start = asNumber(result?.start_line);
@@ -258,13 +261,12 @@ function categoryFields(
     }
     case "task":
       return rawResult(asString(result?.reply) ?? tool.result);
-    default:
-      return tool.result === undefined
-        ? {}
-        : {
-            result: typeof tool.result === "string" ? tool.result : prettyJSON(tool.result),
-          };
   }
+  return tool.result === undefined
+    ? {}
+    : {
+        result: typeof tool.result === "string" ? tool.result : prettyJSON(tool.result),
+      };
 }
 
 export function argsText(tool: AgentToolInvocation): string {

@@ -1,6 +1,11 @@
 import { parseJSON, type ToolInvocation } from "@flame/runtime-client";
 import { describe, expect, it } from "vitest";
-import { argsText, toolFields, toolLabel } from "@/features/agent/application/fold/projections";
+import {
+  argsText,
+  toolFields,
+  toolLabel,
+  toolLabelKind,
+} from "@/features/agent/application/fold/projections";
 import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 const tool = (name: string, args: Record<string, unknown>, result?: unknown): ToolInvocation =>
   ({ name, category: toolCategoryForName(name), arguments: args, result }) as ToolInvocation;
@@ -66,6 +71,19 @@ describe("toolLabel — name-keyed specialised tools", () => {
     ).toBe("Start the dev server");
     expect(toolLabel(tool("read_shell_output", { shell_id: "bg_1" }))).toBe("bg_1");
     expect(toolLabel(tool("stop_shell", { shell_id: "bg_2" }))).toBe("bg_2");
+  });
+
+  it("identifies stored-output reads by result id without treating the id as a file path", () => {
+    for (const id of ["BLOB234", "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".repeat(2)]) {
+      const invocation = tool("read_tool_result", {
+        result_id: id,
+        offset_bytes: 4000,
+        limit_bytes: 1024,
+      });
+
+      expect(toolLabel(invocation)).toBe(id);
+      expect(toolLabelKind(invocation)).toBe("text");
+    }
   });
 });
 
@@ -168,6 +186,42 @@ describe("toolFields — runtime wire shapes", () => {
       toolFields(tool("read", { path: "a.go" }, { content: "package main", total_lines: 412 })),
     ).toMatchObject({ result: "package main", lines: 412 });
     expect(toolFields(tool("read", { path: "a.go" }, { content: "x" })).lines).toBeUndefined();
+    expect(
+      toolFields(
+        tool(
+          "read",
+          { path: "a.go" },
+          { content: "first\nlast", total_lines: 100, start_line: 11, end_line: 12 },
+        ),
+      ),
+    ).toEqual({ result: "first\nlast", lines: 100, range: { start: 11, end: 12 } });
+  });
+
+  it.each(["read_skill_resource", "read_tool_result"])(
+    "%s retains literal source instead of interpreting a file-result envelope",
+    (name) => {
+      for (const output of [
+        "[recorded source]\n\n\tKeep <component> tags literal.\n",
+        '{"content":"keep this nested value","total_lines":9007199254740993}',
+        "",
+      ]) {
+        expect(toolFields(tool(name, {}, output))).toEqual({ result: output });
+      }
+      expect(toolFields(tool(name, {}))).toEqual({});
+    },
+  );
+
+  it("retains a Skill resource page's continuation alongside its captured content", () => {
+    const page = {
+      content: "Keep this exact text.\n\n\tNext paragraph.",
+      next_cursor: { offset: 39, snapshot: "a".repeat(64) },
+    };
+    const fields = toolFields(tool("read_skill_resource", { name: "review", path: "a.md" }, page));
+
+    expect(JSON.parse(fields.result!)).toEqual(page);
+    expect(fields.result).toBe(JSON.stringify(page, null, 2));
+    expect(fields.lines).toBeUndefined();
+    expect(fields.range).toBeUndefined();
   });
 });
 

@@ -66,6 +66,13 @@ in both standalone and grouped rows, with long values wrapping inside the readin
 column. Captured text, status, disclosure, actions and source-return ownership stay
 with their existing owners.
 
+Recorded Skill resources and stored-output reads retain their complete captured
+results. Only file reads unwrap the file content and line-range envelope; the
+shared read category does not imply one result format. Skill pages retain their
+continuation beside content, and historical text remains literal. Stored-output
+summaries identify the Runtime's result ID, while its original byte-window header
+remains in the body.
+
 Selected subagent readers keep the complete task purpose and sibling identity
 visible in their header. Overview rows retain their compact summaries; retained
 reading state, source navigation and return focus stay with the inspection owner.

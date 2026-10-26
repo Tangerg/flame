@@ -517,16 +517,28 @@ const SKILL_RESOURCE_CALL = settledTool(
   "item_last_skill_resource",
   "read_skill_resource",
   { name: "review-diff", path: "checklist.md" },
-  ["- Riskiest hunk first.", "- Name the invariant.", "- Find the test that would catch it."].join(
-    "\n",
-  ),
+  {
+    content: [
+      "- Riskiest hunk first.",
+      "- Name the invariant.",
+      "- Find the test that would catch it.",
+    ].join("\n"),
+    next_cursor: {
+      offset: 81,
+      snapshot: "6b31fb380eb6623db513d35a97e10b89d97185e1b53aef3449e684c63b1c960c",
+    },
+  },
 );
 
 const READ_TOOL_RESULT_CALL = settledTool(
   "item_last_read_tool_result",
   "read_tool_result",
-  { item_id: "item_shells_command" },
-  ["ok  \tgithub.com/Tangerg/flame/runtime/internal/session\t8.412s", "FAIL"].join("\n"),
+  { result_id: "BLOB234" },
+  [
+    "[tool result BLOB234 — 66 bytes total, showing bytes 0–66]",
+    "ok  \tgithub.com/Tangerg/flame/runtime/internal/session\t8.412s",
+    "FAIL",
+  ].join("\n"),
 );
 
 const STOP_SHELL_CALL = settledTool(

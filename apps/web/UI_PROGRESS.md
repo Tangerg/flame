@@ -1,15 +1,18 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Recorded-tool task scenes now carry the Runtime category facts needed to qualify their real summaries and secondary arguments. Native evidence reading, Dock inspection, filtering and draft continuation qualify the inspected flows below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Stored-output reads retain their result identity and complete text; Skill resources retain literal history or complete current pages, including continuation. Native result/resource/Dock/return and draft paths qualify the read-family projection repair below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/tool-evidence-flow-1026`. Recorded-tool evidence qualification uses
-frozen base `035ad3de24ce8dc68f332dc576ed1919d3d3f393`; see Canonical tool-evidence
-qualification below. Goal stop-reason implementation
+is on `codex/stored-output-identity-1026`. Read-family evidence qualification uses
+frozen base `1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see Read-family evidence and
+stored-output identity below. Canonical Tool-evidence implementation
+`0e523350ef2c54985271cdbe22e344ff58921cba` and receipt
+`1304b6b6421a104d26959d0d3b8b205a0ccb0832` remain published and retired.
+Goal stop-reason implementation
 `cda3e1b6f7fd5709c7fd443b64121356f0b0826a` and receipt
 `035ad3de24ce8dc68f332dc576ed1919d3d3f393` remain published and retired.
 Loaded-plugin error implementation `1d8bfdd8084171aac8a330f18e1df840fee0229c` and
@@ -10775,6 +10778,174 @@ The one publication-time fetch had no incoming main commits; no merge or repeate
 validation was needed. Independent `ls-remote` matches the implementation, and
 the owned checkout is clean with zero unpushed commits. This in-place delivery
 receipt changes no accepted product or fixture source.
+
+### Read-family evidence and stored-output identity
+
+Actual Wails reproduced a completed read_tool_result showing no result body,
+despite the captured response containing its byte-window header and output. Its
+summary also omitted the result ID. The read category had been treated as the
+file-read content/range envelope for every member, so literal stored output was
+discarded. A historical literal Skill-resource capture reproduced the same loss.
+
+`projections.ts` now unwraps that envelope only for the actual `read` tool.
+Other read results join the existing captured-source projection: text stays
+literal, and structured values use the existing whitespace-only JSON formatter.
+The existing name-specific label projection takes `read_tool_result.result_id`;
+it remains machine text, not a file path or a new navigation target. Current
+Skill pages retain both content and next_cursor. No new state, renderer, SDK
+field, protocol, parser, command, retry or Runtime ownership is introduced.
+
+The selected Scope tools/skills **v0.57.1** returns TextPage, rather than the old
+literal resource fixture. Its read-only page.go/tool.go confirm content plus
+optional next_cursor, with an offset bound to the exact source snapshot. The
+fixture now captures that current page, offset **81**, and its 64-character
+snapshot. The stored-output fixture now uses Runtime's actual `result_id`
+argument and a complete **66-byte** response header, replacing the incorrect
+item_id example. These are accepted presentation facts; no page is fetched or
+Tool replayed. The initial native Skill-string counterexample is historical
+coverage, not a claim that the selected Scope release still returns strings.
+
+#### Scope and coverage
+
+This better-interface review covers reading the final reply, identifying stored
+output, inspecting its original body and a Skill page, local Find, related
+Files/Trajectory material, returning and continuing the same draft. Stack and
+conventions remain React, Base UI, shared @flame/ui, StyleX and semantic tokens.
+Recon includes AGENTS, PROJECT_RULES, DEVELOPMENT, Web/native/tool-results
+READMEs, ARCHITECTURE, DESIGN, DESKTOP_UI_POLISH and the existing progress record.
+The verdict excludes the whole product and live pagination/execution.
+
+Fresh read-only ZCode task-output.tsx puts task identity beside the operation and
+keeps its output separately bounded. ChatGPT's actual artifact header consumes
+path/host context for the material, rather than an exporter-only label. Existing
+HeroUI/Arc disclosure and Radix trigger/content/keyboard studies retain their
+recorded limits. Ace Alpaca/Marketer composition studies above are inherited; no
+new artwork or animation comparison is claimed. Flame keeps its existing linear
+activity rows, bounded source reader and task/Dock owners.
+
+| Domain        | Evidence inspected                                                                                                           | Result                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Accessibility | Native named source readers, local Find/Escape, keyboard End/Home, material Close, Dock keyboard tabs and visible focus      | Changed tasks pass; VoiceOver speech and OS IME not verified                     |
+| Layout        | Original output, seven-line page source, long snapshot, main/Dock grouping, native half-window at 200%, 320 px Dock          | Lost evidence restored; no horizontal document overflow in measured narrow scene |
+| Writing       | Existing EN/ZH/DE read/result/find/return labels, Runtime result ID and byte-window header                                   | Object and scope now identify the actual captured evidence; no new copy          |
+| Typography    | New ID uses the existing machine role: EN 12 px/19.5 px, ZH 15 px/24.375 px, weight 400; source wrapping and indentation     | Clear within inspected material; font system unchanged                           |
+| Colors        | Actual new-ID colors #696969 on #f5f5f5 and #8c8c8c on #0f0f0f; native Orange/light, custom blue/dark and purple/warm scenes | Measured ID pairs 5.03:1 and 5.70:1; no palette changes                          |
+| UI polish     | Existing disclosure, source grouping, filtering, native wheel chaining, reduced-motion end states and keyboard return        | Missing-body/identity task repaired; timing replay not exhaustive                |
+
+#### Findings
+
+| Severity | Domain                  | Location                                                 | Before                                                                                                                                    | After                                                                                                  | Why                                                             |
+| -------- | ----------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| HIGH     | Layout / evidence scope | `src/features/agent/application/fold/projections.ts:244` | Every read-category result is unwrapped as a file envelope, dropping stored text, historical resource text and current Skill continuation | Only file reads unwrap; the common source path preserves text or formats the complete structured value | Supporting evidence must remain available with its actual scope |
+| MEDIUM   | Writing / identity      | `src/features/agent/application/fold/projections.ts:116` | Stored-output summary names the operation without the object                                                                              | Existing name projection includes the opaque result_id as machine text                                 | The user must know which captured result is being read          |
+
+Both findings are resolved in the final candidate. Ordinary file content, total
+lines and partial line-range behavior keep their owner and explicit regression.
+An intermediate native candidate preserved a structured page as one compact JSON
+line; the final common source path adds the existing indentation without changing
+values. Historical strings, including JSON-looking text, remain unformatted.
+
+#### Verification
+
+The original focused baseline passes **3 files / 53 tests** in 1.71 s. The final
+six added cases on the original projection yield **6 failed / 53 passed** in
+1.67 s: stored identity, literal resource/output results, current continuation,
+and both real-fold fixture projections. The candidate is restored byte-for-byte
+before final checks. Coverage also retains blank/indented/markup-like text,
+JSON-looking literal source, empty versus absent results, an ID at the Runtime
+64-character bound, and ordinary partial file reads. No valid assertion was
+weakened or skipped.
+
+Final verification passes **28 files / 380 tests**, Web typecheck, lint and format.
+The earlier serial candidate chain also passes feature/public/layer boundaries,
+design-system, token, dead-style, dead-token, authored-class, shorthand, chrome
+and locale gates. Final **make check-native** passes Desktop test/vet/build and
+the supported Wails build; the final test/build chain takes **56.12 s**. The
+previous 74.68 s candidate and 28.06 s current-page iteration are intermediate,
+not substitutes for final-source verification. Native binaries are arm64, minimum
+macOS **13.0**, SDK **26.5**. Non-failing linker SDK/duplicate-library and fixture
+chunk-size warnings remain separate. Full unchanged Web/shared UI/Runtime/CLI and
+author suites, browser visual suites and benchmarks were not rerun.
+
+Final actual Wails/CUA acceptance uses production host, fold, shared readers and
+registered captured-result renderer. A private Go overlay changes asset location,
+product identity and fixture URL only. EN/ZH have passive color/geometry evidence;
+DE independently omits that measurement script. No source interaction, scrolling,
+focus or input behavior is replaced.
+
+- EN/light/14 px/Orange: BLOB234 and the complete byte header/body appear; the
+  Skill page shows content and its complete cursor as seven source lines.
+  A local snapshot query survives inspecting the same resource call in
+  Trajectory and returning to Files. Escape restores all source rows and focuses
+  Result. The exact draft continues as
+  `Continue after reading the stored output. Ready.`.
+- ZH/dark/18 px/custom blue/reduced motion: native Window → Move & Resize → Left
+  and twenty Zoom In actions from Actual Size qualify **561 × 475 CSS px**.
+  The snapshot query remains through full-pane Files, actual four-Tab entry to
+  its source reader, End, ordinary Close and return to the Conversation. Escape
+  then focuses the complete resource reader; End reaches **78/204/282** for
+  scrollTop/clientHeight/scrollHeight and Home returns to the beginning. The
+  resource width and scrollWidth are both **495 px**, document width **561 px**.
+  The exact draft continues as `读完暂存证据后继续。 已核对。` before Actual Size.
+- DE/light/18 px/custom purple/warm/reduced motion, without measurements: actual
+  Tab traversal enters the resizer and Home selects **320 px**. Both bodies and
+  identities remain readable. Native wheel input over the fitting source reader
+  continues the transcript to the final reply. Local FAIL filtering leaves the
+  original output line; native tab-arrow navigation enters Trajectory and returns
+  to Files without losing that query. Escape restores the header and both output
+  lines with Result focus. The draft continues as
+  `Nach dem Lesen der gespeicherten Ausgabe weiterarbeiten. Geprüft.`.
+
+All native instances exit through Cmd+Q. Only explicit fixture presentation and
+isolated recorded facts are exercised: no producer execution, continuation fetch,
+live Runtime event, credentials or business write is inferred. Send, Resume,
+Save and destructive commands were not invoked. Native 64-character result-ID
+layout, 320 px whole-window width, RTL, clipboard contents, VoiceOver speech,
+OS IME and other-platform GUI remain unverified. The previously recorded native
+input, clicked-reader reverse traversal and hidden-zoom limitations remain scoped;
+this batch claims no repair for them. No Claude CLI or subagent is used.
+
+The **5,784** accepted non-Markdown source hashes are frozen at
+`2dc83255d7a7e38d0f005dfdcf40a6a7e07c73baebf105d528fd9fc317ef1fbf`.
+Each private asset set has **600** files; all **11** portable resources and six
+fresh read-only reference files match their accepted hashes.
+
+| Goal CHECK        | Scoped result                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| Typography        | Existing machine/source roles, full source values and stable indentation qualified                    |
+| Whitespace        | File envelope and literal/page sources use their existing bounded reading composition                 |
+| Visual hierarchy  | Final reply, operation/object, captured body and continuation remain distinct and present             |
+| Color             | New identity contrast measured in light/dark; custom primary colors remain intact                     |
+| Motion            | Reduced-motion scenes retain disclosure/selection state; no timing award claim                        |
+| Micro interaction | Find, Escape, keyboard reader, wheel chaining, related-material return and continued drafts qualified |
+| Responsive        | Native half-window/200%, complete wrapped snapshot and 320 px Dock qualified                          |
+| Originality       | Approved Flame identity and existing workbench surfaces retained without decoration                   |
+
+Verdict: **Approve for the changed read-result contract and inspected tasks**.
+This restores complete evidence; it does not certify every Skill renderer, fetch
+additional historical pages or complete the whole-product award-level goal.
+Continue from the current Scope page/list contracts when inspecting remaining
+Skill instruction/discovery tasks; historical XML/string fixtures alone cannot
+qualify those current interfaces.
+
+Owned resources are retired. All **15** recorded process IDs are dead; the four
+unique app bundles are unregistered. Cleanup removes seven newly created checkout
+output/cache paths, eight owned Library paths and four owned bundle-temporary
+paths, restores the exact pre-existing native-check binary, and retains all
+**36** output-presence baselines and **three** original files byte-for-byte.
+The exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-stored-output-1026-ZiKOlZ`
+is absent after UID/device/inode/birth verification. Its in-memory evidence
+archive round-trips **83** UTF-8 records, **24** screenshot digests and **four**
+native binary digests; gzip SHA-256 is
+`01883e8f5db951ac88f332e8279c24f4c32e2b5ac0e00c5da8c621ef32a407a7`. Final preservation again confirms the
+accepted 5,784-source inventory, 11 resources, 36 output baselines, three original
+files, 15 dead processes and six unchanged reference files. The primary parallel
+checkout, user data and unrelated resources are preserved.
+
+Publication-time fetch completed once with **0 / 0** divergence from the frozen
+main base. Implementation publication and its independent remote proof follow
+in the final delivery receipt.
 
 ### Recorded Tool failure layout
 

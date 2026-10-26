@@ -9,6 +9,36 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it("projects stored-output identity and the complete original read window", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-tail"];
+    const recorded = snapshot.items.find((item) => item.id === "item_last_read_tool_result");
+    if (recorded?.type !== "toolCall") throw new Error("Missing recorded stored-output read");
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const call = view.toolCalls[recorded.id]!;
+
+    expect(recorded.tool.arguments).toEqual({ result_id: "BLOB234" });
+    expect(call.fn).toBe("BLOB234");
+    expect(call.fnKind).toBeUndefined();
+    expect(call.result).toBe(recorded.tool.result);
+    expect(call.result).toContain("66 bytes total, showing bytes 0–66");
+  });
+
+  it("retains a recorded Skill-resource page through the real fold", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-tail"];
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const call = view.toolCalls.item_last_skill_resource!;
+
+    expect(call.fn).toBe("review-diff/checklist.md");
+    expect(JSON.parse(call.result!)).toEqual({
+      content:
+        "- Riskiest hunk first.\n- Name the invariant.\n- Find the test that would catch it.",
+      next_cursor: {
+        offset: 81,
+        snapshot: "6b31fb380eb6623db513d35a97e10b89d97185e1b53aef3449e684c63b1c960c",
+      },
+    });
+  });
+
   it("retains unknown tool arguments for secondary inspection through the real fold", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-agentic"];
     const recorded = snapshot.items.find((item) => item.id === "item_agentic_inspect_workspace");
