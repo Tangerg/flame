@@ -130,7 +130,7 @@ require (
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.0-memory.20261027.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
-	github.com/Tangerg/flame/runtime v0.1.0-consolidation.20261026.2
+	github.com/Tangerg/flame/runtime v0.1.0-memory.20261027.1
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0
