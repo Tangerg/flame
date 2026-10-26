@@ -30,4 +30,4 @@ lookup contract.
 
 Develop through root `go.work`; root setup/check discovers this member.
 Independent source distribution selects its immutable candidate module version
-before freezing source and packages it separately from the root module.
+before freezing source; product modules consume it through that pinned version.
