@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -42,8 +42,9 @@ native qualification and resource retirement. The latest Schedules repair uses
 frozen base `4bd7535cafd5f306612dab618f73ba0aca9f1003`; see Schedules filter
 arrival and retained reading and its Immediate Escape follow-up below. The
 preceding Skills composition/query and
-source-presence repairs retain their corresponding sections. These local
-commits have not been pushed or merged into the primary checkout.
+source-presence repairs retain their corresponding sections. Image descriptions now retain complete wrapping, native scrolling and reader focus
+through gallery selection, qualified under Image descriptions and bounded gallery
+reading. These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -2428,6 +2429,110 @@ Base UI transition/focus code supplied actual lifecycle evidence.
 **Approve**, limited to the inspected domains, states and flows above. No
 remaining actionable finding was observed there. Continue from fresh evidence;
 do not reopen the delivered selection, source-size or fullscreen return fixes.
+
+### Image descriptions and bounded gallery reading
+
+At frozen base `68a45795ce88a8c8d7b7df5627e512bb258a3b36`, actual Wails EN
+page 200% exposes a complete 155-character captured image description whose
+895 px text is ellipsized inside 517 px. Its native title is not a keyboard
+reading path: Tab cycles through gallery actions without entering the name.
+The complete value remains in AX, but visual keyboard reading is incomplete.
+
+`ImagePreviewGallery.tsx` now renders the existing active label in the shared
+named ScrollRegion, with complete wrapping, native selection and a 25dvh cap.
+The same reader survives image selection and keeps focus, including the existing
+unnamed-image fallback. The header takes natural height; its total bound reserves
+clearance above the existing centered navigation. Description and save feedback
+scroll independently, and the original image viewport measures the space left
+below the header. The old single-line truncation and rounded name capsule are
+removed. Existing image fitting, zoom, captured selection, save-command ownership
+and modal/source return remain unchanged. Eight locales name the reader; Web
+README and behavior coverage record this contract. No shared component, token,
+Runtime, persistence, native host or portable resource source changes.
+
+Read-only ChatGPT's actual image-lightbox entry and implementation
+`deob/webview/assets/chatgpt-image-lightbox-9d0c2ba1a3f1.js:83,241` distinguish
+captured image text, navigation and viewer content. This is actual UI code, not
+an exporter; it does not establish Flame's native behavior. Better-accessibility,
+layout and typography guide complete keyboard reading and bounded geometry;
+writing, color and UI guidance retain existing vocabulary, semantic ink and quiet
+surfaces. Earlier HeroUI/Radix, Arc and Ace qualifications remain scoped as before.
+
+| Severity | Owner               | Before                                                                          | After                                                                             | Impact                                                          |
+| -------- | ------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| HIGH     | Gallery header/name | Native 200% truncates the object description with no keyboard route to its tail | Named, wrapping reader preserves the complete capture, focus and native scrolling | Required image identity remains readable at zoom (1.4.4, 2.1.1) |
+
+Native acceptance uses production gallery controls and original inline-image
+transport. Private fixture inputs supply the unchanged first description, a
+287-character mixed-language description with a long path, and an ordinary
+360 × 540 portrait. The second description/image extends the baseline's shorter
+second input; the first-description counterexample is unchanged. A passive
+observer reads geometry only. A public ImageSaveProvider input returns a
+controlled failure without file I/O; production save handling supplies its
+localized fallback. This does not qualify the native save-file API.
+
+- EN/light/14 px/Orange/full motion: Tab reaches Image description; Left/Right
+  retain that reader's focus. At the same native **200%**, the first description
+  wraps completely. The longer description reaches its bottom (scrollTop **8**,
+  113 px viewport / 120 px content), and the portrait fits its remaining reader.
+  Zoom in remains focused through 125% and selection of the generated third
+  image. Escape from the description and pointer Close return to the original
+  image trigger. The draft continues exactly as
+  `Keep the image review draft. Continue after reviewing.`.
+- DE/light/18 px/purple/motion off, native Left and **200%**, **561 × 475 CSS px**:
+  the description has 374 px width, 119 px viewport / 286 px content and reaches
+  scrollTop **167** by Page Down from confirmed reader focus. It has no horizontal
+  overflow. Controlled save failure leaves Download/Close and navigation reachable;
+  the existing named feedback reader receives focus and scrolls. Its complete
+  terminal feedback tail was not independently confirmed. Closing returns to the
+  same long-description image; the exact draft continues as
+  `Nach der Bildprüfung weiterarbeiten. Geprüft, weiter.`.
+- ZH/dark/18 px/blue/motion off: native Home establishes the **320 px source Dock**;
+  the gallery remains full-window. Tab reaches 图片说明 with visible focus, the
+  complete mixed-language description wraps, and Left/Right retain reader focus.
+  Escape returns to the original second image and the draft continues exactly as
+  `核对图片后继续。 已核对，继续。`. ZH page 200% is not rerun in this batch.
+
+A stale native state after Left placement is re-read before the accepted DE
+Actual Size → twenty Zoom In sequence. An earlier DE Page Down targeted Zoom out
+and is excluded from description-reading acceptance. A baseline Escape retires
+its visible Close tooltip; no baseline source return is claimed from that press.
+All four apps exit with Cmd+Q. No live Runtime/provider command or Send occurs.
+
+Baseline image/lightbox checks pass **2 files / 21 tests**. The added description
+reader regression fails on the original product (**1 failure / 15 skipped**,
+2.80 s), then passes with the final contract. Final image/lightbox/Mermaid checks
+pass **3 files / 24 tests** (3.37 s). Formatting, Web typecheck/lint, all eight
+locale keys, design-system, tokens, chrome, styles and classes checks pass.
+The initial ten-command chain takes **8.54 s**; the final serial checks, assets
+and three candidate native builds take **41.17 s**. Baseline prerequisites,
+checks and native build take **15.58 s**. Existing chunk-size/-lobjc warnings
+are non-failing; no assertion, deadline or guard is weakened.
+
+Verdict: **Approve for the inspected image-description and gallery-return task**,
+with the feedback-tail qualification above.
+
+The eight goal dimensions retain the existing type scale, shared spacing,
+object/actions hierarchy, semantic color and motion policy, with a complete
+caption in the constrained reading flow and the unboxed Flame media composition.
+This is scoped progress, not award-level or whole-product acceptance. VoiceOver
+speech, real OS IME, quantitative contrast, RTL, other-platform GUI and full
+native/Runtime/CLI suites are not rerun. No browser visual/performance suite,
+Claude CLI or subagent runs. Existing unrelated main layer-check limits remain
+qualified. The user's subsequent latest-main request is handled after this local
+batch; these native receipts qualify the frozen base and reviewed UI only.
+
+Owned retirement is complete: **8** recorded PIDs are dead, four exact bundles
+are unregistered and the private root is absent. Three new checkout output/cache
+roots, eight bundle Library paths and four bundle temp directories are removed.
+All **34** output-presence baselines, **3** pre-existing files, **24** Library
+baselines, **5,819** accepted non-Markdown inputs, eleven unchanged resources
+and two read-only reference files are preserved. In-memory gzip round-trip
+retains **84** flat UTF-8 records, **40** screenshot digests, 596 assets per
+baseline/candidate, 16 immutable module artifacts and four native hashes;
+SHA-256 `8d3246c81166628dde718813ad5a75925b735acc7f471ab31f47f80e4af94bd0`.
+The primary checkout, user data, dependencies, compiler caches and unrelated
+processes remain untouched. This batch is committed locally before main merges.
 
 ### Conversation import file reads
 

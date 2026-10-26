@@ -15,7 +15,7 @@ import {
 import { useT } from "@/lib/i18n/index";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { LightboxDialog, SystemMessage } from "@/ui/index";
-import { IconButton, ScrollRegion, vocab } from "@flame/ui";
+import { IconButton, ScrollRegion } from "@flame/ui";
 import { useImageSave } from "@/features/chat/public/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/message/ui/messageContent";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -28,10 +28,13 @@ const ig = stylex.create({
     flexDirection: "column",
   },
   header: {
-    position: "absolute",
-    top: space.s3,
-    left: `max(${space.s3}, var(--window-controls-gutter, 0px))`,
-    right: space.s3,
+    position: "relative",
+    flexShrink: 0,
+    minWidth: 0,
+    maxHeight: `calc(50dvh - ${space.s6})`,
+    paddingBlockStart: space.s3,
+    paddingInlineStart: `max(${space.s3}, var(--window-controls-gutter, 0px))`,
+    paddingInlineEnd: space.s3,
     zIndex: 1,
     display: "flex",
     flexDirection: "column",
@@ -39,7 +42,7 @@ const ig = stylex.create({
   },
   toolbar: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
   },
   // Bounded above the vertically centred navigation so long or enlarged text scrolls instead.
@@ -51,17 +54,22 @@ const ig = stylex.create({
   },
   identity: {
     display: "flex",
-    alignItems: "center",
+    flex: 1,
+    alignItems: "flex-start",
     minWidth: 0,
     gap: space.s2,
-    paddingInline: space.s3,
     paddingBlock: space.s2,
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.mediaScrim,
     color: color.onMedia,
   },
   name: {
+    flex: 1,
     minWidth: 0,
+    paddingBlock: 0,
+    maxHeight: "25dvh",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    overscrollBehavior: "contain",
+    userSelect: "text",
   },
   position: { flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" },
   actions: {
@@ -78,7 +86,7 @@ const ig = stylex.create({
     flex: 1,
     overflow: "auto",
     paddingInline: space.s4,
-    paddingTop: space.s12,
+    paddingTop: space.s4,
     paddingBottom: space.s16,
     overscrollBehavior: "contain",
     touchAction: "none",
@@ -514,13 +522,9 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
         <div {...stylex.props(ig.header)}>
           <div {...stylex.props(ig.toolbar)}>
             <div {...stylex.props(ig.identity, typeStep.uiSm)}>
-              <span
-                aria-hidden="true"
-                title={activeLabel}
-                {...stylex.props(ig.name, vocab.truncate)}
-              >
+              <ScrollRegion as="span" label={t("message.image.description")} styles={ig.name}>
                 {activeLabel}
-              </span>
+              </ScrollRegion>
               {hasGallery && (
                 <span role="status" {...stylex.props(ig.position)}>
                   {gallery!.index + 1} / {gallery!.items.length}

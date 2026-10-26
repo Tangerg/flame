@@ -102,6 +102,12 @@ navigation request a match reveal; hiding or closing retires the observer with
 the existing search lifetime. The Find scope owns Escape and query navigation;
 zero-result navigation buttons keep focus while refusing activation.
 
+Image galleries keep the complete captured description in a named, keyboard
+scroll region. The header takes its natural height, and long descriptions stay
+bounded while the existing image viewport fits the remaining space. Selection
+keeps that description reader and its focus; source return and image zoom retain
+their existing owners.
+
 Generated SVG fences stay inert images inside their code preview and open through
 the shared image gallery. The gallery keeps source order within the reply, owns
 zoom/pan and source return, and captures the image set for each opening. Code

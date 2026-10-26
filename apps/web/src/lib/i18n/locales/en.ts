@@ -163,6 +163,7 @@ export const en: Record<string, string> = {
   "message.image.view": "View attached image",
   "message.image.preview": "Open image preview",
   "message.image.previewTitle": "Image preview",
+  "message.image.description": "Image description",
   "message.image.unavailable": "Image unavailable",
   "message.image.previous": "Previous image",
   "message.image.next": "Next image",

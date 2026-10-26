@@ -222,6 +222,35 @@ describe("ImageBlock", () => {
     expect(screen.getByRole("dialog", { name: "Inline" })).toBeTruthy();
   });
 
+  it("keeps the description reader and its focus while changing gallery images", async () => {
+    const description =
+      "Architecture review — Runtime transaction ownership, provider execution boundary, recovery checkpoints, and recorded evidence from the scheduling workspace";
+    testClient.render(
+      <div className={MESSAGE_CONTENT_CLASS}>
+        <MarkdownRenderer
+          text={`![${description}](data:image/png;base64,${FIRST_PNG})`}
+          reveal="instant"
+        />
+        <ImageBlock mime="image/gif" data={SECOND_GIF} />
+      </div>,
+    );
+    await openPreview(screen.getByRole("button", { name: description }));
+    const reader = screen.getByRole("region", { name: "Image description" });
+    expect(reader.textContent).toBe(description);
+    expect(reader.tabIndex).toBe(0);
+    expect(reader.hasAttribute("aria-hidden")).toBe(false);
+    reader.focus();
+    fireEvent.keyDown(reader, { key: "ArrowRight" });
+    expect(screen.getByRole("region", { name: "Image description" })).toBe(reader);
+    expect(reader.textContent).toBe("Image preview");
+    expect(document.activeElement).toBe(reader);
+    expect(screen.getByRole("dialog", { name: "Image preview" })).toBeTruthy();
+    fireEvent.keyDown(reader, { key: "ArrowLeft" });
+    expect(reader.textContent).toBe(description);
+    expect(document.activeElement).toBe(reader);
+    expect(screen.getByRole("dialog", { name: description })).toBeTruthy();
+  });
+
   it("uses the current image name when moving from named Markdown to an unnamed attachment", async () => {
     testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
@@ -237,7 +266,8 @@ describe("ImageBlock", () => {
     expect(screen.getByRole("dialog", { name: "Architecture" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Architecture" })).toBeTruthy();
     const name = screen.getByText("Architecture", { selector: "span" });
-    expect(name.getAttribute("aria-hidden")).toBe("true");
+    expect(name.getAttribute("role")).toBe("region");
+    expect(name.getAttribute("aria-label")).toBe("Image description");
     const position = screen.getByRole("status");
     expect(position.textContent).toBe("1 / 2");
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));

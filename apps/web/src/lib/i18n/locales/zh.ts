@@ -155,6 +155,7 @@ export const zh: Record<string, string> = {
   "message.image.view": "查看附带的图片",
   "message.image.preview": "打开图片预览",
   "message.image.previewTitle": "图片预览",
+  "message.image.description": "图片说明",
   "message.image.unavailable": "图片不可用",
   "message.image.previous": "上一张图片",
   "message.image.next": "下一张图片",

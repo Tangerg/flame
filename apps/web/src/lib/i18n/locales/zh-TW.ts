@@ -153,6 +153,7 @@ export const zhTW: Record<string, string> = {
   "message.image.view": "檢視附帶的圖片",
   "message.image.preview": "開啟圖片預覽",
   "message.image.previewTitle": "圖片預覽",
+  "message.image.description": "圖片說明",
   "message.image.unavailable": "圖片無法使用",
   "message.image.previous": "上一張圖片",
   "message.image.next": "下一張圖片",

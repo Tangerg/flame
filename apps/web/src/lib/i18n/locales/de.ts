@@ -157,6 +157,7 @@ export const de: Record<string, string> = {
   "message.image.view": "Angehängtes Bild ansehen",
   "message.image.preview": "Bildvorschau öffnen",
   "message.image.previewTitle": "Bildvorschau",
+  "message.image.description": "Bildbeschreibung",
   "message.image.unavailable": "Bild nicht verfügbar",
   "message.image.previous": "Vorheriges Bild",
   "message.image.next": "Nächstes Bild",

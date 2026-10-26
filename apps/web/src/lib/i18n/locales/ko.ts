@@ -153,6 +153,7 @@ export const ko: Record<string, string> = {
   "message.image.view": "첨부 이미지 보기",
   "message.image.preview": "이미지 미리보기 열기",
   "message.image.previewTitle": "이미지 미리보기",
+  "message.image.description": "이미지 설명",
   "message.image.unavailable": "이미지를 사용할 수 없음",
   "message.image.previous": "이전 이미지",
   "message.image.next": "다음 이미지",

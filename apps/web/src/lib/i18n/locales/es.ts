@@ -158,6 +158,7 @@ export const es: Record<string, string> = {
   "message.image.view": "Ver imagen adjunta",
   "message.image.preview": "Abrir vista previa de la imagen",
   "message.image.previewTitle": "Vista previa de la imagen",
+  "message.image.description": "Descripción de la imagen",
   "message.image.unavailable": "Imagen no disponible",
   "message.image.previous": "Imagen anterior",
   "message.image.next": "Imagen siguiente",
