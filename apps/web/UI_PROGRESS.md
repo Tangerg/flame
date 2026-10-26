@@ -51,7 +51,8 @@ The subsequent explicit main-sync request fetches remote main again and confirms
 the same `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` is already an ancestor of
 the local UI branch. There are zero incoming commits; merge reports already up
 to date. This confirmation does not restart the UI verification chain or change
-the primary checkout.
+the primary checkout. The latest repeated request is checked against a fresh
+remote fetch with the same result while completing the file-header batch below.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -7208,6 +7209,95 @@ maps bind **1,209 final artifacts** and **12 native input files**. This Markdown
 receipt changes no accepted product source. Preserve the file request, reading,
 comparison, Composer and Runtime owners for the next batch. The continuous goal
 remains active.
+
+### File-header width and reading room
+
+The task remains reply reference → file reading/line navigation → related
+Markdown or file list → source return → continued draft. The accepted two-line
+filename cap and complete path in the reader remain in place. A fresh native
+baseline at `c0161ba08c08d5b4124b61b46d3a79d9f2162ca0` nevertheless gives a short
+file a **96 px header**, because `viewStyles.contentHeader` always stacks its
+identity and command groups. Controls are reachable in the baseline; the defect
+is unnecessary vertical allocation, especially after native zoom.
+
+The shared workspace header now uses wrapping horizontal flow. Both existing
+groups grow into available width and align at the primary identity. They share
+a row when their natural widths fit and wrap when they do not. The metadata
+remains beneath the filename; DOM/tab order, button sizes, complete path,
+navigation, source history, file requests and draft ownership are unchanged.
+There is no new breakpoint, measurement, state, event listener, dependency or
+helper copy. `ViewHeader`/`WorkspaceViewLayout` and their current FileWorkspace
+consumer keep their existing contracts; only `viewStyles.ts` changes product
+source. The Web README records the resulting composition.
+
+Read-only ZCode `GitPaneChangeCard.tsx:80–170` informs bounded primary identity
+beside actions; HeroUI `card.tsx:55–120` informs header/title composition. Neither
+supplies Flame's responsive geometry. The complete Desktop/docs feedback review
+is reread against current code. Existing ChatGPT, Arc, Radix and Ace research
+remains design context, with no new interaction or award claim. The six better-*
+domains guide the review: reachable named reading/focus, natural grouping,
+existing vocabulary, retained type roles, semantic colors and unchanged control
+surfaces/motion. The specific reading-space gap is repaired; the whole-product
+goal and broader visual review remain open.
+
+Verification (2026-10-27):
+
+- Original baseline passes **3 files / 187 tests**. Final serial validation
+  passes **4 files / 201 tests**, Web types/lint/design-system/chrome/styles/
+  tokens/resource checks and normal **make check-native**. The 13-command final
+  chain takes **60.11 s**, including **33.79 s** for production staging,
+  Desktop Go tests/vet/build and the supported Wails build. Existing linker,
+  deployment-target and bundle-size notices are non-failing. No gate or valid
+  assertion is weakened, and no implementation-property test is added for the
+  CSS composition; native before/after geometry establishes the layout change.
+- Actual Wails EN/light/14 px/Orange with paper and motion off qualifies short
+  source at both **523 px** and keyboard-resized **320 px** Dock widths:
+  header **96 → 60 px**, reader **758 → 794 px** at 1440 × 900. Navigation and
+  commands align with the filename. Go to line opens normally; Escape and Tab
+  reach Copy path and the named reader, and End reaches line 8. The existing
+  deterministic file provider supplies that eight-line source under `go.mod`;
+  it is not a read of the repository's actual go.mod.
+- At 320 px, Markdown Preview/Source controls naturally wrap to a **101 px**
+  header with all five controls hit-testable. The long reference retains its
+  complete path, two-line filename and **116 px** header, matching the prior
+  accepted long-file layout. Native source return restores the exact reference.
+- Twenty observed native Zoom In actions produce **720 × 450 CSS px / 200%**.
+  The existing full-width material entry opens the current file. The short
+  header changes **96.5 → 60.5 px**, leaving **181.5 px** of reading height
+  instead of **145.5 px**, an increase of **36 px / 24.7%**. All three header
+  controls remain hit-testable; End reads the final line. Close and Actual Size
+  return to the original draft, which continues exactly to
+  `Keep the file reading draft. Continue after reading.`
+- Actual Wails ZH/dark/18 px/custom pale accent qualifies the same task, native
+  divider Home to 320 px, and a physical resize to **1121 × 729**. Short,
+  Markdown and long headers measure **71 / 118 / 133 px**; all applicable
+  controls are hit-testable. Markdown mode switches and exact reference return
+  pass. Twenty native zoom steps reach **560 × 364 CSS px / 200%**; the existing
+  full-width entry retains a 71 px header and a **116.28 px** scrollable reader.
+  End reaches line 8. Close/Actual Size and explicit input focus preserve and
+  continue the draft exactly to `核对文件后继续。 已核对，继续。` before Quit.
+- Native fixture assets use production views and the production chrome bridge;
+  private overlays select isolated assets/name/route. The only fixture data
+  transform supplies the long source-reference path. A passive observer reads
+  geometry, hit tests, scroll and focus without writing layout or interaction.
+  No Send, provider run or live Runtime/filesystem write runs. Copy activation,
+  native Open/Reveal, VoiceOver, OS IME, RTL, other-platform GUIs and a new color
+  contrast/motion matrix are not qualified. No browser visual suite, performance
+  benchmark, Claude CLI or subagent runs.
+
+Retirement independently confirms all **7 recorded PIDs dead**, three apps
+unregistered, **7 new checkout roots**, six Library paths and three bundle-temp
+paths removed. All **39 output-presence baselines**, four original file hashes,
+18 Library baselines, **5,831 accepted non-Markdown inputs**, eleven installed
+resources and three read-only references are preserved. The native-check binary
+is restored byte-for-byte. The exact root `flame-file-header-1027-y5iMkU` is
+absent. The verified in-memory gzip retains **79 UTF-8 records / 50 capture
+hashes**, both 598-file asset maps, initial-candidate provenance and final native
+app/build inputs, SHA-256
+`0e8e671805332221f6c1ab60c24e6b39d32c9c811a3d9a226953e1f3545ec0d2`.
+This batch is committed locally only; the parallel primary checkout and remote
+remain outside the editing boundary. No migration is needed. Continue from a
+fresh, valuable reading/Dock finding rather than reopening this resolved gap.
 
 ### File-source selection and literal copying
 

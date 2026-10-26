@@ -156,7 +156,10 @@ submenus keep their primitive's relationship to the controlling item instead of
 receiving a separate name.
 
 File previews keep their filename to two visible lines beside persistent navigation,
-range and commands. The complete path remains selectable in the same named
+range and commands. Header groups share a row when their natural widths fit and
+wrap together when space is limited. Navigation and actions align with the primary
+identity, leaving more room for reading without changing control order or size.
+The complete path remains selectable in the same named
 scroller as source, rendered content and read/unsupported states. File requests,
 line placement, renderer mode and source-return history retain their existing
 owners.

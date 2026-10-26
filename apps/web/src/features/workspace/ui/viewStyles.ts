@@ -3,7 +3,9 @@ import { color, leading, layout, space, surface, weight } from "@flame/ui/tokens
 export const viewStyles = stylex.create({
   contentHeader: {
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "flex-start",
     gap: layout.controlGap,
     flexShrink: 0,
     minWidth: 0,
@@ -12,6 +14,7 @@ export const viewStyles = stylex.create({
   },
   headerHeading: {
     display: "flex",
+    flexGrow: 1,
     alignItems: "flex-start",
     gap: layout.controlGap,
     minWidth: 0,
@@ -28,6 +31,7 @@ export const viewStyles = stylex.create({
   headerMetadata: { minWidth: 0, overflowWrap: "anywhere" },
   headerControls: {
     display: "flex",
+    flexGrow: 1,
     flexWrap: "wrap",
     alignItems: "center",
     gap: layout.controlGap,
