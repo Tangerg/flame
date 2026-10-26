@@ -40,12 +40,25 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 }
 
 func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsonvalue.Value) (knowledge.Header, error) {
-	var embed embed
-	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, func(ctx context.Context) error {
-		var err error
-		embed, err = l.resolve(ctx)
-		return err
+	return l.indexDocument(ctx, method, id, admitted, func(context.Context) (knowledge.Draft, int64, error) {
+		draft, err := knowledge.NewDraft(input.Content)
+		return draft, input.ExpectedRevision, err
 	})
+}
+
+func (l *library) reindexDocument(ctx context.Context, method, id string, input rpc.DocumentInput, admitted jsonvalue.Value) (knowledge.Header, error) {
+	return l.indexDocument(ctx, method, id, admitted, func(ctx context.Context) (knowledge.Draft, int64, error) {
+		document, err := l.store.read(ctx, input.ID)
+		if err != nil {
+			return knowledge.Draft{}, 0, err
+		}
+		draft, err := document.PrepareReindex(input.ExpectedRevision)
+		return draft, input.ExpectedRevision, err
+	})
+}
+
+func (l *library) indexDocument(ctx context.Context, method, id string, admitted jsonvalue.Value, prepare func(context.Context) (knowledge.Draft, int64, error)) (knowledge.Header, error) {
+	prepared, original, err := pluginstorage.AdmitCommand(ctx, l.store.db, method, id, admitted, nil)
 	if err != nil {
 		return knowledge.Header{}, err
 	}
@@ -55,21 +68,39 @@ func (l *library) importDocument(ctx context.Context, method, id string, input r
 	if !prepared.NewlyAdmitted() {
 		return knowledge.Header{}, pluginstorage.ErrCommandUnconfirmed
 	}
-	draft, err := knowledge.NewDraft(input.Content)
+	draft, expectedRevision, err := prepare(ctx)
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+	}
+	if _, err := l.store.indexTarget(ctx, draft.Content().ID, expectedRevision); err != nil {
+		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+	}
+	embed, err := l.resolve(ctx)
+	if err != nil {
+		return knowledge.Header{}, err
 	}
 	result, err := embed(ctx, draft.Texts())
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
 	indexed, err := draft.Index(result.Space, result.Vectors)
 	if err != nil {
-		return l.store.completeImport(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
+		return l.store.completeIndex(ctx, prepared, func(context.Context) (knowledge.Header, error) { return knowledge.Header{}, err })
 	}
-	return l.store.completeImport(ctx, prepared, func(ctx context.Context) (knowledge.Header, error) {
-		return l.store.replace(ctx, input.Content.ID, input.ExpectedRevision, indexed)
+	return l.store.completeIndex(ctx, prepared, func(ctx context.Context) (knowledge.Header, error) {
+		return l.store.replace(ctx, draft.Content().ID, expectedRevision, indexed)
 	})
+}
+
+func (l *library) read(ctx context.Context, input rpc.ReadInput) (rpc.DocumentRead, error) {
+	document, err := l.store.read(ctx, input.ID)
+	if err != nil {
+		return rpc.DocumentRead{}, err
+	}
+	if document.Header().Revision == 0 {
+		return rpc.DocumentRead{}, knowledge.ErrNotFound
+	}
+	return rpc.DocumentRead{Document: document.Header(), Text: document.Content().Text}, nil
 }
 
 func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {

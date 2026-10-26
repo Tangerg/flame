@@ -37,12 +37,7 @@ func newServer(library *library) (*sdk.Server, error) {
 		return nil, err
 	}
 	search, err := tool.NewFunc(tool.FuncConfig{Name: "search_knowledge", Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input rpc.SearchInput) ([]knowledge.Match, error) {
-		matches, err := library.search(ctx, input)
-		if err == nil || classify(err) == "" {
-			return matches, err
-		}
-		failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
-		return nil, errors.Join(failure, err)
+		return modelResult(library.search(ctx, input))
 	})
 	if err != nil {
 		return nil, err
@@ -51,7 +46,13 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, search, list); err != nil {
+	read, err := tool.NewFunc(tool.FuncConfig{Name: "read_knowledge_document", Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input rpc.ReadInput) (rpc.DocumentRead, error) {
+		return modelResult(library.read(ctx, input))
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := pluginsdk.RegisterTools(server, search, list, read); err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
@@ -63,11 +64,21 @@ func newServer(library *library) (*sdk.Server, error) {
 			}
 			return library.importDocument(ctx, contracts.Import.Name(), command.ID, command.Input, input)
 		}),
+		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.DocumentInput]) (knowledge.Header, error) {
+			input, err := command.RequestInput()
+			if err != nil {
+				return knowledge.Header{}, err
+			}
+			return library.reindexDocument(ctx, contracts.Reindex.Name(), command.ID, command.Input, input)
+		}),
 		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.DocumentInput) (bool, error) {
 			return library.store.delete(ctx, input.ID, input.ExpectedRevision)
 		}),
 		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) ([]knowledge.Header, error) {
 			return library.list(ctx)
+		}),
+		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ReadInput]) (rpc.DocumentRead, error) {
+			return library.read(ctx, command.Input)
 		}),
 		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.SearchInput]) ([]knowledge.Match, error) {
 			return library.search(ctx, command.Input)
@@ -84,6 +95,14 @@ func newServer(library *library) (*sdk.Server, error) {
 		return nil, err
 	}
 	return server, nil
+}
+
+func modelResult[T any](value T, err error) (T, error) {
+	if err == nil || classify(err) == "" {
+		return value, err
+	}
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
+	return value, errors.Join(failure, failureErr, err)
 }
 
 func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRequest) (pluginsdk.ModelContextResult, error) {

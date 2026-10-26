@@ -23,6 +23,11 @@ installed contribution's exact release and contract.
   revision returned by list/import. Example input:
   `{"content":{"id":"guide-1","title":"Guide","source":"docs/guide.md","text":"Flame owns durable Runs."},"expectedRevision":0}`.
 - `flame.knowledgebase/list.v1` takes `{}` and reads document headers.
+- `flame.knowledgebase/read.v1` accepts `id` and returns the complete original text
+  with its source, revision and index identity, without embedding or provider I/O.
+- `flame.knowledgebase/reindex.v1` accepts `id` and `expectedRevision`, rebuilds the
+  index from that exact stored revision and advances the document revision. A
+  concurrent edit or deletion refuses publication without replacing its result.
 - `flame.knowledgebase/search.v1` accepts `query` and `limit` (1–8) and returns
   chunks with the document header, one-based chunk number and cosine score.
 - `flame.knowledgebase/delete.v1` accepts `id` and `expectedRevision`. Deletion
@@ -32,7 +37,9 @@ installed contribution's exact release and contract.
 `search_knowledge` calls the exact same retrieval use case as the typed query,
 including its host callback and explicit space-mismatch refusal.
 `list_knowledge_documents` reads the same private headers. Tools cannot change the
-corpus. Import/delete remain explicit durable commands.
+corpus. `read_knowledge_document` reads the same complete stored original without
+requiring the embedding role. Import, reindex and delete remain explicit durable
+commands.
 
 The initial corpus admits 32 active documents, each up to 16,384 Unicode code
 points, split into chunks of 1,024 code points. One import uses at most one
@@ -53,11 +60,15 @@ remain unchanged. Callback/storage failures refuse preparation explicitly.
 Every embedding reply carries the actual provider/model/endpoint-derived vector
 space. Index publication captures that identity with its vectors. Search refuses
 `embedding_space_changed` after a role/endpoint change, even when dimensions match.
-Explicitly reimport existing documents at their current revisions to rebuild them.
+Reindex existing documents at their current revisions to rebuild them from the
+original content already owned by the library; reads remain available throughout.
 
 ## Durable publication
 
 Import first retains the original admitted JSON in the private command table.
+Reindex shares this exact admission and publication workflow. Its original ID and
+revision bind the captured stored text; recovery never captures a later revision
+or repeats embedding. A missing or stale document refuses before model dispatch.
 Only its first admission may invoke embedding. The document/index and success or
 known refusal receipt commit atomically after that exchange. Reconciliation reads
 the original receipt without embedding again, including after restart or a later

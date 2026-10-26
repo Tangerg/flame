@@ -77,10 +77,10 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, knowledge.ErrRevisionConflict) {
-		t.Fatalf("stale import = %v", err)
-	}
 	staleCalls := calls.Load()
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, knowledge.ErrRevisionConflict) || calls.Load() != staleCalls {
+		t.Fatalf("stale import dispatched embedding: calls=%d %v", calls.Load(), err)
+	}
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); err == nil || calls.Load() != staleCalls {
 		t.Fatalf("known refusal was re-executed: %v", err)
 	}

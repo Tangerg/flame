@@ -131,6 +131,31 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil || toolJSON != typed {
 		t.Fatalf("typed and Tool retrieval diverged: %s, %s, %v", typed.String(), toolJSON.String(), err)
 	}
+	readMethod, err := contracts.Read.Bind(exported)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeRead := calls.Load()
+	read, err := readMethod.Call(t.Context(), rpc.ReadInput{ID: input.Content.ID})
+	if err != nil || read.Text != input.Content.Text || read.Document.Revision != 1 {
+		t.Fatalf("typed original read: %+v %v", read, err)
+	}
+	var readMeta sdk.Meta
+	if err := readMeta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model-read", Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+		t.Fatal(err)
+	}
+	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: rpc.ReadInput{ID: input.Content.ID}, Meta: readMeta})
+	if err != nil || readResult.IsError {
+		t.Fatalf("model original read without an embedding callback: %+v %v", readResult, err)
+	}
+	encodedRead, err := json.Marshal(readResult.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var modelRead rpc.DocumentRead
+	if err := json.Unmarshal(encodedRead, &modelRead); err != nil || modelRead != read || calls.Load() != beforeRead {
+		t.Fatalf("model and typed reads diverged or performed embedding: %+v calls=%d %v", modelRead, calls.Load(), err)
+	}
 	contextContract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		t.Fatal(err)
