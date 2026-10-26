@@ -153,7 +153,11 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
 export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const activeId = tabs.find((tab) => tab.active)?.id ?? tabs[0]?.id;
+  const activeIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.active),
+  );
+  const activeId = tabs[activeIndex]?.id;
   const actAndSettleFocus = (
     id: string,
     action: () => void,
@@ -201,7 +205,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
       keepActiveDockTabInsideFade(root);
       reflectDockTabOverflow(root);
     }
-  }, [activeId]);
+  }, [activeId, activeIndex]);
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;

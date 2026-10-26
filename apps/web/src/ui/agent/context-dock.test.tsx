@@ -118,6 +118,50 @@ describe("AgentDockTabs", () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" });
   });
 
+  it("reveals the same active tab after reordering without overriding later strip browsing", () => {
+    const initial = tabs("skills");
+    const view = testClient.render(<AgentDockTabs tabs={initial} ariaLabel="Workspace tabs" />);
+    const strip = view.container.querySelector<HTMLElement>(".agent-dock-tabs")!;
+    const active = screen.getByRole("tab", { name: "skills" });
+    let offset = 0;
+    // Happy DOM has no layout; these are the strip's external geometry and scroll bounds.
+    Object.defineProperties(strip, {
+      clientWidth: { configurable: true, value: 300 },
+      scrollWidth: { configurable: true, value: 600 },
+      scrollLeft: {
+        configurable: true,
+        get: () => offset,
+        set: (value: number) => {
+          offset = Math.max(0, Math.min(300, value));
+        },
+      },
+    });
+    strip.style.scrollPaddingInlineStart = "16px";
+    vi.spyOn(strip, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 300, 28));
+    for (const tab of screen.getAllByRole("tab")) {
+      vi.spyOn(tab.parentElement!, "getBoundingClientRect").mockImplementation(() => {
+        const position = Array.from(strip.querySelectorAll('[role="tab"]')).indexOf(tab);
+        return new DOMRect(position * 100 - offset, 0, 100, 28);
+      });
+    }
+    act(() => active.focus());
+    const reordered = [...initial.slice(1), initial[0]!];
+
+    view.rerender(<AgentDockTabs tabs={reordered} ariaLabel="Workspace tabs" />);
+
+    expect(document.activeElement).toBe(active);
+    expect(active.getAttribute("aria-selected")).toBe("true");
+    const row = active.parentElement!.getBoundingClientRect();
+    expect(row.left).toBeGreaterThanOrEqual(0);
+    expect(row.right).toBeLessThanOrEqual(strip.clientWidth);
+
+    strip.scrollLeft = 52;
+    fireEvent.scroll(strip);
+    view.rerender(<AgentDockTabs tabs={[...reordered]} ariaLabel="Workspace tabs" />);
+
+    expect(strip.scrollLeft).toBe(52);
+  });
+
   it("closes a tab on middle click without selecting it", () => {
     const onClose = vi.fn();
     const onSelect = vi.fn();

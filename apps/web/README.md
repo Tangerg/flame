@@ -68,6 +68,9 @@ The workspace host retains mounted view layout when switching Dock tabs. Inactiv
 views are invisible, inert and excluded from the accessibility tree. The existing
 viewport keeps its native reading position without a second scroll-state cache;
 Session changes and view retirement retain their existing lifetime boundaries.
+The Dock strip reveals its current tab when selection or that tab's ordered
+position changes. Reordering retains the material and focus; ordinary rerenders
+preserve the user's horizontal browsing position.
 
 Background-task progress keeps complete names, messages and errors in one named
 keyboard reader. The popup and its scrolling body fit the available viewport;

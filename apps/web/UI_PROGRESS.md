@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -75,6 +75,8 @@ over its own feedback wash, including paper bounds, with precise channel values;
 see Semantic text on painted feedback. The shared invalid-field follow-up keeps
 validation and keyboard focus independently visible through correction, cancel,
 source return and continued drafting; see Invalid fields and keyboard focus.
+The Dock strip also reveals a current tab whose ordered position changes while
+retaining its material and focus; see Current tab visibility after reordering.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -8559,6 +8561,109 @@ side-panel source remains evidence for separate material identity; it is not
 native close-focus proof. Better-series review retains current type, semantic
 surfaces, Orange/custom-blue focus and the same workbench composition. Static
 Ace references supply no keyboard evidence.
+
+### Current tab visibility after reordering
+
+At frozen base `f244875e32770bfa3d37cd12c17d1ec2fc9a3637`, actual Wails
+EN/light/14 px/Flame Orange reproduces a hidden current tab. Keyboard Home on
+the focused divider establishes a **320 px Dock** and a **242 px strip**. Two
+Shift+F10 → Move panel right actions retain Files selection and focus, but its
+row moves to **x=1447.0625–1535.5** while the strip ends at **1370**. The body still
+shows the right material; the active interaction point is entirely outside the
+visible strip.
+
+The reveal effect observes selected identity but not its position. A same-count
+reorder changes neither that identity nor the observed row sizes. The existing
+post-menu focus settlement deliberately prevents implicit scrolling, so it does
+not repair the geometry. `AgentDockTabs` now derives the selected index from the
+same `tabs` projection and includes it in the existing reveal effect. No stored
+index, competing selection, new event handler, focus policy or scroll cache is
+added. Ordinary rerenders retain horizontal browsing; close, reorder commands,
+material lifetime, return history, width preferences and styling keep their owners.
+
+The scope is the React 19/Base UI 1.9 Dock strip and its production workspace
+host, using existing StyleX/tokens and the repository/module conventions.
+Read-only HeroUI `packages/react/src/components/tabs/tabs.tsx` separates its
+collection and scroll container. [Radix Tabs](https://www.radix-ui.com/primitives/docs/components/tabs)
+informs selection and keyboard semantics. [W3C focus visibility guidance](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html)
+also identifies the visibility problem, while its user-movable-content note
+limits conformance claims. The finding here is the observed reorder/return task,
+not a blanket SC 2.4.11 failure. These references do not prove Flame's behavior.
+
+| Domain        | Evidence inspected                                                                | Result                                                     |
+| ------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Accessibility | Focused tab, Shift+F10, menu return, material arrows and source Escape/Back       | Hidden focused-tab finding repaired; inspected paths clear |
+| Layout        | Native 320 px Dock, strip/row bounds, 200% full-pane retreat and size restoration | Clear for inspected geometry                               |
+| Writing       | Existing EN/ZH material, move, close and source-return names                      | Clear; no copy change                                      |
+| Typography    | EN 14 px and ZH 18 px labels, long source path and complete reader tail           | Clear in inspected tasks; type system retained             |
+| Colors        | Actual light/Orange and dark/pale-accent focus/selection roles                    | Existing roles retained; contrast not newly measured       |
+| UI            | Existing fades, active surface, immediate movement and retained material          | Clear for inspected states; full-motion timing not run     |
+
+| Severity       | Domain               | Location                                                           | Before                                                                             | After                                                                       | Why                                                                           |
+| -------------- | -------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| HIGH, repaired | Accessibility/layout | `apps/web/src/ui/agent/context-dock.tsx`, active-tab reveal effect | Moving the current tab beyond overflow leaves its focused control entirely hidden. | A change to the current tab's ordered position invokes the existing reveal. | Users can locate and continue operating the same material after arranging it. |
+
+Passed actual Wails tasks:
+
+- EN/light/14 px: confirmed native-paste draft → keyboard divider Home → 320 px
+  Dock → two keyboard menu moves. Files keeps focus and selection with strip
+  offset **166** and its complete row at **1281.0625–1369.5**, inside
+  **1128–1370**. Arrow keys cycle through Workspace diff, Session trajectory and
+  Files. The reply's source link opens `runtime/internal/session/store.go:4`;
+  its complete eight-line fixture and selected fourth line remain readable.
+  Back to conversation restores that exact link. Explicit Composer focus then
+  continues `Keep the material review draft. Continue after checking.`.
+- ZH/dark/18 px/`#ffe066`/contrast 100: the same 320 px forward moves retain a
+  visible current tab. Entering the same source and moving its tab back to the
+  beginning preserves file identity/content and focus. Native Actual Size plus
+  twenty Zoom In actions establishes **200% / 720 × 450 CSS px**; the existing
+  host presents the same file full width, with no Dock strip. Tab enters its
+  source reader and End reaches line eight. Actual Size restores the 320 px
+  Dock, Files-first order and the same material. Escape restores the narrative
+  source link, then native editing continues `核对材料后继续。 已核对，继续。`.
+
+The initial divider AX click and coordinate drag did not change width; they
+supply no resizing result. The accepted Home path above does. Horizontal-wheel
+requests in both candidates did not change observed strip offsets and supply no
+native manual-browsing qualification. The regression separately verifies that
+an explicitly changed offset survives an ordinary rerender. No native drag/drop
+qualification, VoiceOver, OS IME, RTL, other-platform GUI, full-motion timing,
+new contrast matrix, live Runtime/provider mutation or Send is claimed.
+The passive observer reads geometry/focus only; CUA supplies every UI action.
+
+Baseline prerequisites, **3 files / 71 tests**, assets and native build pass in
+**11.62 s**. The final new regression fails on the unchanged original
+implementation (**1 failed / 17 skipped**, **3.13 s** wrapper): the current row's
+right edge is 600 against a 300 px test viewport. The real Base UI test uses
+controlled external layout/scroll bounds because Happy DOM has no layout; it
+checks retained DOM focus/selection, visible geometry and subsequent browsing,
+not just effect calls. Final **6 files / 175 tests** pass in **7.62 s**, covering
+tabs, navigation, Dock storage, inspection, Session ownership and retained view
+bodies.
+
+The remaining **11-command / 44.09 s** serial chain passes Web typecheck/lint,
+design-system/chrome/styles/tokens/resource guards, candidate assets and two
+native builds. `make check-native` passes in **27.42 s**, including production
+Web staging and Desktop Go test/vet/build/Wails native build. Existing nonfatal
+linker/deployment-target and bundle-size notices remain. No assertion or check is
+weakened; no browser visual suite, performance benchmark, Claude CLI or subagent
+runs. Main is not repeatedly synchronized during this scoped task.
+
+All **7** recorded PIDs are dead and three bundles are unregistered. Cleanup
+removes seven new checkout output/cache roots, six owned Library paths and three
+bundle-temp directories, and restores the original native-check binary. All
+**39** output-presence baselines, **4** original files, **18** Library baselines,
+**5,830** accepted non-Markdown inputs, eleven installed resources and the
+read-only reference remain preserved before and after private-root deletion.
+`flame-dock-order-1027-18PXj3` is absent. Verified in-memory gzip retains **89**
+flat UTF-8 records, **59** screenshot digests, 598 assets per baseline/candidate,
+twelve module artifacts, native bundle hashes and preservation maps; SHA-256
+`f2bed8b864b3eeeb3d834da7bec78b5091ff3878b42290d4c0f9c894f5c51260`.
+
+Verdict: **Approve for current-tab visibility and these retained-material tasks**.
+The whole-product award-level goal remains open; later work needs fresh evidence.
+This repair stays on the owned local branch, with no remote push or primary
+checkout modification.
 
 ## Diff reading identity and native list sizing
 
