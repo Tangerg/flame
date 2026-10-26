@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { ShikiCodeBlock } from "@/ui/index";
 import { Disclosure, vocab } from "@flame/ui";
@@ -21,13 +22,19 @@ const ti = stylex.create({
 
 const sourceLang = (body: ToolInspectorBody) => (body.isJson ? "json" : "text");
 
-export function ToolInspector({ tool }: { tool: ToolCall }) {
+export function ToolInspector({
+  tool,
+  children,
+}: {
+  tool: ToolCall;
+  children?: (fallback: ReactNode) => ReactNode;
+}) {
   const t = useT();
   const model = toolInspectorModel(tool);
   const hasResult = model.result.text !== "";
 
-  return (
-    <div {...stylex.props(ti.body)}>
+  const result = (
+    <>
       {hasResult && (
         <ShikiCodeBlock
           lang={sourceLang(model.result)}
@@ -38,6 +45,12 @@ export function ToolInspector({ tool }: { tool: ToolCall }) {
       {model.showNoResult && (
         <p {...stylex.props(ti.empty, vocab.faint, typeStep.uiSm)}>{t("toolInspector.noResult")}</p>
       )}
+    </>
+  );
+
+  return (
+    <div {...stylex.props(ti.body)}>
+      {children ? children(result) : result}
       {model.args.text && (
         <Disclosure title={t("toolInspector.arguments")} defaultOpen={!hasResult}>
           <ShikiCodeBlock

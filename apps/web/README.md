@@ -73,6 +73,14 @@ continuation beside content, and historical text remains literal. Stored-output
 summaries identify the Runtime's result ID, while its original byte-window header
 remains in the body.
 
+Recorded Tool arguments retain the complete accepted object independently of the
+compact summary. Live starts leave raw text accumulation to argument deltas;
+history and settled Items project their captured arguments directly. Rejected
+argument text remains literal. Result extensions replace only the result body,
+so the host's secondary Arguments disclosure survives enhanced presentation,
+failure and withdrawal without losing its open state. Copy arguments uses the
+same complete capture; no Tool is replayed to inspect it.
+
 Selected subagent readers keep the complete task purpose and sibling identity
 visible in their header. Overview rows retain their compact summaries; retained
 reading state, source navigation and return focus stay with the inspection owner.

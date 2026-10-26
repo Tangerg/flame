@@ -9,6 +9,29 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it("retains each Skill page's incoming scope independently of its outgoing continuation", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-skill-pages"];
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const calls = snapshot.items
+      .filter((item) => item.type === "toolCall")
+      .filter((item) => item.tool.name === "load_skill");
+    expect(calls).toHaveLength(3);
+    expect(calls.map((call) => JSON.parse(view.toolCalls[call.id]!.args))).toEqual(
+      calls.map((call) => call.tool.arguments),
+    );
+    expect(calls.map((call) => call.tool.arguments.cursor)).toEqual([
+      undefined,
+      { offset: 134, snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac" },
+      { offset: 266, snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac" },
+    ]);
+    const resource = snapshot.items.find((item) => item.id === "item_skill_resource_continued");
+    if (resource?.type !== "toolCall") throw new Error("Missing recorded resource continuation");
+    expect(JSON.parse(view.toolCalls[resource.id]!.args)).toEqual(resource.tool.arguments);
+    expect(JSON.parse(view.toolCalls[resource.id]!.result!)).toEqual({
+      content: "\n- Confirm the captured output before proceeding.\n",
+    });
+  });
+
   it("retains the current Skill list and instruction pages through the real fold", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-agentic"];
     const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));

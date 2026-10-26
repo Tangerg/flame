@@ -10785,6 +10785,209 @@ validation was needed. Independent `ls-remote` matches the implementation, and
 the owned checkout is clean with zero unpushed commits. This in-place delivery
 receipt changes no accepted product or fixture source.
 
+### Recorded Tool arguments
+
+Actual Wails reproduces a middle Skill page with outgoing offset **266** but no
+way to inspect its incoming offset **134** in that Tool disclosure. The final
+page has the same missing input scope. Two presentation boundaries caused this:
+the fold discarded parameters already summarized by a known name/category, and
+an enhanced result replaced the entire generic inspector, including Arguments.
+
+The fold now retains complete captured arguments independently of the compact
+summary. Rejected argument text stays literal; accepted objects use the existing
+lossless JSON formatter. Empty calls do not acquire invented parameters. Copy
+arguments reads this same capture. Names, file identity, result decoding and the
+SDK capture remain with their existing owners.
+
+`AgentFoldSource` identifies event versus durable input at its existing source
+constructors, including pending-interrupt snapshots. A live running start leaves
+raw text to the following argument deltas, retaining an existing prefix through a
+replayed start. Durable running Items and completed Items project their accepted
+arguments directly. This distinction prevents the newly retained object from
+being serialized before the same raw argument text is appended. It adds no Run,
+Tool or command state, protocol field, persistence or Runtime transition.
+
+`ToolInspector` remains the host for the result and secondary Arguments
+disclosure. Its composition callback supplies only the generic result fallback;
+`ToolPreview` enhances that result inside the existing PluginBoundary. Arguments
+therefore remain available after enhancement, failure and withdrawal. Withdrawal
+retains the same open argument reader instead of remounting the inspector.
+Existing Disclosure, ShikiCodeBlock, wrapping, named keyboard reading, selection,
+Copy, source navigation and return owners are reused. No shared UI source, token,
+theme, brand, locale catalog, dependency, SDK or installed component is changed.
+
+#### Scope and coverage
+
+This better-interface review covers reply → recorded Tool result → complete
+arguments → result Find → related material → return → continued draft. It
+includes Skill instructions/resources and stored-output evidence, generic,
+running, empty/error and enhanced/fallback/withdrawn presentation in automated
+checks. Real producer execution, pagination and live business writes are outside
+the native fixture boundary. The stack remains React 19, Base UI, shared
+@flame/ui, StyleX and semantic tokens.
+
+Recon includes the current goal, AGENTS, PROJECT_RULES, DEVELOPMENT, Web/native/
+visual/tool-results READMEs, previous architecture/design research and this sole
+progress file. The six owning better skills retain their earlier loaded rules.
+Wails recon confirms exact **v3.0.0-beta.34**; v2 APIs are not used. The
+vercel-composition-patterns skill informs the real fallback-data variation,
+without introducing boolean modes, a compound-component framework or context.
+
+Fresh read-only ZCode Skill source distinguishes identity, input and detail; its
+trimming, fallback and snapshot-loading policy is not copied. Selected Scope
+tools/skills **v0.57.1** establishes incoming `cursor` versus returned
+`next_cursor`, byte offsets and snapshot identity. The new canonical scene keeps
+three independent instruction calls with incoming cursors **omitted / 134 / 266**,
+outgoing offsets **134 / 266 / absent**, and the same 64-hex snapshot. Their
+411-byte source follows the producer's page/snapshot rules; no producer execution
+is claimed. A resource continuation retains incoming byte **81** and a final body
+with its original leading/trailing blank lines. Existing ChatGPT, HeroUI/Arc,
+Radix and Ace studies retain their recorded limits. No new artwork, UI framework
+or award-level comparison is claimed.
+
+| Domain        | Evidence inspected                                                                                                                                                              | Result                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Native Tab/Enter Arguments activation, named argument readers, keyboard wrapping, visible Orange/blue/purple focus, file-reader entry and Dock arrows; failure/withdrawal tests | Inspected paths pass; VoiceOver, OS IME and native clipboard contents are not verified                               |
+| Layout        | Existing result/secondary disclosure composition; long snapshot wrapping; native half-window at 200% and keyboard 320 px Dock                                                   | Complete parameters remain reachable in the inspected reading layouts                                                |
+| Writing       | Original `cursor`/`next_cursor` fields, existing eight-locale Arguments/Copy/wrap labels, current empty/rejected argument contracts                                             | Input scope stays distinct from outgoing continuation; no inferred page number or whole-document completion is added |
+| Typography    | Shared ShikiCodeBlock source roles and RecordBody/caption roles in EN14 and ZH/DE18 native scenes                                                                               | Result prose and supporting JSON retain separate reading roles; font system unchanged                                |
+| Colors        | Native light Orange, dark custom blue and warm custom purple scenes; unchanged semantic roles and keyboard rings                                                                | Existing theme and syntax roles retained; no new numerical contrast measurement is claimed                           |
+| UI polish     | Result-first composition, retained open reader on withdrawal, Find return, native wrapping/scrolling, reduced-motion states and exact continued drafts                          | Existing surfaces and interaction owners are preserved; animation timing is not exhaustively replayed                |
+
+#### Findings
+
+| Severity | Domain                            | Location                                                                        | Before                                                                                                          | After                                                                                                                     | Why                                                                                             |
+| -------- | --------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| HIGH     | Accessibility / information scope | `apps/web/src/features/agent/application/fold/projections.ts:272`, `:295`       | A known name/category cleared complete arguments, removing unsummarized scope and the Copy arguments action     | Captured arguments remain complete; event and durable provenance distinguish raw preview accumulation from accepted input | A compact identity must not erase supporting values needed to understand the recorded operation |
+| MEDIUM   | Layout / continuity               | `apps/web/src/features/chat/tools/ui/ToolPreview.tsx:7`, `ToolInspector.tsx:25` | Enhanced results displaced Arguments; withdrawing them remounted the generic inspector and lost its open reader | One host retains Arguments while the result alone participates in enhancement and fallback                                | Optional presentation must preserve access to the same record and its current reading context   |
+
+Both findings are resolved in the accepted candidate. The shared primitives,
+Runtime, wire contract, command lifecycle, recovery and user data are unchanged.
+
+#### Verification
+
+The original focused baseline passes **3 files / 89 tests** in **2.22 s**. Added
+regressions fail against the original implementation: **14 failures / 83 passes**
+across four files. They expose full-argument loss, an incorrect live prefix for a
+generic Tool, enhanced-result omission and lost argument state on withdrawal.
+
+Accepted regression verification passes **43 files / 491 tests** in **11.48 s**:
+
+```sh
+npm run test --workspace @flame/web -- \
+  src/features/agent/application/fold \
+  src/features/agent/application/session \
+  src/features/agent/application/conversation \
+  src/features/agent/presentation/toolPresentation.test.ts \
+  visual/agentSessionSnapshots.test.ts visual/recordedResultPresentation.test.tsx \
+  src/features/chat/tools \
+  src/features/shell/workbench/panel/ChatPanel.inspection.test.tsx
+```
+
+Three property generators had supplied unpaired JavaScript surrogate code units
+inside accepted JSON parameters. They now generate well-formed parameter strings,
+matching the current strict JSON contract and the existing projection generator;
+all seeds, assertions and other hostile text remain. Initial test narrowing and
+exhaustive fixture/source-constructor typing errors are corrected before final
+checks. No assertion, timeout or check is weakened. After the final source tag and
+fixture type corrections, the affected snapshot/event/session set passes again:
+**15 files / 125 tests**. The earlier 491-test result is retained for unchanged
+paths rather than rerunning unrelated suites.
+
+Web typecheck/lint/format, design-system/token/chrome guards, **make check-native**
+(Desktop test/vet/build and supported native Wails build), and all **11**
+deterministic installed component resources pass. The final serial chain, private
+assets and three candidate native builds take **102.47 s**. All four private
+binaries record minimum macOS **13.0**, SDK **26.5**. Duplicate `-lobjc`/SDK
+linker and fixture chunk-size warnings are non-failing. Full unchanged Runtime,
+CLI, Web/shared-UI, backend/author, browser interaction/visual and performance
+suites were not rerun. The browser state map is updated and typechecked only.
+
+Actual Wails/CUA uses the production host, canonical snapshots/fold and registered
+packaged result renderer. Private overlays change assets, app identity and fixture
+URL only. Every scene uses native chrome setup without diagnostic DOM, injected
+listeners or replacement input/scroll/focus behavior. No live Skill read, page
+fetch, Tool replay, Send, Save or Resume is invoked.
+
+- EN/light/14 px/Orange/full motion: initial parameters retain only the recorded
+  name. The middle page shows incoming **134** separately from outgoing **266**;
+  two actual Tabs enter the named argument reader, Shift+Tab/Space enables word
+  wrap, and the complete snapshot and visible focus are inspected. The final
+  page retains incoming **266** without an outgoing-page cue. With **evidence**
+  Find active, Files → Trajectory → Files retains the query and open Arguments.
+  Escape closes Find and the draft continues exactly as
+  `Continue after reading page 266. Ready.`.
+- ZH/dark/18 px/custom blue/reduced motion: native Window → Move & Resize → Left
+  and twenty Zoom In actions from Actual Size establish half-window **200%**.
+  Five actual Tabs reach 参数; Enter opens it, then Tab/Space/Tab reaches the
+  wrapped named reader. Expanded fixture navigation initially leaves little
+  reading height. Its existing collapse control is used; native keyboard reentry
+  and End then expose the complete **81**-byte input cursor and both closing
+  braces above Composer. This qualifies the content reading layout with fixture
+  navigation collapsed, not the earlier intermediate frame. Native wheel input
+  reaches the parent reply. With **captured** Find active, full-width Files is
+  opened, four actual Tabs enter its named source and End reaches line 8. Close
+  returns to the same query, wrapped parameters and open disclosure. The draft
+  continues as `读完资源第 81 字节后的这一页。 已核对。`; Actual Size is restored before
+  Quit. Only the final native reader entry qualifies the cursor-tail inspection.
+- DE/light/18 px/custom purple/warm/reduced motion: six actual Tabs from a
+  nonempty Composer reach the resizer; Home selects **320 px**. Stored-output
+  evidence retains its original 66-byte-window header and complete `result_id`
+  parameters. The middle Skill page shows incoming **134** beside its returned
+  **266**. With **snapshot** Find active, native tab arrows go Files → Trajectory
+  → Files, checking selected tab, query and expanded Argumente on both legs.
+  Escape restores the body; keyboard disclosure/wrapping reentry reaches the
+  complete snapshot with its purple focus ring. The original draft continues as
+  `Nach dieser aufgezeichneten Skill-Seite weiterarbeiten. Geprüft.`.
+
+Every native instance exits with Cmd+Q. Empty/error/rejected arguments and package
+failure/withdrawal have automated coverage, not a full native state matrix. Live
+execution/recovery, OS IME, VoiceOver, RTL, 320 px whole-window width, native
+clipboard contents and other-platform GUI remain unverified. Earlier native
+input and clicked-reader traversal limits retain their recorded scope.
+
+| Goal CHECK        | Scoped result                                                                                             |
+| ----------------- | --------------------------------------------------------------------------------------------------------- |
+| Typography        | Existing body/source hierarchy applies to complete parameters in inspected EN14 and ZH/DE18 scenes        |
+| Whitespace        | Existing host gap and secondary disclosure separate the readable result from supporting JSON              |
+| Visual hierarchy  | Result remains first; incoming call scope and outgoing continuation stay in their own sections            |
+| Color             | Approved tokens, Orange and custom themes retained; keyboard focus visible in inspected themes            |
+| Motion            | Existing full/reduced-motion disclosure end states retained; no timing or award claim                     |
+| Micro interaction | Arguments, native wrap/reader keys, Find, material return, Dock arrows and exact drafts inspected         |
+| Responsive        | Half-window/200% with fixture navigation collapsed and keyboard 320 px Dock inspected                     |
+| Originality       | Flame workbench, brand and existing controls retained; no decorative rail, slogan or new component system |
+
+Verdict: **Approve for captured argument inspection and the inspected tasks**.
+This is not whole-product award-level acceptance. Next, study the compact scope
+of repeated same-name calls: their full inputs are now available, but their
+collapsed labels remain alike. Use recorded provenance and actual reading tasks;
+do not infer page numbers or create a second cursor/state owner.
+
+The explicit main-sync request is completed before this batch: fetch, independent
+ls-remote and merge agree on
+`e78bfcef0f1b41e536a42152aab71cc1e724bfc2`; Git reports **Already up to date**.
+The owned checkout is initially clean. No merge-only verification loop or edit to
+the primary parallel checkout is introduced. No Claude CLI or subagent is used.
+
+Accepted **5,784** non-Markdown source hashes are frozen at
+`cb6fc5322abb058e5eca44522cc4798144b82f1425f006cedd8e80cfe27317d8`.
+All three private asset maps have **600** files; all **11** installed resources and
+four read-only references retain their original hashes. All **12** recorded
+processes are dead and four app bundles are unregistered. Cleanup removes seven
+new checkout outputs/caches, eight owned Library paths and four bundle-temporary
+paths, restores the exact pre-existing native-check binary, and preserves **36**
+output-presence baselines plus **three** original files byte-for-byte.
+
+The exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-tool-arguments-1026-Oz2r1L`
+is absent after UID/device/inode/birth/no-symlink checks. The in-memory evidence
+archive round-trips **67** UTF-8 records, **19** screenshot digests and **four**
+native-binary digests; gzip SHA-256 is
+`8be6aa83e169c7ed20abecf579bbe47c9493c01bd300cf906309b52e0179bd1b`.
+Final preservation validates the accepted source/resource/output/original-file
+hashes and dead processes after root retirement. Implementation publication and
+its normal-hook preservation receipt follow. The overall UI goal remains active.
+
 ### Recorded Skill pages
 
 Actual Wails with the selected Scope tools/skills **v0.57.1** page contracts
@@ -14345,7 +14548,7 @@ beside a visible value.
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- Implementation handoffs follow the current goal. This resumed run uses bounded Claude Code CLI for scoped detail work; the prior file-range milestone used a GPT-6 Astra subagent under its then-current instruction. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, commits, pushes and cleanup. A delegated completion report never replaces that acceptance.
+- Implementation handoffs follow current human steering, which forbids Claude Code CLI in this resumed run. Earlier milestones' tool choices do not override that instruction. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, commits, pushes and cleanup. A delegated completion report never replaces that acceptance.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.

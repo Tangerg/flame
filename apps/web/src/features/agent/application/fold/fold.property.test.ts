@@ -53,7 +53,9 @@ function item(a: Arbitrary, id: string): AgentItem {
         ...(status === "running" ? {} : { finishedAt: "2026-07-07T10:00:01Z" }),
         tool: {
           name: a.pick(TOOL_NAMES),
-          arguments: a.bool(0.8) ? { path: a.text(), command: a.text() } : {},
+          arguments: a.bool(0.8)
+            ? { path: a.text().toWellFormed(), command: a.text().toWellFormed() }
+            : {},
           ...(a.bool(0.6) ? { result: a.bool(0.5) ? a.text() : { hits: [] } } : {}),
         },
       } as AgentItem;

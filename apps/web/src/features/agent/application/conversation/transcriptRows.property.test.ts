@@ -26,7 +26,11 @@ function toolItem(a: Arbitrary, id: string, result: string): AgentItem {
     type: "toolCall",
     startedAt: "2026-07-07T10:00:00Z",
     finishedAt: "2026-07-07T10:00:01Z",
-    tool: { name: a.pick(["read", "shell", "grep"]), arguments: { path: a.text() }, result },
+    tool: {
+      name: a.pick(["read", "shell", "grep"]),
+      arguments: { path: a.text().toWellFormed() },
+      result,
+    },
   } as unknown as AgentItem;
 }
 

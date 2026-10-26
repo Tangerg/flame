@@ -309,6 +309,44 @@ describe("reducer — item fold", () => {
     expect(s.toolCalls.t1).toMatchObject({ status: "ok", result: "ok" });
   });
 
+  it.each([
+    ["shell", { command: "go test ./...", timeout: 10 }],
+    ["load_skill", { name: "review-diff", cursor: { offset: 134, snapshot: "a".repeat(64) } }],
+    ["independent_tool", { title: "recorded object" }],
+  ] as const)(
+    "keeps %s live text deltas separate from accepted and restored arguments",
+    (name, args) => {
+      const running = item({ id: "t_args", type: "toolCall", tool: { name, arguments: args } });
+      let live = reduce(EMPTY_AGENT_SESSION_VIEW, started(running));
+      expect(live.toolCalls.t_args?.args).toBe("");
+      const text = JSON.stringify(args);
+      live = reduce(
+        live,
+        delta("t_args", { type: "toolArguments", argumentsTextDelta: text.slice(0, 8) }),
+      );
+      live = reduce(
+        live,
+        delta("t_args", { type: "toolArguments", argumentsTextDelta: text.slice(8) }),
+      );
+      expect(live.toolCalls.t_args?.args).toBe(text);
+      live = reduce(live, started(running));
+      expect(live.toolCalls.t_args?.args).toBe(text);
+
+      const restored = reduceDurableItem(EMPTY_AGENT_SESSION_VIEW, running);
+      expect(JSON.parse(restored.toolCalls.t_args!.args)).toEqual(args);
+      const finished = item({
+        id: "t_args",
+        type: "toolCall",
+        status: "completed",
+        tool: { name, arguments: args, result: "done" },
+      });
+      live = reduce(live, completed(finished));
+      const history = reduceDurableItem(EMPTY_AGENT_SESSION_VIEW, finished);
+      expect(JSON.parse(live.toolCalls.t_args!.args)).toEqual(args);
+      expect(history.toolCalls.t_args?.args).toBe(live.toolCalls.t_args?.args);
+    },
+  );
+
   it("late item.started shells cannot regress completed text or Tool Items", () => {
     const textShell = item({ id: "a1", type: "agentMessage", content: [] });
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, started(textShell));

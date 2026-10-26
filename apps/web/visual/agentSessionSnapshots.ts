@@ -45,6 +45,7 @@ export const VISUAL_AGENT_STATES = [
   "tool-remote",
   "tool-agentic",
   "tool-tail",
+  "tool-skill-pages",
   "question-multi",
   "waves",
 ] as const;
@@ -450,6 +451,70 @@ const LOAD_SKILL_CALL = settledTool(
       snapshot: "a83a887aee84d11218a8dbfc69e4f1a35325ba7ccffaa894284945f0363bfd5e",
     },
   },
+);
+
+const SKILL_PAGE_CALLS = [
+  settledTool(
+    "item_skill_page_1",
+    "load_skill",
+    { name: "review-diff" },
+    {
+      content:
+        "Start from the riskiest hunk, not the first one.\nName the invariant the change could break, then look for the test that would catch it",
+      next_cursor: {
+        offset: 134,
+        snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac",
+      },
+    },
+  ),
+  settledTool(
+    "item_skill_page_2",
+    "load_skill",
+    {
+      name: "review-diff",
+      cursor: {
+        offset: 134,
+        snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac",
+      },
+    },
+    {
+      content:
+        ".\nA diff with no test change is a claim that nothing observable changed. Check it.\nRead checklist.md before completing the review.\nK",
+      next_cursor: {
+        offset: 266,
+        snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac",
+      },
+    },
+  ),
+  settledTool(
+    "item_skill_page_3",
+    "load_skill",
+    {
+      name: "review-diff",
+      cursor: {
+        offset: 266,
+        snapshot: "4b8c42fdc788c551938ea8f286970c3cad4d181330cbf0940d5d19550de01bac",
+      },
+    },
+    {
+      content:
+        "eep each recorded page separate from the next one.\nDescribe the evidence you can actually inspect, including 空白行 and original indentation.\n",
+    },
+  ),
+];
+
+const SKILL_RESOURCE_CONTINUED_CALL = settledTool(
+  "item_skill_resource_continued",
+  "read_skill_resource",
+  {
+    name: "review-diff",
+    path: "checklist.md",
+    cursor: {
+      offset: 81,
+      snapshot: "6b31fb380eb6623db513d35a97e10b89d97185e1b53aef3449e684c63b1c960c",
+    },
+  },
+  { content: "\n- Confirm the captured output before proceeding.\n" },
 );
 
 const ENTER_PLAN_CALL = settledTool(
@@ -1908,6 +1973,26 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     pendingInterruptSets: [],
   },
 
+  "tool-skill-pages": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:06.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 7, activeDurationMillis: 6_000 },
+      }),
+    ],
+    items: [
+      PROMPT,
+      LIST_SKILLS_CALL,
+      ...SKILL_PAGE_CALLS,
+      SKILL_RESOURCE_CALL,
+      SKILL_RESOURCE_CONTINUED_CALL,
+      READ_TOOL_RESULT_CALL,
+      RESPONSE,
+    ],
+    pendingInterruptSets: [],
+  },
+
   "tool-agentic": {
     runs: [
       run("finished", {
@@ -2089,6 +2174,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-shells": [],
   "tool-search": [],
   "tool-remote": [],
+  "tool-skill-pages": [],
   "tool-agentic": [],
   "tool-tail": [],
   "question-multi": [],

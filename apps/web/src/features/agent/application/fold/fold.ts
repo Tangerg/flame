@@ -1,4 +1,5 @@
 import { type AgentInterrupt, type AgentItem } from "@/features/agent/public/events";
+import { type AgentFoldSource } from "@/features/agent/application/fold/source";
 import { type BlockStatus, type ContentBlock } from "@/features/agent/public/contentBlock";
 import {
   type AgentSessionView,
@@ -364,7 +365,11 @@ export function writeApproval(
   );
 }
 
-export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">): AgentSessionView {
+export function writeToolCall(
+  state: AgentSessionView,
+  item: ItemOf<"toolCall">,
+  source: AgentFoldSource,
+): AgentSessionView {
   const withBlock =
     state.toolCalls[item.id] === undefined
       ? appendToTurn(
@@ -375,7 +380,7 @@ export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">)
           item.startedAt,
         )
       : state;
-  const tool = projectToolCall(item, withBlock.toolCalls[item.id]);
+  const tool = projectToolCall(item, withBlock.toolCalls[item.id], source);
   const next = { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };
   return item.approvalDecision === undefined
     ? next

@@ -19,6 +19,7 @@ import {
   type QuestionItem,
 } from "@/features/agent/public/contentBlock";
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
+import { type AgentFoldSource } from "@/features/agent/application/fold/source";
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
 }
@@ -271,8 +272,6 @@ function categoryFields(
 
 export function argsText(tool: AgentToolInvocation): string {
   if (tool.argumentsText !== undefined) return tool.argumentsText;
-  if (nameLabel(tool) !== undefined) return "";
-  if (tool.category !== "unknown" && tool.category !== "task") return "";
   return Object.keys(tool.arguments).length > 0 ? prettyJSON(tool.arguments) : "";
 }
 
@@ -295,7 +294,8 @@ export function editableArgs(tool: AgentToolInvocation): Record<string, unknown>
 
 export function projectToolCall(
   item: Extract<AgentItem, { type: "toolCall" }>,
-  previous?: ToolCall,
+  previous: ToolCall | undefined,
+  source: AgentFoldSource,
 ): ToolCall {
   return {
     id: item.id,
@@ -304,9 +304,11 @@ export function projectToolCall(
     ...(item.tool.category !== undefined ? { category: item.tool.category } : {}),
     fn: toolLabel(item.tool),
     ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
+    // Live starts precede raw argument deltas; durable Items already contain
+    // the complete accepted arguments and must not lose them to the summary.
     args:
-      item.status === "running"
-        ? (previous?.args ?? "") || argsText(item.tool)
+      item.status === "running" && source.kind === "event"
+        ? (previous?.args ?? item.tool.argumentsText ?? "")
         : argsText(item.tool),
     status: toolStatus(item),
     result: previous?.result,

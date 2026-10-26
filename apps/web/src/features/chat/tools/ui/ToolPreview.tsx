@@ -7,16 +7,15 @@ import { selectToolResultRenderer } from "@/features/chat/tools/application/tool
 export function ToolPreview({ tool }: ToolPreviewProps) {
   const renderers = useExtensionPoint(TOOL_RESULT_RENDERER);
   const renderer = selectToolResultRenderer(renderers, tool);
-  if (!renderer) {
-    return <ToolInspector tool={tool} />;
-  }
   return (
-    <PluginBoundary
-      plugin={renderer.id}
-      label={renderer.title}
-      fallback={<ToolInspector tool={tool} />}
-    >
-      {createElement(renderer.component, { tool, fallback: <ToolInspector tool={tool} /> })}
-    </PluginBoundary>
+    <ToolInspector tool={tool}>
+      {renderer
+        ? (fallback) => (
+            <PluginBoundary plugin={renderer.id} label={renderer.title} fallback={fallback}>
+              {createElement(renderer.component, { tool, fallback })}
+            </PluginBoundary>
+          )
+        : undefined}
+    </ToolInspector>
   );
 }

@@ -31,7 +31,10 @@ function toolItem(a: Arbitrary, id: string, status: "running" | "completed"): Ag
     ...(status === "running"
       ? {}
       : { finishedAt: "2026-06-03T00:00:01.000Z", durationMillis: 1000 }),
-    tool: { name: a.pick(["read", "shell", "grep"]), arguments: { path: a.text() } },
+    tool: {
+      name: a.pick(["read", "shell", "grep"]),
+      arguments: { path: a.text().toWellFormed() },
+    },
   } as AgentItem;
 }
 

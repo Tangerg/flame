@@ -19,6 +19,7 @@ export function foldPendingInterruptSet(
   }
   for (const interrupt of snapshot.interrupts) {
     next = materializeInterrupt(next, interrupt, {
+      kind: "durable",
       runId: interrupt.runId,
       segmentId: null,
       eventId: `snapshot:${snapshot.rootRunId}:interrupt:${interrupt.itemId}`,

@@ -225,16 +225,25 @@ describe("toolFields — runtime wire shapes", () => {
   });
 });
 
-describe("argsText — fn-baked tools suppress the raw JSON echo", () => {
-  it("name-labelled tools return empty args text", () => {
-    expect(
-      argsText(tool("lsp", { operation: "definition", path: "a.go", line: 1, character: 1 })),
-    ).toBe("");
-    expect(argsText(tool("load_skill", { name: "review" }))).toBe("");
+describe("argsText — complete recorded arguments remain separate from summaries", () => {
+  it.each([
+    ["lsp", { operation: "definition", path: "a.go", line: 1, character: 1 }],
+    ["load_skill", { name: "review", cursor: { offset: 134, snapshot: "a".repeat(64) } }],
+    [
+      "read_skill_resource",
+      { name: "review", path: "a.md", cursor: { offset: 81, snapshot: "b".repeat(64) } },
+    ],
+    ["read", { path: "a.go", offset: 12, limit: 8 }],
+    ["read_tool_result", { result_id: "BLOB234", offset: 20, limit: 40 }],
+    ["shell", { command: "go test ./...", timeout: 10 }],
+    ["http_request", { url: "https://example.invalid", method: "POST", body: "literal" }],
+    ["linear_create_issue", { title: "t" }],
+  ] as const)("retains every captured parameter for %s", (name, args) => {
+    expect(JSON.parse(argsText(tool(name, args)))).toEqual(args);
   });
 
-  it("generic (MCP) tools keep the JSON args fallback", () => {
-    expect(argsText(tool("linear_create_issue", { title: "t" }))).toContain('"title"');
+  it("does not manufacture arguments for an empty call", () => {
+    expect(argsText(tool("list_skills", {}))).toBe("");
   });
 });
 

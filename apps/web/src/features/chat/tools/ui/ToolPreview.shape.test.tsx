@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -86,4 +86,62 @@ describe("optional result rendering", () => {
     expect(screen.queryByText("enhanced rendered")).toBeNull();
     expect(screen.getByText(/needle here/)).toBeTruthy();
   });
+
+  it.each(["enhanced", "fallback", "failed"] as const)(
+    "keeps complete arguments after %s result presentation",
+    async (mode) => {
+      const call = {
+        ...tool,
+        args: JSON.stringify({
+          path: "src/a.ts",
+          cursor: { offset: 134, snapshot: "a".repeat(64) },
+        }),
+      };
+      const spec: ToolResultRendererSpec = {
+        id: "test-result",
+        title: "Test result",
+        selector: { type: "toolName", name: "grep" },
+        component: ({ fallback }) => {
+          if (mode === "failed") throw new Error("Result presentation failed");
+          return mode === "fallback" ? (
+            fallback
+          ) : (
+            <div role="region" aria-label="Enhanced result">
+              {call.result}
+            </div>
+          );
+        },
+      };
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await loadPluginsForTest(
+          definePlugin({
+            name: "test.arguments-result",
+            setup(ctx) {
+              ctx.contribute(TOOL_RESULT_RENDERER, spec, { key: spec.id });
+            },
+          }),
+        );
+        render(<ToolPreview tool={call} />);
+        const result = screen.getByRole("region", {
+          name: mode === "enhanced" ? "Enhanced result" : "Result",
+        });
+        expect(result.textContent).toContain("needle here");
+        const argumentsButton = screen.getByRole("button", { name: "Arguments" });
+        expect(argumentsButton.getAttribute("aria-expanded")).toBe("false");
+        fireEvent.click(argumentsButton);
+        const argumentsRegion = await screen.findByRole("region", { name: "Arguments" });
+        expect(argumentsRegion.textContent).toBe(JSON.stringify(JSON.parse(call.args), null, 2));
+        expect(
+          result.compareDocumentPosition(argumentsRegion) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        await resetKernelForTest();
+        expect(screen.getByRole("region", { name: "Result" }).textContent).toContain("needle here");
+        expect(screen.getByRole("region", { name: "Arguments" })).toBe(argumentsRegion);
+        expect(screen.getAllByRole("button", { name: "Arguments" })).toHaveLength(1);
+      } finally {
+        consoleError.mockRestore();
+      }
+    },
+  );
 });

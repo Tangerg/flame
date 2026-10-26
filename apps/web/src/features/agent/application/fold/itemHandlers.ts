@@ -42,7 +42,7 @@ export function onItemStarted(
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall":
-      return writeToolCall(state, item);
+      return writeToolCall(state, item, source);
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
@@ -167,7 +167,7 @@ export function onItemCompleted(
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall":
-      return writeToolCall(state, item);
+      return writeToolCall(state, item, source);
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
