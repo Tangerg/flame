@@ -17,8 +17,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0/go.mod h1:7dCRMLwisfRH3dB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-memory.20261027.2 h1:s6gxGCquVU08+hKIugvWQ6LjOftjxIEHCOW2aCxatSI=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-memory.20261027.2/go.mod h1:0IJ4UKfynAQHmKrZkftyfplLcDEebopLuqHA3DX7oMQ=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.1 h1:ZHiyY3SX/jGNLch1qVb4G7WjgMLSLPHWiG5WY/ZUFY8=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.1/go.mod h1:0IJ4UKfynAQHmKrZkftyfplLcDEebopLuqHA3DX7oMQ=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1 h1:ePjJ67B5EfJJSw16thu5IA/tMoM45lBNYovPyiiO8v8=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/Tangerg/flame/runtime v0.1.0-memory.20261027.2 h1:I3XYYlGvzvj0o7kUg4GBSXqWvj/8CqV5VjwqwDvEJqI=
