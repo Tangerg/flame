@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 func TestConfigurationInheritsTheRuntimeModelByDefault(t *testing.T) {

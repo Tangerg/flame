@@ -29,8 +29,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/ptytest"
 )
 

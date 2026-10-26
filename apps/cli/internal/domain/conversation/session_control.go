@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RollbackSession keeps ToRunID and every earlier root run. An empty ToRunID

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Clone returns an independently owned problem. It is safe on nil.

@@ -2,18 +2,14 @@ package terminal
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/installedcommand"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (a *app) ShowAgentMemory(argument string) error {
@@ -88,11 +84,11 @@ func (a *app) AddAgentMemory(argument string) error {
 		return errors.New("this runtime composition has no agent memory service")
 	}
 	if a.workbench != nil {
-		if pending, found := a.workbench.PendingInstalledCommand(memoryAdditionIntent); found {
-			var input memory.AddV1Input
-			if err := json.Unmarshal([]byte(pending.Request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
-				return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
-			}
+		input, found, err := a.workbench.PendingMemoryAddition()
+		if err != nil {
+			return err
+		}
+		if found {
 			a.message("reconciling original " + input.Scope + " memory addition")
 			return a.addAgentMemory(nil, input, nil)
 		}
@@ -134,7 +130,11 @@ func (a *app) EditAgentMemory(argument string) error {
 				}
 				pending := false
 				if a.workbench != nil {
-					_, pending = a.workbench.PendingInstalledCommand(memoryUpdateIntent(item.ID))
+					var err error
+					_, pending, err = a.workbench.PendingMemoryUpdate(item.ID)
+					if err != nil {
+						return err
+					}
 				}
 				if content == item.Content && !pending {
 					a.message("agent memory unchanged · " + item.ID)
@@ -178,17 +178,14 @@ func (a *app) resumeMemoryUpdate(argument string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	pending, found, err := a.pendingMemoryItemCommand(memory.UpdateV1Method, memoryUpdateIntent(""), identity)
+	if a.workbench == nil {
+		return false, nil
+	}
+	input, found, err := a.workbench.PendingMemoryUpdate(identity)
 	if err != nil || !found {
 		return false, err
 	}
-	var input memory.UpdateV1Input
-	if err := json.Unmarshal([]byte(pending.Request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
-		return false, fmt.Errorf("pending agent memory update input is invalid: %w", err)
-	}
-	if input.ID != strings.TrimPrefix(pending.Intent, memoryUpdateIntent("")) || (input.Content == nil && input.Pinned == nil) {
-		return false, errors.New("pending agent memory update identity or patch is invalid")
-	}
+
 	a.message("reconciling original agent memory update · " + input.ID)
 	return true, a.updateAgentMemory(nil, input, "reconciling original agent memory update "+input.ID, nil)
 }
@@ -206,15 +203,18 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 	if err != nil {
 		return err
 	}
-	if pending, found, err := a.pendingMemoryItemCommand(memory.ReviewV1Method, memoryReviewIntent(""), identity); err != nil {
-		return err
-	} else if found {
-		id := strings.TrimPrefix(pending.Intent, memoryReviewIntent(""))
-		if _, err := retainedMemoryReview(pending.Request, id, decision); err != nil {
+	if a.workbench != nil {
+		input, found, err := a.workbench.PendingMemoryReview(identity, decision)
+		if err != nil {
+			if found && input.Decision != "" {
+				return fmt.Errorf("%w · retry /memory-%s %s to reconcile the original command", err, input.Decision, input.ID)
+			}
 			return err
 		}
-		a.reviewAgentMemory(nil, id, decision)
-		return nil
+		if found {
+			a.reviewAgentMemory(nil, input.ID, decision)
+			return nil
+		}
 	}
 	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target conversation.MemoryTarget, item memory.Item) {
 		if item.Status != memory.StatusPending {
@@ -238,51 +238,21 @@ func (a *app) PrepareDeleteAgentMemory(argument string) error {
 	if err != nil {
 		return err
 	}
-	if pending, found, err := a.pendingMemoryItemCommand(memory.DeleteV1Method, memoryDeletionIntent(""), identity); err != nil {
-		return err
-	} else if found {
-		a.deleteAgentMemory(nil, strings.TrimPrefix(pending.Intent, memoryDeletionIntent("")))
-		return nil
+	if a.workbench != nil {
+		input, found, err := a.workbench.PendingMemoryDeletion(identity)
+		if err != nil {
+			return err
+		}
+		if found {
+			a.deleteAgentMemory(nil, input.ID)
+			return nil
+		}
 	}
 	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target conversation.MemoryTarget, item memory.Item) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
 			a.deleteAgentMemory(&target, item.ID)
 		})
 	})
-}
-
-func (a *app) pendingMemoryItemCommand(method, prefix, identity string) (workbench.PendingInstalledCommand, bool, error) {
-	if a.workbench == nil {
-		return workbench.PendingInstalledCommand{}, false, nil
-	}
-	var matches []workbench.PendingInstalledCommand
-	for _, pending := range a.workbench.PendingInstalledCommands() {
-		id, found := strings.CutPrefix(pending.Intent, prefix)
-		if found && pending.Request.Method == method && strings.HasPrefix(id, identity) {
-			matches = append(matches, pending)
-		}
-	}
-	if len(matches) == 0 {
-		return workbench.PendingInstalledCommand{}, false, nil
-	}
-	pending, err := resolveByID(matches, identity, "pending agent memory command", func(pending workbench.PendingInstalledCommand) string {
-		return strings.TrimPrefix(pending.Intent, prefix)
-	})
-	return pending, err == nil, err
-}
-
-func retainedMemoryReview(request protocol.CallPluginRequest, id string, decision memory.ReviewDecision) (memory.ReviewV1Input, error) {
-	var input memory.ReviewV1Input
-	if err := json.Unmarshal([]byte(request.Input), &input, json.RejectUnknownMembers(true)); err != nil {
-		return memory.ReviewV1Input{}, fmt.Errorf("pending agent memory review input is invalid: %w", err)
-	}
-	if input.ID != id || (input.Decision != string(memory.ReviewApprove) && input.Decision != string(memory.ReviewReject)) {
-		return memory.ReviewV1Input{}, errors.New("pending agent memory review identity or decision is invalid")
-	}
-	if input.Decision != string(decision) {
-		return input, fmt.Errorf("agent memory %s has an unconfirmed %s review; retry /memory-%s %s to reconcile the original command", id, input.Decision, input.Decision, id)
-	}
-	return input, nil
 }
 
 func (a *app) loadAgentMemoryItem(argument, label string, apply func(conversation.MemoryTarget, memory.Item)) error {
@@ -370,28 +340,13 @@ func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.A
 	a.status.note("adding agent memory")
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (memory.AddV1Output, error) {
-			if a.workbench != nil {
-				if pending, found := a.workbench.PendingInstalledCommand(memoryAdditionIntent); found {
-					if err := retainedMemoryAddition(pending.Request, request); err != nil {
-						return memory.AddV1Output{}, err
-					}
-				}
-			}
-			return installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryAdditionIntent, a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
-				return a.agentMemory.PrepareAdd(ctx, request)
-			}, func(reply *protocol.CallPluginResponse) (memory.AddV1Output, error) {
-				output, err := a.agentMemory.DecodeAdd(reply)
-				if err == nil && output.Item.Scope != request.Scope {
-					return memory.AddV1Output{}, errors.New("memory addition acknowledgement changed target scope")
-				}
-				return output, err
-			})
+			return workbench.ExecuteMemoryAddition(ctx, a.agentMemory, a.workbench, a.replayPolicy, request)
 		},
 		func(result memory.AddV1Output, err error) {
 			if err != nil {
 				message := "add agent memory failed: " + err.Error()
 				if a.workbench != nil {
-					if _, pending := a.workbench.PendingInstalledCommand(memoryAdditionIntent); pending {
+					if _, pending, _ := a.workbench.PendingMemoryAddition(); pending {
 						message += " · retry /memory-add to reconcile the original command"
 					}
 				}
@@ -431,24 +386,13 @@ func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memor
 	a.status.note(label)
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (memory.Item, error) {
-			if a.workbench != nil {
-				if pending, found := a.workbench.PendingInstalledCommand(memoryUpdateIntent(request.ID)); found {
-					if err := retainedMemoryUpdate(pending.Request, request); err != nil {
-						return memory.Item{}, err
-					}
-				}
-			}
-			return installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
-				return a.agentMemory.PrepareUpdate(ctx, request)
-			}, func(reply *protocol.CallPluginResponse) (memory.Item, error) {
-				return a.agentMemory.DecodeUpdate(request.ID, reply)
-			})
+			return workbench.ExecuteMemoryUpdate(ctx, a.agentMemory, a.workbench, a.replayPolicy, request)
 		},
 		func(item memory.Item, err error) {
 			if err != nil {
 				message := label + " failed: " + err.Error()
 				if a.workbench != nil {
-					if _, pending := a.workbench.PendingInstalledCommand(memoryUpdateIntent(request.ID)); pending {
+					if _, pending, _ := a.workbench.PendingMemoryUpdate(request.ID); pending {
 						message += " · retry /memory-edit " + request.ID + " to reconcile the original command"
 					}
 				}
@@ -473,41 +417,20 @@ func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memor
 	return nil
 }
 
-func retainedMemoryUpdate(request protocol.CallPluginRequest, desired memory.UpdateV1Input) error {
-	var original memory.UpdateV1Input
-	if err := json.Unmarshal([]byte(request.Input), &original, json.RejectUnknownMembers(true)); err != nil {
-		return fmt.Errorf("pending agent memory update input is invalid: %w", err)
-	}
-	if !reflect.DeepEqual(original, desired) {
-		return fmt.Errorf("agent memory %s has an unconfirmed update; retry /memory-edit %s to reconcile the original patch before submitting changes", desired.ID, desired.ID)
-	}
-	return nil
-}
-
 func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, decision memory.ReviewDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (string, error) {
-			if a.workbench != nil {
-				if pending, found := a.workbench.PendingInstalledCommand(memoryReviewIntent(id)); found {
-					if _, err := retainedMemoryReview(pending.Request, id, decision); err != nil {
-						return "", err
-					}
-				}
-			}
-			_, err := installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryReviewIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
-				return a.agentMemory.PrepareReview(ctx, id, decision)
-			}, func(*protocol.CallPluginResponse) (memory.ReviewV1Output, error) { return memory.ReviewV1Output{}, nil })
+			err := workbench.ExecuteMemoryReview(ctx, a.agentMemory, a.workbench, a.replayPolicy, id, decision)
 			return id, err
 		},
 		func(reviewed string, err error) {
 			if err != nil {
 				message := label + " failed: " + err.Error()
 				if a.workbench != nil {
-					if pending, found := a.workbench.PendingInstalledCommand(memoryReviewIntent(id)); found {
-						original, _ := retainedMemoryReview(pending.Request, id, decision)
+					if original, found, _ := a.workbench.PendingMemoryReview(id, decision); found {
 						if original.Decision != "" {
 							message += " · retry /memory-" + original.Decision + " " + id + " to reconcile the original command"
 						}
@@ -535,16 +458,14 @@ func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 	a.status.note("deleting agent memory " + id)
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (string, error) {
-			_, err := installedcommand.Execute(ctx, a.agentMemory, a.workbench, memoryDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
-				return a.agentMemory.PrepareDelete(ctx, id)
-			}, func(*protocol.CallPluginResponse) (memory.DeleteV1Output, error) { return memory.DeleteV1Output{}, nil })
+			err := workbench.ExecuteMemoryDeletion(ctx, a.agentMemory, a.workbench, a.replayPolicy, id)
 			return id, err
 		},
 		func(deleted string, err error) {
 			if err != nil {
 				message := "delete agent memory failed: " + err.Error()
 				if a.workbench != nil {
-					if _, pending := a.workbench.PendingInstalledCommand(memoryDeletionIntent(id)); pending {
+					if _, pending, _ := a.workbench.PendingMemoryDeletion(id); pending {
 						message += " · retry /memory-delete " + id + " to reconcile the original command"
 					}
 				}
@@ -559,21 +480,4 @@ func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
 	) {
 		a.message("another agent memory operation is running")
 	}
-}
-
-func memoryDeletionIntent(id string) string { return "memory-delete:" + id }
-func memoryReviewIntent(id string) string   { return "memory-review:" + id }
-func memoryUpdateIntent(id string) string   { return "memory-update:" + id }
-
-const memoryAdditionIntent = "memory-add"
-
-func retainedMemoryAddition(request protocol.CallPluginRequest, desired memory.AddV1Input) error {
-	var original memory.AddV1Input
-	if err := json.Unmarshal([]byte(request.Input), &original, json.RejectUnknownMembers(true)); err != nil {
-		return fmt.Errorf("pending agent memory addition input is invalid: %w", err)
-	}
-	if original != desired {
-		return errors.New("agent memory addition remains unconfirmed; retry /memory-add to reconcile the original target and content")
-	}
-	return nil
 }

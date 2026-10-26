@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // PendingSteer owns an instruction and its borrowed composer attachments until

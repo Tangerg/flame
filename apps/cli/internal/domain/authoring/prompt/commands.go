@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // SteerRun injects an instruction only into the exact running segment the user

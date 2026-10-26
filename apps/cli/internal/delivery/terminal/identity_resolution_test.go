@@ -3,7 +3,7 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // TestResolveByIDPrefersExactOverPrefix pins the rule four resolvers used to

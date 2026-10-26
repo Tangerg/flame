@@ -3,7 +3,7 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // The picker describes a mode from the gates the Runtime publishes, so a policy

@@ -165,8 +165,11 @@ Provider selection is either an exact provider/model pair or absent. Absence mea
 
 The directory map follows ownership. `domain/authoring/{prompt,queue,replay}` holds
 pure local intent, while `domain/conversation` folds Runtime facts for presentation.
-`application/workbench` commits authoring and outbox transactions; terminal code
+`application/workbench` owns authoring, outbox transactions and the complete
+installed-command intent lifecycle; terminal code
 commands that owner instead of coordinating durable and live queue state itself.
+Typed Memory entries also retain original decision, patch and target admission;
+terminal delivery consumes pending readouts and renders retry instructions.
 `application/mutation` shares exact replay admission across Run and Session
 workflows. Root composition opens Workbench lazily and supplies consumer-owned
 Runtime ports. Executable plugins live in `adapter/sideload`, with command contracts

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/installedcommand"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (a *app) ShowSchedules() {
@@ -180,7 +180,7 @@ func (a *app) runSchedule(id string) {
 	a.status.note("running schedule " + id)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (conversation.RunReference, error) {
-			return installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleRunIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			return workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, scheduleRunIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareRunNow(ctx, id)
 			}, a.schedules.DecodeRunNow)
 		},
@@ -263,7 +263,7 @@ func (a *app) createSchedule(request schedule.CreateV1Input) {
 	a.status.note("creating schedule")
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (schedule.CreateV1Output, error) {
-			return installedcommand.Execute(ctx, a.schedules, a.workbench, "schedule-create", a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			return workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, "schedule-create", a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareCreate(ctx, request)
 			}, a.schedules.DecodeCreate)
 		},
@@ -291,7 +291,7 @@ func (a *app) updateSchedule(request schedule.UpdateV1Input, label string) {
 	a.status.note(label)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (schedule.UpdateV1Output, error) {
-			return installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			return workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, scheduleUpdateIntent(request.ID), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareUpdate(ctx, request)
 			}, func(reply *protocol.CallPluginResponse) (schedule.UpdateV1Output, error) {
 				return a.schedules.DecodeUpdate(request.ID, reply)
@@ -325,7 +325,7 @@ func (a *app) deleteSchedule(id string) {
 	a.status.note("deleting schedule " + id)
 	started := a.runApplicationOperation(scheduleOperation, false,
 		func(ctx context.Context) (string, error) {
-			_, err := installedcommand.Execute(ctx, a.schedules, a.workbench, scheduleDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+			_, err := workbench.ExecuteInstalledCommand(ctx, a.schedules, a.workbench, scheduleDeletionIntent(id), a.replayPolicy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 				return a.schedules.PrepareDelete(ctx, id)
 			}, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
 			return id, err

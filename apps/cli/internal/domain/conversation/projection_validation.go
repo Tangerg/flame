@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Validate checks the CLI-owned construction of a Run projection. Runtime owns

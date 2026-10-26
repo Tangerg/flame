@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // resolveSnapshotRun selects the already accepted run from a cold projection.

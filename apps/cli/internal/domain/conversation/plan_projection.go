@@ -4,7 +4,7 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ClonePlan detaches a committed plan so a projection, a fixture, or a caller

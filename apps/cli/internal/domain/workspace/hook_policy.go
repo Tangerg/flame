@@ -1,6 +1,6 @@
 package workspace
 
-import "github.com/Tangerg/flame/runtime/protocol"
+import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 type HookCatalog struct {
 	ProjectRoot    string

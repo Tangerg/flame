@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {

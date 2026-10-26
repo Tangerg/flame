@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type approvalBindingRecorder struct {

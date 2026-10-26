@@ -13,7 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {

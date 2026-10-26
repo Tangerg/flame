@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {

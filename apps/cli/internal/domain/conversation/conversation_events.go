@@ -3,7 +3,7 @@ package conversation
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ApplyRunEvent validates and folds one event exactly once. It never assigns

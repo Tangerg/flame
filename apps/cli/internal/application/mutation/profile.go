@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ReplayProfile supplies negotiated Runtime facts without transferring negotiation

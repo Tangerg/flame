@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (

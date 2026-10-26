@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // HandshakeTimeout is the CLI's MCP connection deadline policy. Its zero value

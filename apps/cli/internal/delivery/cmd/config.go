@@ -16,8 +16,8 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 const maximumCLIConfigBytes int64 = 256 << 10

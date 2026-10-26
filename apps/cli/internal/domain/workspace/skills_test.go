@@ -3,7 +3,7 @@ package workspace
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {

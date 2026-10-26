@@ -65,7 +65,7 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
-Runtime's public `exactint` and `exactjson` packages own the shared numeric
+The public Go SDK's `exactint` and `exactjson` packages own the shared numeric
 vocabulary. Filesystem adapters may use the existing `storage/advisorylock`
 primitive for their own partition lifetime; Domain and Application do not import
 that I/O capability. Settings may read the independent `packages/local-runtime`
@@ -137,6 +137,21 @@ Each contribution point has one definition identity. A separately constructed po
 Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
 Start and Resume acceptance belongs to Runtime's durable command receipt. Before delivery or redelivery, the Run workflow reads `runs.getAcceptance` using the original namespace, key, and operation. `accepted` settles the local submission using the original Run, Segment, and optional input Item references; observation then restores current material through the existing coherent snapshot boundary. A later active Segment never replaces the opening Segment in the receipt. `retired` settles historical acceptance without subscribing to or canceling replacement material. `notRecorded` proves only the absence of a receipt at that read: it permits a same-key attempt only while the original replay guard still admits delivery. Expiry, a changed waiting set, a finished snapshot, and another command's receipt never authorize a new key or local settlement. Lookup errors preserve the unresolved outbox. Workbench settlement and local write retries name the acknowledged command explicitly; Run lifecycle frames advance only their projection and cannot acknowledge the FIFO head. Missing prepared content blocks redelivery, while acceptance lookup itself requires no attachment or payload reads.
+
+Workbench owns the entire installed-command intent lifecycle: capture and persist
+the exact request and identity before I/O, admit retries against that retained
+request, decode the original owner's acknowledgement, then retire the intent.
+A failed write, unavailable owner, invalid acknowledgement or replay fence leaves
+that intent unresolved. Runtime and the installed publisher retain routing and
+business-outcome authority.
+
+`ExecuteInstalledCommand` supplies that lifecycle to Schedule consumers. Typed
+Memory entries additionally admit the original decision, nullable patch, target
+and content before any provider preparation or dispatch. Read-only pending
+projections support terminal retry presentation; delivery never decodes journal
+input, stages or retires installed commands. Memory response identity and scope
+checks precede retirement. A different desired request cannot replace an
+unconfirmed intent, including after restart or provider replacement.
 
 Workbench persistence contains only CLI-authored facts. The workbench Application owner owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content.
 

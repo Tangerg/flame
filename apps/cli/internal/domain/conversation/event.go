@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RunEvent is one projected runtime event. EventID is an opaque replay token

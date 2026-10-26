@@ -3,7 +3,7 @@ package runtimebinding
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type feedbackBinding interface {

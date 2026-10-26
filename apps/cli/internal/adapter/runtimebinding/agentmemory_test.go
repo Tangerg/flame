@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/installedcommand"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type memoryFixtureRecord = memory.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2JhY2tlbmQvZG9tYWlu_5fItemSnapshot
@@ -489,7 +489,7 @@ func TestMemoryCommandsResumeOriginalBindingAfterSelectionChanges(t *testing.T) 
 				return nil, conversation.ErrDisconnected
 			}
 			execute := func(ctx context.Context) error {
-				_, err := installedcommand.Execute(ctx, adapter, store, intent, policy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
+				_, err := workbench.ExecuteInstalledCommand(ctx, adapter, store, intent, policy, func(ctx context.Context) (protocol.CallPluginRequest, error) {
 					if method == memory.AddV1Method {
 						return adapter.PrepareAdd(ctx, memory.AddV1Input{Scope: "user", Content: "original addition"})
 					}

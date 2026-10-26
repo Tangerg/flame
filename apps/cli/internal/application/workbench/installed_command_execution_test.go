@@ -1,4 +1,4 @@
-package installedcommand
+package workbench_test
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type persistence struct {
@@ -67,8 +67,8 @@ func request(t *testing.T) protocol.CallPluginRequest {
 	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
 }
 
-func execute(ctx context.Context, caller Caller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
-	_, err := Execute(ctx, caller, store, intent, policy, prepare, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
+func execute(ctx context.Context, caller workbench.InstalledCaller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
+	_, err := workbench.ExecuteInstalledCommand(ctx, caller, store, intent, policy, prepare, func(*protocol.CallPluginResponse) (struct{}, error) { return struct{}{}, nil })
 	return err
 }
 
@@ -232,14 +232,14 @@ func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
 	decode := func(*protocol.CallPluginResponse) (string, error) {
 		return "", &capability.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}
 	}
-	if _, err := Execute(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode); err == nil {
+	if _, err := workbench.ExecuteInstalledCommand(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode); err == nil {
 		t.Fatal("invalid decoded acknowledgement became success")
 	}
 	if _, pending := store.PendingInstalledCommand("accept"); !pending {
 		t.Fatal("invalid decoded acknowledgement retired the original intent")
 	}
 	decode = func(*protocol.CallPluginResponse) (string, error) { return "original acceptance", nil }
-	result, err := Execute(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode)
+	result, err := workbench.ExecuteInstalledCommand(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode)
 	if err != nil || result != "original acceptance" || preparations != 1 {
 		t.Fatalf("decoded original acceptance: %q, preparations=%d, error=%v", result, preparations, err)
 	}

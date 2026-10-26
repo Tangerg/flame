@@ -26,8 +26,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	workspaceapi "github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {

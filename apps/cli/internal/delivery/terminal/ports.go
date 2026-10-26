@@ -5,13 +5,14 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Runtime is the terminal's complete consumer surface. Feature-specific
@@ -120,14 +121,8 @@ type Schedules interface {
 }
 
 type AgentMemory interface {
+	workbench.MemoryCommands
 	Items(context.Context, conversation.MemoryTarget) ([]memory.Item, error)
-	PrepareReview(context.Context, string, memory.ReviewDecision) (protocol.CallPluginRequest, error)
-	PrepareUpdate(context.Context, memory.UpdateV1Input) (protocol.CallPluginRequest, error)
-	DecodeUpdate(string, *protocol.CallPluginResponse) (memory.Item, error)
-	PrepareDelete(context.Context, string) (protocol.CallPluginRequest, error)
-	CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
-	PrepareAdd(context.Context, memory.AddV1Input) (protocol.CallPluginRequest, error)
-	DecodeAdd(*protocol.CallPluginResponse) (memory.AddV1Output, error)
 }
 
 type DiagnosticTools interface {

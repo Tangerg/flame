@@ -1,6 +1,6 @@
 package runtimefixture
 
-import "github.com/Tangerg/flame/runtime/protocol"
+import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 // Discovery supplies a complete protocol response for consumer tests. Tests
 // customize advertised facts before negotiating them through the real adapter.

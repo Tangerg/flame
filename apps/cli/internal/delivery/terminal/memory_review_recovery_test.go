@@ -1,10 +1,13 @@
 package terminal
 
 import (
-	"bytes"
+	"context"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -25,18 +28,12 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	guard, err := policy.NewGuard()
-	if err != nil {
-		t.Fatal(err)
+	ctx, cancel := context.WithCancel(t.Context())
+	lost := &unconfirmedMemoryReview{agentMemoryServiceStub: &agentMemoryServiceStub{}, cancel: cancel}
+	if err := workbench.ExecuteMemoryReview(ctx, lost, store, policy, terminalMemoryPendingID, memory.ReviewApprove); err == nil {
+		t.Fatal("lost acknowledgement became success")
 	}
-	request, err := boundMemoryRequest(memory.ReviewV1Method, memory.ReviewV1Input{ID: terminalMemoryPendingID, Decision: string(memory.ReviewApprove)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	original := workbench.PendingInstalledCommand{Intent: memoryReviewIntent(terminalMemoryPendingID), CommandID: mutation.NewCommandID(), Request: request, Replay: guard}
-	if err := store.StageInstalledCommand(original); err != nil {
-		t.Fatal(err)
-	}
+	original := store.PendingInstalledCommands()[0]
 	a := &app{workbench: store, agentMemory: &agentMemoryServiceStub{}}
 	if err := a.PrepareAgentMemoryReview("project "+terminalMemoryPendingID[:len(terminalMemoryPendingID)-1], false); err == nil || !strings.Contains(err.Error(), "unconfirmed approve") {
 		t.Fatalf("opposite review did not fence its original decision before current-target work: %v", err)
@@ -45,67 +42,18 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	if !found || pending.CommandID != original.CommandID || !(pending.Request.Input == original.Request.Input) {
 		t.Fatal("opposite review changed original identity or input")
 	}
-	if _, err := retainedMemoryReview(pending.Request, terminalMemoryPendingID, memory.ReviewApprove); err != nil {
+	if _, _, err := store.PendingMemoryReview(terminalMemoryPendingID, memory.ReviewApprove); err != nil {
 		t.Fatal(err)
 	}
 
-	otherRequest, err := boundMemoryRequest(memory.ReviewV1Method, memory.ReviewV1Input{ID: terminalMemoryUserID, Decision: string(memory.ReviewReject)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.StageInstalledCommand(workbench.PendingInstalledCommand{Intent: memoryReviewIntent(terminalMemoryUserID), CommandID: mutation.NewCommandID(), Request: otherRequest, Replay: guard}); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := a.pendingMemoryItemCommand(memory.ReviewV1Method, memoryReviewIntent(""), terminalMemoryPendingID[:len(terminalMemoryPendingID)-1]); err == nil {
-		t.Fatal("ambiguous pending prefix selected an original command")
-	}
-	exact, found, err := a.pendingMemoryItemCommand(memory.ReviewV1Method, memoryReviewIntent(""), terminalMemoryPendingID)
-	if err != nil || !found || exact.CommandID != original.CommandID {
-		t.Fatalf("exact pending identity lost precedence: found=%v error=%v", found, err)
-	}
 }
 
-func TestPendingMemoryUpdateKeepsOriginalPatchAndOmission(t *testing.T) {
-	content := "original patch"
-	original := memory.UpdateV1Input{ID: terminalMemoryPendingID, Content: &content, Pinned: new(false)}
-	request, err := boundMemoryRequest(memory.UpdateV1Method, original)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := append([]byte(nil), request.Input...)
-	if err := retainedMemoryUpdate(request, memory.UpdateV1Input{ID: original.ID, Content: new(content), Pinned: new(false)}); err != nil {
-		t.Fatal(err)
-	}
-	for _, changed := range []memory.UpdateV1Input{
-		{ID: original.ID, Content: new("changed patch"), Pinned: new(false)},
-		{ID: original.ID, Content: &content},
-		{ID: original.ID, Content: &content, Pinned: new(true)},
-	} {
-		if err := retainedMemoryUpdate(request, changed); err == nil {
-			t.Fatal("changed patch replaced an unconfirmed original update")
-		}
-	}
-	if !bytes.Equal(before, []byte(request.Input)) {
-		t.Fatal("checking a pending update changed original bytes")
-	}
+type unconfirmedMemoryReview struct {
+	*agentMemoryServiceStub
+	cancel context.CancelFunc
 }
 
-func TestPendingMemoryAdditionKeepsOriginalTargetAndContent(t *testing.T) {
-	original := memory.AddV1Input{Scope: "project", CWD: "/original", Content: "original addition"}
-	request, err := boundMemoryRequest(memory.AddV1Method, original)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := retainedMemoryAddition(request, original); err != nil {
-		t.Fatal(err)
-	}
-	for _, changed := range []memory.AddV1Input{
-		{Scope: "user", Content: original.Content},
-		{Scope: original.Scope, CWD: "/replacement", Content: original.Content},
-		{Scope: original.Scope, CWD: original.CWD, Content: "new content"},
-	} {
-		if err := retainedMemoryAddition(request, changed); err == nil {
-			t.Fatal("uncertain addition adopted another target or content")
-		}
-	}
+func (c *unconfirmedMemoryReview) CallPlugin(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+	c.cancel()
+	return nil, conversation.ErrDisconnected
 }

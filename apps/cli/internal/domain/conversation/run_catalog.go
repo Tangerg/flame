@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RunQuery selects one cursor page in runtime order, newest first. An empty

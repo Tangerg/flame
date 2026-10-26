@@ -14,8 +14,8 @@ import (
 
 	"github.com/spf13/pathologize"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 )
 
 // listReadBatchSize bounds temporary directory metadata, not the number of
