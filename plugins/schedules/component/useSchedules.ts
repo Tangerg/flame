@@ -4,6 +4,7 @@ import {
   createTranslator,
   mutationSettlementIsUnknown,
   OperationFailure,
+  scrollPositions,
   failureText as failure,
   type ComponentContext,
 } from "@flame/component-sdk";
@@ -349,6 +350,13 @@ export function useSchedules(context: ComponentContext) {
     setEdit(undefined);
     setDeleting(undefined);
   }
+  function filterPage(nextSearch: string, nextStatus = status) {
+    if (nextSearch === search && nextStatus === status) return;
+    setSearch(nextSearch);
+    setStatus(nextStatus);
+    for (const position of scrollPositions(searchElement.current))
+      position.element.scrollTop = 0;
+  }
   const page = read.accepted?.page;
   const rows = page?.Rows ?? [];
   const matching = rows.filter(
@@ -386,12 +394,11 @@ export function useSchedules(context: ComponentContext) {
     reconcile,
     searchElement,
     search,
-    setSearch,
+    filterPage,
     editorOpen,
     actionsDisabled,
     add,
     status,
-    setStatus,
     read,
     busy,
     refresh,

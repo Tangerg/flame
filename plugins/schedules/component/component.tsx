@@ -43,12 +43,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
     reconcile,
     searchElement,
     search,
-    setSearch,
+    filterPage,
     editorOpen,
     actionsDisabled,
     add,
     status,
-    setStatus,
     read,
     busy,
     refresh,
@@ -116,8 +115,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
               aria-label={t("search.label")}
               placeholder={t("search.placeholder")}
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onClear={() => setSearch("")}
+              onChange={(event) => filterPage(event.target.value)}
+              onClear={() => filterPage("")}
               clearLabel={t("search.clear")}
             />
           }
@@ -152,7 +151,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
             size="lg"
             label={t("status.label")}
             value={status}
-            onValueChange={setStatus}
+            onValueChange={(value) => filterPage(search, value)}
             options={[
               { value: "all", label: t("status.all") },
               { value: "enabled", label: t("status.enabled") },
@@ -445,8 +444,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setSearch("");
-                      setStatus("all");
+                      filterPage("", "all");
                       searchElement.current?.focus();
                     }}
                   >

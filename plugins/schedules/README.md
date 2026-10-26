@@ -182,6 +182,11 @@ retirement. Failed pagination keeps the accepted page/cursor. Shared-client reco
 and backend background activation are covered separately from excluded graphical
 window-reload interaction.
 
+Changing the page's search or status filter reveals the beginning of its results;
+clearing either or both uses that same local action. An unchanged filter,
+refresh, details disclosure and editor return retain the current reading
+position. This presentation action issues no read or command.
+
 Catalog loading, failed reads and accepted empty pages remain distinct. Only an
 accepted page supplies records, counts or an empty result; it stays visible while
 another read is pending or fails. A filtered empty result on a nonempty accepted

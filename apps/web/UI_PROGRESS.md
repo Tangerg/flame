@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result and Skills filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs now begin with navigation and search, qualified below. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -34,13 +34,15 @@ active file-tree name, reveals the first newly filtered recorded result, and
 preserves whitespace-only captured Tool source. It also reveals the beginning of
 a changed Skills catalog query while retaining document-return and refresh
 positions. Hosted Skills catalogs also retire their generic introductions while
-retaining the actual workspace and library ownership guidance. Each batch has
-completed its scoped native qualification and resource retirement. The latest
-Skills composition refinement uses frozen base
-`26e796431f56ea3616a69e3f4fb62eeeff951d4b`; see Skills catalog introductions
-below. Its preceding query repair and the source-presence repair are recorded
-under Skills catalog query and reading return and Generic Tool source presence.
-These local commits have not been pushed or merged into the primary checkout.
+retaining the actual workspace and library ownership guidance. Schedules now
+routes changed queries, status selection and local clear actions through one
+filter action that reveals the result beginning; refresh, retained details and
+editor return preserve existing reading. Each batch has completed its scoped
+native qualification and resource retirement. The latest Schedules repair uses
+frozen base `4bd7535cafd5f306612dab618f73ba0aca9f1003`; see Schedules filter
+arrival and retained reading below. The preceding Skills composition/query and
+source-presence repairs retain their corresponding sections. These local
+commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -3567,6 +3569,169 @@ report when its initiating focus remains unclaimed; otherwise it names the saved
 copy in archive feedback. The published ESM was rebuilt. Existing Runtime
 installations require explicit reinstallation and selection of the new package
 digest; a source/resource rebuild does not update an admitted installation.
+
+### Schedules filter arrival and retained reading
+
+This feedback G02/G04 task uses frozen base
+`4bd7535cafd5f306612dab618f73ba0aca9f1003`. A fresh native Wails baseline with
+eighty ordinary Schedule records reproduces unrelated reading positions after
+local filtering. From the catalog middle, searching `Runtime` leaves the first
+fully visible result at `Runtime audit 017`; selecting Disabled then shows
+`Runtime audit 051` at that same visible reading area. Earlier matches remain
+above the viewport. Filtering itself and the accepted-page summary are correct.
+The summary intentionally continues to describe the complete accepted page.
+
+`plugins/schedules/component/useSchedules.ts:353` now owns `filterPage`. A changed
+search or status value updates the existing local states and starts the existing
+scroll ancestors of the retained search field at zero. An unchanged pair does
+nothing. Typed queries, typing a clear value, the shared clear button/Escape,
+status selection and combined empty-result recovery all use that one action.
+The existing public SDK `scrollPositions` supplies ancestor geometry; no new
+shared API, position cache, state, effect, timer, listener or input driver is added.
+Read delivery, refresh, disclosure, editor return and hidden-view retention do
+not request a reset. The README and regenerated Schedules ESM match this contract;
+the other ten resources remain byte-identical. No Runtime, command, persisted-data,
+provider, pagination or native-host contract changes.
+
+#### Scope and coverage
+
+The complete inspected task is reply → Schedules → search/status → recorded
+details → related Files → retained Schedules → cancel a named edit → recover an
+empty local filter → continue the original draft. Fresh read-only ZCode
+`settings/PluginStorePage.tsx:318` captures a list position for detail return;
+`settings/AutomationsSection.tsx:594` owns local status selection separately from
+its accepted tasks. Neither source proves a new-query reset. The repair follows
+Flame's actual native counterexample and reuses its existing SDK and shared
+SearchField/Select/Panel owners. Earlier ChatGPT, HeroUI/Radix, Arc and Ace studies
+retain their documented limits; no new upstream-browser or image comparison ran.
+
+| Domain        | Evidence inspected                                                                                  | Result                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Accessibility | Search and Select names, native focus rings, keyboard menus, Escape, editor/source return and draft | Observed focus paths qualified; VoiceOver speech and OS IME not verified                                   |
+| Layout        | EN 523 px Dock, DE 18 px/320 px/narrow host and ZH 18 px/200% full-width material                   | Changed filters reveal their first result; controls, instructions and complete provenance remain reachable |
+| Writing       | Existing page scope, enabled/disabled summary, named editor, filtered-empty and clear labels        | Labels and accepted-page meaning retained; no added product copy                                           |
+| Typography    | 14/18 px scenes, full task names/instructions and wrapped DE path/identity/revision                 | Existing scale and reading hierarchy retained                                                              |
+| Colors        | Orange/light, custom purple/light and custom blue/dark with observed selected/focus states          | Existing semantic palette retained; no fresh quantitative contrast measurement                             |
+| UI polish     | Local arrival, unchanged reads, disclosure, modal cancel and Files return                           | Navigation follows explicit user intent without new motion or decoration                                   |
+
+| Severity | Domain               | Location                                          | Before                                                          | After                                                                      | Why                                                                            |
+| -------- | -------------------- | ------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| MEDIUM   | Layout / interaction | `plugins/schedules/component/useSchedules.ts:353` | Changed search/status inherits the previous result set's offset | One local filter action reveals the beginning; unchanged reading stays put | A new result set and returning to an existing read represent different intents |
+
+#### Verification
+
+The unchanged focused baseline passes **2 files / 14 tests**. Five new query,
+typed/button/Escape clear and status cases, plus an existing combined-clear
+assertion, fail on the original product with **6 failed / 6 passed**. The failures
+retain offsets 280/125 instead of zero. The repaired focused suite passes
+**19 tests**. Existing editor-return and pending/successful/failed/later-focus
+refresh cases now also assert retained reading. Local filter tests assert the
+selected records, input focus and absence of additional Runtime calls. No valid
+assertion, deadline or check is weakened.
+
+Final integration passes **5 files / 29 tests** in **3.11 s** wall time, including
+both Schedules suites, installed workspace/subagent continuity and renderer
+ownership. The ten-command final serial chain passes in **7.59 s**: formatting,
+resource build, tests, plugin typecheck/lint/i18n/resources and Web
+typecheck/lint/design-system checks. Icons and UI prerequisites were built first
+in the baseline. All eleven ESM resources match the normal builder; only
+Schedules changes. The first check chain had already passed the 29 tests but
+stopped at the new test's conditional `expect` lint violation; moving the same
+Escape assertion to the common path fixes it without relaxing that assertion.
+
+The initial native-baseline script omits the module proxy's phase argument and
+stops after the passing fourteen tests in **6.67 s**. Corrected private asset/native
+steps pass in **8.48 s**. Candidate assets and three actual Wails v3 beta.34 apps
+build serially in **15.81 s**. After the test-only lint correction, final assets
+are rebuilt in **2.40 s** and all **596** artifact hashes remain identical. The
+apps read that final asset directory. Known non-failing chunk-size and duplicate
+`-lobjc` warnings remain.
+
+All four private bundles use production Schedules, shared controls and actual
+Wails asset/IPC hosting. The private acceptance-data transform replaces only the
+ordinary canonical Schedule page with eighty records, within its existing
+100-record page limit. Its public list transport is unchanged. Private host
+overlays change asset hosting, application identity and scene entry; the only
+private Web import applies existing window chrome. No production handler or
+focus/scroll behavior is replaced.
+
+- EN/light/14 px/Orange/full motion, **523 px** Dock: searching from the middle
+  reveals `Runtime audit 001`; Disabled selection reveals `Runtime audit 003`.
+  Clearing search retains Disabled and reveals that accepted result beginning.
+  Reopening the query and expanding `003` retains its complete ID and workspace.
+  Active reading reaches the `021` area; Refresh and the actual Files tab's
+  retained `DockResizer.tsx` preview preserve the query, filter, disclosure and
+  visible area on return. Native keyboard menu selection opens the named
+  `Edit Runtime audit 021` editor; Escape restores its original record action
+  and reading. Empty
+  local matches recover through Clear filters to All statuses and search focus.
+  The draft continues exactly as
+  `Keep the scheduling review draft. Continue after reviewing the schedules.`.
+- DE/light/18 px/custom purple/motion off: native Tab/Home establishes a true
+  **320 px** Dock, retained through native Left placement with the fixture
+  sidebar open. A changed query reveals `001`; Disabled selection reveals `003`.
+  Expanded details retain its complete ID, revision, cron and wrapped workspace
+  path. The original draft continues exactly as
+  `Nach der Zeitplanprüfung weiterarbeiten. Geprüft, weiter.`.
+  One immediate click/Escape sequence leaves `Runtime` unchanged. A fresh launch
+  of the same unchanged binary clears it after input focus is explicitly observed,
+  both at the ordinary width and again in a **320 px** Dock, revealing `001` and
+  retaining search focus. The first observation is preserved; its event-delivery
+  cause is unclassified, not claimed repaired by this filter action.
+- ZH/dark/18 px/custom blue/motion off: native Left placement, sidebar collapse
+  and twenty Zoom In actions from Actual Size establish **200%**. The existing
+  explicit full-width entry exposes the same material. New query/status changes
+  reveal `001`/`003`; Escape in the observed search focus clears the local query,
+  retains Disabled and keeps the material open. Ordinary Close returns to
+  Conversation. The draft continues exactly as
+  `核对定时任务后继续。 已核对，继续。`.
+
+All apps exit with Cmd+Q; the second DE launch reuses only this task's private
+bundle and preserves its original cleanup baselines. Some AX clicks focus a
+closed trigger; native Return is used to open its menu. These observations do
+not establish a new shared input defect. The tasks qualify isolated native UI,
+not live provider reads, execution, persistence, pagination or command mutation.
+No Save, Run now, Enable/Disable command, Delete or Send is invoked.
+
+The last recorded `make check-native` remains evidence for unchanged native
+sources; it and complete unchanged Web/UI/SDK/Runtime/CLI suites were not rerun.
+The pre-existing main `check:layers` violation recorded under Generic Tool source
+presence is unchanged, not rerun or weakened. Browser visual/performance suites,
+other-platform GUI, RTL, VoiceOver, real OS IME, quantitative contrast and motion
+timing are not freshly qualified. No Claude CLI, subagent, main fetch, push or
+primary integration is used.
+
+| Goal CHECK        | Scoped result                                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Typography        | Existing reading scale, full names/instructions and wrapped provenance retained                                                              |
+| Whitespace        | Existing page/compact gutters retained; no extra explanatory surface                                                                         |
+| Visual hierarchy  | New filters reveal the first result; accepted-page scope and supporting details remain distinct                                              |
+| Color             | Existing neutral surfaces, semantic status and visible native focus retained                                                                 |
+| Motion            | Existing full/off states inspected; no new animation                                                                                         |
+| Micro interaction | Query/status/clear arrival, refresh, Files return, editor cancel and draft continuation pass, with the DE Escape observation qualified above |
+| Responsive        | DE true 320 px/narrow Dock and ZH native narrow/200% full-width material qualified                                                           |
+| Originality       | Existing Flame workbench composition retained without a new component skin                                                                   |
+
+Verdict: **Approve for the inspected filter-arrival and retained-reading task**.
+This is bounded progress, not whole-product or award-level acceptance. Continue
+from fresh task evidence; preserve the distinction between changed filters and
+an unchanged read rather than adding a generic reset effect.
+
+Owned-resource retirement is complete. All **13** recorded process IDs are dead;
+four exact bundles are unregistered and the private root is absent. Cleanup
+removes three new checkout output/cache roots, eight bundle-specific Library paths
+and four bundle temporary directories. All **34** output-presence baselines,
+**3** pre-existing output files, **24** Library-presence baselines, **11** accepted
+resources, the two fresh read-only ZCode references and **5,819** accepted
+non-Markdown inputs are preserved. Accepted-input SHA-256 is
+`865b6632913dc1ce0c2c6f13c44f734f4ffdf253b6933af10aa0c3a35f51591f`.
+The verified in-memory gzip retains **79** flat UTF-8 records, **30** screenshot
+digests and artifact maps (**596** assets per baseline/candidate, **16** immutable
+module artifacts and **4** native binaries); SHA-256 is
+`e492c1cf407f84e39a2bdd8f4fb5a03f40a90ce442c84267cc8c67b2b18eff11`.
+The primary parallel checkout, user data, installed dependencies, compiler caches
+and unrelated processes remain untouched. Delivery stays local on
+`codex/ui-feedback-local-1026`.
 
 ### Selected task identity at constrained widths
 

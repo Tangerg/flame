@@ -97,7 +97,11 @@ function mountSchedules(subscribeError?: Error) {
     track: (operation) => operation,
     compose: () => null,
   };
-  testClient.render(<Schedules context={context} />);
+  testClient.render(
+    <div data-testid="viewport" style={{ overflowY: "auto", height: 400 }}>
+      <Schedules context={context} />
+    </div>,
+  );
   let taken = 0;
   async function nextRead() {
     await waitFor(() => expect(subscriptionSettled && reads.length > taken).toBe(true));
@@ -238,12 +242,16 @@ it("retains accepted and filtered records through a failed refresh and its retry
   fireEvent.click(details);
   expect(details.getAttribute("aria-expanded")).toBe("true");
 
+  const viewport = screen.getByTestId("viewport");
+  viewport.scrollTop = 125;
   fireEvent.click(refreshButton());
+  expect(viewport.scrollTop).toBe(125);
   (await nextRead()).reject(new Error("schedules backend offline"));
   expect(await alertText()).toContain("The last accepted page is retained.");
   expect(screen.getByRole("heading", { name: nightly })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Schedule details" })).toBe(details);
   expect(details.getAttribute("aria-expanded")).toBe("true");
+  expect(viewport.scrollTop).toBe(125);
   expect(screen.getByText(/1 enabled · 1 disabled on this/)).toBeTruthy();
   fireEvent.change(query, { target: { value: "release notes" } });
   expect(screen.getByText("No matching schedules on this page.")).toBeTruthy();
@@ -281,10 +289,13 @@ it("keeps a held Refresh focused and single, yields to a later choice and disabl
   const { nextRead, listCalls } = mountSchedules();
   (await nextRead()).resolve(reply(VISUAL_SCHEDULES_PAGE));
   await screen.findByRole("heading", { name: nightly });
+  const viewport = screen.getByTestId("viewport");
+  viewport.scrollTop = 125;
   const refresh = refreshButton();
   refresh.focus();
   fireEvent.click(refresh);
   const held = await nextRead();
+  expect(viewport.scrollTop).toBe(125);
   const issued = listCalls();
   activateRepeatedly(refresh);
   expect(listCalls()).toBe(issued);
@@ -295,14 +306,17 @@ it("keeps a held Refresh focused and single, yields to a later choice and disabl
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
   expect(document.activeElement).toBe(refresh);
   expect(refresh.getAttribute("aria-disabled")).toBeNull();
+  expect(viewport.scrollTop).toBe(125);
 
   fireEvent.click(refresh);
   const later = await nextRead();
   const query = screen.getByRole("searchbox", { name: "Search this page" });
   query.focus();
+  viewport.scrollTop = 280;
   later.resolve(reply(VISUAL_SCHEDULES_PAGE));
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
   expect(document.activeElement).toBe(query);
+  expect(viewport.scrollTop).toBe(280);
 
   fireEvent.click(screen.getAllByRole("button", { name: /^More actions for/ })[0]!);
   fireEvent.click(await screen.findByRole("menuitem", { name: "Run now" }));
