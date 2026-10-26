@@ -86,7 +86,7 @@ async function declarationFiles(directory) {
 // manifest; checkGenerated then enforces the projection stays current.
 async function stampDeclarations(repository) {
   const method = await readFile(
-    join(repository, "runtime/capability/method.go"),
+    join(repository, "packages/go-sdk/capability/method.go"),
     "utf8",
   );
   const owner = method.match(/\bconst Protocol = "([^"]+)"/);
@@ -102,31 +102,151 @@ async function stampDeclarations(repository) {
 
 export async function generate(repository = root) {
   await buildShared(repository);
-  const env = proxyEnvironment(join(root, "out/module-proxy"));
-  run("go", ["generate", "./packages/plugin-sdk"], repository, env);
-  run("go", ["generate", "./packages/plugin-sdk/memory"], repository, env);
-  run("go", ["generate", "./plugins/..."], repository, env);
-  run("go", ["generate", "./runtime/...", "./apps/cli/..."], repository, env);
-  const members = JSON.parse(
-    run("go", ["work", "edit", "-json"], repository, process.env, true),
-  ).Use;
-  for (const member of members) {
-    const directory = resolve(repository, member.DiskPath);
-    if (directory === repository) continue;
-    const manifest = JSON.parse(
-      run("go", ["mod", "edit", "-json"], directory, process.env, true),
+  const env = {
+    ...proxyEnvironment(join(root, "out/module-proxy")),
+    GOWORK: join(repository, "go.work"),
+  };
+  const go = (args, member = "") =>
+    run("go", args, join(repository, member), env);
+  const temporary = await mkdtemp(join(tmpdir(), "flame-contract-source-"));
+  try {
+    go(
+      [
+        "run",
+        "./cmd/backendbindings",
+        "--source",
+        "plugin",
+        "--node-release",
+        "../local-runtime/node-release.json",
+        "--out",
+        "../backend-sdk/src/protocol.generated.json",
+      ],
+      "packages/go-sdk",
     );
-    if (manifest.Tool?.length) run("go", ["generate", "./..."], directory, env);
+    const memory = join(temporary, "memory.json");
+    await writeFile(
+      memory,
+      run(
+        "go",
+        ["run", "./memory/contractgen"],
+        join(repository, "plugins"),
+        env,
+        true,
+      ),
+    );
+    go(
+      [
+        "run",
+        "./cmd/contractgen",
+        "--feature",
+        memory,
+        "--out",
+        "",
+        "--go-out",
+        "plugin/memory/contract.generated.go",
+        "--go-package",
+        "memory",
+      ],
+      "packages/go-sdk",
+    );
+    run(
+      "go",
+      [
+        "run",
+        "./memory/backend/cmd/contracts",
+        "--caller-go",
+        "../packages/go-sdk/plugin/memory/caller_policy.generated.go",
+      ],
+      join(repository, "plugins"),
+      env,
+      true,
+    );
+    go(["generate", "./..."], "plugins");
+    go(
+      [
+        "run",
+        "./cmd/contractgen",
+        "--out",
+        "contract",
+        "--validators",
+        "../packages/go-sdk/protocol",
+        "--ts",
+        "../packages/runtime-client",
+        "--go-local",
+        ".",
+        "--go-client",
+        "../packages/go-sdk/client",
+      ],
+      "runtime",
+    );
+    go(["generate", "./..."], "apps/cli");
+    go(["generate", "./..."], "examples/plugins/reviews/backend");
+    go(
+      [
+        "run",
+        "./cmd/bridgegen",
+        "--source",
+        ".",
+        "--receiver",
+        "DesktopHost",
+        "--out",
+        "../web/src/platform/desktop.generated.ts",
+        "--foundation",
+        "../web/src/foundation/notificationAuthorization.ts",
+      ],
+      "apps/desktop",
+    );
+    go(
+      [
+        "run",
+        "./goapi",
+        "catalog",
+        "--repository",
+        repository,
+        "--out",
+        join(repository, "runtime/contract/go-api.json"),
+      ],
+      "tooling",
+    );
+    for (const p of ordered(await workspaces(repository)))
+      if (p.scripts?.generate)
+        run("npm", ["run", "generate"], p.directory, env);
+    await cp(
+      join(repository, "runtime/testdata/plugin-values.json"),
+      join(
+        repository,
+        "packages/runtime-client/testing/generated/plugin-values.json",
+      ),
+    );
+    await stampDeclarations(repository);
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
   }
-  for (const p of ordered(await workspaces(repository)))
-    if (p.scripts?.generate) run("npm", ["run", "generate"], p.directory);
-  await stampDeclarations(repository);
+}
+export function goWorkspaceMembers(repository = root) {
+  const env = { ...process.env, GOWORK: join(repository, "go.work") };
+  return JSON.parse(
+    run("go", ["work", "edit", "-json"], repository, env, true),
+  ).Use.map((entry) => {
+    const directory = resolve(repository, entry.DiskPath);
+    const manifest = JSON.parse(
+      run(
+        "go",
+        ["mod", "edit", "-json"],
+        directory,
+        { ...env, GOWORK: "off" },
+        true,
+      ),
+    );
+    return { directory, manifest };
+  });
 }
 export async function moduleArtifacts({
   repository = root,
   revision = "HEAD",
-  output = join(root, "out/module-proxy"),
+  output = join(repository, "out/module-proxy"),
   offline = false,
+  targets,
 } = {}) {
   const frozen = run(
     "git",
@@ -137,46 +257,80 @@ export async function moduleArtifacts({
   )
     .toString()
     .trim();
+  const readFrozen = (commit, path) =>
+    run("git", ["show", `${commit}:${path}`], repository, process.env, true);
   const bootstrap = await mkdtemp(join(tmpdir(), "flame-proxy-tool-"));
   try {
-    const frozenManifest = async (file) => {
-      const path = join(bootstrap, file.replaceAll("/", "-") + ".mod");
-      await writeFile(
-        path,
-        run(
-          "git",
-          ["show", `${frozen}:${file}`],
-          repository,
-          process.env,
-          true,
-        ),
-      );
+    let manifestSequence = 0;
+    const manifestAt = async (commit, path) => {
+      const file = join(bootstrap, `manifest-${manifestSequence++}.mod`);
+      await writeFile(file, readFrozen(commit, path));
       return JSON.parse(
         run(
           "go",
-          ["mod", "edit", "-json", path],
+          ["mod", "edit", "-json", file],
           bootstrap,
           { ...process.env, GOWORK: "off", GOTOOLCHAIN: "local" },
           true,
         ),
       );
     };
-    const manifest = await frozenManifest("go.mod");
-    const modVersion = manifest.Require.find(
-      (p) => p.Path === "golang.org/x/mod",
+    const frozenWork = join(bootstrap, "source.work");
+    await writeFile(frozenWork, readFrozen(frozen, "go.work"));
+    const workspace = JSON.parse(
+      run(
+        "go",
+        ["work", "edit", "-json", frozenWork],
+        bootstrap,
+        process.env,
+        true,
+      ),
+    );
+    const members = new Map();
+    for (const entry of workspace.Use) {
+      const directory = relative(
+        repository,
+        resolve(repository, entry.DiskPath),
+      ).replaceAll("\\", "/");
+      if (!directory || directory.startsWith("../"))
+        throw new Error(
+          "module proxy: members must be repository subdirectories",
+        );
+      const manifest = await manifestAt(frozen, `${directory}/go.mod`);
+      members.set(manifest.Module.Path, { directory, manifest });
+    }
+    const tooling = await manifestAt(frozen, "tooling/go.mod");
+    const modVersion = tooling.Require?.find(
+      (dependency) => dependency.Path === "golang.org/x/mod",
     )?.Version;
     if (!modVersion)
       throw new Error(
-        "module proxy requires the root's selected x/mod dependency",
+        "module proxy requires tooling's selected x/mod dependency",
       );
     await writeFile(
       join(bootstrap, "go.mod"),
-      `module flame.invalid/module-proxy\n\ngo ${manifest.Go}\n\nrequire golang.org/x/mod ${modVersion}\n`,
+      `module flame.invalid/module-proxy\n\ngo ${tooling.Go}\n\nrequire golang.org/x/mod ${modVersion}\n`,
     );
     await writeFile(
       join(bootstrap, "go.sum"),
-      run("git", ["show", `${frozen}:go.sum`], repository, process.env, true),
+      readFrozen(frozen, "tooling/go.sum"),
     );
+    const files = run(
+      "git",
+      ["ls-tree", "-r", "--name-only", frozen, "--", "tooling/moduleproxy"],
+      repository,
+      process.env,
+      true,
+    )
+      .toString()
+      .trim()
+      .split("\n");
+    for (const file of files) {
+      if (!file) continue;
+      const target = join(bootstrap, relative("tooling/moduleproxy", file));
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, readFrozen(frozen, file));
+    }
     const tool = join(bootstrap, "module-proxy");
     const toolEnv = {
       ...process.env,
@@ -187,50 +341,38 @@ export async function moduleArtifacts({
     };
     run(
       "go",
-      [
-        "build",
-        "-mod=mod",
-        "-o",
-        tool,
-        join(repository, "tooling/moduleproxy/main.go"),
-      ],
+      ["build", "-buildvcs=false", "-mod=readonly", "-o", tool, "."],
       bootstrap,
       toolEnv,
     );
-    const local = manifest.Require.find(
-      (p) => p.Path === "github.com/Tangerg/flame/packages/local-runtime",
-    );
-    const author = await frozenManifest(
-      "examples/plugins/reviews/backend/go.mod",
-    );
-    const product = author.Require.find(
-      (p) => p.Path === "github.com/Tangerg/flame",
-    );
-    // candidates owns version -> immutable source commit. A candidate version's
-    // bytes are its pinned commit's source, never whatever HEAD happens to be, so
-    // an unrelated commit can never redefine an already-published version.
-    const candidates = JSON.parse(
-      run(
-        "git",
-        ["show", `${frozen}:tooling/moduleproxy/candidates.json`],
-        repository,
-        process.env,
-        true,
-      ),
-    );
-    let productRevision;
-    for (const [selected, subdir] of [
-      [local, "packages/local-runtime"],
-      [product, ""],
-    ]) {
-      if (!selected)
+    const candidates = JSON.parse(readFrozen(frozen, "module-candidates.json"));
+    const own = (path) => members.has(path);
+    const requested =
+      targets ??
+      [...members.values()].flatMap(({ manifest }) =>
+        (manifest.Require ?? [])
+          .filter((dependency) => own(dependency.Path))
+          .map((dependency) => ({
+            path: dependency.Path,
+            version: dependency.Version,
+          })),
+      );
+    const artifacts = {};
+    const visiting = new Set();
+    const prepare = async ({ path, version }) => {
+      const key = `${path}@${version}`;
+      if (artifacts[key]) return;
+      if (visiting.has(key))
+        throw new Error(`module proxy: candidate dependency cycle at ${key}`);
+      const member = members.get(path);
+      if (!member)
         throw new Error(
-          "candidate dependencies must be selected before freezing source",
+          `module proxy: target is not a workspace member: ${path}`,
         );
-      const pinned = candidates[selected.Path]?.[selected.Version];
+      const pinned = candidates[path]?.[version];
       if (!pinned)
         throw new Error(
-          `module proxy: ${selected.Path} ${selected.Version} has no pinned source commit in tooling/moduleproxy/candidates.json`,
+          `module proxy: ${key} has no pinned source in module-candidates.json`,
         );
       const source = run(
         "git",
@@ -241,7 +383,18 @@ export async function moduleArtifacts({
       )
         .toString()
         .trim();
-      if (subdir === "") productRevision = source;
+      visiting.add(key);
+      const manifest = await manifestAt(source, `${member.directory}/go.mod`);
+      if (manifest.Module.Path !== path)
+        throw new Error(`module proxy: source module does not match ${key}`);
+      for (const dependency of manifest.Require ?? []) {
+        if (own(dependency.Path))
+          await prepare({ path: dependency.Path, version: dependency.Version });
+        else if (dependency.Path === "github.com/Tangerg/flame")
+          throw new Error(
+            `module proxy: ${key} still requires the retired root module`,
+          );
+      }
       run(
         tool,
         [
@@ -252,26 +405,46 @@ export async function moduleArtifacts({
           "--output",
           output,
           "--module",
-          selected.Path,
+          path,
           "--version",
-          selected.Version,
+          version,
           "--subdir",
-          subdir,
+          member.directory,
         ],
         repository,
         toolEnv,
       );
-    }
+      artifacts[key] = {
+        path,
+        version,
+        revision: source,
+        directory: member.directory,
+        go: manifest.Go,
+      };
+      visiting.delete(key);
+    };
+    for (const target of requested) await prepare(target);
     return {
       proxy: output,
-      version: product.Version,
-      localVersion: local.Version,
-      revision: productRevision,
+      revision: frozen,
+      modules: artifacts,
+      members: Object.fromEntries(
+        [...members].map(([path, { directory, manifest }]) => [
+          path,
+          {
+            directory,
+            requires: Object.fromEntries(
+              (manifest.Require ?? []).map((item) => [item.Path, item.Version]),
+            ),
+          },
+        ]),
+      ),
     };
   } finally {
     await rm(bootstrap, { recursive: true, force: true });
   }
 }
+
 export function proxyEnvironment(proxy, { offline = false } = {}) {
   return {
     ...process.env,
@@ -283,10 +456,11 @@ export function proxyEnvironment(proxy, { offline = false } = {}) {
       (offline ? ",off" : ",https://proxy.golang.org"),
   };
 }
-async function linkDependencies(repository) {
+export async function linkDependencies(repository, packages) {
+  packages ??= await workspaces(repository);
   const members = [
     "",
-    ...(await workspaces()).map((p) => relative(root, p.directory)),
+    ...packages.map((p) => relative(repository, p.directory)),
   ];
   for (const member of members) {
     const installed = join(root, member, "node_modules");
@@ -300,7 +474,7 @@ async function linkDependencies(repository) {
   }
   const names = join(repository, "node_modules/@flame");
   await mkdir(names, { recursive: true });
-  for (const p of await workspaces(repository))
+  for (const p of packages)
     if (p.name.startsWith("@flame/"))
       await symlink(p.directory, join(repository, "node_modules", p.name));
 }
@@ -366,30 +540,30 @@ async function goMembers(native) {
     ...proxyEnvironment(join(root, "out/module-proxy")),
     GOWORK: "off",
   };
-  const entries = JSON.parse(
-    run("go", ["work", "edit", "-json"], root, process.env, true),
-  ).Use;
-  for (const entry of entries) {
-    const directory = resolve(root, entry.DiskPath);
-    const manifest = JSON.parse(
-      run("go", ["mod", "edit", "-json"], directory, process.env, true),
-    );
+  for (const { directory, manifest } of goWorkspaceMembers()) {
     const requiresNative =
       manifest.Require?.some(
         (p) => p.Path === "github.com/wailsapp/wails/v3",
       ) ?? false;
-    if (requiresNative !== native) continue;
+    if (native && !requiresNative) continue;
+    const packages =
+      requiresNative && !native
+        ? ["./cmd/bridgegen", "./internal/bridge"]
+        : ["./..."];
     for (const operation of ["test", "vet", "build"]) {
       const args = [operation, "-mod=readonly"];
-      // Process-backed fixtures own their compiler and backend concurrency.
       if (operation === "test") args.push("-p=1");
-      if (native && operation === "build") {
-        const output = join(root, "out/native-check");
-        await mkdir(output, { recursive: true });
-        args.push("-o", join(output, "flame"));
-      }
-      args.push("./...");
-      run("go", args, directory, env);
+      run("go", [...args, ...packages], directory, env);
+    }
+    if (native) {
+      const output = join(root, "out/native-check");
+      await mkdir(output, { recursive: true });
+      run(
+        "go",
+        ["build", "-mod=readonly", "-o", join(output, "flame"), "."],
+        directory,
+        env,
+      );
     }
   }
 }
@@ -407,7 +581,8 @@ async function main(command) {
       const artifacts = await moduleArtifacts();
       const env = proxyEnvironment(artifacts.proxy);
       run("npm", ["ci"], root);
-      run("go", ["mod", "download"], root, env);
+      for (const { directory } of goWorkspaceMembers())
+        run("go", ["mod", "download"], directory, { ...env, GOWORK: "off" });
       await buildShared();
       const target = JSON.parse(
         run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
@@ -425,6 +600,7 @@ async function main(command) {
       return checkGenerated();
     case "check":
       await buildShared();
+      run("npm", ["run", "test:tooling"]);
       run("node", ["tooling/check-boundaries.mjs"]);
       run("npm", ["run", "lint"]);
       run("npm", ["run", "format:check"]);
@@ -487,13 +663,18 @@ async function main(command) {
         join(directory, "plugins"),
         "--replace",
       ]);
-      return run("go", [
-        "build",
-        "-trimpath",
-        "-o",
-        join(directory, kind === "runtime" ? "flame-runtime" : "flame"),
-        kind === "runtime" ? "./runtime/cmd/flame-runtime" : "./apps/cli",
-      ]);
+      return run(
+        "go",
+        [
+          "build",
+          "-trimpath",
+          "-o",
+          join(directory, kind === "runtime" ? "flame-runtime" : "flame"),
+          kind === "runtime" ? "./cmd/flame-runtime" : ".",
+        ],
+        join(root, kind === "runtime" ? "runtime" : "apps/cli"),
+        { ...proxyEnvironment(join(root, "out/module-proxy")), GOWORK: "off" },
+      );
     }
     default:
       throw new Error(`unknown workspace command: ${command}`);

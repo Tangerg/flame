@@ -33,10 +33,10 @@ try {
     root,
     env,
   );
-  for (const [name, owner] of [
-    ["flame-runtime", "./runtime/cmd/flame-runtime"],
-    ["flame", "./apps/cli"],
-    ["qualify", "./tooling/nodequalification"],
+  for (const [name, member, owner] of [
+    ["flame-runtime", "runtime", "./cmd/flame-runtime"],
+    ["flame", "apps/cli", "."],
+    ["qualify", "tooling", "./nodequalification"],
   ])
     run(
       "go",
@@ -48,7 +48,7 @@ try {
         join(directory, name),
         owner,
       ],
-      root,
+      join(root, member),
       env,
     );
   run(

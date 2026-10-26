@@ -16,11 +16,11 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
 	reports "github.com/Tangerg/flame/plugins/usagereports"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func main() {

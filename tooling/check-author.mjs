@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { run, root, buildShared } from "./workspace.mjs";
+import { run, root, buildShared, proxyEnvironment } from "./workspace.mjs";
 const scratch = await mkdtemp(join(tmpdir(), "flame-author-check-"));
 function isolated(policy, command, directory, env, expectedError) {
   // Pipes keep the sandbox from inheriting a repository-local redirected log
@@ -170,4 +170,9 @@ try {
   await rm(scratch, { recursive: true, force: true });
 }
 
-run("go", ["test", "-count=1", "-tags", "author", "./tests/integration"]);
+run(
+  "go",
+  ["test", "-count=1", "-tags", "author", "./integration"],
+  join(root, "tooling"),
+  { ...proxyEnvironment(join(root, "out/module-proxy")), GOWORK: "off" },
+);
