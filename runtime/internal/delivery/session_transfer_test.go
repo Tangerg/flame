@@ -8,13 +8,11 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -144,14 +142,14 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	}
 	putRun(t, sourceRuntime, ses.ID(), "run_offload", 1, 1)
 	body := strings.Repeat("portable-result-", 100)
-	id := resultoffload.ID("BLOB234")
-	if stageErr := sourceRuntime.toolResults.Stage(ctx, resultoffload.Stage{
+	id := transcript.ToolResultID("BLOB234")
+	if stageErr := sourceRuntime.toolResults.Stage(ctx, transcript.ToolResultStage{
 		ID: id, SessionID: ses.ID(), Body: body,
 	}); stageErr != nil {
 		t.Fatalf("stage source result: %v", stageErr)
 	}
 	preview := "offloaded preview " + id.String()
-	ref := &resultoffload.Ref{ID: id}
+	ref := &transcript.ToolResultRef{ID: id}
 	previewValue, err := tool.NewResult(preview)
 	if err != nil {
 		t.Fatal(err)
@@ -371,7 +369,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	rt.history[ses.ID()] = []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("waiting"))}
 	parkedAt := time.Unix(1, 0).UTC()
 	capabilities := run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
 	if admitErr := rt.runs.Admit(ctx, testsupport.RunDraft(run.Draft{SegmentID: "seg_open",
 		RunID: "run_parked", SessionID: ses.ID(), Capabilities: capabilities, CreatedAt: parkedAt,
@@ -382,7 +380,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		Capabilities: capabilities,
 
 		CreatedAt: parkedAt, MessageMark: run.UnknownMessageMark()}),
-		"seg_open", runtimeidentity.CommitID{},
+		"seg_open", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend parked run: %v", suspendErr)
 	}
@@ -401,7 +399,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		"member_parked",
 		[]transcript.Interrupt{{
 			ItemID:   "item_question",
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 		}},
 		parkedAt,

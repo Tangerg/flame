@@ -18,14 +18,14 @@ const (
 
 // ErrInvalidRemoteToolCatalog reports remote descriptor material that cannot
 // be admitted to Runtime's complete management and model-facing catalogs.
-var ErrInvalidRemoteToolCatalog = errors.New("mcp: invalid remote tool catalog")
+var errInvalidRemoteToolCatalog = errors.New("mcp: invalid remote tool catalog")
 
 // ValidateRemoteToolCount enforces the per-server complete-list bound.
 func ValidateRemoteToolCount(count int) error {
 	if count < 0 || count > MaxRemoteToolsPerServer {
 		return fmt.Errorf(
 			"%w: %d tools exceeds %d",
-			ErrInvalidRemoteToolCatalog,
+			errInvalidRemoteToolCatalog,
 			count,
 			MaxRemoteToolsPerServer,
 		)
@@ -37,12 +37,12 @@ func ValidateRemoteToolCount(count int) error {
 // envelope before the text enters either catalog.
 func ValidateRemoteToolDescription(description string) error {
 	if !utf8.ValidString(description) {
-		return fmt.Errorf("%w: description is not valid UTF-8", ErrInvalidRemoteToolCatalog)
+		return fmt.Errorf("%w: description is not valid UTF-8", errInvalidRemoteToolCatalog)
 	}
 	if len(description) > MaxRemoteToolDescriptionBytes {
 		return fmt.Errorf(
 			"%w: description uses %d bytes, maximum %d",
-			ErrInvalidRemoteToolCatalog,
+			errInvalidRemoteToolCatalog,
 			len(description),
 			MaxRemoteToolDescriptionBytes,
 		)

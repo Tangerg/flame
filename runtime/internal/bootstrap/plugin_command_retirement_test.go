@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -38,7 +38,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
-	directory, err := localruntime.DataDirectoryAt(cfg.Stores.DataDirectory)
+	directory, err := localruntime.DataDirectoryAt(cfg.stores.DataDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatal(err)
 	}
 	contribution := installed.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	options := delivery.Options{IdempotencyKey: "prepared-review"}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := r.endpoint.Invoke(ctx, delivery.PluginsCall, request, options)
@@ -64,8 +64,8 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER refuse_dispatch`); err != nil {
 		t.Fatal(err)
 	}
-	id := operation.Identity(operation.Bind(t.Context(), cfg.Stores.IdempotencyNamespace.String(), options.IdempotencyKey))
-	command, found, err := cfg.Stores.PluginCommands.Get(t.Context(), id)
+	id := operation.Identity(operation.Bind(t.Context(), cfg.stores.IdempotencyNamespace.String(), options.IdempotencyKey))
+	command, found, err := cfg.stores.PluginCommands.Get(t.Context(), id)
 	if err != nil || !found || command.Snapshot().Phase != plugin.CommandPrepared {
 		t.Fatalf("prepared route=%v, %t, %v", command, found, err)
 	}
@@ -73,7 +73,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
-	lookup := protocol.PluginCommandRequest{Namespace: cfg.Stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
 	wrongStore := lookup
 	wrongStore.Namespace = "idp_00000000000000000000000000000000"
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, wrongStore, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrIdempotencyStoreMismatch) {

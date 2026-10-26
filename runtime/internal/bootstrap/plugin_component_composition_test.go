@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -35,7 +35,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 						if order == nil {
 							order = []protocol.PluginPointReference{}
 						}
-						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: capability.Target{Scope: "installation", Reference: owner.ID}, Attributes: `{}`, Order: order}
+						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: extension.Target{Scope: "installation", Reference: owner.ID}, Attributes: `{}`, Order: order}
 					}
 				}
 				t.Fatalf("missing point %s/%s", name, point)

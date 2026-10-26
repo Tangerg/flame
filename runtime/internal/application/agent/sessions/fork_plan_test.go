@@ -4,11 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestForkPlanOwnsTheCompleteChildProjection(t *testing.T) {

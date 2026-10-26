@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/samber/lo"
 )
 
 // Roots resolves the existing workspace identity before inspection or trust changes.
-type Roots interface {
+type roots interface {
 	ResolveRoot(cwd string) (string, error)
 }
 
@@ -27,7 +27,7 @@ type TrustStore interface {
 
 // Catalog owns lifecycle-hook inspection and trust decisions.
 type Catalog struct {
-	roots         Roots
+	roots         roots
 	inspector     Inspector
 	trust         TrustStore
 	invalidations invalidation.Publish
@@ -45,7 +45,7 @@ type Resolved struct {
 	Active bool
 }
 
-func NewCatalog(roots Roots, inspector Inspector, trust TrustStore, invalidations invalidation.Publish) (*Catalog, error) {
+func NewCatalog(roots roots, inspector Inspector, trust TrustStore, invalidations invalidation.Publish) (*Catalog, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -54,7 +54,7 @@ func NewCatalog(roots Roots, inspector Inspector, trust TrustStore, invalidation
 		{name: "inspector", value: inspector},
 		{name: "trust store", value: trust},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("hooks: %s is required", required.name)
 		}
 	}

@@ -36,7 +36,7 @@ func TestBaseDiffUsesExactBranchReferences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if patch.Baseline.Type != BaselineMergeBase || patch.Baseline.Commit != expectedBase {
+			if patch.Baseline.Type != baselineMergeBase || patch.Baseline.Commit != expectedBase {
 				t.Fatalf("baseline = %+v, want merge base %s", patch.Baseline, expectedBase)
 			}
 			if !strings.Contains(patch.Patch, "+feature change") {
@@ -117,7 +117,7 @@ func TestDiffReportsExactHeadAndUnbornBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Baseline != (Baseline{Type: BaselineHead, Commit: expected}) {
+		if result.Baseline != (Baseline{Type: baselineHead, Commit: expected}) {
 			t.Fatalf("baseline = %+v", result.Baseline)
 		}
 	})
@@ -131,7 +131,7 @@ func TestDiffReportsExactHeadAndUnbornBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.Baseline != (Baseline{Type: BaselineEmptyTree}) {
+		if result.Baseline != (Baseline{Type: baselineEmptyTree}) {
 			t.Fatalf("baseline = %+v", result.Baseline)
 		}
 		statuses := map[string]Status{}

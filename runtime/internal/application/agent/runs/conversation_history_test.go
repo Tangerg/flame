@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -61,7 +61,7 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 		" ses_1",
 		"ses_ one",
 		"ses_\u200bhidden",
-		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
+		strings.Repeat("界", identity.MaximumResourceCharacters+1),
 	} {
 		if _, err := messages.Read(t.Context(), sessionID); !errors.Is(err, errConversationSessionIDRequired) {
 			t.Errorf("Read(%q) error = %v", sessionID, err)
@@ -108,7 +108,7 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	}
 }
 
-func newConversationHistory(t *testing.T, store ConversationStore) *ConversationHistory {
+func newConversationHistory(t *testing.T, store conversationStore) *ConversationHistory {
 	t.Helper()
 	history, err := NewConversationHistory(store)
 	if err != nil {
@@ -118,7 +118,7 @@ func newConversationHistory(t *testing.T, store ConversationStore) *Conversation
 }
 
 func TestConversationHistoryRequiresPersistence(t *testing.T) {
-	for _, store := range []ConversationStore{nil, (*testsupport.ConversationStore)(nil)} {
+	for _, store := range []conversationStore{nil, (*testsupport.ConversationStore)(nil)} {
 		if history, err := NewConversationHistory(store); err == nil || history != nil {
 			t.Fatalf("missing persistence = %v, %v", history, err)
 		}

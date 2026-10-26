@@ -6,10 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/metadata"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
-	binding := func(t *testing.T, description, schema string, fingerprint fingerprint.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
+	binding := func(t *testing.T, description, schema string, fingerprint identity.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
 		t.Helper()
 		executable := &scopeDefinitionTool{definition: chat.ToolDefinition{
 			Name: "echo", Description: description, InputSchema: []byte(schema),
@@ -62,7 +61,7 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 		name        string
 		description string
 		schema      string
-		fingerprint fingerprint.Digest
+		fingerprint identity.Digest
 		deferred    bool
 		changed     bool
 	}{

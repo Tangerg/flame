@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // ForkSpec describes where a session fork should branch.
@@ -42,7 +41,7 @@ type ForkBoundary struct {
 // latest terminal run.
 func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) (ForkBoundary, error) {
 	if fromRunID != "" {
-		if err := resourceid.ValidateRun(fromRunID); err != nil {
+		if err := identity.ValidateRun(fromRunID); err != nil {
 			return ForkBoundary{}, fmt.Errorf("sessions: fork boundary: %w", err)
 		}
 	}
@@ -74,7 +73,7 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 // The application resolves the boundary and commits the branch through
 // its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
-	if err := resourceid.ValidateSession(spec.ParentID); err != nil {
+	if err := identity.ValidateSession(spec.ParentID); err != nil {
 		return session.Session{}, fmt.Errorf("sessions: fork: %w", err)
 	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)

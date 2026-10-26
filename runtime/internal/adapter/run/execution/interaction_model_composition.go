@@ -4,18 +4,17 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-type InteractionCallComposition interface {
+type interactionCallComposition interface {
 	Pending([]plugins.ContributionBinding) bool
 	ResolveToolProposals(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateToolProposals(context.Context, []plugins.ContributionBinding) error
@@ -57,18 +56,18 @@ func contributionBindingsWire(bindings []plugins.ContributionBinding) []contribu
 	return values
 }
 
-func decodeContributionBindings(values []contributionBindingWire, contract *capability.Contract) ([]plugins.ContributionBinding, error) {
+func decodeContributionBindings(values []contributionBindingWire, contract *extension.Capability) ([]plugins.ContributionBinding, error) {
 	if contract == nil {
 		return nil, errors.New("execution: model composition contract is required")
 	}
 	bindings := make([]plugins.ContributionBinding, 0, len(values))
 	seen := map[plugin.CompositionMember]bool{}
 	for _, value := range values {
-		installation, err := resourceid.ParseInstallation(value.Installation)
+		installation, err := flameidentity.ParseInstallation(value.Installation)
 		if err != nil {
 			return nil, err
 		}
-		digest, err := fingerprint.ParseDigest(value.Digest)
+		digest, err := flameidentity.ParseDigest(value.Digest)
 		if err != nil {
 			return nil, err
 		}
@@ -80,12 +79,12 @@ func decodeContributionBindings(values []contributionBindingWire, contract *capa
 		if err != nil {
 			return nil, err
 		}
-		identity, err := jsoninput.Parse([]byte(value.Contract))
+		identity, err := jsonvalue.Parse([]byte(value.Contract))
 		if err != nil || identity != contract.Identity() {
 			return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
 		}
 		member := plugin.CompositionMember{Installation: installation, Contribution: contribution}
-		if seen[member] || !capability.ValidExportName(value.Export) {
+		if seen[member] || !extension.ValidExportName(value.Export) {
 			return nil, errors.New("execution: invalid model contribution binding")
 		}
 		seen[member] = true

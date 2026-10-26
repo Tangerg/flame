@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -33,12 +33,12 @@ func (n Name) String() string { return string(n) }
 type MethodKind string
 
 const (
-	KindUnary  MethodKind = "unary"
+	kindUnary  MethodKind = "unary"
 	KindStream MethodKind = "stream"
 )
 
 // Valid reports whether m names one supported delivery shape.
-func (m MethodKind) Valid() bool { return m == KindUnary || m == KindStream }
+func (m MethodKind) Valid() bool { return m == kindUnary || m == KindStream }
 
 func (m MethodKind) String() string {
 	if !m.Valid() {
@@ -89,15 +89,15 @@ type IdempotencyPolicy string
 const (
 	// IdempotencyNone keeps no replay record. Reads, and mutations whose repeat
 	// is indistinguishable from the first call, need none.
-	IdempotencyNone IdempotencyPolicy = "none"
+	idempotencyNone IdempotencyPolicy = "none"
 
 	// IdempotencyReplayResponse caches the first response and returns it verbatim
 	// to a same-key retry, so the business handler runs exactly once.
-	IdempotencyReplayResponse IdempotencyPolicy = "replayResponse"
+	idempotencyReplayResponse IdempotencyPolicy = "replayResponse"
 
 	// IdempotencyOwnerResponse re-enters the original owner's command/receipt
 	// path. Runtime retains no competing business outcome or stream chunk history.
-	IdempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
+	idempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
 	// IdempotencyOwnerRun records the command acceptance atomically with
 	// its opening or input-admission head. It requires caller-retained identity;
@@ -107,23 +107,23 @@ const (
 
 // Valid reports whether i is one supported retry contract.
 func (i IdempotencyPolicy) Valid() bool {
-	return i == IdempotencyNone || i == IdempotencyReplayResponse ||
-		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyNone || i == idempotencyReplayResponse ||
+		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // Replays reports whether this policy has durable replay semantics. Unknown
 // values never acquire replay semantics by accident; registry validation rejects
 // them before invocation starts.
 func (i IdempotencyPolicy) Replays() bool {
-	return i == IdempotencyReplayResponse ||
-		i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyReplayResponse ||
+		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // OwnsOutcome reports whether the backend commits this command's mutation and its
 // settlement together, so delivery keeps no competing replay record and routes a
 // keyed retry straight back to the handler.
 func (i IdempotencyPolicy) OwnsOutcome() bool {
-	return i == IdempotencyOwnerResponse || i == IdempotencyOwnerRun
+	return i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
 // ReplayCursorPolicy says whether a streaming method accepts the opaque run
@@ -133,12 +133,12 @@ func (i IdempotencyPolicy) OwnsOutcome() bool {
 type ReplayCursorPolicy string
 
 const (
-	ReplayCursorNone ReplayCursorPolicy = "none"
+	replayCursorNone ReplayCursorPolicy = "none"
 	ReplayCursorRun  ReplayCursorPolicy = "run"
 )
 
 // Valid reports whether r is one supported replay-cursor contract.
-func (r ReplayCursorPolicy) Valid() bool { return r == ReplayCursorNone || r == ReplayCursorRun }
+func (r ReplayCursorPolicy) Valid() bool { return r == replayCursorNone || r == ReplayCursorRun }
 
 // PaginationKind describes whether one unary response is a cursor page. It is
 // derived from the registered Params and Result wire shapes by the registration
@@ -151,12 +151,12 @@ func (r ReplayCursorPolicy) Valid() bool { return r == ReplayCursorNone || r == 
 type PaginationKind string
 
 const (
-	PaginationNone   PaginationKind = "none"
-	PaginationCursor PaginationKind = "cursor"
+	paginationNone   PaginationKind = "none"
+	paginationCursor PaginationKind = "cursor"
 )
 
 // Valid reports whether p names one supported unary pagination shape.
-func (p PaginationKind) Valid() bool { return p == PaginationNone || p == PaginationCursor }
+func (p PaginationKind) Valid() bool { return p == paginationNone || p == paginationCursor }
 
 // ConditionOperator is how a [FieldCondition] tests one request field.
 type ConditionOperator string
@@ -220,7 +220,7 @@ type MethodMeta struct {
 	//
 	//   - internal_error — the universal fallback on every method;
 	//   - invalid_params — carried by any request whose type states constraints
-	//     ([protocol.WireValidator]), so the shape already declares it;
+	//     ([protocol.ValidateWireTree]), so the shape already declares it;
 	//   - capability_not_negotiated — implied by CapabilityRules. A method whose
 	//     gate depends on durable state rather than request shape declares it here,
 	//     because no static rule can describe that trigger.
@@ -320,11 +320,11 @@ func (m MethodMeta) validateIdentity() error {
 		)
 	}
 	switch m.Kind {
-	case KindUnary, KindStream:
+	case kindUnary, KindStream:
 	default:
 		return fmt.Errorf(
 			"%s: invalid method kind %s; expected %s or %s",
-			m.Name, m.Kind, KindUnary, KindStream,
+			m.Name, m.Kind, kindUnary, KindStream,
 		)
 	}
 	switch m.Operation {
@@ -341,36 +341,36 @@ func (m MethodMeta) validateIdentity() error {
 		)
 	}
 	switch m.Idempotency {
-	case IdempotencyNone, IdempotencyReplayResponse,
-		IdempotencyOwnerResponse, IdempotencyOwnerRun:
+	case idempotencyNone, idempotencyReplayResponse,
+		idempotencyOwnerResponse, IdempotencyOwnerRun:
 	default:
 		return fmt.Errorf(
 			"%s: invalid idempotency policy %s; expected %s, %s, %s or %s",
 			m.Name,
 			m.Idempotency,
-			IdempotencyNone,
-			IdempotencyReplayResponse,
-			IdempotencyOwnerResponse,
+			idempotencyNone,
+			idempotencyReplayResponse,
+			idempotencyOwnerResponse,
 			IdempotencyOwnerRun,
 		)
 	}
 	switch m.ReplayCursor {
-	case ReplayCursorNone, ReplayCursorRun:
+	case replayCursorNone, ReplayCursorRun:
 	default:
 		return fmt.Errorf(
 			"%s: invalid replay cursor policy %s; expected %s or %s",
 			m.Name,
 			m.ReplayCursor,
-			ReplayCursorNone,
+			replayCursorNone,
 			ReplayCursorRun,
 		)
 	}
 	switch m.Pagination {
-	case PaginationNone, PaginationCursor:
+	case paginationNone, paginationCursor:
 	default:
 		return fmt.Errorf(
 			"%s: invalid pagination kind %s; expected %s or %s",
-			m.Name, m.Pagination, PaginationNone, PaginationCursor,
+			m.Name, m.Pagination, paginationNone, paginationCursor,
 		)
 	}
 	return nil
@@ -402,22 +402,22 @@ func (m MethodMeta) validateOperationPolicy() error {
 	}
 	switch m.Operation {
 	case OperationExtension:
-		if m.Idempotency != IdempotencyOwnerResponse {
+		if m.Idempotency != idempotencyOwnerResponse {
 			return fmt.Errorf("%s: an extension must resolve an owner operation", m.Name)
 		}
 	case OperationQuery:
-		if m.Idempotency != IdempotencyNone {
+		if m.Idempotency != idempotencyNone {
 			return fmt.Errorf("%s: a query must not keep an idempotency replay", m.Name)
 		}
 	case OperationSubscription:
-		if m.Kind != KindStream || m.Idempotency != IdempotencyNone {
+		if m.Kind != KindStream || m.Idempotency != idempotencyNone {
 			return fmt.Errorf("%s: a subscription must stream and must not keep an idempotency replay", m.Name)
 		}
 	case OperationCommand:
-		if m.Kind == KindUnary && m.Idempotency != IdempotencyReplayResponse && m.Idempotency != IdempotencyOwnerResponse && m.Idempotency != IdempotencyOwnerRun {
+		if m.Kind == kindUnary && m.Idempotency != idempotencyReplayResponse && m.Idempotency != idempotencyOwnerResponse && m.Idempotency != IdempotencyOwnerRun {
 			return fmt.Errorf("%s: a unary command must replay its first response", m.Name)
 		}
-		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRun && m.Idempotency != IdempotencyOwnerResponse {
+		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRun && m.Idempotency != idempotencyOwnerResponse {
 			return fmt.Errorf("%s: a streaming command must own its outcome", m.Name)
 		}
 	}
@@ -431,7 +431,7 @@ func (m MethodMeta) validateOperationPolicy() error {
 			return fmt.Errorf("%s: only a run command or subscription may accept a run replay cursor", m.Name)
 		}
 	}
-	if m.Pagination == PaginationCursor && m.Operation != OperationQuery {
+	if m.Pagination == paginationCursor && m.Operation != OperationQuery {
 		return fmt.Errorf("%s: only a query may return a cursor page", m.Name)
 	}
 	return nil
@@ -541,10 +541,10 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 	if condition.Field == "" {
 		return fmt.Errorf("%s: condition must name a field", owner)
 	}
-	if err := contractshape.HasPath(shape, condition.Field); err != nil {
+	if err := jsonvalue.HasPath(shape, condition.Field); err != nil {
 		return fmt.Errorf("%s condition field %q: %w", owner, condition.Field, err)
 	}
-	_, leaf, _ := contractshape.GoPath(shape, condition.Field)
+	_, leaf, _ := jsonvalue.GoPath(shape, condition.Field)
 	switch condition.Operator {
 	case OperatorPresent:
 		if condition.Value != "" {

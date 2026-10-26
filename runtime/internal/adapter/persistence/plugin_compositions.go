@@ -5,17 +5,17 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type CompositionStore struct{ db *sql.DB }
+type compositionStore struct{ db *sql.DB }
 
 type storedComposition struct {
-	Contract jsoninput.Input           `json:"contract"`
+	Contract jsonvalue.Value           `json:"contract"`
 	Members  []storedCompositionMember `json:"members"`
 }
 
@@ -24,11 +24,11 @@ type storedCompositionMember struct {
 	Contribution string `json:"contribution"`
 }
 
-func NewCompositionStore(db *sql.DB) *CompositionStore { return &CompositionStore{db: db} }
+func newCompositionStore(db *sql.DB) *compositionStore { return &compositionStore{db: db} }
 
-func (s *CompositionStore) Get(ctx context.Context, reference string) (plugin.OrderedComposition, bool, error) {
+func (s *compositionStore) Get(ctx context.Context, reference string) (plugin.OrderedComposition, bool, error) {
 	var encoded string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT composition_json FROM plugin_compositions WHERE reference=?`, reference).Scan(&encoded)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT composition_json FROM plugin_compositions WHERE reference=?`, reference).Scan(&encoded)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.OrderedComposition{}, false, nil
 	}
@@ -39,8 +39,8 @@ func (s *CompositionStore) Get(ctx context.Context, reference string) (plugin.Or
 	return value, err == nil, err
 }
 
-func (s *CompositionStore) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT reference,composition_json FROM plugin_compositions ORDER BY reference`)
+func (s *compositionStore) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT reference,composition_json FROM plugin_compositions ORDER BY reference`)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func restoreComposition(reference, encoded string) (plugin.OrderedComposition, e
 	}
 	members := make([]plugin.CompositionMember, len(stored.Members))
 	for index, member := range stored.Members {
-		id, err := resourceid.ParseInstallation(member.Installation)
+		id, err := identity.ParseInstallation(member.Installation)
 		if err != nil {
 			return plugin.OrderedComposition{}, err
 		}
@@ -82,19 +82,19 @@ func restoreComposition(reference, encoded string) (plugin.OrderedComposition, e
 	if err != nil {
 		return plugin.OrderedComposition{}, err
 	}
-	contract, err := capability.Parse(value.Snapshot().Contract.JSON())
+	contract, err := extension.ParseCapability(value.Snapshot().Contract.JSON())
 	if err != nil || contract.Descriptor().Reference != reference {
 		return plugin.OrderedComposition{}, errors.Join(err, errors.New("sqlite: composition reference differs from its contract"))
 	}
 	return value, nil
 }
 
-func (s *CompositionStore) Save(ctx context.Context, value plugin.OrderedComposition) error {
+func (s *compositionStore) Save(ctx context.Context, value plugin.OrderedComposition) error {
 	if err := value.Validate(); err != nil {
 		return err
 	}
 	record := value.Snapshot()
-	contract, err := capability.Parse(record.Contract.JSON())
+	contract, err := extension.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return err
 	}
@@ -106,6 +106,6 @@ func (s *CompositionStore) Save(ctx context.Context, value plugin.OrderedComposi
 	if err != nil {
 		return err
 	}
-	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, contract.Descriptor().Reference, string(encoded))
+	_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, contract.Descriptor().Reference, string(encoded))
 	return err
 }

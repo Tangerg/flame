@@ -12,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-	"github.com/Tangerg/scope/tools/content"
-
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/content"
 )
 
 func TestShellToolsCannotReadOrStopAnotherSession(t *testing.T) {

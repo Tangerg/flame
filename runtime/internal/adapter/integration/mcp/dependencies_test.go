@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -29,11 +29,11 @@ func TestDependenciesUseTheActualTransitiveActivationReleases(t *testing.T) {
 	root, a := add("root")
 	middle, b := add("middle")
 	leaf, d := add("leaf")
-	selected, err := capability.Parse(testsupport.CommandContract(t, "records.update", "installation").JSON())
+	selected, err := extension.ParseCapability(testsupport.CommandContract(t, "records.update", "installation").JSON())
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "records", Composition: capability.Decoration, Scope: "installation"}, selected.Descriptor().Methods...)
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Composition: extension.Decoration, Scope: "installation"}, selected.Descriptor().Methods...)
 	if err != nil {
 		t.Fatal(err)
 	}

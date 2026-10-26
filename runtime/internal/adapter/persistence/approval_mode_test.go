@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -16,7 +15,7 @@ func TestModeStoreTracksPlanEntryExitAndSessionLifecycle(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	modes, sessions := NewModeStore(db), NewSessionStore(db)
+	modes, sessions := newModeStore(db), newSessionStore(db)
 	created := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_plan", Title: "Plan session", Workspace: testsupport.MustWorkspace("/repo"),
 	})
@@ -63,7 +62,7 @@ func TestModeStoreKeepsTheChosenDefaultAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	modes := NewModeStore(db)
+	modes := newModeStore(db)
 	if mode, found, err := modes.DefaultMode(t.Context()); err != nil || found {
 		t.Fatalf("unchosen DefaultMode = %q, %v, %v; want not found", mode, found, err)
 	}
@@ -81,10 +80,10 @@ func TestModeStoreKeepsTheChosenDefaultAcrossReopen(t *testing.T) {
 		t.Fatalf("reopen: %v", err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	if mode, found, err := NewModeStore(reopened).DefaultMode(t.Context()); err != nil || !found || mode != approval.ModeSafe {
+	if mode, found, err := newModeStore(reopened).DefaultMode(t.Context()); err != nil || !found || mode != approval.ModeSafe {
 		t.Fatalf("reopened DefaultMode = %q, %v, %v; want safe", mode, found, err)
 	}
-	if err := NewModeStore(reopened).SetDefaultMode(t.Context(), approval.ModePlan); err == nil {
+	if err := newModeStore(reopened).SetDefaultMode(t.Context(), approval.ModePlan); err == nil {
 		t.Fatal("SetDefaultMode(plan) succeeded; Plan is session-only")
 	}
 }

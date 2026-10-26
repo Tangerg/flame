@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -32,23 +31,23 @@ func (o OpenToolInvocation) Validate() error {
 	if err := validateOpenInvocation(o.SessionID, o.RunID, o.SegmentID, o.CallID, o.StartedAt); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateItem(o.ItemID); err != nil {
+	if err := identity.ValidateItem(o.ItemID); err != nil {
 		return err
 	}
 	return nil
 }
 
 func validateOpenInvocation(sessionID, runID, segmentID, callID string, startedAt time.Time) error {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateSegment(segmentID); err != nil {
+	if err := identity.ValidateSegment(segmentID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(callID); err != nil {
+	if err := ValidateInvocation(callID); err != nil {
 		return err
 	}
 	if startedAt.IsZero() || startedAt.Location() != time.UTC {

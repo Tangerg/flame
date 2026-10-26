@@ -7,7 +7,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // liveHeadroom bounds queued live-only events per subscriber. Replayable events
@@ -59,19 +59,19 @@ var (
 // instead of resolving against a stream that never issued it.
 type streamScope struct {
 	Epoch     replayEpoch
-	RunID     resourceid.RunID
-	SegmentID resourceid.SegmentID
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
 }
 
 func newStreamScope(epoch replayEpoch, runID, segmentID string) (streamScope, error) {
 	if err := epoch.Validate(); err != nil {
 		return streamScope{}, err
 	}
-	parsedRunID, err := resourceid.ParseRun(runID)
+	parsedRunID, err := identity.ParseRun(runID)
 	if err != nil {
 		return streamScope{}, err
 	}
-	parsedSegmentID, err := resourceid.ParseSegment(segmentID)
+	parsedSegmentID, err := identity.ParseSegment(segmentID)
 	if err != nil {
 		return streamScope{}, err
 	}

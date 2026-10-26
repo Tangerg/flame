@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -20,10 +18,10 @@ func openTranscriptAndBlobs(t *testing.T) (*TranscriptStore, *ToolResultStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewTranscriptStore(db), NewToolResultStore(db)
+	return newTranscriptStore(db), newToolResultStore(db)
 }
 
-func toolItem(sessionID, id, result string, ref *resultoffload.Ref) transcript.Item {
+func toolItem(sessionID, id, result string, ref *transcript.ToolResultRef) transcript.Item {
 	value, err := tool.NewResult(result)
 	if err != nil {
 		panic(err)
@@ -66,7 +64,7 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 	if len(preview) >= len(full) {
 		t.Fatal("test setup: preview should be smaller than the full body")
 	}
-	ref := &resultoffload.Ref{ID: id}
+	ref := &transcript.ToolResultRef{ID: id}
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", preview, ref)); err != nil {
 		t.Fatal(err)
 	}
@@ -96,11 +94,11 @@ func TestTranscriptSurfacesMissingOffloadedToolResult(t *testing.T) {
 	const sess = "sess-2"
 	// A typed reference without its blob is durable corruption, not an ordinary
 	// non-offloaded result, and must not be hidden as a harmless preview.
-	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-0", "preview", &resultoffload.Ref{ID: "GONE234BLOB"})); err == nil {
+	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-0", "preview", &transcript.ToolResultRef{ID: "GONE234BLOB"})); err == nil {
 		t.Fatal("an Item offloaded to a body its Session does not hold")
 	}
 	id := stageShellResult(t, blobs, sess, "full body")
-	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "missing offloaded preview", &resultoffload.Ref{ID: id})); err != nil {
+	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "missing offloaded preview", &transcript.ToolResultRef{ID: id})); err != nil {
 		t.Fatal(err)
 	}
 	if err := blobs.DropSession(t.Context(), sess); err != nil {
@@ -135,7 +133,7 @@ func TestDeleteRunDropsItsBoundToolResults(t *testing.T) {
 	tr, blobs := openTranscriptAndBlobs(t)
 	const sess = "sess-drop"
 	id := stageShellResult(t, blobs, sess, "full body")
-	ref := &resultoffload.Ref{ID: id}
+	ref := &transcript.ToolResultRef{ID: id}
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "preview", ref)); err != nil {
 		t.Fatal(err)
 	}

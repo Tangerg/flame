@@ -53,9 +53,7 @@ func TestCancelRunPassesNegotiatedChildAuthorityWithoutBlockingARoot(t *testing.
 	useCases := &cancelRunUseCaseStub{result: runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", State: run.Canceled, Outcome: &outcome})}}
 	server := &Handler{runs: useCases}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
-		Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents: {Enabled: true},
-		},
+		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 	})
 
 	result, err := server.CancelRun(ctx, protocol.CancelRunRequest{RunID: "run_1"})

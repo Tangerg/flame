@@ -10,18 +10,18 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/scope/skills"
+	"github.com/samber/lo"
 )
 
 type skillInstallations interface {
 	List(context.Context) ([]plugin.Snapshot, error)
-	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, bool, error)
+	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
 }
 type Skills struct {
 	releases      *Releases
@@ -32,7 +32,7 @@ func NewSkills(releases *Releases, installations skillInstallations) (*Skills, e
 	if releases == nil {
 		return nil, errors.New("pluginpackage: releases are required")
 	}
-	if dependency.Missing(installations) {
+	if lo.IsNil(installations) {
 		return nil, errors.New("pluginpackage: skill installations are required")
 	}
 	return &Skills{releases: releases, installations: installations}, nil

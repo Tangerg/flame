@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -154,7 +154,7 @@ type Rule struct {
 	Scope             Scope  // session | project | global
 	ScopeKey          string // session id | project dir | "" for global
 	Tool              tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 	Subject           Subject
 	Decision          Decision // allow | deny
 }
@@ -166,7 +166,7 @@ type Query struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 	Subject           string
 }
 
@@ -177,7 +177,7 @@ type RememberRequest struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 	Subject           Subject
 	Decision          Decision
 }

@@ -7,24 +7,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func newToolResultStore(t *testing.T) *ToolResultStore {
+func toolResultStoreFixture(t *testing.T) *ToolResultStore {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewToolResultStore(db)
+	return newToolResultStore(db)
 }
 
-func stageShellResult(t *testing.T, store *ToolResultStore, sessionID, body string) toolresult.ID {
+func stageShellResult(t *testing.T, store *ToolResultStore, sessionID, body string) transcript.ToolResultID {
 	t.Helper()
-	id := toolresult.ID(rand.Text())
-	if err := store.Stage(t.Context(), toolresult.Stage{
+	id := transcript.ToolResultID(rand.Text())
+	if err := store.Stage(t.Context(), transcript.ToolResultStage{
 		ID: id, SessionID: sessionID, Body: body,
 	}); err != nil {
 		t.Fatalf("stage: %v", err)
@@ -33,7 +32,7 @@ func stageShellResult(t *testing.T, store *ToolResultStore, sessionID, body stri
 }
 
 func TestToolResultStageRoundTrip(t *testing.T) {
-	store := newToolResultStore(t)
+	store := toolResultStoreFixture(t)
 	const (
 		sessID = "sess-1"
 		body   = "the full, oversized tool output that was offloaded"
@@ -53,7 +52,7 @@ func TestToolResultStageRoundTrip(t *testing.T) {
 }
 
 func TestToolResultFetchIsSessionScoped(t *testing.T) {
-	store := newToolResultStore(t)
+	store := toolResultStoreFixture(t)
 	id := stageShellResult(t, store, "owner", "secret")
 	// A different session must not read another session's offloaded body.
 	if _, found, err := store.Fetch(t.Context(), "intruder", id); err != nil || found {
@@ -62,14 +61,14 @@ func TestToolResultFetchIsSessionScoped(t *testing.T) {
 }
 
 func TestToolResultFetchUnknownIDIsRecoverableMiss(t *testing.T) {
-	store := newToolResultStore(t)
+	store := toolResultStoreFixture(t)
 	if _, found, err := store.Fetch(t.Context(), "s", "DOESNOTEXIST"); err != nil || found {
 		t.Fatalf("unknown id = (found %v, err %v), want (false, nil)", found, err)
 	}
 }
 
 func TestToolResultDropSession(t *testing.T) {
-	store := newToolResultStore(t)
+	store := toolResultStoreFixture(t)
 	id := stageShellResult(t, store, "doomed", "body")
 	if err := store.DropSession(t.Context(), "doomed"); err != nil {
 		t.Fatalf("drop: %v", err)
@@ -82,7 +81,7 @@ func TestToolResultDropSession(t *testing.T) {
 func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 	transcriptStore, store := openTranscriptAndBlobs(t)
 	discardedID := stageShellResult(t, store, "ses_1", "discard me")
-	if err := store.Discard(t.Context(), "ses_1", toolresult.Ref{ID: discardedID}); err != nil {
+	if err := store.Discard(t.Context(), "ses_1", transcript.ToolResultRef{ID: discardedID}); err != nil {
 		t.Fatalf("discard: %v", err)
 	}
 	if _, found, err := store.Fetch(t.Context(), "ses_1", discardedID); err != nil || found {
@@ -90,7 +89,7 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 	}
 
 	boundID := stageShellResult(t, store, "ses_1", "keep me")
-	boundRef := toolresult.Ref{ID: boundID}
+	boundRef := transcript.ToolResultRef{ID: boundID}
 	if err := transcriptStore.AppendItem(t.Context(), toolItem("ses_1", "item_1", "preview", &boundRef)); err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +114,8 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 }
 
 func TestToolResultStoreRejectsIncompleteIdentity(t *testing.T) {
-	store := newToolResultStore(t)
-	valid := toolresult.Stage{ID: toolresult.ID("BLOB234"), SessionID: "ses_1", Body: "body"}
+	store := toolResultStoreFixture(t)
+	valid := transcript.ToolResultStage{ID: transcript.ToolResultID("BLOB234"), SessionID: "ses_1", Body: "body"}
 	missingSession := valid
 	missingSession.SessionID = ""
 	if err := store.Stage(t.Context(), missingSession); err == nil {
@@ -133,7 +132,7 @@ func TestToolResultItemBindingListAndRestore(t *testing.T) {
 	transcriptStore, store := openTranscriptAndBlobs(t)
 	unbound := stageShellResult(t, store, "source", "unbound body")
 	id := stageShellResult(t, store, "source", "full body")
-	ref := toolresult.Ref{ID: id}
+	ref := transcript.ToolResultRef{ID: id}
 	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_1", "preview", &ref)); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
@@ -144,7 +143,7 @@ func TestToolResultItemBindingListAndRestore(t *testing.T) {
 		t.Fatalf("conflicting bind = %v, want ErrIdentityConflict", err)
 	}
 	foreign := stageShellResult(t, store, "other", "foreign body")
-	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_3", "preview", &toolresult.Ref{ID: foreign})); err == nil {
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_3", "preview", &transcript.ToolResultRef{ID: foreign})); err == nil {
 		t.Fatal("an Item offloaded to another Session's body")
 	}
 
@@ -169,9 +168,9 @@ func TestToolResultItemBindingListAndRestore(t *testing.T) {
 }
 
 func TestToolResultIDsAreSessionScoped(t *testing.T) {
-	store := newToolResultStore(t)
+	store := toolResultStoreFixture(t)
 	id := stageShellResult(t, store, "owner", "owner body")
-	copied := toolresult.Blob{ID: id, SessionID: "fork", Body: "fork body", CreatedAt: time.Now().UTC()}
+	copied := transcript.ToolResultBlob{ID: id, SessionID: "fork", Body: "fork body", CreatedAt: time.Now().UTC()}
 	if err := store.Restore(t.Context(), copied); err != nil {
 		t.Fatalf("restore under another Session: %v", err)
 	}
@@ -180,7 +179,7 @@ func TestToolResultIDsAreSessionScoped(t *testing.T) {
 			t.Fatalf("fetch %s = (%q, %v, %v), want %q", session, body, found, err, want)
 		}
 	}
-	if err := store.Restore(t.Context(), copied); !errors.Is(err, toolresult.ErrIdentityConflict) {
+	if err := store.Restore(t.Context(), copied); !errors.Is(err, transcript.ErrToolResultIdentityConflict) {
 		t.Fatalf("restore over a held id = %v, want ErrIdentityConflict", err)
 	}
 }

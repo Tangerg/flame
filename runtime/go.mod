@@ -39,9 +39,7 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/samber/lo v1.53.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
@@ -76,9 +74,8 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-architecture.20261026.2
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-node.20261024.1
-	github.com/Tangerg/flame/plugins v0.1.0-architecture.20261026.3
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-consolidation.20261026.2
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/a2a v0.57.1
 	github.com/Tangerg/scope/agent v0.57.1
@@ -113,6 +110,7 @@ require (
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-chi/cors v1.2.2
 	github.com/google/uuid v1.6.0
+	github.com/samber/lo v1.53.0
 	github.com/sourcegraph/jsonrpc2 v0.2.3
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1

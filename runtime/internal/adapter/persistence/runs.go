@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	sqlite3 "modernc.org/sqlite"
 	sqlite3lib "modernc.org/sqlite/lib"
@@ -53,7 +53,7 @@ type RunStore struct {
 
 // NewRunStore binds the Run table to db. db must have been opened via [Open] so
 // the current schema was installed.
-func NewRunStore(db *sql.DB) *RunStore {
+func newRunStore(db *sql.DB) *RunStore {
 	return &RunStore{db: db}
 }
 
@@ -78,7 +78,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	// resume, and finish deliberately do not name the column: the value cannot change
 	// after admission, and the way to guarantee that is to have nothing able to
 	// change it.
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		pendingWorkspaceMutation, err := r.pendingWorkspaceMutation(ctx, draft.SessionID)
 		if err != nil {
 			return err
@@ -99,7 +99,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 				return err
 			}
 		}
-		_, err = sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+		_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
@@ -133,7 +133,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 // admitting the next Run have one serial order across Runtime processes.
 func (r *RunStore) pendingWorkspaceMutation(ctx context.Context, sessionID string) (bool, error) {
 	var pending bool
-	if err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx,
+	if err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT EXISTS (
 			SELECT 1
 			  FROM pending_workspace_mutations AS pending
@@ -170,7 +170,7 @@ func (r *RunStore) validateChildPlacement(
 		rootParent    string
 		rootState     string
 	)
-	err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx,
+	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT parent.session_id, parent.root_run_id, parent.state,
 		        root.session_id, root.parent_run_id, root.state
 		   FROM runs AS parent
@@ -271,7 +271,7 @@ func (r *RunStore) Suspend(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
@@ -289,13 +289,13 @@ func (r *RunStore) Suspend(
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 	}
 	commitSegmentID, commitIDValue := marker.databaseValues()
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireTransition(ctx, "suspend", value); err != nil {
 			return err
 		}
 		// The segment identity is cleared in the same statement that parks the Run:
 		// a Run waiting on a person has no segment to attach to.
-		res, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
@@ -329,11 +329,11 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 	if err != nil {
 		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 	}
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireExpected(ctx, "resume", expected); err != nil {
 			return err
 		}
-		res, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
@@ -364,7 +364,7 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, s
 		return err
 	}
 	var state, activeSegmentID string
-	err := sqlitebase.Connection(ctx, r.db).QueryRowContext(ctx,
+	err := sqlite.Connection(ctx, r.db).QueryRowContext(ctx,
 		`SELECT state, active_segment_id
 		   FROM runs
 		  WHERE session_id = ? AND run_id = ?`,
@@ -405,11 +405,11 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 	if err != nil {
 		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireTransition(ctx, "update progress", progressed); err != nil {
 			return err
 		}
-		result, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
 			encoded.steps,
@@ -449,13 +449,13 @@ func (r *RunStore) TerminalizeEvent(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
-	commitID runtimeidentity.CommitID,
+	commitID runs.CommitID,
 ) error {
 	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
 	if err != nil {
 		return err
 	}
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireTransition(ctx, "terminalize", value); err != nil {
 			return err
 		}
@@ -477,11 +477,11 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 	if !known {
 		return errors.New("sqlite: rebase Run message watermark: the rebased watermark is unknown")
 	}
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireExpected(ctx, "rebase message watermark", expected); err != nil {
 			return err
 		}
-		result, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+		result, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET message_mark = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`,
 			count, expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), messageMarkValue(expected.MessageMark()),
@@ -516,7 +516,7 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
 	}
 	expected := replacement.Expected()
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
 		if err := r.requireExpected(ctx, op, expected); err != nil {
 			return err
 		}
@@ -603,8 +603,8 @@ func (r *RunStore) finish(
 		value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(),
 	}
 	args = append(args, fenceArgs...)
-	return sqlitebase.RunInTx(ctx, r.db, func(ctx context.Context) error {
-		res, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx, query, args...)
+	return sqlite.RunInTx(ctx, r.db, func(ctx context.Context) error {
+		res, err := sqlite.Connection(ctx, r.db).ExecContext(ctx, query, args...)
 		if err != nil {
 			return fmt.Errorf("sqlite: %s run: %w", op, err)
 		}
@@ -625,7 +625,7 @@ func (r *RunStore) finish(
 		if value.Lineage().IsChild() {
 			return nil
 		}
-		return NewPlanStore(r.db).CaptureBoundary(ctx, value.SessionID(), value.ID())
+		return newPlanStore(r.db).CaptureBoundary(ctx, value.SessionID(), value.ID())
 	})
 }
 
@@ -675,7 +675,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	}
 	outcome, _ := value.Outcome()
 	selection := value.ModelSelection()
-	_, err = sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+	_, err = sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
@@ -736,7 +736,7 @@ func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
 	if err := validateRunResource("delete Run", runID); err != nil {
 		return err
 	}
-	if _, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+	if _, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`DELETE FROM runs WHERE run_id = ? AND session_id = ?`, runID, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete run: %w", err)
@@ -753,7 +753,7 @@ func (r *RunStore) DeleteForSession(ctx context.Context, sessionID string) error
 	if err := validateSessionResource("delete Session Runs", sessionID); err != nil {
 		return err
 	}
-	_, err := sqlitebase.Connection(ctx, r.db).ExecContext(ctx,
+	_, err := sqlite.Connection(ctx, r.db).ExecContext(ctx,
 		`DELETE FROM runs WHERE session_id = ?`, sessionID)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete runs for session: %w", err)

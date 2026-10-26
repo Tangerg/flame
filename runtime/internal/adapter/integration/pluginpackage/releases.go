@@ -16,25 +16,25 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/samber/lo"
 )
 
-const MaxPackageBytes int64 = 128 << 20
-const MaxManifestBytes int64 = 4 << 20
+const maxPackageBytes int64 = 128 << 20
+const maxManifestBytes int64 = 4 << 20
 
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
-const MaxFiles = 4096
+const maxFiles = 4096
 
 type releaseCatalog interface {
-	Get(context.Context, fingerprint.Digest) (plugin.Release, error)
+	Get(context.Context, flameidentity.Digest) (plugin.Release, error)
 	Admit(context.Context, plugin.Release) error
-	Digests(context.Context) ([]fingerprint.Digest, error)
-	Remove(context.Context, fingerprint.Digest) error
+	Digests(context.Context) ([]flameidentity.Digest, error)
+	Remove(context.Context, flameidentity.Digest) error
 }
 
 type Releases struct {
@@ -42,19 +42,19 @@ type Releases struct {
 	directoryIdentity os.FileInfo
 	catalog           releaseCatalog
 	executionMu       sync.Mutex
-	executions        map[fingerprint.Digest]*executionContent
+	executions        map[flameidentity.Digest]*executionContent
 	// publishMu serializes publication and reclamation of release directories.
 	publishMu sync.Mutex
 	// mu guards the integrity cache and the verifications in flight. It is
 	// never held across filesystem I/O.
 	mu               sync.Mutex
-	verified         map[fingerprint.Digest]releaseIntegrity
-	verifying        map[fingerprint.Digest]*verification
+	verified         map[flameidentity.Digest]releaseIntegrity
+	verifying        map[flameidentity.Digest]*verification
 	nextVerification uint64
 }
 
 func New(directory string, catalog releaseCatalog) (*Releases, error) {
-	if dependency.Missing(catalog) {
+	if lo.IsNil(catalog) {
 		return nil, errors.New("pluginpackage: release catalog is required")
 	}
 	if !filepath.IsAbs(directory) {
@@ -76,13 +76,13 @@ func New(directory string, catalog releaseCatalog) (*Releases, error) {
 		directory:         resolved,
 		directoryIdentity: identity,
 		catalog:           catalog,
-		executions:        map[fingerprint.Digest]*executionContent{},
-		verified:          map[fingerprint.Digest]releaseIntegrity{},
-		verifying:         map[fingerprint.Digest]*verification{},
+		executions:        map[flameidentity.Digest]*executionContent{},
+		verified:          map[flameidentity.Digest]releaseIntegrity{},
+		verifying:         map[flameidentity.Digest]*verification{},
 	}, nil
 }
 
-func (r *Releases) Root(digest fingerprint.Digest) (string, error) {
+func (r *Releases) Root(digest flameidentity.Digest) (string, error) {
 	if err := r.validateDirectory(); err != nil {
 		return "", err
 	}
@@ -109,7 +109,7 @@ func (r *Releases) RecoverStaging(ctx context.Context) (err error) {
 	if err := r.validateDirectory(); err != nil {
 		return err
 	}
-	directory, _, err := fileinput.OpenDirectoryExpected(r.directory, r.directoryIdentity)
+	directory, _, err := filesystem.OpenDirectoryExpected(r.directory, r.directoryIdentity)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 
 // admission returns the catalog's interpretation of a digest it has already
 // admitted, so equal bytes are never reinterpreted; only a new digest is parsed.
-func (r *Releases) admission(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugin.Release, error) {
+func (r *Releases) admission(ctx context.Context, root *os.Root, digest flameidentity.Digest) (plugin.Release, error) {
 	release, err := r.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
 		return parse(ctx, root, digest)
@@ -273,7 +273,7 @@ func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.
 // and entries that do not name a digest are not releases and are left alone.
 // The directory is read in bounded batches, so garbage of any size is
 // reclaimed without materializing the whole listing.
-func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (err error) {
+func (r *Releases) Reclaim(ctx context.Context, retained []flameidentity.Digest) (err error) {
 	if err := r.validateDirectory(); err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (
 	}
 	defer func() { err = errors.Join(err, directory.Close()) }()
 	var failures error
-	reclaim := func(digest fingerprint.Digest) error {
+	reclaim := func(digest flameidentity.Digest) error {
 		if slices.Contains(retained, digest) {
 			return nil
 		}
@@ -312,11 +312,11 @@ func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) (
 		}
 		return nil
 	}
-	published := make(map[fingerprint.Digest]struct{})
+	published := make(map[flameidentity.Digest]struct{})
 	for {
 		entries, readErr := directory.ReadDir(reclaimBatch)
 		for _, entry := range entries {
-			digest, err := fingerprint.ParseDigest(entry.Name())
+			digest, err := flameidentity.ParseDigest(entry.Name())
 			if err != nil {
 				continue
 			}
@@ -369,7 +369,7 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 }
 
 func (r *Releases) ReadResource(ctx context.Context, installation *plugin.Installation, name string) ([]byte, error) {
-	body, err := r.readResource(ctx, installation, name, MaxPackageBytes)
+	body, err := r.readResource(ctx, installation, name, maxPackageBytes)
 	if err != nil && !errors.Is(err, plugin.ErrInvalid) && cancellation.Err(ctx) == nil {
 		return nil, errors.Join(plugin.ErrUnavailable, err)
 	}
@@ -380,9 +380,9 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 	if cause := cancellation.Err(ctx); cause != nil {
 		return nil, cause
 	}
-	f, _, err := fileinput.OpenAt(root, name, limit)
+	f, _, err := filesystem.OpenFileAt(root, name, limit)
 	if err != nil {
-		if errors.Is(err, fileinput.ErrTooLarge) {
+		if errors.Is(err, filesystem.ErrFileTooLarge) {
 			return nil, errors.Join(errResourceLimit, err)
 		}
 		return nil, err

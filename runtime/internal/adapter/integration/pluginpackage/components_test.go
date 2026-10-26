@@ -17,7 +17,7 @@ func TestComponentOnlyPackageAdmissionDoesNotRequireOrExecuteBackend(t *testing.
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.components","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.components","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/components/component.js": `throw new Error("installation must not evaluate component code");`,
 				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"gallery","title":"Gallery","scope":"installation","placement":"workspaceView","entry":"io.github.tangerg.flame/components/component.js","export":"Gallery"` + test.contribution + `}]`),
 			}
@@ -56,7 +56,7 @@ func TestComponentAdmissionPreservesTargetScopeAndNavigationKey(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.workspace","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.workspace","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/components/component.js": `export const Workspace = () => null;`,
 				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"workspace","title":"Workspace","scope":"` + test.scope + `","placement":"workspaceView","entry":"io.github.tangerg.flame/components/component.js","export":"Workspace"` + test.material + `}]`),
 			}
@@ -89,7 +89,7 @@ func TestFileComponentSelectorAdmissionDoesNotEvaluateCode(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			source := writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.file","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.file","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 				"io.github.tangerg.flame/declaration.json":        flameDeclaration(`"components":[{"id":"file","title":"File","scope":"` + test.scope + `","placement":"fileRenderer","selector":` + test.selector + `,"entry":"io.github.tangerg.flame/components/component.js","export":"File"}]`),
 				"io.github.tangerg.flame/components/component.js": `throw new Error("installation must not evaluate renderer code");`,
 			})

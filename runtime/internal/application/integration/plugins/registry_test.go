@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -31,10 +31,10 @@ func (m userMemory) Get(_ context.Context, name mcpserver.ServerName) (mcpserver
 
 type identifiedInstallations struct {
 	*installationMemory
-	id resourceid.InstallationID
+	id identity.InstallationID
 }
 
-func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *identifiedInstallations) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
 	if id != s.id {
 		return plugin.Snapshot{}, false, nil
 	}
@@ -47,8 +47,8 @@ type serverRead struct {
 }
 
 func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *testing.T) {
-	contract := requirementContract(t, "consumer", capability.Collection)
-	dependency := requirementContract(t, "model", capability.Selection)
+	contract := requirementContract(t, "consumer", extension.Collection)
+	dependency := requirementContract(t, "model", extension.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
 	packages := &singleServerPackages{}

@@ -4,11 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/scope/agent"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	"github.com/Tangerg/scope/agent"
 )
 
 // TestUnparsableDeltaIsReportedNotDropped covers the one thing a delta listener

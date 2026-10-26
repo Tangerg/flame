@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -34,7 +34,7 @@ type Admission struct {
 // session, and its manifest may predate the withdrawal of their superseded
 // tools, so publication refuses it if it depends on any of them.
 type Assembly struct {
-	changed []resourceid.InstallationID
+	changed []identity.InstallationID
 }
 
 func NewAdmission() *Admission {
@@ -71,7 +71,7 @@ func (a *Admission) Begin() (*Assembly, func()) {
 
 // changed records a committed execution change against every in-flight
 // assembly. The caller holds the serialization point.
-func (a *Admission) changed(id resourceid.InstallationID) {
+func (a *Admission) changed(id identity.InstallationID) {
 	a.assembliesMu.Lock()
 	defer a.assembliesMu.Unlock()
 	for assembly := range a.assemblies {
@@ -110,7 +110,7 @@ func (a *Admission) Under(ctx context.Context, apply func() error) error {
 	return apply()
 }
 
-func (a *Admission) Change(ctx context.Context, id resourceid.InstallationID, apply func() (bool, error)) error {
+func (a *Admission) Change(ctx context.Context, id identity.InstallationID, apply func() (bool, error)) error {
 	return a.Under(ctx, func() error {
 		changed, err := apply()
 		if changed {

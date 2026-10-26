@@ -34,7 +34,12 @@ func TestProblemCatalogOwnsEveryFirstPartyUnionVariant(t *testing.T) {
 		t.Fatalf("ProblemData variants = %v, catalog = %v", got, want)
 	}
 
-	rpcTypes := ProblemTypesFor(ProblemChannelRPC)
+	var rpcTypes []string
+	for _, contract := range contracts {
+		if slices.Contains(contract.Channels, problemChannelRPC) {
+			rpcTypes = append(rpcTypes, contract.Type)
+		}
+	}
 	codeTypes := make([]string, 0, len(ProblemCodes()))
 	for problemType := range ProblemCodes() {
 		codeTypes = append(codeTypes, problemType)
@@ -48,7 +53,12 @@ func TestProblemCatalogOwnsEveryFirstPartyUnionVariant(t *testing.T) {
 func TestProblemCatalogPublishesExactChannelSemantics(t *testing.T) {
 	t.Parallel()
 
-	execution := ProblemTypesFor(ProblemChannelExecution)
+	var execution []string
+	for _, contract := range ProblemContracts() {
+		if slices.Contains(contract.Channels, ProblemChannelExecution) {
+			execution = append(execution, contract.Type)
+		}
+	}
 	if !slices.Contains(execution, protocol.ProblemChildRunCanceled) {
 		t.Fatalf("execution problems omit %q: %v", protocol.ProblemChildRunCanceled, execution)
 	}
@@ -56,11 +66,7 @@ func TestProblemCatalogPublishesExactChannelSemantics(t *testing.T) {
 	// MCP connection status has its own closed vocabulary; none of it is a
 	// ProblemData type, so a status category can never be raised as an error.
 	for _, contract := range ProblemContracts() {
-		for _, status := range []protocol.MCPStatusProblemType{
-			protocol.MCPStatusAuthorizationRequired, protocol.MCPStatusAuthorizationFailed,
-			protocol.MCPStatusDialFailed, protocol.MCPStatusToolDiscoveryFailed,
-			protocol.MCPStatusConfigurationFailed,
-		} {
+		for _, status := range []protocol.MCPStatusProblemType{protocol.MCPStatusAuthorizationRequired, protocol.MCPStatusAuthorizationFailed, protocol.MCPStatusDialFailed, protocol.MCPStatusToolDiscoveryFailed, protocol.MCPStatusConfigurationFailed} {
 			if contract.Type == string(status) {
 				t.Fatalf("MCP status category %q is also a ProblemData type", status)
 			}

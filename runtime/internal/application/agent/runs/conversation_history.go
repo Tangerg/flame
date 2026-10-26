@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 var errConversationSessionIDRequired = errors.New("runs: conversation session ID is required")
@@ -22,7 +22,7 @@ var errConversationSessionIDRequired = errors.New("runs: conversation session ID
 // Write reports a batch whose effect the store could not observe by joining
 // [ErrConversationWriteUncertain]: such a write must not be retried as though it
 // had definitely been rejected.
-type ConversationStore interface {
+type conversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID string) (int, error)
@@ -41,10 +41,10 @@ var ErrConversationWriteUncertain = errors.New("runs: conversation write outcome
 
 // ConversationHistory coordinates durable conversation operations while the
 // domain value owns sequence validation and transformations.
-type ConversationHistory struct{ store ConversationStore }
+type ConversationHistory struct{ store conversationStore }
 
-func NewConversationHistory(store ConversationStore) (*ConversationHistory, error) {
-	if dependency.Missing(store) {
+func NewConversationHistory(store conversationStore) (*ConversationHistory, error) {
+	if lo.IsNil(store) {
 		return nil, errors.New("runs: conversation store is required")
 	}
 	return &ConversationHistory{store: store}, nil
@@ -143,7 +143,7 @@ func (m *ConversationHistory) Clear(ctx context.Context, sessionID string) error
 }
 
 func validateConversationSessionIdentity(sessionID string) error {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", errConversationSessionIDRequired, err)
 	}
 	return nil

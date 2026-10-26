@@ -90,6 +90,9 @@ func (s *invalidRequestService) ConfigurePlugin(context.Context, protocol.Config
 
 func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint {
 	t.Helper()
+	if config.IdempotencyStore == nil {
+		config.IdempotencyStore = newMemoryIdempotencyStore()
+	}
 	if config.Lifetime == nil {
 		config.Lifetime = t.Context()
 	}
@@ -110,6 +113,7 @@ func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
 	endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{
 		Lifetime:             t.Context(),
 		IdempotencyNamespace: "idp_test",
+		IdempotencyStore:     newMemoryIdempotencyStore(),
 	})
 	if err == nil || endpoint != nil {
 		t.Fatalf("New with invalid namespace = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
@@ -162,7 +166,7 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 		},
 		{
 			name:       "oversized backend command key",
-			method:     SessionsFork,
+			method:     sessionsFork,
 			parameters: protocol.ForkSessionRequest{SessionID: "ses_current"},
 			options:    Options{IdempotencyKey: strings.Repeat("x", 256)},
 			detail:     "must not exceed 255 bytes",
@@ -201,28 +205,28 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 		},
 		{
 			name:       "run replay cursor without event framing",
-			method:     RunsSubscribe,
+			method:     runsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "opaque"},
 			detail:     `not framed with "evt_"`,
 		},
 		{
 			name:       "run replay cursor with interior whitespace",
-			method:     RunsSubscribe,
+			method:     runsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "evt_bad cursor"},
 			detail:     "whitespace or a non-printing character",
 		},
 		{
 			name:       "run replay cursor with non-printing character",
-			method:     RunsSubscribe,
+			method:     runsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "evt_bad\u200bhidden"},
 			detail:     "whitespace or a non-printing character",
 		},
 		{
 			name:       "oversized run replay cursor",
-			method:     RunsSubscribe,
+			method:     runsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options: Options{AfterEventID: protocol.IDPrefixEvent + strings.Repeat(
 				"x", protocol.MaximumRunEventIDCharacters,
@@ -268,7 +272,7 @@ func TestEndpointRejectsInvalidRequestsBeforeHandlerAdmission(t *testing.T) {
 		method     Name
 		parameters any
 	}{
-		{name: "hook trust root", method: HooksSetTrust, parameters: protocol.SetHookTrustRequest{}},
+		{name: "hook trust root", method: hooksSetTrust, parameters: protocol.SetHookTrustRequest{}},
 		{name: "archive skill name", method: SkillsLibraryArchive, parameters: protocol.SkillNameRequest{}},
 		{name: "restore skill name", method: SkillsLibraryRestore, parameters: protocol.SkillNameRequest{}},
 		{name: "delete session id", method: SessionsDelete, parameters: protocol.DeleteSessionRequest{}},

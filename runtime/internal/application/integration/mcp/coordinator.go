@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/samber/lo"
 )
 
 // ToolCatalog is the live tool set execution admits from. It borrows the
@@ -20,7 +20,7 @@ import (
 // the name conflicts that exclude some of them from Run manifests. A single
 // source keeps the read model from disagreeing with what a Run would freeze.
 // Implementations read admitted state without remote calls.
-type ToolCatalog interface {
+type toolCatalog interface {
 	MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error)
 }
 
@@ -45,14 +45,14 @@ type Connections interface {
 
 // Registry supplies durable definitions of every origin independently of
 // executable admission.
-type Registry interface {
+type registry interface {
 	Definitions(ctx context.Context) ([]mcpserver.Server, error)
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
 // Store persists what this coordinator owns directly: user-origin descriptors
 // and the tool exposure relation over sources of every origin.
-type Store interface {
+type store interface {
 	Save(ctx context.Context, server mcpserver.Server) error
 	Remove(ctx context.Context, name mcpserver.ServerName) error
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
@@ -68,9 +68,9 @@ type Coordinator struct {
 	// the short pre/post boundaries of asynchronous connection operations.
 	// Network and interactive OAuth waits never hold it; Connections owns
 	// per-server latest-operation-wins sequencing.
-	registry              Registry
-	store                 Store
-	toolCatalog           ToolCatalog
+	registry              registry
+	store                 store
+	toolCatalog           toolCatalog
 	connections           Connections
 	exposure              *ExposureState
 	mutationMu            sync.Mutex
@@ -86,9 +86,9 @@ type Coordinator struct {
 
 // Config bundles the Coordinator's dependencies.
 type Config struct {
-	Registry    Registry
-	Store       Store
-	ToolCatalog ToolCatalog
+	Registry    registry
+	Store       store
+	ToolCatalog toolCatalog
 	Connections Connections
 	Exposure    *ExposureState
 	// Invalidations publishes post-commit registry and live-connection changes.
@@ -104,7 +104,7 @@ func New(cfg Config) (*Coordinator, error) {
 		{"registry", cfg.Registry}, {"store", cfg.Store},
 		{"live connections", cfg.Connections}, {"tool catalog", cfg.ToolCatalog},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("mcp: %s is required", required.name)
 		}
 	}

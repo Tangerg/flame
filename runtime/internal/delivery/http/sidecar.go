@@ -22,7 +22,7 @@ type RuntimeInfoEndpoints struct {
 
 type TransportKind string
 
-const Transport TransportKind = "http"
+const transport TransportKind = "http"
 
 type RuntimeInfo struct {
 	ProtocolVersion string               `json:"protocolVersion"`
@@ -39,7 +39,7 @@ func newInfoResponse(server protocol.ServerInfo) RuntimeInfo {
 			Name:       server.Name,
 			Version:    server.Version,
 		},
-		Transport: Transport,
+		Transport: transport,
 		Endpoints: RuntimeInfoEndpoints{
 			RPC:       endpointPath(endpointRPC),
 			Info:      endpointPath(endpointInfo),
@@ -61,7 +61,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 
 type LivenessState string
 
-const LivenessOK LivenessState = "ok"
+const livenessOK LivenessState = "ok"
 
 type LivenessStatus struct {
 	InstanceID string        `json:"instanceId"`
@@ -74,7 +74,7 @@ func (s *Server) handleLiveness(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, LivenessStatus{
 		InstanceID: s.info.Server.InstanceID,
-		Status:     LivenessOK,
+		Status:     livenessOK,
 	}); err != nil {
 		return
 	}

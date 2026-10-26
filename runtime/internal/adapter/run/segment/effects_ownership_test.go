@@ -2,16 +2,14 @@ package segment
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 

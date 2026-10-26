@@ -8,12 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 type fakeSkillSource struct {

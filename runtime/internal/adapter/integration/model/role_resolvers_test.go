@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 type recordingChatResolver struct {
@@ -46,7 +46,7 @@ func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
 
 	resolved, err := NewResolvedChat(model, counter)
 
-	if err == nil || !dependency.Missing(resolved.Model()) {
+	if err == nil || !lo.IsNil(resolved.Model()) {
 		t.Fatalf("NewResolvedChat typed-nil counter = (%v, %v), want invalid construction", resolved, err)
 	}
 }

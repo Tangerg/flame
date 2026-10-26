@@ -6,13 +6,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-const PlanGet Name = "plan.get"
+const planGet Name = "plan.get"
 
 func registerPlan(registry *Registry) {
 	// The Plan's cold read. A Session with no committed replacement answers with
 	// an explicit unwritten value; only a Session that does not exist is an error.
 	registry.query(MethodMeta{
-		Name: PlanGet, GoName: "GetPlan",
+		Name: planGet, GoName: "GetPlan",
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeaturePlan),
 	}, func(service interface {

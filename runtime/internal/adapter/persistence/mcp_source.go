@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -40,7 +40,7 @@ func (s storedMCPSource) id() (mcpserver.ID, error) {
 		}
 		origin = mcpserver.UserOrigin()
 	case mcpserver.OriginInstallation:
-		installation, err := resourceid.ParseInstallation(s.installation.String)
+		installation, err := identity.ParseInstallation(s.installation.String)
 		if err != nil {
 			return mcpserver.ID{}, fmt.Errorf("sqlite: decode MCP source installation: %w", err)
 		}

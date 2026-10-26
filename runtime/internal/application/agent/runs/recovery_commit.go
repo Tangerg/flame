@@ -6,8 +6,7 @@ import (
 	"slices"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -324,7 +323,7 @@ func validateRecoveryToolInvocations(
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
-		if err := resourceid.ValidateItem(invocation.ItemID); err != nil {
+		if err := identity.ValidateItem(invocation.ItemID); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
 		if _, lost := lostByID[invocation.RunID]; lost {
@@ -368,19 +367,19 @@ func validateRecoveryInvocation(
 	lostByID map[string]rundomain.Replacement,
 	recoveredSessions map[string]struct{},
 ) error {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	if _, recovered := recoveredSessions[sessionID]; !recovered {
 		return fmt.Errorf("invocation Session %q is outside this recovery ownership", sessionID)
 	}
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return err
 	}
-	if err := resourceid.ValidateSegment(segmentID); err != nil {
+	if err := identity.ValidateSegment(segmentID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(callID); err != nil {
+	if err := ValidateInvocation(callID); err != nil {
 		return err
 	}
 	if startedAt.IsZero() || finishedAt.IsZero() {
@@ -447,7 +446,7 @@ func validateRecoveryConversationTransition(
 			rootID,
 		)
 	}
-	if err := resourceid.ValidateSession(transition.SessionID); err != nil {
+	if err := identity.ValidateSession(transition.SessionID); err != nil {
 		return fmt.Errorf("runs: recovery commit conversation transition[%d]: %w", index, err)
 	}
 	if err := validateRecoveryClosureMessages(rootID, transition.Messages); err != nil {
@@ -520,7 +519,7 @@ func validateRecoveryInterruptDeletions(
 		}
 	}
 	for index, rootRunID := range values {
-		if err := resourceid.ValidateRun(rootRunID); err != nil {
+		if err := identity.ValidateRun(rootRunID); err != nil {
 			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
 		if _, found := expected[rootRunID]; !found {
@@ -555,7 +554,7 @@ func validateRecoveryCheckpointDeletions(
 
 func validateCanonicalSessionIdentities(name string, values []string) error {
 	for index, value := range values {
-		if err := resourceid.ValidateSession(value); err != nil {
+		if err := identity.ValidateSession(value); err != nil {
 			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
 		}
 		if index > 0 && values[index-1] >= value {

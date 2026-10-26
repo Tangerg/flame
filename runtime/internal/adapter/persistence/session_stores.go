@@ -4,24 +4,22 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // SessionStores is the SQLite-backed adapter for the session lifecycle's
 // snapshot and atomic write-set ports. Each operation applies the complete
 // application-decided mutation inside one storage transaction.
 type SessionStores struct {
-	commandAcceptances  *CommandAcceptanceStore
+	commandAcceptances  *commandAcceptanceStore
 	sessions            *SessionStore
 	transcript          *TranscriptStore
 	interrupts          *InterruptStore
@@ -41,7 +39,7 @@ type SessionStores struct {
 
 // SessionStoresConfig is the durable collaborator set for SessionStores.
 type SessionStoresConfig struct {
-	CommandAcceptances  *CommandAcceptanceStore
+	CommandAcceptances  *commandAcceptanceStore
 	Sessions            *SessionStore
 	Transcript          *TranscriptStore
 	Interrupts          *InterruptStore
@@ -125,7 +123,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "transactor", value: cfg.Tx},
 		{name: "read snapshot", value: cfg.ReadSnapshot},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("persistence: session %s is required", required.name)
 		}
 	}
@@ -403,7 +401,7 @@ func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Ru
 	return nil
 }
 
-func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresult.Blob) error {
+func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []transcript.ToolResultBlob) error {
 	for _, blob := range blobs {
 		if err := s.toolResults.Restore(ctx, blob); err != nil {
 			return err

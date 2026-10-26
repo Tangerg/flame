@@ -13,7 +13,7 @@ import (
 
 func TestRetiredHTMLRendererIsRefused(t *testing.T) {
 	release, err := publishPackage(t.Context(), testReleases(t), writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + ManifestSchema + `","name":"test.retired","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.retired","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"contributes":{"renderers":[{"id":"old","title":"Old","selector":{"type":"toolName","name":"read"},"entry":"old.html"}]}`),
 		"old.html": "<!doctype html><p>Old</p>",
 	}))

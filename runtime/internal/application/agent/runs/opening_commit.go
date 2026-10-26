@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -17,7 +14,7 @@ import (
 // OpeningCommit is the atomic acceptance write-set for one fresh admission or
 // one continuation.
 type OpeningCommit struct {
-	commitID           runtimeidentity.CommitID
+	commitID           CommitID
 	admit              *run.Draft
 	resume             *run.TreeResumeDraft
 	resumeAcceptance   *ResumeAcceptance
@@ -31,7 +28,7 @@ type OpeningCommit struct {
 // NewAdmissionOpeningCommit binds a fresh Run admission to every root-owned
 // Session or Actor fact and opening projection written in its transaction.
 func NewAdmissionOpeningCommit(
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	admit run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
@@ -40,9 +37,18 @@ func NewAdmissionOpeningCommit(
 ) (OpeningCommit, error) {
 	admit = cloneOpeningAdmission(admit)
 	opening := OpeningCommit{commitID: commitID, admit: &admit, events: cloneEventCommits(events)}
-	opening.initialSession = optional.Clone(initialSession)
-	opening.sessionReplacement = optional.Clone(sessionReplacement)
-	opening.actor = optional.Clone(actor)
+	opening.initialSession = initialSession
+	if opening.initialSession != nil {
+		opening.initialSession = new(*opening.initialSession)
+	}
+	opening.sessionReplacement = sessionReplacement
+	if opening.sessionReplacement != nil {
+		opening.sessionReplacement = new(*opening.sessionReplacement)
+	}
+	opening.actor = actor
+	if opening.actor != nil {
+		opening.actor = new(*opening.actor)
+	}
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
@@ -65,7 +71,7 @@ func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (Open
 // NewResumeOpeningCommit binds one complete tree continuation to the opening
 // projections written in the same transaction.
 func NewResumeOpeningCommit(
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	resume run.TreeResumeDraft,
 	events []EventCommit,
 ) (OpeningCommit, error) {
@@ -277,7 +283,7 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 	return errors.New("event belongs to a Run outside the resumed tree")
 }
 
-func (o OpeningCommit) CommitID() runtimeidentity.CommitID { return o.commitID }
+func (o OpeningCommit) CommitID() CommitID { return o.commitID }
 
 func (o OpeningCommit) Admission() (run.Draft, bool) {
 	if o.admit == nil {
@@ -301,24 +307,34 @@ func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
 }
 
 func (o OpeningCommit) InitialSession() (session.Session, bool) {
-	return optional.Present(o.initialSession)
+	if o.initialSession == nil {
+		return session.Session{}, false
+	}
+	return *o.initialSession, true
 }
 
 func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
-	return optional.Present(o.sessionReplacement)
+	if o.sessionReplacement == nil {
+		return session.Replacement{}, false
+	}
+	return *o.sessionReplacement, true
 }
 
 func (o OpeningCommit) Actor() (operation.Actor, bool) {
-	return optional.Present(o.actor)
+	if o.actor == nil {
+		return operation.Actor{}, false
+	}
+	return *o.actor, true
 }
 
 func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
-	return optional.Present(o.commandAcceptance)
+	if o.commandAcceptance == nil {
+
+		return CommandAcceptance{}, false
+	}
+	return *o.commandAcceptance, true
 }
 
-// ownerIdentity is the one rule for which Session, Run, and Segment an opening
-// opens, so the acceptance record, the commit receipt, and the input-item scan
-// cannot name different Runs for it.
 func (o OpeningCommit) ownerIdentity() (sessionID, runID, segmentID string, err error) {
 	if o.admit != nil {
 		return o.admit.SessionID, o.admit.RunID, o.admit.SegmentID, nil
@@ -330,6 +346,9 @@ func (o OpeningCommit) ownerIdentity() (sessionID, runID, segmentID string, err 
 	return "", "", "", errors.New("runs: opening has no owner")
 }
 
+// ownerIdentity is the one rule for which Session, Run, and Segment an opening
+// opens, so the acceptance record, the commit receipt, and the input-item scan
+// cannot name different Runs for it.
 func (o OpeningCommit) OwnerIdentity() (sessionID, runID, segmentID string, err error) {
 	return o.ownerIdentity()
 }

@@ -4,11 +4,8 @@ import (
 	"context"
 	"strings"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
-	"github.com/Tangerg/scope/core/chat"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 const compactionPrompt = `You are compacting the earlier portion of a long agent
@@ -44,6 +41,7 @@ Do NOT echo this instruction or restate the raw transcript; the agent receives
 your sections verbatim.`
 
 const (
+	maxModelInputBytes                  = 512 * 1024
 	compactionSummaryOutputTokens int64 = 4096
 	compactionModelPrefix               = "[Earlier conversation summary]\n"
 )
@@ -53,12 +51,12 @@ const (
 // keeping the existing history is always preferable to losing it
 // behind a bad summary.
 func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string, error) {
-	transcript := modeltext.RenderTranscript(msgs)
+	transcript := modeladapter.RenderTranscript(msgs)
 
 	text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		Operation:    "compaction",
 		SystemPrompt: compactionPrompt, UserPrompt: transcript,
-		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
+		MaxInputBytes: maxModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})
 	if err != nil {
 		return "", err

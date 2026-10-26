@@ -198,11 +198,7 @@ func TestApprovalModeReplyPublishesTheDomainGateMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[protocol.ApprovalMode]protocol.ApprovalModePolicy{
-		protocol.ApprovalModeSafe:     {Mode: protocol.ApprovalModeSafe, Write: protocol.ApprovalGatePrompt, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePrompt},
-		protocol.ApprovalModeBalanced: {Mode: protocol.ApprovalModeBalanced, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePass},
-		protocol.ApprovalModeYolo:     {Mode: protocol.ApprovalModeYolo, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePass, Network: protocol.ApprovalGatePass},
-	}
+	want := map[protocol.ApprovalMode]protocol.ApprovalModePolicy{protocol.ApprovalModeSafe: {Mode: protocol.ApprovalModeSafe, Write: protocol.ApprovalGatePrompt, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePrompt}, protocol.ApprovalModeBalanced: {Mode: protocol.ApprovalModeBalanced, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePass}, protocol.ApprovalModeYolo: {Mode: protocol.ApprovalModeYolo, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePass, Network: protocol.ApprovalGatePass}}
 	if len(got.Modes) != len(want) {
 		t.Fatalf("modes = %+v, want %d policies", got.Modes, len(want))
 	}

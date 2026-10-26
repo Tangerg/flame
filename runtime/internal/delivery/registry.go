@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/samber/lo"
 )
 
 // Registry is the single catalog of Runtime operations. It owns both the
@@ -106,10 +106,10 @@ func (r *Registry) query[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
 ) {
-	meta.Kind = KindUnary
+	meta.Kind = kindUnary
 	meta.Operation = OperationQuery
-	meta.Idempotency = IdempotencyNone
-	meta.ReplayCursor = ReplayCursorNone
+	meta.Idempotency = idempotencyNone
+	meta.ReplayCursor = replayCursorNone
 	r.registerUnary(meta, call)
 }
 
@@ -118,19 +118,19 @@ func (r *Registry) command[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
 ) {
-	meta.Kind = KindUnary
+	meta.Kind = kindUnary
 	meta.Operation = OperationCommand
 	if meta.Idempotency == "" {
-		meta.Idempotency = IdempotencyReplayResponse
+		meta.Idempotency = idempotencyReplayResponse
 	}
-	meta.ReplayCursor = ReplayCursorNone
+	meta.ReplayCursor = replayCursorNone
 	r.registerUnary(meta, call)
 }
 
 // extension resolves the consumer's admitted method before delivery chooses
 // query or owner-committed command policies. No caller-supplied kind is accepted.
 func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Response, error), error)) {
-	meta.Kind = KindUnary
+	meta.Kind = kindUnary
 	meta.Result = reflect.TypeFor[Response]()
 	r.registerExtension(meta, classify, func(target Capability, ctx context.Context, request Params) (OperationKind, func(context.Context) rawResult, error) {
 		kind, call, err := prepare(target, ctx, request)
@@ -162,9 +162,9 @@ func (r *Registry) streamExtension[Capability, Params, Ack, Event any](meta Meth
 
 func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) rawResult, error)) {
 	meta.Operation = OperationExtension
-	meta.Idempotency = IdempotencyOwnerResponse
-	meta.ReplayCursor = ReplayCursorNone
-	meta.Pagination = PaginationNone
+	meta.Idempotency = idempotencyOwnerResponse
+	meta.ReplayCursor = replayCursorNone
+	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
 	r.add(meta, nil)
 	r.byName[meta.Name].classify = func(parameters any) (OperationKind, error) {
@@ -194,9 +194,9 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 		resolved.Operation = kind
 		switch kind {
 		case OperationQuery:
-			resolved.Idempotency = IdempotencyNone
+			resolved.Idempotency = idempotencyNone
 		case OperationCommand:
-			resolved.Idempotency = IdempotencyOwnerResponse
+			resolved.Idempotency = idempotencyOwnerResponse
 		default:
 			return nil, fmt.Errorf("operation: %s resolved an invalid operation kind", meta.Name)
 		}
@@ -207,19 +207,6 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 			return call(ctx)
 		}}, nil
 	}
-}
-
-// InvocationOperation projects the same admitted semantics for remote response
-// loss classification. Installation/live binding admission remains with Runtime.
-func InvocationOperation(name Name, parameters any) (OperationKind, error) {
-	method, found := contract.lookup(name)
-	if !found {
-		return "", fmt.Errorf("operation: unknown method %s", name)
-	}
-	if method.classify != nil {
-		return method.classify(parameters)
-	}
-	return method.Meta.Operation, nil
 }
 
 func (r *Registry) registerUnary[Capability, Params, Response any](
@@ -252,13 +239,13 @@ func (r *Registry) commandAck[Capability, Params any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) error,
 ) {
-	meta.Kind = KindUnary
+	meta.Kind = kindUnary
 	meta.Operation = OperationCommand
 	if meta.Idempotency == "" {
-		meta.Idempotency = IdempotencyReplayResponse
+		meta.Idempotency = idempotencyReplayResponse
 	}
-	meta.ReplayCursor = ReplayCursorNone
-	meta.Pagination = PaginationNone
+	meta.ReplayCursor = replayCursorNone
+	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
 	r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
 		typed, ok := parameters.(Params)
@@ -278,7 +265,7 @@ func (r *Registry) subscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
-	meta.ReplayCursor = ReplayCursorNone
+	meta.ReplayCursor = replayCursorNone
 	r.registerSubscription(meta, call)
 }
 
@@ -288,7 +275,7 @@ func (r *Registry) registerSubscription[Capability, Params, Ack, Event any](
 ) {
 	meta.Kind = KindStream
 	meta.Operation = OperationSubscription
-	meta.Idempotency = IdempotencyNone
+	meta.Idempotency = idempotencyNone
 	r.registerStream(meta, call)
 }
 
@@ -325,7 +312,7 @@ func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 	meta.Params = reflect.TypeFor[Params]()
 	meta.Result = reflect.TypeFor[Ack]()
 	meta.Event = reflect.TypeFor[Event]()
-	meta.Pagination = PaginationNone
+	meta.Pagination = paginationNone
 	r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
 		typed, ok := parameters.(Params)
 		if !ok {
@@ -341,7 +328,7 @@ func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 }
 
 func capabilityAvailable(capability any) bool {
-	return !dependency.Missing(capability)
+	return !lo.IsNil(capability)
 }
 
 func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, error] {
@@ -365,47 +352,47 @@ func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, er
 // the actual request and response shapes.
 func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if params == nil {
-		return PaginationNone, errors.New("params type is required")
+		return paginationNone, errors.New("params type is required")
 	}
-	params = contractshape.Deref(params)
-	cursor, hasCursor := contractshape.LookupField(params, "cursor")
-	limit, hasLimit := contractshape.LookupField(params, "limit")
-	var data, nextCursor contractshape.Field
+	params = jsonvalue.Deref(params)
+	cursor, hasCursor := jsonvalue.LookupField(params, "cursor")
+	limit, hasLimit := jsonvalue.LookupField(params, "limit")
+	var data, nextCursor jsonvalue.Field
 	var hasData, hasNextCursor bool
 	if result != nil {
-		result = contractshape.Deref(result)
-		data, hasData = contractshape.LookupField(result, "data")
-		nextCursor, hasNextCursor = contractshape.LookupField(result, "nextCursor")
+		result = jsonvalue.Deref(result)
+		data, hasData = jsonvalue.LookupField(result, "data")
+		nextCursor, hasNextCursor = jsonvalue.LookupField(result, "nextCursor")
 	}
 
 	if !hasData && !hasNextCursor {
 		if hasCursor {
-			return PaginationNone, fmt.Errorf("%s has a cursor request field but its result is not a page", params)
+			return paginationNone, fmt.Errorf("%s has a cursor request field but its result is not a page", params)
 		}
-		return PaginationNone, nil
+		return paginationNone, nil
 	}
 	if !hasData || !hasNextCursor {
-		return PaginationNone, fmt.Errorf("page results require data and nextCursor together; result=%s", result)
+		return paginationNone, fmt.Errorf("page results require data and nextCursor together; result=%s", result)
 	}
 	if hasCursor != hasLimit {
-		return PaginationNone, fmt.Errorf("%s must declare cursor and limit together", params)
+		return paginationNone, fmt.Errorf("%s must declare cursor and limit together", params)
 	}
 	if data.Type.Kind() != reflect.Slice || data.Optional {
-		return PaginationNone, fmt.Errorf("%s.data must be a required array", result)
+		return paginationNone, fmt.Errorf("%s.data must be a required array", result)
 	}
 	if nextCursor.Type.Kind() != reflect.String || !nextCursor.Optional {
-		return PaginationNone, fmt.Errorf("%s.nextCursor must be an optional string", result)
+		return paginationNone, fmt.Errorf("%s.nextCursor must be an optional string", result)
 	}
 	if !hasCursor {
-		return PaginationNone, nil
+		return paginationNone, nil
 	}
 	if cursor.Type.Kind() != reflect.String || !cursor.Optional {
-		return PaginationNone, fmt.Errorf("%s.cursor must be an optional string", params)
+		return paginationNone, fmt.Errorf("%s.cursor must be an optional string", params)
 	}
 	if limit.Type.Kind() != reflect.Pointer || limit.Type.Elem().Kind() != reflect.Int || !limit.Optional {
-		return PaginationNone, fmt.Errorf("%s.limit must be a pointer-backed optional int", params)
+		return paginationNone, fmt.Errorf("%s.limit must be a pointer-backed optional int", params)
 	}
-	return PaginationCursor, nil
+	return paginationCursor, nil
 }
 
 // Contract returns the Runtime operation catalog. Registration is package-local

@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -18,10 +17,10 @@ type toolAdmission struct {
 	binding     toolcontract.Binding
 	executable  toolcontract.Tool
 	ref         tool.Ref
-	fingerprint fingerprint.Digest
-	interpreter InteractionToolInterpreter
-	authorizer  InteractionToolAuthorizer
-	hooks       InteractionToolHooks
+	fingerprint identity.Digest
+	interpreter interactionToolInterpreter
+	authorizer  interactionToolAuthorizer
+	hooks       interactionToolHooks
 	input       InteractionToolHookInput
 }
 
@@ -37,7 +36,7 @@ func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthoriz
 			arguments = rewritten
 		}
 		if reason, denied := decision.Denied(); denied {
-			return ToolAuthorizationRequest{Arguments: arguments}, DenyTool(reason), nil
+			return ToolAuthorizationRequest{Arguments: arguments}, denyTool(reason), nil
 		}
 		forceApproval = decision.RequiresApproval()
 	}
@@ -48,9 +47,9 @@ func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthoriz
 	}
 	if !a.interpreter.UsesStandardPolicy(a.ref) {
 		if forceApproval {
-			return request, DenyTool("a lifecycle hook requires approval, but approval is unavailable"), nil
+			return request, denyTool("a lifecycle hook requires approval, but approval is unavailable"), nil
 		}
-		return request, AllowTool(), nil
+		return request, allowTool(), nil
 	}
 	if _, err := a.interpreter.ApprovalSubject(a.ref, arguments); err != nil {
 		return request, ToolAuthorizationDecision{}, err

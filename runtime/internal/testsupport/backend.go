@@ -4,13 +4,13 @@ import (
 	"context"
 	json "encoding/json/v2"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *capability.Contract, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
+func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *extension.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
 	exported, err := pluginsdk.NewCapabilityBinding(session, export, contract)
 	if err != nil {
@@ -20,7 +20,7 @@ func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, c
 	if err != nil {
 		return zero, err
 	}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, err
 	}
@@ -32,7 +32,7 @@ func CallCapability[P, R any](ctx context.Context, session *sdk.ClientSession, c
 	return zero, err
 }
 
-func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *capability.Contract, export, method, id string, input P) (R, bool, error) {
+func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *extension.Capability, export, method, id string, input P) (R, bool, error) {
 	var zero R
 	exported, err := pluginsdk.NewCapabilityBinding(session, export, contract)
 	if err != nil {
@@ -42,7 +42,7 @@ func ReceiptCapability[P, R any](ctx context.Context, session *sdk.ClientSession
 	if err != nil {
 		return zero, false, err
 	}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, false, err
 	}

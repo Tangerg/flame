@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -39,7 +39,7 @@ func TestUnknownRootFieldIsDiagnosedAndOtherwiseIgnored(t *testing.T) {
 
 type passthroughDependencies struct{}
 
-func (passthroughDependencies) ChangeInstallation(_ context.Context, _ resourceid.InstallationID, _ plugins.ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
+func (passthroughDependencies) ChangeInstallation(_ context.Context, _ identity.InstallationID, _ plugins.ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
 	_, err := change(nil)
 	return err
 }

@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // samplesDir holds the runtime-owned canonical wire samples beside the published
@@ -33,10 +35,8 @@ func TestWireGoldenRoundTrip(t *testing.T) {
 			if unmarshalErr := json.Unmarshal(raw, target); unmarshalErr != nil {
 				t.Fatalf("unmarshal into %T: %v", target, unmarshalErr)
 			}
-			if validator, ok := target.(interface{ ValidateWire() error }); ok {
-				if validateWireErr := validator.ValidateWire(); validateWireErr != nil {
-					t.Fatalf("canonical sample violates %s wire constraints: %v", s.Type, validateWireErr)
-				}
+			if err := protocol.ValidateWireTree(target); err != nil {
+				t.Fatalf("canonical sample violates %s wire constraints: %v", s.Type, err)
 			}
 			reencoded, err := json.Marshal(target)
 			if err != nil {

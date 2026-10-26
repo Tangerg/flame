@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -33,10 +32,10 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				RunID: "run_evidence", SessionID: "session_evidence", SegmentID: "segment_evidence",
 				ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: at,
 			}
-			if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			store := NewModelInvocationStore(db)
+			store := newModelInvocationStore(db)
 			if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 // TestWaitingRunReadRejectsACorruptPendingSet covers the reason the Run read
@@ -21,7 +21,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runStore, interrupts := NewRunStore(db), NewInterruptStore(db)
+	runStore, interrupts := newRunStore(db), newInterruptStore(db)
 	ctx := context.Background()
 
 	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {
@@ -35,7 +35,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		}
 		return suspendRun(ctx, runStore, parkedRunFromDraft(parkableDraft("run_1", "ses_A")), "seg_open")
 	}
-	if err := sqlitebase.RunInTx(ctx, db, park); err != nil {
+	if err := sqlite.RunInTx(ctx, db, park); err != nil {
 		t.Fatalf("park commit: %v", err)
 	}
 	if _, found, readErr := runStore.Run(ctx, "run_1"); readErr != nil || !found {

@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 const createDescription = `Create and start a persistent autonomous Goal for the current session.
@@ -68,11 +68,11 @@ type GoalOutcomeReporter interface {
 
 // GoalStarter is the one lifecycle operation create_goal needs. The Driver owns
 // admission waiting and loop lifetime; the tool does not reproduce either.
-type GoalStarter interface {
+type goalStarter interface {
 	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
 }
 
-type creator struct{ goals GoalStarter }
+type creator struct{ goals goalStarter }
 type getter struct{ goals GoalReader }
 type outcomeReporter struct{ goals GoalOutcomeReporter }
 
@@ -106,8 +106,8 @@ type usageView struct {
 // NewCreate builds create_goal. It is assembled after the Goal Driver because
 // starting a Goal consumes the Run coordinator that is built later than the
 // static tool environment.
-func NewCreate(starter GoalStarter) (toolcontract.Tool, error) {
-	if dependency.Missing(starter) {
+func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
+	if lo.IsNil(starter) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
@@ -118,7 +118,7 @@ func NewCreate(starter GoalStarter) (toolcontract.Tool, error) {
 
 // NewGet builds get_goal over the read-only side of Goal state.
 func NewGet(reader GoalReader) (toolcontract.Tool, error) {
-	if dependency.Missing(reader) {
+	if lo.IsNil(reader) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
@@ -129,7 +129,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 
 // NewReport builds report_goal_outcome, the active Goal loop's terminal signal.
 func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
-	if dependency.Missing(reporter) {
+	if lo.IsNil(reporter) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[reportArgs, string](
@@ -178,7 +178,7 @@ func (g *getter) get(ctx context.Context, _ getArgs) (goalResult, error) {
 	}
 	current, ok, err := g.goals.Current(ctx, sessionID)
 	if err != nil {
-		return goalResult{}, toolfailure.Definite(fmt.Errorf("get_goal: %w", err))
+		return goalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("get_goal: %w", err))
 	}
 	if !ok {
 		return goalResult{Message: "No Goal exists for this session."}, nil

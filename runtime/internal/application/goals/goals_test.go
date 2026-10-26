@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"go.opentelemetry.io/otel"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -839,7 +838,7 @@ func TestDriverCarriesFrozenGoalCapabilitiesIntoAutonomousRuns(t *testing.T) {
 	cleanupDriver(t, d)
 	want := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}
 	started, err := d.Start(
 		context.Background(), "s1", "do it", testGoalModelSelection(), want,
@@ -860,7 +859,7 @@ func TestDriverCarriesFrozenGoalCapabilitiesIntoAutonomousRuns(t *testing.T) {
 
 func TestDriverResumeRequiresTheFrozenGoalCapabilities(t *testing.T) {
 	store := newMemStore()
-	want := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	want := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	g, err := goal.New(
 		"s1", "do it", testGoalModelSelection(), want,
 		"incarnation-capabilities", time.Unix(0, 0),

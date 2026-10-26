@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type fakeRegistry struct {
@@ -200,7 +199,7 @@ func TestRegistryRejectsMismatchedStoredIdentity(t *testing.T) {
 	}}
 	registry := registryWithEnvironment(t, inner, nil)
 	_, _, err := registry.Get(t.Context(), "openai")
-	if !errors.Is(err, ErrRegistryIdentityMismatch) {
+	if !errors.Is(err, errRegistryIdentityMismatch) {
 		t.Fatalf("identity mismatch error = %v", err)
 	}
 }

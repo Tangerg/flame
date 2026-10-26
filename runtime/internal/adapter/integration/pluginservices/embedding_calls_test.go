@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -23,7 +23,7 @@ type roleCallbackEmbedder struct {
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil || invocation.ID == "caller" || invocation.Origin != capability.Model || invocation.Parent != "caller" || invocation.Target != (capability.Target{Scope: "call", Reference: invocation.ID}) {
+	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (extension.Target{Scope: "call", Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
 	e.calls.Add(1)
@@ -62,7 +62,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 			}
 			session := new(sdk.ClientSession)
 			callbacks.AdmitSession(session)
-			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "caller", Origin: capability.Model, Parent: "executing-owner", Target: capability.Target{Scope: "installation", Reference: "author"}})
+			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: extension.Target{Scope: "installation", Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 						t.Fatalf("ordinary embedding = %+v, %v", vectors, err)
 					}
 				} else {
-					refusal, known := errors.AsType[*capability.Refusal](err)
+					refusal, known := errors.AsType[*extension.Refusal](err)
 					if err == nil || known != (state == "absent") || known && refusal.Code != "model_role_unconfigured" {
 						t.Fatalf("role absence and failure were merged: %v", err)
 					}

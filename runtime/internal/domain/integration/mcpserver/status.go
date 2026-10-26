@@ -51,10 +51,6 @@ type ConnectionStatus struct {
 	ToolCount int
 }
 
-// ErrUnknownServer is returned when a live MCP operation addresses a server
-// that was never configured.
-var ErrUnknownServer = errors.New("mcp: unknown server")
-
 var ErrAuthorizationRequired = errors.New("mcp: authorization required")
 
 // AdvertisedTool projects an admitted Scope definition with its original MCP

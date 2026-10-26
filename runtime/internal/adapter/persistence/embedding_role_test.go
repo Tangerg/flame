@@ -8,18 +8,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-func newEmbeddingRoleStore(t *testing.T) *EmbeddingRoleStore {
+func embeddingRoleStoreFixture(t *testing.T) *embeddingRoleStore {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewEmbeddingRoleStore(db)
+	return newEmbeddingRoleStore(db)
 }
 
 func TestEmbeddingRoleStore_RoundTrip(t *testing.T) {
-	s := newEmbeddingRoleStore(t)
+	s := embeddingRoleStoreFixture(t)
 	ctx := context.Background()
 
 	if role, err := s.LoadEmbeddingRole(ctx); err != nil || role.Configured() {

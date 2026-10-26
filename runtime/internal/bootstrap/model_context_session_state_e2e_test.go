@@ -176,16 +176,16 @@ func newSessionStateE2ERuntime(
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := ComposeConfig(
+	cfg := composeConfig(
 		config.Settings{Provider: "anthropic", Model: "claude-test"},
 		stores,
 		testChatResolver(client),
 		stores.Providers,
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
-	cfg.UserHome = home
-	cfg.DefaultWorkspacePath = home
-	cfg.Maintenance = noMaintenance{}
+	cfg.userHome = home
+	cfg.defaultWorkspacePath = home
+	cfg.maintenance = noMaintenance{}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if closeErr := host.Close(); closeErr != nil {

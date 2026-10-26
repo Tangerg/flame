@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 )
 
@@ -18,16 +18,16 @@ var tracer = otel.Tracer("scope/flame/adapter/integration/mcp")
 func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
 	callbacks *pluginsdk.Callbacks, client *sdkmcp.Client,
 ) (*connections, error) {
-	if dependency.Missing(ctx) {
+	if lo.IsNil(ctx) {
 		return nil, errors.New("mcp: startup context is required")
 	}
-	if dependency.Missing(lifetime) {
+	if lo.IsNil(lifetime) {
 		return nil, errors.New("mcp: lifetime is required")
 	}
 	if client == nil {
 		return nil, errors.New("mcp: client is required")
 	}
-	if oauthSessions != nil && dependency.Missing(oauthSessions) {
+	if oauthSessions != nil && lo.IsNil(oauthSessions) {
 		return nil, errors.New("mcp: supplied oauth session store is nil")
 	}
 	seen := make(map[mcpserver.ID]struct{}, len(servers))

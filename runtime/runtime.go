@@ -10,7 +10,7 @@ import (
 	"slices"
 	"sync"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
@@ -70,7 +70,7 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 		FirstPartyDirectory:  firstPartyDirectory,
 		ConfigDirectories:    resolved.ConfigDirectories,
 		ServerInfo: protocol.ServerInfo{
-			Name:    runtimeidentity.ProductName,
+			Name:    identity.ProductName,
 			Version: buildVersion(),
 		},
 	})

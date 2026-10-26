@@ -9,15 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-	"github.com/Tangerg/scope/tools/content"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/content"
+	"github.com/samber/lo"
 )
 
 // Shell tools over a shared [exec.Shells]: the primary `shell` tool plus
@@ -67,7 +66,7 @@ func (s shellArgs) timeout() (exec.Timeout, error) {
 }
 
 func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
-	after := optional.Value(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
+	after := lo.FromPtrOr(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
 	if int64(after) > math.MaxInt64/int64(time.Second) {
 		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
 	}
@@ -150,15 +149,15 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 
 func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	timeout, err := a.timeout()
 	if err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	autoBackgroundAfter, err := a.autoBackgroundAfter()
 	if err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 
 	cwd, attached := executionctx.CWD(ctx)
@@ -225,7 +224,7 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 
 func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	sh, ok := c.shells.Get(executionctx.SessionID(ctx), a.ShellID)
 	if !ok {
@@ -234,7 +233,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	if a.Wait {
 		timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
 		if err != nil {
-			return "", toolfailure.Definite(err)
+			return "", pluginsdk.DefiniteToolFailure(err)
 		}
 		if err := waitForShell(ctx, sh, timeout); err != nil {
 			return "", err
@@ -277,7 +276,7 @@ func shellResult(result string, cause error) (string, error) {
 
 func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	running, err := c.shells.Kill(executionctx.SessionID(ctx), a.ShellID)
 	switch {

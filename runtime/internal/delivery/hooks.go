@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	HooksList     Name = "hooks.list"
-	HooksSetTrust Name = "hooks.setTrust"
+	hooksList     Name = "hooks.list"
+	hooksSetTrust Name = "hooks.setTrust"
 )
 
 func registerHooks(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: HooksList, GoName: "ListHooks",
+		Name: hooksList, GoName: "ListHooks",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		ListHooks(context.Context, protocol.ListHooksRequest) (*protocol.HooksListResult, error)
@@ -22,7 +22,7 @@ func registerHooks(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name: HooksSetTrust, GoName: "SetHookTrust",
+		Name: hooksSetTrust, GoName: "SetHookTrust",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		SetHookTrust(context.Context, protocol.SetHookTrustRequest) error

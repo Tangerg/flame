@@ -7,9 +7,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -19,12 +18,12 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := NewPluginCommandStore(db)
+	store := newPluginCommandStore(db)
 	provider := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	contract := testsupport.CommandContract(t, "review.update", "workspace")
 	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
 	dependencies := plugin.CompactDependencies([]plugin.Dependency{provider, leaf})
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: capability.Invocation{ID: "command", Origin: capability.Human, Target: capability.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: dependencies}, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "command", Invocation: extension.Invocation{ID: "command", Origin: extension.Human, Target: extension.Target{Scope: "workspace", Reference: "workspace:/review"}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: contract, Provider: provider, Activation: plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: dependencies}, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +44,7 @@ func TestPluginCommandBindingSurvivesRestartAndCannotRetarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = NewPluginCommandStore(db)
+	store = newPluginCommandStore(db)
 	restored, found, err := store.Get(t.Context(), "command")
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), command.Snapshot()) {
 		t.Fatalf("original binding=%v, %v, %v", restored, found, err)
@@ -134,8 +133,8 @@ INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installa
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := NewPluginCommandStore(db)
-	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: capability.Invocation{ID: "new", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Activation: plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{provider}}, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
+	store := newPluginCommandStore(db)
+	command, err := plugin.NewCommand(plugin.CommandBinding{ID: "new", Invocation: extension.Invocation{ID: "new", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: provider.InstallationID.String()}}, Method: "review.update", Input: testsupport.JSONInput(t, `{"revision":2}`), Contract: testsupport.CommandContract(t, "review.update", "installation"), Provider: provider, Activation: plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{provider}}, Server: testsupport.ServerName("backend"), Contribution: "original-provider", Export: "operations"})
 	if err != nil {
 		t.Fatal(err)
 	}

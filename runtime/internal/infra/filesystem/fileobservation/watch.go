@@ -12,8 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // Target is one exact path and its caller-owned classification key. Boundary,
@@ -163,7 +162,7 @@ func resolveTargetBoundary(index int, boundary string) (string, error) {
 	if !filepath.IsAbs(boundary) {
 		return "", fmt.Errorf("observe files: target %d boundary must be absolute", index)
 	}
-	resolved, err := pathidentity.Resolve("", boundary)
+	resolved, err := filesystem.ResolvePath("", boundary)
 	if err != nil {
 		return "", fmt.Errorf("observe files: resolve target %d boundary: %w", index, err)
 	}
@@ -313,7 +312,7 @@ func fingerprintOf(candidate target, roots *observationRoots) (fingerprint, stri
 		}
 		encoder.field(fingerprintFieldLinkTarget, destination)
 	}
-	physical, err := pathidentity.Resolve("", candidate.path)
+	physical, err := filesystem.ResolvePath("", candidate.path)
 	if err != nil {
 		encoder.state(fingerprintStateUnresolved)
 		encoder.field(fingerprintFieldError, err.Error())
@@ -361,9 +360,9 @@ func fingerprintPhysicalTarget(
 		var opened os.FileInfo
 		var openErr error
 		if root != nil {
-			file, opened, openErr = fileinput.OpenAtExpected(root, name, physicalInfo, candidate.maxBytes)
+			file, opened, openErr = filesystem.OpenFileAtExpected(root, name, physicalInfo, candidate.maxBytes)
 		} else {
-			file, opened, openErr = fileinput.OpenExpected(name, physicalInfo, candidate.maxBytes)
+			file, opened, openErr = filesystem.OpenFileExpected(name, physicalInfo, candidate.maxBytes)
 		}
 		if openErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)

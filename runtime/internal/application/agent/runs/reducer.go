@@ -8,9 +8,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -157,7 +154,10 @@ func (r *reducer) clone() *reducer {
 		plan.Steps = slices.Clone(r.plan.Steps)
 		cloned.plan = &plan
 	}
-	cloned.errFailure = optional.Clone(r.errFailure)
+	cloned.errFailure = r.errFailure
+	if cloned.errFailure != nil {
+		cloned.errFailure = new(*cloned.errFailure)
+	}
 	return &cloned
 }
 
@@ -286,7 +286,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 	if err := started.Purpose.Validate(); err != nil {
 		return factReduction{}, fmt.Errorf("%w: %w", errExecutorContract, err)
 	}
-	if err := runtimeidentity.ValidateEffect(started.CallID); err != nil {
+	if err := ValidateInvocation(started.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
 	}
 	if _, duplicate := r.modelCalls[started.CallID]; duplicate {
@@ -307,7 +307,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 }
 
 func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction, error) {
-	if err := runtimeidentity.ValidateEffect(completed.CallID); err != nil {
+	if err := ValidateInvocation(completed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
 	}
 	call, started := r.modelCalls[completed.CallID]
@@ -366,7 +366,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 }
 
 func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
-	if err := runtimeidentity.ValidateEffect(failed.CallID); err != nil {
+	if err := ValidateInvocation(failed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
 	}
 	call, started := r.modelCalls[failed.CallID]

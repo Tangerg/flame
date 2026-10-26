@@ -2,14 +2,14 @@ package model
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/samber/lo"
 )
 
 // TestChatResolverRejectsUnconfigured verifies an explicit provider that
@@ -42,7 +42,7 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolved, err := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro"))
-	if err != nil || dependency.Missing(resolved.Model()) {
+	if err != nil || lo.IsNil(resolved.Model()) {
 		t.Fatalf("ResolveChat after configure: client=%v err=%v", resolved.Model(), err)
 	}
 	// Model construction is cheap and immutable. Re-resolving deliberately

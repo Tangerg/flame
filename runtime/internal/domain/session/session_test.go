@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
@@ -71,7 +71,7 @@ func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 		"missing identity":   {Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
 		"spaced identity":    {ID: " ses_1", Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
 		"control identity":   {ID: "ses_\n1", Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
-		"oversized identity": {ID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
+		"oversized identity": {ID: strings.Repeat("界", identity.MaximumResourceCharacters+1), Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
 		"missing workspace":  {ID: valid.ID, Selection: selection, CreatedAt: valid.CreatedAt},
 		"missing selection":  {ID: valid.ID, Workspace: valid.Workspace, CreatedAt: valid.CreatedAt},
 		"missing start time": {ID: valid.ID, Workspace: valid.Workspace, Selection: selection},

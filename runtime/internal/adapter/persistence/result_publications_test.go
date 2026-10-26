@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -17,7 +17,7 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runs, messages := NewRunStore(db), NewMessageStore(db)
+	runs, messages := newRunStore(db), newMessageStore(db)
 	const sessionID, runID, segmentID = "ses_results", "run_results", "seg_open"
 	if err := runs.Admit(t.Context(), runDraft(runID, sessionID)); err != nil {
 		t.Fatal(err)
@@ -28,7 +28,7 @@ func TestResultPublicationsFollowTheExactConversationRound(t *testing.T) {
 	}
 	first := chat.ToolResult{ID: "reused_call", Name: "inspect", Output: chat.NewTextToolOutput("first exact result")}
 	cause := errors.New("publication transaction failed")
-	err = sqlitebase.RunInTx(t.Context(), db, func(ctx context.Context) error {
+	err = sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
 		if err := runs.RecordResultPublication(ctx, sessionID, runID, segmentID, "pub_rollback", "digest_rollback", []chat.ToolResult{first}); err != nil {
 			return err
 		}

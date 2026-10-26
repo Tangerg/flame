@@ -8,8 +8,8 @@ import (
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -50,7 +50,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	if !found {
 		t.Fatal("expected pending approval")
 	}
-	encoded, err := runinput.EncodePrompt(runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt})
+	encoded, err := runinput.EncodePrompt(runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt})
 	if err != nil {
 		t.Fatal(err)
 	}

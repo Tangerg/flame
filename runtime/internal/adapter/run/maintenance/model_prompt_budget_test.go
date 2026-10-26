@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
 )
@@ -161,11 +161,11 @@ func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 		}))
 	}
 
-	transcript := modeltext.RenderTranscript(messages)
+	transcript := model.RenderTranscript(messages)
 	if len(transcript) > maximumInputBytes {
 		t.Errorf("renderTranscript = %d bytes, want at most %d", len(transcript), maximumInputBytes)
 	}
-	if tokens := mustEstimateModelContextTokens(t, messages, nil, chat.Options{}); tokens <= len(transcript)/modeltext.ASCIIBytesPerEstimatedToken {
+	if tokens := mustEstimateModelContextTokens(t, messages, nil, chat.Options{}); tokens <= flamemodel.EstimateTextTokens(transcript) {
 		t.Fatalf("compaction estimate = %d, want raw footprint rather than bounded rendering", tokens)
 	}
 }
@@ -249,7 +249,7 @@ func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
 		t.Fatal("estimating context discarded structured tool details")
 	}
 	message.Parts[0].ToolResult.Output.Details = jsontext.Value(`{"invalid"`)
-	if _, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: []chat.Message{message}, Tools: nil, Options: chat.Options{}}); err == nil {
+	if _, err := flamemodel.EstimateRequestTokens(&chat.Request{Messages: []chat.Message{message}, Tools: nil, Options: chat.Options{}}); err == nil {
 		t.Fatal("hidden details bypassed request validation")
 	}
 	message.Parts[0].ToolResult.Output.Details = details
@@ -286,7 +286,7 @@ func mustEstimateModelContextTokens(
 	options chat.Options,
 ) int {
 	t.Helper()
-	tokens, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: messages, Tools: tools, Options: options})
+	tokens, err := flamemodel.EstimateRequestTokens(&chat.Request{Messages: messages, Tools: tools, Options: options})
 	if err != nil {
 		t.Fatal(err)
 	}

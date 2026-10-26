@@ -3,8 +3,6 @@ package segment
 import (
 	"context"
 	"crypto/sha256"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
@@ -14,16 +12,13 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/metadata"
@@ -143,7 +138,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := state.Suspend(ctx, waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
+			if err := state.Suspend(ctx, waiting, draft.SegmentID, runs.CommitID{}); err != nil {
 				t.Fatal(err)
 			}
 			if err := state.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {

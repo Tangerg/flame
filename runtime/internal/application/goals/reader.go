@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/samber/lo"
 )
 
 // Reader exposes current Goal state without persistence or mutation operations.
@@ -15,7 +15,7 @@ type Reader struct {
 
 // NewReader constructs the read boundary over the required Goal store.
 func NewReader(store Store) (*Reader, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("goals: reader store is required")
 	}
 	return &Reader{goals: store}, nil

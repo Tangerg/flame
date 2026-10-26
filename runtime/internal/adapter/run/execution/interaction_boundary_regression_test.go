@@ -41,10 +41,10 @@ func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 			switch source {
 			case "hook":
 				arguments = `{"command":"valid"}`
-				cfg.ToolHooks = &feedbackHooks{decision: AllowToolHook(false, &rewritten)}
+				cfg.ToolHooks = &feedbackHooks{decision: allowToolHook(false, &rewritten)}
 			case "authorization":
 				arguments = `{"command":"valid"}`
-				cfg.ToolAuthorizer = feedbackAuthorizer{decision: AllowToolWithArguments(rewritten)}
+				cfg.ToolAuthorizer = feedbackAuthorizer{decision: allowToolWithArguments(rewritten)}
 			}
 			var committed *chat.ToolResult
 			model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {

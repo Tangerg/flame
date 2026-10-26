@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -13,7 +12,7 @@ import (
 // Runs contains one StateSuspend commit for every active Run in deterministic
 // postorder. No individual Run commit may write or consume the root-owned set.
 type TreeBarrierCommit struct {
-	commitID   runtimeidentity.CommitID
+	commitID   CommitID
 	pending    Pending
 	runs       []EventCommit
 	checkpoint ExecutorCheckpoint
@@ -22,7 +21,7 @@ type TreeBarrierCommit struct {
 // NewTreeBarrierCommit binds the root-owned waiting hand-off, opaque executor
 // checkpoint, and every Run suspension into one immutable transaction.
 func NewTreeBarrierCommit(
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	pending Pending,
 	runs []EventCommit,
 	checkpoint ExecutorCheckpoint,
@@ -74,7 +73,7 @@ func (t TreeBarrierCommit) Validate() error {
 }
 
 // CommitID returns the stable tree-barrier transaction identity.
-func (t TreeBarrierCommit) CommitID() runtimeidentity.CommitID { return t.commitID }
+func (t TreeBarrierCommit) CommitID() CommitID { return t.commitID }
 
 // Pending returns an isolated snapshot of the complete waiting hand-off.
 func (t TreeBarrierCommit) Pending() Pending { return t.pending.Clone() }

@@ -6,9 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -21,10 +20,10 @@ type resourcePluginOwner struct {
 	reads    int
 }
 
-func (*resourcePluginOwner) Component(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.ContributionID) (plugin.ClientComponent, error) {
+func (*resourcePluginOwner) Component(context.Context, identity.InstallationID, identity.Digest, plugin.ContributionID) (plugin.ClientComponent, error) {
 	return plugin.ClientComponent{Entry: "io.github.tangerg.flame/components/component.js"}, nil
 }
-func (p *resourcePluginOwner) Resource(ctx context.Context, _ resourceid.InstallationID, _ fingerprint.Digest, _ plugin.ContributionID, path string) ([]byte, error) {
+func (p *resourcePluginOwner) Resource(ctx context.Context, _ identity.InstallationID, _ identity.Digest, _ plugin.ContributionID, path string) ([]byte, error) {
 	p.reads++
 	if p.disabled {
 		return nil, plugin.ErrDisabled
@@ -44,7 +43,7 @@ func TestResourceLeaseRetainsCallerAndRefusesWithdrawalAndCancellation(t *testin
 	plugins := &resourcePluginOwner{}
 	handler := &Handler{plugins: plugins, resources: newResourceLeases(), features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
-	result := endpoint.Invoke(owner, PluginsOpenResources, protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("resources").String()}, ComponentID: "board"}, Options{})
+	result := endpoint.Invoke(owner, pluginsOpenResources, protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("resources").String()}, ComponentID: "board"}, Options{})
 	if result.Failure != nil {
 		t.Fatal(result.Failure)
 	}

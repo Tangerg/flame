@@ -7,12 +7,11 @@ import (
 	"math"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 var errInvalidModelContextCompaction = errors.New("execution: invalid model-context compaction")
@@ -78,7 +77,7 @@ const (
 	modelContextDurable
 )
 
-type ModelContextInputTokenCounter interface {
+type modelContextInputTokenCounter interface {
 	CountInputTokens(context.Context, *corechat.Request) (int64, error)
 }
 
@@ -96,7 +95,7 @@ type ModelContextCompaction struct {
 	tools         []corechat.ToolDefinition
 	options       corechat.Options
 	calibration   ModelContextTokenCalibration
-	counter       ModelContextInputTokenCounter
+	counter       modelContextInputTokenCounter
 	protectedTail int
 	preCompact    func(context.Context) (bool, error)
 }
@@ -116,7 +115,7 @@ type ModelContextCompactionInput struct {
 	Tools       []corechat.ToolDefinition
 	Options     corechat.Options
 	Calibration ModelContextTokenCalibration
-	Counter     ModelContextInputTokenCounter
+	Counter     modelContextInputTokenCounter
 	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
 	// It is counted against Candidate, not against whatever the compactor ends up
 	// folding: a durable compaction folds the Session's stored history and
@@ -135,7 +134,7 @@ func NewDurableModelContextCompaction(input ModelContextCompactionInput) (ModelC
 
 // NewTransientModelContextCompaction builds a request for an isolated child
 // Interaction whose complete candidate exists only in Strategy recovery state.
-func NewTransientModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
+func newTransientModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
 	return newModelContextCompaction(modelContextTransient, input)
 }
 
@@ -146,7 +145,7 @@ func newModelContextCompaction(
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
 	}
-	if err := resourceid.ValidateSession(input.SessionID); err != nil {
+	if err := identity.ValidateSession(input.SessionID); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: owning %w",
 			errInvalidModelContextCompaction,
@@ -238,7 +237,7 @@ func newModelContextCompaction(
 	if err := input.Calibration.Validate(); err != nil {
 		return ModelContextCompaction{}, err
 	}
-	if input.Counter != nil && dependency.Missing(input.Counter) {
+	if input.Counter != nil && lo.IsNil(input.Counter) {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: input token counter is nil",
 			errInvalidModelContextCompaction,

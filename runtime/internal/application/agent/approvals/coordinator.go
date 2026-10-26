@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/samber/lo"
 )
 
 // SessionLookup resolves the validated application-owned Session read so rule
@@ -37,10 +37,10 @@ type Coordinator struct {
 // New returns a Coordinator over the approval policy + the session lookup its
 // rule scoping reads.
 func New(policy Policy, sessions SessionLookup) (*Coordinator, error) {
-	if dependency.Missing(policy) {
+	if lo.IsNil(policy) {
 		return nil, errors.New("approvals: policy is required")
 	}
-	if dependency.Missing(sessions) {
+	if lo.IsNil(sessions) {
 		return nil, errors.New("approvals: session lookup is required")
 	}
 	return &Coordinator{policy: policy, sessions: sessions}, nil

@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -29,7 +29,7 @@ func reviewRuntimeBackend(t *testing.T, fixture string) (string, func()) {
 	directory := t.TempDir()
 	executable := filepath.Join(directory, "reviews.test")
 	build := exec.CommandContext(t.Context(), "go", "test", "-c", "-o", executable, ".")
-	build.Dir = filepath.Join("..", "..", "..", "examples", "plugins", "reviews", "backend")
+	build.Dir = filepath.Join("..", "..", "..", "examples", "plugins", "reviews", "backend", "cmd", "reviews")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build review backend: %s, %v", output, err)
 	}
@@ -124,8 +124,8 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	}
 	client := reviewRefusalChat(t, updateInput)
 	cfg := poMCPConfig(t)
-	cfg.ApprovalMode = approval.ModeYolo
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	defer runtime.close()
 	installed := poMCPActivate(runtime, source)
@@ -135,11 +135,11 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	before, err := jsoninput.Parse([]byte(initial.Output))
+	before, err := jsonvalue.Parse([]byte(initial.Output))
 	if err != nil || initial.Failure != nil {
 		t.Fatalf("initial review read: %+v, %v", initial, err)
 	}
@@ -154,7 +154,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 		t.Fatalf("malformed input entered command execution: %+v", refused)
 	}
 	assertReviewToolRefusal(t, runtime, expected)
-	want, err := jsoninput.Parse([]byte(expected))
+	want, err := jsonvalue.Parse([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", key}
 	assertReply := func(reply *protocol.CallPluginResponse) {
 		t.Helper()
-		actual, err := jsoninput.Parse([]byte(reply.Output))
+		actual, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != want {
 			t.Fatalf("business refusal lost original facts: %+v, want %s, %v", reply, want.JSON(), err)
 		}
@@ -184,7 +184,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
 	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
-	after, err := jsoninput.Parse([]byte(current.Output))
+	after, err := jsonvalue.Parse([]byte(current.Output))
 	if err != nil || current.Failure != nil || after != before {
 		t.Fatalf("refused entrances changed the private review: %+v, %v", current, err)
 	}
@@ -245,7 +245,7 @@ func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected strin
 		t.Fatalf("known history refusal became uncertain execution: %+v", finished)
 	}
 	items := runtime.must(delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: runID}}, "").(*protocol.ListItemsResponse)
-	want, err := jsoninput.Parse([]byte(expected))
+	want, err := jsonvalue.Parse([]byte(expected))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func assertReviewToolRefusal(t *testing.T, runtime *poMCPRuntime, expected strin
 			continue
 		}
 		calls++
-		actual, err := jsoninput.Encode(item.Tool.Result)
+		actual, err := jsonvalue.Encode(item.Tool.Result)
 		if err != nil || actual != want || item.Status != protocol.ItemStatusIncomplete || item.Error == nil || item.Error.Type != protocol.ProblemToolFailed {
 			t.Fatalf("Tool lost its history facts/classification: %+v, %v", item, err)
 		}

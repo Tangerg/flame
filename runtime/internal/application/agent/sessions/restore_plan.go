@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -88,5 +86,9 @@ func (r RestorePlan) Snapshot() Snapshot {
 
 // PlanReplacement returns an isolated copy of the restored Plan transition.
 func (r RestorePlan) PlanReplacement() *plan.Replacement {
-	return optional.Clone(r.planReplacement)
+	clonedPlanReplacement := r.planReplacement
+	if clonedPlanReplacement != nil {
+		clonedPlanReplacement = new(*clonedPlanReplacement)
+	}
+	return clonedPlanReplacement
 }

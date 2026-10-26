@@ -8,8 +8,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -62,7 +61,7 @@ func TestNewJournalRejectsInvalidResourceContracts(t *testing.T) {
 	if journal, err := newJournal(validScope, Retention{}); journal != nil || err == nil {
 		t.Fatalf("newJournal with zero retention = (%v, %v), want nil/error", journal, err)
 	}
-	oversized := strings.Repeat("x", runtimeidentity.MaximumCursorCharacters+1)
+	oversized := strings.Repeat("x", identity.MaximumCursorCharacters+1)
 	if scope, err := newStreamScope(testEpoch, oversized, testSegmentID); err == nil || scope != (streamScope{}) {
 		t.Fatalf("newStreamScope with oversized Run = (%v, %v), want zero/error", scope, err)
 	}

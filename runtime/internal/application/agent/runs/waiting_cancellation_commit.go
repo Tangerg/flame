@@ -7,10 +7,8 @@ import (
 	"slices"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -24,7 +22,7 @@ type WaitingSubtreeCancellationCommit struct {
 type waitingSubtreeCancellationState struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
-	CommitID    runtimeidentity.CommitID
+	CommitID    CommitID
 	RootRunID   string
 	TargetRunID string
 	SessionID   string
@@ -46,7 +44,7 @@ type waitingSubtreeCancellationState struct {
 // NewParkedSubtreeCancellationCommit constructs a cancellation that leaves the
 // surviving tree behind one reduced waiting barrier.
 func NewParkedSubtreeCancellationCommit(
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	targetRunID string,
 	parkedRuns []rundomain.Run,
 	expectedPending Pending,
@@ -67,7 +65,7 @@ func NewParkedSubtreeCancellationCommit(
 // NewResumingSubtreeCancellationCommit constructs a cancellation that resumes
 // every surviving Run through one opening transaction.
 func NewResumingSubtreeCancellationCommit(
-	commitID runtimeidentity.CommitID,
+	commitID CommitID,
 	targetRunID string,
 	parkedRuns []rundomain.Run,
 	expectedPending Pending,
@@ -112,7 +110,7 @@ func newWaitingSubtreeCancellationCommit(
 }
 
 // CommitID returns the stable cancellation transaction identity.
-func (w WaitingSubtreeCancellationCommit) CommitID() runtimeidentity.CommitID {
+func (w WaitingSubtreeCancellationCommit) CommitID() CommitID {
 	return w.state.CommitID
 }
 
@@ -254,13 +252,13 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.CommitID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if err := resourceid.ValidateRun(c.RootRunID); err != nil {
+	if err := identity.ValidateRun(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation root: %w", err)
 	}
-	if err := resourceid.ValidateRun(c.TargetRunID); err != nil {
+	if err := identity.ValidateRun(c.TargetRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation target: %w", err)
 	}
-	if err := resourceid.ValidateSession(c.SessionID); err != nil {
+	if err := identity.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
 	if err := c.ExpectedPending.ValidateForRoot(c.RootRunID); err != nil {
@@ -390,7 +388,7 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	expectedByItemID := make(map[string]expectedTool)
 	for index, request := range c.ExpectedPending.Interrupts {
 		continuation, _ := continuationForMember(c.ExpectedPending.Continuations, c.ExpectedPending.Bindings[index].MemberID)
-		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Kind() == interrupt.Approval {
+		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Kind() == rundomain.InterruptApproval {
 			expectedByItemID[request.ItemID] = expectedTool{runID: continuation.RunID}
 		}
 	}

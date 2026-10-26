@@ -6,8 +6,8 @@ import (
 	"iter"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -16,7 +16,7 @@ import (
 
 type pluginCallTarget struct {
 	ids         []string
-	invocations []capability.Invocation
+	invocations []extension.Invocation
 }
 
 type pluginStreamOwner struct {
@@ -29,12 +29,12 @@ func (s *pluginStreamOwner) PrepareStream(_ context.Context, _ plugins.CallReque
 	return s, nil
 }
 
-func (*pluginStreamOwner) Kind() capability.MethodKind { return capability.Mutation }
+func (*pluginStreamOwner) Kind() extension.MethodKind { return extension.Mutation }
 
 func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
 		s.ids = append(s.ids, operation.Identity(ctx))
-		value, _ := jsoninput.Parse([]byte(`"partial"`))
+		value, _ := jsonvalue.Parse([]byte(`"partial"`))
 		if !yield(plugins.StreamEvent{Kind: plugins.StreamChunk, Value: value}, nil) {
 			return
 		}
@@ -44,8 +44,8 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
 	contract := testsupport.CommandContract(t, "records.stream", "installation")
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: capability.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
-	owner := &pluginStreamOwner{err: &capability.Refusal{Code: "refused", Message: "owner refused"}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: extension.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	owner := &pluginStreamOwner{err: &extension.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
 	for range 2 {
@@ -101,29 +101,29 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 }
 
 func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *testing.T) {
-	contract, err := capability.Parse(testsupport.CommandContract(t, "review.update", "installation").JSON())
+	contract, err := extension.ParseCapability(testsupport.CommandContract(t, "review.update", "installation").JSON())
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
-	ctx := operation.Adopt(t.Context(), "parent-tool", capability.Model, "run_owner")
+	ctx := operation.Adopt(t.Context(), "parent-tool", extension.Model, "run_owner")
 	for range 2 {
 		result := endpoint.Invoke(ctx, PluginsCall, request, Options{IdempotencyKey: "original"})
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}
 	}
-	if target.invocations[0].Origin != capability.Model || target.invocations[0].Parent != "parent-tool" || target.invocations[0].Target != request.Target || target.invocations[0] != target.invocations[1] {
+	if target.invocations[0].Origin != extension.Model || target.invocations[0].Parent != "parent-tool" || target.invocations[0].Target != request.Target || target.invocations[0] != target.invocations[1] {
 		t.Fatalf("nested public call lost its calling owner: %+v", target.invocations)
 	}
 	if len(target.ids) != 2 || target.ids[0] == "" || target.ids[0] != target.ids[1] {
 		t.Fatalf("owner invocation identities = %v", target.ids)
 	}
 	query := contract.Descriptor()
-	query.Methods[0].Kind = capability.Query
-	queryContract, err := capability.FromDescriptor(query)
+	query.Methods[0].Kind = extension.Query
+	queryContract, err := extension.AdmitCapability(query)
 	if err != nil {
 		t.Fatal(err)
 	}

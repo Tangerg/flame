@@ -14,7 +14,7 @@ import (
 
 // LoadConfig loads the app config and resolves provider defaults plus env-key
 // overrides used by the runtime process.
-func LoadConfig(configDirectories []string) (config.Settings, error) {
+func loadConfig(configDirectories []string) (config.Settings, error) {
 	cfg, err := config.Load(configDirectories)
 	if err != nil {
 		return config.Settings{}, err
@@ -42,7 +42,7 @@ func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
 }
 
 // ProviderRegistry wraps the durable provider registry with env-key fallback.
-func ProviderRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
+func providerRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
 	environmentKeys := modeladapter.EnvKeys()
 	if apiKey, present := settings.APIKey.EnvironmentValue(); present {
 		environmentKeys[settings.Provider] = apiKey

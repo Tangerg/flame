@@ -33,7 +33,7 @@ func TerminalConversation(
 	if err != nil {
 		return nil, fmt.Errorf("runs: read exact Tool results for terminal Run %q: %w", runID, err)
 	}
-	_, appended, err := history.CloseOpenToolCallsWithResults(TerminalToolResult(outcome, detail), completed)
+	_, appended, err := history.CloseOpenToolCallsWithResults(terminalToolResult(outcome, detail), completed)
 	return appended, err
 }
 
@@ -41,7 +41,7 @@ func TerminalConversation(
 // without producing one. Every path that closes a parked or recovered tool call
 // takes it from here: the text reaches the model as the call's result, so two
 // spellings would make the same ended Run read as two different histories.
-func TerminalToolResult(outcome run.Outcome, detail string) string {
+func terminalToolResult(outcome run.Outcome, detail string) string {
 	var result string
 	switch outcome {
 	case run.OutcomeCanceled:

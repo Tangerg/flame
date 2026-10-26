@@ -7,11 +7,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // toolRegistryFake is the diagnostic tool registry the tools coordinator drives.

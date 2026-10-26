@@ -2,25 +2,23 @@ package pluginservices
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func installedCallCompositionFixture(t *testing.T, contract *capability.Contract, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
+func installedCallCompositionFixture(t *testing.T, contract *extension.Capability, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
 	t.Helper()
 	name := testsupport.ServerName("observer")
 	contributions := make([]plugin.Contribution, len(members))
@@ -85,7 +83,7 @@ func installedCallCompositionFixture(t *testing.T, contract *capability.Contract
 	t.Cleanup(func() { _ = db.Close() })
 	compositions := db.PluginCompositions
 	selections := db.ProviderSelections
-	if contract.Descriptor().Composition == capability.Selection {
+	if contract.Descriptor().Composition == extension.Selection {
 		choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contract.Descriptor().Reference, Installation: installation.ID(), Contribution: plugin.ContributionID(members[0])})
 		if err != nil {
 			t.Fatal(err)

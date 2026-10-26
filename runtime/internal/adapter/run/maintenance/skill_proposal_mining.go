@@ -8,16 +8,12 @@ import (
 	"strings"
 	"sync"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
-	"github.com/Tangerg/scope/core/chat"
-	skillspec "github.com/Tangerg/scope/skills"
-
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/scope/core/chat"
+	skillspec "github.com/Tangerg/scope/skills"
+	"github.com/samber/lo"
 )
 
 const (
@@ -59,13 +55,13 @@ type skillMiningPolicy struct {
 }
 
 func newSkillMiningPolicy(values SkillMiningPolicyValues) (skillMiningPolicy, error) {
-	threshold, err := optional.Positive(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
-	if err != nil {
-		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
+	threshold := lo.FromPtrOr(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold)
+	if threshold <= 0 {
+		return skillMiningPolicy{}, errors.New("skill mining policy: complexity threshold must be positive")
 	}
-	cadence, err := optional.Positive(values.Cadence, defaultSkillMiningCadence, "cadence")
-	if err != nil {
-		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
+	cadence := lo.FromPtrOr(values.Cadence, defaultSkillMiningCadence)
+	if cadence <= 0 {
+		return skillMiningPolicy{}, errors.New("skill mining policy: cadence must be positive")
 	}
 	return skillMiningPolicy{complexityThreshold: threshold, cadence: cadence}, nil
 }
@@ -109,13 +105,13 @@ type SkillProposalMiner struct {
 // NewSkillProposalMiner requires the conversation reader, proposal use case,
 // active-Skill source for revision reads, and utility-model client resolver.
 func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
-	if dependency.Missing(history) {
+	if lo.IsNil(history) {
 		return nil, errors.New("skill proposal miner: conversation reader is required")
 	}
-	if dependency.Missing(proposals) {
+	if lo.IsNil(proposals) {
 		return nil, errors.New("skill proposal miner: proposal submitter is required")
 	}
-	if dependency.Missing(source) {
+	if lo.IsNil(source) {
 		return nil, errors.New("skill proposal miner: skill source is required")
 	}
 	if client == nil {
@@ -144,7 +140,7 @@ func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd strin
 	if sessionID == "" || cwd == "" {
 		return nil
 	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("skill mining: %w", err)
 	}
 	if toolCalls < s.policy.complexityThreshold {
@@ -304,7 +300,7 @@ description: <what the skill does and WHEN to use it, one or two sentences>
 // outside conversation middleware. It returns "" for NO_SKILL, a "REVISE: <name>"
 // directive, or a new-skill SKILL.md; the caller interprets which.
 func (s *SkillProposalMiner) askForSkill(ctx context.Context, messages []chat.Message) (string, error) {
-	return s.mineDocument(ctx, skillMinerPrompt, modeltext.RenderTranscript(messages))
+	return s.mineDocument(ctx, skillMinerPrompt, modeladapter.RenderTranscript(messages))
 }
 
 // noSkillSentinel is the exact answer both mining prompts ask for when the
@@ -319,7 +315,7 @@ func (s *SkillProposalMiner) mineDocument(ctx context.Context, system, user stri
 	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
 		Operation:    "skill.mine",
 		SystemPrompt: system, UserPrompt: user,
-		MaxInputBytes: modeltext.ModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
+		MaxInputBytes: maxModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
 	if err != nil {
 		return "", err
@@ -358,7 +354,7 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 	input.WriteString("\n\n")
 	input.WriteString(current.Instructions)
 	input.WriteString("\n\nCONVERSATION\n---\n")
-	input.WriteString(modeltext.RenderTranscript(messages))
+	input.WriteString(modeladapter.RenderTranscript(messages))
 	return s.mineDocument(ctx, skillRevisePrompt, input.String())
 }
 

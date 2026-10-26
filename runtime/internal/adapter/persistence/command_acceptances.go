@@ -6,33 +6,32 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 // CommandAcceptanceStore writes immutable Run-owned receipts in their product
 // transaction. Deleting original Run material retires its reference permanently;
 // importing the same Run ID cannot bind that receipt to replacement material.
-type CommandAcceptanceStore struct{ db *sql.DB }
+type commandAcceptanceStore struct{ db *sql.DB }
 
-func NewCommandAcceptanceStore(db *sql.DB) *CommandAcceptanceStore {
-	return &CommandAcceptanceStore{db: db}
+func newCommandAcceptanceStore(db *sql.DB) *commandAcceptanceStore {
+	return &commandAcceptanceStore{db: db}
 }
 
 // Save records acceptance under the global command key. Re-observing a Steer
 // receipt in later Scope heads is allowed only when its entire immutable value
 // matches. Other reuse fails the surrounding product transaction.
-func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.CommandAcceptance) error {
+func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.CommandAcceptance) error {
 	if err := acceptance.Validate(); err != nil {
 		return err
 	}
 	var steerInput []byte
 	if acceptance.Operation == runs.CommandSteerInput {
 		var err error
-		steerInput, err = EncodeUserContent(acceptance.SteerInput)
+		steerInput, err = encodeUserContent(acceptance.SteerInput)
 		if err != nil {
 			return err
 		}
@@ -50,7 +49,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			}
 			return nil
 		}
-		current, found, err := NewRunStore(s.db).Run(ctx, acceptance.RunID)
+		current, found, err := newRunStore(s.db).Run(ctx, acceptance.RunID)
 		if err != nil {
 			return err
 		}
@@ -64,7 +63,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			return runs.ErrStaleSegment
 		}
 	}
-	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
+	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO idempotency_records(
 			key, kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
 		) VALUES (?, 'run_acceptance', ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -82,9 +81,9 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 // immutable acceptance and whether its original material is still referenced; a
 // generic response variant reports that the key belongs to another operation; an
 // absent key reports neither. It performs no mutation and starts no Run.
-func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
+func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	var record runs.CommandAcceptanceRecord
-	err := sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		var err error
 		record, err = s.lookup(ctx, key)
 		return err
@@ -95,8 +94,8 @@ func (s *CommandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 	return record, nil
 }
 
-func (s *CommandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
+func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT key FROM idempotency_records
 		WHERE kind='run_acceptance' AND operation='steer' AND session_id=? AND material_run_id IS NOT NULL
 		ORDER BY key`, sessionID)
 	if err != nil {
@@ -128,7 +127,7 @@ func (s *CommandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 	return inputs, nil
 }
 
-func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
+func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	var (
 		kind        string
 		digest      string
@@ -140,7 +139,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		materialRun sql.NullString
 		steerInput  []byte
 	)
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx,
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx,
 		`SELECT kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
 		   FROM idempotency_records WHERE key = ?`, key,
 	).Scan(&kind, &digest, &operation, &sessionID, &runID, &segmentID, &userItemID, &materialRun, &steerInput)
@@ -163,7 +162,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		UserItemID:  userItemID.String,
 	}
 	if len(steerInput) > 0 {
-		acceptance.SteerInput, err = DecodeUserContent(steerInput)
+		acceptance.SteerInput, err = decodeUserContent(steerInput)
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, err
 		}
@@ -178,7 +177,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 	if materialRun.String != acceptance.RunID {
 		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: command material differs from its accepted Run")
 	}
-	current, found, err := NewRunStore(s.db).Run(ctx, materialRun.String)
+	current, found, err := newRunStore(s.db).Run(ctx, materialRun.String)
 	if err != nil {
 		return runs.CommandAcceptanceRecord{}, err
 	}
@@ -187,7 +186,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 	}
 	record.CurrentRun = &current
 	if acceptance.Operation == runs.CommandSteerInput {
-		item, found, err := NewTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
+		item, found, err := newTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, err
 		}

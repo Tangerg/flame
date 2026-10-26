@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -30,7 +30,7 @@ func (s *afterReadStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	}
 	return values, err
 }
-func (s *afterReadStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *afterReadStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
 	value, found, err := s.Store.Get(ctx, id)
 	if err == nil {
 		s.fire()

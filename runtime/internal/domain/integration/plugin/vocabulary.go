@@ -11,6 +11,6 @@ const (
 type ThemeScheme string
 
 const (
-	Dark  ThemeScheme = "dark"
-	Light ThemeScheme = "light"
+	dark  ThemeScheme = "dark"
+	light ThemeScheme = "light"
 )

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -25,7 +25,7 @@ func TestConversationCompactionPlanOwnsOneSessionRunSet(t *testing.T) {
 	})
 	replacement := testsupport.MustRunReplacement(current, testsupport.DecidedRun(current))
 	input := []run.Replacement{replacement}
-	plan, err := NewConversationCompactionPlan("ses_1", compaction, input)
+	plan, err := newConversationCompactionPlan("ses_1", compaction, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,8 +46,8 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, sessionID := range []string{"", " ses_1", strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1)} {
-		if _, err := NewConversationCompactionPlan(sessionID, compaction, nil); err == nil {
+	for _, sessionID := range []string{"", " ses_1", strings.Repeat("界", identity.MaximumResourceCharacters+1)} {
+		if _, err := newConversationCompactionPlan(sessionID, compaction, nil); err == nil {
 			t.Errorf("NewConversationCompactionPlan(%q) accepted an invalid Session", sessionID)
 		}
 	}
@@ -56,10 +56,10 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: run.MessageMarkAt(0),
 	})
 	replacement := testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreign))
-	if _, err := NewConversationCompactionPlan("ses_1", compaction, []run.Replacement{replacement}); err == nil {
+	if _, err := newConversationCompactionPlan("ses_1", compaction, []run.Replacement{replacement}); err == nil {
 		t.Fatal("NewConversationCompactionPlan accepted a foreign-Session Run")
 	}
-	if _, err := NewConversationCompactionPlan("ses_other", compaction, []run.Replacement{replacement, replacement}); err == nil {
+	if _, err := newConversationCompactionPlan("ses_other", compaction, []run.Replacement{replacement, replacement}); err == nil {
 		t.Fatal("NewConversationCompactionPlan accepted a repeated Run")
 	}
 }

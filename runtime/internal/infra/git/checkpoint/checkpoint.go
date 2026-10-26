@@ -34,5 +34,5 @@ var (
 	ErrRestoreIncomplete = errors.New("checkpoint: working tree restore may be incomplete")
 	// ErrSnapshotTooLarge means the complete working-tree boundary cannot enter
 	// the finite shadow-repository resource envelope.
-	ErrSnapshotTooLarge = errors.New("checkpoint: snapshot too large")
+	errSnapshotTooLarge = errors.New("checkpoint: snapshot too large")
 )

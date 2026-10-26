@@ -2,8 +2,6 @@ package pluginservices
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
 	json "encoding/json/v2"
 	"errors"
 	"iter"
@@ -15,18 +13,16 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -65,7 +61,7 @@ func TestMalformedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t 
 	f := newStreamFixture(t, "complete")
 	ctx := operation.Bind(t.Context(), "records.stream", "malformed-input")
 	original := f.request.Input
-	malformed, err := jsoninput.Parse([]byte(`{"unexpected":true}`))
+	malformed, err := jsonvalue.Parse([]byte(`{"unexpected":true}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +88,7 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 			ctx := operation.Bind(t.Context(), "records.stream", "typed-input")
 			original := f.request.Input
 			for _, number := range []string{"0.0", "1e0"} {
-				input, err := jsoninput.Parse([]byte(`{"revision":` + number + `}`))
+				input, err := jsonvalue.Parse([]byte(`{"revision":` + number + `}`))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -122,15 +118,15 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}
-	kind := capability.Mutation
+	kind := extension.Mutation
 	if mode == "query" {
-		kind = capability.Query
+		kind = extension.Query
 	}
 	method, err := pluginsdk.NewStreamingMethod[streamInput, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "records", Composition: capability.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +180,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 				f.digest = input.Digest()
 				f.receipt = pluginsdk.Receipt{Found: true, Reply: []byte(`{"failure":{"code":"refused","message":"owner refused"}}`)}
 				f.mu.Unlock()
-				yield(pluginsdk.StreamValue[string, bool]{}, &capability.Refusal{Code: "refused", Message: "owner refused"})
+				yield(pluginsdk.StreamValue[string, bool]{}, &extension.Refusal{Code: "refused", Message: "owner refused"})
 				return
 			}
 			input, err := command.RequestInput()
@@ -201,7 +197,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	lookup, err := pluginsdk.NewMethod[pluginsdk.ReceiptRequest, pluginsdk.Receipt](pluginsdk.MethodConfig{Name: pluginsdk.ReceiptMethod, Kind: capability.Query, Target: "installation", Description: "Read the original private receipt."})
+	lookup, err := pluginsdk.ReceiptQuery()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,11 +254,11 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode(struct{}{})
+	input, err := jsonvalue.Encode(struct{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: capability.Target{Scope: "installation", Reference: installation.ID().String()}}
+	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: extension.Target{Scope: "installation", Reference: installation.ID().String()}}
 	return f
 }
 
@@ -344,7 +340,7 @@ func TestInstalledStreamKnownRefusalObservesAndRestoresOriginalReceipt(t *testin
 	ctx := operation.Bind(t.Context(), "records.stream", "refused")
 	for range 2 {
 		_, err := f.run(t, ctx)
-		if refusal, known := errors.AsType[*capability.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, pluginsdk.ErrStreamUnconfirmed) {
+		if refusal, known := errors.AsType[*extension.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, pluginsdk.ErrStreamUnconfirmed) {
 			t.Fatalf("known refusal became uncertain: %v", err)
 		}
 	}
@@ -378,16 +374,16 @@ func TestInstalledStreamOriginalOriginAndInputCannotChange(t *testing.T) {
 	if _, err := f.run(t, ctx); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 		t.Fatal(err)
 	}
-	changed := operation.Adopt(t.Context(), operation.Identity(ctx), capability.Automatic, "")
-	if _, err := f.run(t, changed); !errors.Is(err, idempotency.ErrKeyConflict) {
+	changed := operation.Adopt(t.Context(), operation.Identity(ctx), extension.Automatic, "")
+	if _, err := f.run(t, changed); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed origin admitted: %v", err)
 	}
-	input, err := jsoninput.Parse([]byte(`{"changed":true}`))
+	input, err := jsonvalue.Parse([]byte(`{"changed":true}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.request.Input = input
-	if _, err := f.run(t, ctx); !errors.Is(err, idempotency.ErrKeyConflict) || f.invocations.Load() != 1 {
+	if _, err := f.run(t, ctx); !errors.Is(err, extension.ErrInvocationConflict) || f.invocations.Load() != 1 {
 		t.Fatalf("changed input admitted: %v calls=%d", err, f.invocations.Load())
 	}
 }
@@ -410,11 +406,11 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if call.Kind() != capability.Query {
+	if call.Kind() != extension.Query {
 		t.Fatal("query stream became a command")
 	}
 	for range 2 {
-		ctx := operation.Start(t.Context(), capability.Human, "query-entrance", "")
+		ctx := operation.Start(t.Context(), extension.Human, "query-entrance", "")
 		var events []plugins.StreamEvent
 		for event, err := range call.Stream(ctx) {
 			if err != nil {
@@ -447,7 +443,7 @@ func TestPreparedCommandRefusesAnotherActivationWithTheSameReleases(t *testing.T
 		t.Fatal(err)
 	}
 	prepared := call.(*installedStream)
-	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) capability.Target { return f.request.Target }, true)
+	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) extension.Target { return f.request.Target }, true)
 	if err != nil {
 		t.Fatal(err)
 	}

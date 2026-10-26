@@ -15,7 +15,7 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := NewExecutorCheckpointStore(db)
+	store := newExecutorCheckpointStore(db)
 	first := executionTreeRecord{Sequence: 1, CommitID: "start", CommitDigest: "start", SessionID: "ses_tree", RootID: "root", Writer: "first", Digest: "cut1", Payload: []byte("first cut")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", first); err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestExecutionTreeWriterFencingSurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store = NewExecutorCheckpointStore(db)
+	store = newExecutorCheckpointStore(db)
 	head, found, err := store.loadExecutionTreeRecord(ctx, first.SessionID, first.RootID)
 	if err != nil || !found || head.Writer != next.Writer || string(head.Payload) != string(next.Payload) {
 		t.Fatalf("reopened head = %+v, %t, %v", head, found, err)
@@ -75,7 +75,7 @@ func TestExecutionTreeCommitIdentityRejectsContentCycles(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store := NewExecutorCheckpointStore(db)
+	store := newExecutorCheckpointStore(db)
 	first := executionTreeRecord{SessionID: "session", RootID: "root", Writer: "writer", Sequence: 1, CommitID: "checkpoint:1", CommitDigest: "commit:1", Digest: "waiting", Payload: []byte("waiting")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", first); err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := NewExecutorCheckpointStore(db)
+	store := newExecutorCheckpointStore(db)
 	head := executionTreeRecord{SessionID: "session", RootID: "root", Writer: "writer", Sequence: 1, CommitID: "start", CommitDigest: "start", Digest: "start", Payload: []byte("start")}
 	if err := store.saveExecutionTreeRecord(ctx, "", "", head); err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func TestExecutionTreeEffectIdentitySurvivesActivation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	store = NewExecutorCheckpointStore(db)
+	store = newExecutorCheckpointStore(db)
 	replay := effect
 	replay.Writer, replay.Sequence = activated.Writer, 1
 	if err := store.saveExecutionTreeRecord(ctx, activated.Writer, activated.Digest, replay); !errors.Is(err, errExecutionTreeConflict) {

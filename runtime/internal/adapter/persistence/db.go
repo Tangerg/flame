@@ -14,7 +14,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -52,7 +53,7 @@ const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results 
 //   - immediate writes — acquire the writer slot before reading mutable state
 //   - busy_timeout = 5000ms — waits for other owners' brief write-sets
 func openDatabase(ctx context.Context, path string) (*sql.DB, error) {
-	return sqlitebase.OpenSchema(ctx, path, currentSchema())
+	return sqlite.OpenSchema(ctx, path, currentSchema())
 }
 
 func currentSchema() []string {
@@ -566,8 +567,8 @@ func currentSchema() []string {
 			id                    INTEGER PRIMARY KEY CHECK (id = 1),
 			idempotency_namespace TEXT NOT NULL UNIQUE
 		)`,
-		`INSERT OR IGNORE INTO runtime_identity(id, idempotency_namespace)
-			VALUES (1, 'idp_' || lower(hex(randomblob(16))))`,
+		fmt.Sprintf(`INSERT OR IGNORE INTO runtime_identity(id, idempotency_namespace)
+			VALUES (1, '%s' || lower(hex(randomblob(%d))))`, operation.ReplayNamespacePrefix, operation.ReplayNamespaceEntropyBytes),
 		// One shared command-record store under a single global key. Three closed
 		// variants record different facts with different owners: a delivery-owned
 		// generic response reservation (pending_response) and its completed outcome

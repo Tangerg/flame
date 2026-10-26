@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 const maxDocumentBytes int64 = 8 << 20
@@ -24,12 +24,12 @@ const maxOpenDocuments = 128
 
 // ErrDocumentTooLarge reports a workspace document that cannot be admitted to
 // the in-memory language-server synchronization boundary.
-var ErrDocumentTooLarge = fmt.Errorf(
+var errDocumentTooLarge = fmt.Errorf(
 	"lsp: document exceeds the %d MiB limit", maxDocumentBytes>>20)
 
 // ErrUnsupportedDocument reports a source that cannot be represented as one
 // Language Server Protocol text document.
-var ErrUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 text file")
+var errUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 text file")
 
 // ensureOpen makes the server aware of abs's current on-disk content: a
 // didOpen the first time, a didChange when the content has changed since we
@@ -109,13 +109,13 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
-	file, opened, err := fileinput.Open(path, maxDocumentBytes)
+	file, opened, err := filesystem.OpenFile(path, maxDocumentBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrNotRegular):
-			return nil, fmt.Errorf("%w: %w", ErrUnsupportedDocument, err)
-		case errors.Is(err, fileinput.ErrTooLarge):
-			return nil, fmt.Errorf("%w: %w", ErrDocumentTooLarge, err)
+		case errors.Is(err, filesystem.ErrNotRegular):
+			return nil, fmt.Errorf("%w: %w", errUnsupportedDocument, err)
+		case errors.Is(err, filesystem.ErrFileTooLarge):
+			return nil, fmt.Errorf("%w: %w", errDocumentTooLarge, err)
 		default:
 			return nil, err
 		}
@@ -128,13 +128,13 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 		return nil, err
 	}
 	if len(content) > int(maxDocumentBytes) {
-		return nil, fmt.Errorf("%w: file grew while reading", ErrDocumentTooLarge)
+		return nil, fmt.Errorf("%w: file grew while reading", errDocumentTooLarge)
 	}
-	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
 		return nil, fmt.Errorf("lsp: verify document after reading: %w", err)
 	}
 	if !utf8.Valid(content) || bytes.IndexByte(content, 0) >= 0 {
-		return nil, ErrUnsupportedDocument
+		return nil, errUnsupportedDocument
 	}
 	return content, nil
 }

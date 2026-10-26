@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -31,7 +31,7 @@ type trajectoryRecord struct {
 	RunID      string
 	Run        *run.Run
 	Endpoint   *modelref.EndpointObservation
-	Model      *ModelInvocationRecord
+	Model      *modelInvocationRecord
 	Item       *transcript.Item
 }
 
@@ -43,20 +43,20 @@ type trajectoryStore struct {
 }
 
 func newTrajectoryStore(db *sql.DB) *trajectoryStore {
-	return &trajectoryStore{db: db, runs: NewRunStore(db), transcript: NewTranscriptStore(db), models: NewModelInvocationStore(db)}
+	return &trajectoryStore{db: db, runs: newRunStore(db), transcript: newTranscriptStore(db), models: newModelInvocationStore(db)}
 }
 
 func (s *trajectoryStore) Page(ctx context.Context, sessionID string, includeDescendants bool, anchor *trajectoryPosition, limit int) ([]trajectoryRecord, error) {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return nil, err
 	}
 	if limit <= 0 {
 		return nil, errors.New("sqlite: trajectory page requires a positive limit")
 	}
 	var result []trajectoryRecord
-	err := sqlitebase.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
 		var exists bool
-		if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
+		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?)`, sessionID).Scan(&exists); err != nil {
 			return fmt.Errorf("sqlite: trajectory Session: %w", err)
 		}
 		if !exists {
@@ -103,7 +103,7 @@ func (s *trajectoryStore) positions(ctx context.Context, sessionID string, inclu
 	}
 	query += ` ORDER BY occurred_at DESC, kind DESC, id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page trajectory: %w", err)
 	}
@@ -170,14 +170,14 @@ func (s *trajectoryStore) hydrate(ctx context.Context, sessionID string, positio
 	return entry, nil
 }
 
-func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, sessionID, runID, callID string) (ModelInvocationRecord, error) {
-	row := sqlitebase.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
+func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, sessionID, runID, callID string) (modelInvocationRecord, error) {
+	row := sqlite.Connection(ctx, m.db).QueryRowContext(ctx, `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE session_id = ? AND run_id = ? AND call_id = ?`, sessionID, runID, callID)
 	record, err := scanModelInvocation(row)
 	if err != nil {
-		return ModelInvocationRecord{}, err
+		return modelInvocationRecord{}, err
 	}
 	if err := validateModelInvocationIdentity(sessionID, runID, record.SegmentID, record.CallID); err != nil {
-		return ModelInvocationRecord{}, err
+		return modelInvocationRecord{}, err
 	}
 	return record, nil
 }

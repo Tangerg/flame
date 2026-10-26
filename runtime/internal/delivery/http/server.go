@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/go-chi/chi/v5"
 )
 
 const serverReadHeaderTimeout = 10 * time.Second
@@ -81,7 +80,7 @@ func NewServer(cfg Config) (*Server, error) {
 	if cfg.Addr == "" {
 		return nil, errors.New("http: Addr is required")
 	}
-	if _, err := runtimeidentity.ParseRuntimeInstance(cfg.ServerInfo.InstanceID); err != nil {
+	if err := delivery.ValidateInstanceID(cfg.ServerInfo.InstanceID); err != nil {
 		return nil, fmt.Errorf("http: ServerInfo.InstanceID: %w", err)
 	}
 	seenProbes := make(map[string]struct{}, len(cfg.HealthProbes))

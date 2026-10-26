@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // observedInteractionModel projects one resolved provider instance as the
@@ -55,7 +55,7 @@ func (o *observedInteractionModel) Call(
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
+	ctx, err = pluginsdk.WithInvocation(ctx, extension.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
@@ -94,7 +94,7 @@ func (o *observedInteractionModel) Stream(
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-		ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: callID, Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: callID}})
+		ctx, err = pluginsdk.WithInvocation(ctx, extension.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
 			return
@@ -346,7 +346,7 @@ func newObservedInteractionModel(
 	streamer corechat.Streamer,
 	session *interactionSession,
 ) (*observedInteractionModel, error) {
-	if dependency.Missing(model) {
+	if lo.IsNil(model) {
 		return nil, errors.New("execution: Interaction model is required")
 	}
 	return &observedInteractionModel{model: model, streamer: streamer, session: session}, nil
@@ -354,7 +354,7 @@ func newObservedInteractionModel(
 
 // Streams reports whether this boundary can serve the Dispatcher's streaming
 // capability.
-func (o *observedInteractionModel) Streams() bool { return !dependency.Missing(o.streamer) }
+func (o *observedInteractionModel) Streams() bool { return !lo.IsNil(o.streamer) }
 
 // Called only after accumulator validation. Opaque reasoning state and citation
 // attachments are replay/annotation data, not the first generated output.

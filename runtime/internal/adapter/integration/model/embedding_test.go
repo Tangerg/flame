@@ -2,17 +2,16 @@ package model
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/embedding"
 )
 
@@ -38,7 +37,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	subject := &embedder{id: "space", model: embeddingModelFixture{served: "served-embed"}, selection: testsupport.MustModelSelection("openai", "embed-model"), journal: store}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "embed-call", Origin: capability.Automatic, Parent: "owner-operation", Target: capability.Target{Scope: "call", Reference: "embed-call"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: extension.Target{Scope: "call", Reference: "embed-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}

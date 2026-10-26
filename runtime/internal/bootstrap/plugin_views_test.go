@@ -12,15 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -40,7 +37,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
@@ -66,7 +63,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	if err != nil || !reflect.DeepEqual(body, authored) {
 		t.Fatal("resource did not come from the exact admitted package")
 	}
-	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Inspection", Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "session").(*protocol.Session)
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Inspection", Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "session").(*protocol.Session)
 	meta := protocol.RequestMeta{
 		ProtocolVersion:    protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}}},
@@ -168,24 +165,24 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	for _, content := range []string{"first fact", "second fact"} {
-		r.must(delivery.PluginsCall, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: content}), content)
+		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: content}), content)
 	}
-	contracts, err := memoryrpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := memoryrpc.ListInput{Scope: memorydomain.ScopeUser, Limit: new(1)}
+	query := memorycontract.ListV1Input{Scope: "user", Limit: new(uint64(1))}
 	for {
-		input, err := jsoninput.Encode(memoryrpc.ListInput{Scope: memorydomain.ScopeUser, Cursor: query.Cursor, Limit: query.Limit})
+		input, err := jsonvalue.Encode(memorycontract.ListV1Input{Scope: "user", Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: memoryrpc.List, Input: string(input.JSON()), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV1Method, Input: string(input.JSON()), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
 		}
-		var page memoryrpc.Page
+		var page memorycontract.ListV1Output
 		if err := json.Unmarshal([]byte(result.Output), &page); err != nil {
 			t.Fatal(err)
 		}
@@ -199,11 +196,11 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		query.Cursor = page.NextCursor
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	result := memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	result := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
 	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}
-	retained := filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "memory.db")
+	retained := filepath.Join(cfg.stores.DataDirectory, "plugins", "data", installed.ID, "memory.db")
 	if _, err := os.Stat(retained); err != nil {
 		t.Fatalf("uninstall discarded backend data: %v", err)
 	}
@@ -230,21 +227,21 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	}
 	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
-		readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
+		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
 	}
-	contracts, err := schedulerpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	query := protocol.PageQuery{Limit: new(1)}
 	seen := map[string]bool{}
 	for {
-		input, err := json.Marshal(schedulerpc.ListInput{Cursor: query.Cursor, Limit: query.Limit})
+		input, err := json.Marshal(testsupport.SchedulesListV1Input{Cursor: query.Cursor, Limit: schedulePageLimit(query.Limit)})
 		if err != nil {
 			t.Fatal(err)
 		}
-		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
-		var page schedulerpc.Page
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: extension.Target{Scope: "installation", Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
+		var page testsupport.SchedulesListV1Output
 		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
 		}
@@ -276,11 +273,11 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Target: capability.Target{Scope: "installation", Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Target: extension.Target{Scope: "installation", Reference: installed.ID}, Input: `{"Cursor":""}`}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
-	retained := filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "schedules.db")
+	retained := filepath.Join(cfg.stores.DataDirectory, "plugins", "data", installed.ID, "schedules.db")
 	if _, err := os.Stat(retained); err != nil {
 		t.Fatalf("uninstall discarded backend data: %v", err)
 	}
@@ -297,7 +294,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source, err := filepath.Abs(filepath.Join(firstPartyPackages, "usage"))
 	if err != nil {

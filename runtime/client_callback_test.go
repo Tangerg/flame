@@ -12,9 +12,10 @@ import (
 	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -45,6 +46,10 @@ func (c *coreCallbackTarget) SubscribeRuntime(ctx context.Context, _ protocol.Ru
 
 type coreCallbackInput struct{ Host pluginsdk.CallbackRef }
 
+func coreCallbackMethod() (*pluginsdk.Method[coreCallbackInput, string], error) {
+	return pluginsdk.NewMethod[coreCallbackInput, string](pluginsdk.MethodConfig{Name: "test.backend/core", Kind: extension.Query, Target: "call", Description: "Exercise the canonical Runtime callback."})
+}
+
 func TestCoreCallbackBackendProcess(t *testing.T) {
 	if os.Getenv("FLAME_CORE_CALLBACK_FIXTURE") != "1" {
 		return
@@ -52,27 +57,31 @@ func TestCoreCallbackBackendProcess(t *testing.T) {
 	server := sdk.NewServer(&sdk.Implementation{Name: "core-callback-author"}, nil)
 	backend, err := pluginsdk.NewBackend(server)
 	if err == nil {
-		err = pluginsdk.RegisterServer(backend, "test.backend/core", nil, func(ctx context.Context, _ *sdk.ServerSession, input coreCallbackInput) (string, error) {
-			client, err := runtimeclient.ConnectCallback(ctx, input.Host)
-			if err != nil {
-				return "", err
-			}
-			defer client.Close()
-			acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{})
-			if err != nil || acceptance.Type != protocol.RunAcceptanceNotRecorded {
-				return "", fmt.Errorf("original acceptance: %w", err)
-			}
-			_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
-			if !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
-				return "", fmt.Errorf("core protocol fence: %w", err)
-			}
-			_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{IdempotencyKey: "original", IdempotencyNamespace: testsupport.IdempotencyNamespace})
-			if !errors.Is(err, protocol.ErrSessionNotFound) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
-				return "", fmt.Errorf("typed core refusal: %w", err)
-			}
-			_, _, err = client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, protocol.SubscriptionOptions{})
-			return "canonical core query, refusal and stream", err
-		})
+		method, methodErr := coreCallbackMethod()
+		err = methodErr
+		if err == nil {
+			err = method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[coreCallbackInput]) (string, error) {
+				client, err := runtimeclient.ConnectCallback(ctx, command.Input.Host)
+				if err != nil {
+					return "", err
+				}
+				defer client.Close()
+				acceptance, err := client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{})
+				if err != nil || acceptance.Type != protocol.RunAcceptanceNotRecorded {
+					return "", fmt.Errorf("original acceptance: %w", err)
+				}
+				_, err = client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: "original", Operation: protocol.RunCommandStart}, protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}})
+				if !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
+					return "", fmt.Errorf("core protocol fence: %w", err)
+				}
+				_, _, err = client.StartRun(ctx, protocol.StartRunRequest{SessionID: "ses_absent", Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "go"}}}, protocol.RunCommandOptions{IdempotencyKey: "original", IdempotencyNamespace: testsupport.IdempotencyNamespace})
+				if !errors.Is(err, protocol.ErrSessionNotFound) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+					return "", fmt.Errorf("typed core refusal: %w", err)
+				}
+				_, _, err = client.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}, protocol.SubscriptionOptions{})
+				return "canonical core query, refusal and stream", err
+			})
+		}
 	}
 	if err == nil {
 		err = backend.Publish()
@@ -97,7 +106,16 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 		}
 	})
 	target := &coreCallbackTarget{settled: make(chan struct{})}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: ctx, IdempotencyNamespace: testsupport.IdempotencyNamespace})
+	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: ctx, IdempotencyNamespace: testsupport.IdempotencyNamespace, IdempotencyStore: stores.Idempotency})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +158,11 @@ func TestCoreCallbacksUseCanonicalDeliveryThroughARealBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	result, err := pluginsdk.Call[coreCallbackInput, string](ctx, session, "test.backend/core", coreCallbackInput{Host: ref})
+	method, err := coreCallbackMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := method.Call(ctx, session, coreCallbackInput{Host: ref})
 	if err != nil || result != "canonical core query, refusal and stream" {
 		t.Fatalf("actual backend callback = %q, %v", result, err)
 	}

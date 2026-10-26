@@ -3,8 +3,6 @@ package delivery
 import (
 	"errors"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -40,7 +38,7 @@ func wireWorkspaceError(err error) error {
 		return nil
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
 		return protocol.NewFailure(errors.Join(protocol.ErrPromptSourceTooLarge, err), "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying")
-	case errors.Is(err, workspacepaths.ErrCWDUnavailable):
+	case errors.Is(err, workspaceapp.ErrCWDUnavailable):
 		return protocol.NewFailure(errors.Join(protocol.ErrWorkspaceUnavailable, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
 		return protocol.ErrPathOutsideRoot

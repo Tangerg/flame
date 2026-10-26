@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -214,7 +214,7 @@ func TestCopyingALaunchDoesNotDuplicateItsClaim(t *testing.T) {
 }
 
 func TestRetainedInstallationDescriptorCannotLaunchWithoutExecutionContent(t *testing.T) {
-	digest := fingerprint.Strings("release")
+	digest := identity.DigestStrings("release")
 	source, err := mcpserver.InstallationSource(testsupport.InstallationID(t), digest, digest, digest)
 	if err != nil {
 		t.Fatal(err)

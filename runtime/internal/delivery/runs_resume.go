@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -112,14 +111,14 @@ func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse,
 		if err != nil {
 			return runs.ResumeResponse{}, err
 		}
-		response.Kind = interrupt.Approval
+		response.Kind = run.InterruptApproval
 		response.Approval = approval
 	case protocol.InterruptResponseAnswer:
 		question, err := decodeQuestionResponse(wire.Response)
 		if err != nil {
 			return runs.ResumeResponse{}, err
 		}
-		response.Kind = interrupt.Question
+		response.Kind = run.InterruptQuestion
 		response.Question = question
 	default:
 		return runs.ResumeResponse{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interrupt response type %q", wire.Response.Type))

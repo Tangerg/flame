@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -22,7 +22,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	before := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse).Output
@@ -52,7 +52,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 		}
 	}
 	request.Input = `{"id":"example-review","expectedRevision":0,"status":"resolved"}`
-	want, err := jsoninput.Parse([]byte(`{"type":"invalidUpdate"}`))
+	want, err := jsonvalue.Parse([]byte(`{"type":"invalidUpdate"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestReviewTypedInputRefusalPreservesIdentityAcrossExecutableCLI(t *testing.
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsoninput.Parse([]byte(reply.Output))
+		actual, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || actual != want || reply.Failure != nil {
 			t.Fatalf("admitted business refusal lost its original receipt: %+v, %v", reply, err)
 		}

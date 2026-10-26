@@ -2,12 +2,10 @@ package execution
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/samber/lo"
 )
 
 const (
@@ -28,13 +26,13 @@ type interactionExecutionPolicy struct {
 }
 
 func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactionExecutionPolicy, error) {
-	deltaBuffer, err := optional.Positive(config.DeltaBufferCapacity, defaultInteractionDeltaBuffer, "delta buffer capacity")
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("execution: Interaction policy: %w", err)
+	deltaBuffer := lo.FromPtrOr(config.DeltaBufferCapacity, defaultInteractionDeltaBuffer)
+	if deltaBuffer <= 0 {
+		return interactionExecutionPolicy{}, errors.New("execution: interaction policy: delta buffer capacity must be positive")
 	}
-	toolConcurrency, err := optional.Positive(config.MaxConcurrentToolCalls, defaultInteractionConcurrentToolCalls, "maximum concurrent Tool calls")
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("execution: Interaction policy: %w", err)
+	toolConcurrency := lo.FromPtrOr(config.MaxConcurrentToolCalls, defaultInteractionConcurrentToolCalls)
+	if toolConcurrency <= 0 {
+		return interactionExecutionPolicy{}, errors.New("execution: interaction policy: maximum concurrent Tool calls must be positive")
 	}
 	// Tool concurrency reaches the Framework as agent.TreeLimits.MaxActiveChildren,
 	// a uint32. Refusing the excess here is what lets every later conversion be a
@@ -44,19 +42,19 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 			"execution: Interaction policy: maximum concurrent Tool calls exceeds the Framework tree limit range",
 		)
 	}
-	unknownPoll, err := optional.Positive(config.UnknownEffectPollInterval, defaultUnknownEffectPollInterval, "unknown-Effect poll interval")
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("execution: Interaction policy: %w", err)
+	unknownPoll := lo.FromPtrOr(config.UnknownEffectPollInterval, defaultUnknownEffectPollInterval)
+	if unknownPoll <= 0 {
+		return interactionExecutionPolicy{}, errors.New("execution: interaction policy: unknown-Effect poll interval must be positive")
 	}
-	statePoll, err := optional.Positive(config.StatePollInterval, defaultInteractionStatePoll, "state poll interval")
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("execution: Interaction policy: %w", err)
+	statePoll := lo.FromPtrOr(config.StatePollInterval, defaultInteractionStatePoll)
+	if statePoll <= 0 {
+		return interactionExecutionPolicy{}, errors.New("execution: interaction policy: state poll interval must be positive")
 	}
 	toolResultOffload, err := newToolResultOffloadPolicy(config.ToolResultOffload)
 	if err != nil {
 		return interactionExecutionPolicy{}, err
 	}
-	if toolResultOffload.enabled && dependency.Missing(config.ToolResultStore) {
+	if toolResultOffload.enabled && lo.IsNil(config.ToolResultStore) {
 		return interactionExecutionPolicy{}, errors.New("execution: enabled Tool-result offload requires a store")
 	}
 	return interactionExecutionPolicy{

@@ -10,7 +10,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -142,7 +142,7 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 		return PortableBoundary{}, err
 	}
 	if runID != "" {
-		if err := resourceid.ValidateRun(runID); err != nil {
+		if err := identity.ValidateRun(runID); err != nil {
 			return PortableBoundary{}, fmt.Errorf("timeline portable boundary: %w", err)
 		}
 	}
@@ -203,14 +203,14 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 func (t Timeline) ordered() ([]RunNode, error) {
 	nodes := slices.Clone([]RunNode(t))
 	for index, node := range nodes {
-		if err := resourceid.ValidateRun(node.ID); err != nil {
+		if err := identity.ValidateRun(node.ID); err != nil {
 			return nil, fmt.Errorf("timeline Run[%d]: %w", index, err)
 		}
 		if node.SpawnedByItemID != "" {
-			if err := resourceid.ValidateItem(node.SpawnedByItemID); err != nil {
+			if err := identity.ValidateItem(node.SpawnedByItemID); err != nil {
 				return nil, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
 			}
-			if err := resourceid.ValidateRun(node.RootRunID); err != nil {
+			if err := identity.ValidateRun(node.RootRunID); err != nil {
 				return nil, fmt.Errorf("timeline Run[%d] root lineage: %w", index, err)
 			}
 		} else if node.RootRunID != "" {
@@ -225,7 +225,7 @@ func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundar
 	if runID == "" {
 		return Boundary{KeepMessageMark: run.MessageMarkAt(0), Dropped: nodes}, nil
 	}
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return Boundary{}, fmt.Errorf("timeline boundary: %w", err)
 	}
 	idx := slices.IndexFunc(nodes, func(n RunNode) bool { return n.ID == runID })

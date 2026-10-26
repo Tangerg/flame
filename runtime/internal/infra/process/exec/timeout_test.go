@@ -20,7 +20,7 @@ func TestTimeoutDistinguishesDisabledFromPositiveDuration(t *testing.T) {
 		t.Fatalf("timeout = (%s,%t), want (250ms,true)", duration, enabled)
 	}
 	for _, duration := range []time.Duration{0, -time.Millisecond} {
-		if _, err := NewTimeout(duration); !errors.Is(err, ErrInvalidTimeout) {
+		if _, err := NewTimeout(duration); !errors.Is(err, errInvalidTimeout) {
 			t.Fatalf("NewTimeout(%s) error = %v, want ErrInvalidTimeout", duration, err)
 		}
 	}

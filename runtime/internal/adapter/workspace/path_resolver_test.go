@@ -6,16 +6,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
 func mustCanonical(t *testing.T, path string) string {
 	t.Helper()
-	canonical, err := directories.Canonical(path)
+	canonical, err := filesystem.CanonicalPath(path)
 	if err != nil {
 		t.Fatalf("directories.Canonical(%q): %v", path, err)
 	}
@@ -41,7 +39,7 @@ func TestCanonicalNormalizesSpellingsAndSymlinks(t *testing.T) {
 	if got := mustCanonical(t, link); got != want {
 		t.Fatalf("directories.Canonical(symlink) = %q, want %q", got, want)
 	}
-	if _, err := directories.Canonical(""); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := filesystem.CanonicalPath(""); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("directories.Canonical(empty) error = %v, want workspacepaths.ErrAbsolutePathRequired", err)
 	}
 }
@@ -51,7 +49,7 @@ func TestCanonicalRefusesUnresolvedPhysicalIdentity(t *testing.T) {
 	if err := os.Symlink("cycle", link); err != nil {
 		t.Fatal(err)
 	}
-	if identity, err := directories.Canonical(link); err == nil || errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if identity, err := filesystem.CanonicalPath(link); err == nil || errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("Canonical cycle = (%q, %v), want physical resolution failure", identity, err)
 	}
 }
@@ -120,7 +118,7 @@ func TestResolveExistingDir(t *testing.T) {
 	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
-	if _, err := resolver.ResolveExistingDir(file); !errors.Is(err, workspacepaths.ErrNotDirectory) {
+	if _, err := resolver.ResolveExistingDir(file); !errors.Is(err, filesystem.ErrNotDirectory) {
 		t.Fatalf("file error = %v, want workspacepaths.ErrNotDirectory", err)
 	}
 	if _, err := resolver.ResolveExistingDir(filepath.Join(dir, "missing")); err == nil {
@@ -130,16 +128,16 @@ func TestResolveExistingDir(t *testing.T) {
 
 func TestResolverRejectsAmbientRelativeWorkspaceIdentity(t *testing.T) {
 	resolver := workspaceadapter.Resolver{}
-	if _, err := directories.Canonical("relative"); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := filesystem.CanonicalPath("relative"); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("directories.Canonical(relative) error = %v, want workspacepaths.ErrAbsolutePathRequired", err)
 	}
-	if _, err := resolver.ResolveExistingDir("."); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := resolver.ResolveExistingDir("."); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("ResolveExistingDir(relative) error = %v", err)
 	}
-	if _, err := resolver.ResolveInRoot("relative-root", "file.go"); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := resolver.ResolveInRoot("relative-root", "file.go"); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("ResolveInRoot(relative root) error = %v", err)
 	}
-	if _, err := resolver.Inspect("relative-workspace"); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := resolver.Inspect("relative-workspace"); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("Inspect(relative) error = %v, want workspacepaths.ErrAbsolutePathRequired", err)
 	}
 }
@@ -164,7 +162,7 @@ func TestResolverInspectFindsRepositoryRoot(t *testing.T) {
 }
 
 func TestResolverInspectReportsUnavailableWorkspace(t *testing.T) {
-	if _, err := (workspaceadapter.Resolver{}).Inspect(""); !errors.Is(err, workspacepaths.ErrAbsolutePathRequired) {
+	if _, err := (workspaceadapter.Resolver{}).Inspect(""); !errors.Is(err, filesystem.ErrAbsolutePathRequired) {
 		t.Fatalf("Inspect empty error = %v, want workspacepaths.ErrAbsolutePathRequired", err)
 	}
 

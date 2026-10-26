@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -33,8 +33,8 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	}
 	const input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 	cfg := poMCPConfig(t)
-	cfg.ApprovalMode = approval.ModeYolo
-	cfg.ChatResolver = testChatResolver(reviewRefusalChat(t, input))
+	cfg.approvalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(reviewRefusalChat(t, input))
 	runtime := poMCPOpen(t, cfg)
 	defer runtime.close()
 	installed := poMCPActivate(runtime, source)
@@ -44,15 +44,15 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.update", Input: input,
 	}
-	read := func() jsoninput.Input {
+	read := func() jsonvalue.Value {
 		t.Helper()
 		query := request
 		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
-		value, err := jsoninput.Parse([]byte(reply.Output))
+		value, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read private review: %+v, %v", reply, err)
 		}
@@ -68,18 +68,18 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatal(err)
 	}
 	arguments := []string{"plugins", "call", "--request", string(encoded), "--command-id", "cli_11111111111111111111111111111111"}
-	assertReply := func(output []byte, expected jsoninput.Input) {
+	assertReply := func(output []byte, expected jsonvalue.Value) {
 		t.Helper()
 		var reply protocol.CallPluginResponse
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		actual, err := jsoninput.Parse([]byte(reply.Output))
+		actual, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != expected {
 			t.Fatalf("CLI changed the business outcome: %+v, want %s, %v", reply, expected.JSON(), err)
 		}
 	}
-	want, err := jsoninput.Parse([]byte(refusal))
+	want, err := jsonvalue.Parse([]byte(refusal))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	}
 	resolved := maps.Clone(initial.Reviews[0])
 	resolved["revision"], resolved["status"] = jsontext.Value(`2`), jsontext.Value(`"resolved"`)
-	updated, err := jsoninput.Encode(map[string]any{"type": "updated", "review": resolved})
+	updated, err := jsonvalue.Encode(map[string]any{"type": "updated", "review": resolved})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 		t.Fatalf("private conflict prevented a fresh command: stdout=%s stderr=%s error=%v", output, stderr, err)
 	}
 	assertReply(output, updated)
-	expected, err := jsoninput.Encode(map[string]any{"reviews": []any{resolved}})
+	expected, err := jsonvalue.Encode(map[string]any{"reviews": []any{resolved}})
 	if err != nil {
 		t.Fatal(err)
 	}

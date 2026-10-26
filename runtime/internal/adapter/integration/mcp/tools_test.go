@@ -10,8 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -311,11 +310,11 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 // Equal local names under different origins are different servers; the tool
 // reference takes its server from the connection, never from Scope's label.
 func TestSourceToolsCarryTheRealizedServerIdentity(t *testing.T) {
-	installation, err := resourceid.ParseInstallation("eeb329cd-c7ce-40c9-bd90-6821fef06d30")
+	installation, err := identity.ParseInstallation("eeb329cd-c7ce-40c9-bd90-6821fef06d30")
 	if err != nil {
 		t.Fatal(err)
 	}
-	source, err := mcpserver.InstallationSource(installation, fingerprint.Strings("release"), fingerprint.Strings("authority"), fingerprint.Strings("recipient"))
+	source, err := mcpserver.InstallationSource(installation, identity.DigestStrings("release"), identity.DigestStrings("authority"), identity.DigestStrings("recipient"))
 	if err != nil {
 		t.Fatal(err)
 	}

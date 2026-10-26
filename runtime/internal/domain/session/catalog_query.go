@@ -7,9 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // MaximumCatalogSearchCharacters bounds one user-facing session catalog
@@ -135,7 +133,7 @@ func NewCatalogAnchor(favorite bool, updatedAt time.Time, id string) (CatalogAnc
 	if updatedAt.IsZero() {
 		return CatalogAnchor{}, errors.New("sessions: catalog anchor update time is required")
 	}
-	if err := resourceid.ValidateSession(id); err != nil {
+	if err := identity.ValidateSession(id); err != nil {
 		return CatalogAnchor{}, fmt.Errorf("sessions: catalog anchor: %w", err)
 	}
 	return CatalogAnchor{favorite: favorite, updatedAt: updatedAt.UTC(), id: id}, nil
@@ -192,5 +190,8 @@ func (r CatalogRead) Filter() CatalogFilter { return r.filter }
 func (r CatalogRead) Limit() int            { return r.limit }
 
 func (r CatalogRead) After() (CatalogAnchor, bool) {
-	return optional.Present(r.after)
+	if r.after == nil {
+		return CatalogAnchor{}, false
+	}
+	return *r.after, true
 }

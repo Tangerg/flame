@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -31,7 +31,7 @@ func (m modelInvocationState) databaseValue() string { return string(m) }
 // with history_items and runs; these observations never authorize provider replay.
 type ModelInvocationStore struct{ db *sql.DB }
 
-func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
+func newModelInvocationStore(db *sql.DB) *ModelInvocationStore {
 	return &ModelInvocationStore{db: db}
 }
 
@@ -45,7 +45,7 @@ func (m *ModelInvocationStore) ListStartedModelInvocations(
 	if yield == nil {
 		return errors.New("sqlite: model invocation reader is required")
 	}
-	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, `
+	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, `
 		SELECT session_id, run_id, segment_id, call_id, started_at, logical_purpose
 		  FROM model_invocations
 		 WHERE state = ? AND endpoint_json IS NULL
@@ -96,7 +96,7 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: model invocation start time: %w", err)
 	}
-	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at, logical_purpose)
 		 SELECT ?, session_id, run_id, ?, ?, ?, NULL, ?
@@ -212,7 +212,7 @@ func (m *ModelInvocationStore) finish(
 	} else if state == modelInvocationFailed.databaseValue() && usage != nil {
 		return errors.New("sqlite: failed model usage requires a known response")
 	}
-	result, err := sqlitebase.Connection(ctx, m.db).ExecContext(ctx,
+	result, err := sqlite.Connection(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
 		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?, known_response = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
@@ -249,7 +249,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 	if err := validateRunCoordinates("model invocation", sessionID, runID, segmentID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateEffect(callID); err != nil {
+	if err := runs.ValidateInvocation(callID); err != nil {
 		return fmt.Errorf("sqlite: model invocation: %w", err)
 	}
 	return nil
@@ -257,7 +257,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 
 // ModelInvocationRecord retains an attempt and any known response evidence;
 // failed response evidence never authorizes conversation continuation.
-type ModelInvocationRecord struct {
+type modelInvocationRecord struct {
 	KnownResponse            *chat.Response
 	FirstOutputLatencyMillis *int64
 	Usage                    *chat.Usage
@@ -270,7 +270,7 @@ type ModelInvocationRecord struct {
 
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
-func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
+func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]modelInvocationRecord, error) {
 	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis, known_response FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
 	args := []any{runID}
 	if beforeCallID != "" {
@@ -279,12 +279,12 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	}
 	query += ` ORDER BY started_at DESC, call_id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := sqlitebase.Connection(ctx, m.db).QueryContext(ctx, query, args...)
+	rows, err := sqlite.Connection(ctx, m.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page model invocations: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
-	var records []ModelInvocationRecord
+	var records []modelInvocationRecord
 	for rows.Next() {
 		record, err := scanModelInvocation(rows)
 		if err != nil {
@@ -298,28 +298,28 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	return records, nil
 }
 
-func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
-	var record ModelInvocationRecord
+func scanModelInvocation(row scanRow) (modelInvocationRecord, error) {
+	var record modelInvocationRecord
 	var startedAt int64
 	var finishedAt sql.NullInt64
 	var usage sql.NullString
 	var response sql.NullString
 	var latency sql.NullInt64
 	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency, &response); err != nil {
-		return ModelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
+		return modelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
 	}
 	if response.Valid {
 		if record.State != modelInvocationFailed.databaseValue() {
-			return ModelInvocationRecord{}, errors.New("sqlite: response evidence has invalid model state")
+			return modelInvocationRecord{}, errors.New("sqlite: response evidence has invalid model state")
 		}
 		if err := decodeStoredJSON([]byte(response.String), &record.KnownResponse); err != nil {
-			return ModelInvocationRecord{}, err
+			return modelInvocationRecord{}, err
 		}
 		if record.KnownResponse == nil {
-			return ModelInvocationRecord{}, errors.New("sqlite: null model response evidence")
+			return modelInvocationRecord{}, errors.New("sqlite: null model response evidence")
 		}
 		if err := record.KnownResponse.Validate(); err != nil {
-			return ModelInvocationRecord{}, err
+			return modelInvocationRecord{}, err
 		}
 	}
 	if latency.Valid {
@@ -329,7 +329,7 @@ func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 		var err error
 		record.Usage, err = decodeModelInvocationUsage(usage.String)
 		if err != nil {
-			return ModelInvocationRecord{}, err
+			return modelInvocationRecord{}, err
 		}
 	}
 	if record.KnownResponse != nil {
@@ -338,7 +338,7 @@ func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 			reported = record.KnownResponse.Metadata.Usage
 		}
 		if !reflect.DeepEqual(record.Usage, reported) {
-			return ModelInvocationRecord{}, errors.New("sqlite: retained usage differs from known response")
+			return modelInvocationRecord{}, errors.New("sqlite: retained usage differs from known response")
 		}
 	}
 	record.StartedAt = time.Unix(0, startedAt).UTC()

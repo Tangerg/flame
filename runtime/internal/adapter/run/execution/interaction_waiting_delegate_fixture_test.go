@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -75,7 +74,7 @@ func newDelegateQuestionTool(t *testing.T, description string) toolcontract.Tool
 		delegateQuestionAnswer)
 }
 
-func delegateQuestionAnswer(resolution interrupt.Resolution) (string, error) {
+func delegateQuestionAnswer(resolution run.InterruptResolution) (string, error) {
 	answers := resolution.Question().Answers()
 	if len(answers) != 1 || len(answers[0]) != 1 {
 		return "", errors.New("delegated question returned an invalid answer shape")
@@ -94,7 +93,7 @@ func (w *waitingDelegateFixture) start(t *testing.T) runs.StartResult {
 	started, err := w.coordinator.Start(t.Context(), runs.StartCommand{
 		SessionID: "session_1",
 		Capabilities: run.Capabilities{
-			ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+			ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate waiting work"}},
 	})

@@ -3,7 +3,7 @@ package toolset
 import (
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 // readTracker records the file content each session has read. A mutation is
@@ -51,7 +51,7 @@ func (r *readTracker) forgetWorkspace(root string) {
 	defer r.mu.Unlock()
 	for session, paths := range r.seen {
 		for path := range paths {
-			inside, err := pathidentity.Contains(root, path)
+			inside, err := filesystem.ContainsPath(root, path)
 			if err == nil && inside {
 				delete(paths, path)
 			}

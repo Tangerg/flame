@@ -3,8 +3,6 @@ package transcript
 import (
 	"bytes"
 	"slices"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 )
 
 // Equal compares the complete semantic Item, including accepted answers and
@@ -19,11 +17,13 @@ func (i Item) Equal(other Item) bool {
 		i.summary != other.summary || i.droppedMessages != other.droppedMessages {
 		return false
 	}
-	duration, known := optional.Present(i.executionDuration)
-	otherDuration, otherKnown := optional.Present(other.executionDuration)
-	failure, failed := optional.Present(i.failure)
-	otherFailure, otherFailed := optional.Present(other.failure)
-	if duration != otherDuration || known != otherKnown || failure != otherFailure || failed != otherFailed {
+	if (i.executionDuration == nil) != (other.executionDuration == nil) || (i.failure == nil) != (other.failure == nil) {
+		return false
+	}
+	if i.executionDuration != nil && *i.executionDuration != *other.executionDuration {
+		return false
+	}
+	if i.failure != nil && *i.failure != *other.failure {
 		return false
 	}
 	if !slices.EqualFunc(i.content, other.content, func(left, right ContentBlock) bool {

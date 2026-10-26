@@ -3,12 +3,9 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 	"time"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -18,15 +15,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -128,7 +122,7 @@ func bootstrapPending(
 		Interrupts: runsapp.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
 			RunID:    runID,
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: question,
 		}}),
 		Bindings: []runsapp.InterruptBinding{{
@@ -295,7 +289,7 @@ func parkWithGoalLease(
 		GoalIncarnationID: goalIncarnationID,
 		ModelSelection:    testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		CreatedAt: parkCreatedAt,
 	}); err != nil {
@@ -305,13 +299,13 @@ func parkWithGoalLease(
 		SessionID: sessionID, ID: runID, State: run.Waiting,
 		GoalIncarnationID: goalIncarnationID,
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 
 		CreatedAt:   parkCreatedAt,
 		MessageMark: run.UnknownMessageMark(),
 	}),
-		"seg_open", runtimeidentity.CommitID{},
+		"seg_open", runsapp.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
@@ -645,15 +639,15 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		SessionID: childState.ID(), RunID: forkedRun.ID(), ID: "item_child_tool",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted, OccurredAt: forkedAt,
 		Tool: &transcript.ToolInvocation{
-			Name: "read_large", Result: &preview, Offload: &toolresult.Ref{ID: "FORK234"},
+			Name: "read_large", Result: &preview, Offload: &transcript.ToolResultRef{ID: "FORK234"},
 		},
 	})
 	// The parent still holds the body under the id its preview spells out; the
 	// child copies it under that same id so the copied preview stays readable.
-	if err := ss.toolResults.Stage(ctx, toolresult.Stage{ID: "FORK234", SessionID: parent.ID(), Body: "complete durable body"}); err != nil {
+	if err := ss.toolResults.Stage(ctx, transcript.ToolResultStage{ID: "FORK234", SessionID: parent.ID(), Body: "complete durable body"}); err != nil {
 		t.Fatal(err)
 	}
-	forkedBlob := toolresult.Blob{
+	forkedBlob := transcript.ToolResultBlob{
 		ID: "FORK234", SessionID: childState.ID(), Body: "complete durable body",
 		CreatedAt: forkedAt,
 	}
@@ -661,7 +655,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		Session:  childState,
 		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
 		Runs:     []run.Run{forkedRun}, Items: []transcript.Item{forkedItem, forkedToolItem},
-		ToolResults: []toolresult.Blob{forkedBlob},
+		ToolResults: []transcript.ToolResultBlob{forkedBlob},
 		Plan:        []plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}},
 	}, &initial)
 	if err != nil {

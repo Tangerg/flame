@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
+	"github.com/samber/lo"
 )
 
 // conversationMessages is Scope's conversation history plus the retention
@@ -31,7 +31,7 @@ type ConversationStore struct {
 
 // NewConversationStore binds the conversation use cases to a history store.
 func NewConversationStore(messages conversationMessages) (*ConversationStore, error) {
-	if dependency.Missing(messages) {
+	if lo.IsNil(messages) {
 		return nil, errors.New("persistence: conversation history store is required")
 	}
 	return &ConversationStore{messages: messages}, nil

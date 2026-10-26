@@ -8,8 +8,8 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 // Router adapts JSON-RPC envelopes to the binding-neutral Delivery Endpoint.
@@ -28,16 +28,16 @@ func New(endpoint *delivery.Endpoint) (*Router, error) {
 
 // Result holds the JSON-RPC reply and optional stream frames for one envelope.
 type Result struct {
-	Response    *transport.Response
+	Response    *jsonrpc.Response
 	EventStream iter.Seq[StreamFrame]
 }
 
 // Dispatch validates the envelope, decodes its typed parameters and delegates
 // the operation itself to the shared endpoint.
-func (r *Router) Dispatch(ctx context.Context, message transport.Message, options delivery.Options) Result {
-	request, ok := message.(*transport.Request)
+func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options delivery.Options) Result {
+	request, ok := message.(*jsonrpc.Request)
 	if !ok || request == nil {
-		return responseError(transport.ID{}, badEnvelope("expected a JSON-RPC request"))
+		return responseError(jsonrpc.ID{}, badEnvelope("expected a JSON-RPC request"))
 	}
 	if request.ID.IsValid() {
 		if _, ok := request.ID.Raw().(string); !ok {
@@ -64,9 +64,7 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message, option
 	name := delivery.Name(request.Method)
 	meta, found := delivery.Contract().Lookup(name)
 	if !found {
-		return responseError(request.ID, errorToRPC(
-			protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method)),
-		))
+		return responseError(request.ID, errorToRPC(protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method))))
 	}
 	parameters, decodeError := decodeParameters(request.Params, meta.Params)
 	if decodeError != nil {
@@ -83,7 +81,7 @@ func decodeParameters(raw []byte, parameterType reflect.Type) (any, *protocol.Fa
 	return target.Elem().Interface(), nil
 }
 
-func adaptResult(id transport.ID, result delivery.Result) Result {
+func adaptResult(id jsonrpc.ID, result delivery.Result) Result {
 	if result.Failure != nil {
 		return responseError(id, errorToRPC(result.Failure))
 	}

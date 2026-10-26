@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) (commitErr error) {

@@ -2,12 +2,11 @@ package skillauthoring
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"strings"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	skillspec "github.com/Tangerg/scope/skills"
+	"gopkg.in/yaml.v3"
 )
 
 // renderProposal encodes a domain proposal into the SKILL.md storage format. The

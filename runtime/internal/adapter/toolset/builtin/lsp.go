@@ -7,12 +7,11 @@ import (
 	"fmt"
 	"strings"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // BuildLSP exposes the code-intelligence analyzer as one `lsp` tool whose
@@ -153,7 +152,7 @@ func newQuery(ci *codeintel.Analyzer) (toolcontract.Tool, error) {
 func (l *lspRunner) query(ctx context.Context, in lspInput) (string, error) {
 	query, err := in.normalize()
 	if err != nil {
-		return "", toolfailure.Definite(err)
+		return "", pluginsdk.DefiniteToolFailure(err)
 	}
 	root, attached := executionctx.CWD(ctx)
 	if !attached {

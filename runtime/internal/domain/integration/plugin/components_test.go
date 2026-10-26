@@ -20,7 +20,7 @@ func TestExportedComponentsHaveNoHostPlacementPolicy(t *testing.T) {
 			}
 			value.ID = "selector"
 			value.Material = ""
-			value.Selector = &RendererSelector{Kind: RendererFileExtension, Name: "md"}
+			value.Selector = &RendererSelector{Kind: rendererFileExtension, Name: "md"}
 			if err := builder.AdmitComponent(value); err == nil {
 				t.Fatal("export acquired host renderer policy")
 			}
@@ -40,7 +40,7 @@ func TestSessionActionPlacementAdmission(t *testing.T) {
 		{name: "client", scope: "client"},
 		{name: "workspace", scope: "workspace"},
 		{name: "material", scope: "session", material: "memory"},
-		{name: "selector", scope: "session", selector: &RendererSelector{Kind: RendererToolName, Name: "read"}},
+		{name: "selector", scope: "session", selector: &RendererSelector{Kind: rendererToolName, Name: "read"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			builder, err := NewBuilder("actions", "", "")

@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // rejectedArguments are schema-valid calls each tool refuses on its own terms.

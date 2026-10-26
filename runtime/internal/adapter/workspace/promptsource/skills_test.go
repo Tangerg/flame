@@ -12,13 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	sdk "github.com/Tangerg/scope/skills"
-
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sdk "github.com/Tangerg/scope/skills"
 )
 
 const runtimeSkillDescription = "A valid Runtime skill used by the bounded-source counterexample."

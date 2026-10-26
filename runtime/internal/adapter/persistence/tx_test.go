@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -28,14 +27,14 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	sess := NewSessionStore(db)
-	msg := NewMessageStore(db)
-	ints := NewInterruptStore(db)
+	sess := newSessionStore(db)
+	msg := newMessageStore(db)
+	ints := newInterruptStore(db)
 	ctx := context.Background()
 
 	// A multi-store write-set that fails mid-way must leave NO partial state.
 	boom := errors.New("boom")
-	err = sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
@@ -56,7 +55,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 	}
 
 	// A successful write-set commits both stores.
-	if runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		value := testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Title: "t"})
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
@@ -79,13 +78,13 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		"member_1",
 		[]transcript.Interrupt{{
 			ItemID:   "item_1",
-			Kind:     interrupt.Question,
+			Kind:     run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 		}},
 		time.Unix(2, 0).UTC(),
 	)
 	seedParkedRuns(t, db, "s2", pendingSet)
-	if runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		if openErr := ints.Open(ctx, pendingSet); openErr != nil {
 			return openErr
 		}

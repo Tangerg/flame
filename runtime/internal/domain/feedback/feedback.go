@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 var ErrInvalid = errors.New("feedback: invalid entry")
@@ -68,17 +68,17 @@ func NewEntry(sessionID, runID, itemID string, rating Rating, text string, creat
 // write would carry no product information.
 func (e Entry) Validate() error {
 	if e.SessionID != "" {
-		if err := resourceid.ValidateSession(e.SessionID); err != nil {
+		if err := identity.ValidateSession(e.SessionID); err != nil {
 			return fmt.Errorf("%w: Session reference: %v", ErrInvalid, err)
 		}
 	}
 	if e.RunID != "" {
-		if err := resourceid.ValidateRun(e.RunID); err != nil {
+		if err := identity.ValidateRun(e.RunID); err != nil {
 			return fmt.Errorf("%w: Run reference: %v", ErrInvalid, err)
 		}
 	}
 	if e.ItemID != "" {
-		if err := resourceid.ValidateItem(e.ItemID); err != nil {
+		if err := identity.ValidateItem(e.ItemID); err != nil {
 			return fmt.Errorf("%w: Item reference: %v", ErrInvalid, err)
 		}
 	}

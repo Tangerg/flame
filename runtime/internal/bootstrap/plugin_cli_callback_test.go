@@ -11,19 +11,19 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	cfg := poMCPConfig(t)
-	host, api := buildProtocolRuntime(t, cfg, cfg.DefaultWorkspacePath)
+	host, api := buildProtocolRuntime(t, cfg, cfg.defaultWorkspacePath)
 	info, err := api.Discover(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, cfg.Stores.IdempotencyNamespace.String(), cfg.Stores.ValidateDirectory)
+	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, cfg.stores.IdempotencyNamespace.String(), cfg.stores.ValidateDirectory)
 	if err != nil {
 		_ = host.Close()
 		t.Fatal(err)
@@ -76,8 +76,8 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 		}
 		return reply.Output
 	}
-	creation := call(scheduleCreateRequest(r, scheduledomain.Draft{Title: "CLI callback", Instructions: "Complete the original captured work.", CWD: cfg.DefaultWorkspacePath, Cron: "0 0 1 1 *"}), "cli_"+strings.Repeat("8", 32))
-	var saved scheduledomain.Snapshot
+	creation := call(scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Title: "CLI callback", Instructions: "Complete the original captured work.", CWD: cfg.defaultWorkspacePath, Cron: "0 0 1 1 *"}), "cli_"+strings.Repeat("8", 32))
+	var saved testsupport.SchedulesCreateV1Output
 	if err := json.Unmarshal([]byte(creation), &saved); err != nil || saved.ID == "" {
 		t.Fatalf("CLI did not create the private Schedule: %s, %v", creation, err)
 	}

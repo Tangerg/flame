@@ -12,7 +12,7 @@ import (
 
 // ErrInvalidDefinition reports registered Tool metadata that cannot be used as
 // one stable model- and client-facing capability definition.
-var ErrInvalidDefinition = errors.New("tool: invalid definition")
+var errInvalidDefinition = errors.New("tool: invalid definition")
 
 // Group identifies the model-facing Tool surface assigned to one Interaction
 // deployment layer.
@@ -81,13 +81,13 @@ type Tool struct {
 // Validate checks the metadata invariants shared by every Tool catalog.
 func (t Tool) Validate() error {
 	if err := t.ToolDefinition.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidDefinition, err)
+		return fmt.Errorf("%w: %w", errInvalidDefinition, err)
 	}
 	if !utf8.ValidString(t.Description) {
-		return fmt.Errorf("%w: Tool %q description is not valid UTF-8", ErrInvalidDefinition, t.Name)
+		return fmt.Errorf("%w: Tool %q description is not valid UTF-8", errInvalidDefinition, t.Name)
 	}
 	if !t.SafetyClass.Valid() {
-		return fmt.Errorf("%w: Tool %q has unknown safety class %q", ErrInvalidDefinition, t.Name, t.SafetyClass)
+		return fmt.Errorf("%w: Tool %q has unknown safety class %q", errInvalidDefinition, t.Name, t.SafetyClass)
 	}
 	return nil
 }

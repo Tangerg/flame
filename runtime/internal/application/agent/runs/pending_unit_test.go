@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -163,14 +162,14 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			mutate: func(p *Pending) {
 				p.Bindings[0].ToolCallID = ""
 			},
-			want: "executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
+			want: "invocation identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "approval Tool call identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Bindings[0].ToolCallID += " "
 			},
-			want: "executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
+			want: "invocation identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "approval Tool call is also drained",
@@ -219,7 +218,7 @@ func TestPendingRunTreeOwnsTopologyAndContract(t *testing.T) {
 	}
 
 	unadmitted := facts
-	unadmitted.capabilities = run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	unadmitted.capabilities = run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	if err := validatePendingRunTree(pending, parkedTree(pending, unadmitted)); err == nil || !strings.Contains(err.Error(), "outside the root Run's capabilities") {
 		t.Fatalf("unadmitted interrupt kind error = %v", err)
 	}
@@ -275,7 +274,7 @@ func validTreePending() Pending {
 			{
 				ItemID: "item_grandchild", ItemOccurredAt: createdAt,
 				RunID: "run_grandchild",
-				Kind:  interrupt.Approval,
+				Kind:  run.InterruptApproval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 				},
@@ -283,7 +282,7 @@ func validTreePending() Pending {
 			{
 				ItemID: "item_b", ItemOccurredAt: createdAt,
 				RunID: "run_b",
-				Kind:  interrupt.Approval,
+				Kind:  run.InterruptApproval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
@@ -333,7 +332,7 @@ func TestAcceptedAnswersHaveOneFreshAndRecoveryProjection(t *testing.T) {
 			responses := make([]ResumeResponse, len(open))
 			for index, request := range open {
 				responses[index] = ResumeResponse{ItemID: request.ItemID, Kind: request.Kind}
-				if request.Kind == interrupt.Question {
+				if request.Kind == run.InterruptQuestion {
 					responses[index].Question = &QuestionResponse{Answers: [][]string{{"chosen"}}}
 				} else {
 					responses[index].Approval = &ApprovalResponse{Approved: index == 0}

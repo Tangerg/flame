@@ -14,14 +14,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-func newPlanStore(t *testing.T) *PlanStore {
+func planStoreFixture(t *testing.T) *PlanStore {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewPlanStore(db)
+	return newPlanStore(db)
 }
 
 func savePlan(t *testing.T, ctx context.Context, store *PlanStore, sessionID string, steps []plan.Step) plan.State {
@@ -59,7 +59,7 @@ func committedPlan(t testing.TB, current plan.Current) plan.State {
 
 func TestPlanStore_RoundTrip(t *testing.T) {
 	ctx := context.Background()
-	store := newPlanStore(t)
+	store := planStoreFixture(t)
 	const sess = "session-x"
 
 	// Unknown session → empty, not an error.
@@ -126,7 +126,7 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewPlanStore(db)
+	store := newPlanStore(db)
 	savePlan(t, t.Context(), store, "ses_plan_codec", []plan.Step{{
 		Description: "preserve exact plan meaning", Status: plan.StatusPending,
 	}})
@@ -152,7 +152,7 @@ func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			plans, runs := NewPlanStore(db), NewRunStore(db)
+			plans, runs := newPlanStore(db), newRunStore(db)
 			const sessionID, runID = "ses_plan_collection", "run_plan_collection"
 			savePlan(t, t.Context(), plans, sessionID, []plan.Step{{Description: "keep the recorded Plan", Status: plan.StatusPending}})
 			if err := runs.Admit(t.Context(), runDraft(runID, sessionID)); err != nil {
@@ -188,7 +188,7 @@ func newPlanBoundaryStores(t *testing.T) (*PlanStore, *RunStore) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewPlanStore(db), NewRunStore(db)
+	return newPlanStore(db), newRunStore(db)
 }
 
 // TestPlanBoundaryIsRecordedByTheRunThatEnds is the whole reason this table
@@ -309,7 +309,7 @@ func TestPlanBoundaryDiesWithItsRun(t *testing.T) {
 // rollback and import both had.
 func TestPlanIsOwnedByItsSession(t *testing.T) {
 	ctx := context.Background()
-	store := newPlanStore(t)
+	store := planStoreFixture(t)
 
 	first := []plan.Step{{Description: "mine", Status: plan.StatusInProgress}}
 	savePlan(t, ctx, store, "ses_a", first)
@@ -366,7 +366,7 @@ func TestPlanIsOwnedByItsSession(t *testing.T) {
 }
 
 func TestPlanStoreRejectsStaleReplacement(t *testing.T) {
-	store := newPlanStore(t)
+	store := planStoreFixture(t)
 	ctx := t.Context()
 	first := savePlan(t, ctx, store, "ses_A", []plan.Step{{Description: "first", Status: plan.StatusPending}})
 	stale, err := first.Replace([]plan.Step{{Description: "stale", Status: plan.StatusCompleted}}, first.UpdatedAt().Add(time.Second))

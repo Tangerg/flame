@@ -16,8 +16,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
@@ -142,7 +142,7 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	call := func(key string, expected any) {
@@ -160,11 +160,11 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil || reply.Failure != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		want, err := jsoninput.Encode(expected)
+		want, err := jsonvalue.Encode(expected)
 		if err != nil {
 			t.Fatal(err)
 		}
-		actual, err := jsoninput.Parse([]byte(reply.Output))
+		actual, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || actual != want {
 			t.Fatalf("CLI operation differs from the Tool owner's result: %s, want %s, %v", reply.Output, want.JSON(), err)
 		}
@@ -209,7 +209,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source := reviewExamplePackage(t)
 	installed := poMCPActivate(r, source)

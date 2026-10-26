@@ -9,11 +9,10 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 	"go.opentelemetry.io/otel/trace"
-
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
-	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
 // heartbeatInterval is how often an idle streaming response emits an SSE
@@ -36,7 +35,7 @@ const streamWriteTimeout = 30 * time.Second
 // call's JSON-RPC response. Later frames carry the catalog's notification type.
 // Only retained Run events have SSE cursors. Closing transport cancels and joins
 // this observation; the underlying business owner's recovery policy still applies.
-func serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string, cancel context.CancelFunc) {
+func serveStream(w http.ResponseWriter, r *http.Request, resp *jsonrpc.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string, cancel context.CancelFunc) {
 	// Proxy hints + observability headers before NewHTTPWriter — the
 	// library adds Content-Type: text/event-stream itself and leaves our
 	// stricter Cache-Control intact (it only fills no-cache when unset).
@@ -144,8 +143,8 @@ func recoverStreamSourceDefect(ctx context.Context) {
 // writeSSEMessage encodes message as JSON and emits one SSE frame. eventID is
 // the SSE `id:` line — set for run-event frames (drives Last-Event-Id
 // resume), empty for the one-shot response ack frame.
-func writeSSEMessage(sw *sse.Writer, eventID string, message transport.Message) error {
-	body, err := transport.EncodeMessage(message)
+func writeSSEMessage(sw *sse.Writer, eventID string, message jsonrpc.Message) error {
+	body, err := jsonrpc.EncodeMessage(message)
 	if err != nil {
 		return err
 	}

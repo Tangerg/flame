@@ -5,7 +5,6 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"net/http"
 	"path/filepath"
@@ -15,19 +14,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -63,7 +61,7 @@ func selectedCallRef(t *testing.T, composition *CallComposition, resolver models
 	}
 	session := new(sdk.ClientSession)
 	composition.callbacks.AdmitSession(session)
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-plugin-operation", Origin: capability.Model, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: "original-plugin-operation"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +89,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			endpoint := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				physical.Add(1)
 				inv, err := pluginsdk.InvocationFromContext(ctx)
-				if err != nil || inv.Parent != "original-plugin-operation" || inv.Origin != capability.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
+				if err != nil || inv.Parent != "original-plugin-operation" || inv.Origin != extension.Model || inv.ID != inv.Target.Reference || len(request.Tools) != 1 {
 					return nil, errors.New("independent model lost original caller or complete request")
 				}
 				message := chat.NewAssistantMessage(chat.NewTextPart("known " + request.Options.Model))
@@ -150,7 +148,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				t.Fatalf("durable independent endpoints: %+v %v", rows, err)
 			}
 			for _, row := range rows {
-				if row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model || row.Invocation.Model == "" || row.Response.Metadata.Model != "served-"+row.Invocation.Model || row.Response.Metadata.Usage.InputTokens != 11 || row.CostUSD == nil || *row.CostUSD != 1.5 {
+				if row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model || row.Invocation.Model == "" || row.Response.Metadata.Model != "served-"+row.Invocation.Model || row.Response.Metadata.Usage.InputTokens != 11 || row.CostUSD == nil || *row.CostUSD != 1.5 {
 					t.Fatalf("independent evidence replaced: %+v", row)
 				}
 			}
@@ -284,7 +282,7 @@ func TestSelectedModelStreamIsLazyPreservesEvidenceAndJoinsOnRelease(t *testing.
 				t.Fatalf("canonical final outcome: %+v", result)
 			}
 			row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent-stream")
-			if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model || row.Invocation.Request.Messages[0].Text() != "original input" {
+			if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model || row.Invocation.Request.Messages[0].Text() != "original input" {
 				t.Fatalf("stream original evidence: %+v %v", row, err)
 			}
 		})
@@ -301,7 +299,7 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 		method, _ := pluginsdk.ModelSelectionMethod()
 		err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 			parent, err := pluginsdk.InvocationFromContext(ctx)
-			if err != nil || parent.Parent != fmt.Sprintf("selected-route-%d", choices.Load()) || parent.Origin != capability.Model || command.Input.Request.Options.Model != "proposed-model" {
+			if err != nil || parent.Parent != fmt.Sprintf("selected-route-%d", choices.Load()) || parent.Origin != extension.Model || command.Input.Request.Options.Model != "proposed-model" {
 				return pluginsdk.ModelSelection{}, errors.New("selector lost original independent request")
 			}
 			if command.Input.Context.Use != modelchoice.Independent || command.Input.Context.Limits == nil || *command.Input.Context.Limits != (modelchoice.SelectionLimits{InputKind: modelchoice.RequestBytes, MaxInputBytes: selectedCallInput("proposed-model").Budget.MaxRequestBytes, MaxOutputTokens: selectedCallInput("proposed-model").Budget.MaxOutputTokens}) {
@@ -377,7 +375,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
 	ctx = executionctx.WithInvocationOwner(ctx, "logical_executing_owner")
 	ctx = executionctx.WithModelCalls(ctx, sourceAdmissionPublisher{journal: journal, draft: draft})
-	ctx, err = pluginsdk.WithInvocation(ctx, capability.Invocation{ID: "original-plugin-operation", Origin: capability.Model, Parent: "logical_executing_owner", Target: capability.Target{Scope: "call", Reference: "original-plugin-operation"}})
+	ctx, err = pluginsdk.WithInvocation(ctx, extension.Invocation{ID: "original-plugin-operation", Origin: extension.Model, Parent: "logical_executing_owner", Target: extension.Target{Scope: "call", Reference: "original-plugin-operation"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +387,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	input := selectedCallInput("independent-route")
 	forged := executionctx.WithInvocationOwner(t.Context(), "foreign-wire-owner")
 	forged = executionctx.WithScope(forged, runs.ExecutionScope{SessionID: "ses_foreign"})
-	forged, err = pluginsdk.WithInvocation(forged, capability.Invocation{ID: "foreign-wire-owner", Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: "foreign-wire-owner"}})
+	forged, err = pluginsdk.WithInvocation(forged, extension.Invocation{ID: "foreign-wire-owner", Origin: extension.Human, Target: extension.Target{Scope: "call", Reference: "foreign-wire-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +420,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if _, err := auxiliary.Model().Call(executionctx.WithInvocationOwner(ctx, "original-plugin-operation"), &input.Request); err == nil {
 		t.Fatal("auxiliary capture claimed its executing owner identity")
 	}
-	fresh, err := pluginsdk.WithInvocation(ctx, capability.Invocation{ID: "auxiliary-owned", Origin: capability.Model, Parent: "original-plugin-operation", Target: capability.Target{Scope: "call", Reference: "auxiliary-owned"}})
+	fresh, err := pluginsdk.WithInvocation(ctx, extension.Invocation{ID: "auxiliary-owned", Origin: extension.Model, Parent: "original-plugin-operation", Target: extension.Target{Scope: "call", Reference: "auxiliary-owned"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +436,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	}
 	closeAux()
 	row, found, err := journal.EndpointForCaller(t.Context(), "independent-owned")
-	if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model {
+	if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != extension.Model {
 		t.Fatalf("wire replaced captured origin: %+v %v", row, err)
 	}
 	active, _, err := runStore.Run(t.Context(), draft.RunID)
@@ -449,7 +447,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runStore.Suspend(t.Context(), waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
+	if err := runStore.Suspend(t.Context(), waiting, draft.SegmentID, runs.CommitID{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pluginsdk.CallSelectedModel(t.Context(), ref, "independent-after-wait", input); err == nil || calls.Load() != 2 {

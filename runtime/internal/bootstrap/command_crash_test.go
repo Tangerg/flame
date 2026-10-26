@@ -4,36 +4,36 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 const commandCrashExit = 73
 
 type commandCrashStore struct {
-	idempotency.Store
+	operation.ReplayStore
+
 	phase string
 }
 
-func (s commandCrashStore) Claim(ctx context.Context, key, fingerprint string) (idempotency.Record, bool, error) {
-	record, claimed, err := s.Store.Claim(ctx, key, fingerprint)
+func (s commandCrashStore) Claim(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
+	record, claimed, err := s.ReplayStore.Claim(ctx, key, fingerprint)
 	if err == nil && claimed && s.phase == "claim" {
 		os.Exit(commandCrashExit)
 	}
 	return record, claimed, err
 }
 
-func (s commandCrashStore) Complete(ctx context.Context, record idempotency.Record) error {
-	err := s.Store.Complete(ctx, record)
+func (s commandCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
+	err := s.ReplayStore.Complete(ctx, record)
 	if err == nil && s.phase == "receipt" {
 		os.Exit(commandCrashExit)
 	}
@@ -64,16 +64,15 @@ func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, 
 	namespace := db.IdempotencyNamespace
 	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: namespace.String(),
-		IdempotencyStore: commandCrashStore{Store: db.Idempotency, phase: phase},
+		IdempotencyStore: commandCrashStore{ReplayStore: db.Idempotency, phase: phase},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), delivery.RunsCancel,
-		protocol.CancelRunRequest{
-			RunID:  "run_crash",
-			Reason: "once",
-		}, delivery.Options{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
+	return endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), delivery.RunsCancel, protocol.CancelRunRequest{
+		RunID:  "run_crash",
+		Reason: "once",
+	}, delivery.Options{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
 }
 
 func TestCommandCrashHelper(t *testing.T) {

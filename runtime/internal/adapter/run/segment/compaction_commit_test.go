@@ -3,7 +3,6 @@ package segment
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"reflect"
 	"testing"
 	"time"
@@ -13,9 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 

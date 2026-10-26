@@ -4,9 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 func saveTestPlan(ctx context.Context, store *persistence.PlanStore, sessionID string, steps []plan.Step) error {

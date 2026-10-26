@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -24,13 +23,13 @@ type ItemIdentity struct {
 
 // Validate reports whether the identity is complete and canonical.
 func (i ItemIdentity) Validate() error {
-	if err := resourceid.ValidateSession(i.SessionID); err != nil {
+	if err := flameidentity.ValidateSession(i.SessionID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if err := resourceid.ValidateRun(i.RunID); err != nil {
+	if err := flameidentity.ValidateRun(i.RunID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if err := resourceid.ValidateItem(i.ItemID); err != nil {
+	if err := flameidentity.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
 	if i.OccurredAt.IsZero() {
@@ -155,9 +154,17 @@ func NewCompaction(identity ItemIdentity, summary string, droppedMessages int) (
 // RestoreItem rebuilds a complete Item from a technical record.
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	snapshot.Identity.OccurredAt = snapshot.Identity.OccurredAt.UTC()
+	clonedExecutionDuration := snapshot.ExecutionDuration
+	if clonedExecutionDuration != nil {
+		clonedExecutionDuration = new(*clonedExecutionDuration)
+	}
+	clonedFailure := snapshot.Failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
 	item := Item{
 		identity: snapshot.Identity, status: snapshot.Status, finishedAt: snapshot.FinishedAt.UTC(),
-		executionDuration: optional.Clone(snapshot.ExecutionDuration),
+		executionDuration: clonedExecutionDuration,
 		kind:              snapshot.Kind, messagePhase: snapshot.MessagePhase,
 		content: CloneContent(snapshot.Content), text: snapshot.Text,
 		redacted: snapshot.Redacted, question: cloneQuestion(snapshot.Question),
@@ -165,7 +172,7 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 		approvalDecision: snapshot.ApprovalDecision,
 		editedArguments:  snapshot.EditedArguments, denialReason: snapshot.DenialReason,
 		rememberScope: snapshot.RememberScope,
-		failure:       optional.Clone(snapshot.Failure), summary: snapshot.Summary,
+		failure:       clonedFailure, summary: snapshot.Summary,
 		droppedMessages: snapshot.DroppedMessages,
 	}
 	if err := item.validate(); err != nil {
@@ -176,16 +183,24 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 
 // Snapshot returns a complete ownership-isolated representation.
 func (i Item) Snapshot() ItemSnapshot {
+	clonedExecutionDuration := i.executionDuration
+	if clonedExecutionDuration != nil {
+		clonedExecutionDuration = new(*clonedExecutionDuration)
+	}
+	clonedFailure := i.failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
 	return ItemSnapshot{
 		Identity: i.identity, Status: i.status, FinishedAt: i.finishedAt,
-		ExecutionDuration: optional.Clone(i.executionDuration),
+		ExecutionDuration: clonedExecutionDuration,
 		Kind:              i.kind, MessagePhase: i.messagePhase,
 		Content: CloneContent(i.content), Text: i.text,
 		Redacted: i.redacted, Question: cloneQuestion(i.question),
 		Tool: cloneToolInvocation(i.tool), SafetyClass: i.safetyClass,
 		ApprovalDecision: i.approvalDecision,
 		EditedArguments:  i.editedArguments, DenialReason: i.denialReason, RememberScope: i.rememberScope,
-		Failure: optional.Clone(i.failure), Summary: i.summary,
+		Failure: clonedFailure, Summary: i.summary,
 		DroppedMessages: i.droppedMessages,
 	}
 }
@@ -307,7 +322,11 @@ func (i Item) settleToolCall(
 	}
 	i.status, i.finishedAt = status, finishedAt.UTC()
 	i.executionDuration = executionDuration
-	i.tool, i.failure = cloneToolInvocation(&invocation), optional.Clone(failure)
+	clonedFailure := failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
+	i.tool, i.failure = cloneToolInvocation(&invocation), clonedFailure
 	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
@@ -493,8 +512,14 @@ func cloneToolInvocation(invocation *ToolInvocation) *ToolInvocation {
 		return nil
 	}
 	copy := *invocation
-	copy.Result = optional.Clone(invocation.Result)
-	copy.Offload = optional.Clone(invocation.Offload)
+	copy.Result = invocation.Result
+	if copy.Result != nil {
+		copy.Result = new(*copy.Result)
+	}
+	copy.Offload = invocation.Offload
+	if copy.Offload != nil {
+		copy.Offload = new(*copy.Offload)
+	}
 	return &copy
 }
 
@@ -537,7 +562,10 @@ func (i Item) Status() ItemStatus    { return i.status }
 func (i Item) OccurredAt() time.Time { return i.identity.OccurredAt }
 func (i Item) FinishedAt() time.Time { return i.finishedAt }
 func (i Item) ExecutionDuration() (time.Duration, bool) {
-	return optional.Present(i.executionDuration)
+	if i.executionDuration == nil {
+		return 0, false
+	}
+	return *i.executionDuration, true
 }
 func (i Item) Kind() ItemKind                      { return i.kind }
 func (i Item) MessagePhase() MessagePhase          { return i.messagePhase }
@@ -585,5 +613,5 @@ func (i Item) Failure() (tool.Failure, bool) {
 	if i.failure == nil {
 		return tool.Failure{}, false
 	}
-	return *optional.Clone(i.failure), true
+	return *i.failure, true
 }

@@ -20,7 +20,7 @@ func TestTranscriptReadsRetainConflictingContentFactsForValidation(t *testing.T)
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			store := NewTranscriptStore(db)
+			store := newTranscriptStore(db)
 			item, err := transcript.NewUserMessage(transcript.ItemIdentity{
 				SessionID: "ses_decode", RunID: "run_decode", ItemID: "item_decode", OccurredAt: time.Unix(1, 0).UTC(),
 			}, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}})

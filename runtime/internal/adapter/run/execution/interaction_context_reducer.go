@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -23,7 +23,7 @@ const rootOpeningMessageCount = 1
 
 type interactionModelContextReducer struct {
 	compactor    ModelContextCompactor
-	state        InteractionModelContextState
+	state        interactionModelContextState
 	session      *interactionSession
 	start        runs.RootExecutionStart
 	instructions []corechat.Message
@@ -31,17 +31,17 @@ type interactionModelContextReducer struct {
 	// Session state it forms each call's tail, which the model boundary appends
 	// after reduction: measured with the request, never compacted or returned.
 	catalog []corechat.Message
-	counter ModelContextInputTokenCounter
+	counter modelContextInputTokenCounter
 }
 
 func newInteractionModelContextReducer(
 	compactor ModelContextCompactor,
-	state InteractionModelContextState,
+	state interactionModelContextState,
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	instructions []corechat.Message,
 	catalog []corechat.Message,
-	counter ModelContextInputTokenCounter,
+	counter modelContextInputTokenCounter,
 ) *interactionModelContextReducer {
 	return &interactionModelContextReducer{
 		compactor:    compactor,
@@ -126,7 +126,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return nil, err
 	}
 	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
-	calling, err = pluginsdk.WithInvocation(calling, capability.Invocation{ID: identity.String(), Origin: capability.Automatic, Parent: invocation.EffectID().String(), Target: capability.Target{Scope: capability.ScopeCall, Reference: identity.String()}})
+	calling, err = pluginsdk.WithInvocation(calling, extension.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			}
 		}
 		input.ProtectedTail = protectedTail
-		compaction, buildErr = NewTransientModelContextCompaction(input)
+		compaction, buildErr = newTransientModelContextCompaction(input)
 	}
 	if buildErr != nil {
 		return nil, buildErr
@@ -263,7 +263,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	}
 	estimate := result.EstimatedTokens()
 	if len(i.session.modelInputs) > 0 {
-		estimate, err = modeltext.EstimateRequestTokens(validation)
+		estimate, err = model.EstimateRequestTokens(validation)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +363,7 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, i
 		return nil, err
 	}
 	if i.compactor == nil {
-		estimate, err := modeltext.EstimateRequestTokens(transformed)
+		estimate, err := model.EstimateRequestTokens(transformed)
 		if err != nil {
 			return nil, err
 		}

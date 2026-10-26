@@ -3,7 +3,7 @@ package persistence
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // SQLite methods are adapter boundaries: even when an Application aggregate
@@ -11,7 +11,7 @@ import (
 // different durable key. These helpers retain the Domain's exact, bounded
 // resource policy without normalizing the caller's value.
 func validateSessionResource(operation, value string) error {
-	if err := resourceid.ValidateSession(value); err != nil {
+	if err := identity.ValidateSession(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
@@ -25,7 +25,7 @@ func validateOptionalSessionResource(operation, value string) error {
 }
 
 func validateRunResource(operation, value string) error {
-	if err := resourceid.ValidateRun(value); err != nil {
+	if err := identity.ValidateRun(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
@@ -39,14 +39,14 @@ func validateOptionalRunResource(operation, value string) error {
 }
 
 func validateSegmentResource(operation, value string) error {
-	if err := resourceid.ValidateSegment(value); err != nil {
+	if err := identity.ValidateSegment(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
 }
 
 func validateItemResource(operation, value string) error {
-	if err := resourceid.ValidateItem(value); err != nil {
+	if err := identity.ValidateItem(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil

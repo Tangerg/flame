@@ -3,14 +3,14 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // Activation is an immutable projection of a session-owned binding graph. Its
 // identity includes configuration and ordered collaborators; releases alone cannot
 // distinguish two different compositions inside the same installed bytes.
 type Activation struct {
-	Identity     fingerprint.Digest
+	Identity     identity.Digest
 	Dependencies []Dependency
 }
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -249,11 +248,11 @@ func (projection *parkedTerminalItemProjection) projectInterrupt(
 		)
 	}
 	switch request.open.Kind() {
-	case interrupt.Question:
+	case rundomain.InterruptQuestion:
 		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted {
 			return fmt.Errorf("sessions: parked question Item %q is not a complete prompt", item.ID())
 		}
-	case interrupt.Approval:
+	case rundomain.InterruptApproval:
 		settled, err := item.AbandonToolCall(owner.abandonmentFailure(), owner.finishedAt)
 		if err != nil {
 			return fmt.Errorf(

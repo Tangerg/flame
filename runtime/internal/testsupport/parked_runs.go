@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // ParkedMember is one waiting Run a test hand-off names.
@@ -30,8 +29,8 @@ func SeedParkedRuns(
 	encoded := ""
 	if !capabilities.IsEmpty() {
 		body, err := json.Marshal(struct {
-			ChildRuns      bool             `json:"childRuns,omitzero"`
-			InterruptKinds []interrupt.Kind `json:"interruptKinds,omitempty"`
+			ChildRuns      bool                `json:"childRuns,omitzero"`
+			InterruptKinds []run.InterruptKind `json:"interruptKinds,omitempty"`
 		}{capabilities.ChildRuns, capabilities.InterruptKinds})
 		if err != nil {
 			t.Fatal(err)

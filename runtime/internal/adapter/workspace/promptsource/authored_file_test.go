@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
@@ -27,8 +27,8 @@ func TestAuthoredPromptAdmissionPreservesInputFailure(t *testing.T) {
 		category error
 		cause    error
 	}{
-		{"directory", workspaceapp.ErrInvalidPromptSource, fileinput.ErrNotRegular},
-		{"oversized", workspaceapp.ErrPromptSourceTooLarge, fileinput.ErrTooLarge},
+		{"directory", workspaceapp.ErrInvalidPromptSource, filesystem.ErrNotRegular},
+		{"oversized", workspaceapp.ErrPromptSourceTooLarge, filesystem.ErrFileTooLarge},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "AGENTS.md")

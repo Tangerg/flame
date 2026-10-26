@@ -6,19 +6,18 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
-
-	"github.com/Tangerg/flame/runtime/contract/samples"
 )
 
 func TestGeneratedSamplesReplaceThePreviousProjection(t *testing.T) {
 	directory := t.TempDir()
+	source := os.DirFS(samplesDir)
 	if err := os.WriteFile(filepath.Join(directory, "retired.json"), []byte(`{}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeSamples(directory); err != nil {
+	if err := writeSamples(source, directory); err != nil {
 		t.Fatal(err)
 	}
-	want, err := fs.Glob(samples.Files, "*.json")
+	want, err := fs.Glob(source, "*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +29,7 @@ func TestGeneratedSamplesReplaceThePreviousProjection(t *testing.T) {
 		t.Fatalf("generated samples = %v, want current source files %v", got, want)
 	}
 	for _, name := range want {
-		expected, err := samples.Files.ReadFile(name)
+		expected, err := fs.ReadFile(source, name)
 		if err != nil {
 			t.Fatal(err)
 		}

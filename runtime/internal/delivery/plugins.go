@@ -8,21 +8,21 @@ import (
 )
 
 const (
-	PluginsNotifyChange        Name = "plugins.notifyChange"
+	pluginsNotifyChange        Name = "plugins.notifyChange"
 	PluginsList                Name = "plugins.list"
 	PluginsCall                Name = "plugins.call"
 	PluginsGetCommand          Name = "plugins.getCommand"
 	PluginsRetireCommand       Name = "plugins.retireCommand"
 	PluginsStream              Name = "plugins.stream"
-	PluginsResolveRequirements Name = "plugins.resolveRequirements"
+	pluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
-	PluginsOpenResources       Name = "plugins.openResources"
+	pluginsOpenResources       Name = "plugins.openResources"
 	PluginsReadResource        Name = "plugins.readResource"
 	PluginsListProviders       Name = "plugins.listProviders"
 	PluginsSelectProvider      Name = "plugins.selectProvider"
-	PluginsListCompositions    Name = "plugins.listCompositions"
+	pluginsListCompositions    Name = "plugins.listCompositions"
 	PluginsSetComposition      Name = "plugins.setComposition"
-	PluginsResolveComposition  Name = "plugins.resolveComposition"
+	pluginsResolveComposition  Name = "plugins.resolveComposition"
 	PluginsInstall             Name = "plugins.install"
 	PluginsStage               Name = "plugins.stage"
 	PluginsSelect              Name = "plugins.select"
@@ -34,13 +34,13 @@ const (
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
 // reaches the plugin owner through that one projection, so they share the set.
 func pluginErrors() []string {
-	return []string{
-		protocol.ErrPluginUnavailable.Error(),
-		protocol.ErrPluginNotFound.Error(),
-		protocol.ErrPluginInUse.Error(),
-		protocol.ErrPluginDisabled.Error(),
-		protocol.ErrPluginStale.Error(),
-		protocol.ErrPluginCommandRetired.Error(),
+	return []string{protocol.ErrPluginUnavailable.
+		Error(), protocol.ErrPluginNotFound.
+		Error(), protocol.ErrPluginInUse.
+		Error(), protocol.ErrPluginDisabled.
+		Error(), protocol.ErrPluginStale.
+		Error(), protocol.ErrPluginCommandRetired.
+		Error(),
 	}
 }
 
@@ -50,7 +50,7 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
 		return s.GetPluginCommand(ctx, in)
 	})
-	r.commandAck(MethodMeta{Name: PluginsRetireCommand, GoName: "RetirePluginCommand", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: IdempotencyOwnerResponse}, func(s interface {
+	r.commandAck(MethodMeta{Name: PluginsRetireCommand, GoName: "RetirePluginCommand", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
 		RetirePluginCommand(context.Context, protocol.PluginCommandRequest) error
 	}, ctx context.Context, in protocol.PluginCommandRequest) error {
 		return s.RetirePluginCommand(ctx, in)
@@ -60,13 +60,13 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 		return s.PreparePluginStream(ctx, in)
 	})
-	r.commandAck(MethodMeta{Name: PluginsNotifyChange, GoName: "NotifyPluginChange", CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
+	r.commandAck(MethodMeta{Name: pluginsNotifyChange, GoName: "NotifyPluginChange", CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
 		NotifyPluginChange(context.Context, protocol.PluginChangeNotice) error
 	}, ctx context.Context, request protocol.PluginChangeNotice) error {
 		return service.NotifyPluginChange(ctx, request)
 	})
 
-	r.subscription(MethodMeta{Name: PluginsOpenResources, GoName: "OpenPluginResources", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+	r.subscription(MethodMeta{Name: pluginsOpenResources, GoName: "OpenPluginResources", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		OpenPluginResources(context.Context, protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)
 	}, ctx context.Context, in protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
 		return s.OpenPluginResources(ctx, in)
@@ -81,7 +81,7 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.ResolvePluginPointRequest) (*protocol.Page[protocol.PluginPointBinding], error) {
 		return s.ResolvePluginPoint(ctx, in)
 	})
-	r.query(MethodMeta{Name: PluginsResolveRequirements, GoName: "ResolvePluginRequirements", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+	r.query(MethodMeta{Name: pluginsResolveRequirements, GoName: "ResolvePluginRequirements", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ResolvePluginRequirements(context.Context, protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error)
 	}, ctx context.Context, in protocol.ResolvePluginRequirementsRequest) (*protocol.Page[protocol.PluginCollaborator], error) {
 		return s.ResolvePluginRequirements(ctx, in)
@@ -101,7 +101,7 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
 		return s.SelectPluginProvider(ctx, in)
 	})
-	r.query(MethodMeta{Name: PluginsListCompositions, GoName: "ListPluginCompositions", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+	r.query(MethodMeta{Name: pluginsListCompositions, GoName: "ListPluginCompositions", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPluginCompositions(context.Context) (*protocol.Page[protocol.PluginComposition], error)
 	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginComposition], error) {
 		return s.ListPluginCompositions(ctx)
@@ -111,7 +111,7 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.SetPluginCompositionRequest) (*protocol.PluginComposition, error) {
 		return s.SetPluginComposition(ctx, in)
 	})
-	r.query(MethodMeta{Name: PluginsResolveComposition, GoName: "ResolvePluginComposition", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+	r.query(MethodMeta{Name: pluginsResolveComposition, GoName: "ResolvePluginComposition", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ResolvePluginComposition(context.Context, protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error)
 	}, ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
 		return s.ResolvePluginComposition(ctx, in)

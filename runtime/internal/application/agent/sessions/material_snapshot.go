@@ -35,7 +35,7 @@ func (c *Coordinator) MaterialView(ctx context.Context, sessionID string) (Mater
 	if err != nil {
 		return MaterialSnapshot{}, View{}, err
 	}
-	activity := ActivityIdle
+	activity := activityIdle
 	for _, value := range snapshot.Runs {
 		activity = activity.with(value)
 	}

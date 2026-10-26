@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -54,11 +54,11 @@ func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 		t.Fatalf("recent Since = (%v, %v), want %v", since, err, want)
 	}
 	for _, days := range []int{0, -1} {
-		if _, err := RecentUsageDays(days); !errors.Is(err, ErrInvalidUsageSummaryPeriod) {
+		if _, err := RecentUsageDays(days); !errors.Is(err, errInvalidUsageSummaryPeriod) {
 			t.Fatalf("RecentDays(%d) = %v", days, err)
 		}
 	}
-	if _, err := (UsageSummaryPeriod{days: 1}).Since(now); !errors.Is(err, ErrInvalidUsageSummaryPeriod) {
+	if _, err := (UsageSummaryPeriod{days: 1}).Since(now); !errors.Is(err, errInvalidUsageSummaryPeriod) {
 		t.Fatalf("corrupt all-time period = %v", err)
 	}
 }
@@ -81,12 +81,12 @@ func TestSummaryPublishesItsSingleCoreClockObservationAndExactRange(t *testing.T
 }
 
 func usd(value float64) *float64 { return &value }
-func usageSource(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
-	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: capability.Invocation{Origin: capability.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
+func usageRecord(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
+	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: extension.Invocation{Origin: extension.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
 	if state == "completed" || state == "failed" {
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 		value.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}}
-		responseJSON, err := jsoninput.Parse([]byte(`{"known":true}`))
+		responseJSON, err := jsonvalue.Parse([]byte(`{"known":true}`))
 		if err != nil {
 			panic(err)
 		}
@@ -96,16 +96,16 @@ func usageSource(id, provider, model, state string, at time.Time, reported *chat
 }
 func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting(t *testing.T) {
 	at := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	primary := usageSource("primary", "provider-a", "selected", "completed", at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
+	primary := usageRecord("primary", "provider-a", "selected", "completed", at, &chat.Usage{InputTokens: 100, OutputTokens: 40, CacheReadInputTokens: new(int64(3)), ReasoningTokens: new(int64(2))}, usd(1.5))
 	primary.SessionID = "ses_one"
 	primary.RunID = "run_one"
 	primary.ServedModel = "served"
 	primary.Response.Metadata.Model = "served"
-	auxiliary := usageSource("title", "provider-b", "served", "failed", at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
+	auxiliary := usageRecord("title", "provider-b", "served", "failed", at.Add(time.Second), &chat.Usage{InputTokens: 10, OutputTokens: 2}, usd(0))
 	auxiliary.SessionID = "ses_one"
-	unknown := usageSource("global", "provider-a", "served", "unknown", at.Add(2*time.Second), nil, nil)
-	unreported := usageSource("unreported", "provider-a", "served", "completed", at.Add(3*time.Second), nil, nil)
-	started := usageSource("started", "provider-b", "served", "started", at.Add(4*time.Second), nil, nil)
+	unknown := usageRecord("global", "provider-a", "served", "unknown", at.Add(2*time.Second), nil, nil)
+	unreported := usageRecord("unreported", "provider-a", "served", "completed", at.Add(3*time.Second), nil, nil)
+	started := usageRecord("started", "provider-b", "served", "started", at.Add(4*time.Second), nil, nil)
 	reporter, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{primary, auxiliary, unknown, unreported, started}}})
 	if err != nil {
 		t.Fatal(err)
@@ -142,8 +142,8 @@ func TestPhysicalUsageIncludesAuxiliaryUnattachedAndUnknownWithoutDoubleCounting
 }
 func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	current := usageSource("current", "provider", "model", "completed", now, &chat.Usage{}, usd(0))
-	old := usageSource("old", "provider", "model", "completed", now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
+	current := usageRecord("current", "provider", "model", "completed", now, &chat.Usage{}, usd(0))
+	old := usageRecord("old", "provider", "model", "completed", now.AddDate(0, 0, -8), &chat.Usage{InputTokens: 1}, usd(2))
 	reader, err := NewUsageReporter(UsageDependencies{Source: usageSourceStub{values: []modelref.EndpointObservation{old, current}}, Now: func() time.Time { return now }})
 	if err != nil {
 		t.Fatal(err)
@@ -163,19 +163,19 @@ func TestPhysicalUsageFiltersAtAdmissionAndRejectsPartialRead(t *testing.T) {
 }
 func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
 	value := usageAccumulator{}
-	first := usageSource("first", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
+	first := usageRecord("first", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: math.MaxInt64}, usd(1))
 	if err := value.addCall(first); err != nil {
 		t.Fatal(err)
 	}
 	before := value
-	if err := value.addCall(usageSource("next", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))); err == nil || !reflect.DeepEqual(before, value) {
+	if err := value.addCall(usageRecord("next", "provider", "model", "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))); err == nil || !reflect.DeepEqual(before, value) {
 		t.Fatal("overflow mutated aggregate")
 	}
 }
 func TestBucketsBySpendRankCostThenUsageThenIdentity(t *testing.T) {
 	values := map[string]*usageAccumulator{}
 	for index, name := range []string{"z", "a", "highest"} {
-		value := usageSource(fmt.Sprint(index), "provider", name, "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
+		value := usageRecord(fmt.Sprint(index), "provider", name, "completed", time.Now().UTC(), &chat.Usage{InputTokens: 1}, usd(1))
 		if name == "highest" {
 			value.CostUSD = usd(2)
 		}

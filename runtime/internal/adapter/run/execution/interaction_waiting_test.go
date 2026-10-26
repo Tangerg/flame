@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -20,7 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
@@ -38,10 +37,10 @@ type questionTool struct {
 	definition chat.ToolDefinition
 	key        string
 	prompt     runs.Interrupt
-	render     func(interrupt.Resolution) (string, error)
+	render     func(run.InterruptResolution) (string, error)
 }
 
-func newQuestionTool(t *testing.T, name, description, key string, fields []runs.QuestionFieldSpec, render func(interrupt.Resolution) (string, error)) toolcontract.Tool {
+func newQuestionTool(t *testing.T, name, description, key string, fields []runs.QuestionFieldSpec, render func(run.InterruptResolution) (string, error)) toolcontract.Tool {
 	t.Helper()
 	schema, err := jsonschema.For[struct{}]()
 	if err != nil {
@@ -54,7 +53,7 @@ func newQuestionTool(t *testing.T, name, description, key string, fields []runs.
 	return &questionTool{
 		definition: definition,
 		key:        key,
-		prompt:     runs.Interrupt{Kind: interrupt.Question, Question: &runs.QuestionPrompt{ToolName: name, Arguments: `{}`, Fields: fields}},
+		prompt:     runs.Interrupt{Kind: run.InterruptQuestion, Question: &runs.QuestionPrompt{ToolName: name, Arguments: `{}`, Fields: fields}},
 		render:     render,
 	}
 }
@@ -91,7 +90,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	)
 	question := newQuestionTool(t, "ask", "Ask for one value before completing.", "question.ask",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
-		func(resolution interrupt.Resolution) (string, error) {
+		func(resolution run.InterruptResolution) (string, error) {
 			toolCalls++
 			return resolution.Question().Answers()[0][0], nil
 		})
@@ -124,7 +123,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	start := interactionTestStart()
 	start.Options = &chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321))}
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +142,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 	)
 	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	resumable := resumption.Resumable()
@@ -237,7 +236,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if !reflect.DeepEqual(steers[0].Messages[0].Content, committedInput.Content) {
 		t.Fatal("resume rewrote original media evidence")
 	}
-	estimated, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []chat.ToolDefinition{question.Definition()}})
+	estimated, err := flamemodel.EstimateRequestTokens(&chat.Request{Messages: requests[0], Options: chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321)), Stop: []string{"TRANSFORMED"}}, Tools: []chat.ToolDefinition{question.Definition()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +283,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -309,7 +308,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
@@ -365,7 +364,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Approval}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -383,7 +382,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 	)
 
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
@@ -438,7 +437,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Approval}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +449,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 	)
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
@@ -517,7 +516,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Approval}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptApproval}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -529,7 +528,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}},
 	)
 	if _, stageContinuationErr := executor.StageAcceptedContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
@@ -587,7 +586,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	}
 	question := newQuestionTool(t, "ask", "Ask before continuing.", "question.after-search",
 		[]runs.QuestionFieldSpec{{Prompt: "Continue?"}},
-		func(resolution interrupt.Resolution) (string, error) {
+		func(resolution run.InterruptResolution) (string, error) {
 			return resolution.Question().Answers()[0][0], nil
 		})
 	model := &advertisementWaitingModel{}
@@ -599,7 +598,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -614,7 +613,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		barrier.Checkpoint(),
 		workspace,
 		ref.ExecutorID,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
@@ -735,30 +734,30 @@ func (p *promptingInteractionAuthorizer) AuthorizeTool(
 		SafetyClass: request.SafetyClass, Risk: domaintool.RiskHigh,
 		Reason: "This Tool changes external state.", Rememberable: true, Tool: request.Tool, SourceFingerprint: request.SourceFingerprint,
 	}
-	return AskToolApproval(prompt)
+	return askToolApproval(prompt)
 }
 
 func (p *promptingInteractionAuthorizer) ResolveToolApproval(
 	_ context.Context,
 	request ToolAuthorizationRequest,
 	_ runs.ApprovalPrompt,
-	resolution interrupt.Resolution,
+	resolution run.InterruptResolution,
 ) (ToolAuthorizationDecision, error) {
 	p.resolved++
 	if resolution.Approval().Decision != approval.Allow {
-		return DenyTool("denied by user"), nil
+		return denyTool("denied by user"), nil
 	}
 	if resolution.Approval().EditedArguments == "" {
-		return AllowTool(), nil
+		return allowTool(), nil
 	}
 	arguments, err := domaintool.ParseArguments(resolution.Approval().EditedArguments)
 	if err != nil {
-		return AllowTool(), err
+		return allowTool(), err
 	}
 	if request.Tool.ModelName() == "" {
-		return AllowTool(), errors.New("missing Tool identity")
+		return allowTool(), errors.New("missing Tool identity")
 	}
-	return AllowToolWithArguments(arguments), nil
+	return allowToolWithArguments(arguments), nil
 }
 
 func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
@@ -837,7 +836,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 		checkpoint,
 		workspace,
 		"exec_probe",
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 	)
 	head, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
 	if err != nil || !found {
@@ -1082,7 +1081,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 	})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -1100,7 +1099,7 @@ func newQuestionCheckpointTool(t *testing.T) toolcontract.Tool {
 	t.Helper()
 	return newQuestionTool(t, "ask", "Ask before completing.", "question.ask",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
-		func(interrupt.Resolution) (string, error) { return "", nil })
+		func(run.InterruptResolution) (string, error) { return "", nil })
 }
 
 func observeInteractionUntilWaiting(

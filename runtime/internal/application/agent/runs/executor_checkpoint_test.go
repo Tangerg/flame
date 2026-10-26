@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -42,7 +42,7 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 				MemberID:  "member_root",
 				RequestID: "request_root",
 				Interrupt: Interrupt{
-					Kind: interrupt.Question,
+					Kind: run.InterruptQuestion,
 					Question: &QuestionPrompt{
 						ToolName:  "ask_user",
 						Arguments: `{}`,
@@ -60,7 +60,7 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 func TestTreeInterruptedRejectsMalformedRequests(t *testing.T) {
 	for _, requests := range [][]MemberInterruption{
 		nil,
-		{{MemberID: "member_root", RequestID: "request_root", Interrupt: Interrupt{Kind: interrupt.Kind("invalid")}}},
+		{{MemberID: "member_root", RequestID: "request_root", Interrupt: Interrupt{Kind: run.InterruptKind("invalid")}}},
 	} {
 		if _, err := NewTreeInterrupted(testExecutorCheckpoint(), requests); err == nil {
 			t.Fatalf("malformed tree requests were admitted: %+v", requests)
@@ -74,7 +74,7 @@ func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 		MemberID:  "member_root",
 		RequestID: "request_root",
 		Interrupt: Interrupt{
-			Kind: interrupt.Question,
+			Kind: run.InterruptQuestion,
 			Question: &QuestionPrompt{
 				ToolName: "ask_user", Arguments: `{}`,
 				Fields: []QuestionFieldSpec{{

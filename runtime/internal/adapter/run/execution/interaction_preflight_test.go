@@ -11,7 +11,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -19,7 +18,7 @@ import (
 func TestContinuationPreflightDoesNotAssembleOrAcquireAWriter(t *testing.T) {
 	workspace := t.TempDir()
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
-	waiting := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}})
+	waiting := rootInteractionExecutionContinuation(checkpoint, workspace, "exec_preflight", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}})
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
@@ -284,7 +284,7 @@ func TestScanChildFilesIgnoresRootAndNestedMatches(t *testing.T) {
 	if len(snapshot.files) != 0 || snapshot.overflow {
 		t.Fatalf("root/nested matches entered snapshot: %+v", snapshot)
 	}
-	physicalRoot, err := pathidentity.Resolve("", root)
+	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,11 +335,11 @@ func TestScanChildFileDirectoryRejectsEscapingReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	physicalBoundary, err := filesystem.ResolvePath("", boundary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	physicalDirectory, err := pathidentity.Resolve("", directory)
+	physicalDirectory, err := filesystem.ResolvePath("", directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestFingerprintResolvedChildFileRejectsEscapingReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	physicalBoundary, err := filesystem.ResolvePath("", boundary)
 	if err != nil {
 		t.Fatal(err)
 	}

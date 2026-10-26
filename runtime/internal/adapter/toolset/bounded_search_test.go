@@ -9,10 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
 type runtimeSearchMatch struct {

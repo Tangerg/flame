@@ -11,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 type fingerprint [sha256.Size]byte
@@ -98,7 +98,7 @@ func verifyObservedFileVersion(root *os.Root, name string, file *os.File, before
 	if err != nil {
 		return fmt.Errorf("inspect current file after reading: %w", err)
 	}
-	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
+	if !filesystem.SameVersion(before, after) || !filesystem.SameVersion(after, current) {
 		return errors.New("file changed while reading")
 	}
 	return nil

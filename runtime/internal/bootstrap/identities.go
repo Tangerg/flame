@@ -1,10 +1,9 @@
 package bootstrap
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/google/uuid"
 )
 
 func newSessionID() string { return session.IDPrefix + uuid.NewString() }

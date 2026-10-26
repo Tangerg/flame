@@ -8,7 +8,7 @@ import (
 )
 
 func TestModelContextCompactionRequiresExactModelSelection(t *testing.T) {
-	_, err := NewTransientModelContextCompaction(ModelContextCompactionInput{
+	_, err := newTransientModelContextCompaction(ModelContextCompactionInput{
 		SessionID: "session_1",
 		Candidate: []corechat.Message{corechat.NewUserMessage(corechat.NewTextPart("compact this"))},
 	})

@@ -8,9 +8,8 @@ import (
 	"log/slog"
 	"runtime/debug"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // pump starts the single goroutine that owns every mutable route and reducer in

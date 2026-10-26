@@ -9,12 +9,11 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -210,7 +209,7 @@ type rewriteResourceHook struct{}
 
 func (rewriteResourceHook) BeforeToolUse(context.Context, InteractionToolHookInput) (InteractionToolHookDecision, error) {
 	arguments, err := domaintool.ParseArguments(`{"resource":"C"}`)
-	return AllowToolHook(false, &arguments), err
+	return allowToolHook(false, &arguments), err
 }
 
 func (rewriteResourceHook) AfterToolUse(context.Context, InteractionToolHookInput) error { return nil }
@@ -219,7 +218,7 @@ type rewriteResourceAuthorizer struct{ allowInteractionTools }
 
 func (rewriteResourceAuthorizer) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
 	arguments, err := domaintool.ParseArguments(`{"resource":"C"}`)
-	return AllowToolWithArguments(arguments), err
+	return allowToolWithArguments(arguments), err
 }
 
 func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {

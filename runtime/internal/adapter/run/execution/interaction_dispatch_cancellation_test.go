@@ -9,9 +9,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
-
 	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func mustInteractionProcessID(t *testing.T, value string) agent.ProcessID {

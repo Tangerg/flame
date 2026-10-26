@@ -8,15 +8,15 @@ import (
 	"fmt"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 var (
-	ErrInvalidChildRunStartReservation  = errors.New("sqlite: invalid child Run start reservation")
-	ErrChildRunStartReservationConflict = errors.New("sqlite: child Run start reservation conflict")
+	errInvalidChildRunStartReservation  = errors.New("sqlite: invalid child Run start reservation")
+	errChildRunStartReservationConflict = errors.New("sqlite: child Run start reservation conflict")
 )
 
 // ChildRunStartConclusion is the durable conclusion of an opaque reservation.
@@ -42,7 +42,7 @@ func parseChildRunStartState(raw string) (childRunStartState, error) {
 	case childRunStartStateReserved, childRunStartStateStarted, childRunStartStateAborted:
 		return state, nil
 	default:
-		return "", ErrChildRunStartReservationConflict
+		return "", errChildRunStartReservationConflict
 	}
 }
 
@@ -74,20 +74,20 @@ func (c ChildRunStartReservationRecord) same(other ChildRunStartReservationRecor
 }
 
 func (c ChildRunStartReservationRecord) validate() error {
-	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
+	if err := runs.ValidateMember(c.MemberID); err != nil {
+		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 	}
-	if err := resourceid.ValidateSession(c.SessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
+	if err := identity.ValidateSession(c.SessionID); err != nil {
+		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 	}
 	if len(c.Payload) == 0 {
-		return fmt.Errorf("%w: payload", ErrInvalidChildRunStartReservation)
+		return fmt.Errorf("%w: payload", errInvalidChildRunStartReservation)
 	}
 	if c.CreatedAt.IsZero() {
-		return fmt.Errorf("%w: creation time", ErrInvalidChildRunStartReservation)
+		return fmt.Errorf("%w: creation time", errInvalidChildRunStartReservation)
 	}
 	if err := instant.Validate(c.CreatedAt); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidChildRunStartReservation, err)
+		return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (c ChildRunStartReservationRecord) validate() error {
 // publications remain idempotent without guessing from absence.
 type ChildRunStartReservationStore struct{ db *sql.DB }
 
-func NewChildRunStartReservationStore(db *sql.DB) *ChildRunStartReservationStore {
+func newChildRunStartReservationStore(db *sql.DB) *ChildRunStartReservationStore {
 	return &ChildRunStartReservationStore{db: db}
 }
 
@@ -110,7 +110,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 	if err := record.validate(); err != nil {
 		return err
 	}
-	result, err := sqlitebase.Connection(ctx, c.db).ExecContext(ctx, `
+	result, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `
 		INSERT INTO child_run_start_reservations(member_id, session_id, payload, created_at, state)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(member_id) DO NOTHING`,
@@ -131,7 +131,7 @@ func (c *ChildRunStartReservationStore) Reserve(
 		return err
 	}
 	if !existing.same(record) {
-		return ErrChildRunStartReservationConflict
+		return errChildRunStartReservationConflict
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record Ch
 		return false, err
 	}
 	if !existing.same(record) {
-		return false, ErrChildRunStartReservationConflict
+		return false, errChildRunStartReservationConflict
 	}
 	return state == expected, nil
 }
@@ -176,21 +176,21 @@ func (c *ChildRunStartReservationStore) Conclude(
 	}
 	existing, state, err := c.load(ctx, record.MemberID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return false, ErrChildRunStartReservationConflict
+		return false, errChildRunStartReservationConflict
 	}
 	if err != nil {
 		return false, err
 	}
 	if !existing.same(record) {
-		return false, ErrChildRunStartReservationConflict
+		return false, errChildRunStartReservationConflict
 	}
 	if state == concludedState {
 		return false, nil
 	}
 	if state != childRunStartStateReserved {
-		return false, ErrChildRunStartReservationConflict
+		return false, errChildRunStartReservationConflict
 	}
-	result, err := sqlitebase.Connection(ctx, c.db).ExecContext(ctx, `
+	result, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `
 		UPDATE child_run_start_reservations
 		SET state = ?
 		WHERE member_id = ? AND state = ?`, concludedState.String(), record.MemberID, childRunStartStateReserved.String())
@@ -202,7 +202,7 @@ func (c *ChildRunStartReservationStore) Conclude(
 		return false, fmt.Errorf("sqlite: inspect child Run start conclusion: %w", err)
 	}
 	if changed != 1 {
-		return false, ErrChildRunStartReservationConflict
+		return false, errChildRunStartReservationConflict
 	}
 	return true, nil
 }
@@ -216,10 +216,10 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	ctx context.Context,
 	sessionID string,
 ) error {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
+	if err := identity.ValidateSession(sessionID); err != nil {
+		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 	}
-	if _, err := sqlitebase.Connection(ctx, c.db).ExecContext(ctx,
+	if _, err := sqlite.Connection(ctx, c.db).ExecContext(ctx,
 		`DELETE FROM child_run_start_reservations WHERE session_id = ?`, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: delete Session child Run start reservations: %w", err)
@@ -234,7 +234,7 @@ func (c *ChildRunStartReservationStore) load(
 	var record ChildRunStartReservationRecord
 	var createdAt int64
 	var state string
-	err := sqlitebase.Connection(ctx, c.db).QueryRowContext(ctx, `
+	err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `
 		SELECT member_id, session_id, payload, created_at, state
 		FROM child_run_start_reservations
 		WHERE member_id = ?`, memberID,

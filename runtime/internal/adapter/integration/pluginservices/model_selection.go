@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -68,8 +68,8 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		return modelchoice.Selection{}, err
 	}
 	id := uuid.NewString()
-	target := capability.Target{Scope: capability.ScopeCall, Reference: id}
-	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: target}
+	target := extension.Target{Scope: extension.ScopeCall, Reference: id}
+	invocation := extension.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
 	if parent, err := operation.Capture(ctx, target); err == nil {
 		invocation.Origin = parent.Origin
 		invocation.Parent = parent.ID

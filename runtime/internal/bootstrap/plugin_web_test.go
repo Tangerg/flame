@@ -6,12 +6,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/plugins/web/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/tools/web"
@@ -50,8 +50,8 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "web"))
 	if len(installed.Selected.Inputs) != 2 {
@@ -72,15 +72,15 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 	if name.Load().(string) == "" {
 		t.Fatal("installed search tool is missing")
 	}
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.WebCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode(web.SearchRequest{Query: "fixture query", MaxResults: 1})
+	input, err := jsonvalue.Encode(web.SearchRequest{Query: "fixture query", MaxResults: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Capability.Identity().String(), Method: contracts.Search.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
+	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Identity().String(), Method: testsupport.WebSearchV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
 	if typed.Failure == nil || typed.Failure.Code != "search_not_configured" {
 		t.Fatalf("parent credentials became installation authority: %+v", typed)
 	}

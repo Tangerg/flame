@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -106,7 +105,7 @@ func trimPart(p chat.Part) (chat.Part, bool) {
 // deliberately distinct from the eviction placeholder and names no retrieval
 // handle — this trim is lossy, so the model must not try to read it back.
 func clipResult(s string) string {
-	return modeltext.HeadTail(s, ladderResultCap, func(elided int) string {
+	return model.HeadTail(s, ladderResultCap, func(elided int) string {
 		return fmt.Sprintf("\n…[%d bytes trimmed on compaction; not retrievable]…\n", elided)
 	})
 }

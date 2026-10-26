@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -219,7 +218,7 @@ func rememberedRuleCandidates(
 	candidates := make([]RememberedRuleCandidate, 0, len(answers))
 	for index, answer := range answers {
 		open := pending.Interrupts[index]
-		if open.Kind() != interrupt.Approval || open.Approval == nil || !open.Approval.Rememberable {
+		if open.Kind() != run.InterruptApproval || open.Approval == nil || !open.Approval.Rememberable {
 			continue
 		}
 		resolution := answer.Resolution.Approval()

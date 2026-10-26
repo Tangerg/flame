@@ -16,14 +16,14 @@ import (
 
 func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.T) {
 	cfg := poMCPConfig(t)
-	active := filepath.Join(cfg.SkillsUserDir, "verify", "SKILL.md")
+	active := filepath.Join(cfg.skillsUserDir, "verify", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(active), 0700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(active, []byte("---\nname: verify\ndescription: Verify changes\n---\nRun the checks."), 0600); err != nil {
 		t.Fatal(err)
 	}
-	library, err := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
+	library, err := skillauthoring.NewStore(cfg.skillsUserDir, skills.ScopeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	}
 	component := installed.Selected.Components[0]
 	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
-	query := protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}
+	query := protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}
 	detail := protocol.SkillDetailRequest{Workspace: query.Workspace, Name: "verify"}
 	inspect := func() {
 		t.Helper()

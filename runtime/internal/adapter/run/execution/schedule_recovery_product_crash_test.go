@@ -16,12 +16,14 @@ import (
 	"testing"
 	"time"
 
-	scheduledb "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
@@ -202,27 +204,6 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			negative := cut == "absent" || cut == "conflict" || cut == "malformed" || cut == "disabled"
-			if negative && cut != "disabled" {
-				raw, err := os.ReadFile(evidence + "." + initial)
-				if err != nil {
-					t.Fatal(err)
-				}
-				var witness struct {
-					DataDirectory string `json:"dataDirectory"`
-				}
-				if err := json.Unmarshal(raw, &witness); err != nil {
-					t.Fatal(err)
-				}
-				db, err := scheduledb.Open(t.Context(), filepath.Join(witness.DataDirectory, "schedules.db"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				statement := map[string]string{"absent": `DELETE FROM commands WHERE method='flame.schedules/create.v1'`, "conflict": `UPDATE commands SET business_input_json='{}' WHERE method='flame.schedules/create.v1'`, "malformed": `UPDATE commands SET reply='{"unexpected":"result"}' WHERE method='flame.schedules/create.v1'`}[cut]
-				_, err = db.ExecContext(t.Context(), statement)
-				if err := errors.Join(err, db.Close()); err != nil {
-					t.Fatal(err)
-				}
-			}
 			if cut == "query" || cut == "resolution" {
 				invoke(cut, true)
 			}
@@ -303,7 +284,10 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			var witness struct {
 				DataDirectory string `json:"dataDirectory"`
-				Response      struct {
+				Request       struct {
+					Params sdk.CallToolParamsRaw `json:"params"`
+				} `json:"request"`
+				Response struct {
 					Result struct {
 						StructuredContent struct {
 							Schedule struct {
@@ -316,25 +300,9 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err := json.Unmarshal(raw, &witness); err != nil {
 				t.Fatal(err)
 			}
-			db, err := scheduledb.Open(t.Context(), filepath.Join(witness.DataDirectory, "schedules.db"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer db.Close()
-			var schedules, commands int
-			var createdID string
-			if err := db.QueryRowContext(t.Context(), `SELECT count(*),min(id) FROM schedules`).Scan(&schedules, &createdID); err != nil {
-				t.Fatal(err)
-			}
-			if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method='flame.schedules/create.v1'`).Scan(&commands); err != nil {
-				t.Fatal(err)
-			}
-			wantCommands := 1
-			if cut == "absent" {
-				wantCommands = 0
-			}
-			if schedules != 1 || commands != wantCommands || createdID != witness.Response.Result.StructuredContent.Schedule.ID {
-				t.Fatalf("backend creations=%d receipts=%d original ID=%q current ID=%q", schedules, commands, witness.Response.Result.StructuredContent.Schedule.ID, createdID)
+			createdID := readScheduleOwner(t, packages, witness.DataDirectory, witness.Request.Params)
+			if createdID != witness.Response.Result.StructuredContent.Schedule.ID {
+				t.Fatalf("recovery changed the original creation: original ID=%q current ID=%q", witness.Response.Result.StructuredContent.Schedule.ID, createdID)
 			}
 			if negative {
 				if cut != "disabled" && len(current.CurrentRun.UnresolvedEffects()) != 1 {
@@ -362,8 +330,8 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err := json.Unmarshal(result, &view); err != nil || view.Schedule.Title != title || view.Schedule.ID == "" {
 				t.Fatalf("original model result: %s,%v", result, err)
 			}
-			if schedules != 1 || commands != 1 || createdID != view.Schedule.ID {
-				t.Fatalf("backend creations=%d receipts=%d original ID=%q recovered ID=%q", schedules, commands, createdID, view.Schedule.ID)
+			if createdID != view.Schedule.ID {
+				t.Fatalf("model recovery changed the original result: owner ID=%q recovered ID=%q", createdID, view.Schedule.ID)
 			}
 			if cut == "resolution" {
 				if _, err := os.Stat(evidence + ".finish"); !errors.Is(err, os.ErrNotExist) {
@@ -434,4 +402,64 @@ func scheduleResolutionCommitted(ctx context.Context, home string) (settled bool
 		}
 	}
 	return false, nil
+}
+
+// Inspect a stopped release through the public backend contract. The crash
+// driver never reads or edits the plugin's private schema or ledger.
+func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sdk.CallToolParamsRaw) string {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), filepath.Join(packages, "schedules", "bin", "schedules"))
+	command.Env = append(os.Environ(), "PLUGIN_DATA="+dataDirectory)
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	client := sdk.NewClient(&sdk.Implementation{Name: "schedule-owner-check"}, nil)
+	if err := pluginsdk.RegisterClient(client); err != nil {
+		t.Fatal(err)
+	}
+	session, err := client.Connect(t.Context(), &sdk.CommandTransport{Command: command}, nil)
+	if err != nil {
+		t.Fatalf("connect original backend: %v\n%s", err, stderr.String())
+	}
+	defer func() {
+		if err := session.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	contract, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := testsupport.CallCapability[testsupport.SchedulesListV1Input, testsupport.SchedulesListV1Output](t.Context(), session, contract, "schedules", testsupport.SchedulesListV1Method, "", testsupport.SchedulesListV1Input{}, sdk.ParamsBase{})
+	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
+		t.Fatalf("original backend creation: %+v, %v", page, err)
+	}
+	var invocation extension.Invocation
+	if err := json.Unmarshal(original.Meta[pluginsdk.InvocationMetadataKey], &invocation, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatal(err)
+	}
+	ctx, err := pluginsdk.WithInvocation(t.Context(), invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, err := jsonvalue.Parse(original.Arguments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := pluginsdk.ReadToolReceipt(ctx, session, invocation.ID, original.Name, input)
+	if err != nil || receipt == nil {
+		t.Fatalf("committed original Tool receipt: %v, %v", receipt, err)
+	}
+	encoded, err := json.Marshal(receipt.Details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output struct {
+		Schedule struct {
+			ID string `json:"schedule_id"`
+		} `json:"schedule"`
+	}
+	if err := json.Unmarshal(encoded, &output); err != nil || output.Schedule.ID != page.Rows[0].ID {
+		t.Fatalf("receipt differs from original creation: %s, %v", encoded, err)
+	}
+	return page.Rows[0].ID
 }

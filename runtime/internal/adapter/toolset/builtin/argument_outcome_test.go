@@ -4,9 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Rejecting the model's arguments happens before any command is launched, so the

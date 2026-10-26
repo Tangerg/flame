@@ -9,16 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/scope/core/chat"
-	skillspec "github.com/Tangerg/scope/skills"
-
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
@@ -45,7 +43,7 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cfg := runtimeConfigWithRequiredDeps(t)
-			path := filepath.Join(cfg.SkillsUserDir, "run-tests", skillspec.SkillFile)
+			path := filepath.Join(cfg.skillsUserDir, "run-tests", skillspec.SkillFile)
 			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 				t.Fatal(err)
 			}
@@ -61,11 +59,11 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			store, err := persistence.NewConversationStore(cfg.Stores.ChatHistory)
+			store, err := persistence.NewConversationStore(cfg.stores.ChatHistory)
 			if err != nil {
 				t.Fatal(err)
 			}
-			compactions, err := persistence.NewConversationCompactions(store, cfg.Stores.Runs, persistence.Transactor(cfg.Stores.Transactor))
+			compactions, err := persistence.NewConversationCompactions(store, cfg.stores.Runs, persistence.Transactor(cfg.stores.Transactor))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,18 +91,18 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			var result executionadapter.RunMaintenanceResult
 			for range 3 {
 				result = pipeline.Maintain(t.Context(), executionadapter.RunMaintenanceInput{
-					SessionID: sessionID, WorkspaceCWD: cfg.DefaultWorkspacePath, ToolCalls: 8,
+					SessionID: sessionID, WorkspaceCWD: cfg.defaultWorkspacePath, ToolCalls: 8,
 				})
 			}
 			failure := errors.Join(result.Errors...)
 			if test.category != nil {
-				if !errors.Is(failure, test.category) || !errors.Is(failure, fileinput.ErrTooLarge) {
+				if !errors.Is(failure, test.category) || !errors.Is(failure, filesystem.ErrFileTooLarge) {
 					t.Fatalf("document admission lost its category or cause: %v", failure)
 				}
 			} else if failure != nil {
 				t.Fatal(failure)
 			}
-			proposals, err := workspace.skills.Proposals(t.Context(), cfg.DefaultWorkspacePath)
+			proposals, err := workspace.skills.Proposals(t.Context(), cfg.defaultWorkspacePath)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -123,14 +121,14 @@ func TestDefaultMaintenanceUsesAdmittedSkillDocuments(t *testing.T) {
 			if len(proposals) != 1 || !proposals[0].Revises || proposals[0].Origin != skills.ProposalOriginMined {
 				t.Fatalf("mined revision = %+v, %v", proposals, err)
 			}
-			current, err := workspace.skills.Get(t.Context(), cfg.DefaultWorkspacePath, "run-tests")
+			current, err := workspace.skills.Get(t.Context(), cfg.defaultWorkspacePath, "run-tests")
 			if err != nil || !strings.Contains(current.Instructions, "Use the current test command.") {
 				t.Fatalf("mining changed the active document before approval: %+v, %v", current, err)
 			}
-			if err := workspace.skills.ApproveProposal(t.Context(), cfg.DefaultWorkspacePath, proposals[0].Ref); err != nil {
+			if err := workspace.skills.ApproveProposal(t.Context(), cfg.defaultWorkspacePath, proposals[0].Ref); err != nil {
 				t.Fatal(err)
 			}
-			current, err = workspace.skills.Get(t.Context(), cfg.DefaultWorkspacePath, "run-tests")
+			current, err = workspace.skills.Get(t.Context(), cfg.defaultWorkspacePath, "run-tests")
 			if err != nil || !strings.Contains(current.Instructions, "Run go test ./...") {
 				t.Fatalf("approved revision = %+v, %v", current, err)
 			}

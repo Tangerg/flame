@@ -48,13 +48,13 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 		},
 	}}
-	host, api := openProtocolRuntime(t, model)
+	host, api, stores := openProtocolRuntimeWithStores(t, model)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: ctx})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: ctx, IdempotencyStore: stores.Idempotency})
 	if err != nil {
 		t.Fatal(err)
 	}

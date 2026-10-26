@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 type rpcCodeSpec struct {
@@ -78,7 +78,7 @@ func problemCode(problemType string) (int, bool) {
 	return 0, false
 }
 
-func errorToRPC(err error) *transport.Error {
+func errorToRPC(err error) *jsonrpc.Error {
 	if err == nil {
 		return nil
 	}
@@ -87,7 +87,7 @@ func errorToRPC(err error) *transport.Error {
 	return marshalFailure(protocol.ProjectError(err))
 }
 
-func marshalFailure(failure *protocol.Failure) *transport.Error {
+func marshalFailure(failure *protocol.Failure) *jsonrpc.Error {
 	if failure == nil {
 		failure = protocol.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
 	}
@@ -100,27 +100,27 @@ func marshalFailure(failure *protocol.Failure) *transport.Error {
 	if err != nil {
 		return invalidProblemResponse("the runtime could not serialize a valid error response")
 	}
-	return transport.NewError(code, problem.Type, encoded)
+	return protocol.NewRPCError(code, problem.Type, encoded)
 }
 
-func problemError(sentinel error, detail string) *transport.Error {
+func problemError(sentinel error, detail string) *jsonrpc.Error {
 	return marshalFailure(protocol.NewFailure(sentinel, detail))
 }
 
-func invalidProblemResponse(detail string) *transport.Error {
+func invalidProblemResponse(detail string) *jsonrpc.Error {
 	fallback := protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: detail}
 	encoded, err := json.Marshal(fallback, json.Deterministic(true))
 	if err != nil {
-		return transport.NewError(codeInternalError, protocol.ProblemInternalError, nil)
+		return protocol.NewRPCError(codeInternalError, protocol.ProblemInternalError, nil)
 	}
-	return transport.NewError(codeInternalError, protocol.ProblemInternalError, encoded)
+	return protocol.NewRPCError(codeInternalError, protocol.ProblemInternalError, encoded)
 }
 
-func invalidParams(reason string) *transport.Error {
+func invalidParams(reason string) *jsonrpc.Error {
 	return problemError(protocol.ErrInvalidParams, reason)
 }
 
-func badEnvelope(detail string) *transport.Error {
+func badEnvelope(detail string) *jsonrpc.Error {
 	return problemError(protocol.ErrInvalidRequest, detail)
 }
 

@@ -66,8 +66,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 		}, options)
 		t.Fatalf("start commit crash was not reached: %v", result.Failure)
 	}
-	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance,
-		protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: startCrashKey, Operation: protocol.RunCommandStart}, delivery.Options{})
+	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: startCrashKey, Operation: protocol.RunCommandStart}, delivery.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

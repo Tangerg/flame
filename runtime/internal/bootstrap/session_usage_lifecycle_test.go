@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -27,7 +27,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: id, Origin: capability.Human, Target: capability.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: id, Origin: extension.Human, Target: extension.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

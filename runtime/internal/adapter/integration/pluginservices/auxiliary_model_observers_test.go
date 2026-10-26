@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -47,7 +47,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	request.Options.MaxOutputTokens = new(int64(64))
 	calling := func(id string) context.Context {
 		t.Helper()
-		ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-maintenance", Target: capability.Target{Scope: "call", Reference: id}})
+		ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-maintenance", Target: extension.Target{Scope: "call", Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,7 +99,7 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "closing-model", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "closing-model"}})
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "closing-model", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "closing-model"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			}
 			before := request.Clone()
 			for _, id := range []string{"original-context-first", "original-context-second"} {
-				ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: id}})
+				ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: id}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -187,7 +187,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 				t.Fatalf("failed composition reached provider: %d", calls.Load())
 			}
 			store.snapshot.Installation.Disable()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-withdrawn", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-withdrawn"}})
+			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-withdrawn", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-withdrawn"}})
 			if _, err := capture.Model().Call(ctx, request); err == nil {
 				t.Fatal("withdrawn context capture dispatched provider")
 			}
@@ -251,7 +251,7 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			request.Options.MaxOutputTokens = new(int64(64))
 			before := request.Clone()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-capacity", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-capacity"}})
+			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-capacity"}})
 			_, err = capture.Model().Call(ctx, request)
 			wantCalls := int32(0)
 			if count == 272000 {
@@ -294,7 +294,7 @@ func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependenci
 	}
 	request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 	request.Options.MaxOutputTokens = new(int64(64))
-	ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original-context-counting", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "original-context-counting"}})
+	ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-counting"}})
 	result := make(chan error, 1)
 	go func() { _, err := capture.Model().Call(ctx, request); result <- err }()
 	<-started

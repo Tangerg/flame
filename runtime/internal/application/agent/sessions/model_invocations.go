@@ -4,18 +4,18 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-type QueryModelInvocationReader interface {
+type queryModelInvocationReader interface {
 	PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error)
 }
 
 func (c *QueryCoordinator) ListModelInvocationPage(ctx context.Context, runID, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error) {
 	const namespace = "model-invocations"
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return pagination.Page[runs.ModelInvocationCommit]{}, err
 	}
 	filters := []string{runID}

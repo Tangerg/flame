@@ -7,13 +7,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-const SessionsExportTrajectory Name = "sessions.exportTrajectory"
+const sessionsExportTrajectory Name = "sessions.exportTrajectory"
 
 type trajectoryExportUseCases interface {
 	Export(context.Context, string) (sessions.TrajectoryExport, error)
@@ -21,13 +20,13 @@ type trajectoryExportUseCases interface {
 
 func registerExportTrajectory(registry *Registry) {
 	registry.query(MethodMeta{
-		Name: SessionsExportTrajectory, GoName: "ExportTrajectory",
-		Errors: []string{
-			protocol.ErrSessionNotFound.Error(), protocol.ErrSessionBusy.Error(),
-			protocol.ErrExportTooLarge.Error(),
+		Name: sessionsExportTrajectory, GoName: "ExportTrajectory",
+		Errors: []string{protocol.ErrSessionNotFound.
+			Error(), protocol.ErrSessionBusy.Error(), protocol.ErrExportTooLarge.
+			Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
-		Materializes:    []Name{SessionsGet, RunsList, ItemsList, ModelInvocationsList, PlanGet},
+		Materializes:    []Name{SessionsGet, RunsList, ItemsList, modelInvocationsList, planGet},
 	}, func(service interface {
 		ExportTrajectory(context.Context, protocol.ExportTrajectoryRequest) (*protocol.ExportTrajectoryResponse, error)
 	}, ctx context.Context, request protocol.ExportTrajectoryRequest) (*protocol.ExportTrajectoryResponse, error) {
@@ -106,7 +105,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		}
 		out.Messages = append(out.Messages, encoded)
 	}
-	blobs := make(map[toolresult.ID]toolresult.Blob, len(snapshot.ToolResults))
+	blobs := make(map[transcript.ToolResultID]transcript.ToolResultBlob, len(snapshot.ToolResults))
 	for _, blob := range snapshot.ToolResults {
 		blobs[blob.ID] = blob
 	}

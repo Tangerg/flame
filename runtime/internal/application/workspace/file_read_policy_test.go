@@ -28,12 +28,12 @@ func TestWorkspaceFileReadPoliciesOwnDefaultAndClamp(t *testing.T) {
 		if got := DefaultFileReadByteLimit().Bytes(); got != DefaultFileReadBytes {
 			t.Fatalf("default Bytes = %d, want %d", got, DefaultFileReadBytes)
 		}
-		large, err := NewFileReadByteLimit(MaxFileReadBytes + 1)
+		large, err := NewFileReadByteLimit(maxFileReadBytes + 1)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := large.Bytes(); got != MaxFileReadBytes {
-			t.Fatalf("clamped Bytes = %d, want %d", got, MaxFileReadBytes)
+		if got := large.Bytes(); got != maxFileReadBytes {
+			t.Fatalf("clamped Bytes = %d, want %d", got, maxFileReadBytes)
 		}
 		for _, bytes := range []int{0, -1} {
 			if _, err := NewFileReadByteLimit(bytes); !errors.Is(err, ErrInvalidFileReadLimit) {

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	sdk "github.com/Tangerg/scope/skills"
 )
@@ -27,7 +27,7 @@ func TestSkillDocumentAdmissionPreservesKindAndSizeFailures(t *testing.T) {
 				return os.Mkdir(path, 0o755)
 			},
 			category: sdk.ErrInvalidSkill,
-			cause:    fileinput.ErrNotRegular,
+			cause:    filesystem.ErrNotRegular,
 		},
 		{
 			name: "oversized",
@@ -35,7 +35,7 @@ func TestSkillDocumentAdmissionPreservesKindAndSizeFailures(t *testing.T) {
 				return os.Truncate(path, domainskills.MaxAuthoredSkillDocumentBytes+1)
 			},
 			category: domainskills.ErrDocumentTooLarge,
-			cause:    fileinput.ErrTooLarge,
+			cause:    filesystem.ErrFileTooLarge,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

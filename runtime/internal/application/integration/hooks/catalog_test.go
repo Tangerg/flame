@@ -13,7 +13,7 @@ import (
 func TestNewCatalogRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name      string
-		roots     Roots
+		roots     roots
 		inspector Inspector
 		trust     TrustStore
 	}{
@@ -32,7 +32,7 @@ func TestNewCatalogRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newCatalog(t *testing.T, roots Roots, inspector Inspector, trust TrustStore, publish invalidation.Publish) *Catalog {
+func newCatalog(t *testing.T, roots roots, inspector Inspector, trust TrustStore, publish invalidation.Publish) *Catalog {
 	t.Helper()
 	if inspector == nil {
 		inspector = &fakeInspector{}

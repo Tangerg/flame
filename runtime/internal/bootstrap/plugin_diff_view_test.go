@@ -15,7 +15,7 @@ import (
 
 func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *testing.T) {
 	cfg := poMCPConfig(t)
-	root := cfg.DefaultWorkspacePath
+	root := cfg.defaultWorkspacePath
 	git := func(args ...string) {
 		t.Helper()
 		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-C", root, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "user.name=Diff Test", "-c", "user.email=diff@example.invalid"}, args...)...)

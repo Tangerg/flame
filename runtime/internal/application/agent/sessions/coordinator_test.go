@@ -7,15 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestClaimIdleSessionHoldsAndReleasesSession(t *testing.T) {
@@ -109,7 +107,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: interrupt.Question, Question: question,
+					RunID: "run_1", Kind: run.InterruptQuestion, Question: question,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
@@ -125,7 +123,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
 				Capabilities: run.Capabilities{
-					InterruptKinds: []interrupt.Kind{interrupt.Question},
+					InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 				},
 				CreatedAt: createdAt, MessageMark: run.MessageMarkAt(-1),
 			})},
@@ -181,7 +179,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_question", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: interrupt.Question, Question: question,
+					RunID: "run_1", Kind: run.InterruptQuestion, Question: question,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_question", MemberID: "member_1", RequestID: "request_1",
@@ -205,7 +203,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
-				Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+				Capabilities:   run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 				CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark(),
 			})},
 			Items: []transcript.Item{
@@ -268,7 +266,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
-					RunID: "run_1", Kind: interrupt.Approval, Approval: approval,
+					RunID: "run_1", Kind: run.InterruptApproval, Approval: approval,
 				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
@@ -286,7 +284,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				GoalIncarnationID: "lease_1",
 				ModelSelection:    selection,
 				Capabilities: run.Capabilities{
-					InterruptKinds: []interrupt.Kind{interrupt.Approval},
+					InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 				},
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
 					Total: accounting.Totals{CostUSD: &costUSD},
@@ -349,13 +347,13 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	}
 	selection := testsupport.DefaultModelSelection()
 	capabilities := run.Capabilities{
-		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
 	pending := runs.Pending{
 		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: createdAt,
-			RunID: "run_child", Kind: interrupt.Question, Question: question,
+			RunID: "run_child", Kind: run.InterruptQuestion, Question: question,
 		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_child", RequestID: "request_child",

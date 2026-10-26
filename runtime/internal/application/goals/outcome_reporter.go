@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/samber/lo"
 )
 
 // Outcome is a terminal result a Goal Run may report. Any other value is
@@ -53,7 +53,7 @@ type OutcomeReporter struct {
 
 // NewOutcomeReporter constructs terminal outcome reporting over the required store.
 func NewOutcomeReporter(store Store) (*OutcomeReporter, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("goals: outcome store is required")
 	}
 	return &OutcomeReporter{goals: store, now: time.Now}, nil

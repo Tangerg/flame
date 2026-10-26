@@ -4,17 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type PointReference struct {
-	Installation resourceid.InstallationID
+	Installation identity.InstallationID
 	Contribution plugin.ContributionID
 }
 
@@ -22,13 +19,13 @@ func (r PointReference) key() string { return r.Installation.String() + "/" + r.
 
 type PointBinding struct {
 	Reference PointReference
-	Digest    fingerprint.Digest
-	Value     jsoninput.Input
+	Digest    identity.Digest
+	Value     jsonvalue.Value
 }
 
 // ResolvePoint admits consumer-owned values without executing a backend. Order
 // is an immutable projection supplied by the consuming composition owner.
-func ResolvePoint(ctx context.Context, store Store, contract *point.Contract, target point.Context, order []PointReference) ([]PointBinding, error) {
+func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, target extension.PointContext, order []PointReference) ([]PointBinding, error) {
 	if contract == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -42,13 +39,13 @@ func ResolvePoint(ctx context.Context, store Store, contract *point.Contract, ta
 	}
 	declared := false
 	bindings := map[string]PointBinding{}
-	var values []point.Value
+	var values []extension.PointValue
 	for _, snapshot := range snapshots {
 		if !snapshot.Installation.Enabled() {
 			continue
 		}
 		declaration := snapshot.Selected.Declaration()
-		declaresTarget := target.Target.Scope != capability.ScopeInstallation || target.Target.Reference == snapshot.Installation.ID().String()
+		declaresTarget := target.Target.Scope != extension.ScopeInstallation || target.Target.Reference == snapshot.Installation.ID().String()
 		for _, definition := range declaration.Points {
 			if definition.Contract == contract.Identity() && declaresTarget {
 				declared = true
@@ -64,7 +61,7 @@ func ResolvePoint(ctx context.Context, store Store, contract *point.Contract, ta
 				return nil, plugin.ErrInvalid
 			}
 			bindings[key] = PointBinding{Reference: reference, Digest: snapshot.Selected.Digest(), Value: value.Value}
-			values = append(values, point.Value{Key: key, Data: value.Value})
+			values = append(values, extension.PointValue{Key: key, Data: value.Value})
 		}
 	}
 	if !declared {

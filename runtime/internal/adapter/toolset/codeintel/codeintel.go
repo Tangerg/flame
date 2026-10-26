@@ -12,8 +12,8 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/lsp"
+	"github.com/samber/lo"
 )
 
 // ServerSpec is code intelligence's own configuration contract. The adapter
@@ -43,7 +43,7 @@ type Analyzer struct {
 // process-owned lifetime from which lazy language-server launches derive.
 // An empty table falls back to the built-in LSP server table.
 func New(lifetime context.Context, servers []ServerSpec) (*Analyzer, error) {
-	if dependency.Missing(lifetime) {
+	if lo.IsNil(lifetime) {
 		return nil, errors.New("codeintel: lifetime is required")
 	}
 	if len(servers) == 0 {

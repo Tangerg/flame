@@ -40,7 +40,7 @@ func (l FileReadByteLimit) Bytes() int {
 	if l.bytes == 0 {
 		return DefaultFileReadBytes
 	}
-	return min(l.bytes, MaxFileReadBytes)
+	return min(l.bytes, maxFileReadBytes)
 }
 
 // FileLineRange is a one-based inclusive read window. Its zero value is the

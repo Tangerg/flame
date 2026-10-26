@@ -58,9 +58,9 @@ type DiffFile struct {
 type BaselineType string
 
 const (
-	BaselineHead      BaselineType = "head"
-	BaselineMergeBase BaselineType = "mergeBase"
-	BaselineEmptyTree BaselineType = "emptyTree"
+	baselineHead      BaselineType = "head"
+	baselineMergeBase BaselineType = "mergeBase"
+	baselineEmptyTree BaselineType = "emptyTree"
 )
 
 type Baseline struct {

@@ -5,17 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -23,8 +17,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // toolEnvironment groups the tool resolver with the separately-owned MCP
@@ -39,7 +36,7 @@ type toolEnvironment struct {
 	callComposition *pluginservices.CallComposition
 	modelCallbacks  []pluginsdk.Callback
 	utilityModel    models.AuxiliaryResolver
-	closers         []*teardown.Step
+	closers         []*teardownStep
 	admission       *plugins.Admission
 }
 
@@ -56,7 +53,7 @@ type toolEnvironmentDependencies struct {
 	packageSkills  promptsource.PackageSkills
 	registry       *plugins.Registry
 	lifetime       context.Context
-	config         Config
+	config         assemblyConfig
 	approvalPolicy *approvals.RuntimePolicy
 	mcp            mcpEnvironment
 	goalReader     *goals.Reader
@@ -70,16 +67,16 @@ type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
-	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.Stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
+	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.stores.Installations, Callbacks: deps.modelServices.callbacks, Embeddings: deps.modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
 	if err != nil {
 		return toolEnvironment{}, err
 	}
 	admission := plugins.NewAdmission()
-	commands, err := plugins.NewCommands(cfg.Stores.PluginCommands, admission)
+	commands, err := plugins.NewCommands(cfg.stores.PluginCommands, admission)
 	if err != nil {
 		return toolEnvironment{}, err
 	}
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -89,12 +86,12 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		// returns a diagnostic. Step owns the caller deadline; the action itself
 		// must outlive that deadline and return only when the pool generation has
 		// actually settled, so a timed-out Instance retains and later joins it.
-		closers: []*teardown.Step{teardown.Terminal(func(ctx context.Context) error {
+		closers: []*teardownStep{terminalStep(func(ctx context.Context) error {
 			return errors.Join(mcpPool.Shutdown(context.WithoutCancel(ctx)), deps.modelServices.callbacks.Close())
 		})},
 	}
 	environment.admission = admission
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.Stores.Installations, cfg.Stores.ProviderSelections, cfg.Stores.PluginCompositions, mcpPool, commands, deps.publish)
+	commandCalls, err := pluginservices.NewCommandCalls(cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions, mcpPool, commands, deps.publish)
 	if err != nil {
 		return environment, err
 	}
@@ -117,32 +114,32 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.utilityModel = environment.callComposition.Auxiliary(utility)
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.Stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.modelServices.callbacks, Utility: environment.utilityModel, Embeddings: deps.modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}
-	environment.toolResults, err = pluginservices.NewToolResults(cfg.Stores.Installations, mcpPool)
+	environment.toolResults, err = pluginservices.NewToolResults(cfg.stores.Installations, mcpPool)
 	if err != nil {
 		return environment, err
 	}
 	buildConfig := toolset.BuildConfig{
 		Lifetime:      deps.lifetime,
-		UserHome:      cfg.UserHome,
-		SkillsUserDir: cfg.SkillsUserDir, PackageSkills: deps.packageSkills,
-		Online:          cfg.Online,
-		LSPServers:      cfg.LSPServers,
-		A2AAgents:       cfg.A2AAgents,
+		UserHome:      cfg.userHome,
+		SkillsUserDir: cfg.skillsUserDir, PackageSkills: deps.packageSkills,
+		Online:          cfg.online,
+		LSPServers:      cfg.lspServers,
+		A2AAgents:       cfg.a2aAgents,
 		Plan:            deps.plan,
 		Interrupt:       runinput.Require,
 		MCPToolDisabled: deps.mcp.exposure.ToolDisabled,
 		SkillProposals:  deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
-		SandboxShell:         cfg.SandboxShell,
-		SandboxReadOnlyPaths: cfg.SandboxReadOnlyPaths,
+		SandboxShell:         cfg.sandboxShell,
+		SandboxReadOnlyPaths: cfg.sandboxReadOnlyPaths,
 	}
 	buildConfig.SkillUsage = deps.skillStore
 	buildConfig.PlanMode = deps.approvalPolicy
-	buildConfig.ToolResults = cfg.Stores.ToolResults
+	buildConfig.ToolResults = cfg.stores.ToolResults
 	// create_goal is injected after Runs and the Driver exist.
 	buildConfig.GoalReader = deps.goalReader
 	buildConfig.GoalReporter = deps.goalReporter

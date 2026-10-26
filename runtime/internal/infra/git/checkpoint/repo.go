@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
@@ -89,12 +89,12 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 
 func repositoryMatchesWorkspace(gitDir, cwd string) (bool, error) {
 	path := filepath.Join(gitDir, workspaceIdentityFile)
-	file, opened, err := fileinput.Open(path, maxWorkspaceIdentityBytes)
+	file, opened, err := filesystem.OpenFile(path, maxWorkspaceIdentityBytes)
 	if err != nil {
 		return false, fmt.Errorf("checkpoint: open workspace identity: %w", err)
 	}
 	data, readErr := readWorkspaceIdentity(file)
-	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+	verifyErr := filesystem.VerifyPathVersion(file, opened, path)
 	closeErr := file.Close()
 	if err := errors.Join(readErr, verifyErr, closeErr); err != nil {
 		return false, fmt.Errorf("checkpoint: read workspace identity: %w", err)
@@ -110,7 +110,7 @@ func readWorkspaceIdentity(source io.Reader) ([]byte, error) {
 	if len(data) > maxWorkspaceIdentityBytes {
 		return nil, fmt.Errorf(
 			"%w: workspace identity exceeds %d bytes",
-			ErrSnapshotTooLarge, maxWorkspaceIdentityBytes,
+			errSnapshotTooLarge, maxWorkspaceIdentityBytes,
 		)
 	}
 	return data, nil
@@ -218,7 +218,7 @@ func (seed sourceRepositorySeed) resolveAlternates(sourceObjects string) ([]stri
 		if len(alternates) == maxSourceAlternates {
 			return nil, fmt.Errorf(
 				"%w: source repository has more than %d object stores",
-				ErrSnapshotTooLarge, maxSourceAlternates,
+				errSnapshotTooLarge, maxSourceAlternates,
 			)
 		}
 		alternates = append(alternates, alternate)
@@ -256,7 +256,7 @@ func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
 	if len(encodedAlternates) > maxSourceAlternatesBytes {
 		return fmt.Errorf(
 			"%w: resolved source alternates exceed %d bytes",
-			ErrSnapshotTooLarge, maxSourceAlternatesBytes,
+			errSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
 	}
 	if err := os.WriteFile(filepath.Join(seed.gitDir, "objects", "info", "alternates"), encodedAlternates, 0o644); err != nil {
@@ -280,7 +280,7 @@ func copySourceIndex(ctx context.Context, src, dst string) (err error) {
 	if err := cancellation.Err(ctx); err != nil {
 		return err
 	}
-	in, opened, err := fileinput.Open(src, maxSourceIndexBytes)
+	in, opened, err := filesystem.OpenFile(src, maxSourceIndexBytes)
 	// A new source repository may have no index. Only opening that source can
 	// establish its absence; destination and verification failures cannot.
 	if errors.Is(err, os.ErrNotExist) {
@@ -304,9 +304,9 @@ func copySourceIndex(ctx context.Context, src, dst string) (err error) {
 	}
 	var capacityErr error
 	if written > maxSourceIndexBytes {
-		capacityErr = fmt.Errorf("%w: source index exceeds %d bytes", ErrSnapshotTooLarge, maxSourceIndexBytes)
+		capacityErr = fmt.Errorf("%w: source index exceeds %d bytes", errSnapshotTooLarge, maxSourceIndexBytes)
 	}
-	verifyErr := checkpointSourceError(fileinput.VerifyPathVersion(in, opened, src))
+	verifyErr := checkpointSourceError(filesystem.VerifyPathVersion(in, opened, src))
 	return errors.Join(copyErr, capacityErr, verifyErr, cancellation.Err(ctx))
 }
 
@@ -314,7 +314,7 @@ func readSourceAlternates(ctx context.Context, path string) (data []byte, err er
 	if err := cancellation.Err(ctx); err != nil {
 		return nil, err
 	}
-	file, opened, err := fileinput.Open(path, maxSourceAlternatesBytes)
+	file, opened, err := filesystem.OpenFile(path, maxSourceAlternatesBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, cancellation.Err(ctx)
 	}
@@ -332,10 +332,10 @@ func readSourceAlternates(ctx context.Context, path string) (data []byte, err er
 	if len(data) > maxSourceAlternatesBytes {
 		capacityErr = fmt.Errorf(
 			"%w: source alternates exceed %d bytes",
-			ErrSnapshotTooLarge, maxSourceAlternatesBytes,
+			errSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
 	}
-	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+	verifyErr := filesystem.VerifyPathVersion(file, opened, path)
 	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
 		return nil, err
 	}
@@ -343,8 +343,8 @@ func readSourceAlternates(ctx context.Context, path string) (data []byte, err er
 }
 
 func checkpointSourceError(err error) error {
-	if errors.Is(err, fileinput.ErrTooLarge) {
-		return fmt.Errorf("%w: %w", ErrSnapshotTooLarge, err)
+	if errors.Is(err, filesystem.ErrFileTooLarge) {
+		return fmt.Errorf("%w: %w", errSnapshotTooLarge, err)
 	}
 	return err
 }

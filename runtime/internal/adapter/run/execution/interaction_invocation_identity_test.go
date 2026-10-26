@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 )
 
 func TestModelInvocationIdentityBoundsMaximumFrameworkEffect(t *testing.T) {
-	frameworkID, err := agent.ParseEffectID(strings.Repeat("x", runtimeidentity.MaximumExecutorIdentityBytes))
+	frameworkID, err := agent.ParseEffectID(strings.Repeat("x", runs.MaximumIdentityBytes))
 	if err != nil {
 		t.Fatalf("parse maximum Framework EffectID: %v", err)
 	}
@@ -21,8 +21,8 @@ func TestModelInvocationIdentityBoundsMaximumFrameworkEffect(t *testing.T) {
 	if err := identity.Validate(); err != nil {
 		t.Fatalf("generated invocation identity: %v", err)
 	}
-	if len(identity.String()) > runtimeidentity.MaximumExecutorIdentityBytes {
-		t.Fatalf("generated invocation identity has %d bytes, maximum is %d", len(identity.String()), runtimeidentity.MaximumExecutorIdentityBytes)
+	if len(identity.String()) > runs.MaximumIdentityBytes {
+		t.Fatalf("generated invocation identity has %d bytes, maximum is %d", len(identity.String()), runs.MaximumIdentityBytes)
 	}
 	repeated, err := modelInvocationIDFrom(frameworkID, math.MaxUint64)
 	if err != nil || repeated != identity {

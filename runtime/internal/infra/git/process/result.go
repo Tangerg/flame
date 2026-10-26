@@ -39,7 +39,7 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 		return Result{}, err
 	}
 	command := exec.CommandContext(ctx, "git", args...)
-	command.Env = Environment(overrides...)
+	command.Env = environment(overrides...)
 	command.WaitDelay = processWaitDelay
 	procgroup.Prepare(command)
 	command.Cancel = func() error { return procgroup.Stop(command) }

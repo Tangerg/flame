@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -17,10 +15,10 @@ import (
 // one Domain-resolved Run boundary. A parked Run among the dropped identities
 // needs no terminalization: dropping its record also releases the admission slot.
 type RollbackPlan struct {
-	sessionID         resourceid.SessionID
+	sessionID         identity.SessionID
 	keepMessageMark   rundomain.MessageMark
-	dropRunIDs        []resourceid.RunID
-	checkpointRootIDs []runtimeidentity.MemberID
+	dropRunIDs        []identity.RunID
+	checkpointRootIDs []runs.MemberID
 	planReplacement   *plan.Replacement
 }
 
@@ -33,7 +31,7 @@ func NewRollbackPlan(
 	checkpointRootIDs []string,
 	planReplacement *plan.Replacement,
 ) (RollbackPlan, error) {
-	id, err := resourceid.ParseSession(sessionID)
+	id, err := identity.ParseSession(sessionID)
 	if err != nil {
 		return RollbackPlan{}, fmt.Errorf("sessions: rollback plan session: %w", err)
 	}
@@ -53,21 +51,25 @@ func NewRollbackPlan(
 			return RollbackPlan{}, fmt.Errorf("sessions: rollback plan replacement: %w", err)
 		}
 	}
+	clonedPlanReplacement := planReplacement
+	if clonedPlanReplacement != nil {
+		clonedPlanReplacement = new(*clonedPlanReplacement)
+	}
 	return RollbackPlan{
 		sessionID: id, keepMessageMark: boundary.KeepMessageMark,
 		dropRunIDs: dropRunIDs, checkpointRootIDs: checkpointRoots,
-		planReplacement: optional.Clone(planReplacement),
+		planReplacement: clonedPlanReplacement,
 	}, nil
 }
 
-func parseRollbackRunIDs(values []string) ([]resourceid.RunID, error) {
+func parseRollbackRunIDs(values []string) ([]identity.RunID, error) {
 	if len(values) == 0 {
 		return nil, errors.New("sessions: rollback plan has no dropped runs")
 	}
-	ids := make([]resourceid.RunID, len(values))
+	ids := make([]identity.RunID, len(values))
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
-		id, err := resourceid.ParseRun(value)
+		id, err := identity.ParseRun(value)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: rollback plan dropped run[%d]: %w", index, err)
 		}
@@ -80,11 +82,11 @@ func parseRollbackRunIDs(values []string) ([]resourceid.RunID, error) {
 	return ids, nil
 }
 
-func parseRollbackCheckpointRoots(values []string) ([]runtimeidentity.MemberID, error) {
-	ids := make([]runtimeidentity.MemberID, len(values))
+func parseRollbackCheckpointRoots(values []string) ([]runs.MemberID, error) {
+	ids := make([]runs.MemberID, len(values))
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
-		id, err := runtimeidentity.ParseMember(value)
+		id, err := runs.ParseMember(value)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: rollback plan checkpoint root[%d]: %w", index, err)
 		}
@@ -126,5 +128,9 @@ func (r RollbackPlan) CheckpointRootIDs() []string {
 
 // PlanReplacement returns an isolated copy of the boundary Plan transition.
 func (r RollbackPlan) PlanReplacement() *plan.Replacement {
-	return optional.Clone(r.planReplacement)
+	clonedPlanReplacement := r.planReplacement
+	if clonedPlanReplacement != nil {
+		clonedPlanReplacement = new(*clonedPlanReplacement)
+	}
+	return clonedPlanReplacement
 }

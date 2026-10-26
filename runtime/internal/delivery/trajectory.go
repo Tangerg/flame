@@ -13,7 +13,7 @@ const SessionsTrajectory Name = "sessions.trajectory"
 func registerSessionTrajectory(registry *Registry) {
 	registry.query(MethodMeta{
 		Name: SessionsTrajectory, GoName: "ListSessionTrajectory",
-		Materializes: []Name{RunsList, ItemsList, ModelInvocationsList, ModelInvocationsEndpoints},
+		Materializes: []Name{RunsList, ItemsList, modelInvocationsList, modelInvocationsEndpoints},
 		Errors:       []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},

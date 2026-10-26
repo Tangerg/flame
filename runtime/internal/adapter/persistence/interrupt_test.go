@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -28,25 +28,25 @@ func (s seededInterruptStore) Open(ctx context.Context, pending runs.Pending) er
 	return s.InterruptStore.Open(ctx, pending)
 }
 
-func newInterruptStore(t *testing.T) seededInterruptStore {
+func interruptStoreFixture(t *testing.T) seededInterruptStore {
 	t.Helper()
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return seededInterruptStore{InterruptStore: NewInterruptStore(db), db: db, t: t}
+	return seededInterruptStore{InterruptStore: newInterruptStore(db), db: db, t: t}
 }
 
 func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 	ctx := context.Background()
-	store := newInterruptStore(t)
+	store := interruptStoreFixture(t)
 
 	p := runs.Pending{
 		RootRunID:  "run_1",
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: interrupt.Question,
+			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionText}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
@@ -105,7 +105,7 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 // exercises that modernc SQLite supports DELETE ... RETURNING.
 func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 	ctx := context.Background()
-	store := newInterruptStore(t)
+	store := interruptStoreFixture(t)
 	arguments, err := tool.ParseArguments(`{"command":"go test ./..."}`)
 	if err != nil {
 		t.Fatalf("parse approval arguments: %v", err)
@@ -120,7 +120,7 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 		RootRunID:  "run_1",
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: "item_approval", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: interrupt.Approval,
+			ItemID: "item_approval", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: run.InterruptApproval,
 			Approval: &transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 				Risk: tool.RiskHigh, Reason: "executes tests", Rememberable: true,
@@ -160,13 +160,13 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 }
 
 func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing.T) {
-	store := newInterruptStore(t)
+	store := interruptStoreFixture(t)
 	createdAt := time.Unix(10, 0).UTC()
 	pending := runs.Pending{
 		RootRunID:  "run_root",
 		ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: "item_child", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_child", Kind: interrupt.Question,
+			ItemID: "item_child", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_child", Kind: run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
@@ -221,11 +221,11 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 		t.Fatalf("Open database: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
-	store := NewInterruptStore(database)
+	store := newInterruptStore(database)
 	pending := runs.Pending{
 		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_root", Kind: interrupt.Question,
+			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_root", Kind: run.InterruptQuestion,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 		}}),
 		Bindings: []runs.InterruptBinding{{
@@ -270,14 +270,14 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 }
 
 func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
-	store := newInterruptStore(t)
+	store := interruptStoreFixture(t)
 	ctx := t.Context()
 	for _, runID := range []string{"run_1", "run_2"} {
 		err := store.Open(ctx, runs.Pending{
 			RootRunID: runID, ExecutorID: "turn_" + runID,
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_" + runID, ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: runID,
-				Kind: interrupt.Question, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "continue?", Kind: transcript.QuestionText}}},
+				Kind: run.InterruptQuestion, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "continue?", Kind: transcript.QuestionText}}},
 			}}),
 			Bindings: []runs.InterruptBinding{{
 				InterruptItemID: "item_" + runID,

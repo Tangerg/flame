@@ -105,4 +105,4 @@ type ToolResultOffloadSettings struct {
 	Threshold int
 }
 
-const DefaultToolResultOffloadThreshold = 50_000
+const defaultToolResultOffloadThreshold = 50_000

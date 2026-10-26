@@ -12,7 +12,7 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(db)
 	record := ChildRunStartReservationRecord{
 		MemberID: "member-child", SessionID: "session-1",
 		Payload: []byte(`{"run":"child"}`), CreatedAt: time.Unix(1, 2).UTC(),
@@ -46,7 +46,7 @@ func TestChildRunStartReservationRetainsIdempotentConclusion(t *testing.T) {
 	}
 	if _, err := store.Conclude(
 		t.Context(), record, ChildRunStartConclusionAborted,
-	); !errors.Is(err, ErrChildRunStartReservationConflict) {
+	); !errors.Is(err, errChildRunStartReservationConflict) {
 		t.Fatalf("contradictory conclusion = %v, want conflict", err)
 	}
 	var state string
@@ -65,14 +65,14 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(db)
 	record := ChildRunStartReservationRecord{
 		MemberID: "member-child", SessionID: "session-1",
 		Payload: []byte(`{"run":"child"}`), CreatedAt: time.Unix(1, 2).UTC(),
 	}
 	if _, err := store.Conclude(
 		t.Context(), record, ChildRunStartConclusionAborted,
-	); !errors.Is(err, ErrChildRunStartReservationConflict) {
+	); !errors.Is(err, errChildRunStartReservationConflict) {
 		t.Fatalf("missing conclusion = %v, want conflict", err)
 	}
 	if err := store.Reserve(t.Context(), record); err != nil {
@@ -80,7 +80,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 	}
 	changed := record
 	changed.Payload = []byte(`{"run":"other"}`)
-	if err := store.Reserve(t.Context(), changed); !errors.Is(err, ErrChildRunStartReservationConflict) {
+	if err := store.Reserve(t.Context(), changed); !errors.Is(err, errChildRunStartReservationConflict) {
 		t.Fatalf("changed replay = %v, want conflict", err)
 	}
 	if _, err := store.Conclude(
@@ -102,7 +102,7 @@ func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewChildRunStartReservationStore(db)
+	store := newChildRunStartReservationStore(db)
 	for _, record := range []ChildRunStartReservationRecord{
 		{MemberID: "member-a", SessionID: "session-a", Payload: []byte(`{"run":"a"}`), CreatedAt: time.Unix(1, 0)},
 		{MemberID: "member-b", SessionID: "session-b", Payload: []byte(`{"run":"b"}`), CreatedAt: time.Unix(2, 0)},

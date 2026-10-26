@@ -9,22 +9,16 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
-
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -32,97 +26,97 @@ import (
 func TestNewRequiresRuntimeDependencies(t *testing.T) {
 	tests := []struct {
 		name string
-		edit func(*Config)
+		edit func(*assemblyConfig)
 		want string
 	}{
 		{
 			name: "stores",
-			edit: func(cfg *Config) { cfg.Stores = nil },
+			edit: func(cfg *assemblyConfig) { cfg.stores = nil },
 			want: "runtime: Stores is required",
 		},
 		{
 			name: "user home",
-			edit: func(cfg *Config) {
-				cfg.UserHome = ""
+			edit: func(cfg *assemblyConfig) {
+				cfg.userHome = ""
 			},
 			want: "runtime: UserHome is required",
 		},
 		{
 			name: "relative user home",
-			edit: func(cfg *Config) {
-				cfg.UserHome = "relative-home"
+			edit: func(cfg *assemblyConfig) {
+				cfg.userHome = "relative-home"
 			},
 			want: "runtime: UserHome must be absolute",
 		},
 		{
 			name: "default workspace path",
-			edit: func(cfg *Config) {
-				cfg.DefaultWorkspacePath = ""
+			edit: func(cfg *assemblyConfig) {
+				cfg.defaultWorkspacePath = ""
 			},
 			want: "runtime: DefaultWorkspacePath is required",
 		},
 		{
 			name: "relative default workspace path",
-			edit: func(cfg *Config) {
-				cfg.DefaultWorkspacePath = "relative-workspace"
+			edit: func(cfg *assemblyConfig) {
+				cfg.defaultWorkspacePath = "relative-workspace"
 			},
 			want: "runtime: DefaultWorkspacePath must be absolute",
 		},
 		{
 			name: "missing skills user directory",
-			edit: func(cfg *Config) { cfg.SkillsUserDir = "" },
+			edit: func(cfg *assemblyConfig) { cfg.skillsUserDir = "" },
 			want: "runtime: SkillsUserDir is required",
 		},
 		{
 			name: "relative skills user directory",
-			edit: func(cfg *Config) {
-				cfg.SkillsUserDir = "relative-skills"
+			edit: func(cfg *assemblyConfig) {
+				cfg.skillsUserDir = "relative-skills"
 			},
 			want: "runtime: SkillsUserDir must be absolute",
 		},
 		{
 			name: "relative sandbox directory",
-			edit: func(cfg *Config) {
-				cfg.SandboxDir = "relative-sandbox"
+			edit: func(cfg *assemblyConfig) {
+				cfg.sandboxDir = "relative-sandbox"
 			},
 			want: "runtime: SandboxDir must be absolute when set",
 		},
 		{
 			name: "relative sandbox read-only path",
-			edit: func(cfg *Config) {
-				cfg.SandboxReadOnlyPaths = []string{"relative-read-only"}
+			edit: func(cfg *assemblyConfig) {
+				cfg.sandboxReadOnlyPaths = []string{"relative-read-only"}
 			},
 			want: "runtime: SandboxReadOnlyPaths[0] must be absolute when set",
 		},
 		{
 			name: "relative checkpoint directory",
-			edit: func(cfg *Config) {
-				cfg.CheckpointDir = "relative-checkpoints"
+			edit: func(cfg *assemblyConfig) {
+				cfg.checkpointDir = "relative-checkpoints"
 			},
 			want: "runtime: CheckpointDir must be absolute when set",
 		},
 		{
 			name: "chat resolver",
-			edit: func(cfg *Config) {
-				cfg.ChatResolver = nil
+			edit: func(cfg *assemblyConfig) {
+				cfg.chatResolver = nil
 			},
 			want: "runtime: ChatResolver is required",
 		},
 		{
 			name: "typed nil chat resolver",
-			edit: func(cfg *Config) { cfg.ChatResolver = (*modeladapter.ChatResolver)(nil) },
+			edit: func(cfg *assemblyConfig) { cfg.chatResolver = (*modeladapter.ChatResolver)(nil) },
 			want: "runtime: ChatResolver is required",
 		},
 		{
 			name: "provider registry",
-			edit: func(cfg *Config) {
-				cfg.ProviderRegistry = nil
+			edit: func(cfg *assemblyConfig) {
+				cfg.providerRegistry = nil
 			},
 			want: "runtime: ProviderRegistry is required",
 		},
 		{
 			name: "typed nil provider registry",
-			edit: func(cfg *Config) { cfg.ProviderRegistry = (*persistence.ProviderStore)(nil) },
+			edit: func(cfg *assemblyConfig) { cfg.providerRegistry = (*persistence.ProviderStore)(nil) },
 			want: "runtime: ProviderRegistry is required",
 		},
 	}
@@ -132,7 +126,7 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			cfg := runtimeConfigWithRequiredDeps(t)
 			tt.edit(&cfg)
 
-			_, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+			_, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("assemble error = %v, want containing %q", err, tt.want)
 			}
@@ -148,7 +142,7 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 		toolClosed     atomic.Int32
 		resourceClosed atomic.Int32
 	)
-	cfg.Resources = []TerminalResource{closerFunc(func() error {
+	cfg.resources = []terminalResource{closerFunc(func() error {
 		resourceClosed.Add(1)
 		return nil
 	})}
@@ -161,13 +155,13 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 		if err != nil {
 			return toolEnvironment{}, err
 		}
-		toolRuntime.closers = append(toolRuntime.closers, teardown.Terminal(func(context.Context) error {
+		toolRuntime.closers = append(toolRuntime.closers, terminalStep(func(context.Context) error {
 			toolClosed.Add(1)
 			return nil
 		}))
 		return toolRuntime, buildErr
 	}
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildTools)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildTools)
 	if !errors.Is(err, buildErr) {
 		t.Fatalf("assemble error = %v, want complete tool-environment failure", err)
 	}
@@ -185,26 +179,26 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testing.T) {
 	for _, test := range []struct {
 		name string
-		edit func(*Config)
+		edit func(*assemblyConfig)
 	}{
-		{name: "default model", edit: func(cfg *Config) { cfg.Provider = "" }},
-		{name: "typed nil chat resolver", edit: func(cfg *Config) { cfg.ChatResolver = (*modeladapter.ChatResolver)(nil) }},
-		{name: "typed nil provider registry", edit: func(cfg *Config) { cfg.ProviderRegistry = (*persistence.ProviderStore)(nil) }},
-		{name: "session-only approval mode", edit: func(cfg *Config) { cfg.ApprovalMode = approval.ModePlan }},
-		{name: "invalid offload policy", edit: func(cfg *Config) { cfg.ToolResultOffloadEnabled = true }},
-		{name: "missing feedback store", edit: func(cfg *Config) { cfg.Stores.Feedback = nil }},
+		{name: "default model", edit: func(cfg *assemblyConfig) { cfg.provider = "" }},
+		{name: "typed nil chat resolver", edit: func(cfg *assemblyConfig) { cfg.chatResolver = (*modeladapter.ChatResolver)(nil) }},
+		{name: "typed nil provider registry", edit: func(cfg *assemblyConfig) { cfg.providerRegistry = (*persistence.ProviderStore)(nil) }},
+		{name: "session-only approval mode", edit: func(cfg *assemblyConfig) { cfg.approvalMode = approval.ModePlan }},
+		{name: "invalid offload policy", edit: func(cfg *assemblyConfig) { cfg.toolResultOffloadEnabled = true }},
+		{name: "missing feedback store", edit: func(cfg *assemblyConfig) { cfg.stores.Feedback = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cfg := runtimeConfigWithRequiredDeps(t)
-			store := cfg.Stores.ToolResults
-			id := toolresult.ID("STAGED234")
-			if err := store.Stage(t.Context(), toolresult.Stage{
+			store := cfg.stores.ToolResults
+			id := transcript.ToolResultID("STAGED234")
+			if err := store.Stage(t.Context(), transcript.ToolResultStage{
 				ID: id, SessionID: "ses_staged", Body: "unbound",
 			}); err != nil {
 				t.Fatalf("stage tool result: %v", err)
 			}
 			test.edit(&cfg)
-			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 			if host != nil || err == nil {
 				t.Fatalf("assembly = (%v, %v), want invalid construction rejected", host, err)
 			}
@@ -217,13 +211,13 @@ func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testin
 
 func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
-	id := toolresult.ID("STAGED234")
-	if err := cfg.Stores.ToolResults.Stage(t.Context(), toolresult.Stage{
+	id := transcript.ToolResultID("STAGED234")
+	if err := cfg.stores.ToolResults.Stage(t.Context(), transcript.ToolResultStage{
 		ID: id, SessionID: "ses_staged", Body: "unbound",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +226,7 @@ func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing
 			t.Error(err)
 		}
 	})
-	if _, found, err := cfg.Stores.ToolResults.Fetch(t.Context(), "ses_staged", id); err != nil || found {
+	if _, found, err := cfg.stores.ToolResults.Fetch(t.Context(), "ses_staged", id); err != nil || found {
 		t.Fatalf("staged tool result after successful construction = (found %v, err %v), want (false, nil)", found, err)
 	}
 }
@@ -243,25 +237,25 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	source := filepath.Join(firstPartyPackages, "memory")
 	r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory")
 	r.close()
-	installations, err := cfg.Stores.Installations.List(t.Context())
+	installations, err := cfg.stores.Installations.List(t.Context())
 	if err != nil || len(installations) != 1 {
 		t.Fatalf("installations = %+v, %v", installations, err)
 	}
 	installed := installations[0]
-	if err := cfg.Stores.Installations.Remove(t.Context(), installed.Installation.ID()); err != nil {
+	if err := cfg.stores.Installations.Remove(t.Context(), installed.Installation.ID()); err != nil {
 		t.Fatal(err)
 	}
-	feedback := cfg.Stores.Feedback
-	cfg.Stores.Feedback = nil
-	if host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment); host != nil || err == nil {
+	feedback := cfg.stores.Feedback
+	cfg.stores.Feedback = nil
+	if host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment); host != nil || err == nil {
 		t.Fatalf("assembly = (%v, %v), want missing feedback rejected", host, err)
 	}
-	if _, err := cfg.Stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); err != nil {
+	if _, err := cfg.stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); err != nil {
 		t.Fatalf("failed construction reclaimed the retained release: %v", err)
 	}
-	cfg.Stores.Feedback = feedback
+	cfg.stores.Feedback = feedback
 	poMCPOpen(t, cfg)
-	if _, err := cfg.Stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); !errors.Is(err, plugin.ErrNotFound) {
+	if _, err := cfg.stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); !errors.Is(err, plugin.ErrNotFound) {
 		t.Fatalf("successful construction retained an unreferenced release: %v", err)
 	}
 }
@@ -276,13 +270,13 @@ func TestAssemblyBuilderFailureReclaimsReturnedAcquisitions(t *testing.T) {
 		toolEnvironmentDependencies,
 	) (toolEnvironment, error) {
 		return toolEnvironment{
-			closers: []*teardown.Step{teardown.Terminal(func(context.Context) error {
+			closers: []*teardownStep{terminalStep(func(context.Context) error {
 				closed.Add(1)
 				return nil
 			})},
 		}, buildErr
 	}
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildTools)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildTools)
 	if !errors.Is(err, buildErr) {
 		t.Fatalf("assemble error = %v, want build failure", err)
 	}
@@ -301,7 +295,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	// ownership when a terminal closer finishes after both callers time out.
 	buildErr := errors.New("complete tool environment rejected")
 	resourceClosed := make(chan struct{})
-	cfg.Resources = []TerminalResource{closerFunc(func() error {
+	cfg.resources = []terminalResource{closerFunc(func() error {
 		close(resourceClosed)
 		return nil
 	})}
@@ -315,14 +309,14 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 		if err != nil {
 			return toolEnvironment{}, err
 		}
-		toolRuntime.closers = append(toolRuntime.closers, teardown.Terminal(func(context.Context) error {
+		toolRuntime.closers = append(toolRuntime.closers, terminalStep(func(context.Context) error {
 			close(closerStarted)
 			<-releaseCloser
 			return nil
 		}))
 		return toolRuntime, buildErr
 	}
-	lifetime := newRuntimeLifetime(t.Context(), cfg.Resources)
+	lifetime := newRuntimeLifetime(t.Context(), cfg.resources)
 	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
 
 	failedInstance, err := assemble(t.Context(), cfg, lifetime, buildTools)
@@ -354,14 +348,14 @@ func TestAssemblyRejectsMissingToolResolverAndReclaimsResources(t *testing.T) {
 		if err != nil {
 			return toolEnvironment{}, err
 		}
-		toolRuntime.closers = append(toolRuntime.closers, teardown.Terminal(func(context.Context) error {
+		toolRuntime.closers = append(toolRuntime.closers, terminalStep(func(context.Context) error {
 			toolClosed.Add(1)
 			return nil
 		}))
 		toolRuntime.tools.Resolver = nil
 		return toolRuntime, nil
 	}
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildTools)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildTools)
 	if host != nil || err == nil || !strings.Contains(err.Error(), "tool resolver is required") {
 		t.Fatalf("assemble = (%v, %v), want missing tool resolver rejected", host, err)
 	}
@@ -370,7 +364,7 @@ func TestAssemblyRejectsMissingToolResolverAndReclaimsResources(t *testing.T) {
 	}
 }
 
-func runtimeConfigWithRequiredDeps(t *testing.T) Config {
+func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	t.Helper()
 
 	client, err := chatclient.New(newReplyStub("ok"), chatclient.Config{})
@@ -384,15 +378,15 @@ func runtimeConfigWithRequiredDeps(t *testing.T) Config {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = stores.Close() })
-	return Config{
-		Stores:   stores,
-		Provider: "anthropic", Model: "claude-test",
-		ApprovalMode: approval.ModeSafe,
-		UserHome:     t.TempDir(), DefaultWorkspacePath: workspace,
-		SkillsUserDir:    t.TempDir(),
-		ChatResolver:     testChatResolver(client),
-		BuildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-		ProviderRegistry: stores.Providers,
+	return assemblyConfig{
+		stores:   stores,
+		provider: "anthropic", model: "claude-test",
+		approvalMode: approval.ModeSafe,
+		userHome:     t.TempDir(), defaultWorkspacePath: workspace,
+		skillsUserDir:    t.TempDir(),
+		chatResolver:     testChatResolver(client),
+		buildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		providerRegistry: stores.Providers,
 	}
 }
 
@@ -410,33 +404,33 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()), CreatedAt: createdAt, UpdatedAt: createdAt,
 	})
-	if err := cfg.Stores.Sessions.Insert(ctx, value); err != nil {
+	if err := cfg.stores.Sessions.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)
 	}
 	profile := run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
-	if err := cfg.Stores.Runs.Admit(ctx, run.Draft{
+	if err := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
 		Capabilities: profile, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := cfg.Stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := cfg.stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
 		Capabilities: profile,
 		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark()}),
-		"seg_open", runtimeidentity.CommitID{},
+		"seg_open", runs.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
-	if err := cfg.Stores.Transcript.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
+	if err := cfg.stores.Transcript.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_park", RunID: runID, SessionID: sessionID,
 		Kind:     transcript.QuestionItem,
 		Question: question, OccurredAt: parkedAt,
 	})); err != nil {
 		t.Fatalf("put transcript item: %v", err)
 	}
-	if err := cfg.Stores.Interrupts.Open(ctx, bootstrapPending(
+	if err := cfg.stores.Interrupts.Open(ctx, bootstrapPending(
 		runID,
 		sessionID,
 		memberID,
@@ -447,11 +441,11 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
-	if err := cfg.Stores.ExecutorCheckpoints.SaveCheckpoint(ctx, bootstrapCheckpoint(memberID, sessionID)); err != nil {
+	if err := cfg.stores.ExecutorCheckpoints.SaveCheckpoint(ctx, bootstrapCheckpoint(memberID, sessionID)); err != nil {
 		t.Fatalf("save executor checkpoint: %v", err)
 	}
 
-	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	host, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
@@ -464,13 +458,13 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	if pending, listErr := cfg.Stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
+	if pending, listErr := cfg.stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
-	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := cfg.stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
-	runs, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)
+	runs, err := cfg.stores.Runs.ListRuns(ctx, sessionID)
 	failure, failed := run.Failure{}, false
 	if len(runs) == 1 {
 		failure, failed = runs[0].Failure()

@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/spf13/viper"
 )
@@ -38,7 +38,7 @@ func Load(configDirectories []string) (Settings, error) {
 	v.SetDefault("server.listen", localruntime.DefaultListenAddress)
 	v.SetDefault("server.noLocalToken", false)
 	v.SetDefault("toolResultOffload.enabled", true)
-	v.SetDefault("toolResultOffload.threshold", DefaultToolResultOffloadThreshold)
+	v.SetDefault("toolResultOffload.threshold", defaultToolResultOffloadThreshold)
 
 	v.SetEnvPrefix(environmentPrefix.String())
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -116,12 +116,12 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 		if err != nil {
 			return "", nil, fmt.Errorf("config: inspect config file %q: %w", path, err)
 		}
-		file, opened, err := fileinput.OpenExpected(path, expected, maximumRuntimeConfigBytes)
+		file, opened, err := filesystem.OpenFileExpected(path, expected, maximumRuntimeConfigBytes)
 		if err != nil {
 			return "", nil, fmt.Errorf("config: open config file %q: %w", path, err)
 		}
 		content, readErr := io.ReadAll(io.LimitReader(file, maximumRuntimeConfigBytes+1))
-		verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+		verifyErr := filesystem.VerifyPathVersion(file, opened, path)
 		closeErr := file.Close()
 		if readErr != nil {
 			return "", nil, fmt.Errorf("config: read config file %q: %w", path, readErr)
@@ -135,8 +135,7 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 		if int64(len(content)) > maximumRuntimeConfigBytes {
 			return "", nil, fmt.Errorf(
 				"config: read config file %q: %w",
-				path,
-				fileinput.ErrTooLarge,
+				path, filesystem.ErrFileTooLarge,
 			)
 		}
 		return path, content, nil

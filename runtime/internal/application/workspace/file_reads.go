@@ -13,21 +13,21 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/samber/lo"
 )
 
 // Files owns root-scoped file browser operations.
 type Files struct {
 	scope *Scope
-	files FileBrowser
+	files fileBrowser
 }
 
-func NewFiles(scope *Scope, files FileBrowser) (*Files, error) {
+func NewFiles(scope *Scope, files fileBrowser) (*Files, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: file scope is required")
 	}
-	if dependency.Missing(files) {
+	if lo.IsNil(files) {
 		return nil, errors.New("workspace: file browser is required")
 	}
 	return &Files{scope: scope, files: files}, nil
@@ -69,7 +69,7 @@ type FileListOptions struct {
 }
 
 // FileBrowser is the application-owned port for workspace file reads.
-type FileBrowser interface {
+type fileBrowser interface {
 	List(ctx context.Context, root string, options FileListOptions) ([]FileEntry, error)
 	Read(ctx context.Context, root string, plan FileReadPlan) (FileReadResult, error)
 	Grep(ctx context.Context, root string, input GrepPlan) (GrepResult, error)
@@ -155,9 +155,9 @@ const (
 // editor-facing line may exceed the largest possible response.
 const (
 	DefaultFileReadBytes   = 1 << 20
-	MaxFileReadBytes       = 8 << 20
+	maxFileReadBytes       = 8 << 20
 	MaxFileReadSourceBytes = 64 << 20
-	MaxFileReadLineBytes   = MaxFileReadBytes
+	MaxFileReadLineBytes   = maxFileReadBytes
 )
 
 // Workspace search returns an exact total over a finite searchable corpus and

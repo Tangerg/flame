@@ -133,7 +133,7 @@ func TestStartAndTerminalPublishRunAndSessionChanges(t *testing.T) {
 // use case publishes that notice immediately after its own durable CAS; this
 // reducer only projects the resulting Tool fact onto the owning run stream.
 func TestPlanSnapshotStaysOnOwningRunStream(t *testing.T) {
-	exec := &fakeExecutor{events: []ExecutorPayload{PlanUpdated{State: testPlanState(t, plan.Snapshot{
+	exec := &fakeExecutor{events: []executorPayload{PlanUpdated{State: testPlanState(t, plan.Snapshot{
 		Steps:    []plan.Step{{Description: "tell the other window", Status: plan.StatusInProgress}},
 		Revision: 2, UpdatedAt: time.Date(2026, 7, 29, 1, 2, 3, 0, time.UTC),
 	})}}}

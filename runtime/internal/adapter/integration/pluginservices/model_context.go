@@ -5,8 +5,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -30,7 +30,7 @@ func (o *CallComposition) ValidateContext(ctx context.Context, bindings []plugin
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
 
-func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *capability.Contract, bindings []plugins.ContributionBinding) error {
+func (o *CallComposition) validateCompositionBindings(ctx context.Context, contract *extension.Capability, bindings []plugins.ContributionBinding) error {
 	for _, binding := range bindings {
 		captured, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 		if err != nil {
@@ -96,7 +96,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		input, err := jsoninput.Encode(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone(), UserMessage: userMessage})
+		input, err := jsonvalue.Encode(pluginsdk.ModelContextRequest{Provider: selection.Provider(), Model: selection.Model(), Request: *frozen.Clone(), UserMessage: userMessage})
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +104,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		if err != nil {
 			return nil, err
 		}
-		raw, err := func() (jsoninput.Input, error) {
+		raw, err := func() (jsonvalue.Value, error) {
 			defer release()
 			return operation.InvokeWithMetadata(calling, "", input, metadata)
 		}()

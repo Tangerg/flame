@@ -10,11 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -29,6 +26,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	otelagent "github.com/Tangerg/scope/otel/agent"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 const (
@@ -46,14 +44,14 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error)
 }
 
-type InteractionModelEvidence interface {
+type interactionModelEvidence interface {
 	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
 }
 
-type OriginalToolResults interface {
-	OwnsToolSource(context.Context, domaintool.Ref, fingerprint.Digest) (bool, error)
-	AwaitOriginalToolSource(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest) (bool, error)
-	OriginalToolResult(context.Context, domaintool.Ref, fingerprint.Digest, fingerprint.Digest, string, string) (*corechat.ToolOutput, error)
+type originalToolResults interface {
+	OwnsToolSource(context.Context, domaintool.Ref, flameidentity.Digest) (bool, error)
+	AwaitOriginalToolSource(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest) (bool, error)
+	OriginalToolResult(context.Context, domaintool.Ref, flameidentity.Digest, flameidentity.Digest, string, string) (*corechat.ToolOutput, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by
@@ -61,31 +59,31 @@ type OriginalToolResults interface {
 // executable Interaction adapter or behavior-affecting dispatcher configuration
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
-	InstallationCheckpoints InstallationCheckpoints
+	InstallationCheckpoints installationCheckpoints
 	Admission               *plugins.Admission
-	InstallationCommands    InstallationCommands
+	InstallationCommands    installationCommands
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
 	ExecutionTrees            runs.ExecutionTreeStore
-	OriginalToolResults       OriginalToolResults
+	OriginalToolResults       originalToolResults
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
-	ModelEvidence             InteractionModelEvidence
-	CallComposition           InteractionCallComposition
+	ModelEvidence             interactionModelEvidence
+	CallComposition           interactionCallComposition
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
 	MaxConcurrentToolCalls    *int
-	ToolResolver              InteractionToolResolver
-	ToolInterpreter           InteractionToolInterpreter
-	ToolPresenter             InteractionToolPresenter
-	ToolAuthorizer            InteractionToolAuthorizer
-	ToolHooks                 InteractionToolHooks
+	ToolResolver              interactionToolResolver
+	ToolInterpreter           interactionToolInterpreter
+	ToolPresenter             interactionToolPresenter
+	ToolAuthorizer            interactionToolAuthorizer
+	ToolHooks                 interactionToolHooks
 	Maintenance               RunMaintenance
 	ModelContextCompactor     ModelContextCompactor
-	ModelContextState         InteractionModelContextState
-	LifecycleHooks            InteractionLifecycleHooks
+	ModelContextState         interactionModelContextState
+	LifecycleHooks            interactionLifecycleHooks
 	ToolResultStore           toolResultOffloader
 	ToolResultOffload         ToolResultOffloadPolicyValues
 	UnknownEffectPollInterval *time.Duration
@@ -100,7 +98,7 @@ type InteractionExecutor struct {
 	lifetime      context.Context
 	config        InteractionExecutorConfig
 	policy        interactionExecutionPolicy
-	buildID       runtimeidentity.BuildID
+	buildID       runs.BuildID
 
 	sessions interactionSessions
 }
@@ -112,23 +110,22 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if config.Lifetime == nil {
 		return nil, errors.New("execution: Interaction lifetime is required")
 	}
-	if dependency.Missing(config.ChatResolver) {
+	if lo.IsNil(config.ChatResolver) {
 		return nil, errors.New("execution: Interaction requires a chat resolver")
 	}
-	if dependency.Missing(config.ModelEvidence) {
+	if lo.IsNil(config.ModelEvidence) {
 		return nil, errors.New("execution: Interaction model evidence is required")
 	}
 	if config.Admission == nil {
 		return nil, errors.New("execution: installation admission is required")
 	}
-	if dependency.Missing(config.InstallationCommands) {
+	if lo.IsNil(config.InstallationCommands) {
 		return nil, errors.New("execution: installation command projection is required")
 	}
-	if dependency.Missing(config.ExecutionTrees) {
+	if lo.IsNil(config.ExecutionTrees) {
 		return nil, errors.New("execution: execution tree store is required")
 	}
-	if dependency.Missing(config.ModelContextCompactor) !=
-		dependency.Missing(config.ModelContextState) {
+	if lo.IsNil(config.ModelContextCompactor) != lo.IsNil(config.ModelContextState) {
 		return nil, errors.New("execution: model-context compactor and state source must be configured together")
 	}
 	for _, capability := range []struct {
@@ -149,11 +146,11 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
 		{name: "Tool-result store", value: config.ToolResultStore},
 	} {
-		if capability.value != nil && dependency.Missing(capability.value) {
+		if capability.value != nil && lo.IsNil(capability.value) {
 			return nil, fmt.Errorf("execution: Interaction %s is typed nil", capability.name)
 		}
 	}
-	buildID, err := runtimeidentity.ParseBuild(config.BuildID)
+	buildID, err := runs.ParseBuild(config.BuildID)
 	if err != nil {
 		return nil, fmt.Errorf("execution: Interaction %w", err)
 	}
@@ -173,7 +170,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 }
 
 func (i *InteractionExecutor) acceptsBuild(raw string) bool {
-	identity, err := runtimeidentity.ParseBuild(raw)
+	identity, err := runs.ParseBuild(raw)
 	return err == nil && identity == i.buildID
 }
 
@@ -226,7 +223,7 @@ func (i *InteractionExecutor) StageRoot(
 	assembly, abandon := i.installations.Begin()
 	defer abandon()
 	start = start.Clone()
-	if err := resourceid.ValidateSession(start.SessionID); err != nil {
+	if err := flameidentity.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
 	}
 	if err := i.ValidateRootStart(start); err != nil {
@@ -833,7 +830,7 @@ func (i *InteractionExecutor) resolveChat(
 	if err != nil {
 		return modeladapter.ResolvedChat{}, fmt.Errorf("execution: resolve Interaction chat: %w", err)
 	}
-	if dependency.Missing(resolved.Model()) {
+	if lo.IsNil(resolved.Model()) {
 		return modeladapter.ResolvedChat{}, errors.New("execution: Interaction chat resolver returned an invalid result")
 	}
 	return resolved, nil

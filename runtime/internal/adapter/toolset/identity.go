@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type toolIdentity interface{ ToolRef() tool.Ref }
-type sourceAuthority interface{ SourceFingerprint() fingerprint.Digest }
+type sourceAuthority interface{ SourceFingerprint() flameidentity.Digest }
 
 // Identify resolves source-owned identity through Scope's capability chain.
 // A model label is never a fallback identity for an unrecognized executable.
@@ -34,12 +33,12 @@ func Identify(executable toolcontract.Tool) (tool.Ref, error) {
 	return ref, ref.Validate()
 }
 
-func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (fingerprint.Digest, error) {
+func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (flameidentity.Digest, error) {
 	authority, found, err := toolcontract.Capability[sourceAuthority](executable)
 	if err != nil {
-		return fingerprint.Digest{}, err
+		return flameidentity.Digest{}, err
 	}
-	var source fingerprint.Digest
+	var source flameidentity.Digest
 	if found {
 		source = authority.SourceFingerprint()
 	}
@@ -48,7 +47,7 @@ func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (fingerprint.
 
 // WithIdentity binds a local or configured A2A source at construction. MCP
 // identity and authority stay on Scope's connection-backed executable.
-func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source fingerprint.Digest) (toolcontract.Tool, error) {
+func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source flameidentity.Digest) (toolcontract.Tool, error) {
 	if err := ref.ValidateFingerprint(source); err != nil {
 		return nil, err
 	}
@@ -61,12 +60,12 @@ func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source fingerprint
 type identifiedTool struct {
 	toolcontract.Tool
 	ref         tool.Ref
-	fingerprint fingerprint.Digest
+	fingerprint flameidentity.Digest
 }
 
-func (t identifiedTool) Unwrap() toolcontract.Tool             { return t.Tool }
-func (t identifiedTool) ToolRef() tool.Ref                     { return t.ref }
-func (t identifiedTool) SourceFingerprint() fingerprint.Digest { return t.fingerprint }
+func (t identifiedTool) Unwrap() toolcontract.Tool               { return t.Tool }
+func (t identifiedTool) ToolRef() tool.Ref                       { return t.ref }
+func (t identifiedTool) SourceFingerprint() flameidentity.Digest { return t.fingerprint }
 
 type realizedSource interface{ SourceConfig() mcp.ServerConfig }
 

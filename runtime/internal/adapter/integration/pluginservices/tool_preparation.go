@@ -5,22 +5,20 @@ import (
 	"errors"
 	"maps"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
+	"github.com/samber/lo"
 )
 
 type ToolPreparationConfig struct {
@@ -31,11 +29,11 @@ type ToolPreparationConfig struct {
 }
 
 func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, error) {
-	memoryContract, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
+	memoryContract, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
-	if dependency.Missing(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
+	if lo.IsNil(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
 		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
 	}
 	return func(ctx context.Context, executable mcp.Executable, host mcp.ToolHost) (mcp.ToolCall, func(), error) {

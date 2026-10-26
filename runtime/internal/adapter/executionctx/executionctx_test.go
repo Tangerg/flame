@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestScopeAccessorsShareOneImmutableTurnValue(t *testing.T) {
@@ -59,16 +58,16 @@ func TestMissingScopeReportsNoWorkspace(t *testing.T) {
 }
 
 func TestRunCapabilitiesAreOwnershipIsolated(t *testing.T) {
-	input := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	input := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	ctx := WithRunCapabilities(context.Background(), input)
-	input.InterruptKinds[0] = interrupt.Approval
+	input.InterruptKinds[0] = run.InterruptApproval
 	first, ok := RunCapabilities(ctx)
-	if !ok || !first.Equal(run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}) {
+	if !ok || !first.Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}) {
 		t.Fatalf("RunCapabilities = (%+v, %t)", first, ok)
 	}
-	first.InterruptKinds[0] = interrupt.Approval
+	first.InterruptKinds[0] = run.InterruptApproval
 	second, _ := RunCapabilities(ctx)
-	if !second.Equal(run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}) {
+	if !second.Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}) {
 		t.Fatalf("RunCapabilities returned shared storage: %+v", second)
 	}
 }

@@ -5,10 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -19,7 +18,7 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 		err, kind, cause error
 	}{
 		{"bare resource failure", protocol.ErrSessionNotFound, protocol.ErrSessionNotFound, protocol.ErrSessionNotFound},
-		{"workspace", wireWorkspaceError(workspacepaths.ErrCWDUnavailable), protocol.ErrWorkspaceUnavailable, workspacepaths.ErrCWDUnavailable},
+		{"workspace", wireWorkspaceError(workspaceapp.ErrCWDUnavailable), protocol.ErrWorkspaceUnavailable, workspaceapp.ErrCWDUnavailable},
 		{"tool input", wireWorkspaceError(tool.ErrInvalidArguments), protocol.ErrInvalidParams, tool.ErrInvalidArguments},
 		{"mcp", wireMCPError(mcpapp.ErrUnknownServer), protocol.ErrMCPServerNotFound, mcpapp.ErrUnknownServer},
 	} {

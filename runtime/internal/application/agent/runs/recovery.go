@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -17,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 const lostToolResult = "tool result unavailable because execution state was lost"
@@ -50,7 +50,7 @@ type WaitingExecutionResumability interface {
 // RecoveryAdmissions provides the same per-Session writer boundary used by
 // live Run and Session mutations. Recovery skips a Session when another
 // Runtime process still owns it; such a Run is live, not abandoned.
-type RecoveryAdmissions interface {
+type recoveryAdmissions interface {
 	AcquireRecoverySession(sessionID string) (release func(), ok bool, err error)
 }
 
@@ -153,7 +153,7 @@ type RecoveryConversationTransition struct {
 type Recovery struct {
 	store         RecoveryStore
 	resumability  WaitingExecutionResumability
-	admissions    RecoveryAdmissions
+	admissions    recoveryAdmissions
 	invalidations invalidation.Publish
 	now           func() time.Time
 }
@@ -182,16 +182,16 @@ type recoveryPlanner struct {
 func NewRecovery(
 	store RecoveryStore,
 	resumability WaitingExecutionResumability,
-	admissions RecoveryAdmissions,
+	admissions recoveryAdmissions,
 	invalidations invalidation.Publish,
 ) (*Recovery, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("runs: recovery store is required")
 	}
-	if dependency.Missing(resumability) {
+	if lo.IsNil(resumability) {
 		return nil, errors.New("runs: waiting execution resumability is required")
 	}
-	if dependency.Missing(admissions) {
+	if lo.IsNil(admissions) {
 		return nil, errors.New("runs: recovery admissions are required")
 	}
 	return &Recovery{
@@ -559,7 +559,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		return err
 	}
 	open, hasInterrupt := r.pendingByRoot[rootRunID]
-	loss := LossRestart
+	loss := lossRestart
 	if tree.root.State() == rundomain.Waiting && hasInterrupt {
 		sess, sessionErr := r.session(tree.root.SessionID())
 		if sessionErr != nil {

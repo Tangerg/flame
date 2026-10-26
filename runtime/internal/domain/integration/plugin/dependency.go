@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // Dependency names the exact release an execution admitted from one
 // installation. Execution owns which dependencies it holds; the installation
 // owner only asks whether any execution holds one before an unsafe change.
 type Dependency struct {
-	InstallationID resourceid.InstallationID
-	Digest         fingerprint.Digest
+	InstallationID identity.InstallationID
+	Digest         identity.Digest
 }
 
 func (d Dependency) Validate() error {
@@ -55,8 +54,8 @@ func ValidateDependencies(dependencies []Dependency) error {
 // staged release of each installation and each release an execution holds.
 // Every other admitted release is unreferenced, and nothing can name it again
 // without admitting its bytes anew, so its owner may reclaim it.
-func RetainedReleases(installations []*Installation, held []Dependency) []fingerprint.Digest {
-	var retained []fingerprint.Digest
+func RetainedReleases(installations []*Installation, held []Dependency) []identity.Digest {
+	var retained []identity.Digest
 	for _, installation := range installations {
 		retained = append(retained, installation.record.Selected)
 		if installation.record.Staged != nil {
@@ -66,6 +65,6 @@ func RetainedReleases(installations []*Installation, held []Dependency) []finger
 	for _, dependency := range held {
 		retained = append(retained, dependency.Digest)
 	}
-	slices.SortFunc(retained, func(left, right fingerprint.Digest) int { return cmp.Compare(left.String(), right.String()) })
+	slices.SortFunc(retained, func(left, right identity.Digest) int { return cmp.Compare(left.String(), right.String()) })
 	return slices.Compact(retained)
 }

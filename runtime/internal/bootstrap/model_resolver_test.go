@@ -12,7 +12,7 @@ type staticTestChatResolver struct {
 	client *chatclient.Client
 }
 
-func testChatResolver(client chatclient.Client) ChatResolver {
+func testChatResolver(client chatclient.Client) chatResolver {
 	return staticTestChatResolver{client: &client}
 }
 

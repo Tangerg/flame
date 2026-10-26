@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -351,7 +350,7 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 
 func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
 	snapshot := runRecord(run.Running, testSegmentID, "").Snapshot()
-	snapshot.Capabilities = run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
+	snapshot.Capabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval}}
 	record := testsupport.MustRestoreRun(snapshot)
 	c := mustNewCoordinator(Dependencies{
 		Runs: &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},

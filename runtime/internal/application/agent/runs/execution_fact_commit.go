@@ -7,10 +7,10 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/samber/lo"
 )
 
 // ExecutionFactCommit asks the Run pump to durably project one authoritative
@@ -42,7 +42,7 @@ type executionFactCommitState struct {
 // producer receipt. The fact remains an Application-owned closed value;
 // executor implementations receive no persistence handle or transaction capability.
 func NewExecutionFactCommit(fact ExecutionFact) (ExecutionFactCommit, ExecutionFactReceipt, error) {
-	if dependency.Missing(fact) {
+	if lo.IsNil(fact) {
 		return ExecutionFactCommit{}, ExecutionFactReceipt{}, errors.New("runs: execution fact commit requires a fact")
 	}
 	owned, supported := cloneExecutionFact(fact)

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -17,8 +17,8 @@ func TestMain(tests *testing.M) { os.Exit(testsupport.RunWithNode(tests)) }
 
 func managedFiles(managed string) map[string]string {
 	return map[string]string{
-		"plugin.json":                          `{"$schema":"` + ManifestSchema + `","name":"test.managed","extensions":{"` + plugin.Namespace + `":{"declaration":"` + plugin.Namespace + `/declaration.json"}}}`,
-		plugin.Namespace + "/declaration.json": `{"protocol":"` + capability.Protocol + `","managedBackends":` + managed + `}`,
+		"plugin.json":                          `{"$schema":"` + manifestSchema + `","name":"test.managed","extensions":{"` + plugin.Namespace + `":{"declaration":"` + plugin.Namespace + `/declaration.json"}}}`,
+		plugin.Namespace + "/declaration.json": `{"protocol":"` + extension.Protocol + `","managedBackends":` + managed + `}`,
 		"backend/start.mjs":                    `const value = await import("./lazy.mjs"); process.stdout.write(value.default);`,
 		"backend/lazy.mjs":                     `export default "original";`,
 	}

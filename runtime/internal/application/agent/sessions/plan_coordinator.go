@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/samber/lo"
 )
 
 // PlanStore is the use case's consumer-owned persistence port.
-type PlanStore interface {
+type planStore interface {
 	State(ctx context.Context, sessionID string) (plan.Current, error)
 	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
 }
@@ -23,21 +23,21 @@ type PlanClock func() time.Time
 
 // PlanCoordinator executes Plan use cases over one canonical store.
 type PlanCoordinator struct {
-	store         PlanStore
+	store         planStore
 	now           PlanClock
 	invalidations invalidation.Publish
 }
 
 // PlanDependencies is the collaborator set [NewPlanCoordinator] wires into a PlanCoordinator.
 type PlanDependencies struct {
-	Store         PlanStore
+	Store         planStore
 	Now           PlanClock
 	Invalidations invalidation.Publish
 }
 
 // NewPlanCoordinator constructs the Plan use cases over a required store.
 func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
-	if dependency.Missing(deps.Store) {
+	if lo.IsNil(deps.Store) {
 		return nil, errors.New("sessions: Plan store is required")
 	}
 	if deps.Now == nil {
@@ -48,7 +48,7 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 
 // State returns the canonical optional Plan aggregate for one session.
 func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
 	return c.store.State(ctx, sessionID)

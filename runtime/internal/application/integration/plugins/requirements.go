@@ -6,9 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -21,12 +20,12 @@ type Collaborator struct {
 }
 
 type requirementCatalog struct {
-	installations map[resourceid.InstallationID]plugin.Snapshot
+	installations map[identity.InstallationID]plugin.Snapshot
 	selections    map[string]plugin.SelectionRecord
 	compositions  map[string]plugin.CompositionRecord
 }
 
-func ResolveRequirements(ctx context.Context, store Store, selections SelectionStore, compositions CompositionStore, installation resourceid.InstallationID, digest fingerprint.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
+func ResolveRequirements(ctx context.Context, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest identity.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
 	catalog, err := readRequirementCatalog(ctx, store, selections, compositions)
 	if err != nil {
 		return nil, err
@@ -64,7 +63,7 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	if err != nil {
 		return requirementCatalog{}, err
 	}
-	catalog := requirementCatalog{installations: make(map[resourceid.InstallationID]plugin.Snapshot, len(snapshots)), selections: make(map[string]plugin.SelectionRecord, len(choices)), compositions: make(map[string]plugin.CompositionRecord, len(ordered))}
+	catalog := requirementCatalog{installations: make(map[identity.InstallationID]plugin.Snapshot, len(snapshots)), selections: make(map[string]plugin.SelectionRecord, len(choices)), compositions: make(map[string]plugin.CompositionRecord, len(ordered))}
 	for _, snapshot := range snapshots {
 		catalog.installations[snapshot.Installation.ID()] = snapshot
 	}
@@ -74,7 +73,7 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	}
 	for _, value := range ordered {
 		record := value.Snapshot()
-		contract, err := capability.Parse(record.Contract.JSON())
+		contract, err := extension.ParseCapability(record.Contract.JSON())
 		if err != nil {
 			return requirementCatalog{}, err
 		}
@@ -83,7 +82,7 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	return catalog, nil
 }
 
-func ResolveEntryRequirements(ctx context.Context, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
+func resolveEntryRequirements(ctx context.Context, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
 	declarations := root.Selected.Declaration().Contributions
 	hasRequirements := slices.ContainsFunc(declarations, func(value plugin.Contribution) bool { return value.Server == server && len(value.Requires) > 0 })
 	if !hasRequirements {
@@ -136,13 +135,13 @@ func bindingKey(binding ContributionBinding) string {
 }
 
 func (c requirementCatalog) candidates(required plugin.Requirement) ([]ContributionBinding, error) {
-	contract, err := capability.Parse(required.Contract.JSON())
+	contract, err := extension.ParseCapability(required.Contract.JSON())
 	if err != nil {
 		return nil, err
 	}
 	descriptor := contract.Descriptor()
 	var bindings []ContributionBinding
-	if descriptor.Composition == capability.Decoration {
+	if descriptor.Composition == extension.Decoration {
 		record, found := c.compositions[descriptor.Reference]
 		if !found {
 			if required.Optional {
@@ -157,7 +156,7 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 		if err != nil {
 			return nil, err
 		}
-		bindings, err := resolveCompositionMembers(composition, func(id resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+		bindings, err := resolveCompositionMembers(composition, func(id identity.InstallationID) (plugin.Snapshot, bool, error) {
 			snapshot, found := c.installations[id]
 			return snapshot, found, nil
 		})
@@ -174,7 +173,7 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 			if declaration.Contract != contract.Identity() || !snapshot.Installation.ServerEnabled(declaration.Server) {
 				continue
 			}
-			if descriptor.Composition == capability.Selection {
+			if descriptor.Composition == extension.Selection {
 				choice, found := c.selections[descriptor.Reference]
 				if !found || choice.Installation != snapshot.Installation.ID() || choice.Contribution != declaration.ID {
 					continue

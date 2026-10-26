@@ -5,16 +5,16 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type InstallationCheckpoints interface {
+type installationCheckpoints interface {
 	PendingCheckpointDependencies(context.Context) ([]plugin.Dependency, error)
 }
 
-type InstallationCommands interface {
+type installationCommands interface {
 	PendingCommandDependencies(context.Context) ([]plugin.Dependency, error)
 }
 
@@ -28,7 +28,7 @@ type InstallationCommands interface {
 // execution change only after committing, including when withdrawal then fails.
 // Quiescence controls existing dependencies; every execution change invalidates
 // unpublished assemblies that depended on the previous state.
-func (i *InteractionExecutor) ChangeInstallation(ctx context.Context, id resourceid.InstallationID, admission plugins.ChangeAdmission, change func(held []plugin.Dependency) (executionChanged bool, err error)) error {
+func (i *InteractionExecutor) ChangeInstallation(ctx context.Context, id identity.InstallationID, admission plugins.ChangeAdmission, change func(held []plugin.Dependency) (executionChanged bool, err error)) error {
 	if admission != plugins.RequireQuiescent && admission != plugins.AllowInUse {
 		return plugin.ErrInvalid
 	}

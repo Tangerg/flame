@@ -3,8 +3,6 @@ package accounting
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -34,21 +32,16 @@ func NewTokens(usage chat.Usage) (Tokens, error) {
 // CloneReportedUsage detaches the breakdown pointers so a stored value cannot
 // be advanced through a caller's copy.
 func CloneReportedUsage(usage chat.Usage) chat.Usage {
-	usage.ReasoningTokens = optional.Clone(usage.ReasoningTokens)
-	usage.CacheReadInputTokens = optional.Clone(usage.CacheReadInputTokens)
-	usage.CacheWriteInputTokens = optional.Clone(usage.CacheWriteInputTokens)
+	if usage.ReasoningTokens != nil {
+		usage.ReasoningTokens = new(*usage.ReasoningTokens)
+	}
+	if usage.CacheReadInputTokens != nil {
+		usage.CacheReadInputTokens = new(*usage.CacheReadInputTokens)
+	}
+	if usage.CacheWriteInputTokens != nil {
+		usage.CacheWriteInputTokens = new(*usage.CacheWriteInputTokens)
+	}
 	return usage
-}
-
-// ReportedUsageEqual compares two reported values. [chat.Usage] carries its
-// breakdowns as pointers, so == would compare addresses and an absent
-// dimension would read as equal to a reported zero.
-func ReportedUsageEqual(left, right chat.Usage) bool {
-	return left.InputTokens == right.InputTokens &&
-		left.OutputTokens == right.OutputTokens &&
-		equalOptionalInt64(left.ReasoningTokens, right.ReasoningTokens) &&
-		equalOptionalInt64(left.CacheReadInputTokens, right.CacheReadInputTokens) &&
-		equalOptionalInt64(left.CacheWriteInputTokens, right.CacheWriteInputTokens)
 }
 
 func optionalInt64(value *int64) int64 {
@@ -56,11 +49,4 @@ func optionalInt64(value *int64) int64 {
 		return 0
 	}
 	return *value
-}
-
-func equalOptionalInt64(left, right *int64) bool {
-	if left == nil || right == nil {
-		return left == nil && right == nil
-	}
-	return *left == *right
 }

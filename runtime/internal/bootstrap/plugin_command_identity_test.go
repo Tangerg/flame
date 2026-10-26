@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -24,15 +24,15 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
-	read := func() jsoninput.Input {
+	read := func() jsonvalue.Value {
 		t.Helper()
 		query := request
 		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
-		value, err := jsoninput.Parse([]byte(reply.Output))
+		value, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read private review: %+v, %v", reply, err)
 		}
@@ -44,9 +44,9 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	if err := json.Unmarshal(read().JSON(), &initial, json.RejectUnknownMembers(true)); err != nil || len(initial.Reviews) != 1 {
 		t.Fatalf("read the owned review: %+v, %v", initial, err)
 	}
-	encode := func(value any) jsoninput.Input {
+	encode := func(value any) jsonvalue.Value {
 		t.Helper()
-		encoded, err := jsoninput.Encode(value)
+		encoded, err := jsonvalue.Encode(value)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,18 +70,18 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 		}
 		return invoke("plugins", "call", "--request", string(encoded), "--command-id", key)
 	}
-	assertReply := func(output []byte, want jsoninput.Input) {
+	assertReply := func(output []byte, want jsonvalue.Value) {
 		t.Helper()
 		var reply protocol.CallPluginResponse
 		if err := json.Unmarshal(output, &reply, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatalf("CLI lost the structured business result: %s, %v", output, err)
 		}
-		actual, err := jsoninput.Parse([]byte(reply.Output))
+		actual, err := jsonvalue.Parse([]byte(reply.Output))
 		if err != nil || reply.Failure != nil || actual != want {
 			t.Fatalf("original outcome was replaced: %+v, want %s, %v", reply, want.JSON(), err)
 		}
 	}
-	success := func(key, input string, want jsoninput.Input) {
+	success := func(key, input string, want jsonvalue.Value) {
 		t.Helper()
 		output, stderr, err := call(key, input)
 		if err != nil {

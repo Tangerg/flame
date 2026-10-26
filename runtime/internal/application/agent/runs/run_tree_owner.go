@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -153,7 +152,12 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 func (r *runTreeOwner) committedTerminalRun() (run.Run, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return optional.Present(r.terminalRun)
+	if r.terminalRun == nil {
+
+		return run.Run{}, false
+	}
+
+	return *r.terminalRun, true
 }
 
 // stop cancels the run context. Called on a true terminal (never on a parked

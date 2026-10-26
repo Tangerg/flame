@@ -6,7 +6,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-func (s *AcceptedContinuationStore) Put(ctx context.Context, accepted runs.AcceptedContinuation) error {
+func (s *acceptedContinuationStore) Put(ctx context.Context, accepted runs.AcceptedContinuation) error {
 	if err := accepted.Validate(); err != nil {
 		return err
 	}
@@ -21,7 +21,7 @@ func (s *AcceptedContinuationStore) Put(ctx context.Context, accepted runs.Accep
 	return s.saveContinuation(ctx, record)
 }
 
-func (s *AcceptedContinuationStore) List(ctx context.Context) ([]runs.AcceptedContinuation, error) {
+func (s *acceptedContinuationStore) List(ctx context.Context) ([]runs.AcceptedContinuation, error) {
 	records, err := s.continuationRecords(ctx)
 	if err != nil {
 		return nil, err

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,10 +15,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -67,7 +65,7 @@ func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace 
 	t.Helper()
 	question := newQuestionTool(t, "ask", "Ask for a value.", "crash.question",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
-		func(resolution interrupt.Resolution) (string, error) {
+		func(resolution run.InterruptResolution) (string, error) {
 			file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 			if err != nil {
 				return "", err
@@ -119,7 +117,7 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 	executor := answerCrashExecutor(t, answerCrashTrees{ExecutionTreeStore: store, count: count}, workspace)
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
-	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	start.InterruptKinds = []run.InterruptKind{run.InterruptQuestion}
 	ref, err := executor.StageRoot(t.Context(), start)
 	if err != nil {
 		t.Fatal(err)
@@ -176,7 +174,7 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			}
 			executor := answerCrashExecutor(t, answerFixtureTrees{ExecutionTreeStore: store, results: testTrees(t)}, workspace)
 			answers := checkpointAnswers(t, checkpoint)
-			ref, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restored", run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}))
+			ref, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restored", run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}))
 			if err != nil {
 				t.Fatal(err)
 			}

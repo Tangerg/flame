@@ -62,7 +62,7 @@ func TestMetadataEnumsRejectUnknownValuesWithoutMasqueradingAsDefaults(t *testin
 		{name: "replay cursor policy", mutate: func(meta *MethodMeta) { meta.ReplayCursor = ReplayCursorPolicy("invalid") }, want: []string{"runs.list", `ReplayCursorPolicy("invalid")`}},
 		{name: "query run replay cursor", mutate: func(meta *MethodMeta) { meta.ReplayCursor = ReplayCursorRun }, want: []string{"runs.list", "only a streaming method"}},
 		{name: "pagination kind", mutate: func(meta *MethodMeta) { meta.Pagination = PaginationKind("invalid") }, want: []string{"runs.list", `PaginationKind("invalid")`}},
-		{name: "pagination disagrees with shapes", mutate: func(meta *MethodMeta) { meta.Pagination = PaginationNone }, want: []string{"runs.list", "shapes derive cursor"}},
+		{name: "pagination disagrees with shapes", mutate: func(meta *MethodMeta) { meta.Pagination = paginationNone }, want: []string{"runs.list", "shapes derive cursor"}},
 		{name: "condition operator", mutate: func(meta *MethodMeta) { meta.CapabilityRules[0].When[0].Operator = ConditionOperator("invalid") }, want: []string{"runs.list", "includeDescendants", `ConditionOperator("invalid")`}},
 		{name: "materializes itself", mutate: func(meta *MethodMeta) { meta.Materializes = []Name{meta.Name} }, want: []string{"runs.list", "cannot materialize itself"}},
 		{name: "repeated materialized query", mutate: func(meta *MethodMeta) { meta.Materializes = []Name{ItemsList, ItemsList} }, want: []string{"runs.list", "items.list", "declared twice"}},
@@ -87,19 +87,19 @@ func TestMetadataEnumsRejectUnknownValuesWithoutMasqueradingAsDefaults(t *testin
 		})
 	}
 
-	if got := MethodKind("invalid").String(); got == KindUnary.String() || got == KindStream.String() {
+	if got := MethodKind("invalid").String(); got == kindUnary.String() || got == KindStream.String() {
 		t.Fatalf("unknown method kind masquerades as %q", got)
 	}
 	if got := OperationKind("invalid").String(); got == OperationQuery.String() {
 		t.Fatalf("unknown operation kind masquerades as %q", got)
 	}
-	if got := IdempotencyPolicy("invalid").String(); got == IdempotencyNone.String() {
+	if got := IdempotencyPolicy("invalid").String(); got == idempotencyNone.String() {
 		t.Fatalf("unknown idempotency policy masquerades as %q", got)
 	}
-	if got := ReplayCursorPolicy("invalid").String(); got == ReplayCursorNone.String() {
+	if got := ReplayCursorPolicy("invalid").String(); got == replayCursorNone.String() {
 		t.Fatalf("unknown replay cursor policy masquerades as %q", got)
 	}
-	if got := PaginationKind("invalid").String(); got == PaginationNone.String() {
+	if got := PaginationKind("invalid").String(); got == paginationNone.String() {
 		t.Fatalf("unknown pagination kind masquerades as %q", got)
 	}
 	if got := ConditionOperator("invalid").String(); got == OperatorPresent.String() {
@@ -123,10 +123,10 @@ func TestRunReplayCursorRequiresRunEventFrames(t *testing.T) {
 func TestPaginationIsDerivedFromWireShapes(t *testing.T) {
 	t.Parallel()
 
-	wantCursor := []Name{InterruptsList, ItemsList, ModelInvocationsEndpoints, ModelInvocationsList, RunsList, SessionsList, SessionsTrajectory, WorkspaceFilesList}
+	wantCursor := []Name{InterruptsList, ItemsList, modelInvocationsEndpoints, modelInvocationsList, RunsList, SessionsList, SessionsTrajectory, workspaceFilesList}
 	var gotCursor []Name
 	for _, method := range Contract().Metas() {
-		if method.Pagination == PaginationCursor {
+		if method.Pagination == paginationCursor {
 			gotCursor = append(gotCursor, method.Name)
 		}
 	}
@@ -135,13 +135,13 @@ func TestPaginationIsDerivedFromWireShapes(t *testing.T) {
 		t.Fatalf("cursor-paginated methods = %v, want %v", gotCursor, wantCursor)
 	}
 
-	for _, name := range []Name{ModelsList, ProvidersList, RunsGet, ToolsList, WorkspacesList} {
+	for _, name := range []Name{modelsList, providersList, RunsGet, toolsList, workspacesList} {
 		method, ok := Contract().Lookup(name)
 		if !ok {
 			t.Fatalf("%s is not registered", name)
 		}
-		if method.Pagination != PaginationNone {
-			t.Errorf("%s pagination = %s, want %s", name, method.Pagination, PaginationNone)
+		if method.Pagination != paginationNone {
+			t.Errorf("%s pagination = %s, want %s", name, method.Pagination, paginationNone)
 		}
 	}
 }

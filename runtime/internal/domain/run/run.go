@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
@@ -112,12 +111,20 @@ func Restore(snapshot Snapshot) (Run, error) {
 	if err != nil {
 		return Run{}, fmt.Errorf("run: %w", err)
 	}
+	clonedOutcome := snapshot.Outcome
+	if clonedOutcome != nil {
+		clonedOutcome = new(*clonedOutcome)
+	}
+	clonedFailure := snapshot.Failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
 	run := Run{
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
 		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
-		outcome: optional.Clone(snapshot.Outcome), detail: snapshot.Detail,
-		failure: optional.Clone(snapshot.Failure), unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
+		outcome: clonedOutcome, detail: snapshot.Detail,
+		failure: clonedFailure, unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
 		contextTokens: snapshot.ContextTokens,
 		capabilities:  snapshot.Capabilities.Clone(),
 		createdAt:     snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
@@ -131,12 +138,20 @@ func Restore(snapshot Snapshot) (Run, error) {
 
 // Snapshot returns a complete ownership-isolated value.
 func (r Run) Snapshot() Snapshot {
+	clonedOutcome := r.outcome
+	if clonedOutcome != nil {
+		clonedOutcome = new(*clonedOutcome)
+	}
+	clonedFailure := r.failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
 	return Snapshot{
 		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
 		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
-		Outcome: optional.Clone(r.outcome), Detail: r.detail,
-		Failure: optional.Clone(r.failure), UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
+		Outcome: clonedOutcome, Detail: r.detail,
+		Failure: clonedFailure, UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
 		ContextTokens: r.contextTokens,
 		Capabilities:  r.capabilities.Clone(),
 		CreatedAt:     r.createdAt, FinishedAt: r.finishedAt,
@@ -201,10 +216,10 @@ func (r Run) validate() error {
 	if !r.state.Valid() {
 		return fmt.Errorf("run: invalid state %q", r.state)
 	}
-	if err := resourceid.ValidateRun(r.id); err != nil {
+	if err := identity.ValidateRun(r.id); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if err := resourceid.ValidateSession(r.sessionID); err != nil {
+	if err := identity.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
 	switch {
@@ -231,7 +246,7 @@ func (r Run) validate() error {
 		return errors.New("run: child carries a root Goal incarnation")
 	}
 	if r.activeSegmentID != "" {
-		if err := resourceid.ValidateSegment(r.activeSegmentID); err != nil {
+		if err := identity.ValidateSegment(r.activeSegmentID); err != nil {
 			return fmt.Errorf("run: active %w", err)
 		}
 	}
@@ -373,7 +388,7 @@ func (r Run) Resume(segmentID string, resumedAt time.Time) (Run, error) {
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot resume %s Run", r.state)
 	}
-	if err := resourceid.ValidateSegment(segmentID); err != nil {
+	if err := identity.ValidateSegment(segmentID); err != nil {
 		return Run{}, fmt.Errorf("run: continuation %w", err)
 	}
 	if err := r.validateTransitionTime(resumedAt); err != nil {
@@ -435,8 +450,12 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 		return Run{}, err
 	}
 	r.state, r.activeSegmentID = state, ""
-	r.outcome = optional.Clone(&termination.Outcome)
-	r.detail, r.failure = termination.Detail, optional.Clone(termination.Failure)
+	r.outcome = new(termination.Outcome)
+	clonedFailure := termination.Failure
+	if clonedFailure != nil {
+		clonedFailure = new(*clonedFailure)
+	}
+	r.detail, r.failure = termination.Detail, clonedFailure
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
 	r.unresolvedEffects = slices.Clone(termination.UnresolvedEffects)
@@ -499,7 +518,7 @@ func (r Run) Failure() (Failure, bool) {
 	if r.failure == nil {
 		return Failure{}, false
 	}
-	return *optional.Clone(r.failure), true
+	return *r.failure, true
 }
 func (r Run) Metrics() Metrics     { return r.metrics }
 func (r Run) ContextTokens() int64 { return r.contextTokens }

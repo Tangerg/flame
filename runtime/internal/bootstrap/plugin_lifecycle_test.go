@@ -40,7 +40,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	t.Cleanup(server.Close)
 	cfg := runtimeConfigWithRequiredDeps(t)
 	t.Cleanup(func() {
-		_ = filepath.WalkDir(filepath.Join(cfg.Stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
+		_ = filepath.WalkDir(filepath.Join(cfg.stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {
 				return os.Chmod(path, 0700)
 			}
@@ -58,7 +58,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 
 	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {
@@ -66,7 +66,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrMCPOwnedByInstallation) {
 		t.Fatalf("installation server CRUD: %v", refused.Failure)
 	}
-	discovered := must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
+	discovered := must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
 	if len(discovered.Skills) != 1 || discovered.Skills[0].Scope != protocol.SkillScopeInstallation || discovered.Skills[0].Installation == nil || discovered.Skills[0].Installation.InstallationID != installed.ID {
 		t.Fatalf("package skill provenance: %+v", discovered)
 	}
@@ -195,7 +195,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	host, api = buildPluginProtocolRuntime(t, cfg)
-	endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		t.Fatalf("waiting dependency removal: %v", removal.Failure)
 	}
 
-	discovered = must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
+	discovered = must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
 	if len(discovered.Skills) != 0 {
 		t.Fatal("disabled skill remained available")
 	}

@@ -9,8 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -85,14 +84,14 @@ type singleInstallationStore struct {
 }
 
 func (s *singleInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
-	installation, found, err := s.Get(ctx, resourceid.InstallationID{})
+	installation, found, err := s.Get(ctx, identity.InstallationID{})
 	if err != nil || !found {
 		return nil, err
 	}
 	return []plugin.Snapshot{installation}, err
 }
 
-func (s *singleInstallationStore) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *singleInstallationStore) Get(ctx context.Context, _ identity.InstallationID) (plugin.Snapshot, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.record == nil {
@@ -125,16 +124,16 @@ func (s *singleInstallationStore) Save(_ context.Context, installation *plugin.I
 	return nil
 }
 
-func (s *singleInstallationStore) Remove(context.Context, resourceid.InstallationID) error {
+func (s *singleInstallationStore) Remove(context.Context, identity.InstallationID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.record = nil
 	return nil
 }
 
-type releaseCatalog map[fingerprint.Digest]plugin.Release
+type releaseCatalog map[identity.Digest]plugin.Release
 
-func (c releaseCatalog) Get(_ context.Context, digest fingerprint.Digest) (plugin.Release, error) {
+func (c releaseCatalog) Get(_ context.Context, digest identity.Digest) (plugin.Release, error) {
 	release, found := c[digest]
 	if !found {
 		return plugin.Release{}, plugin.ErrNotFound
@@ -151,7 +150,7 @@ func (preparedPackages) ReadResource(context.Context, *plugin.Installation, stri
 func (preparedPackages) Materialize(context.Context, string) (plugins.Candidate, error) {
 	return nil, errors.New("unexpected materialization")
 }
-func (preparedPackages) Reclaim(context.Context, []fingerprint.Digest) error { return nil }
+func (preparedPackages) Reclaim(context.Context, []identity.Digest) error { return nil }
 func (preparedPackages) Prepare(context.Context, *plugin.Installation, plugin.Release) error {
 	return nil
 }

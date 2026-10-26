@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -15,7 +13,7 @@ import (
 // ForkPlan is the atomic durable command for creating one child Session with
 // the complete visible history and Plan held by its resolved parent boundary.
 type ForkPlan struct {
-	parentID        resourceid.SessionID
+	parentID        identity.SessionID
 	snapshot        Snapshot
 	planReplacement *plan.Replacement
 }
@@ -27,7 +25,7 @@ func NewForkPlan(
 	snapshot Snapshot,
 	planReplacement *plan.Replacement,
 ) (ForkPlan, error) {
-	parent, err := resourceid.ParseSession(parentID)
+	parent, err := identity.ParseSession(parentID)
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
@@ -55,7 +53,11 @@ func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*
 	if err := validateForkPlanReplacement(steps, replacement); err != nil {
 		return nil, err
 	}
-	return optional.Clone(replacement), nil
+	clonedReplacement := replacement
+	if clonedReplacement != nil {
+		clonedReplacement = new(*clonedReplacement)
+	}
+	return clonedReplacement, nil
 }
 
 func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) error {
@@ -94,7 +96,13 @@ func (f ForkPlan) Snapshot() Snapshot {
 // PlanReplacement returns an isolated initial Plan transition when the fork
 // boundary held a non-empty Plan.
 func (f ForkPlan) PlanReplacement() *plan.Replacement {
-	return optional.Clone(f.planReplacement)
+	clonedPlanReplacement := f.planReplacement
+	if clonedPlanReplacement !=
+
+		nil {
+		clonedPlanReplacement = new(*clonedPlanReplacement)
+	}
+	return clonedPlanReplacement
 }
 
 // capturedSnapshot projects a decided plan's captured state into the isolated

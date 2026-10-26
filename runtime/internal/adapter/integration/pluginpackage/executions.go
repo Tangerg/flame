@@ -12,8 +12,8 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -34,7 +34,7 @@ type executionContent struct {
 type executionTree struct {
 	path  string
 	root  *os.Root
-	lease *advisorylock.Lease
+	lease *filesystem.DirectoryLease
 }
 
 func (t *executionTree) discard() error {
@@ -67,7 +67,7 @@ func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
 	} else if !info.IsDir() {
 		return errors.New("pluginpackage: execution namespace is not a directory")
 	}
-	namespace, err := advisorylock.AcquireDirectory(ctx, dir)
+	namespace, err := filesystem.AcquireDirectoryLease(ctx, dir)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
 				continue
 			}
 			path := filepath.Join(dir, entry.Name())
-			lease, err := advisorylock.TryDirectory(path)
+			lease, err := filesystem.TryDirectoryLease(path)
 			if errors.Is(err, os.ErrNotExist) {
 				continue
 			}
@@ -152,7 +152,7 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}, Retire: lease}, true, nil
 }
 
-func (r *Releases) execution(ctx context.Context, digest fingerprint.Digest, source *os.Root) (*executionLease, error) {
+func (r *Releases) execution(ctx context.Context, digest identity.Digest, source *os.Root) (*executionLease, error) {
 	for {
 		if cause := cancellation.Err(ctx); cause != nil {
 			return nil, cause
@@ -201,7 +201,7 @@ func (r *Releases) execution(ctx context.Context, digest fingerprint.Digest, sou
 	}
 }
 
-func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fingerprint.Digest) (_ *executionTree, err error) {
+func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest identity.Digest) (_ *executionTree, err error) {
 	dir := r.executionDirectory()
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fi
 	if resolved != dir {
 		return nil, errors.New("pluginpackage: execution directory is redirected")
 	}
-	namespace, err := advisorylock.AcquireDirectory(ctx, dir)
+	namespace, err := filesystem.AcquireDirectoryLease(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fi
 	if err != nil {
 		return nil, errors.Join(err, namespace.Release())
 	}
-	lease, err := advisorylock.TryDirectory(staged.path)
+	lease, err := filesystem.TryDirectoryLease(staged.path)
 	if err == nil && lease == nil {
 		err = errors.New("pluginpackage: execution stage is already leased")
 	}
@@ -253,7 +253,7 @@ func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fi
 	return tree, nil
 }
 
-func (r *Releases) releaseExecution(digest fingerprint.Digest, content *executionContent) error {
+func (r *Releases) releaseExecution(digest identity.Digest, content *executionContent) error {
 	r.executionMu.Lock()
 	content.users--
 	last := content.users == 0 && content.tree != nil

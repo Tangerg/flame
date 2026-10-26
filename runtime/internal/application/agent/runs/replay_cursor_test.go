@@ -6,9 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func testReplayPosition() replayPosition {
@@ -26,16 +24,16 @@ func testReplayEpoch(raw string) replayEpoch {
 	return epoch
 }
 
-func testRunResourceID(raw string) resourceid.RunID {
-	identity, err := resourceid.ParseRun(raw)
+func testRunResourceID(raw string) flameidentity.RunID {
+	identity, err := flameidentity.ParseRun(raw)
 	if err != nil {
 		panic(err)
 	}
 	return identity
 }
 
-func testSegmentResourceID(raw string) resourceid.SegmentID {
-	identity, err := resourceid.ParseSegment(raw)
+func testSegmentResourceID(raw string) flameidentity.SegmentID {
+	identity, err := flameidentity.ParseSegment(raw)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +41,7 @@ func testSegmentResourceID(raw string) resourceid.SegmentID {
 }
 
 func TestReplayCursorResourceEnvelopeRejectsBothDirections(t *testing.T) {
-	oversized := strings.Repeat("x", runtimeidentity.MaximumCursorCharacters+1)
+	oversized := strings.Repeat("x", flameidentity.MaximumCursorCharacters+1)
 	if _, err := decodeReplayCursor(oversized); !errors.Is(err, errMalformedReplayCursor) ||
 		!errors.Is(err, errReplayCursorTooLarge) {
 		t.Fatalf("decode oversized cursor err = %v, want malformed and too large", err)

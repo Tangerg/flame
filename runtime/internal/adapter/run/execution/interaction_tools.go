@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -22,14 +20,14 @@ import (
 // assembly failure. A nil capturedMCP admits the current catalog; a non-nil
 // slice retains only this group's original MCP authority before discovery and
 // collision resolution. [toolset.Resolver] satisfies this port directly.
-type InteractionToolResolver interface {
+type interactionToolResolver interface {
 	Manifest(ctx context.Context, group tool.Group, capturedMCP []tool.Ref) (toolset.Manifest, error)
 }
 
 // InteractionToolInterpreter owns product policy facts implied by concrete
 // Tool identities. Toolset satisfies this port without importing Agent Framework. An
 // implementation must be safe for concurrent calls from one Tool batch.
-type InteractionToolInterpreter interface {
+type interactionToolInterpreter interface {
 	SafetyClass(ref tool.Ref) tool.SafetyClass
 	UsesStandardPolicy(ref tool.Ref) bool
 	ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error)
@@ -40,7 +38,7 @@ type InteractionToolInterpreter interface {
 // InteractionToolPresenter owns client-facing activity and result projection.
 // Its implementation remains in Toolset; Agent Framework sees only ordinary Tools. An
 // implementation must be safe for concurrent calls from one Tool batch.
-type InteractionToolPresenter interface {
+type interactionToolPresenter interface {
 	Activity(ref tool.Ref, arguments tool.Arguments) string
 	Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string)
 }
@@ -55,7 +53,7 @@ type ToolAuthorizationRequest struct {
 	WorkspaceCWD      string
 	CallID            string
 	Tool              tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 	Arguments         tool.Arguments
 	SafetyClass       tool.SafetyClass
 	FileMutation      tool.FileMutationScope
@@ -75,22 +73,22 @@ type ToolAuthorizationDecision struct {
 }
 
 // AllowTool proceeds with the model's own arguments.
-func AllowTool() ToolAuthorizationDecision { return ToolAuthorizationDecision{} }
+func allowTool() ToolAuthorizationDecision { return ToolAuthorizationDecision{} }
 
 // AllowToolWithArguments proceeds with arguments policy replaced.
-func AllowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision {
+func allowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision {
 	return ToolAuthorizationDecision{arguments: &arguments}
 }
 
 // DenyTool refuses the call. The reason reaches the model as a recoverable Tool
 // result, so a blank one becomes the generic wording rather than nothing.
-func DenyTool(reason string) ToolAuthorizationDecision {
+func denyTool(reason string) ToolAuthorizationDecision {
 	return ToolAuthorizationDecision{reason: toolDenialReason(reason)}
 }
 
 // AskToolApproval waits for a durable human answer to prompt.
-func AskToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, error) {
-	if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}).Validate(); err != nil {
+func askToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, error) {
+	if err := (runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}).Validate(); err != nil {
 		return ToolAuthorizationDecision{}, fmt.Errorf("execution: invalid Tool approval plan: %w", err)
 	}
 	return ToolAuthorizationDecision{approval: &prompt}, nil
@@ -100,7 +98,7 @@ func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.Ap
 	if err := validateToolAuthorizationRequest(request); err != nil {
 		return err
 	}
-	if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}).Validate(); err != nil {
+	if err := (runs.Interrupt{Kind: run.InterruptApproval, Approval: &prompt}).Validate(); err != nil {
 		return err
 	}
 	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.SourceFingerprint != request.SourceFingerprint ||
@@ -115,12 +113,19 @@ func (d ToolAuthorizationDecision) Denied() (string, bool) { return d.reason, d.
 
 // EffectiveArguments reports the replacement arguments, when policy supplied any.
 func (d ToolAuthorizationDecision) EffectiveArguments() (tool.Arguments, bool) {
-	return optional.Present(d.arguments)
+	if d.arguments == nil {
+
+		return tool.Arguments{}, false
+	}
+	return *d.arguments, true
 }
 
 // Approval reports the prompt this call waits on, when it waits on one.
 func (d ToolAuthorizationDecision) Approval() (runs.ApprovalPrompt, bool) {
-	return optional.Present(d.approval)
+	if d.approval == nil {
+		return runs.ApprovalPrompt{}, false
+	}
+	return *d.approval, true
 }
 
 func toolDenialReason(reason string) string {
@@ -136,13 +141,13 @@ func toolDenialReason(reason string) string {
 // for concurrent calls from one Tool batch.
 // Errors report a host policy failure and cannot supply a Tool result or input
 // request. Only a successful decision can deny or request approval.
-type InteractionToolAuthorizer interface {
+type interactionToolAuthorizer interface {
 	AuthorizeTool(ctx context.Context, request ToolAuthorizationRequest) (ToolAuthorizationDecision, error)
 	ResolveToolApproval(
 		ctx context.Context,
 		request ToolAuthorizationRequest,
 		prompt runs.ApprovalPrompt,
-		resolution interrupt.Resolution,
+		resolution run.InterruptResolution,
 	) (ToolAuthorizationDecision, error)
 }
 
@@ -173,13 +178,15 @@ type InteractionToolHookDecision struct {
 
 // AllowToolHook proceeds, optionally escalating to human review and optionally
 // with arguments a hook rewrote.
-func AllowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionToolHookDecision {
-	arguments = optional.Clone(arguments)
+func allowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionToolHookDecision {
+	if arguments != nil {
+		arguments = new(*arguments)
+	}
 	return InteractionToolHookDecision{requireApproval: requireApproval, arguments: arguments}
 }
 
 // DenyToolHook refuses the call, naming the hook when the hook did not.
-func DenyToolHook(reason string) InteractionToolHookDecision {
+func denyToolHook(reason string) InteractionToolHookDecision {
 	if trimmed := strings.TrimSpace(reason); trimmed != "" {
 		return InteractionToolHookDecision{reason: trimmed}
 	}
@@ -191,7 +198,11 @@ func (d InteractionToolHookDecision) Denied() (string, bool) { return d.reason, 
 
 // EffectiveArguments reports the rewritten arguments, when a hook supplied any.
 func (d InteractionToolHookDecision) EffectiveArguments() (tool.Arguments, bool) {
-	return optional.Present(d.arguments)
+	if d.arguments == nil {
+
+		return tool.Arguments{}, false
+	}
+	return *d.arguments, true
 }
 
 // RequiresApproval reports a hook escalating a call the gate would have passed.
@@ -201,7 +212,7 @@ func (d InteractionToolHookDecision) RequiresApproval() bool { return d.requireA
 // calls. PostToolUse is observational: its error is recorded by the caller but
 // cannot rewrite a Tool result after the external operation completed. An
 // implementation must be safe for concurrent calls from one Tool batch.
-type InteractionToolHooks interface {
+type interactionToolHooks interface {
 	BeforeToolUse(ctx context.Context, input InteractionToolHookInput) (InteractionToolHookDecision, error)
 	AfterToolUse(ctx context.Context, input InteractionToolHookInput) error
 }

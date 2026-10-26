@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -16,7 +16,7 @@ func TestUnavailableInstallationRetainsExposureChoices(t *testing.T) {
 }
 
 func testUnavailableInstallationRetainsExposureChoices(t *testing.T) {
-	installation, err := resourceid.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
+	installation, err := identity.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
 	if err != nil {
 		t.Fatal(err)
 	}

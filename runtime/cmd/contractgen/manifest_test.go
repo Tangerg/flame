@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -18,7 +18,7 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 
 	set := testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes())
 	pageFamily := genericBaseOf(reflect.TypeFor[protocol.Page[protocol.Session]]())
-	continuationFields := contractshape.Fields(reflect.TypeFor[protocol.PageContinuation]())
+	continuationFields := jsonvalue.Fields(reflect.TypeFor[protocol.PageContinuation]())
 	if len(continuationFields) != 1 {
 		t.Fatalf("PageContinuation fields = %v, want exactly one", continuationFields)
 	}
@@ -78,8 +78,8 @@ func TestGeneratedMethodErrorsIncludeStaticCapabilityRefusals(t *testing.T) {
 			t.Fatalf("%s is absent from the manifest", methodName)
 		}
 		if !slices.Contains(
-			manifest.Methods[index].Errors,
-			protocol.ErrCapabilityNotNeg.Error(),
+			manifest.Methods[index].Errors, protocol.ErrCapabilityNotNeg.
+				Error(),
 		) {
 			t.Fatalf("%s errors = %v, want capability_not_negotiated", methodName, manifest.Methods[index].Errors)
 		}

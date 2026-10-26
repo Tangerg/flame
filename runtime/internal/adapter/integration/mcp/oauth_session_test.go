@@ -11,13 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T) {
@@ -75,7 +73,7 @@ func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T)
 
 type memoryOAuthStore struct {
 	mu      sync.Mutex
-	target  fingerprint.Digest
+	target  identity.Digest
 	payload []byte
 	binding string
 	removed int

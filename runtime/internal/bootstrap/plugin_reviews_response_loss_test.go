@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -56,7 +56,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: capability.Target{Scope: "installation", Reference: installed.ID},
+		Target: extension.Target{Scope: "installation", Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
@@ -79,7 +79,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected, err := jsoninput.Parse(committed)
+	expected, err := jsonvalue.Parse(committed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,9 +88,9 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err := os.Remove(evidence); err != nil {
 		t.Fatal(err)
 	}
-	commandID := operation.Identity(operation.Bind(t.Context(), cfg.Stores.IdempotencyNamespace.String(), options.IdempotencyKey))
-	original, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
-	if err != nil || !found || original.Snapshot().Phase != plugin.CommandDispatched || original.Snapshot().Invocation.Origin != capability.Human {
+	commandID := operation.Identity(operation.Bind(t.Context(), cfg.stores.IdempotencyNamespace.String(), options.IdempotencyKey))
+	original, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
+	if err != nil || !found || original.Snapshot().Phase != plugin.CommandDispatched || original.Snapshot().Invocation.Origin != extension.Human {
 		t.Fatalf("human command lost its pending owner: %+v, %t, %v", original, found, err)
 	}
 	installed = stageCommandReplacement(t, r, installed, source)
@@ -102,11 +102,11 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-original")
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
-	restored, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	restored, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), original.Snapshot()) {
 		t.Fatalf("restart changed the original pending binding: %+v, %t, %v", restored, found, err)
 	}
-	lookup := protocol.PluginCommandRequest{Namespace: cfg.Stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsRetireCommand, lookup, delivery.Options{}); !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("dispatched command became eligible for retirement: %+v", result)
 	}
@@ -136,14 +136,14 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-original")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	recovered := r.must(delivery.PluginsCall, request, options.IdempotencyKey).(*protocol.CallPluginResponse)
-	actual, err := jsoninput.Parse([]byte(recovered.Output))
+	actual, err := jsonvalue.Parse([]byte(recovered.Output))
 	if err != nil || recovered.Failure != nil || actual != expected {
 		t.Fatalf("receipt differs from the committed private result: %+v, %v", recovered, err)
 	}
 	if _, err := os.Stat(evidence); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("receipt recovery redispatched the mutation: %v", err)
 	}
-	observed, found, err := cfg.Stores.PluginCommands.Get(t.Context(), commandID)
+	observed, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || observed.Snapshot().Phase != plugin.CommandObserved {
 		t.Fatalf("original receipt did not settle its command: %+v, %t, %v", observed, found, err)
 	}
@@ -184,13 +184,13 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.Parse(data)
+	contract, err := extension.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var method string
 	for _, descriptor := range contract.Descriptor().Methods {
-		if descriptor.Kind == capability.Mutation {
+		if descriptor.Kind == extension.Mutation {
 			if method != "" {
 				t.Fatal("fixture requires one mutation")
 			}
@@ -229,13 +229,13 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Parse([]byte(`{"id":"example-review","expectedRevision":1,"status":"resolved"}`))
+	input, err := jsonvalue.Parse([]byte(`{"id":"example-review","expectedRevision":1,"status":"resolved"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := write.Invoke(ctx, "original-command", input); err == nil {
 		t.Fatal("lost acknowledgement became known success")
-	} else if _, known := errors.AsType[*capability.Refusal](err); known {
+	} else if _, known := errors.AsType[*extension.Refusal](err); known {
 		t.Fatalf("lost observation became a business refusal: %v", err)
 	}
 	_ = session.Close()
@@ -255,7 +255,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected, err := jsoninput.Parse(accepted)
+	expected, err := jsonvalue.Parse(accepted)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,15 +312,15 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name string                `json:"name"`
-		Kind capability.MethodKind `json:"kind"`
+		Name string               `json:"name"`
+		Kind extension.MethodKind `json:"kind"`
 	}
 	if err := json.Unmarshal(metadata, &methods); err != nil {
 		t.Fatal(err)
 	}
 	var updateMethod string
 	for _, method := range methods {
-		if method.Kind == capability.Mutation {
+		if method.Kind == extension.Mutation {
 			if updateMethod != "" {
 				t.Fatal("receipt fixture requires one declared mutation")
 			}
@@ -334,7 +334,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.Parse(capabilityData)
+	contract, err := extension.ParseCapability(capabilityData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	installed := poMCPActivate(runtime, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
@@ -445,18 +445,18 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := json.Unmarshal(encoded, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	var invocation capability.Invocation
+	var invocation extension.Invocation
 	if err := json.Unmarshal(evidence.Request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
 		t.Fatal(err)
 	}
 	identity := invocation.ID
-	if invocation.Origin != capability.Model || invocation.Parent == "" || invocation.Target.Scope != "installation" {
+	if invocation.Origin != extension.Model || invocation.Parent == "" || invocation.Target.Scope != "installation" {
 		t.Fatalf("calling-owner evidence was lost: %+v", invocation)
 	}
 	if identity == "" || identity == "provider-reused" || evidence.Response.Result.IsError || evidence.Response.Result.StructuredContent == nil {
 		t.Fatalf("probe did not witness the canonical committed invocation: %s", encoded)
 	}
-	dataRoot, err := filepath.EvalSymlinks(cfg.Stores.DataDirectory)
+	dataRoot, err := filepath.EvalSymlinks(cfg.stores.DataDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,7 +493,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Parse(evidence.Request.Params.Arguments)
+	input, err := jsonvalue.Parse(evidence.Request.Params.Arguments)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,7 +520,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	var inspectedMetadata sdk.Meta
-	if err := inspectedMetadata.Set(pluginsdk.InvocationMetadataKey, capability.Invocation{ID: "new-inspected-call", Origin: capability.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
+	if err := inspectedMetadata.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "new-inspected-call", Origin: extension.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
 		t.Fatal(err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: inspectedMetadata})

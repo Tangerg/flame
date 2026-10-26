@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
@@ -51,7 +51,7 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 		}
 		origin = mcpserver.UserOrigin()
 	case protocol.MCPOriginInstallation:
-		installation, err := resourceid.ParseInstallation(in.Origin.InstallationID)
+		installation, err := identity.ParseInstallation(in.Origin.InstallationID)
 		if err != nil {
 			return mcpserver.ID{}, protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}

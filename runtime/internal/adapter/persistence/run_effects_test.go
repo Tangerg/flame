@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -18,7 +17,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			store := NewRunStore(db)
+			store := newRunStore(db)
 			draft := runDraft("run_effect", "session_effect")
 			if err := store.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
@@ -51,7 +50,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			restored, found, err := NewRunStore(db).Run(t.Context(), terminal.ID())
+			restored, found, err := newRunStore(db).Run(t.Context(), terminal.ID())
 			if err != nil || !found || !restored.Equal(terminal) {
 				t.Fatalf("reopened terminal lost evidence: %+v, %v", restored, err)
 			}

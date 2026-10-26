@@ -4,13 +4,13 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
-func CommandContract(t *testing.T, name, target string) jsoninput.Input {
+func CommandContract(t *testing.T, name, target string) jsonvalue.Value {
 	t.Helper()
-	contract, err := capability.New(capability.Config{Reference: "consumer.role", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: name, Kind: capability.Mutation, Target: target, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "consumer.role", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: name, Kind: extension.Mutation, Target: target, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,9 +16,8 @@ import (
 	"testing"
 	"time"
 
-	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -50,9 +49,9 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	t.Cleanup(server.Close)
 
 	cfg := runtimeConfigWithRequiredDeps(t)
-	cfg.ApprovalMode = approval.ModeYolo
+	cfg.approvalMode = approval.ModeYolo
 	t.Cleanup(func() {
-		_ = filepath.WalkDir(filepath.Join(cfg.Stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
+		_ = filepath.WalkDir(filepath.Join(cfg.stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {
 				return os.Chmod(path, 0700)
 			}
@@ -102,7 +101,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 
 	host, api := buildPluginProtocolRuntime(t, cfg)
 	t.Cleanup(func() {
@@ -110,7 +109,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +136,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 		return result.Value
 	}
 	ctx := protocolLifecycleContext(t.Context())
-	session := must(delivery.SessionsCreate, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "session").(*protocol.Session)
+	session := must(delivery.SessionsCreate, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "session").(*protocol.Session)
 	run := func(label string) {
 		t.Helper()
 		phase.Add(1)
@@ -349,7 +348,7 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,

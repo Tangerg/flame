@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -307,7 +307,7 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if input == nil {
 		return nil, nil
 	}
-	if err := resourceid.ValidateItem(input.ItemID); err != nil {
+	if err := identity.ValidateItem(input.ItemID); err != nil {
 		return nil, fmt.Errorf("execution: committed continuation input: %w", err)
 	}
 	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {

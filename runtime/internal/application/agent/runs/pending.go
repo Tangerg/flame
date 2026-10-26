@@ -6,12 +6,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -61,7 +58,7 @@ type InterruptBinding struct {
 	// a remembered rule without inferring authority from a display name. Both are
 	// empty for a Question boundary.
 	ToolRef           tool.Ref
-	SourceFingerprint fingerprint.Digest
+	SourceFingerprint identity.Digest
 }
 
 type memberRequestIdentity struct {
@@ -90,7 +87,7 @@ type InterruptAnswer struct {
 	InterruptItemID string
 	MemberID        string
 	RequestID       string
-	Resolution      interrupt.Resolution
+	Resolution      run.InterruptResolution
 }
 
 // OpenInterrupt is one Item a waiting tree awaits an answer for. The Item owns
@@ -112,11 +109,11 @@ type ApprovalReview struct {
 }
 
 // Kind is the answer the open Item awaits.
-func (o OpenInterrupt) Kind() interrupt.Kind {
+func (o OpenInterrupt) Kind() run.InterruptKind {
 	if o.Approval != nil {
-		return interrupt.Approval
+		return run.InterruptApproval
 	}
-	return interrupt.Question
+	return run.InterruptQuestion
 }
 
 // DrainedTool binds one Tool Item that was still open when its Run suspended
@@ -145,7 +142,9 @@ func (p Pending) RootContinuation() (Continuation, bool) {
 func (p Pending) Clone() Pending {
 	p.Interrupts = slices.Clone(p.Interrupts)
 	for index := range p.Interrupts {
-		p.Interrupts[index].Approval = optional.Clone(p.Interrupts[index].Approval)
+		if p.Interrupts[index].Approval != nil {
+			p.Interrupts[index].Approval = new(*p.Interrupts[index].Approval)
+		}
 	}
 	p.Bindings = slices.Clone(p.Bindings)
 	p.Continuations = slices.Clone(p.Continuations)
@@ -198,10 +197,10 @@ func (p Pending) validateEnvelope() error {
 	if err := instant.Validate(p.CreatedAt); err != nil {
 		return fmt.Errorf("interrupts: pending creation time: %w", err)
 	}
-	if err := resourceid.ValidateRun(p.RootRunID); err != nil {
+	if err := identity.ValidateRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
 	}
-	if err := runtimeidentity.ValidateExecutor(p.ExecutorID); err != nil {
+	if err := ValidateExecutor(p.ExecutorID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	switch {
@@ -262,7 +261,7 @@ func (p Pending) validateInterrupts() (map[string]OpenInterrupt, error) {
 }
 
 func (o OpenInterrupt) validate() error {
-	if err := resourceid.ValidateItem(o.ItemID); err != nil {
+	if err := identity.ValidateItem(o.ItemID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if o.Approval != nil && !o.Approval.Risk.Valid() {
@@ -302,7 +301,7 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 	if err != nil {
 		return err
 	}
-	if request.Kind() == interrupt.Approval {
+	if request.Kind() == run.InterruptApproval {
 		if err := validateApprovalToolState(binding, continuation); err != nil {
 			return err
 		}
@@ -311,13 +310,13 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 }
 
 func (b InterruptBinding) validateIdentities() error {
-	if err := resourceid.ValidateItem(b.InterruptItemID); err != nil {
+	if err := identity.ValidateItem(b.InterruptItemID); err != nil {
 		return fmt.Errorf("interrupt item: %w", err)
 	}
-	if err := runtimeidentity.ValidateMember(b.MemberID); err != nil {
+	if err := ValidateMember(b.MemberID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateRequest(b.RequestID); err != nil {
+	if err := validateRequest(b.RequestID); err != nil {
 		return err
 	}
 	return nil
@@ -352,8 +351,8 @@ func (v *pendingBindingValidator) validateInterruptTool(
 	request OpenInterrupt,
 ) error {
 	switch request.Kind() {
-	case interrupt.Approval:
-		if err := runtimeidentity.ValidateEffect(binding.ToolCallID); err != nil {
+	case run.InterruptApproval:
+		if err := ValidateInvocation(binding.ToolCallID); err != nil {
 			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
 		}
 		key := memberToolCallIdentity{memberID: binding.MemberID, toolCallID: binding.ToolCallID}
@@ -365,7 +364,7 @@ func (v *pendingBindingValidator) validateInterruptTool(
 			)
 		}
 		v.boundToolCalls[key] = struct{}{}
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		if binding.ToolCallID != "" {
 			return fmt.Errorf(
 				"interrupts: question item %q carries approval Tool call %q",
@@ -432,10 +431,10 @@ func (c Continuation) Validate() error {
 }
 
 func (c Continuation) validateRun() error {
-	if err := resourceid.ValidateRun(c.RunID); err != nil {
+	if err := identity.ValidateRun(c.RunID); err != nil {
 		return err
 	}
-	return runtimeidentity.ValidateMember(c.MemberID)
+	return ValidateMember(c.MemberID)
 }
 
 func validateDrainedTools(tools []DrainedTool) error {
@@ -458,10 +457,10 @@ func validateDrainedTools(tools []DrainedTool) error {
 }
 
 func (d DrainedTool) validate() error {
-	if err := resourceid.ValidateItem(d.ItemID); err != nil {
+	if err := identity.ValidateItem(d.ItemID); err != nil {
 		return err
 	}
-	return runtimeidentity.ValidateEffect(d.CallID)
+	return ValidateInvocation(d.CallID)
 }
 
 func continuationForMember(continuations []Continuation, memberID string) (Continuation, bool) {

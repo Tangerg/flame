@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 var ErrOAuthSessionSuperseded = errors.New("mcp: oauth session superseded")
@@ -28,17 +28,17 @@ func (o OAuthTarget) ID() ID { return o.Source.ID(o.Name) }
 // recipient is declared by its source, which excludes configured input values
 // and survives a release that keeps the endpoint, so an OAuth grant and a
 // static secret input follow the same rule.
-func (o OAuthTarget) Fingerprint() fingerprint.Digest {
+func (o OAuthTarget) Fingerprint() identity.Digest {
 	installation, installed := o.Source.Origin().Installation()
 	fields := []string{string(o.Source.Origin().Kind()), installation.String(), o.Name.String()}
 	if installed {
-		return fingerprint.Strings(append(fields, o.Source.recipient.String())...)
+		return identity.DigestStrings(append(fields, o.Source.recipient.String())...)
 	}
 	fields = append(fields, o.URL)
 	for _, name := range slices.Sorted(maps.Keys(o.Headers)) {
 		fields = append(fields, name, o.Headers[name])
 	}
-	return fingerprint.Strings(fields...)
+	return identity.DigestStrings(fields...)
 }
 
 // OAuthTarget is the credential target this record would request a grant for.

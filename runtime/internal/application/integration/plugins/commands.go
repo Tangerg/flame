@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/samber/lo"
 )
 
 type CommandStore interface {
@@ -25,7 +25,7 @@ type Commands struct {
 }
 
 func NewCommands(store CommandStore, admission *Admission) (*Commands, error) {
-	if dependency.Missing(store) || admission == nil {
+	if lo.IsNil(store) || admission == nil {
 		return nil, errors.New("plugins: command store and admission are required")
 	}
 	return &Commands{store: store, admission: admission}, nil
@@ -78,7 +78,7 @@ func (c *Commands) Retire(ctx context.Context, id string) error {
 // RestoreInvocation validates a private owner's retained caller against original
 // host routing, including the resource owner's original target. Only a fresh
 // automatic trigger needs the background contribution's own installation target.
-func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.Invocation) (context.Context, error) {
+func (c *Commands) RestoreInvocation(ctx context.Context, invocation extension.Invocation) (context.Context, error) {
 	if err := invocation.Validate(); err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.
 		if record.Invocation != invocation || record.Provider.InstallationID != actor.InstallationID() || record.Provider.Digest != actor.Release() || record.Server != actor.Server() || !command.WasDispatched() {
 			return nil, plugin.ErrCommandConflict
 		}
-	} else if invocation.Origin != capability.Automatic || invocation.Parent != "" || invocation.Target.Scope != capability.ScopeInstallation || invocation.Target.Reference != actor.InstallationID().String() {
+	} else if invocation.Origin != extension.Automatic || invocation.Parent != "" || invocation.Target.Scope != extension.ScopeInstallation || invocation.Target.Reference != actor.InstallationID().String() {
 		return nil, plugin.ErrCommandConflict
 	}
 	return operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent), nil
@@ -104,7 +104,7 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation capability.
 // Find projects an original binding before new-call discovery does network I/O.
 // Bind rereads under admission before persisting, so this read cannot admit a
 // competing route or race installation replacement.
-func (c *Commands) Find(ctx context.Context, id, method string, input jsoninput.Input) (*plugin.Command, bool, error) {
+func (c *Commands) Find(ctx context.Context, id, method string, input jsonvalue.Value) (*plugin.Command, bool, error) {
 	command, found, err := c.store.Get(ctx, id)
 	if err == nil && found && !command.Matches(method, input) {
 		return nil, false, plugin.ErrCommandConflict
@@ -119,7 +119,7 @@ type CommandAdmission struct {
 	Activation plugin.Activation
 }
 
-func (c *Commands) Bind(ctx context.Context, id, method string, input jsoninput.Input, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (capability.Invocation, error)) (*plugin.Command, error) {
+func (c *Commands) Bind(ctx context.Context, id, method string, input jsonvalue.Value, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (extension.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Under(ctx, func() error {
 		previous, found, err := c.store.Get(ctx, id)

@@ -5,17 +5,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	question := runs.Interrupt{
-		Kind: interrupt.Question,
+		Kind: run.InterruptQuestion,
 		Question: &runs.QuestionPrompt{
 			ToolName:  "ask_user",
 			Arguments: `{"questions":[{"question":"Continue?"}]}`,
@@ -38,14 +38,14 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt: %v", err)
 	}
-	if got.Kind != interrupt.Question || got.Question == nil ||
+	if got.Kind != run.InterruptQuestion || got.Question == nil ||
 		got.Question.ToolName != "ask_user" ||
 		!got.Question.Fields[0].AllowCustom {
 		t.Fatalf("decoded = %#v", got)
 	}
 
 	approval := runs.Interrupt{
-		Kind: interrupt.Approval,
+		Kind: run.InterruptApproval,
 		Approval: &runs.ApprovalPrompt{
 			CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
 			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: testsupport.BuiltInTool(t, "web_fetch"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "web_fetch")),
@@ -84,9 +84,9 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 
 func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
 	for _, rememberable := range []bool{false, true} {
-		for _, fingerprint := range []fingerprint.Digest{{}, testsupport.Digest("source")} {
+		for _, fingerprint := range []identity.Digest{{}, testsupport.Digest("source")} {
 			prompt := runs.Interrupt{
-				Kind: interrupt.Approval,
+				Kind: run.InterruptApproval,
 				Approval: &runs.ApprovalPrompt{
 					CallID: "call_approval", Arguments: `{}`,
 					SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,
@@ -115,7 +115,7 @@ func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T)
 }
 
 func TestResolutionCodecUsesClosedAnswerVocabulary(t *testing.T) {
-	for _, answer := range []interrupt.Resolution{
+	for _, answer := range []run.InterruptResolution{
 		testsupport.QuestionAnswer(t, [][]string{{"yes"}, {}}),
 		testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow, EditedArguments: `{"command":"go test","description":"Run tests"}`, RememberScope: approval.ScopeSession}),
 		testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Deny, Reason: "not now"}),
@@ -124,7 +124,7 @@ func TestResolutionCodecUsesClosedAnswerVocabulary(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		decoded, err := DecodeResolution(raw)
+		decoded, err := decodeResolution(raw)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestResolutionCodecUsesClosedAnswerVocabulary(t *testing.T) {
 		`{"approval":{"decision":"allow","reason":"not now"}}`,
 		`{"question":{"answers":[]}}`,
 	} {
-		if _, err := DecodeResolution([]byte(raw)); err == nil {
+		if _, err := decodeResolution([]byte(raw)); err == nil {
 			t.Fatalf("invalid answer accepted: %s", raw)
 		}
 	}

@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -55,7 +54,7 @@ func NewSelectedChat(selection modelchoice.Selection, resolved ResolvedChat) (Se
 	if err := selection.ValidateExact(); err != nil {
 		return SelectedChat{}, err
 	}
-	if dependency.Missing(resolved.Model()) {
+	if lo.IsNil(resolved.Model()) {
 		return SelectedChat{}, errors.New("auxiliary model: resolved model is required")
 	}
 	limits, _, err := LookupTokenLimits(selection)
@@ -110,7 +109,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", err
 	}
 	id := uuid.NewString()
-	invocation := capability.Invocation{ID: id, Origin: capability.Automatic, Parent: operation.Identity(ctx), Target: capability.Target{Scope: capability.ScopeCall, Reference: id}}
+	invocation := extension.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: extension.Target{Scope: extension.ScopeCall, Reference: id}}
 	if parent, err := pluginsdk.InvocationFromContext(ctx); err == nil {
 		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
 	}
@@ -155,7 +154,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", errors.New("auxiliary model: captured model release is required")
 	}
 	defer release()
-	if dependency.Missing(captured.Model()) {
+	if lo.IsNil(captured.Model()) {
 		return "", errors.New("auxiliary model: model is required")
 	}
 	client, err := chatclient.New(captured.Model(), chatclient.Config{})
@@ -213,7 +212,7 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 			return errors.New("auxiliary model: selected provider returned a non-positive input count")
 		}
 	} else {
-		estimated, err := modeltext.EstimateRequestTokens(request)
+		estimated, err := modelchoice.EstimateRequestTokens(request)
 		if err != nil {
 			return err
 		}

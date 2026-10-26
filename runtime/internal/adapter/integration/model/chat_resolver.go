@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	corechat "github.com/Tangerg/scope/core/chat"
+	"github.com/samber/lo"
 )
 
 // InputTokenCounter is the narrow optional provider capability consumed by
@@ -29,10 +28,10 @@ type ResolvedChat struct {
 
 // NewResolvedChat validates and freezes one resolved chat construction.
 func NewResolvedChat(model corechat.Model, counter InputTokenCounter) (ResolvedChat, error) {
-	if dependency.Missing(model) {
+	if lo.IsNil(model) {
 		return ResolvedChat{}, errors.New("model: resolved chat model is nil")
 	}
-	if counter != nil && dependency.Missing(counter) {
+	if counter != nil && lo.IsNil(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
 	}
 	return ResolvedChat{model: model, inputTokenCounter: counter}, nil
@@ -57,7 +56,7 @@ func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
 // CredentialLookup is the model-client construction view of the provider
 // registry: resolving a chat or embedding client needs only one provider's
 // credentials, not list/configure capabilities.
-type CredentialLookup interface {
+type credentialLookup interface {
 	Get(ctx context.Context, id string) (provider.Provider, bool, error)
 }
 
@@ -67,12 +66,12 @@ type CredentialLookup interface {
 // configuration from the registry and builds an immutable model. It does not
 // retain prior credential generations in a process-lifetime cache.
 type ChatResolver struct {
-	providers CredentialLookup
+	providers credentialLookup
 }
 
 // NewChatResolver returns a complete resolver over the provider configuration lookup.
-func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
-	if dependency.Missing(providers) {
+func NewChatResolver(providers credentialLookup) (*ChatResolver, error) {
+	if lo.IsNil(providers) {
 		return nil, errors.New("model: chat provider credential lookup is required")
 	}
 	return &ChatResolver{providers: providers}, nil
@@ -83,7 +82,7 @@ func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
 // authentication fails as invalid credentials; optional-key providers may
 // resolve without a registry row.
 func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Selection) (ResolvedChat, error) {
-	if c == nil || dependency.Missing(c.providers) {
+	if c == nil || lo.IsNil(c.providers) {
 		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
 	}
 	spec, err := c.resolveClientSpec(ctx, selection)
@@ -119,7 +118,7 @@ func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelcho
 	}
 	spec, err := inputs.clientSpec()
 	if err != nil {
-		if errors.Is(err, ErrCredentialUnavailable) {
+		if errors.Is(err, errCredentialUnavailable) {
 			return clientSpec{}, &run.FailureError{
 				Kind: run.FailureInvalidCredentials,
 				Err:  fmt.Errorf("model: provider %q requires an API key", providerID),

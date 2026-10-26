@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -161,7 +161,7 @@ func pendingValue(record pendingRecord) (runs.Pending, error) {
 			value.ToolRef = ref
 		}
 		if binding.SourceFingerprint != "" {
-			digest, err := fingerprint.ParseDigest(binding.SourceFingerprint)
+			digest, err := identity.ParseDigest(binding.SourceFingerprint)
 			if err != nil {
 				return runs.Pending{}, fmt.Errorf("persistence: decode interrupt binding source fingerprint: %w", err)
 			}

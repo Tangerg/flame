@@ -2,13 +2,10 @@ package pluginpackage
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -17,6 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func BenchmarkInstalledSourceRuleList(b *testing.B) {

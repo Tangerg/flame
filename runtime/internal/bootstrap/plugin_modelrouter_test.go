@@ -2,46 +2,50 @@ package bootstrap
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedRetry(t *testing.T) {
 	var physicalCalls sync.Map
 	cfg := poMCPConfig(t)
-	cfg.ChatResolver = routerTestResolver{ChatResolver: cfg.ChatResolver, calls: &physicalCalls}
+	cfg.chatResolver = routerTestResolver{chatResolver: cfg.chatResolver, calls: &physicalCalls}
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "modelrouter"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.ModelrouterCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	selected, _ := model.New("openai", "gpt-5-mini")
-	replace := func(revision int64, rules []routing.Rule, key string) {
+	replace := func(revision uint64, rules string, key string) {
 		t.Helper()
-		input, err := jsoninput.Encode(rpc.ReplaceInput{ExpectedRevision: revision, Rules: rules})
+		requestInput := testsupport.ModelrouterReplacePolicyV1Input{ExpectedRevision: revision}
+		if err := json.Unmarshal([]byte(rules), &requestInput.Rules); err != nil {
+			t.Fatal(err)
+		}
+		input, err := jsonvalue.Encode(requestInput)
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Capability.Identity().String(), Method: contracts.Replace.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}
 	}
-	replace(1, []routing.Rule{{Use: model.Interaction, Selection: selected}}, "route-interaction")
+	replace(1, `[{"use":"interaction","selection":{"provider":"openai","model":"gpt-5-mini","reasoningEffort":""}}]`, "route-interaction")
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Routed work"}, "router-session").(*protocol.Session)
 	input := protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run with the selected model."}}}
 	start := func() *protocol.StartRunResponse {
@@ -58,7 +62,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		return result.Value.(*protocol.StartRunResponse)
 	}
 	started := start()
-	replace(2, []routing.Rule{}, "clear-routing")
+	replace(2, `[]`, "clear-routing")
 	if retried := start(); retried.RunID != started.RunID {
 		t.Fatal("accepted retry reran mutable routing")
 	}
@@ -75,7 +79,7 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 
 // The provider binds identity during construction; request options may omit it.
 type routerTestResolver struct {
-	ChatResolver
+	chatResolver
 	calls *sync.Map
 }
 

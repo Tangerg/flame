@@ -9,8 +9,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -457,7 +455,9 @@ func (w *workspaceSubscription) flushStalledLocked() bool {
 // without a copy here, because a comment describing the shape of this struct is
 // exactly the thing that goes stale when the struct grows.
 func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
-	event.Workspace = optional.Clone(event.Workspace)
+	if event.Workspace != nil {
+		event.Workspace = new(*event.Workspace)
+	}
 	event.Paths = slices.Clone(event.Paths)
 	event.Names = slices.Clone(event.Names)
 	event.Servers = slices.Clone(event.Servers)

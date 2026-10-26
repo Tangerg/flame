@@ -3,21 +3,18 @@ package toolset
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
@@ -107,7 +104,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
-	check := func(fingerprint fingerprint.Digest, wantMatch, wantStale bool) {
+	check := func(fingerprint identity.Digest, wantMatch, wantStale bool) {
 		t.Helper()
 		decision, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: fingerprint})
 		if err != nil || matched != wantMatch || (matched && decision != approval.Allow) {

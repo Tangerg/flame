@@ -4,18 +4,18 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 type CompositionMember struct {
-	Installation resourceid.InstallationID
+	Installation identity.InstallationID
 	Contribution ContributionID
 }
 
 type CompositionRecord struct {
-	Contract jsoninput.Input
+	Contract jsonvalue.Value
 	Members  []CompositionMember
 }
 
@@ -24,11 +24,11 @@ type CompositionRecord struct {
 type OrderedComposition struct{ record CompositionRecord }
 
 func NewOrderedComposition(record CompositionRecord) (OrderedComposition, error) {
-	contract, err := capability.Parse(record.Contract.JSON())
+	contract, err := extension.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return OrderedComposition{}, errors.Join(ErrInvalid, err)
 	}
-	if contract.Descriptor().Composition != capability.Decoration {
+	if contract.Descriptor().Composition != extension.Decoration {
 		return OrderedComposition{}, errors.Join(ErrInvalid, errors.New("ordered composition requires a decoration contract"))
 	}
 	seen := make(map[CompositionMember]bool, len(record.Members))

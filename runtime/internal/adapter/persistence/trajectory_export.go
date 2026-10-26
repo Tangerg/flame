@@ -6,30 +6,30 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/samber/lo"
 )
 
 type TrajectoryExportConfig struct {
 	Snapshots        sessions.SnapshotReader
 	Sessions         *SessionStore
-	ModelInvocations *ModelInvocationReader
+	ModelInvocations *modelInvocationReader
 	ToolInvocations  *ToolInvocationStore
-	Feedback         *FeedbackStore
+	Feedback         *feedbackStore
 	ReadSnapshot     Transactor
 }
 
-type TrajectoryExportReader struct {
+type trajectoryExportReader struct {
 	snapshots        sessions.SnapshotReader
 	sessions         *SessionStore
-	modelInvocations *ModelInvocationReader
+	modelInvocations *modelInvocationReader
 	toolInvocations  *ToolInvocationStore
-	feedback         *FeedbackStore
+	feedback         *feedbackStore
 	readSnapshot     Transactor
 }
 
-func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*TrajectoryExportReader, error) {
+func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*trajectoryExportReader, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -38,17 +38,17 @@ func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*TrajectoryExportRea
 		{"model invocations", cfg.ModelInvocations}, {"Tool invocations", cfg.ToolInvocations},
 		{"feedback", cfg.Feedback}, {"read snapshot", cfg.ReadSnapshot},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("persistence: trajectory export %s is required", required.name)
 		}
 	}
-	return &TrajectoryExportReader{
+	return &trajectoryExportReader{
 		snapshots: cfg.Snapshots, sessions: cfg.Sessions, modelInvocations: cfg.ModelInvocations,
 		toolInvocations: cfg.ToolInvocations, feedback: cfg.Feedback, readSnapshot: cfg.ReadSnapshot,
 	}, nil
 }
 
-func (r *TrajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessionID string) (sessions.TrajectoryEvidence, error) {
+func (r *trajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessionID string) (sessions.TrajectoryEvidence, error) {
 	var evidence sessions.TrajectoryEvidence
 	err := r.readSnapshot(ctx, func(ctx context.Context) error {
 		if _, err := r.sessions.Get(ctx, sessionID); err != nil {
@@ -95,7 +95,7 @@ func (r *TrajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessi
 	return evidence, nil
 }
 
-func (r *TrajectoryExportReader) readToolAttempts(ctx context.Context, sessionID string, evidence *sessions.TrajectoryEvidence) error {
+func (r *trajectoryExportReader) readToolAttempts(ctx context.Context, sessionID string, evidence *sessions.TrajectoryEvidence) error {
 	rows, err := r.toolInvocations.ListSession(ctx, sessionID)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (r *TrajectoryExportReader) readToolAttempts(ctx context.Context, sessionID
 	return nil
 }
 
-func (r *TrajectoryExportReader) readModelInvocations(ctx context.Context, runID string, evidence *sessions.TrajectoryEvidence) error {
+func (r *trajectoryExportReader) readModelInvocations(ctx context.Context, runID string, evidence *sessions.TrajectoryEvidence) error {
 	const pageSize = 100
 	var beforeStartedAt int64
 	var beforeCallID string

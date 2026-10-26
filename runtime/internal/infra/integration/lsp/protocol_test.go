@@ -167,13 +167,13 @@ func TestHoverTextRejectsMalformedAndUnknownShapes(t *testing.T) {
 }
 
 func TestDiagnosticSeverityClosesProtocolVocabulary(t *testing.T) {
-	if !DiagnosticSeverityUnspecified.IsProblem() || !DiagnosticSeverityWarning.IsProblem() {
+	if !diagnosticSeverityUnspecified.IsProblem() || !diagnosticSeverityWarning.IsProblem() {
 		t.Fatal("unspecified and warning severities must be treated as problems")
 	}
-	if DiagnosticSeverityInformation.IsProblem() || DiagnosticSeverityHint.IsProblem() {
+	if diagnosticSeverityInformation.IsProblem() || diagnosticSeverityHint.IsProblem() {
 		t.Fatal("information and hint severities must not be treated as problems")
 	}
-	if got := (Diagnostic{Severity: DiagnosticSeverityError}).SeverityName(); got != "error" {
+	if got := (Diagnostic{Severity: diagnosticSeverityError}).SeverityName(); got != "error" {
 		t.Fatalf("error severity name = %q", got)
 	}
 	if got := (Diagnostic{Severity: 99}).SeverityName(); strings.TrimSpace(got) != "" {

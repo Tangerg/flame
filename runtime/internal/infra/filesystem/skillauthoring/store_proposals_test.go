@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
@@ -207,7 +207,7 @@ func TestListProposalsRejectsCorruptUnboundedStorage(t *testing.T) {
 			t.Fatal(err)
 		}
 		store := newStore(t, root, skills.ScopeUser)
-		if _, err := store.ListProposals(t.Context()); !errors.Is(err, skills.ErrDocumentTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+		if _, err := store.ListProposals(t.Context()); !errors.Is(err, skills.ErrDocumentTooLarge) || !errors.Is(err, filesystem.ErrFileTooLarge) {
 			t.Fatalf("ListProposals error = %v, want ErrDocumentTooLarge", err)
 		}
 	})

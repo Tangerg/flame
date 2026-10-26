@@ -4,10 +4,9 @@ import (
 	json "encoding/json/v2"
 	"slices"
 
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
-
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 )
 
 // FileMutationReporter supplies prospective paths for approval, locking, and
@@ -32,7 +31,7 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 			// nothing happened that could be in doubt. Left unclassified it would
 			// reach the Host as an operation of unknown outcome and settle the Run
 			// tree as lost, which is how one malformed patch ends a Session.
-			return nil, toolfailure.Definite(err)
+			return nil, pluginsdk.DefiniteToolFailure(err)
 		}
 		paths = append(paths, reported...)
 	}

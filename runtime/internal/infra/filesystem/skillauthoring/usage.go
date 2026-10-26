@@ -11,12 +11,11 @@ import (
 	"os"
 	"time"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 // usageFile is the store-root sidecar holding per-skill usage. Its dot-prefixed
@@ -169,14 +168,14 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 	if err := contextError(ctx, "read skill usage"); err != nil {
 		return nil, err
 	}
-	file, opened, err := fileinput.OpenAt(root, usageFile, maxUsageMetadataBytes)
+	file, opened, err := filesystem.OpenFileAt(root, usageFile, maxUsageMetadataBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return map[string]usageRecord{}, nil
 	}
-	if errors.Is(err, fileinput.ErrNotRegular) {
+	if errors.Is(err, filesystem.ErrNotRegular) {
 		return nil, fmt.Errorf("skillauthoring: usage metadata admission: %w", err)
 	}
-	if errors.Is(err, fileinput.ErrTooLarge) {
+	if errors.Is(err, filesystem.ErrFileTooLarge) {
 		return nil, fmt.Errorf("%w: metadata admission: %w", skills.ErrUsageTooLarge, err)
 	}
 	if err != nil {
@@ -186,7 +185,7 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		cancellation.Reader(ctx, file),
 		maxUsageMetadataBytes+1,
 	))
-	verifyErr := fileinput.VerifyAtVersion(file, opened, root, usageFile)
+	verifyErr := filesystem.VerifyAtVersion(file, opened, root, usageFile)
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
 		return nil, fmt.Errorf("skillauthoring: read usage: %w", errors.Join(readErr, verifyErr, closeErr))

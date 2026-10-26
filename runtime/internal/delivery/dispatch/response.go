@@ -2,11 +2,11 @@ package dispatch
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-func responseResult(id transport.ID, result any) Result {
-	response, err := transport.NewResponseResult(id, result)
+func responseResult(id jsonrpc.ID, result any) Result {
+	response, err := protocol.NewRPCResult(id, result)
 	if err != nil {
 		// Response encoding is an infrastructure fault. Its serializer detail can
 		// contain arbitrary implementation data, so the protocol exposes only a
@@ -16,6 +16,6 @@ func responseResult(id transport.ID, result any) Result {
 	return Result{Response: response}
 }
 
-func responseError(id transport.ID, rpcError *transport.Error) Result {
-	return Result{Response: transport.NewResponseError(id, rpcError)}
+func responseError(id jsonrpc.ID, rpcError *jsonrpc.Error) Result {
+	return Result{Response: protocol.NewRPCErrorResponse(id, rpcError)}
 }

@@ -11,13 +11,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -40,7 +38,7 @@ type toolInstallationStore struct {
 	failure  error
 }
 
-func (s *toolInstallationStore) Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, bool, error) {
+func (s *toolInstallationStore) Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error) {
 	return s.snapshot, true, s.failure
 }
 
@@ -66,15 +64,15 @@ func (e *preparedEmbedder) Embed(context.Context, []string) ([][]float32, error)
 }
 
 func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) {
-	memoryContracts, err := rpc.NewContracts()
+	memoryContracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	schedulesContracts, err := schedulerpc.NewContracts()
+	schedulesContracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, contract := range []*capability.Contract{memoryContracts.Capability, schedulesContracts.Capability} {
+	for _, contract := range []*extension.Capability{memoryContracts, schedulesContracts} {
 		role := contract.Descriptor().Reference
 		t.Run(role, func(t *testing.T) {
 			name := testsupport.ServerName("owner")
@@ -111,14 +109,14 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			}
 			remote.AddTool(&sdk.Tool{Name: "search", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
-				var invocation capability.Invocation
+				var invocation extension.Invocation
 				if err := json.Unmarshal(request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
 					return nil, err
 				}
-				if invocation.ID != "original-logical-call" || invocation.Origin != capability.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || string(request.Params.Meta["owner-meta"]) != `"retained"` {
+				if invocation.ID != "original-logical-call" || invocation.Origin != extension.Model || invocation.Parent != "run_owner" || invocation.Target.Reference != installation.ID().String() || string(request.Params.Meta["owner-meta"]) != `"retained"` {
 					return nil, errors.New("original invocation metadata was lost")
 				}
-				if contract == memoryContracts.Capability {
+				if contract == memoryContracts {
 					var err error
 					capturedGrant, err = pluginsdk.CallbackFromContext(ctx)
 					if err != nil {
@@ -130,8 +128,8 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					if captured.CWD != "/captured/workspace" || captured.EmbeddingSpace != embedder.ID() {
 						return nil, errors.New("captured Memory scope was changed")
 					}
-					vectors, err := (rpc.RemoteModels{Grant: capturedGrant, Space: captured.EmbeddingSpace}).Embed(ctx, []string{"rank"})
-					if err != nil || len(vectors) != 1 {
+					vectors, err := pluginsdk.CallTextEmbedding(ctx, capturedGrant, "prepared-embedding", []string{"rank"})
+					if err != nil || len(vectors.Vectors) != 1 || vectors.Space != captured.EmbeddingSpace {
 						return nil, errors.Join(err, errors.New("prepared callback failed"))
 					}
 				} else {
@@ -190,7 +188,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				t.Fatal(err)
 			}
 			ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{WorkspaceCWD: "/captured/workspace"})
-			ctx = operation.Adopt(ctx, "original-logical-call", capability.Model, "run_owner")
+			ctx = operation.Adopt(ctx, "original-logical-call", extension.Model, "run_owner")
 			var metadata sdk.Meta
 			if err := metadata.Set("owner-meta", "retained"); err != nil {
 				t.Fatal(err)
@@ -202,11 +200,11 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if calls.Load() != 1 {
 				t.Fatal("prepared call did not reach its original owner")
 			}
-			if contract == memoryContracts.Capability {
+			if contract == memoryContracts {
 				if embedder.calls.Load() != 1 || notices.Load() != 0 {
 					t.Fatal("Memory callback or feature observation escaped its owner")
 				}
-				if _, err := (rpc.RemoteModels{Grant: capturedGrant}).Embed(t.Context(), []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
+				if _, err := pluginsdk.CallTextEmbedding(t.Context(), capturedGrant, "stale-embedding", []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
 					t.Fatalf("failed Tool call retained its callback: %v", err)
 				}
 				embeddingFailure = errors.New("embedding source read failed")

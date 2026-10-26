@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -20,10 +18,10 @@ func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testin
 	}
 	defer func() { _ = db.Close() }()
 	draft := runDraft("run_known", "ses_known")
-	if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	store := NewModelInvocationStore(db)
+	store := newModelInvocationStore(db)
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
 	if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_known", draft.CreatedAt, run.ModelConversation); err != nil {
@@ -39,7 +37,7 @@ func TestFailedModelKnownResponseSurvivesReopenWithoutPromotingOutcome(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := NewModelInvocationStore(db).PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
+	rows, err := newModelInvocationStore(db).PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
 	if err != nil || len(rows) != 1 || rows[0].State != "failed" || !reflect.DeepEqual(rows[0].KnownResponse, response) || !reflect.DeepEqual(rows[0].Usage, response.Metadata.Usage) {
 		t.Fatalf("retained inner evidence=%+v %v", rows, err)
 	}
@@ -53,12 +51,12 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	draft := runDraft("run_trajectory", "ses_trajectory")
 	if err := runs.Admit(ctx, draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := NewModelInvocationStore(db)
+	calls := newModelInvocationStore(db)
 	startedAt := draft.CreatedAt.Add(time.Second)
 	latencies := []*int64{nil, new(int64(0)), new(int64(124))}
 	usages := []*chat.Usage{nil, {}, {InputTokens: 17, OutputTokens: 9, CacheReadInputTokens: new(int64(4)), CacheWriteInputTokens: new(int64(2)), ReasoningTokens: new(int64(3))}}
@@ -80,7 +78,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls = NewModelInvocationStore(db)
+	calls = newModelInvocationStore(db)
 	page, err := calls.PageModelInvocations(ctx, draft.RunID, 0, "", 2)
 	if err != nil || len(page) != 2 || page[0].CallID != "call_c" || page[1].CallID != "call_b" {
 		t.Fatalf("first page = %+v, %v", page, err)
@@ -92,8 +90,8 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if page[0].FirstOutputLatencyMillis == nil || *page[0].FirstOutputLatencyMillis != 124 || page[1].FirstOutputLatencyMillis == nil || *page[1].FirstOutputLatencyMillis != 0 || second[0].FirstOutputLatencyMillis != nil {
 		t.Fatalf("first output latency lost absent/zero/measured distinction: %+v %+v", page, second)
 	}
-	if page[0].Usage == nil || !accounting.ReportedUsageEqual(*page[0].Usage, *usages[2]) ||
-		page[1].Usage == nil || !accounting.ReportedUsageEqual(*page[1].Usage, *usages[1]) ||
+	if page[0].Usage == nil || !reflect.DeepEqual(*page[0].Usage, *usages[2]) ||
+		page[1].Usage == nil || !reflect.DeepEqual(*page[1].Usage, *usages[1]) ||
 		second[0].Usage != nil {
 		t.Fatalf("restored usage lost unknown/zero/per-call values: %+v %+v", page, second)
 	}
@@ -101,7 +99,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if err != nil || len(other) != 0 {
 		t.Fatalf("other Run page = %+v, %v", other, err)
 	}
-	if err := NewRunStore(db).Delete(ctx, draft.SessionID, draft.RunID); err != nil {
+	if err := newRunStore(db).Delete(ctx, draft.SessionID, draft.RunID); err != nil {
 		t.Fatal(err)
 	}
 	page, err = calls.PageModelInvocations(ctx, draft.RunID, 0, "", 2)
@@ -116,12 +114,12 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	draft := runDraft("run_pending", "ses_pending")
 	if err := runs.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := NewModelInvocationStore(db)
+	calls := newModelInvocationStore(db)
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_pending", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -142,10 +140,10 @@ func TestFailedModelInvocationRetainsMeasuredLatencyWithoutUsage(t *testing.T) {
 	}
 	defer func() { _ = db.Close() }()
 	draft := runDraft("run_latency", "ses_latency")
-	if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	calls := NewModelInvocationStore(db)
+	calls := newModelInvocationStore(db)
 	if err := calls.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_latency", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}

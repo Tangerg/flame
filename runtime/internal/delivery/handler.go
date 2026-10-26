@@ -3,10 +3,11 @@ package delivery
 import (
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
@@ -163,7 +164,7 @@ func (c HandlerConfig) validate() error {
 			return fmt.Errorf("delivery: %s is required", required.name)
 		}
 	}
-	if _, err := runtimeidentity.ParseRuntimeInstance(c.ServerInfo.InstanceID); err != nil {
+	if err := ValidateInstanceID(c.ServerInfo.InstanceID); err != nil {
 		return fmt.Errorf("delivery: ServerInfo.InstanceID: %w", err)
 	}
 	return nil
@@ -171,7 +172,7 @@ func (c HandlerConfig) validate() error {
 
 func (c HandlerConfig) withServerInfoDefaults() HandlerConfig {
 	if c.ServerInfo.Name == "" {
-		c.ServerInfo.Name = runtimeidentity.ProductName
+		c.ServerInfo.Name = identity.ProductName
 	}
 	if c.ServerInfo.Version == "" {
 		c.ServerInfo.Version = "0.0.0-dev"
@@ -209,7 +210,7 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			return contractFacts{}, fmt.Errorf("delivery: %s: %w", wireShape.label, err)
 		}
 	}
-	if _, err := runtimeidentity.ParseIdempotencyNamespace(cfg.IdempotencyLimits.Namespace); err != nil {
+	if _, err := operation.ParseReplayNamespace(cfg.IdempotencyLimits.Namespace); err != nil {
 		return contractFacts{}, fmt.Errorf("delivery: IdempotencyLimits namespace: %w", err)
 	}
 	return facts, nil
@@ -292,15 +293,7 @@ func capabilitiesFor(
 	idempotency protocol.IdempotencyLimits,
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits,
 ) protocol.ServerCapabilities {
-	runEvents := []protocol.StreamEventType{
-		protocol.StreamSegmentStarted,
-		protocol.StreamSegmentProgress,
-		protocol.StreamSegmentFinished,
-		protocol.StreamItemStarted,
-		protocol.StreamItemDelta,
-		protocol.StreamItemCompleted,
-		protocol.StreamPlanUpdated,
-	}
+	runEvents := []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 	return protocol.ServerCapabilities{
 		RunEvents: runEvents,
 		// The subscribable topics, read from the one closed list the subscribe request
@@ -330,28 +323,11 @@ func capabilitiesFor(
 		// the run protocol), which come from protocol's registry. Advertising them
 		// here by hand would let discovery promise a negotiation the runtime does
 		// not perform.
-		Features: advertisedFeatures(map[string]bool{
-			protocol.FeatureReasoning: true,
-			protocol.FeatureMCP:       true,
-			protocol.FeaturePlugins:   features.plugins,
-			protocol.FeatureSkills:    true,
-			protocol.FeatureGit:       features.git,
-			protocol.FeatureFileWatch: true,
-			protocol.FeatureLSP:       true,
-
-			protocol.FeatureSessionExport: true,
-			// File checkpoints (restoreType on rollback) ride the shadow-git
-			// store, which needs the git binary — same gate as the git feature.
-			protocol.FeatureCheckpoints: features.git,
-			protocol.FeatureMultimodal:  true,
-			protocol.FeatureRelocate:    true,
-			// An isolated Session jails its shells; without a backend for that
-			// jail the policy cannot be honored, so the surface is not offered.
-			protocol.FeatureIsolation:  features.isolation,
-			protocol.FeaturePlan:       true,
-			protocol.FeatureCompaction: true,
-			protocol.FeatureGoals:      true,
-			protocol.FeatureSubagents:  true,
+		Features: advertisedFeatures(map[string]bool{protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: features.plugins, protocol.FeatureSkills: true, protocol.FeatureGit: features.git, protocol.FeatureFileWatch: true, protocol.FeatureLSP: true, protocol.FeatureSessionExport: true, protocol.FeatureCheckpoints: // File checkpoints (restoreType on rollback) ride the shadow-git
+		// store, which needs the git binary — same gate as the git feature.
+		features.git, protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeatureIsolation: // An isolated Session jails its shells; without a backend for that
+		// jail the policy cannot be honored, so the surface is not offered.
+		features.isolation, protocol.FeaturePlan: true, protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureSubagents: true,
 		}),
 	}
 }

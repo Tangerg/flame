@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -127,7 +126,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 		}
 	})
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{
-		SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion}},
 		Input:   []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate both siblings"}},
 		Options: &chat.Options{Temperature: new(0.37), MaxOutputTokens: new(int64(731))},
 	})
@@ -281,13 +280,13 @@ type siblingEditHook struct{}
 
 func (siblingEditHook) BeforeToolUse(_ context.Context, input InteractionToolHookInput) (InteractionToolHookDecision, error) {
 	if input.ToolName != "store" {
-		return AllowToolHook(false, nil), nil
+		return allowToolHook(false, nil), nil
 	}
 	arguments, err := domaintool.ParseArguments(`{"value":"edited"}`)
 	if err != nil {
 		return InteractionToolHookDecision{}, err
 	}
-	return AllowToolHook(false, &arguments), nil
+	return allowToolHook(false, &arguments), nil
 }
 
 func (siblingEditHook) AfterToolUse(context.Context, InteractionToolHookInput) error { return nil }

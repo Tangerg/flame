@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	interruptdomain "github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -444,7 +443,7 @@ func TestNewRecoveryRejectsTypedNilDependencies(t *testing.T) {
 		name         string
 		store        RecoveryStore
 		resumability WaitingExecutionResumability
-		admissions   RecoveryAdmissions
+		admissions   recoveryAdmissions
 	}{
 		{name: "store", store: typedNilStore, resumability: validResumability, admissions: validAdmissions},
 		{name: "resumability", store: validStore, resumability: waitingExecutionResumabilityFunc(nil), admissions: validAdmissions},
@@ -1425,11 +1424,11 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	interrupt := transcript.Interrupt{
 		ItemID: "item_question", ItemOccurredAt: createdAt,
-		RunID: "run_root", Kind: interruptdomain.Question, Question: question,
+		RunID: "run_root", Kind: rundomain.InterruptQuestion, Question: question,
 	}
 	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
 		ModelSelection: selection,
-		Capabilities:   rundomain.Capabilities{InterruptKinds: []interruptdomain.Kind{interruptdomain.Question}},
+		Capabilities:   rundomain.Capabilities{InterruptKinds: []rundomain.InterruptKind{rundomain.InterruptQuestion}},
 		CreatedAt:      createdAt, UpdatedAt: createdAt.Add(time.Second), MessageMark: rundomain.UnknownMessageMark()})
 
 	pending := Pending{

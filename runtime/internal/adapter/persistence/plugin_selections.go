@@ -5,20 +5,20 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type ProviderSelectionStore struct{ db *sql.DB }
+type providerSelectionStore struct{ db *sql.DB }
 
-func NewProviderSelectionStore(db *sql.DB) *ProviderSelectionStore {
-	return &ProviderSelectionStore{db: db}
+func newProviderSelectionStore(db *sql.DB) *providerSelectionStore {
+	return &providerSelectionStore{db: db}
 }
 
-func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.ProviderSelection, bool, error) {
+func (s *providerSelectionStore) Get(ctx context.Context, role string) (plugin.ProviderSelection, bool, error) {
 	var installation, contribution string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution_id FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT installation_id,contribution_id FROM plugin_provider_selections WHERE role=?`, role).Scan(&installation, &contribution)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.ProviderSelection{}, false, nil
 	}
@@ -29,8 +29,8 @@ func (s *ProviderSelectionStore) Get(ctx context.Context, role string) (plugin.P
 	return value, err == nil, err
 }
 
-func (s *ProviderSelectionStore) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
+func (s *providerSelectionStore) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (s *ProviderSelectionStore) List(ctx context.Context) ([]plugin.ProviderSel
 }
 
 func restoreProviderSelection(role, installation, contribution string) (plugin.ProviderSelection, error) {
-	id, err := resourceid.ParseInstallation(installation)
+	id, err := identity.ParseInstallation(installation)
 	if err != nil {
 		return plugin.ProviderSelection{}, err
 	}
@@ -62,11 +62,11 @@ func restoreProviderSelection(role, installation, contribution string) (plugin.P
 	return plugin.NewProviderSelection(plugin.SelectionRecord{Role: role, Installation: id, Contribution: name})
 }
 
-func (s *ProviderSelectionStore) Save(ctx context.Context, selection plugin.ProviderSelection) error {
+func (s *providerSelectionStore) Save(ctx context.Context, selection plugin.ProviderSelection) error {
 	if err := selection.Validate(); err != nil {
 		return err
 	}
 	record := selection.Snapshot()
-	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution_id) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution_id=excluded.contribution_id`, record.Role, record.Installation.String(), record.Contribution.String())
+	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_provider_selections(role,installation_id,contribution_id) VALUES(?,?,?) ON CONFLICT(role) DO UPDATE SET installation_id=excluded.installation_id,contribution_id=excluded.contribution_id`, record.Role, record.Installation.String(), record.Contribution.String())
 	return err
 }

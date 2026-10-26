@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
@@ -14,18 +13,18 @@ func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	capabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 	state := testGoalFor(t, "ses_1", "inc_1")
 	state.capabilities = capabilities.Normalized()
 	replacement, err := NewReplacement(expected.Version(), state)
 	if err != nil {
 		t.Fatalf("NewReplacement: %v", err)
 	}
-	state.capabilities.InterruptKinds[0] = interrupt.Approval
+	state.capabilities.InterruptKinds[0] = run.InterruptApproval
 	owned := replacement.State()
 	read := owned.Capabilities()
-	read.InterruptKinds[0] = interrupt.Approval
-	if !replacement.State().Capabilities().Equal(run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}) {
+	read.InterruptKinds[0] = run.InterruptApproval
+	if !replacement.State().Capabilities().Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}) {
 		t.Fatal("Replacement shares Goal capability storage")
 	}
 	if replacement.ExpectedVersion() != expected.Version() {

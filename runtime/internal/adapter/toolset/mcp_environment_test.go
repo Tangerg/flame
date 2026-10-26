@@ -11,22 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
-	scopemcp "github.com/Tangerg/scope/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 // runAsMCPServerEnv is the env-var sentinel that flips this test
@@ -259,7 +254,7 @@ func TestToolEnvironmentToleratesUnreachableMCP(t *testing.T) {
 // TestToolEnvironmentReconnectsMCP covers the reconnect path against an
 // unreachable server: the dial still fails, so the server walks connecting →
 // failed (returning the error) and its tools stay absent; an unknown name is
-// mcpserver.ErrUnknownServer. (A successful reconnect's tool hot-swap rides the same
+// errUnknownTestServer. (A successful reconnect's tool hot-swap rides the same
 // code path as boot, which the stdio integration test already exercises.)
 func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 	built, pool := mustMCPToolEnvironment(t, []mcpserver.Server{
@@ -276,8 +271,8 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 		t.Fatalf("MCPTools = %+v, want empty after a failed reconnect", tools)
 	}
 
-	if err := connectPool(pool, context.Background(), testsupport.UserMCPServer("ghost")); !errors.Is(err, mcpserver.ErrUnknownServer) {
-		t.Fatalf("reconnect unknown = %v, want mcpserver.ErrUnknownServer", err)
+	if err := connectPool(pool, context.Background(), testsupport.UserMCPServer("ghost")); !errors.Is(err, errUnknownTestServer) {
+		t.Fatalf("reconnect unknown = %v, want errUnknownTestServer", err)
 	}
 }
 
@@ -407,7 +402,7 @@ func (r testSourceRegistry) Dispatchable(_ context.Context, id mcpserver.ID) (mc
 func (r testSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpapp.Launch, error) {
 	server, found, err := r.Dispatchable(ctx, name)
 	if err == nil && !found {
-		err = mcpserver.ErrUnknownServer
+		err = errUnknownTestServer
 	}
 	return mcpapp.Launch{Server: server}, err
 }
@@ -438,3 +433,5 @@ func authorizePool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error
 	defer attempt.Close()
 	return attempt.Run()
 }
+
+var errUnknownTestServer = errors.New("test source is unknown")

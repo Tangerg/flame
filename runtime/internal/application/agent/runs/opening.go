@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -36,13 +36,13 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult,
 		if cmd.SessionID != "" || cmd.Acceptance == nil {
 			return StartResult{}, fmt.Errorf("%w: new Session opening requires its own target and command identity", ErrInvalidStart)
 		}
-		if err := resourceid.ValidateSession(cmd.NewSession.SessionID); err != nil {
+		if err := identity.ValidateSession(cmd.NewSession.SessionID); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 		}
-		if err := resourceid.ValidateRun(cmd.NewSession.RunID); err != nil {
+		if err := identity.ValidateRun(cmd.NewSession.RunID); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 		}
-	} else if err := resourceid.ValidateSession(cmd.SessionID); err != nil {
+	} else if err := identity.ValidateSession(cmd.SessionID); err != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 	}
 	if cmd.Acceptance != nil {
@@ -388,11 +388,11 @@ func (c *Coordinator) executionCWD(ctx context.Context, sess session.Session) (c
 		return sess.Workspace().Path(), false, nil
 	}
 	if c.isolation == nil {
-		return "", false, fmt.Errorf("%w: isolation is not configured", ErrIsolationUnavailable)
+		return "", false, fmt.Errorf("%w: isolation is not configured", errIsolationUnavailable)
 	}
 	copyDir, err := c.isolation.Workspace(ctx, sess.ID(), sess.Workspace().Path())
 	if err != nil {
-		return "", false, fmt.Errorf("%w: %w", ErrIsolationUnavailable, err)
+		return "", false, fmt.Errorf("%w: %w", errIsolationUnavailable, err)
 	}
 	return copyDir, true, nil
 }

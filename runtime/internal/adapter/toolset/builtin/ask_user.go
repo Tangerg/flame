@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -82,16 +82,16 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, string, e
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
-	pending := runs.Interrupt{Kind: interrupt.Question, Question: &in}
+	pending := runs.Interrupt{Kind: run.InterruptQuestion, Question: &in}
 	// The interrupt contract owns the question rules; the schema only approximates
 	// them, so a refusal here is the model's argument rejected before anything parks.
 	if err := pending.Validate(); err != nil {
-		return runs.Interrupt{}, "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
+		return runs.Interrupt{}, "", pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
 	}
-	return pending, interrupt.Key(string(interrupt.Question), string(tool.AskUser), arguments), nil
+	return pending, run.InterruptKey(string(run.InterruptQuestion), string(tool.AskUser), arguments), nil
 }
 
-func askUserResolve(_ context.Context, args askUserArgs, resolution interrupt.Resolution) (string, error) {
+func askUserResolve(_ context.Context, args askUserArgs, resolution run.InterruptResolution) (string, error) {
 	in := runs.QuestionPrompt{ToolName: string(tool.AskUser), Fields: args.toFields()}
 	return answerText(in, resolution.Question().Answers()), nil
 }

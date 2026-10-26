@@ -571,10 +571,10 @@ resending the mutation. Missing, malformed or unavailable evidence remains unkno
 and holds the release. A valid original success or business refusal releases the
 hold; immutable routing remains retained so the same identity cannot adopt a new
 provider after update or uninstall. History is not evicted or capped by an arbitrary
-lifetime command count. The pure public jsoninput value normalizes object order
+lifetime command count. The public `jsonvalue.Value` normalizes object order
 without rounding numbers or replacing original request evidence with decoded DTOs.
 The host and private stores persist this input; fingerprints are derived projections.
-The pure public `point` package owns consumer-defined value schema, scope,
+The public `extension` package owns consumer-defined value schema, scope,
 applicability, optional absence and composition ordering. Namespace declarations
 publish `points` and `pointValues` using local contract files. Installation admits
 these without starting code. `ResolvePluginPoint` and `plugins point` return
@@ -595,7 +595,7 @@ refused. This change does not convert storage or pending command identities.
 The Reviews analyzer example interprets a value as a same-release callable
 contribution and invokes it through its declared optional capability dependency.
 
-The pure public `capability` package owns local callable metadata, schemas and
+The same public `extension` owner defines local callable metadata, schemas and
 canonical identity. It imports no MCP transport or Runtime internals. The public
 `plugin` SDK, callbacks, actual feature bindings and generator consume that owner;
 installation domain code can admit a contract without activating a backend.
@@ -938,7 +938,7 @@ Application checks use the root `go.work`; Runtime and its clients resolve local
 sources together. The [development workflow](../DEVELOPMENT.md#verification) owns
 verification requirements. The default suite is offline. Module rules live in
 [Module instructions](#module-instructions) below; current boundaries live in
-[`doc/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 The source map follows responsibility within each ring: Run execution and input
 translation live in `internal/adapter/run`, model translation in
@@ -1403,7 +1403,7 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 ## SQLite transaction lifetime
 
-`packages/go-sdk/storage/sqlite` is the public schema/transaction owner used by Runtime
+`packages/go-sdk/sqlite` is the public schema/transaction owner used by Runtime
 and plugin authors. `packages/go-sdk/plugin/sqlite` owns reusable private command admission
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.
@@ -1414,7 +1414,7 @@ Transaction context binds the exact `*sql.DB`, so work for another database cann
 accidentally enter the first owner's write-set. Nested work for one database joins
 its transaction; an independent transaction for that same active database is
 refused before connection acquisition. Separate owners do not become a distributed
-transaction. See [SQLite ownership](storage/sqlite/README.md) and
+transaction. See [SQLite ownership](../packages/go-sdk/sqlite/README.md) and
 [private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined

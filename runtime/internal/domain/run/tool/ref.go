@@ -7,8 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -18,7 +17,7 @@ const (
 	BuiltInKind           RefKind = "builtIn"
 	MCPKind               RefKind = "mcp"
 	A2AKind               RefKind = "a2a"
-	MaximumModelNameBytes         = 64
+	maximumModelNameBytes         = 64
 )
 
 // RefKinds is the closed variant set. Every boundary that encodes a reference
@@ -26,7 +25,7 @@ const (
 func RefKinds() []RefKind { return []RefKind{BuiltInKind, MCPKind, A2AKind} }
 
 var ErrInvalidRef = errors.New("tool: invalid reference")
-var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`, MaximumModelNameBytes))
+var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`, maximumModelNameBytes))
 
 func ModelNamePattern() string { return modelNameExpression.String() }
 
@@ -95,8 +94,8 @@ func (r Ref) ModelName() string {
 		return r.name
 	}
 	raw := r.server.Name().String() + "_" + r.remote.String()
-	result := make([]byte, 0, min(len(raw), MaximumModelNameBytes))
-	for i := 0; i < len(raw) && i < MaximumModelNameBytes; i++ {
+	result := make([]byte, 0, min(len(raw), maximumModelNameBytes))
+	for i := 0; i < len(raw) && i < maximumModelNameBytes; i++ {
 		c := raw[i]
 		if !modelNameByte(c) {
 			c = '_'
@@ -159,7 +158,7 @@ func parseMCPRef(parts []string) (Ref, error) {
 	case len(parts) == 3 && mcpserver.OriginKind(parts[0]) == mcpserver.OriginUser:
 		origin = mcpserver.UserOrigin()
 	case len(parts) == 4 && mcpserver.OriginKind(parts[0]) == mcpserver.OriginInstallation:
-		installation, err := resourceid.ParseInstallation(parts[1])
+		installation, err := identity.ParseInstallation(parts[1])
 		if err != nil {
 			return Ref{}, fmt.Errorf("%w: server origin: %w", ErrInvalidRef, err)
 		}
@@ -202,7 +201,7 @@ func (r *Ref) UnmarshalText(text []byte) error {
 
 // ValidateFingerprint states which references carry source authority: a
 // built-in's authority is the Runtime binary, every other source has one.
-func (r Ref) ValidateFingerprint(source fingerprint.Digest) error {
+func (r Ref) ValidateFingerprint(source identity.Digest) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}

@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/samber/lo"
 )
 
 const defaultProviderProbeTimeout = 10 * time.Second
@@ -23,7 +23,7 @@ const defaultProviderProbeTimeout = 10 * time.Second
 // ProviderCatalog supplies static provider and model reference data. The
 // coordinator owns visible identity, public order, and the use-case policy that
 // consumes the projection. Slice results transfer ownership to the caller.
-type ProviderCatalog interface {
+type providerCatalog interface {
 	Supported() []ProviderMetadata
 	Metadata(id string) (ProviderMetadata, bool)
 	Models(providerID string) []Model
@@ -46,7 +46,7 @@ var (
 
 // ProviderProber validates a provider's credentials with one minimal live call
 // during a provider probe.
-type ProviderProber interface {
+type providerProber interface {
 	Probe(ctx context.Context, entry provider.Provider) error
 }
 
@@ -68,25 +68,25 @@ type ChatModelValidator interface {
 
 // EmbeddingModelValidator validates that an embedding client can be built for
 // (provider, model) without exposing the concrete embedder.
-type EmbeddingModelValidator interface {
+type embeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
 // UtilityRoleSaver persists the utility-model role across restarts.
-type UtilityRoleSaver interface {
+type utilityRoleSaver interface {
 	SaveUtilityRole(ctx context.Context, role modelref.Role) error
 }
 
 // EmbeddingRoleSaver persists the embedding-model role across restarts.
-type EmbeddingRoleSaver interface {
+type embeddingRoleSaver interface {
 	SaveEmbeddingRole(ctx context.Context, role modelref.Role) error
 }
 
 // Coordinator owns provider configuration and durable model roles.
 type Coordinator struct {
 	providers ProviderRegistry
-	catalog   ProviderCatalog
-	prober    ProviderProber
+	catalog   providerCatalog
+	prober    providerProber
 	lister    ProviderModelLister
 	// probeTimeout bounds the user-facing provider test independently of the
 	// terminal or transport lifetime. ProviderProber implementations must honor
@@ -98,12 +98,12 @@ type Coordinator struct {
 	// that persists it.
 	utilityRoleState *RoleState
 	utilityValidator ChatModelValidator
-	utilityStore     UtilityRoleSaver
+	utilityStore     utilityRoleSaver
 	utilityMu        sync.Mutex
 
 	embeddingRoleState *RoleState
-	embeddingValidator EmbeddingModelValidator
-	embeddingStore     EmbeddingRoleSaver
+	embeddingValidator embeddingModelValidator
+	embeddingStore     embeddingRoleSaver
 	embeddingMu        sync.Mutex
 	invalidations      invalidation.Publish
 }
@@ -111,8 +111,8 @@ type Coordinator struct {
 // Config bundles the Coordinator's dependencies.
 type Config struct {
 	Providers ProviderRegistry
-	Catalog   ProviderCatalog
-	Prober    ProviderProber
+	Catalog   providerCatalog
+	Prober    providerProber
 	Lister    ProviderModelLister
 	// ProbeTimeout overrides the product deadline for focused compositions and
 	// tests. Zero or a negative value selects the product default.
@@ -120,11 +120,11 @@ type Config struct {
 
 	UtilityRoleState *RoleState
 	UtilityValidator ChatModelValidator
-	UtilityStore     UtilityRoleSaver
+	UtilityStore     utilityRoleSaver
 
 	EmbeddingRoleState *RoleState
-	EmbeddingValidator EmbeddingModelValidator
-	EmbeddingStore     EmbeddingRoleSaver
+	EmbeddingValidator embeddingModelValidator
+	EmbeddingStore     embeddingRoleSaver
 
 	Invalidations invalidation.Publish
 }
@@ -146,7 +146,7 @@ func New(cfg Config) (*Coordinator, error) {
 		{"embedding validator", cfg.EmbeddingValidator},
 		{"embedding store", cfg.EmbeddingStore},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("models: %s is required", required.name)
 		}
 	}

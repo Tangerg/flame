@@ -11,21 +11,21 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
 	path := t.TempDir()
-	directory, err := ownershipadapter.OpenDataDirectory(t.Context(), path)
+	directory, err := openDataDirectory(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	unblock := make(chan struct{})
 	joined := make(chan struct{})
-	lifetime := newRuntimeLifetime(t.Context(), []TerminalResource{directory})
+	lifetime := newRuntimeLifetime(t.Context(), []terminalResource{directory})
 	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
 	lifetime.runCoordinator = shutdownFunc{wait: func(context.Context) error {
 		<-unblock
@@ -35,7 +35,7 @@ func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
 	if err := closeRuntimeLifetime(lifetime); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
-	if second, err := ownershipadapter.OpenDataDirectory(t.Context(), path); !errors.Is(err, ownershipadapter.ErrDataDirectoryInUse) {
+	if second, err := openDataDirectory(t.Context(), path); !errors.Is(err, errDataDirectoryInUse) {
 		if second != nil {
 			_ = second.Close()
 		}
@@ -46,7 +46,7 @@ func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {
 	if err := closeRuntimeLifetime(lifetime); err != nil {
 		t.Fatal(err)
 	}
-	successor, err := ownershipadapter.OpenDataDirectory(t.Context(), path)
+	successor, err := openDataDirectory(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestInstanceShutdownBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t 
 	host := Instance{lifetime: &runtimeLifetime{
 		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: testShutdownWait(t, time.Millisecond),
-		toolResources: []*teardown.Step{teardown.Terminal(func(context.Context) error {
+		toolResources: []*teardownStep{terminalStep(func(context.Context) error {
 			calls.Add(1)
 			close(started)
 			<-release // Models a third-party Close with no cancellation support.
@@ -296,9 +296,7 @@ type componentInvocation struct {
 }
 
 func (c *componentInvocation) Discover(context.Context) (*protocol.DiscoverResponse, error) {
-	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{Features: map[string]protocol.FeatureCapability{
-		protocol.FeaturePlugins: {Enabled: true},
-	}}}, nil
+	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{Features: map[string]protocol.FeatureCapability{protocol.FeaturePlugins: {Enabled: true}}}}, nil
 }
 
 func (c *componentInvocation) SetPluginEnablement(ctx context.Context, _ protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error) {
@@ -325,7 +323,7 @@ func TestInstanceShutdownCancelsComponentsBeforeJoiningDelivery(t *testing.T) {
 			started: make(chan struct{}), canceled: make(chan struct{}),
 			release: make(chan struct{}),
 		}
-		endpoint, err := delivery.NewEndpoint(component, delivery.EndpointConfig{Lifetime: lifetime})
+		endpoint, err := delivery.NewEndpoint(component, delivery.EndpointConfig{Lifetime: lifetime, IdempotencyStore: testReplayStore(t)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -425,9 +423,23 @@ func (s shutdownFunc) Wait(ctx context.Context) error { return s.AwaitShutdown(c
 // a shutdown test drives the real graph instead of a half-built one.
 func testEndpoint(t *testing.T) *delivery.Endpoint {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(struct{}{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(struct{}{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return endpoint
+}
+
+func testReplayStore(t *testing.T) operation.ReplayStore {
+	t.Helper()
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return stores.Idempotency
 }

@@ -11,10 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/go-sdk/jsonrpc"
-
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 type blockedChunkWriter struct {
@@ -36,11 +35,11 @@ func TestStreamProductionWaitsForChunkWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ack, err := transport.NewResponseResult(id, struct{}{})
+	ack, err := protocol.NewRPCResult(id, struct{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	chunk, err := transport.NewNotification("notifications.plugin.stream", map[string]string{"kind": "chunk", "value": "partial"})
+	chunk, err := protocol.NewRPCNotification("notifications.plugin.stream", map[string]string{"kind": "chunk", "value": "partial"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,11 +96,11 @@ func TestStreamSourceDefectEndsOneStreamNotTheProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("make request id: %v", err)
 	}
-	ack, err := transport.NewResponseResult(id, map[string]string{"runId": "run_x"})
+	ack, err := protocol.NewRPCResult(id, map[string]string{"runId": "run_x"})
 	if err != nil {
 		t.Fatalf("build ack: %v", err)
 	}
-	first, err := transport.NewNotification("notifications.run.event", map[string]string{"runId": "run_x"})
+	first, err := protocol.NewRPCNotification("notifications.run.event", map[string]string{"runId": "run_x"})
 	if err != nil {
 		t.Fatalf("build notification: %v", err)
 	}

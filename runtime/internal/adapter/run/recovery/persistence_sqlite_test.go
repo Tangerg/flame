@@ -3,25 +3,20 @@ package recovery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"reflect"
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -421,7 +416,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		RunID: "run_partial", SessionID: "session", SegmentID: "segment", CreatedAt: createdAt,
 		ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
@@ -429,15 +424,15 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	pendingInterrupt := transcript.Interrupt{
 		ItemID: "item_missing", ItemOccurredAt: createdAt.Add(time.Second),
-		RunID: "run_partial", Kind: interrupt.Question, Question: question,
+		RunID: "run_partial", Kind: run.InterruptQuestion, Question: question,
 	}
 	if suspendErr := runStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{ID: "run_partial", SessionID: "session", State: run.Waiting,
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		CreatedAt: createdAt,
 		UpdatedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark()}),
-		"segment", runtimeidentity.CommitID{},
+		"segment", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}

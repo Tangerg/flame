@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/tools/textread"
 )
@@ -18,12 +18,12 @@ import (
 type FileBrowser struct{}
 
 func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
-	entries, err := ListFiles(ctx, root, options)
+	entries, err := listFiles(ctx, root, options)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrListingTooLarge):
+		case errors.Is(err, errListingTooLarge):
 			return nil, errors.Join(workspaceapp.ErrFileListTooLarge, err)
-		case errors.Is(err, ErrInvalidGlob):
+		case errors.Is(err, errInvalidGlob):
 			return nil, errors.Join(workspaceapp.ErrInvalidFileGlob, err)
 		case errors.Is(err, errInvalidListPath):
 			return nil, errors.Join(workspaceapp.ErrInvalidFileListPath, err)
@@ -57,16 +57,16 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if err != nil {
 		return workspaceapp.FileReadResult{}, err
 	}
-	file, opened, err := fileinput.OpenAt(
+	file, opened, err := filesystem.OpenFileAt(
 		rootHandle,
 		filepath.FromSlash(relative),
 		workspaceapp.MaxFileReadSourceBytes,
 	)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, input.Path, err)
-		case errors.Is(err, fileinput.ErrTooLarge):
+		case errors.Is(err, filesystem.ErrFileTooLarge):
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s: %w", workspaceapp.ErrFileReadTooLarge, input.Path, err)
 		default:
 			return workspaceapp.FileReadResult{}, err
@@ -105,7 +105,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 			return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: scan %s: %w", input.Path, err)
 		}
 	}
-	if err := fileinput.VerifyAtVersion(file, opened, rootHandle, filepath.FromSlash(relative)); err != nil {
+	if err := filesystem.VerifyAtVersion(file, opened, rootHandle, filepath.FromSlash(relative)); err != nil {
 		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: verify %s after reading: %w", input.Path, err)
 	}
 	if input.StartLine > result.TotalLines {

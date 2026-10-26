@@ -44,28 +44,28 @@ func (l Location) Path() string { return uriToPath(l.URI) }
 type DiagnosticSeverity uint8
 
 const (
-	DiagnosticSeverityUnspecified DiagnosticSeverity = iota
-	DiagnosticSeverityError
-	DiagnosticSeverityWarning
-	DiagnosticSeverityInformation
-	DiagnosticSeverityHint
+	diagnosticSeverityUnspecified DiagnosticSeverity = iota
+	diagnosticSeverityError
+	diagnosticSeverityWarning
+	diagnosticSeverityInformation
+	diagnosticSeverityHint
 )
 
 // IsProblem reports whether the severity belongs in the post-mutation problem
 // summary. LSP treats an omitted severity as an error for this purpose.
 func (d DiagnosticSeverity) IsProblem() bool {
-	return d <= DiagnosticSeverityWarning
+	return d <= diagnosticSeverityWarning
 }
 
 func (d DiagnosticSeverity) name() string {
 	switch d {
-	case DiagnosticSeverityError:
+	case diagnosticSeverityError:
 		return "error"
-	case DiagnosticSeverityWarning:
+	case diagnosticSeverityWarning:
 		return "warning"
-	case DiagnosticSeverityInformation:
+	case diagnosticSeverityInformation:
 		return "info"
-	case DiagnosticSeverityHint:
+	case diagnosticSeverityHint:
 		return "hint"
 	default:
 		return ""
@@ -243,7 +243,7 @@ func (p publishDiagnosticsParams) validate() error {
 }
 
 func (d Diagnostic) validate() error {
-	if d.Severity > DiagnosticSeverityHint {
+	if d.Severity > diagnosticSeverityHint {
 		return fmt.Errorf("unknown severity %d", d.Severity)
 	}
 	if err := d.Range.validate(); err != nil {

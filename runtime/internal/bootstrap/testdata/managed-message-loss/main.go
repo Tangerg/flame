@@ -14,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -127,6 +128,11 @@ func run() (err error) {
 				if err != nil {
 					return err
 				}
+				stage := strings.TrimSpace(string(phase))
+				line, err = receiptFault(stage, line)
+				if err != nil {
+					return err
+				}
 				record, err := json.Marshal(struct {
 					Request       jsontext.Value `json:"request"`
 					Response      jsontext.Value `json:"response"`
@@ -196,4 +202,35 @@ func withhold(request, response jsontext.Value) (bool, error) {
 	}
 	_, writeErr := file.Write(evidence)
 	return true, errors.Join(writeErr, file.Close())
+}
+
+// Faults alter the receipt observation only. The backend's committed state stays
+// owned by its real process, so an inconclusive response cannot hide a replay.
+func receiptFault(stage string, response []byte) ([]byte, error) {
+	var result jsontext.Value
+	switch stage {
+	case "absent":
+		encoded, err := pluginsdk.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		result = encoded.JSON()
+	case "conflict":
+		encoded, err := pluginsdk.EncodeReply(pluginsdk.ToolReceipt{}, extension.ErrInvocationConflict, func(error) string { return "command_conflict" })
+		if err != nil {
+			return nil, err
+		}
+		result = encoded.JSON()
+	case "malformed":
+		result = jsontext.Value(`{"unexpected":"result"}`)
+	default:
+		return response, nil
+	}
+	var envelope map[string]jsontext.Value
+	if err := json.Unmarshal(response, &envelope); err != nil {
+		return nil, err
+	}
+	envelope["result"] = result
+	delete(envelope, "error")
+	return json.Marshal(envelope)
 }

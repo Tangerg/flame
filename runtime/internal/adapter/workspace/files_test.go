@@ -46,7 +46,7 @@ func paths(entries []workspaceapp.FileEntry) []string {
 
 func TestListFiles_RecursiveSkipsBackstop(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestListFiles_RecursiveSkipsBackstop(t *testing.T) {
 
 func TestListFiles_IncludeIgnoredSurfacesBackstop(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestListFiles_IncludeIgnoredSurfacesBackstop(t *testing.T) {
 
 func TestListFiles_OneLevelDirsThenFiles(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestListFiles_OneLevelIncludesEmptyDirectoryWithoutDescending(t *testing.T)
 		t.Fatal(err)
 	}
 
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestWalkFilesCountsDirectoriesAgainstTheSafetyLimit(t *testing.T) {
 	t.Cleanup(func() { _ = rootHandle.Close() })
 	scope.handle = rootHandle
 
-	if files, err := walkFiles(t.Context(), scope, true, 2); !errors.Is(err, ErrListingTooLarge) {
+	if files, err := walkFiles(t.Context(), scope, true, 2); !errors.Is(err, errListingTooLarge) {
 		t.Fatalf("two-entry walk = %v, %v; want ErrListingTooLarge", files, err)
 	}
 	if files, err := walkFiles(t.Context(), scope, true, 3); err != nil || len(files) != 0 {
@@ -178,7 +178,7 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 		{IncludeIgnored: true},
 		{Recursive: true, IncludeIgnored: true},
 	} {
-		got, err := ListFiles(context.Background(), root, options)
+		got, err := listFiles(context.Background(), root, options)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,7 +195,7 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 	if _, err := readDirectoryEntries(rootHandle, "", -1); err == nil {
 		t.Fatal("readDirectoryEntries() accepted a negative limit")
 	}
-	if _, err := readDirectoryEntries(rootHandle, "", 3); !errors.Is(err, ErrListingTooLarge) {
+	if _, err := readDirectoryEntries(rootHandle, "", 3); !errors.Is(err, errListingTooLarge) {
 		t.Fatalf("readDirectoryEntries() error = %v, want ErrListingTooLarge", err)
 	}
 }
@@ -258,7 +258,7 @@ func TestSearchFilesUsesOneSelectionAndIgnorePolicy(t *testing.T) {
 
 func TestListFiles_ScopedToSubdir(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Path: "sub"})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{Path: "sub"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestListFilesProjectsSelectedDirectorySymlink(t *testing.T) {
 				t.Skipf("symlink unsupported: %v", err)
 			}
 
-			got, err := ListFiles(t.Context(), root, workspaceapp.FileListOptions{Path: "alias", Recursive: true})
+			got, err := listFiles(t.Context(), root, workspaceapp.FileListOptions{Path: "alias", Recursive: true})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -312,7 +312,7 @@ func TestListFilesProjectsSelectedDirectorySymlink(t *testing.T) {
 
 func TestListFiles_GlobFilters(t *testing.T) {
 	root := buildTree(t)
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Glob: "**/*.go"})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{Glob: "**/*.go"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func TestListFilesGlobUsesDoublestarRelativeToSelectedPath(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{
 		Path: "project", Glob: "src/**/*.ts",
 	})
 	if err != nil {
@@ -356,8 +356,8 @@ func TestListFilesGlobUsesDoublestarRelativeToSelectedPath(t *testing.T) {
 func TestListFilesRejectsInvalidGlob(t *testing.T) {
 	t.Parallel()
 
-	_, err := ListFiles(context.Background(), t.TempDir(), workspaceapp.FileListOptions{Glob: "["})
-	if !errors.Is(err, ErrInvalidGlob) {
+	_, err := listFiles(context.Background(), t.TempDir(), workspaceapp.FileListOptions{Glob: "["})
+	if !errors.Is(err, errInvalidGlob) {
 		t.Fatalf("ListFiles() error = %v, want ErrInvalidGlob", err)
 	}
 }
@@ -367,7 +367,7 @@ func TestListFilesInspectsMetadataAndSymlinks(t *testing.T) {
 	if err := os.Symlink("a.txt", filepath.Join(root, "a-link")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	got, err := ListFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
+	got, err := listFiles(context.Background(), root, workspaceapp.FileListOptions{Recursive: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestListFilesHonorsCancellation(t *testing.T) {
 	cause := errors.New("workspace listing retired")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
-	_, err := ListFiles(ctx, t.TempDir(), workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
+	_, err := listFiles(ctx, t.TempDir(), workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
 	if !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 		t.Fatalf("ListFiles() error = %v, want cancellation category and owner cause", err)
 	}

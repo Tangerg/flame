@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
@@ -28,7 +27,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	list := func() delivery.Result {
-		return memoryQueryResult(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+		return memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
 	}
 	if response := list(); response.Failure == nil || !errors.Is(response.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("enablement chose a provider: %v", response.Failure)
@@ -50,7 +49,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory-provider"}, key)
 	}
 	choose(first, "choose-first")
-	request := memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "original owner's fact"})
+	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "original owner's fact"})
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}); result.Failure == nil {
 		t.Fatal("lost response became confirmed")
 	}
@@ -63,14 +62,14 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	r.must(delivery.PluginsCall, request, "uncertain")
-	page := readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
-	r.must(delivery.PluginsCall, memoryAddRequest(r, memoryrpc.AddInput{Scope: memorydomain.ScopeUser, Content: "selected owner's fact"}), "new-command")
+	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
 	r = reopenCommandRuntime(t, r, &cfg)
 	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page = readMemoryPage(r, memoryrpc.ListInput{Scope: memorydomain.ScopeUser})
+	page = readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {
 		t.Fatalf("restart changed provider choice or private data: %+v", page.Data)
 	}

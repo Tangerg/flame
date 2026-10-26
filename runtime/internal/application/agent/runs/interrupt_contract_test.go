@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -14,7 +14,7 @@ import (
 func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	approvalPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_approval",
-		Kind:   interrupt.Approval,
+		Kind:   run.InterruptApproval,
 		Approval: &transcript.Approval{
 			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium", Rememberable: true,
 		},
@@ -23,7 +23,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}}}
 	answers, err := resolveResumeResponses(approvalPending.interrupts, approvalPending.bindings, []ResumeResponse{{
 		ItemID: "item_approval",
-		Kind:   interrupt.Approval,
+		Kind:   run.InterruptApproval,
 		Approval: &ApprovalResponse{
 			Approved: true, Arguments: `{"command":"echo edited","description":"Print edited"}`, RememberScope: approval.ScopeSession,
 		},
@@ -40,7 +40,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}
 	deniedAnswers, err := resolveResumeResponses(approvalPending.interrupts, approvalPending.bindings, []ResumeResponse{{
 		ItemID: "item_approval",
-		Kind:   interrupt.Approval,
+		Kind:   run.InterruptApproval,
 		Approval: &ApprovalResponse{
 			Approved: false, Reason: "unsafe command",
 		},
@@ -55,7 +55,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 
 	questionPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_question",
-		Kind:   interrupt.Question,
+		Kind:   run.InterruptQuestion,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
 			Prompt: "Choose", Kind: transcript.QuestionChoice,
 			Options: []transcript.QuestionOption{{Label: "Go"}, {Label: "Stop"}},
@@ -65,7 +65,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}}}
 	answers, err = resolveResumeResponses(questionPending.interrupts, questionPending.bindings, []ResumeResponse{{
 		ItemID: "item_question",
-		Kind:   interrupt.Question,
+		Kind:   run.InterruptQuestion,
 		Question: &QuestionResponse{
 			Answers: [][]string{{"Go"}},
 		},
@@ -74,7 +74,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("question: %v", err)
 	}
 	resolution = answers[0].Resolution
-	if resolution.Kind() != interrupt.Question || len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 || resolution.Question().Answers()[0][0] != "Go" {
+	if resolution.Kind() != run.InterruptQuestion || len(resolution.Question().Answers()) != 1 || len(resolution.Question().Answers()[0]) != 1 || resolution.Question().Answers()[0][0] != "Go" {
 		t.Fatalf("question resolution = %#v", resolution)
 	}
 
@@ -86,28 +86,28 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}{
 		{name: "missing", pending: approvalPending, want: ErrInvalidInterruptResponse},
 		{name: "unknown item", pending: approvalPending, responses: []ResumeResponse{{
-			ItemID: "ghost", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true},
+			ItemID: "ghost", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true},
 		}}, want: ErrInterruptNotOpen},
 		{name: "wrong kind", pending: approvalPending, responses: []ResumeResponse{{
-			ItemID: "item_approval", Kind: interrupt.Question, Question: &QuestionResponse{},
+			ItemID: "item_approval", Kind: run.InterruptQuestion, Question: &QuestionResponse{},
 		}}, want: ErrInvalidInterruptResponse},
 		{name: "duplicate", pending: approvalPending, responses: []ResumeResponse{
-			{ItemID: "item_approval", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true}},
-			{ItemID: "item_approval", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true}},
+			{ItemID: "item_approval", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}},
+			{ItemID: "item_approval", Kind: run.InterruptApproval, Approval: &ApprovalResponse{Approved: true}},
 		}, want: ErrInvalidInterruptResponse},
 		{name: "invalid choice", pending: questionPending, responses: []ResumeResponse{{
-			ItemID: "item_question", Kind: interrupt.Question,
+			ItemID: "item_question", Kind: run.InterruptQuestion,
 			Question: &QuestionResponse{Answers: [][]string{{"Rust"}}},
 		}}, want: ErrInvalidInterruptResponse},
 		{name: "one-off approval cannot be remembered", pending: resolutionFixture{
 			interrupts: ([]transcript.Interrupt{{
-				ItemID: "item_one_off", Kind: interrupt.Approval,
+				ItemID: "item_one_off", Kind: run.InterruptApproval,
 				Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"},
 			}}),
 			bindings: []InterruptBinding{{
 				InterruptItemID: "item_one_off", MemberID: "member_one_off", RequestID: "request_one_off", ToolCallID: "call_one_off",
 			}}}, responses: []ResumeResponse{{
-			ItemID: "item_one_off", Kind: interrupt.Approval,
+			ItemID: "item_one_off", Kind: run.InterruptApproval,
 			Approval: &ApprovalResponse{Approved: true, RememberScope: approval.ScopeSession},
 		}}, want: ErrInvalidInterruptResponse},
 	}
@@ -126,14 +126,14 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 		interrupts: ([]transcript.Interrupt{
 			{
 				ItemID: "item_a",
-				Kind:   interrupt.Approval,
+				Kind:   run.InterruptApproval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
 				},
 			},
 			{
 				ItemID: "item_b",
-				Kind:   interrupt.Approval,
+				Kind:   run.InterruptApproval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
@@ -146,12 +146,12 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 	answers, err := resolveResumeResponses(pending.interrupts, pending.bindings, []ResumeResponse{
 		{
 			ItemID:   "item_b",
-			Kind:     interrupt.Approval,
+			Kind:     run.InterruptApproval,
 			Approval: &ApprovalResponse{Approved: false, Reason: "skip b"},
 		},
 		{
 			ItemID:   "item_a",
-			Kind:     interrupt.Approval,
+			Kind:     run.InterruptApproval,
 			Approval: &ApprovalResponse{Approved: true},
 		},
 	})
@@ -184,10 +184,10 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 			Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 		},
 	}}
-	pending := transcript.Interrupt{ItemID: "item_question", Kind: interrupt.Question, Question: question}
+	pending := transcript.Interrupt{ItemID: "item_question", Kind: run.InterruptQuestion, Question: question}
 	response := func(answers [][]string) ResumeResponse {
 		return ResumeResponse{
-			ItemID: "item_question", Kind: interrupt.Question,
+			ItemID: "item_question", Kind: run.InterruptQuestion,
 			Question: &QuestionResponse{Answers: answers},
 		}
 	}
@@ -196,7 +196,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid ordered answer: %v", err)
 	}
-	if resolution.Kind() != interrupt.Question || !slices.Equal(resolution.Question().Answers()[0], []string{"name"}) ||
+	if resolution.Kind() != run.InterruptQuestion || !slices.Equal(resolution.Question().Answers()[0], []string{"name"}) ||
 		!slices.Equal(resolution.Question().Answers()[1], []string{"A", "custom"}) {
 		t.Fatalf("resolution = %#v", resolution)
 	}
@@ -205,7 +205,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("explicit skipped answers: %v", err)
 	}
-	if skipped.Kind() != interrupt.Question || len(skipped.Question().Answers()) != len(question.Fields) ||
+	if skipped.Kind() != run.InterruptQuestion || len(skipped.Question().Answers()) != len(question.Fields) ||
 		len(skipped.Question().Answers()[0]) != 0 || len(skipped.Question().Answers()[1]) != 0 {
 		t.Fatalf("skipped resolution = %#v", skipped)
 	}
@@ -240,11 +240,11 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 
 func TestInterruptAnswerRefusesAnAnswerForAnotherKind(t *testing.T) {
 	for _, request := range []transcript.Interrupt{
-		{Kind: interrupt.Approval, Approval: &transcript.Approval{}},
-		{Kind: interrupt.Question, Question: &transcript.Question{}},
+		{Kind: run.InterruptApproval, Approval: &transcript.Approval{}},
+		{Kind: run.InterruptQuestion, Question: &transcript.Question{}},
 	} {
 		answer := testsupport.QuestionAnswer(t, [][]string{{"name"}})
-		if request.Kind == interrupt.Question {
+		if request.Kind == run.InterruptQuestion {
 			answer = testsupport.ApprovalAnswer(t, approval.Resolution{Decision: approval.Allow})
 		}
 		if err := (InterruptAnswer{Resolution: answer}).validateResolution(request); err == nil {

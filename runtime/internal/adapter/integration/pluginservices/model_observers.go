@@ -7,8 +7,8 @@ import (
 	"iter"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -146,7 +146,7 @@ func (a *observationAdmission) enter(command pluginsdk.Command[chat.Request]) er
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
 	if a.entered || command.ID != a.id || err != nil || !exact {
-		a.violation = &capability.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
+		a.violation = &extension.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
 		a.violation = errors.Join(a.violation, err)
 		return a.violation
 	}
@@ -178,11 +178,11 @@ func (a *observationAdmission) outcome(response *chat.Response, err error) (*cha
 }
 
 func sameObservationJSON(left, right any) (bool, error) {
-	encodedLeft, err := jsoninput.Encode(left)
+	encodedLeft, err := jsonvalue.Encode(left)
 	if err != nil {
 		return false, err
 	}
-	encodedRight, err := jsoninput.Encode(right)
+	encodedRight, err := jsonvalue.Encode(right)
 	if err != nil {
 		return false, err
 	}
@@ -221,7 +221,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		return nil, err
 	}
 	defer release()
-	input, err := jsoninput.Encode(admission.request)
+	input, err := jsonvalue.Encode(admission.request)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			return
 		}
 		defer release()
-		input, err := jsoninput.Encode(frozen)
+		input, err := jsonvalue.Encode(frozen)
 		if err != nil {
 			yield(nil, err)
 			return

@@ -14,7 +14,7 @@ const (
 	SkillsLibraryRestore   Name = "skills.library.restore"
 	SkillsProposalsList    Name = "skills.proposals.list"
 	SkillsProposalsApprove Name = "skills.proposals.approve"
-	SkillsProposalsReject  Name = "skills.proposals.reject"
+	skillsProposalsReject  Name = "skills.proposals.reject"
 )
 
 func registerSkills(registry *Registry) {
@@ -88,7 +88,7 @@ func registerSkills(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name: SkillsProposalsReject, GoName: "RejectSkillProposal",
+		Name: skillsProposalsReject, GoName: "RejectSkillProposal",
 		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {

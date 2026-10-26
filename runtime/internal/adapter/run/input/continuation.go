@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -26,7 +26,7 @@ import (
 // drift from the shape that is read back. Which remember scopes exist stays
 // with approval.Scope, which rejects an unknown one at decode.
 var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
-	schema, err := jsonschema.For[ResolutionPayload]()
+	schema, err := jsonschema.For[resolutionPayload]()
 	if err != nil {
 		return jsonschema.Schema{}, fmt.Errorf("run input: derive resolution schema: %w", err)
 	}
@@ -36,12 +36,12 @@ var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
 type capabilityContextKey struct{}
 
 type capabilityPolicy struct {
-	allowed []interrupt.Kind
+	allowed []run.InterruptKind
 }
 
 // WithCapabilities freezes the product input kinds an Interaction Tool may
 // request. Require fails closed when a Tool asks for an unadmitted kind.
-func WithCapabilities(ctx context.Context, allowed []interrupt.Kind) context.Context {
+func WithCapabilities(ctx context.Context, allowed []run.InterruptKind) context.Context {
 	return context.WithValue(ctx, capabilityContextKey{}, capabilityPolicy{
 		allowed: slices.Clone(allowed),
 	})
@@ -58,7 +58,7 @@ type continuationWire struct {
 type Continuation struct {
 	Key        string
 	Interrupt  runs.Interrupt
-	Resolution interrupt.Resolution
+	Resolution run.InterruptResolution
 }
 
 // Restore decodes Scope's re-entry continuation into the exact prompt and
@@ -86,7 +86,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	if state.PromptDigest != promptDigest(canonicalPrompt) {
 		return Continuation{}, true, errors.New("run input: continuation prompt digest differs")
 	}
-	resolution, err := DecodeResolution(continuation.Response())
+	resolution, err := decodeResolution(continuation.Response())
 	if err != nil {
 		return Continuation{}, true, err
 	}
@@ -99,14 +99,14 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 // Require returns a restored decision for an already-answered request, or a
 // Scope InputRequest the Tool returns as tool.Result{InputRequest} to park on
 // new input. Scope owns the suspension, wait identity, and re-entry.
-func Require(ctx context.Context, invocation toolcontract.Invocation, key string, prompt runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+func Require(ctx context.Context, invocation toolcontract.Invocation, key string, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 	promptJSON, err := admitRequirement(ctx, key, prompt)
 	if err != nil {
-		return interrupt.Resolution{}, nil, err
+		return run.InterruptResolution{}, nil, err
 	}
 	continued, restored, err := Restore(invocation)
 	if err != nil {
-		return interrupt.Resolution{}, nil, err
+		return run.InterruptResolution{}, nil, err
 	}
 	if restored {
 		resolution, err := restoredResolution(continued, key, promptJSON)
@@ -114,11 +114,11 @@ func Require(ctx context.Context, invocation toolcontract.Invocation, key string
 	}
 	stateJSON, err := encodeRequirementState(key, promptJSON)
 	if err != nil {
-		return interrupt.Resolution{}, nil, err
+		return run.InterruptResolution{}, nil, err
 	}
 	schema, err := resolutionSchema()
 	if err != nil {
-		return interrupt.Resolution{}, nil, err
+		return run.InterruptResolution{}, nil, err
 	}
 	request, err := toolcontract.NewInputRequest(toolcontract.InputRequestConfig{
 		Prompt:            []byte(promptJSON),
@@ -126,9 +126,9 @@ func Require(ctx context.Context, invocation toolcontract.Invocation, key string
 		ContinuationState: []byte(stateJSON),
 	})
 	if err != nil {
-		return interrupt.Resolution{}, nil, fmt.Errorf("run input: build input request: %w", err)
+		return run.InterruptResolution{}, nil, fmt.Errorf("run input: build input request: %w", err)
 	}
-	return interrupt.Resolution{}, &request, nil
+	return run.InterruptResolution{}, &request, nil
 }
 
 func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (jsontext.Value, error) {
@@ -156,13 +156,13 @@ func restoredResolution(
 	continued Continuation,
 	key string,
 	promptJSON jsontext.Value,
-) (interrupt.Resolution, error) {
+) (run.InterruptResolution, error) {
 	if continued.Key != key {
-		return interrupt.Resolution{}, errors.New("run input: continuation addresses another request")
+		return run.InterruptResolution{}, errors.New("run input: continuation addresses another request")
 	}
 	storedJSON, err := EncodePrompt(continued.Interrupt)
 	if err != nil || !bytes.Equal(storedJSON, promptJSON) {
-		return interrupt.Resolution{}, errors.New("run input: prompt changed during continuation")
+		return run.InterruptResolution{}, errors.New("run input: prompt changed during continuation")
 	}
 	return continued.Resolution, nil
 }

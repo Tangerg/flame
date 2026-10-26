@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -31,7 +30,7 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 		)
 	}
 	if sessionID != "" {
-		if err := resourceid.ValidateSession(sessionID); err != nil {
+		if err := identity.ValidateSession(sessionID); err != nil {
 			return fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
 		}
 	}
@@ -59,7 +58,7 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 }
 
 // NewRule constructs one durable rule and derives its deterministic identity.
-func NewRule(scope Scope, scopeKey string, ref tool.Ref, source fingerprint.Digest, subject Subject, decision Decision) (Rule, error) {
+func NewRule(scope Scope, scopeKey string, ref tool.Ref, source identity.Digest, subject Subject, decision Decision) (Rule, error) {
 	rule := Rule{
 		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: source,
 		Subject: subject, Decision: decision,
@@ -79,7 +78,7 @@ func (r Rule) Validate() error {
 	}
 	switch r.Scope {
 	case ScopeSession:
-		if err := resourceid.ValidateSession(r.ScopeKey); err != nil {
+		if err := identity.ValidateSession(r.ScopeKey); err != nil {
 			return fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
 		}
 	case ScopeProject:
@@ -130,7 +129,7 @@ func (r Rule) specificity() int {
 // Validate verifies the complete identity of one tool-call policy query.
 func (q Query) Validate() error {
 	if q.SessionID != "" {
-		if err := resourceid.ValidateSession(q.SessionID); err != nil {
+		if err := identity.ValidateSession(q.SessionID); err != nil {
 			return fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
 		}
 	}
@@ -189,7 +188,7 @@ func (s Scope) key(sessionID, projectDir string) (string, bool) {
 // Rule derives and validates the durable rule represented by r.
 func (r RememberRequest) Rule() (Rule, error) {
 	if r.SessionID != "" {
-		if err := resourceid.ValidateSession(r.SessionID); err != nil {
+		if err := identity.ValidateSession(r.SessionID); err != nil {
 			return Rule{}, fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
 		}
 	}
@@ -209,5 +208,5 @@ func (r RememberRequest) Rule() (Rule, error) {
 // stableID makes re-remembering the same rule an upsert and supplies a durable
 // handle for forgetting it later.
 func (r Rule) stableID() string {
-	return "rule_" + fingerprint.Strings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value).String()
+	return "rule_" + identity.DigestStrings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value).String()
 }

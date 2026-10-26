@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"maps"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
@@ -277,9 +278,9 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = %d;", protocol.MaximumPaginationCursorCharacters)
 	t.line("")
 	t.line("// Public Unicode code-point ceilings for model-selection identities.")
-	t.line("export const MAXIMUM_PROVIDER_IDENTITY_CHARACTERS = %d;", protocol.MaximumProviderIdentityCharacters)
-	t.line("export const MAXIMUM_MODEL_IDENTITY_CHARACTERS = %d;", protocol.MaximumModelIdentityCharacters)
-	t.line("export const MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS = %d;", protocol.MaximumReasoningEffortIdentityCharacters)
+	t.line("export const MAXIMUM_PROVIDER_IDENTITY_CHARACTERS = %d;", model.MaximumProviderIdentityCharacters)
+	t.line("export const MAXIMUM_MODEL_IDENTITY_CHARACTERS = %d;", model.MaximumModelIdentityCharacters)
+	t.line("export const MAXIMUM_REASONING_EFFORT_IDENTITY_CHARACTERS = %d;", model.MaximumReasoningEffortCharacters)
 	t.line("export const MAXIMUM_RESOURCE_IDENTITY_CHARACTERS = %d;", protocol.MaximumResourceIdentityCharacters)
 	t.line("")
 	t.line("// Public framing of one opaque Schedule resource identity.")
@@ -391,8 +392,8 @@ func typeArgumentOf(t reflect.Type) reflect.Type {
 	if index := strings.LastIndex(wanted, "."); index >= 0 {
 		wanted = wanted[index+1:]
 	}
-	for _, field := range contractshape.Fields(t) {
-		if candidate := contractshape.Deref(field.Type); candidate.Name() == wanted {
+	for _, field := range jsonvalue.Fields(t) {
+		if candidate := jsonvalue.Deref(field.Type); candidate.Name() == wanted {
 			return candidate
 		}
 	}

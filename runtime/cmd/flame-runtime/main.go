@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-const executableName = runtimeidentity.ProductName
+const executableName = identity.ProductName
 
 // version is overridden at link time via -ldflags "-X main.version=...".
 // Default "dev" indicates a local / unreleased build.

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -12,11 +12,11 @@ import (
 )
 
 func TestUnaryInstalledAdmissionRefusesStreamBeforeAccessingRouteOwners(t *testing.T) {
-	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "installation", Description: "Stream installed records."})
+	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: extension.Mutation, Target: "installation", Description: "Stream installed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "records", Scope: "installation", Composition: capability.Selection}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Scope: "installation", Composition: extension.Selection}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -153,7 +152,7 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 		}
 	}
 	if len(calls) != 1 || calls[0].State != ModelInvocationCompleted ||
-		calls[0].Usage == nil || !accounting.ReportedUsageEqual(*calls[0].Usage, reported) {
+		calls[0].Usage == nil || !reflect.DeepEqual(*calls[0].Usage, reported) {
 		t.Fatalf("usage-only model journal = %+v", calls)
 	}
 	if late := mustReduce(t, reducer, MessageDelta{Text: "late"}); len(late) != 0 {
@@ -832,7 +831,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 		CallID: "call-2", ToolName: "approval", Arguments: `{"path":"b"}`, SafetyClass: "write",
 	}))
 	firstPark := mustInterrupt(t, first, []Interrupt{{
-		Kind: interrupt.Approval,
+		Kind: run.InterruptApproval,
 		Approval: &ApprovalPrompt{
 			CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
@@ -877,7 +876,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	mustFinishTool(t, resumed, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "approved")})
 
 	secondPark := mustInterrupt(t, resumed, []Interrupt{{
-		Kind: interrupt.Approval,
+		Kind: run.InterruptApproval,
 		Approval: &ApprovalPrompt{
 			CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
@@ -902,7 +901,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 		RootRunID: "run_1", CreatedAt: approvalAt.Add(time.Second),
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: approvalAt,
-			RunID: "run_1", Kind: interrupt.Approval,
+			RunID: "run_1", Kind: run.InterruptApproval,
 			Approval: &transcript.Approval{Tool: reviewed},
 		}}),
 		Continuations: []Continuation{{
@@ -1057,8 +1056,8 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	}
 	config := testReducerConfig()
 	interrupts := []transcript.Interrupt{
-		{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Kind: interrupt.Approval, Approval: &transcript.Approval{Tool: reviewed, Risk: "medium"}},
-		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: interrupt.Question, Question: question},
+		{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Kind: run.InterruptApproval, Approval: &transcript.Approval{Tool: reviewed, Risk: "medium"}},
+		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: run.InterruptQuestion, Question: question},
 	}
 	config.Continuation = testTreeContinuationOf(Pending{
 		CreatedAt:  questionAt.Add(time.Second),
@@ -1103,10 +1102,10 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	batch := mustInterrupt(t, reducer, []Interrupt{
-		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
+		{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
-		{Kind: interrupt.Question, Question: &QuestionPrompt{
+		{Kind: run.InterruptQuestion, Question: &QuestionPrompt{
 			ToolName: "ask_user", Arguments: `{"questions":[{"question":"Continue?"}]}`,
 			Fields: []QuestionFieldSpec{{Prompt: "Continue?"}},
 		}},
@@ -1147,7 +1146,7 @@ func TestReducerPublishesOneStartForToolThatBecomesAnApproval(t *testing.T) {
 		ToolName: "shell", Arguments: `{}`,
 	})
 	parked := mustInterrupt(t, reducer, []Interrupt{{
-		Kind: interrupt.Approval,
+		Kind: run.InterruptApproval,
 		Approval: &ApprovalPrompt{
 			CallID: "call_1", Arguments: `{}`,
 			SafetyClass: tool.SafetyClassExec, Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
@@ -1184,7 +1183,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 		SafetyClass: tool.SafetyClassSafe,
 	}))
 	parked := mustInterrupt(t, first, []Interrupt{{
-		Kind: interrupt.Question,
+		Kind: run.InterruptQuestion,
 		Question: &QuestionPrompt{
 			ToolName: "ask_user", Arguments: arguments,
 			Fields: []QuestionFieldSpec{{
@@ -1325,7 +1324,7 @@ func TestReducerRejectsInvalidToolLifecycle(t *testing.T) {
 		event ExecutionFact
 		want  string
 	}{
-		{name: "missing call id", event: ToolCallStarted{ToolName: "shell"}, want: "executor effect identity"},
+		{name: "missing call id", event: ToolCallStarted{ToolName: "shell"}, want: "invocation identity"},
 		{name: "missing tool name", event: ToolCallStarted{CallID: "call_1"}, want: "name is required"},
 	}
 	for _, test := range tests {
@@ -1666,7 +1665,7 @@ func startedItemID(t *testing.T, reductions []reduction) string {
 func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	frozen := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 	}
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Capabilities = frozen })
@@ -1682,7 +1681,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	assertFrozenCapabilities(t, started.Run.Capabilities(), frozen, "segment.started")
 
 	batch := mustInterrupt(t, reducer, []Interrupt{
-		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
+		{Kind: run.InterruptApproval, Approval: &ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
 	}, 0)
@@ -1873,8 +1872,8 @@ func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 	config.Continuation = testTreeContinuation(Pending{RootRunID: config.Opened.ID()})
 	config.Continuation.items = map[string]transcript.Item{"item_mine": mine, "item_other": answered("run_other", "item_other")}
 	config.Continuation.interrupts = []transcript.Interrupt{
-		{ItemID: "item_mine", RunID: config.Opened.ID(), Kind: interrupt.Question},
-		{ItemID: "item_other", RunID: "run_other", Kind: interrupt.Question},
+		{ItemID: "item_mine", RunID: config.Opened.ID(), Kind: run.InterruptQuestion},
+		{ItemID: "item_other", RunID: "run_other", Kind: run.InterruptQuestion},
 	}
 
 	opened := mustOpen(t, newReducer(config))
@@ -1914,7 +1913,7 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), Kind: interrupt.Approval,
+			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), Kind: run.InterruptApproval,
 				ItemOccurredAt: item.OccurredAt(), Approval: &transcript.Approval{Tool: original}}
 			config.Continuation = testTreeContinuationOf(Pending{
 				RootRunID: item.RunID(), CreatedAt: item.OccurredAt(), Interrupts: OpenInterruptsOf([]transcript.Interrupt{projected}),

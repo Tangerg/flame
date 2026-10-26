@@ -5,10 +5,9 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -18,7 +17,7 @@ func TestItemIdentityRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 		"session control": func(identity *transcript.ItemIdentity) { identity.SessionID = "session\n1" },
 		"run padding":     func(identity *transcript.ItemIdentity) { identity.RunID = " run-1" },
 		"item oversized": func(identity *transcript.ItemIdentity) {
-			identity.ItemID = strings.Repeat("i", runtimeidentity.MaximumResourceCharacters+1)
+			identity.ItemID = strings.Repeat("i", flameidentity.MaximumResourceCharacters+1)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -227,7 +226,7 @@ func TestItemForkReidentifiesTerminalHistoryAndKeepsOffload(t *testing.T) {
 		t.Fatal(err)
 	}
 	completed, err := running.CompleteToolCall(transcript.ToolInvocation{
-		Name: "read_large", Result: &preview, Offload: &toolresult.Ref{ID: "SOURCE23"},
+		Name: "read_large", Result: &preview, Offload: &transcript.ToolResultRef{ID: "SOURCE23"},
 	}, running.OccurredAt(), running.OccurredAt().Add(time.Second))
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)

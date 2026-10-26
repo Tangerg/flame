@@ -12,13 +12,13 @@ import (
 const MaximumRemoteToolNameCharacters = 128
 
 var (
-	// RemoteToolNamePattern is the exact MCP tool-name grammar shared by live
+	// remoteToolNamePattern is the exact MCP tool-name grammar shared by live
 	// discovery, durable policy configuration, and the public contract.
-	RemoteToolNamePattern = fmt.Sprintf(
+	remoteToolNamePattern = fmt.Sprintf(
 		`^[A-Za-z0-9_.-]{1,%d}$`,
 		MaximumRemoteToolNameCharacters,
 	)
-	remoteToolNameExpression = regexp.MustCompile(RemoteToolNamePattern)
+	remoteToolNameExpression = regexp.MustCompile(remoteToolNamePattern)
 
 	// ErrInvalidRemoteToolName reports a remote identity that cannot be called
 	// through the MCP protocol or used as a stable policy key.
@@ -40,7 +40,7 @@ func ParseRemoteToolName(raw string) (RemoteToolName, error) {
 			"%w: %q must match %s and contain at most %d characters",
 			ErrInvalidRemoteToolName,
 			raw,
-			RemoteToolNamePattern,
+			remoteToolNamePattern,
 			MaximumRemoteToolNameCharacters,
 		)
 	}
@@ -57,3 +57,6 @@ func (n RemoteToolName) Validate() error {
 
 // String projects the exact MCP spelling at an SDK, wire, or storage boundary.
 func (n RemoteToolName) String() string { return n.value }
+
+// RemoteToolNamePattern projects the frozen tool-name grammar to protocol generation.
+func RemoteToolNamePattern() string { return remoteToolNamePattern }

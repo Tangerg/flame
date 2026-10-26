@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func TestAPIKeyInputFormattingNeverRevealsTheCredential(t *testing.T) {
@@ -46,7 +46,7 @@ func TestLoadUsesOnlyExplicitAbsoluteSearchDirectories(t *testing.T) {
 	if settings.Provider != "anthropic" || settings.Model != "explicit-model" {
 		t.Fatalf("settings = %+v, want explicit config file values", settings)
 	}
-	if !settings.ToolResultOffload.Enabled || settings.ToolResultOffload.Threshold != DefaultToolResultOffloadThreshold {
+	if !settings.ToolResultOffload.Enabled || settings.ToolResultOffload.Threshold != defaultToolResultOffloadThreshold {
 		t.Fatalf("default Tool-result offload = %+v", settings.ToolResultOffload)
 	}
 }
@@ -105,7 +105,7 @@ func TestLoadRejectsUnboundedOrNonRegularConfigFile(t *testing.T) {
 		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Load([]string{directory}); !errors.Is(err, fileinput.ErrTooLarge) {
+		if _, err := Load([]string{directory}); !errors.Is(err, filesystem.ErrFileTooLarge) {
 			t.Fatalf("Load oversized error = %v, want ErrTooLarge", err)
 		}
 	})
@@ -115,7 +115,7 @@ func TestLoadRejectsUnboundedOrNonRegularConfigFile(t *testing.T) {
 		if err := os.Mkdir(filepath.Join(directory, "config.yaml"), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Load([]string{directory}); !errors.Is(err, fileinput.ErrNotRegular) {
+		if _, err := Load([]string{directory}); !errors.Is(err, filesystem.ErrNotRegular) {
 			t.Fatalf("Load directory error = %v, want ErrNotRegular", err)
 		}
 	})

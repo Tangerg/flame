@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,16 +14,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -114,7 +112,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	}
 	installCrash()
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-	cfg.ApprovalMode = approval.ModeSafe
+	cfg.approvalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
 	ctx := acceptedCrashContext(t)
@@ -149,7 +147,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		}
 		installCrash()
 		cfg = protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-		cfg.ApprovalMode = approval.ModeSafe
+		cfg.approvalMode = approval.ModeSafe
 		host, api = buildProtocolRuntime(t, cfg, home)
 		defer host.Close()
 		endpoint = acceptedCommandEndpoint(t, api, stores)
@@ -246,7 +244,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 		t.Fatal(err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-	cfg.ApprovalMode = approval.ModeSafe
+	cfg.approvalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
@@ -354,7 +352,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 			}
 			accepted := bindings[0]
 			cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-			cfg.ApprovalMode = approval.ModeSafe
+			cfg.approvalMode = approval.ModeSafe
 			expected := protocol.OutcomeLost
 			switch scenario {
 			case "corrupt context":
@@ -381,7 +379,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 					t.Fatal(err)
 				}
 			case "other build":
-				cfg.BuildID = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+				cfg.buildID = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
 			case "cancellation won", "completed":
 				value, found, err := stores.Runs.Run(t.Context(), accepted.RootRunID())
 				if err != nil || !found {
@@ -444,7 +442,7 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 		t.Fatalf("rollback kept command acceptance: %+v,%v", record, err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-	cfg.ApprovalMode = approval.ModeSafe
+	cfg.approvalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() { _ = host.Close() })
 	pending, err := api.ListInterrupts(acceptedCrashContext(t), protocol.ListInterruptsRequest{})
@@ -467,7 +465,7 @@ func TestColdResumeWriterFailurePreservesCommandAcceptance(t *testing.T) {
 		t.Fatalf("waiting fixture=%v,%v", pending, err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
-	cfg.ApprovalMode = approval.ModeSafe
+	cfg.approvalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() { _ = host.Close() })
 	directory, err := localruntime.DataDirectoryAt(home)

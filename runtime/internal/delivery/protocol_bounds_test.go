@@ -3,15 +3,16 @@ package delivery_test
 import (
 	"errors"
 	"fmt"
+	"math"
+	"slices"
+	"strings"
+	"testing"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"math"
-	"slices"
-	"strings"
-	"testing"
 )
 
 func wireUserServer(name string) protocol.MCPServerID {
@@ -66,27 +67,28 @@ func TestQuestionWireConstraints(t *testing.T) {
 func TestApprovalRuleListHasOneRuntimeCapacity(t *testing.T) {
 	t.Parallel()
 	maximum := protocol.ListApprovalRulesResult{Rules: make([]protocol.ApprovalRule, approval.MaximumVisibleRules)}
-	if err := maximum.ValidateWire(); err != nil {
+	for index := range maximum.Rules {
+		maximum.Rules[index] = protocol.ApprovalRule{
+			ID:        fmt.Sprintf("rule_%d", index),
+			ModelName: "edit",
+			Scope:     protocol.ApprovalRuleScopeSession,
+			Tool:      protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "edit"},
+			Subject:   protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll},
+			Decision:  protocol.ApprovalRuleDecisionAllow,
+		}
+	}
+	if err := protocol.ValidateWireTree(maximum); err != nil {
 		t.Fatalf("maximum approval rule list: %v", err)
 	}
 	overCapacity := maximum
-	overCapacity.Rules = append(overCapacity.Rules, protocol.ApprovalRule{})
-	assertProtocolConstraintField(t, overCapacity.ValidateWire(), "ListApprovalRulesResult", "rules")
+	overCapacity.Rules = append(overCapacity.Rules, maximum.Rules[0])
+	assertProtocolConstraintField(t, protocol.ValidateWireTree(overCapacity), "ListApprovalRulesResult", "rules")
 }
 
 func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	maximum := wireUserServer(strings.Repeat("a", mcpserver.MaximumServerNameCharacters))
 	installed := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30"}, Name: "files"}
-	valid := []any{
-		protocol.MCPServerRequest{Server: maximum},
-		protocol.MCPServerRequest{Server: installed},
-		protocol.CreateMCPAuthorizationAttemptRequest{Server: maximum},
-		protocol.MCPListToolsRequest{Server: &installed},
-		protocol.MCPServerCandidate{Name: maximum.Name, Connection: protocol.MCPConnectionInput{Type: protocol.MCPTransportStdio, Command: "files"}, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}},
-		protocol.UpdateMCPServerRequest{Server: maximum},
-		protocol.MCPServer{ID: installed, Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "files"}, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}, Status: protocol.MCPServerState{Type: protocol.MCPServerDisabled}},
-		protocol.MCPTool{Server: maximum, Name: "read", ModelName: "source_read"},
-	}
+	valid := []any{protocol.MCPServerRequest{Server: maximum}, protocol.MCPServerRequest{Server: installed}, protocol.CreateMCPAuthorizationAttemptRequest{Server: maximum}, protocol.MCPListToolsRequest{Server: &installed}, protocol.MCPServerCandidate{Name: maximum.Name, Connection: protocol.MCPConnectionInput{Type: protocol.MCPTransportStdio, Command: "files"}, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}}, protocol.UpdateMCPServerRequest{Server: maximum}, protocol.MCPServer{ID: installed, Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "files"}, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}, Status: protocol.MCPServerState{Type: protocol.MCPServerDisabled}}, protocol.MCPTool{Server: maximum, Name: "read", ModelName: "source_read"}}
 	for _, value := range valid {
 		if err := protocol.ValidateWireTree(value); err != nil {
 			t.Errorf("ValidateWireTree rejected canonical %T identity: %v", value, err)
@@ -106,7 +108,7 @@ func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		{"MCPServerRequest", "server.name", protocol.ValidateWireTree(protocol.MCPServerRequest{Server: invalid})},
 		{"CreateMCPAuthorizationAttemptRequest", "server.name", protocol.ValidateWireTree(protocol.CreateMCPAuthorizationAttemptRequest{Server: wireUserServer("GitHub")})},
 		{"MCPListToolsRequest", "server.name", protocol.ValidateWireTree(protocol.MCPListToolsRequest{Server: &spaced})},
-		{"MCPServerCandidate", "name", (protocol.MCPServerCandidate{Name: "server/name"}).ValidateWire()},
+		{"MCPServerCandidate", "name", protocol.ValidateWireTree((protocol.MCPServerCandidate{Name: "server/name"}))},
 		{"UpdateMCPServerRequest", "server.name", protocol.ValidateWireTree(protocol.UpdateMCPServerRequest{Server: invalid})},
 		{"MCPServer", "id.name", protocol.ValidateWireTree(protocol.MCPServer{ID: wireUserServer("UPPER")})},
 		{"MCPTool", "server.name", protocol.ValidateWireTree(protocol.MCPTool{Server: wireUserServer(" server")})},
@@ -123,11 +125,7 @@ func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
 func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	files := wireUserServer("files")
 	maximum := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters)
-	valid := []protocol.WireValidator{
-		protocol.MCPToolExposure{Server: files, DisabledTools: []string{maximum}},
-		protocol.SetMCPToolExposureRequest{Server: files, Name: maximum, Disabled: true},
-		protocol.MCPTool{Server: files, Name: maximum, ModelName: "files_read"},
-	}
+	valid := []any{protocol.MCPToolExposure{Server: files, DisabledTools: []string{maximum}}, protocol.SetMCPToolExposureRequest{Server: files, Name: maximum, Disabled: true}, protocol.MCPTool{Server: files, Name: maximum, ModelName: "files_read"}}
 	for _, value := range valid {
 		if err := protocol.ValidateWireTree(value); err != nil {
 			t.Errorf("ValidateWireTree rejected canonical %T remote tool identity: %v", value, err)
@@ -140,11 +138,11 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		field string
 		err   error
 	}{
-		{"MCPToolExposure", "disabledTools[0]", (protocol.MCPToolExposure{Server: files, DisabledTools: []string{"with space"}}).ValidateWire()},
-		{"SetMCPToolExposureRequest", "name", (protocol.SetMCPToolExposureRequest{Server: files, Name: "tool/name"}).ValidateWire()},
-		{"MCPToolExposure", "disabledTools[0]", (protocol.MCPToolExposure{Server: files, DisabledTools: []string{"工具"}}).ValidateWire()},
-		{"MCPToolExposure", "disabledTools[0]", (protocol.MCPToolExposure{Server: files, DisabledTools: []string{overlongTool}}).ValidateWire()},
-		{"MCPTool", "name", (protocol.MCPTool{Server: files, Name: overlongTool}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", protocol.ValidateWireTree((protocol.MCPToolExposure{Server: files, DisabledTools: []string{"with space"}}))},
+		{"SetMCPToolExposureRequest", "name", protocol.ValidateWireTree((protocol.SetMCPToolExposureRequest{Server: files, Name: "tool/name"}))},
+		{"MCPToolExposure", "disabledTools[0]", protocol.ValidateWireTree((protocol.MCPToolExposure{Server: files, DisabledTools: []string{"工具"}}))},
+		{"MCPToolExposure", "disabledTools[0]", protocol.ValidateWireTree((protocol.MCPToolExposure{Server: files, DisabledTools: []string{overlongTool}}))},
+		{"MCPTool", "name", protocol.ValidateWireTree((protocol.MCPTool{Server: files, Name: overlongTool}))},
 	}
 	for _, test := range tests {
 		assertProtocolConstraintField(t, test.err, test.shape, test.field)
@@ -156,7 +154,7 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	}
 	assertProtocolConstraintField(
 		t,
-		(protocol.MCPToolExposure{Server: files, DisabledTools: tooMany}).ValidateWire(),
+		protocol.ValidateWireTree((protocol.MCPToolExposure{Server: files, DisabledTools: tooMany})),
 		"MCPToolExposure",
 		"disabledTools",
 	)
@@ -172,7 +170,7 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 	for _, test := range []struct {
 		shape string
 		field string
-		value protocol.WireValidator
+		value any
 	}{
 		{shape: "Item", field: "droppedMessages", value: protocol.Item{DroppedMessages: -1}},
 		{shape: "Item", field: "durationMillis", value: protocol.Item{DurationMillis: &tooLongDuration}},
@@ -199,7 +197,7 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 	} {
 		t.Run(test.shape+"."+test.field, func(t *testing.T) {
 			t.Parallel()
-			assertProtocolConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertProtocolConstraintField(t, protocol.ValidateWireTree(test.value), test.shape, test.field)
 		})
 	}
 }
@@ -209,22 +207,8 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 
 	zero, maximumTools := 0, mcpserver.MaxRemoteToolsPerServer
 	zeroBytes := int64(0)
-	for _, value := range []protocol.WireValidator{
-		protocol.WorkspaceSummary{Name: "workspace"},
-		protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
-		protocol.FileEntry{Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &zeroBytes},
-		protocol.GrepResult{},
-		protocol.GrepMatch{Path: "main.go", LineNumber: 1},
-		protocol.FileDiff{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero},
-		protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero},
-		protocol.DiffRow{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("line")},
-		protocol.UsageBucket{Key: "deepseek"},
-		protocol.UsageSummary{},
-		protocol.HookInfo{Event: protocol.HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: protocol.HookScopeGlobal, Source: "/hooks.json"},
-		protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &maximumTools},
-		protocol.ModelPricing{},
-	} {
-		if err := value.ValidateWire(); err != nil {
+	for _, value := range []any{protocol.WorkspaceSummary{Name: "workspace", Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}}, protocol.FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}, protocol.FileEntry{Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &zeroBytes}, protocol.GrepResult{}, protocol.GrepMatch{Path: "main.go", LineNumber: 1}, protocol.FileDiff{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified, Added: &zero, Removed: &zero}, protocol.DiffRow{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("line")}, protocol.UsageBucket{Key: "deepseek"}, protocol.UsageSummary{}, protocol.HookInfo{Event: protocol.HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: protocol.HookScopeGlobal, Source: "/hooks.json"}, protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &maximumTools}, protocol.ModelPricing{}} {
+		if err := protocol.ValidateWireTree(value); err != nil {
 			t.Errorf("ValidateWire rejected valid %T numeric boundaries: %v", value, err)
 		}
 	}

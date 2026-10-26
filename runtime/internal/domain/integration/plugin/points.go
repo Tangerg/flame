@@ -3,28 +3,28 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 type Point struct {
 	ID       ContributionID
-	Contract jsoninput.Input
+	Contract jsonvalue.Value
 }
 
 // PointValue is consumer-defined data, independent of executable exports.
 // A value can name an operation; only that consumer interprets the reference.
 type PointValue struct {
 	ID       ContributionID
-	Contract jsoninput.Input
-	Value    jsoninput.Input
+	Contract jsonvalue.Value
+	Value    jsonvalue.Value
 }
 
 func (b *Builder) AdmitPoint(value Point) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := point.Parse(value.Contract.JSON())
+	contract, err := extension.ParsePoint(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point contract: %v", err)
 	}
@@ -40,7 +40,7 @@ func (b *Builder) AdmitPointValue(value PointValue) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := point.Parse(value.Contract.JSON())
+	contract, err := extension.ParsePoint(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point value contract: %v", err)
 	}

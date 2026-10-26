@@ -8,7 +8,6 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -38,7 +37,7 @@ type PortableSnapshot struct {
 // that offloaded it from this side instead.
 type PortableToolResult struct {
 	ItemID string
-	Blob   toolresult.Blob
+	Blob   transcript.ToolResultBlob
 }
 
 // PortableSession is the terminal archive identity. It intentionally excludes
@@ -134,7 +133,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		Session:     restoredSession,
 		Messages:    cloneSnapshotMessages(p.Messages),
 		Items:       append([]transcript.Item(nil), p.Items...),
-		ToolResults: make([]toolresult.Blob, 0, len(p.ToolResults)),
+		ToolResults: make([]transcript.ToolResultBlob, 0, len(p.ToolResults)),
 		Runs:        make([]run.Run, 0, len(p.Runs)),
 		Plan:        append([]plan.Step(nil), p.Plan...),
 	}
@@ -226,7 +225,7 @@ func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) e
 		if itemSnapshot.Tool == nil {
 			return fmt.Errorf("sessions: portable tool result %q references non-tool item %q", blob.ID, item.ID())
 		}
-		itemSnapshot.Tool.Offload = &toolresult.Ref{ID: blob.ID}
+		itemSnapshot.Tool.Offload = &transcript.ToolResultRef{ID: blob.ID}
 		restored, err := transcript.RestoreItem(itemSnapshot)
 		if err != nil {
 			return fmt.Errorf("sessions: bind portable tool result %q: %w", blob.ID, err)
@@ -259,7 +258,7 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		Plan:        slices.Clone(s.Plan),
 		Runs:        make([]PortableRun, 0, len(s.Runs)),
 	}
-	blobs := make(map[toolresult.ID]toolresult.Blob, len(s.ToolResults))
+	blobs := make(map[transcript.ToolResultID]transcript.ToolResultBlob, len(s.ToolResults))
 	for _, blob := range s.ToolResults {
 		blobs[blob.ID] = blob
 	}

@@ -81,9 +81,9 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := runtimeConfigWithRequiredDeps(t)
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	t.Cleanup(func() {
-		_ = filepath.WalkDir(filepath.Join(cfg.Stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
+		_ = filepath.WalkDir(filepath.Join(cfg.stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {
 				return os.Chmod(path, 0700)
 			}
@@ -96,7 +96,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		ProtocolVersion:    protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
 	})
-	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Title: "release approval"})
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}, Title: "release approval"})
 	if err != nil {
 		t.Fatal(err)
 	}

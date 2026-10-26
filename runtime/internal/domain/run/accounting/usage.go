@@ -9,7 +9,6 @@ import (
 	"slices"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -23,7 +22,13 @@ type Totals struct {
 
 // Clone returns an ownership-isolated value.
 func (t Totals) Clone() Totals {
-	t.CostUSD = optional.Clone(t.CostUSD)
+	clonedCostUSD := t.CostUSD
+	if clonedCostUSD !=
+
+		nil {
+		clonedCostUSD = new(*clonedCostUSD)
+	}
+	t.CostUSD = clonedCostUSD
 	return t
 }
 

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
-
-	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
 type stubConversationMessages struct {

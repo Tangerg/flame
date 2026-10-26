@@ -8,8 +8,7 @@ import (
 	"testing"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -45,7 +44,7 @@ func (s *streamCallbackTarget) StreamPlugin(ctx context.Context, _ protocol.Call
 
 func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingContext(t *testing.T) {
 	target := &streamCallbackTarget{}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testDeliveryReplayStore(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +89,7 @@ func TestCallbackInstalledStreamKeepsCapturedOwnerAndRefusesRetiredOrMissingCont
 	if chunks != 1 || results != 1 || target.calls.Load() != 1 {
 		t.Fatalf("callback chunks=%d results=%d calls=%d", chunks, results, target.calls.Load())
 	}
-	invoked, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "original", Origin: capability.Model, Parent: "parent", Target: capability.Target{Scope: "call", Reference: "original"}})
+	invoked, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original", Origin: extension.Model, Parent: "parent", Target: extension.Target{Scope: "call", Reference: "original"}})
 	if err != nil {
 		t.Fatal(err)
 	}

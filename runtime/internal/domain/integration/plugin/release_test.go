@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdk "github.com/Tangerg/scope/skills"
 )
@@ -49,7 +49,7 @@ func TestReleaseIsAdmittedOnceAndImmutable(t *testing.T) {
 	if current := release.Declaration().Servers[0]; current.Command != "review" || current.Env["MODE"] != "strict" || len(current.Args) != 0 {
 		t.Fatalf("a caller advanced an admitted release: %+v", current)
 	}
-	if _, err := NewRelease(fingerprint.Digest{}, Declaration{Name: "review"}); !errors.Is(err, ErrInvalid) {
+	if _, err := NewRelease(identity.Digest{}, Declaration{Name: "review"}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("release without a digest = %v", err)
 	}
 	if _, err := NewRelease(testDigest("1"), Declaration{Name: "Review"}); !errors.Is(err, ErrInvalid) {

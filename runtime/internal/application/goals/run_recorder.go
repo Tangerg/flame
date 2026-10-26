@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/samber/lo"
 )
 
 // RunRecorder applies a terminal Goal-owned Run to the Session's Goal. Callers
@@ -19,7 +19,7 @@ type RunRecorder struct {
 
 // NewRunRecorder constructs terminal-Run application over the required store.
 func NewRunRecorder(store Store) (*RunRecorder, error) {
-	if dependency.Missing(store) {
+	if lo.IsNil(store) {
 		return nil, errors.New("goals: run recorder store is required")
 	}
 	return &RunRecorder{goals: store}, nil

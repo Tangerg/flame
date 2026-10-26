@@ -9,8 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -140,7 +140,7 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	if _, err := policy.EnterPlanMode(t.Context(), sessionID); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 		if pending.Question == nil || !strings.Contains(pending.Question.Fields[0].Prompt, "inspect") {
 			t.Fatalf("prompt does not present the canonical Plan: %+v", pending.Question)
 		}
@@ -168,7 +168,7 @@ func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 	if err := policy.SetDefaultMode(t.Context(), approval.ModeYolo); err != nil {
 		t.Fatal(err)
 	}
-	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (interrupt.Resolution, *toolcontract.InputRequest, error) {
+	interrupt := func(_ context.Context, _ toolcontract.Invocation, _ string, pending runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 		if got := pending.Question.Arguments; got != `{}` {
 			t.Fatalf("interrupt arguments = %q", got)
 		}

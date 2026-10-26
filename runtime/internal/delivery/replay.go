@@ -1,37 +1,20 @@
 package delivery
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
-	"sort"
-	"sync"
-	"time"
 
-	"go.opentelemetry.io/otel/trace"
-
-	"encoding/json/jsontext"
-
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"go.opentelemetry.io/otel/trace"
 )
-
-const idempotencyStoreWriteTimeout = 5 * time.Second
-
-type replayStore struct {
-	store idempotency.Store
-	// inFlight serializes one key's execution and receipt for as long as the
-	// caller's own request lasts.
-	inFlight  *keylock.Set
-	pendingMu sync.Mutex
-	pending   map[string]idempotency.Record
-}
 
 // storedOutcome carries no layout version. It decodes strictly against the
 // method's current result type, so a record this build cannot read is refused
@@ -41,84 +24,45 @@ type storedOutcome struct {
 	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
 
-func newReplayStore(store idempotency.Store) *replayStore {
-	return &replayStore{
-		store:    store,
-		inFlight: keylock.NewSet(),
-		pending:  make(map[string]idempotency.Record),
-	}
-}
-
-func (r *replayStore) invoke(
-	ctx context.Context,
-	method *Method,
-	parameters any,
-	key string,
-	execute func() Result,
-) Result {
+func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string, execute func() Result) Result {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	release, err := r.inFlight.Acquire(ctx, key)
+	var result Result
+	executed := false
+	payload, err := e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
+		result = execute()
+		executed = true
+		encoded, err := encodeStoredOutcome(result)
+		if err != nil {
+			return nil, fmt.Errorf("idempotency: encode operation outcome: %w", err)
+		}
+		return encoded, nil
+	})
 	if err != nil {
-		return failed(projectError(err))
-	}
-	defer release()
-
-	if pending, ok := r.pendingCompletion(key); ok {
-		if pending.Fingerprint != fingerprint {
+		if executed || errors.Is(err, operation.ErrOutcomePending) {
+			slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation", "method", method.Meta.Name, "error", err)
+			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store %s replay: %w", method.Meta.Name, err))
+		}
+		switch {
+		case errors.Is(err, extension.ErrInvocationConflict):
 			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
+		case errors.Is(err, operation.ErrOutcomePending):
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, operation.ErrOutcomePending.Error()))
+		case errors.Is(err, operation.ErrInProgress):
+			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, operation.ErrInProgress.Error()))
+		default:
+			return failed(projectError(err))
 		}
-		completionErr := r.completeDetached(ctx, pending)
-		if completionErr != nil {
-			// The caller learns only that the receipt is unsettled; the reason it
-			// could not be settled belongs to whoever has to fix the store.
-			slog.ErrorContext(ctx, "delivery: settle idempotency receipt",
-				"method", method.Meta.Name, "error", completionErr)
-			return failed(r.persistenceFailure(completionErr))
-		}
-		r.forgetPendingCompletion(key, fingerprint)
-		return r.replay(method, pending.Payload)
 	}
-
-	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
-	if err != nil {
-		if errors.Is(err, idempotency.ErrKeyConflict) {
-			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
-		}
-		return failed(projectError(fmt.Errorf("idempotency: claim replay key: %w", err)))
+	if executed {
+		return result
 	}
-	if !claimed {
-		if len(record.Payload) == 0 {
-			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, "command outcome is not yet known; retain the original request identity"))
-		}
-		return r.replay(method, record.Payload)
-	}
-
-	result := execute()
-	payload, err := encodeStoredOutcome(result)
-	if err != nil {
-		return failed(projectError(fmt.Errorf("idempotency: encode operation outcome: %w", err)))
-	}
-	record = idempotency.Record{Key: key, Fingerprint: fingerprint, Payload: payload}
-	if err := r.completeDetached(ctx, record); err != nil {
-		if errors.Is(err, idempotency.ErrKeyConflict) {
-			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
-		}
-		r.rememberPendingCompletion(record)
-		// The execution outcome is known even though its receipt is unconfirmed.
-		// Retain it for completion without repeating the command or choosing a
-		// different outcome, including while shutdown settlement is refused.
-		slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation",
-			"method", method.Meta.Name, "error", err)
-		trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store replay: %w", err))
-		return failed(r.persistenceFailure(err))
-	}
-	return result
+	return replayOutcome(method, payload)
 }
 
-func (r *replayStore) replay(method *Method, payload []byte) Result {
+func replayOutcome(method *Method, payload []byte) Result {
 	var stored storedOutcome
 	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
@@ -169,150 +113,4 @@ func operationFingerprint(name Name, parameters any) (string, error) {
 	_, _ = hash.Write([]byte{0})
 	_, _ = hash.Write(encoded)
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-func (r *replayStore) completeDetached(ctx context.Context, record idempotency.Record) error {
-	return r.completeWithin(context.WithoutCancel(ctx), record)
-}
-
-func (r *replayStore) completeWithin(ctx context.Context, record idempotency.Record) error {
-	writeContext, cancel := context.WithTimeout(ctx, idempotencyStoreWriteTimeout)
-	defer cancel()
-	return r.store.Complete(writeContext, record)
-}
-
-// flushPending persists every business outcome already known to this Endpoint.
-// It runs only after admission is closed and all accepted invocations have
-// returned, so no new pending record can appear while the process owner is
-// deciding whether dependencies are safe to close. Failed records stay in the
-// map so a later Close can retry without executing their commands again.
-func (r *replayStore) flushPending(ctx context.Context) error {
-	if ctx == nil {
-		return errors.New("idempotency: flush context is required")
-	}
-	var errs []error
-	for _, key := range r.pendingKeys() {
-		release, err := r.inFlight.Acquire(ctx, key)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
-			continue
-		}
-		pending, ok := r.pendingCompletion(key)
-		if ok {
-			err = r.completeWithin(ctx, pending)
-			if err == nil {
-				r.forgetPendingCompletion(key, pending.Fingerprint)
-			} else {
-				errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
-			}
-		}
-		release()
-	}
-	return errors.Join(errs...)
-}
-
-func (r *replayStore) persistenceFailure(err error) *protocol.Failure {
-	if errors.Is(err, idempotency.ErrKeyConflict) {
-		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation")
-	}
-	if errors.Is(err, idempotency.ErrClaimLost) || errors.Is(err, idempotency.ErrOutcomeConflict) {
-		return projectError(fmt.Errorf("idempotency: persist execution outcome: %w", err))
-	}
-	return protocol.NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is still pending")
-}
-
-func (r *replayStore) pendingCompletion(key string) (idempotency.Record, bool) {
-	r.pendingMu.Lock()
-	defer r.pendingMu.Unlock()
-	record, ok := r.pending[key]
-	record.Payload = bytes.Clone(record.Payload)
-	return record, ok
-}
-
-func (r *replayStore) rememberPendingCompletion(record idempotency.Record) {
-	record.Payload = bytes.Clone(record.Payload)
-	r.pendingMu.Lock()
-	r.pending[record.Key] = record
-	r.pendingMu.Unlock()
-}
-
-func (r *replayStore) forgetPendingCompletion(key, fingerprint string) {
-	r.pendingMu.Lock()
-	if r.pending[key].Fingerprint == fingerprint {
-		delete(r.pending, key)
-	}
-	r.pendingMu.Unlock()
-}
-
-func (r *replayStore) pendingKeys() []string {
-	r.pendingMu.Lock()
-	keys := make([]string, 0, len(r.pending))
-	for key := range r.pending {
-		keys = append(keys, key)
-	}
-	r.pendingMu.Unlock()
-	sort.Strings(keys)
-	return keys
-}
-
-type memoryIdempotencyStore struct {
-	mu      sync.Mutex
-	records map[string]memoryIdempotencyRecord
-}
-
-type memoryIdempotencyRecord struct {
-	idempotency.Record
-	expiresAt time.Time
-}
-
-func newMemoryIdempotencyStore() *memoryIdempotencyStore {
-	return &memoryIdempotencyStore{records: make(map[string]memoryIdempotencyRecord)}
-}
-
-func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint string) (idempotency.Record, bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	now := time.Now()
-	for storedKey, stored := range m.records {
-		if len(stored.Payload) != 0 && !now.Before(stored.expiresAt) {
-			delete(m.records, storedKey)
-		}
-	}
-	stored, ok := m.records[key]
-	if ok {
-		if stored.Fingerprint != fingerprint {
-			return idempotency.Record{}, false, idempotency.ErrKeyConflict
-		}
-		stored.Payload = bytes.Clone(stored.Payload)
-		return stored.Record, false, nil
-	}
-	record := idempotency.Record{Key: key, Fingerprint: fingerprint}
-	m.records[key] = memoryIdempotencyRecord{Record: record}
-	return record, true, nil
-}
-
-func (m *memoryIdempotencyStore) Complete(_ context.Context, record idempotency.Record) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	stored, ok := m.records[record.Key]
-	if !ok {
-		return idempotency.ErrClaimLost
-	}
-	if stored.Fingerprint != record.Fingerprint {
-		return idempotency.ErrKeyConflict
-	}
-	if len(stored.Payload) != 0 {
-		if !time.Now().Before(stored.expiresAt) {
-			delete(m.records, record.Key)
-			return idempotency.ErrClaimLost
-		}
-		if !bytes.Equal(stored.Payload, record.Payload) {
-			return idempotency.ErrOutcomeConflict
-		}
-		return nil
-	}
-	stored.Payload = bytes.Clone(record.Payload)
-	stored.expiresAt = time.Now().Add(idempotency.Retention)
-	m.records[record.Key] = stored
-	return nil
 }

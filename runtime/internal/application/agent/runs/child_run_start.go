@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -57,19 +56,19 @@ func (c ChildRunStartReservation) Validate() error {
 }
 
 func (c ChildRunStartReservation) validateIdentity() error {
-	if err := resourceid.ValidateSession(c.SessionID); err != nil {
+	if err := identity.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := runtimeidentity.ValidateExecutor(c.ExecutorID); err != nil {
+	if err := ValidateExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := resourceid.ValidateSegment(c.SegmentID); err != nil {
+	if err := identity.ValidateSegment(c.SegmentID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := resourceid.ValidateItem(c.SpawnedByItemID); err != nil {
+	if err := identity.ValidateItem(c.SpawnedByItemID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := resourceid.ValidateRun(c.RootRunID); err != nil {
+	if err := identity.ValidateRun(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	return nil

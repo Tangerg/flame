@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -37,10 +37,10 @@ type poMCPRuntime struct {
 	closed   bool
 }
 
-func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
+func poMCPOpen(t *testing.T, cfg assemblyConfig) *poMCPRuntime {
 	t.Helper()
 	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		_ = host.Close()
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func poMCPOpen(t *testing.T, cfg Config) *poMCPRuntime {
 	return runtime
 }
 
-func buildPluginProtocolRuntime(t *testing.T, cfg Config) (*Instance, *delivery.Handler) {
+func buildPluginProtocolRuntime(t *testing.T, cfg assemblyConfig) (*Instance, *delivery.Handler) {
 	t.Helper()
 	host := assembleTestRuntime(t, cfg)
 	api, err := pluginProtocolHandler(host, cfg)
@@ -72,13 +72,13 @@ func buildPluginProtocolRuntime(t *testing.T, cfg Config) (*Instance, *delivery.
 	return host, api
 }
 
-func pluginProtocolHandler(host *Instance, cfg Config) (*delivery.Handler, error) {
+func pluginProtocolHandler(host *Instance, cfg assemblyConfig) (*delivery.Handler, error) {
 	// Plugin callbacks retain Core identity across restart. Discovery and the
 	// Endpoint must use the store's namespace, including in custom loss fixtures.
 	return host.application.newDeliveryHandler(protocol.ServerInfo{
 		Name: "plugin-acceptance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
-		DefaultWorkspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}, Home: cfg.UserHome,
-	}, cfg.Stores.IdempotencyNamespace.String())
+		DefaultWorkspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}, Home: cfg.userHome,
+	}, cfg.stores.IdempotencyNamespace.String())
 }
 
 func (r *poMCPRuntime) close() {
@@ -169,11 +169,11 @@ func poMCPPackage(t *testing.T, files map[string]string) string {
 	return source
 }
 
-func poMCPConfig(t *testing.T) Config {
+func poMCPConfig(t *testing.T) assemblyConfig {
 	t.Helper()
 	cfg := runtimeConfigWithRequiredDeps(t)
 	t.Cleanup(func() {
-		_ = filepath.WalkDir(filepath.Join(cfg.Stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
+		_ = filepath.WalkDir(filepath.Join(cfg.stores.DataDirectory, "plugins"), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && entry.IsDir() {
 				return os.Chmod(path, 0700)
 			}
@@ -188,11 +188,11 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
 	for _, contribution := range installed.Selected.Contributions {
-		contract, err := capability.Parse([]byte(contribution.Contract))
+		contract, err := extension.ParseCapability([]byte(contribution.Contract))
 		if err != nil {
 			r.t.Fatal(err)
 		}
-		if contract.Descriptor().Composition != capability.Selection {
+		if contract.Descriptor().Composition != extension.Selection {
 			continue
 		}
 		role := contract.Descriptor().Reference
@@ -266,7 +266,7 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
 		Name: "reviews", Enabled: true,

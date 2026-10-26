@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -102,9 +102,9 @@ func (t Executable) Current() bool {
 	return t.owner != nil && t.owner.current(t.config.ID(), t.session)
 }
 
-func (t Executable) Unwrap() toolcontract.Tool             { return t.Tool }
-func (t Executable) SourceFingerprint() fingerprint.Digest { return t.config.AuthorityFingerprint() }
-func (t Executable) SourceConfig() ServerConfig            { return t.config.Clone() }
+func (t Executable) Unwrap() toolcontract.Tool          { return t.Tool }
+func (t Executable) SourceFingerprint() identity.Digest { return t.config.AuthorityFingerprint() }
+func (t Executable) SourceConfig() ServerConfig         { return t.config.Clone() }
 
 // CallbackSession binds collaborators to the connection generation that admitted this tool.
 func (t Executable) CallbackSession() (*sdkmcp.ClientSession, error) {

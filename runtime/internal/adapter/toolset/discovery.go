@@ -18,11 +18,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 // defaultLimit caps how many tools one search returns (and promotes). Kept small
@@ -199,9 +199,9 @@ func decodeDiscoveryResult(result toolcontract.Result) (discoveryResult, error) 
 func (d *Discovery) search(_ context.Context, args discoveryArgs) (discoveryResult, error) {
 	query := strings.TrimSpace(args.Query)
 	if query == "" {
-		return discoveryResult{}, toolfailure.Definite(ErrEmptyQuery)
+		return discoveryResult{}, pluginsdk.DefiniteToolFailure(errEmptyQuery)
 	}
-	limit := optional.Value(args.Limit, discoveryDefaultLimit)
+	limit := lo.FromPtrOr(args.Limit, discoveryDefaultLimit)
 
 	var matches []discoverableTool
 	if rest, ok := strings.CutPrefix(query, discoverySelectPrefix); ok {

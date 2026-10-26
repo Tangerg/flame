@@ -6,10 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestResolveProviderConfigAllowsCredentialConfigurationAfterStartup(t *testing.T) {
@@ -59,8 +58,8 @@ func TestSeedConfiguredProvider(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reg := &providerRegistry{stored: tt.stored}
-			if err := SeedConfiguredProvider(ctx, reg, tt.cfg); err != nil {
+			reg := &fixtureProviderRegistry{stored: tt.stored}
+			if err := seedConfiguredProvider(ctx, reg, tt.cfg); err != nil {
 				t.Fatal(err)
 			}
 			got, ok, err := reg.Get(ctx, tt.cfg.Provider)
@@ -74,14 +73,14 @@ func TestSeedConfiguredProvider(t *testing.T) {
 
 func TestSeedConfiguredProviderDoesNotUndoAnExplicitDurableClear(t *testing.T) {
 	stored := testsupport.MustProvider("anthropic", "", "https://stored.example.test")
-	registry := &providerRegistry{stored: map[string]provider.Provider{"anthropic": stored}}
+	registry := &fixtureProviderRegistry{stored: map[string]provider.Provider{"anthropic": stored}}
 	settings := config.Settings{
 		Provider: "anthropic",
 		APIKey:   config.FileAPIKey("sk-file"),
 		BaseURL:  "https://config.example.test",
 	}
 
-	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+	if err := seedConfiguredProvider(t.Context(), registry, settings); err != nil {
 		t.Fatal(err)
 	}
 	effective := registry.stored[settings.Provider]
@@ -95,8 +94,8 @@ func TestSeedConfiguredProviderDoesNotUndoAnExplicitDurableClear(t *testing.T) {
 }
 
 func TestSeedConfiguredProviderDoesNotManufactureMissingCredential(t *testing.T) {
-	registry := &providerRegistry{stored: map[string]provider.Provider{}}
-	if err := SeedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "openai-compatible"}); err != nil {
+	registry := &fixtureProviderRegistry{stored: map[string]provider.Provider{}}
+	if err := seedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "openai-compatible"}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.stored) != 0 {
@@ -104,7 +103,7 @@ func TestSeedConfiguredProviderDoesNotManufactureMissingCredential(t *testing.T)
 	}
 
 	settings := config.Settings{Provider: "openai-compatible", BaseURL: "http://127.0.0.1:22434"}
-	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
+	if err := seedConfiguredProvider(t.Context(), registry, settings); err != nil {
 		t.Fatal(err)
 	}
 	stored, found := registry.stored["openai-compatible"]
@@ -118,17 +117,17 @@ func TestSeedConfiguredProviderDoesNotManufactureMissingCredential(t *testing.T)
 
 func TestSeedConfiguredProviderKeepsEnvironmentKeyOutOfStorageButPersistsEndpoint(t *testing.T) {
 	t.Setenv("OPENAI_COMPATIBLE_API_KEY", "sk-env")
-	inner := &providerRegistry{stored: map[string]provider.Provider{}}
+	inner := &fixtureProviderRegistry{stored: map[string]provider.Provider{}}
 	cfg := config.Settings{
 		Provider: "openai-compatible",
 		APIKey:   config.EnvironmentAPIKey("sk-env"),
 		BaseURL:  "https://gateway.example.test",
 	}
 
-	if err := SeedConfiguredProvider(t.Context(), inner, cfg); err != nil {
+	if err := seedConfiguredProvider(t.Context(), inner, cfg); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := ProviderRegistry(inner, cfg)
+	registry, err := providerRegistry(inner, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,15 +164,15 @@ func TestGenericEnvironmentKeyNeverCrossesTheDurableProviderBoundary(t *testing.
 	t.Setenv("FLAME_APIKEY", "sk-process")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 
-	settings, err := LoadConfig([]string{directory})
+	settings, err := loadConfig([]string{directory})
 	if err != nil {
 		t.Fatal(err)
 	}
-	inner := &providerRegistry{stored: map[string]provider.Provider{}}
-	if err := SeedConfiguredProvider(t.Context(), inner, settings); err != nil {
+	inner := &fixtureProviderRegistry{stored: map[string]provider.Provider{}}
+	if err := seedConfiguredProvider(t.Context(), inner, settings); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := ProviderRegistry(inner, settings)
+	registry, err := providerRegistry(inner, settings)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,11 +193,11 @@ func TestGenericEnvironmentKeyNeverCrossesTheDurableProviderBoundary(t *testing.
 	}
 }
 
-type providerRegistry struct {
+type fixtureProviderRegistry struct {
 	stored map[string]provider.Provider
 }
 
-func (p *providerRegistry) List(context.Context) ([]provider.Provider, error) {
+func (p *fixtureProviderRegistry) List(context.Context) ([]provider.Provider, error) {
 	out := make([]provider.Provider, 0, len(p.stored))
 	for _, stored := range p.stored {
 		out = append(out, stored)
@@ -206,12 +205,12 @@ func (p *providerRegistry) List(context.Context) ([]provider.Provider, error) {
 	return out, nil
 }
 
-func (p *providerRegistry) Get(_ context.Context, id string) (provider.Provider, bool, error) {
+func (p *fixtureProviderRegistry) Get(_ context.Context, id string) (provider.Provider, bool, error) {
 	stored, ok := p.stored[id]
 	return stored, ok, nil
 }
 
-func (p *providerRegistry) Update(_ context.Context, id string, patch provider.Patch) (provider.Provider, error) {
+func (p *fixtureProviderRegistry) Update(_ context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	stored, found := p.stored[id]
 	if !found {
 		var err error

@@ -11,15 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -368,7 +367,7 @@ func (unusedConnections) ReconcileInstallation(context.Context, []mcpserver.ID) 
 
 type unusedDependencies struct{}
 
-func (unusedDependencies) ChangeInstallation(context.Context, resourceid.InstallationID, plugins.ChangeAdmission, func([]plugin.Dependency) (bool, error)) error {
+func (unusedDependencies) ChangeInstallation(context.Context, identity.InstallationID, plugins.ChangeAdmission, func([]plugin.Dependency) (bool, error)) error {
 	return errors.New("unexpected installation change")
 }
 

@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 const (
@@ -89,12 +88,12 @@ const (
 // invalid, so an origin is always an explicit choice.
 type Origin struct {
 	kind         OriginKind
-	installation resourceid.InstallationID
+	installation identity.InstallationID
 }
 
 func UserOrigin() Origin { return Origin{kind: OriginUser} }
 
-func InstallationOrigin(installation resourceid.InstallationID) (Origin, error) {
+func InstallationOrigin(installation identity.InstallationID) (Origin, error) {
 	if err := installation.Validate(); err != nil {
 		return Origin{}, fmt.Errorf("%w: %w", ErrInvalidOrigin, err)
 	}
@@ -103,7 +102,7 @@ func InstallationOrigin(installation resourceid.InstallationID) (Origin, error) 
 
 func (o Origin) Kind() OriginKind { return o.kind }
 
-func (o Origin) Installation() (resourceid.InstallationID, bool) {
+func (o Origin) Installation() (identity.InstallationID, bool) {
 	return o.installation, o.kind == OriginInstallation
 }
 
@@ -177,14 +176,14 @@ func (i ID) String() string {
 // claimed by a user record or omitted from an installation record.
 type Source struct {
 	origin    Origin
-	release   fingerprint.Digest
-	authority fingerprint.Digest
-	recipient fingerprint.Digest
+	release   identity.Digest
+	authority identity.Digest
+	recipient identity.Digest
 }
 
 func UserSource() Source { return Source{origin: UserOrigin()} }
 
-func InstallationSource(installation resourceid.InstallationID, release, authority, recipient fingerprint.Digest) (Source, error) {
+func InstallationSource(installation identity.InstallationID, release, authority, recipient identity.Digest) (Source, error) {
 	origin, err := InstallationOrigin(installation)
 	if err != nil {
 		return Source{}, fmt.Errorf("mcpserver: installation source: %w", err)
@@ -209,7 +208,7 @@ func (s Source) ID(name ServerName) ID { return ID{origin: s.origin, name: name}
 
 // Release reports the admitted release and tool authority of an installation
 // source.
-func (s Source) Release() (release, authority fingerprint.Digest, found bool) {
+func (s Source) Release() (release, authority identity.Digest, found bool) {
 	return s.release, s.authority, s.origin.kind == OriginInstallation
 }
 

@@ -5,11 +5,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -39,7 +38,7 @@ func (k EndpointKind) Validate() error {
 type EndpointInvocation struct {
 	ID        string
 	Kind      EndpointKind
-	Caller    capability.Invocation
+	Caller    extension.Invocation
 	Provider  string
 	Model     string
 	SessionID string
@@ -48,21 +47,28 @@ type EndpointInvocation struct {
 	StartedAt time.Time
 }
 
+const maxInvocationIdentityBytes = 256
+
+// ValidateInvocationID admits exact physical or parent model-call identity.
+func ValidateInvocationID(value string) error {
+	return identity.ValidateURISafeASCII(value, maxInvocationIdentityBytes)
+}
+
 func (i EndpointInvocation) Validate() error {
-	if err := identity.ValidateEffect(i.ID); err != nil {
+	if err := ValidateInvocationID(i.ID); err != nil {
 		return err
 	}
 	if err := i.Caller.Validate(); err != nil {
 		return err
 	}
-	if i.Caller.Target.Scope != capability.ScopeCall || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
+	if i.Caller.Target.Scope != extension.ScopeCall || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
 		return errors.New("models: endpoint invocation requires a distinct calling model operation")
 	}
 	if _, err := modelchoice.New(i.Provider, i.Model); err != nil {
 		return err
 	}
 	if i.SessionID != "" {
-		if err := resourceid.ValidateSession(i.SessionID); err != nil {
+		if err := identity.ValidateSession(i.SessionID); err != nil {
 			return err
 		}
 	}
@@ -110,9 +116,9 @@ type EndpointObservation struct {
 	State          string
 	Failure        string
 	FinishedAt     time.Time
-	InvocationJSON jsoninput.Input
-	RequestJSON    jsoninput.Input
-	ResponseJSON   jsoninput.Input
+	InvocationJSON jsonvalue.Value
+	RequestJSON    jsonvalue.Value
+	ResponseJSON   jsonvalue.Value
 }
 
 // HasResponse reports whether known provider evidence was observed. It is the

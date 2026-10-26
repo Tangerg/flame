@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
@@ -14,16 +14,16 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	results := NewToolResultStore(db)
-	checkpoints := NewExecutorCheckpointStore(db)
+	results := newToolResultStore(db)
+	checkpoints := newExecutorCheckpointStore(db)
 	retained := stageShellResult(t, results, "session-1", "retained body")
 	orphan := stageShellResult(t, results, "session-1", "orphan body")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
-	checkpoint.ToolResultIDs = []toolresult.ID{retained}
+	checkpoint.ToolResultIDs = []transcript.ToolResultID{retained}
 	if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 		t.Fatal(err)
 	}
-	if err := results.Discard(t.Context(), "session-1", toolresult.Ref{ID: retained}); err != nil {
+	if err := results.Discard(t.Context(), "session-1", transcript.ToolResultRef{ID: retained}); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Close(); err != nil {
@@ -34,8 +34,8 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	results = NewToolResultStore(db)
-	checkpoints = NewExecutorCheckpointStore(db)
+	results = newToolResultStore(db)
+	checkpoints = newExecutorCheckpointStore(db)
 	if removed, err := results.PurgeUnbound(t.Context()); err != nil || removed != 1 {
 		t.Fatalf("purge removed=%d err=%v", removed, err)
 	}
@@ -50,7 +50,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatalf("orphan remains: %t %v", found, err)
 	}
 	// Once published, the Item owns the body even after its checkpoint is consumed.
-	if err := NewTranscriptStore(db).AppendItem(t.Context(), toolItem("session-1", "item_result", "preview", &toolresult.Ref{ID: retained})); err != nil {
+	if err := newTranscriptStore(db).AppendItem(t.Context(), toolItem("session-1", "item_result", "preview", &transcript.ToolResultRef{ID: retained})); err != nil {
 		t.Fatal(err)
 	}
 	if err := checkpoints.DeleteCheckpoints(t.Context(), "session-1", []string{checkpoint.RootMemberID}); err != nil {
@@ -63,18 +63,18 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 
 func TestCheckpointResultReplacementIsAtomicAndSessionScoped(t *testing.T) {
 	db, checkpoints := newExecutorCheckpointStorage(t)
-	results := NewToolResultStore(db)
+	results := newToolResultStore(db)
 	owned := stageShellResult(t, results, "session-1", "owned")
 	foreign := stageShellResult(t, results, "session-2", "foreign")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
-	checkpoint.ToolResultIDs = []toolresult.ID{owned}
+	checkpoint.ToolResultIDs = []transcript.ToolResultID{owned}
 	if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 		t.Fatal(err)
 	}
-	for _, id := range []toolresult.ID{foreign, "MISSING"} {
+	for _, id := range []transcript.ToolResultID{foreign, "MISSING"} {
 		replacement := checkpoint.Clone()
 		replacement.Payload = []byte(`{"replacement":true}`)
-		replacement.ToolResultIDs = []toolresult.ID{id}
+		replacement.ToolResultIDs = []transcript.ToolResultID{id}
 		if err := checkpoints.SaveCheckpoint(t.Context(), replacement); err == nil {
 			t.Fatal("invalid ownership accepted")
 		}
@@ -100,10 +100,10 @@ func TestDeletingCheckpointReleasesUnpublishedResults(t *testing.T) {
 	for _, mode := range []string{"consumed", "session deleted"} {
 		t.Run(mode, func(t *testing.T) {
 			db, checkpoints := newExecutorCheckpointStorage(t)
-			results := NewToolResultStore(db)
+			results := newToolResultStore(db)
 			id := stageShellResult(t, results, "session-1", "pending body")
 			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
-			checkpoint.ToolResultIDs = []toolresult.ID{id}
+			checkpoint.ToolResultIDs = []transcript.ToolResultID{id}
 			if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 				t.Fatal(err)
 			}

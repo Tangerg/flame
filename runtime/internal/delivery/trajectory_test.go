@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -44,11 +44,11 @@ func TestTrajectoryDescendantsRequireNegotiatedCapability(t *testing.T) {
 }
 
 func TestTrajectoryEndpointPreservesOriginalJSONAndSessionOnlyIdentity(t *testing.T) {
-	request, err := jsoninput.Parse([]byte(`{"metadata":{"wide":9007199254740993}}`))
+	request, err := jsonvalue.Parse([]byte(`{"metadata":{"wide":9007199254740993}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := jsoninput.Parse([]byte(`{"metadata":{"usage":{"inputTokens":9007199254740993}}}`))
+	response, err := jsonvalue.Parse([]byte(`{"metadata":{"usage":{"inputTokens":9007199254740993}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}

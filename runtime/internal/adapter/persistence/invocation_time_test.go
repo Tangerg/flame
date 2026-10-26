@@ -16,10 +16,10 @@ func TestInvocationJournalsDistinguishEpochSettlementFromNoSettlement(t *testing
 	draft := runDraft("run_time", "ses_time")
 	startedAt, finishedAt := time.Unix(-1, 0).UTC(), time.Unix(0, 0).UTC()
 	draft.CreatedAt = startedAt
-	if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+	if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	models, tools := NewModelInvocationStore(db), NewToolInvocationStore(db)
+	models, tools := newModelInvocationStore(db), newToolInvocationStore(db)
 	if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_model", startedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -35,7 +35,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 					calls.Add(1)
 					invocation, err := pluginsdk.InvocationFromContext(ctx)
-					if err != nil || invocation.Origin != capability.Human || invocation.Parent != "original-selection-parent" || invocation.ID != invocation.Target.Reference || command.ID != "" {
+					if err != nil || invocation.Origin != extension.Human || invocation.Parent != "original-selection-parent" || invocation.ID != invocation.Target.Reference || command.ID != "" {
 						return pluginsdk.ModelSelection{}, errors.New("original selection query attribution changed")
 					}
 					if command.Input.Context.Use != modelchoice.Interaction || command.Input.Context.Limits != nil {
@@ -62,7 +62,7 @@ func TestInstalledModelSelectionPreservesProposalAndOriginalCallerWithoutFallbac
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx := operation.Adopt(t.Context(), "original-selection-parent", capability.Human, "original-start")
+			ctx := operation.Adopt(t.Context(), "original-selection-parent", extension.Human, "original-start")
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("question")))
 			before := request.Clone()
 			actual, err := composition.SelectModel(ctx, modelapp.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: proposed, Request: request})

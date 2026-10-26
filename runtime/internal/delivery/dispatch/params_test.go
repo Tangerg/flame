@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-func decodeForTest[Parameters any](request *transport.Request) (Parameters, *transport.Error) {
+func decodeForTest[Parameters any](request *jsonrpc.Request) (Parameters, *jsonrpc.Error) {
 	var zero Parameters
 	decoded, failure := decodeParameters(request.Params, reflect.TypeFor[Parameters]())
 	if failure != nil {
@@ -88,7 +88,7 @@ func TestDecodeProviderUpdateRejectsExplicitNullChanges(t *testing.T) {
 		`{"provider":"deepseek","baseUrl":null}`,
 		`{"provider":"deepseek","apiKey":{"type":"clear","value":null}}`,
 	} {
-		msg := &transport.Request{Params: jsontext.Value(params)}
+		msg := &jsonrpc.Request{Params: jsontext.Value(params)}
 		if _, bad := decodeForTest[protocol.UpdateProviderRequest](msg); bad == nil {
 			t.Fatalf("decode accepted an explicit null provider change: %s", params)
 		}
@@ -112,7 +112,7 @@ func TestDecodeParamsReportsTypedMapNullsInKeyOrder(t *testing.T) {
 func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Params: jsontext.Value(`{"name":"diagnostic","arguments":{"optional":null}}`)}
+	msg := &jsonrpc.Request{Params: jsontext.Value(`{"name":"diagnostic","arguments":{"optional":null}}`)}
 	request, bad := decodeForTest[protocol.InvokeToolRequest](msg)
 	if bad != nil {
 		t.Fatalf("decode rejected null inside open tool arguments: %+v", bad)
@@ -165,7 +165,7 @@ func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
 func TestDecodeReportsFieldLevelConstraintViolations(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Method: "sessions.update", Params: jsontext.Value(`{"sessionId":"","expectedRevision":0}`)}
+	msg := &jsonrpc.Request{Method: "sessions.update", Params: jsontext.Value(`{"sessionId":"","expectedRevision":0}`)}
 	_, bad := decodeForTest[protocol.UpdateSessionRequest](msg)
 	if bad == nil {
 		t.Fatal("decode accepted a request with an empty id and a zero revision")
@@ -198,14 +198,14 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 	tests := []struct {
 		name       string
 		params     string
-		decode     func(*transport.Request) *transport.Error
+		decode     func(*jsonrpc.Request) *jsonrpc.Error
 		wantField  string
 		wantDetail string
 	}{
 		{
 			name:   "required array omitted",
 			params: `{"runId":"run_1","expectedSegmentId":"seg_1"}`,
-			decode: func(msg *transport.Request) *transport.Error {
+			decode: func(msg *jsonrpc.Request) *jsonrpc.Error {
 				_, bad := decodeForTest[protocol.SteerRunRequest](msg)
 				return bad
 			},
@@ -215,7 +215,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 		{
 			name:   "required array empty",
 			params: `{"runId":"run_1","expectedSegmentId":"seg_1","input":[]}`,
-			decode: func(msg *transport.Request) *transport.Error {
+			decode: func(msg *jsonrpc.Request) *jsonrpc.Error {
 				_, bad := decodeForTest[protocol.SteerRunRequest](msg)
 				return bad
 			},
@@ -225,7 +225,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 		{
 			name:   "optional array omitted",
 			params: `{"runId":"run_1","responses":[]}`,
-			decode: func(msg *transport.Request) *transport.Error {
+			decode: func(msg *jsonrpc.Request) *jsonrpc.Error {
 				_, bad := decodeForTest[protocol.ResumeRunRequest](msg)
 				return bad
 			},
@@ -233,7 +233,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 		{
 			name:   "optional array empty",
 			params: `{"runId":"run_1","responses":[],"input":[]}`,
-			decode: func(msg *transport.Request) *transport.Error {
+			decode: func(msg *jsonrpc.Request) *jsonrpc.Error {
 				_, bad := decodeForTest[protocol.ResumeRunRequest](msg)
 				return bad
 			},
@@ -245,7 +245,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			bad := tt.decode(&transport.Request{Params: jsontext.Value(tt.params)})
+			bad := tt.decode(&jsonrpc.Request{Params: jsontext.Value(tt.params)})
 			if tt.wantField == "" {
 				if bad != nil {
 					t.Fatalf("decode rejected valid params: %+v", bad)
@@ -274,7 +274,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 func TestDecodeAcceptsRequestsWithoutConstraints(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Method: "runs.list", Params: jsontext.Value(`{"sessionId":"ses_1"}`)}
+	msg := &jsonrpc.Request{Method: "runs.list", Params: jsontext.Value(`{"sessionId":"ses_1"}`)}
 	in, bad := decodeForTest[protocol.ListRunsRequest](msg)
 	if bad != nil {
 		t.Fatalf("decode rejected an unconstrained request: %+v", bad)

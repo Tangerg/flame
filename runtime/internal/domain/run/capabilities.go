@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 // ErrInsufficientCapabilities reports that a caller cannot follow a Run because
@@ -42,7 +40,7 @@ func (i *InsufficientCapabilitiesError) Is(target error) bool {
 // The empty value is a valid minimal capability set, not an unknown value.
 type Capabilities struct {
 	ChildRuns      bool
-	InterruptKinds []interrupt.Kind
+	InterruptKinds []InterruptKind
 }
 
 // Clone returns an ownership-isolated copy.

@@ -3,7 +3,7 @@ package delivery
 import (
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 )
 
@@ -24,7 +24,7 @@ func TestNewRejectsTypedNilRequiredCapability(t *testing.T) {
 
 func TestServerInfoDefaultUsesCanonicalProductIdentity(t *testing.T) {
 	got := (HandlerConfig{}).withServerInfoDefaults().ServerInfo.Name
-	if got != runtimeidentity.ProductName {
-		t.Fatalf("default server brand = %q, want %q", got, runtimeidentity.ProductName)
+	if got != identity.ProductName {
+		t.Fatalf("default server brand = %q, want %q", got, identity.ProductName)
 	}
 }

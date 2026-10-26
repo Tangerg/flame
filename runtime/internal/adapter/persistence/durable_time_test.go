@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
@@ -20,8 +19,8 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			goals, plans := NewGoalStore(db), NewPlanStore(db)
-			seedSession(t, NewSessionStore(db), "session")
+			goals, plans := newGoalStore(db), newPlanStore(db)
+			seedSession(t, newSessionStore(db), "session")
 			value, err := goal.New("session", "objective", modelchoice.Selection{}, run.Capabilities{}, "incarnation", at)
 			if err != nil {
 				t.Fatal(err)
@@ -50,10 +49,10 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			}
 			draft := runDraft("run", "session")
 			draft.CreatedAt = at
-			if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			models, tools := NewModelInvocationStore(db), NewToolInvocationStore(db)
+			models, tools := newModelInvocationStore(db), newToolInvocationStore(db)
 			if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +70,7 @@ func TestDurableOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			if err != nil || len(toolAttempts) != 1 || !toolAttempts[0].StartedAt.Equal(at) || !toolAttempts[0].FinishedAt.Equal(at) {
 				t.Fatalf("Tool attempt time = %+v, %v", toolAttempts, err)
 			}
-			reservations := NewChildRunStartReservationStore(db)
+			reservations := newChildRunStartReservationStore(db)
 			record := ChildRunStartReservationRecord{MemberID: "member", SessionID: "session", Payload: []byte(`{"run":"child"}`), CreatedAt: at}
 			if err := reservations.Reserve(t.Context(), record); err != nil {
 				t.Fatal(err)
@@ -92,16 +91,16 @@ func TestExecutionRecordsRejectUnrepresentableTimesBeforeWriting(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			draft := runDraft("run", "session")
-			if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := newRunStore(db).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			if err := NewModelInvocationStore(db).StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err == nil {
+			if err := newModelInvocationStore(db).StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err == nil {
 				t.Error("Model attempt with unrepresentable start time was written")
 			}
-			if err := NewToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_call", "tool_item", at); err == nil {
+			if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_call", "tool_item", at); err == nil {
 				t.Error("Tool attempt with unrepresentable start time was written")
 			}
-			if err := NewChildRunStartReservationStore(db).Reserve(t.Context(), ChildRunStartReservationRecord{
+			if err := newChildRunStartReservationStore(db).Reserve(t.Context(), ChildRunStartReservationRecord{
 				MemberID: "member", SessionID: "session", Payload: []byte(`{"run":"child"}`), CreatedAt: at,
 			}); err == nil {
 				t.Error("Child reservation with unrepresentable creation time was written")

@@ -4,7 +4,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -23,7 +23,7 @@ var (
 )
 
 func loadServerInfo() {
-	loaded = protocol.ServerInfo{Name: runtimeidentity.ProductName, Version: "dev"}
+	loaded = protocol.ServerInfo{Name: identity.ProductName, Version: "dev"}
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return

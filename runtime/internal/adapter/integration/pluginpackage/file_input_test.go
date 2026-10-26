@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -85,7 +85,7 @@ func TestArchiveAdmissionRefusesAReplacedSource(t *testing.T) {
 		}
 	})
 	err = staged.extractArchive(t.Context(), source, expected)
-	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, fileinput.ErrChanged) {
+	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, filesystem.ErrChanged) {
 		t.Fatalf("replaced archive lost its identity failure: %v", err)
 	}
 }

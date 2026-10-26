@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/google/uuid"
 )
 
@@ -14,25 +14,25 @@ type identityKey struct{}
 
 type caller struct {
 	id     string
-	origin capability.Origin
+	origin extension.Origin
 	parent string
 }
 
 // Bind captures the delivery owner's scoped logical command. An unkeyed
 // invocation is a new command; retries with a key keep exactly that identity.
 func Bind(ctx context.Context, namespace, key string) context.Context {
-	origin := capability.Human
+	origin := extension.Human
 	if previous, ok := ctx.Value(identityKey{}).(caller); ok {
 		origin = previous.origin
 	} else if _, managed := ActorFrom(ctx); managed {
-		origin = capability.Automatic
+		origin = extension.Automatic
 	}
 	return Start(ctx, origin, namespace, key)
 }
 
 // Start establishes an adapter-owned initiation. Nested Delivery calls use Bind
 // to inherit this origin rather than reclassifying a callback as human input.
-func Start(ctx context.Context, origin capability.Origin, namespace, key string) context.Context {
+func Start(ctx context.Context, origin extension.Origin, namespace, key string) context.Context {
 	if key == "" {
 		key = uuid.NewString()
 	}
@@ -45,7 +45,7 @@ func Start(ctx context.Context, origin capability.Origin, namespace, key string)
 
 // Adopt projects an identity already admitted by an execution owner. In
 // particular model Tool identity belongs to the durable Interaction boundary.
-func Adopt(ctx context.Context, id string, origin capability.Origin, parent string) context.Context {
+func Adopt(ctx context.Context, id string, origin extension.Origin, parent string) context.Context {
 	return context.WithValue(ctx, identityKey{}, caller{id: id, origin: origin, parent: parent})
 }
 
@@ -62,8 +62,8 @@ func Identity(ctx context.Context) string {
 	return value.id
 }
 
-func Capture(ctx context.Context, target capability.Target) (capability.Invocation, error) {
+func Capture(ctx context.Context, target extension.Target) (extension.Invocation, error) {
 	value, _ := ctx.Value(identityKey{}).(caller)
-	invocation := capability.Invocation{ID: value.id, Origin: value.origin, Parent: value.parent, Target: target}
+	invocation := extension.Invocation{ID: value.id, Origin: value.origin, Parent: value.parent, Target: target}
 	return invocation, invocation.Validate()
 }

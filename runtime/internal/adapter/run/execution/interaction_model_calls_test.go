@@ -2,19 +2,18 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -69,7 +68,7 @@ func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancel
 			}
 			finish := <-started
 			request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent input")))
-			source := modelref.EndpointInvocation{ID: "endpoint_independent", Kind: modelref.EndpointChat, Caller: capability.Invocation{ID: fact.CallID, Origin: capability.Model, Parent: "original-owner", Target: capability.Target{Scope: "call", Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: time.Now().UTC()}
+			source := modelref.EndpointInvocation{ID: "endpoint_independent", Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: fact.CallID, Origin: extension.Model, Parent: "original-owner", Target: extension.Target{Scope: "call", Reference: fact.CallID}}, Provider: selection.Provider(), Model: selection.Model(), SessionID: draft.SessionID, Request: request, StartedAt: time.Now().UTC()}
 			if err := journal.StartEndpointInvocation(t.Context(), source, fact.CallID); err != nil {
 				t.Fatal(err)
 			}

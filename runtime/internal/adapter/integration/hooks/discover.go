@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
@@ -22,9 +22,9 @@ import (
 // down to the cwd.
 const hooksRelPath = ".flame/hooks.json"
 
-// Load discovers and parses the hooks.json cascade for a working directory and
+// loadCascade discovers and parses the hooks.json cascade for a working directory and
 // returns every configured hook, each stamped with its scope and source path.
-func Load(ctx context.Context, cwd, home string) ([]domainhooks.Hook, error) {
+func loadCascade(ctx context.Context, cwd, home string) ([]domainhooks.Hook, error) {
 	return load(ctx, cwd, home, true)
 }
 
@@ -122,11 +122,11 @@ func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded boo
 	if err := cancellation.Err(ctx); err != nil {
 		return hooksFile{}, false, err
 	}
-	handle, opened, err := fileinput.Open(path, domainhooks.MaxConfigurationFileBytes)
+	handle, opened, err := filesystem.OpenFile(path, domainhooks.MaxConfigurationFileBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return hooksFile{}, false, cancellation.Err(ctx)
 	}
-	if errors.Is(err, fileinput.ErrTooLarge) {
+	if errors.Is(err, filesystem.ErrFileTooLarge) {
 		return hooksFile{}, false, fmt.Errorf("%w: %w", domainhooks.ErrConfigurationTooLarge, errors.Join(err, cancellation.Err(ctx)))
 	}
 	if err != nil {
@@ -144,14 +144,14 @@ func readHooksFile(ctx context.Context, path string) (file hooksFile, loaded boo
 		domainhooks.MaxConfigurationFileBytes+1,
 	))
 	capacityErr := domainhooks.ValidateConfigurationFileSize(int64(len(data)))
-	verifyErr := fileinput.VerifyPathVersion(handle, opened, path)
+	verifyErr := filesystem.VerifyPathVersion(handle, opened, path)
 	if err := errors.Join(readErr, capacityErr, verifyErr, cancellation.Err(ctx)); err != nil {
 		return hooksFile{}, false, fmt.Errorf("inspect configuration after reading: %w", err)
 	}
 	if len(data) == 0 {
 		return hooksFile{}, false, nil
 	}
-	if err := exactjson.UnmarshalNonNull(data, &file); err != nil {
+	if err := jsonvalue.UnmarshalNonNull(data, &file); err != nil {
 		return hooksFile{}, false, err
 	}
 	if file.Hooks == nil {

@@ -2,16 +2,12 @@ package segment
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
 	"errors"
 	"fmt"
 	"reflect"
 	"slices"
 	"testing"
 	"time"
-
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -20,13 +16,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 )
@@ -95,7 +89,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	if suspendErr := state.Suspend(
-		ctx, parkedRunRecord("run_actual", "ses_1", createdAt), "seg_open", runtimeidentity.CommitID{},
+		ctx, parkedRunRecord("run_actual", "ses_1", createdAt), "seg_open", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend: %v", suspendErr)
 	}
@@ -145,7 +139,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	if suspendErr := state.Suspend(
-		ctx, parkedRunRecord("run_1", "ses_1", created), "seg_open", runtimeidentity.CommitID{},
+		ctx, parkedRunRecord("run_1", "ses_1", created), "seg_open", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend: %v", suspendErr)
 	}
@@ -423,7 +417,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
+	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runs.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
 	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
@@ -483,7 +477,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
+	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runs.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
 	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
@@ -709,12 +703,12 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 		childInterrupts,
 	)
 
-	if err := runStore.Suspend(ctx, childRun, "segment_child", runtimeidentity.CommitID{}); err != nil {
+	if err := runStore.Suspend(ctx, childRun, "segment_child", runs.CommitID{}); err != nil {
 		t.Fatalf("suspend child: %v", err)
 	}
 	rootRun := waitingTestSessionRun("run_root", run.Lineage{}, createdAt, nil)
 	if suspendRoot {
-		if err := runStore.Suspend(ctx, rootRun, "segment_root", runtimeidentity.CommitID{}); err != nil {
+		if err := runStore.Suspend(ctx, rootRun, "segment_root", runs.CommitID{}); err != nil {
 			t.Fatalf("suspend root: %v", err)
 		}
 	}
@@ -730,7 +724,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 		},
 		CreatedAt: createdAt.Add(time.Second)}
 	seedPending(t, database, "session_1", pending, run.Capabilities{
-		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+		ChildRuns: true, InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}, testsupport.ParkedMember{RunID: "run_child", Lineage: lineage})
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
@@ -794,7 +788,7 @@ func assertOpeningResumeCommit(t *testing.T, fixture openingResumeFixture, commi
 func treeQuestion(itemID, runID string) transcript.Interrupt {
 	return transcript.Interrupt{
 		ItemID: itemID, ItemOccurredAt: time.Unix(1, 0).UTC(),
-		RunID: runID, Kind: interrupt.Question,
+		RunID: runID, Kind: run.InterruptQuestion,
 		Question: &transcript.Question{
 			Fields: []transcript.QuestionField{{
 				Prompt: "Continue?", Kind: transcript.QuestionText,
@@ -843,7 +837,7 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 			sessions := db.Sessions
 			state := db.Runs
 			receipts := db.CommandAcceptances
-			authority := actorAuthority{withdrawn: withdrawn}
+			authority := withdrawableAuthority{withdrawn: withdrawn}
 			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, CommandAcceptances: receipts, ActorAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error {
 				return db.Transactor(ctx, fn)
 			}})
@@ -899,9 +893,9 @@ func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 
 var errActorWithdrawn = errors.New("actor authority withdrawn")
 
-type actorAuthority struct{ withdrawn bool }
+type withdrawableAuthority struct{ withdrawn bool }
 
-func (a actorAuthority) Admit(context.Context, operation.Actor) error {
+func (a withdrawableAuthority) Admit(context.Context, operation.Actor) error {
 	if a.withdrawn {
 		return errActorWithdrawn
 	}
@@ -1019,7 +1013,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		CreatedAt: createdAt,
 	}); admitErr != nil {
@@ -1231,7 +1225,7 @@ type terminalCheckpointFixture struct {
 }
 
 // terminalFixtureCapabilities admits the question hand-off the fixture parks.
-var terminalFixtureCapabilities = run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+var terminalFixtureCapabilities = run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 
 func newTerminalCheckpointFixture(
 	t *testing.T,
@@ -1270,17 +1264,17 @@ func newTerminalCheckpointFixture(
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
-	var checkpointDeleter ExecutorCheckpointStore = checkpointStore
+	var checkpointDeleter executorCheckpointStore = checkpointStore
 	if failCheckpointDeletion {
 		checkpointDeleter = failingExecutorCheckpointStore{
-			ExecutorCheckpointStore: checkpointStore,
+			executorCheckpointStore: checkpointStore,
 			err:                     errors.New("delete unavailable"),
 		}
 	}
-	childStarts := ChildRunStartReservationStore(database.ChildRunStarts)
+	childStarts := childRunStartReservationStore(database.ChildRunStarts)
 	if failChildStartCleanup {
 		childStarts = failingChildRunStartReservationStore{
-			ChildRunStartReservationStore: childStarts,
+			childRunStartReservationStore: childStarts,
 			err:                           errors.New("child-start cleanup unavailable"),
 		}
 	}
@@ -1298,7 +1292,7 @@ func newTerminalCheckpointFixture(
 }
 
 type failingChildRunStartReservationStore struct {
-	ChildRunStartReservationStore
+	childRunStartReservationStore
 	err error
 }
 
@@ -1355,7 +1349,7 @@ func assertTerminalCheckpointCommit(t *testing.T, fixture terminalCheckpointFixt
 }
 
 type failingExecutorCheckpointStore struct {
-	ExecutorCheckpointStore
+	executorCheckpointStore
 	err error
 }
 
@@ -1538,7 +1532,7 @@ type waitingCancellationSQLiteFixture struct {
 }
 
 type waitingCancellationCommitDraft struct {
-	commitID         runtimeidentity.CommitID
+	commitID         runs.CommitID
 	targetRunID      string
 	parkedRuns       []run.Run
 	expectedPending  runs.Pending
@@ -1647,7 +1641,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	state := db.Runs
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}
 	if admitErr := state.Admit(ctx, run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
@@ -1792,23 +1786,23 @@ func newWaitingCancellationSQLiteFixtureAt(
 		}
 	}
 	if suspendErr := state.Suspend(
-		ctx, grandchildRun, "segment_grandchild", runtimeidentity.CommitID{},
+		ctx, grandchildRun, "segment_grandchild", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend grandchild: %v", suspendErr)
 	}
 	if suspendErr := state.Suspend(
-		ctx, childRun, "segment_child", runtimeidentity.CommitID{},
+		ctx, childRun, "segment_child", runs.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend child: %v", suspendErr)
 	}
 	if survivingBoundary {
 		if suspendErr := state.Suspend(
-			ctx, siblingRun, "segment_sibling", runtimeidentity.CommitID{},
+			ctx, siblingRun, "segment_sibling", runs.CommitID{},
 		); suspendErr != nil {
 			t.Fatalf("suspend sibling: %v", suspendErr)
 		}
 	}
-	if suspendErr := state.Suspend(ctx, rootRun, "segment_root", runtimeidentity.CommitID{}); suspendErr != nil {
+	if suspendErr := state.Suspend(ctx, rootRun, "segment_root", runs.CommitID{}); suspendErr != nil {
 		t.Fatalf("suspend root: %v", suspendErr)
 	}
 
@@ -2187,7 +2181,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	for _, test := range []struct {
 		label     string
 		segmentID string
-		commitID  runtimeidentity.CommitID
+		commitID  runs.CommitID
 	}{
 		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID},
 		{label: "other terminal attempt", segmentID: draft.SegmentID, commitID: testCommitID("run_commit_terminal_other")},
@@ -2604,7 +2598,7 @@ func seedPending(t *testing.T, db *persistencefixture.Stores, sessionID string, 
 
 // questionCapabilities is the Run contract singleRunPending's question needs.
 func questionCapabilities() run.Capabilities {
-	return run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	return run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}
 }
 
 func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {

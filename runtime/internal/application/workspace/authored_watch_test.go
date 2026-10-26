@@ -199,7 +199,7 @@ func TestNewAuthoredWatchRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		scope     *Scope
-		inspector IdentityInspector
+		inspector identityInspector
 		watcher   AuthoredResourceWatcher
 	}{
 		{name: "scope", inspector: staticWorkspaceInspector{}, watcher: &recordingAuthoredWatcher{}},
@@ -216,7 +216,7 @@ func TestNewAuthoredWatchRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newAuthoredWatch(t *testing.T, scope *Scope, inspector IdentityInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
+func newAuthoredWatch(t *testing.T, scope *Scope, inspector identityInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
 	t.Helper()
 	watch, err := NewAuthoredWatch(scope, inspector, watcher)
 	if err != nil {

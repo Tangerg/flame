@@ -85,7 +85,7 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	model *observedInteractionModel,
-	counter ModelContextInputTokenCounter,
+	counter modelContextInputTokenCounter,
 	checkpoint *interactionCheckpointState,
 ) (*interactionDeploymentSet, error) {
 	builder, err := i.newInteractionDeploymentBuilder(
@@ -106,7 +106,7 @@ type interactionDeploymentBuilder struct {
 	session           *interactionSession
 	start             runs.RootExecutionStart
 	model             *observedInteractionModel
-	counter           ModelContextInputTokenCounter
+	counter           modelContextInputTokenCounter
 	maxDepth          uint32
 	instructions      []corechat.Message
 	rootManifest      toolset.Manifest
@@ -119,7 +119,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	model *observedInteractionModel,
-	counter ModelContextInputTokenCounter,
+	counter modelContextInputTokenCounter,
 	checkpoint *interactionCheckpointState,
 ) (_ *interactionDeploymentBuilder, err error) {
 	instructions, err := interactionInstructionContext(start.WorkingContext)

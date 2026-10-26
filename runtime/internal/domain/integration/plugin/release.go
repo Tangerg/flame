@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	skillspec "github.com/Tangerg/scope/skills"
@@ -22,15 +20,15 @@ var themeColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func ThemeColorPattern() string { return themeColor.String() }
 
-func ValidName(name string) bool {
+func validName(name string) bool {
 	return len(name) <= 64 && namePattern.MatchString(name) && !strings.Contains(name, "--") && !strings.Contains(name, "..")
 }
 
 const (
-	MaxServers     = 64
-	MaxInputs      = 64
-	MaxThemes      = 32
-	MaxDiagnostics = 1024
+	maxServers     = 64
+	maxInputs      = 64
+	maxThemes      = 32
+	maxDiagnostics = 1024
 )
 
 // Server is a package-declared MCP server in the MCP registry's transport
@@ -55,7 +53,7 @@ type ManagedBackend struct {
 
 type ManagedRuntime string
 
-const Node ManagedRuntime = "node"
+const node ManagedRuntime = "node"
 
 // Input is a value the user supplies for one server. Secrecy is declared, but
 // a header or authorization input is admitted only as a secret: anything sent
@@ -157,12 +155,12 @@ func (s Server) clone() Server {
 // validated once on construction; persistence, installations and projections
 // trust it afterwards and read it only through copies.
 type Release struct {
-	digest      fingerprint.Digest
+	digest      identity.Digest
 	declaration Declaration
 }
 
 // NewRelease admits a complete declaration, each member exactly once.
-func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, error) {
+func NewRelease(digest identity.Digest, declaration Declaration) (Release, error) {
 	builder, err := NewBuilder(declaration.Name, declaration.Version, declaration.Description)
 	if err != nil {
 		return Release{}, err
@@ -213,8 +211,8 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 	return builder.Release(digest)
 }
 
-func (r Release) Digest() fingerprint.Digest { return r.digest }
-func (r Release) Name() string               { return r.declaration.Name }
+func (r Release) Digest() identity.Digest { return r.digest }
+func (r Release) Name() string            { return r.declaration.Name }
 
 // Declaration returns an owned copy; no reader can advance the release.
 func (r Release) Declaration() Declaration { return r.declaration.clone() }
@@ -241,10 +239,10 @@ func (r Release) input(id string) (Input, bool) {
 // release changes. For a process it is the executable itself, which only the
 // exact release bytes and the server's name within them identify. Static
 // secret inputs and OAuth grants both follow this one rule.
-func (r Release) recipient(name mcpserver.ServerName) (fingerprint.Digest, bool) {
+func (r Release) recipient(name mcpserver.ServerName) (identity.Digest, bool) {
 	server, found := r.server(name)
 	if !found {
-		return fingerprint.Digest{}, false
+		return identity.Digest{}, false
 	}
 	fields := []string{string(server.Transport)}
 	if server.Managed != nil {
@@ -259,7 +257,7 @@ func (r Release) recipient(name mcpserver.ServerName) (fingerprint.Digest, bool)
 	default:
 		fields = append(fields, r.digest.String(), name.String())
 	}
-	return fingerprint.Strings(fields...), true
+	return identity.DigestStrings(fields...), true
 }
 
 func (r Release) declaresSkill(name string) bool {
@@ -275,7 +273,7 @@ type Builder struct {
 }
 
 func NewBuilder(name, version, description string) (*Builder, error) {
-	if !ValidName(name) {
+	if !validName(name) {
 		return nil, fmt.Errorf("%w: package name", ErrInvalid)
 	}
 	return &Builder{declaration: Declaration{Name: name, Version: version, Description: description}, bindings: map[string]bool{}}, nil
@@ -288,7 +286,7 @@ func (b *Builder) Report(diagnostic Diagnostic) {
 }
 
 func (b *Builder) AdmitServer(server Server) error {
-	if len(b.declaration.Servers) >= MaxServers {
+	if len(b.declaration.Servers) >= maxServers {
 		return refuse(DiagnosticComponentLimit, "server capacity")
 	}
 	if _, found := b.release().server(server.Name); found {
@@ -302,7 +300,7 @@ func (b *Builder) AdmitServer(server Server) error {
 }
 
 func (b *Builder) AdmitInput(input Input) error {
-	if len(b.declaration.Inputs) >= MaxInputs {
+	if len(b.declaration.Inputs) >= maxInputs {
 		return refuse(DiagnosticComponentLimit, "input capacity")
 	}
 	release := b.release()
@@ -326,7 +324,7 @@ func (b *Builder) AdmitInput(input Input) error {
 }
 
 func (b *Builder) AdmitTheme(theme Theme) error {
-	if len(b.declaration.Themes) >= MaxThemes {
+	if len(b.declaration.Themes) >= maxThemes {
 		return refuse(DiagnosticComponentLimit, "theme capacity")
 	}
 	duplicate := slices.ContainsFunc(b.declaration.Themes, func(existing Theme) bool { return existing.ID == theme.ID })
@@ -336,7 +334,7 @@ func (b *Builder) AdmitTheme(theme Theme) error {
 	if theme.Title == "" || len(theme.Title) > 128 {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q title", theme.ID)
 	}
-	if theme.Scheme != Dark && theme.Scheme != Light {
+	if theme.Scheme != dark && theme.Scheme != light {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q scheme", theme.ID)
 	}
 	if err := theme.Colors.validate(); err != nil {
@@ -361,11 +359,11 @@ func (b *Builder) AdmitSkill(skill Skill) error {
 }
 
 // Release binds the admitted declaration to the digest of its exact bytes.
-func (b *Builder) Release(digest fingerprint.Digest) (Release, error) {
+func (b *Builder) Release(digest identity.Digest) (Release, error) {
 	if err := digest.Validate(); err != nil {
 		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
 	}
-	if len(b.declaration.Diagnostics) > MaxDiagnostics {
+	if len(b.declaration.Diagnostics) > maxDiagnostics {
 		return Release{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)
 	}
 	for index, diagnostic := range b.declaration.Diagnostics {
@@ -435,7 +433,7 @@ func (s Server) validate() error {
 		return fmt.Errorf("%w: local server identity: %w", ErrInvalid, err)
 	}
 	if s.Managed != nil {
-		if s.Transport != mcpserver.TransportStdio || s.Command != "" || len(s.Args) != 0 || len(s.Env) != 0 || s.Dir != "" || s.URL != "" || len(s.Headers) != 0 || s.Managed.Runtime != Node || !ValidResourcePath(s.Managed.Entry) || !strings.HasSuffix(s.Managed.Entry, ".mjs") {
+		if s.Transport != mcpserver.TransportStdio || s.Command != "" || len(s.Args) != 0 || len(s.Env) != 0 || s.Dir != "" || s.URL != "" || len(s.Headers) != 0 || s.Managed.Runtime != node || !ValidResourcePath(s.Managed.Entry) || !strings.HasSuffix(s.Managed.Entry, ".mjs") {
 			return fmt.Errorf("%w: managed backend requires one node ESM entry without another startup", ErrInvalid)
 		}
 		return nil

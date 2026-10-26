@@ -32,10 +32,10 @@ func TestMethodDeclarabilityComesFromTheRPCErrorRegistry(t *testing.T) {
 	if !protocol.IsMethodProblemType(protocol.ErrRunNotFound.Error()) {
 		t.Fatal("run_not_found should be method-declarable")
 	}
-	for _, boundaryProblem := range []string{
-		protocol.ErrInvalidParams.Error(),
-		protocol.ErrMethodNotFound.Error(),
-		protocol.ErrIdempotencyConflict.Error(),
+	for _, boundaryProblem := range []string{protocol.ErrInvalidParams.
+		Error(), protocol.ErrMethodNotFound.
+		Error(), protocol.ErrIdempotencyConflict.
+		Error(),
 	} {
 		if protocol.IsMethodProblemType(boundaryProblem) {
 			t.Fatalf("%s is a boundary failure, not a method-declarable problem", boundaryProblem)
@@ -82,10 +82,7 @@ func TestRPCErrorRegistryRejectsContradictoryMetadata(t *testing.T) {
 func TestRPCErrorResolutionUsesRegistryOrder(t *testing.T) {
 	t.Parallel()
 
-	rpcErr := errorToRPC(errors.Join(
-		protocol.ErrSessionNotFound,
-		protocol.ErrRunNotFound,
-	))
+	rpcErr := errorToRPC(errors.Join(protocol.ErrSessionNotFound, protocol.ErrRunNotFound))
 	if rpcErr.Code != codeSessionNotFound {
 		t.Fatalf(
 			"joined problem resolved to code %d, want first registry match %d",
@@ -117,11 +114,7 @@ func TestAStructuredProblemCarriesItsPayload(t *testing.T) {
 
 	// Deduplicated and ordered by (registry, name), so two refusals for the same gap
 	// are the same frame instead of two transcripts of it.
-	gap := problemOf(t, delivery.NewCapabilityGapError(
-		protocol.CapabilityRequirement{Type: protocol.RequirementInterruptType, Name: "question"},
-		protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"},
-		protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"},
-	))
+	gap := problemOf(t, delivery.NewCapabilityGapError(protocol.CapabilityRequirement{Type: protocol.RequirementInterruptType, Name: "question"}, protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"}, protocol.CapabilityRequirement{Type: protocol.RequirementFeature, Name: "subagents"}))
 	if gap.Type != protocol.ErrCapabilityNotNeg.Error() {
 		t.Fatalf("type = %q, want capability_not_negotiated", gap.Type)
 	}

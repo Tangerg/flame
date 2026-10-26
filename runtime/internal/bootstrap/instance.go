@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
-
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -43,7 +42,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if validateErr := cfg.validate(); validateErr != nil {
 		return nil, config.Settings{}, validateErr
 	}
-	directory, err := ownershipadapter.OpenDataDirectory(ctx, cfg.DataDirectory)
+	directory, err := openDataDirectory(ctx, cfg.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -53,7 +52,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			err = errors.Join(err, directory.Close())
 		}
 	}()
-	cfg.DataDirectory = directory.Directory
+	cfg.DataDirectory = directory.directory
 
 	buildID := cfg.BuildID
 	if buildID == "" {
@@ -62,11 +61,11 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			return nil, config.Settings{}, err
 		}
 	}
-	settings, err := LoadConfig(cfg.ConfigDirectories)
+	settings, err := loadConfig(cfg.ConfigDirectories)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: cfg.DataDirectory, ValidateDirectory: directory.Validate})
+	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: cfg.DataDirectory, ValidateDirectory: directory.validate})
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -82,10 +81,10 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		return nil, config.Settings{}, err
 	}
 
-	if err = SeedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
+	if err = seedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
-	providers, err := ProviderRegistry(stores.Providers, settings)
+	providers, err := providerRegistry(stores.Providers, settings)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -93,15 +92,15 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
+	if err = seedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
-	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, buildID)
+	assemblyConfig := composeConfig(settings, stores, chatResolver, providers, buildID)
 	// Resources close in reverse acquisition order. The directory must remain
 	// leased even when a constructor's bounded shutdown wait expires.
-	assemblyConfig.Resources = append([]TerminalResource{directory}, assemblyConfig.Resources...)
-	assemblyConfig.UserHome = cfg.UserHome
-	assemblyConfig.DefaultWorkspacePath = cfg.DefaultWorkspacePath
+	assemblyConfig.resources = append([]terminalResource{directory}, assemblyConfig.resources...)
+	assemblyConfig.userHome = cfg.UserHome
+	assemblyConfig.defaultWorkspacePath = cfg.DefaultWorkspacePath
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())
 	runtimeOwned := true
 	defer func() {
@@ -109,7 +108,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			stopRuntime()
 		}
 	}()
-	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.Resources)
+	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.resources)
 	directoryOwned = false
 	storesOwned = false
 	host, err := assemble(ctx, assemblyConfig, ownedLifetime, buildToolEnvironment)
@@ -127,9 +126,9 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 
 	serverInfo := cfg.ServerInfo
-	serverInfo.InstanceID = runtimeidentity.NewRuntimeInstance().String()
+	serverInfo.InstanceID = delivery.NewInstanceID()
 	if serverInfo.Name == "" {
-		serverInfo.Name = runtimeidentity.ProductName
+		serverInfo.Name = identity.ProductName
 	}
 	if serverInfo.Version == "" {
 		serverInfo.Version = "dev"
@@ -140,7 +139,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		runtimeContext,
 		serverInfo,
 		idempotencyNamespace,
-		directory.Validate,
+		directory.validate,
 	)
 	if err != nil {
 		return nil, config.Settings{}, err
@@ -189,7 +188,7 @@ func (i InstanceConfig) validate() error {
 		}
 	}
 	if i.BuildID != "" {
-		if _, err := runtimeidentity.ParseBuild(i.BuildID); err != nil {
+		if _, err := runs.ParseBuild(i.BuildID); err != nil {
 			return fmt.Errorf("runtime: BuildID: %w", err)
 		}
 	}

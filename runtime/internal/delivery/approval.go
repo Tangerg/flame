@@ -7,28 +7,28 @@ import (
 )
 
 const (
-	ApprovalGetMode    Name = "approval.getMode"
-	ApprovalSetMode    Name = "approval.setMode"
+	approvalGetMode    Name = "approval.getMode"
+	approvalSetMode    Name = "approval.setMode"
 	ApprovalListRules  Name = "approval.listRules"
-	ApprovalSetRule    Name = "approval.setRule"
-	ApprovalForgetRule Name = "approval.forgetRule"
+	approvalSetRule    Name = "approval.setRule"
+	approvalForgetRule Name = "approval.forgetRule"
 )
 
 func registerApproval(registry *Registry) {
-	registry.commandAck(MethodMeta{Name: ApprovalSetRule, GoName: "SetApprovalRule"}, func(service interface {
+	registry.commandAck(MethodMeta{Name: approvalSetRule, GoName: "SetApprovalRule"}, func(service interface {
 		SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
 	}, ctx context.Context, request protocol.SetApprovalRuleRequest) error {
 		return service.SetApprovalRule(ctx, request)
 	})
 
-	registry.query(MethodMeta{Name: ApprovalGetMode, GoName: "GetApprovalMode"},
+	registry.query(MethodMeta{Name: approvalGetMode, GoName: "GetApprovalMode"},
 		func(service interface {
 			GetApprovalMode(context.Context) (*protocol.ApprovalModeResult, error)
 		}, ctx context.Context, _ struct{}) (*protocol.ApprovalModeResult, error) {
 			return service.GetApprovalMode(ctx)
 		})
 
-	registry.command(MethodMeta{Name: ApprovalSetMode, GoName: "SetApprovalMode"},
+	registry.command(MethodMeta{Name: approvalSetMode, GoName: "SetApprovalMode"},
 		func(service interface {
 			SetApprovalMode(context.Context, protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error)
 		}, ctx context.Context, request protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
@@ -42,7 +42,7 @@ func registerApproval(registry *Registry) {
 			return service.ListApprovalRules(ctx, request)
 		})
 
-	registry.commandAck(MethodMeta{Name: ApprovalForgetRule, GoName: "ForgetApprovalRule"},
+	registry.commandAck(MethodMeta{Name: approvalForgetRule, GoName: "ForgetApprovalRule"},
 		func(service interface {
 			ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest) error
 		}, ctx context.Context, request protocol.ForgetApprovalRuleRequest) error {

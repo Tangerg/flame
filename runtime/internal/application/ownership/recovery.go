@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/samber/lo"
 )
 
 const recoveryInterval = time.Second
@@ -34,10 +34,10 @@ type RecoveryCoordinator struct {
 
 // NewRecovery constructs the single ordered recovery owner for one Runtime.
 func NewRecovery(runs RunRecovery, goals GoalRecovery) (*RecoveryCoordinator, error) {
-	if dependency.Missing(runs) {
+	if lo.IsNil(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
 	}
-	if dependency.Missing(goals) {
+	if lo.IsNil(goals) {
 		return nil, errors.New("ownership recovery: Goal reconciler is required")
 	}
 	return &RecoveryCoordinator{runs: runs, goals: goals, sweepSlot: make(chan struct{}, 1)}, nil
@@ -129,7 +129,7 @@ func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context) error {
 }
 
 func recoveryContextError(ctx context.Context) error {
-	if dependency.Missing(ctx) {
+	if lo.IsNil(ctx) {
 		return errors.New("ownership recovery: context is required")
 	}
 	return cancellation.Err(ctx)

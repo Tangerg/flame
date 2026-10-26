@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -136,7 +136,7 @@ func openrpcMethodFor(meta delivery.MethodMeta, requests *requestSchemas, codes 
 		Capabilities:   capabilityRowsFor(meta),
 		RequestFrame:   requests.frame(requestFrame),
 	}
-	for _, field := range contractshape.Fields(meta.Params) {
+	for _, field := range jsonvalue.Fields(meta.Params) {
 		method.Params = append(method.Params, openrpcParam{
 			Name:     field.Name,
 			Required: !field.Optional,

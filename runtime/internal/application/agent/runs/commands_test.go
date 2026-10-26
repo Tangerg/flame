@@ -10,7 +10,6 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -22,7 +21,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	command := StartCommand{
 		Options: &corechat.Options{MaxOutputTokens: &maxOutputTokens},
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: imageBytes,
@@ -33,7 +32,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	imageBytes[0] = 'x'
 	command.Input[0].MediaType = "image/jpeg"
 	*command.Options.MaxOutputTokens = 512
-	command.Capabilities.InterruptKinds[0] = interrupt.Approval
+	command.Capabilities.InterruptKinds[0] = run.InterruptApproval
 
 	if got := string(owned.Input[0].Bytes); got != "image" {
 		t.Fatalf("owned image bytes = %q", got)
@@ -44,7 +43,7 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	if got := *owned.Options.MaxOutputTokens; got != 256 {
 		t.Fatalf("owned max output tokens = %d", got)
 	}
-	if got := owned.Capabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+	if got := owned.Capabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
 		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }
@@ -52,14 +51,14 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	command := ResumeCommand{
 		Responses: []ResumeResponse{
-			{Kind: interrupt.Approval, Approval: &ApprovalResponse{Arguments: "{}"}},
-			{Kind: interrupt.Question, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
+			{Kind: run.InterruptApproval, Approval: &ApprovalResponse{Arguments: "{}"}},
+			{Kind: run.InterruptQuestion, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
 		},
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
 		}},
 		CallerCapabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 	}
 	owned := command.clone()
@@ -67,7 +66,7 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	command.Responses[0].Approval.Arguments = "changed"
 	command.Responses[1].Question.Answers[0][0] = "changed"
 	command.Input[0].Bytes[0] = 'x'
-	command.CallerCapabilities.InterruptKinds[0] = interrupt.Approval
+	command.CallerCapabilities.InterruptKinds[0] = run.InterruptApproval
 
 	if got := owned.Responses[0].Approval.Arguments; got != "{}" {
 		t.Fatalf("owned approval arguments = %q", got)
@@ -78,7 +77,7 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	if got := string(owned.Input[0].Bytes); got != "image" {
 		t.Fatalf("owned input bytes = %q", got)
 	}
-	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
 		t.Fatalf("owned caller capabilities = %v", got)
 	}
 }
@@ -102,13 +101,13 @@ func TestSteerCommandCloneOwnsMutableInput(t *testing.T) {
 
 func TestSubscribeRequestCloneOwnsCallerCapabilities(t *testing.T) {
 	request := SubscribeRequest{CallerCapabilities: run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 	}}
 	owned := request.clone()
 
-	request.CallerCapabilities.InterruptKinds[0] = interrupt.Approval
+	request.CallerCapabilities.InterruptKinds[0] = run.InterruptApproval
 
-	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []run.InterruptKind{run.InterruptQuestion}) {
 		t.Fatalf("owned caller capabilities = %v", got)
 	}
 }
@@ -195,10 +194,7 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 		execution RootExecutionStart
 	}{
 		{name: "duplicate interrupt kind", execution: RootExecutionStart{
-			InterruptKinds: []interrupt.Kind{
-				interrupt.Approval,
-				interrupt.Approval,
-			},
+			InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptApproval},
 		}},
 		{name: "goal incarnation surrounding whitespace", execution: RootExecutionStart{
 			GoalIncarnationID: " lease",

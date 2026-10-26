@@ -31,24 +31,24 @@ const mutationCleanupTimeout = 5 * time.Second
 type RestoreScope string
 
 const (
-	RestoreHistory RestoreScope = "history"
-	RestoreFiles   RestoreScope = "files"
-	RestoreBoth    RestoreScope = "both"
+	restoreHistory RestoreScope = "history"
+	restoreFiles   RestoreScope = "files"
+	restoreBoth    RestoreScope = "both"
 )
 
 // Valid reports whether r names one supported rollback resource set.
 func (r RestoreScope) Valid() bool {
-	return r == RestoreHistory || r == RestoreFiles || r == RestoreBoth
+	return r == restoreHistory || r == restoreFiles || r == restoreBoth
 }
 
 // RestoresFiles reports whether r includes the working tree.
 func (r RestoreScope) RestoresFiles() bool {
-	return r == RestoreFiles || r == RestoreBoth
+	return r == restoreFiles || r == restoreBoth
 }
 
 // RestoresHistory reports whether r includes durable Session history.
 func (r RestoreScope) RestoresHistory() bool {
-	return r == RestoreHistory || r == RestoreBoth
+	return r == restoreHistory || r == restoreBoth
 }
 
 // RollbackSpec is the rollback intent: which Run to keep to and what the

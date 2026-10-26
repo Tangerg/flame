@@ -2,12 +2,11 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/agenttest"
 )

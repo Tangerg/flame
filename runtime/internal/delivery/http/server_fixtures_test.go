@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -74,6 +75,18 @@ func newTestServer(t *testing.T) (*httptest.Server, *fakeRuntime) {
 func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *delivery.Endpoint {
 	t.Helper()
 	config.Lifetime = t.Context()
+	if config.IdempotencyStore == nil {
+		stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := stores.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		config.IdempotencyStore = stores.Idempotency
+	}
 	endpoint, err := delivery.NewEndpoint(target, config)
 	if err != nil {
 		t.Fatal(err)

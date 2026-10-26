@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -90,7 +90,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			original.Options.MaxOutputTokens = new(int64(64))
 			before := original.Clone()
 			for _, id := range []string{"input-first", "input-second"} {
-				ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: id, Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: id}})
+				ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: id}})
 				_, err := capture.Model().Call(ctx, original)
 				if (err == nil) != (mode == "ordered") {
 					t.Fatalf("transformed %s input admission: %v", mode, err)
@@ -107,7 +107,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 				t.Fatal("transformed input entered caller-owned conversation")
 			}
 			store.snapshot.Installation.Disable()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "withdrawn-input", Origin: capability.Automatic, Parent: "original-effect", Target: capability.Target{Scope: "call", Reference: "withdrawn-input"}})
+			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "withdrawn-input"}})
 			if _, err := capture.Model().Call(ctx, original); err == nil {
 				t.Fatal("withdrawn transformer was invoked")
 			}

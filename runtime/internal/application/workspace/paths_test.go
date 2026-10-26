@@ -3,19 +3,17 @@ package workspace
 import (
 	"errors"
 	"testing"
-
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 )
 
 func TestNewScopeRequiresPathResolver(t *testing.T) {
-	for _, paths := range []Paths{nil, (*testPaths)(nil)} {
+	for _, paths := range []paths{nil, (*testPaths)(nil)} {
 		if scope, err := NewScope("", "", paths); err == nil || scope != nil {
 			t.Fatalf("NewScope = (%v, %v), want missing resolver rejected", scope, err)
 		}
 	}
 }
 
-func newScope(t *testing.T, defaultWorkspacePath, userHome string, paths Paths) *Scope {
+func newScope(t *testing.T, defaultWorkspacePath, userHome string, paths paths) *Scope {
 	t.Helper()
 	scope, err := NewScope(defaultWorkspacePath, userHome, paths)
 	if err != nil {
@@ -37,7 +35,7 @@ func TestScopeResolvesSelectedRootAndPreservesFailure(t *testing.T) {
 		}
 	}
 	paths.err = errors.New("filesystem unavailable")
-	if _, err := scope.ResolveRoot(""); !errors.Is(err, workspacepaths.ErrCWDUnavailable) || !errors.Is(err, paths.err) {
+	if _, err := scope.ResolveRoot(""); !errors.Is(err, ErrCWDUnavailable) || !errors.Is(err, paths.err) {
 		t.Fatalf("ResolveRoot error = %v, want workspace category and filesystem cause", err)
 	}
 }

@@ -12,7 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
@@ -174,7 +174,7 @@ func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
 		return apphooks.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
 	}
 	var wire hookDecisionWire
-	if err := exactjson.UnmarshalNonNull(stdout, &wire); err != nil {
+	if err := jsonvalue.UnmarshalNonNull(stdout, &wire); err != nil {
 		return apphooks.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
 	}
 	verdict, err := hookVerdictFromWire(wire.Decision)

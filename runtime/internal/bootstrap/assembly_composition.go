@@ -6,15 +6,13 @@ import (
 	"path/filepath"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -26,7 +24,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 // policyComposition contains the application policies that share the same
@@ -44,35 +41,35 @@ type policyComposition struct {
 	mcp           mcpEnvironment
 }
 
-func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition, error) {
+func buildPolicyComposition(ctx context.Context, cfg assemblyConfig) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
-	packages, err := pluginpackage.New(filepath.Join(cfg.Stores.DataDirectory, "plugins", "releases"), cfg.Stores.PluginReleases)
+	packages, err := pluginpackage.New(filepath.Join(cfg.stores.DataDirectory, "plugins", "releases"), cfg.stores.PluginReleases)
 	if err != nil {
 		return policyComposition{}, err
 	}
-	packageSkills, err := pluginpackage.NewSkills(packages, cfg.Stores.Installations)
+	packageSkills, err := pluginpackage.NewSkills(packages, cfg.stores.Installations)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
-	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, packages, cfg.Stores.ProviderSelections, cfg.Stores.PluginCompositions)
+	registry, err := plugins.NewRegistry(cfg.stores.MCPServers, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
 	if err != nil {
 		return policyComposition{}, err
 	}
 	approvalPolicy, err := approvals.NewRuntimePolicy(
-		cfg.ApprovalMode,
-		cfg.Stores.ApprovalRules,
-		cfg.Stores.ApprovalModes,
-		toolset.NewAuthorities(registry.Definition, cfg.A2AAgents),
-		invalidations.Publish,
+		cfg.approvalMode,
+		cfg.stores.ApprovalRules,
+		cfg.stores.ApprovalModes,
+		toolset.NewAuthorities(registry.Definition, cfg.a2aAgents),
+		invalidations.publish,
 	)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, registry, cfg.Stores.MCPServers)
+	mcpSettings, err := buildMCPEnvironment(ctx, registry, cfg.stores.MCPServers)
 	if err != nil {
 		return policyComposition{}, err
 	}
-	goalStore := goals.WithInvalidations(cfg.Stores.Goals, invalidations.Publish)
+	goalStore := goals.WithInvalidations(cfg.stores.Goals, invalidations.publish)
 	goalReader, err := goals.NewReader(goalStore)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: build goal reader: %w", err)
@@ -82,7 +79,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		return policyComposition{}, fmt.Errorf("runtime: build goal outcome reporter: %w", err)
 	}
 	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{
-		Store: cfg.Stores.Plan, Now: time.Now, Invalidations: invalidations.Publish,
+		Store: cfg.stores.Plan, Now: time.Now, Invalidations: invalidations.publish,
 	})
 	if err != nil {
 		return policyComposition{}, err
@@ -113,23 +110,23 @@ type workspaceComposition struct {
 }
 
 func buildWorkspaceComposition(
-	cfg Config,
+	cfg assemblyConfig,
 	publish invalidation.Publish,
 	packageSkills promptsource.PackageSkills,
 ) (workspaceComposition, error) {
-	scope, err := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
+	scope, err := workspace.NewScope(cfg.defaultWorkspacePath, cfg.userHome, workspaceadapter.Resolver{})
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build workspace scope: %w", err)
 	}
-	hookResolver, err := NewHookResolver(cfg.UserHome, cfg.Stores.Trust)
+	hookResolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
 	}
-	hooks, err := apphooks.NewCatalog(scope, hookResolver, cfg.Stores.Trust, publish)
+	hooks, err := apphooks.NewCatalog(scope, hookResolver, cfg.stores.Trust, publish)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
 	}
-	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(cfg.UserHome, cfg.SkillsUserDir)
+	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(cfg.userHome, cfg.skillsUserDir)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
@@ -137,7 +134,7 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource observation: %w", err)
 	}
-	skillStore, err := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
+	skillStore, err := skillauthoring.NewStore(cfg.skillsUserDir, skills.ScopeUser)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
 	}
@@ -151,7 +148,7 @@ func buildWorkspaceComposition(
 	}
 	workspaceSkills, err := workspace.NewSkills(
 		scope,
-		promptsource.NewSkills(cfg.SkillsUserDir, packageSkills),
+		promptsource.NewSkills(cfg.skillsUserDir, packageSkills),
 		skillStore,
 		skillLibraries,
 		authoredWatch,
@@ -168,7 +165,7 @@ func buildWorkspaceComposition(
 		skills:           workspaceSkills,
 		skillMaintenance: skillMaintenance,
 		skillStore:       skillStore,
-		checkpoints:      workspaceadapter.NewCheckpoints(cfg.CheckpointDir),
+		checkpoints:      workspaceadapter.NewCheckpoints(cfg.checkpointDir),
 	}, nil
 }
 
@@ -178,7 +175,7 @@ type executionComposition struct {
 	conversation      conversationEnvironment
 	models            modelEnvironment
 	tools             toolEnvironment
-	isolation         *isolation.Isolator
+	isolation         *workspaceadapter.Isolator
 	workingContexts   *executionadapter.WorkingContextComposer
 	transientSessions *executionadapter.TransientSessionState
 	executor          *executionadapter.InteractionExecutor
@@ -187,21 +184,21 @@ type executionComposition struct {
 
 func buildExecutionComposition(
 	ctx context.Context,
-	cfg Config,
+	cfg assemblyConfig,
 	defaultSelection modelchoice.Selection,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
-	conversationStore, err := persistence.NewConversationStore(cfg.Stores.ChatHistory)
+	conversationStore, err := persistence.NewConversationStore(cfg.stores.ChatHistory)
 	if err != nil {
 		return executionComposition{}, err
 	}
 	compactions, err := persistence.NewConversationCompactions(
 		conversationStore,
-		cfg.Stores.Runs,
-		persistence.Transactor(cfg.Stores.Transactor),
+		cfg.stores.Runs,
+		persistence.Transactor(cfg.stores.Transactor),
 	)
 	if err != nil {
 		return executionComposition{}, err
@@ -217,13 +214,13 @@ func buildExecutionComposition(
 	// Isolated working copies are acquired before the shell set that can run in
 	// them. The Instance's reverse teardown therefore stops every detached shell
 	// before it destroys the directories those processes use.
-	var isolator *isolation.Isolator
-	if cfg.SandboxDir != "" {
-		isolator, err = isolation.New(cfg.UserHome, cfg.SandboxDir, cfg.SandboxReadOnlyPaths)
+	var isolator *workspaceadapter.Isolator
+	if cfg.sandboxDir != "" {
+		isolator, err = workspaceadapter.NewIsolator(cfg.userHome, cfg.sandboxDir, cfg.sandboxReadOnlyPaths)
 		if err != nil {
 			return executionComposition{}, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
 		}
-		lifetime.toolResources = append(lifetime.toolResources, teardown.Terminal(func(context.Context) error {
+		lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error {
 			return isolator.Close()
 		}))
 	}
@@ -236,7 +233,7 @@ func buildExecutionComposition(
 		modelServices:  modelServices,
 		workspaceScope: workspaceServices.scope,
 		conversation:   conversation.store,
-		publish:        policy.invalidations.Publish,
+		publish:        policy.invalidations.publish,
 		goalReader:     policy.goalReader,
 		goalReporter:   policy.goalReporter,
 		plan:           policy.plans,
@@ -249,10 +246,10 @@ func buildExecutionComposition(
 	}
 	modelServices.utilityModel = toolRuntime.utilityModel
 	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
-		UserHome:          cfg.UserHome,
+		UserHome:          cfg.userHome,
 		AgentMemory:       toolRuntime.memory,
 		AgentMemorySearch: toolRuntime.memory,
-		Plan:              cfg.Stores.Plan,
+		Plan:              cfg.stores.Plan,
 		Goal:              policy.goalReader,
 		Hooks:             workspaceServices.hookResolver,
 	})
@@ -287,14 +284,14 @@ func buildExecutionComposition(
 	maxConcurrentToolCalls := 8
 	interactionConfig := executionadapter.InteractionExecutorConfig{
 		Lifetime:                lifetime.context,
-		ExecutionTrees:          cfg.Stores.ExecutorCheckpoints,
+		ExecutionTrees:          cfg.stores.ExecutorCheckpoints,
 		OriginalToolResults:     toolRuntime.toolResults,
-		InstallationCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		InstallationCheckpoints: cfg.stores.ExecutorCheckpoints,
 		Admission:               toolRuntime.admission,
-		InstallationCommands:    cfg.Stores.PluginCommands,
-		BuildID:                 cfg.BuildID,
+		InstallationCommands:    cfg.stores.PluginCommands,
+		BuildID:                 cfg.buildID,
 		ChatResolver:            modelServices.chatResolver,
-		ModelEvidence:           cfg.Stores.ModelInvocations,
+		ModelEvidence:           cfg.stores.ModelInvocations,
 		CallComposition:         toolRuntime.callComposition,
 		StreamModelResponses:    true,
 		MaxConcurrentToolCalls:  &maxConcurrentToolCalls,
@@ -310,9 +307,9 @@ func buildExecutionComposition(
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
 	}
-	if cfg.ToolResultOffloadEnabled {
-		toolResultThreshold := cfg.ToolResultThreshold
-		interactionConfig.ToolResultStore = cfg.Stores.ToolResults
+	if cfg.toolResultOffloadEnabled {
+		toolResultThreshold := cfg.toolResultThreshold
+		interactionConfig.ToolResultStore = cfg.stores.ToolResults
 		interactionConfig.ToolResultOffload = executionadapter.ToolResultOffloadPolicyValues{
 			Threshold:  &toolResultThreshold,
 			ReaderName: string(tool.ReadToolResult),
@@ -323,7 +320,7 @@ func buildExecutionComposition(
 		return executionComposition{}, fmt.Errorf("runtime: Interaction executor: %w", err)
 	}
 	lifetime.executor = interactionExecutor
-	toolRegistry, err := toolset.NewDiagnosticRegistry(cfg.DefaultWorkspacePath)
+	toolRegistry, err := toolset.NewDiagnosticRegistry(cfg.defaultWorkspacePath)
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -339,8 +336,8 @@ func buildExecutionComposition(
 	}, nil
 }
 
-func runtimeDefaultModelSelection(cfg Config) (modelchoice.Selection, error) {
-	selection, err := modelchoice.New(cfg.Provider, cfg.Model)
+func runtimeDefaultModelSelection(cfg assemblyConfig) (modelchoice.Selection, error) {
+	selection, err := modelchoice.New(cfg.provider, cfg.model)
 	if err == nil {
 		err = selection.ValidateExact()
 	}

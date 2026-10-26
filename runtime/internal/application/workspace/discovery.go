@@ -8,18 +8,18 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/samber/lo"
 )
 
 // Discovery owns workspace and instruction-document discovery.
 type Discovery struct {
 	scope      *Scope
-	workspaces Catalog
-	agentDocs  AgentDocFinder
+	workspaces catalog
+	agentDocs  agentDocFinder
 }
 
-func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder) (*Discovery, error) {
+func NewDiscovery(scope *Scope, workspaces catalog, agentDocs agentDocFinder) (*Discovery, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -28,7 +28,7 @@ func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder) (*
 		{name: "catalog", value: workspaces},
 		{name: "agent document finder", value: agentDocs},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: discovery %s is required", required.name)
 		}
 	}
@@ -54,7 +54,7 @@ type Summary struct {
 
 // Catalog supplies the user-facing sessions and their current workspace
 // identities. The session coordinator is the production implementation.
-type Catalog interface {
+type catalog interface {
 	List(ctx context.Context) ([]session.Session, error)
 	InspectWorkspace(cwd string) (Resolved, error)
 }
@@ -138,7 +138,7 @@ type AgentDoc struct {
 
 // AgentDocFinder discovers the workspace instruction-document cascade in render
 // order. Application validates unique source identity and phase order.
-type AgentDocFinder interface {
+type agentDocFinder interface {
 	Find(ctx context.Context, cwd, home string) ([]AgentDocFile, error)
 }
 

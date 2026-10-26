@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
 // RoleSource is the read view a live specialized-model resolver needs. The
 // source's owner decides how role changes are synchronized.
-type RoleSource interface {
+type roleSource interface {
 	Role() modelref.Role
 }
 
@@ -32,19 +32,19 @@ type ChatModelResolver interface {
 func LiveUtilityModel(
 	resolver ChatModelResolver,
 	mainSelection modelchoice.Selection,
-	roles RoleSource,
+	roles roleSource,
 	selector modelapp.Selector,
 ) (AuxiliaryResolver, error) {
-	if dependency.Missing(resolver) {
+	if lo.IsNil(resolver) {
 		return nil, errors.New("model: utility chat resolver is required")
 	}
 	if err := mainSelection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("model: utility main selection: %w", err)
 	}
-	if dependency.Missing(roles) {
+	if lo.IsNil(roles) {
 		return nil, errors.New("model: utility role source is required")
 	}
-	if selector != nil && dependency.Missing(selector) {
+	if selector != nil && lo.IsNil(selector) {
 		return nil, errors.New("model: utility selector is typed nil")
 	}
 	return func(ctx context.Context, budget AuxiliaryBudget) (SelectedChat, func(), error) {
@@ -94,15 +94,15 @@ func LiveUtilityModel(
 // RoleEmbedder resolves the live embedding role through an embedding resolver.
 type RoleEmbedder struct {
 	resolver *EmbeddingResolver
-	roles    RoleSource
+	roles    roleSource
 }
 
 // NewRoleEmbedder builds a complete live embedding-role resolver.
-func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedder, error) {
+func NewRoleEmbedder(resolver *EmbeddingResolver, roles roleSource) (*RoleEmbedder, error) {
 	if resolver == nil {
 		return nil, errors.New("model: embedding resolver is required")
 	}
-	if dependency.Missing(roles) {
+	if lo.IsNil(roles) {
 		return nil, errors.New("model: embedding role source is required")
 	}
 	return &RoleEmbedder{resolver: resolver, roles: roles}, nil
@@ -111,7 +111,7 @@ func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedd
 // Resolve returns the optional configured embedding role. An absent role supplies no
 // embedding client; each consumer retains its own behavior for that absence.
 func (r *RoleEmbedder) Resolve(ctx context.Context) (TextEmbedder, error) {
-	if r == nil || r.resolver == nil || dependency.Missing(r.roles) {
+	if r == nil || r.resolver == nil || lo.IsNil(r.roles) {
 		return nil, errors.New("model: embedding role resolver is not configured")
 	}
 	role := r.roles.Role()

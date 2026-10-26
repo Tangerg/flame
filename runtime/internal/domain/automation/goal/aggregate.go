@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -92,10 +92,10 @@ var (
 	errSessionRequired     = errors.New("goal: session ID is required")
 	errObjectiveRequired   = errors.New("goal: objective is required")
 	ErrInvalid             = errors.New("goal: invalid Goal")
-	ErrInvalidTransition   = errors.New("goal: invalid lifecycle transition")
+	errInvalidTransition   = errors.New("goal: invalid lifecycle transition")
 	ErrNotResumable        = errors.New("goal: status is not resumable")
 	ErrNotEditable         = errors.New("goal: status is not editable")
-	ErrRunIdentityConflict = errors.New("goal: Run identity conflict")
+	errRunIdentityConflict = errors.New("goal: Run identity conflict")
 	// ErrBlockExplanationRequired is the recoverable refusal of a model block
 	// that says nothing about what the user must do.
 	ErrBlockExplanationRequired = fmt.Errorf("%w: model block requires an explanation", ErrInvalid)
@@ -336,7 +336,7 @@ func (v Version) String() string {
 
 func (g Goal) Complete(now time.Time) (Goal, error) {
 	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot complete %s Goal", ErrInvalidTransition, g.status)
+		return Goal{}, fmt.Errorf("%w: cannot complete %s Goal", errInvalidTransition, g.status)
 	}
 	next, err := g.next(now)
 	if err != nil {
@@ -348,7 +348,7 @@ func (g Goal) Complete(now time.Time) (Goal, error) {
 
 func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error) {
 	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot pause %s Goal", ErrInvalidTransition, g.status)
+		return Goal{}, fmt.Errorf("%w: cannot pause %s Goal", errInvalidTransition, g.status)
 	}
 	reason, err := newReason(StatusPaused, code, detail)
 	if err != nil {
@@ -381,7 +381,7 @@ func (g Goal) Stop(now time.Time) (Goal, error) {
 
 func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error) {
 	if g.status != StatusActive {
-		return Goal{}, fmt.Errorf("%w: cannot block %s Goal", ErrInvalidTransition, g.status)
+		return Goal{}, fmt.Errorf("%w: cannot block %s Goal", errInvalidTransition, g.status)
 	}
 	reason, err := newReason(StatusBlocked, code, detail)
 	if err != nil {
@@ -414,7 +414,7 @@ func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (G
 // ReviseObjectiveAndResume keeps edit+reactivation to one durable replacement.
 func (g Goal) ReviseObjectiveAndResume(objective, incarnationID string, now time.Time) (Goal, error) {
 	if g.status != StatusPaused {
-		return Goal{}, fmt.Errorf("%w: only a paused Goal can revise and resume", ErrInvalidTransition)
+		return Goal{}, fmt.Errorf("%w: only a paused Goal can revise and resume", errInvalidTransition)
 	}
 	return g.reviseObjective(objective, incarnationID, true, now)
 }
@@ -479,7 +479,7 @@ func validateSessionIdentity(value string) error {
 	if value == "" {
 		return errSessionRequired
 	}
-	if err := resourceid.ValidateSession(value); err != nil {
+	if err := identity.ValidateSession(value); err != nil {
 		return fmt.Errorf("%w: session ID: %v", ErrInvalid, err)
 	}
 	return nil

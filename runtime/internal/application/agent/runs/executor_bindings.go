@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"maps"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // bindExecutorMember records the immutable application-Run to opaque executor
@@ -15,10 +14,10 @@ import (
 // closing the otherwise observable gap in which the Run row exists but
 // cancellation cannot address its member.
 func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
-	if err := resourceid.ValidateRun(runID); err != nil {
+	if err := identity.ValidateRun(runID); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
-	if err := runtimeidentity.ValidateMember(memberID); err != nil {
+	if err := ValidateMember(memberID); err != nil {
 		return fmt.Errorf("runs: bind Run %q: %w", runID, err)
 	}
 

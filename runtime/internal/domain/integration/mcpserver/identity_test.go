@@ -5,8 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestServerNameOwnsCanonicalLocalName(t *testing.T) {
@@ -53,7 +52,7 @@ func TestOriginIsAnExplicitClosedChoice(t *testing.T) {
 	if !errors.Is(Origin{}.Validate(), ErrInvalidOrigin) {
 		t.Fatal("zero origin validated")
 	}
-	if _, err := InstallationOrigin(resourceid.InstallationID{}); !errors.Is(err, ErrInvalidOrigin) {
+	if _, err := InstallationOrigin(identity.InstallationID{}); !errors.Is(err, ErrInvalidOrigin) {
 		t.Fatalf("InstallationOrigin(zero) error = %v", err)
 	}
 	if _, found := UserOrigin().Installation(); found || UserOrigin().Kind() != OriginUser {
@@ -98,20 +97,20 @@ func TestIDSeparatesEqualNamesAcrossOrigins(t *testing.T) {
 }
 
 func TestSourceBindsReleaseOnlyToInstallations(t *testing.T) {
-	release, authority, recipient := fingerprint.Strings("release"), fingerprint.Strings("authority"), fingerprint.Strings("recipient")
+	release, authority, recipient := identity.DigestStrings("release"), identity.DigestStrings("authority"), identity.DigestStrings("recipient")
 	installation := testInstallationID(t)
 	for name, build := range map[string]func() (Source, error){
 		"missing installation": func() (Source, error) {
-			return InstallationSource(resourceid.InstallationID{}, release, authority, recipient)
+			return InstallationSource(identity.InstallationID{}, release, authority, recipient)
 		},
 		"missing release": func() (Source, error) {
-			return InstallationSource(installation, fingerprint.Digest{}, authority, recipient)
+			return InstallationSource(installation, identity.Digest{}, authority, recipient)
 		},
 		"missing authority": func() (Source, error) {
-			return InstallationSource(installation, release, fingerprint.Digest{}, recipient)
+			return InstallationSource(installation, release, identity.Digest{}, recipient)
 		},
 		"missing recipient": func() (Source, error) {
-			return InstallationSource(installation, release, authority, fingerprint.Digest{})
+			return InstallationSource(installation, release, authority, identity.Digest{})
 		},
 	} {
 		if _, err := build(); !errors.Is(err, ErrInvalidOrigin) {
@@ -142,9 +141,9 @@ func TestSourceBindsReleaseOnlyToInstallations(t *testing.T) {
 	}
 }
 
-func testInstallationID(t *testing.T) resourceid.InstallationID {
+func testInstallationID(t *testing.T) identity.InstallationID {
 	t.Helper()
-	id, err := resourceid.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
+	id, err := identity.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
 	if err != nil {
 		t.Fatal(err)
 	}

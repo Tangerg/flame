@@ -1,9 +1,7 @@
 package runs
 
-import runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
-func testCommitID(raw string) runtimeidentity.CommitID {
-	identity, err := runtimeidentity.ParseCommit(raw)
+func testCommitID(raw string) CommitID {
+	identity, err := ParseCommit(raw)
 	if err != nil {
 		panic(err)
 	}

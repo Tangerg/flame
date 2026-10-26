@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
@@ -18,10 +18,10 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewIdempotencyStore(db)
+	store := newIdempotencyStore(db)
 	ctx := context.Background()
 
-	first := idempotency.Record{Key: "request-key", Fingerprint: "first", Payload: []byte(`{"result":1}`)}
+	first := operation.ReplayRecord{Key: "request-key", Fingerprint: "first", Payload: []byte(`{"result":1}`)}
 	got, claimed, err := store.Claim(ctx, first.Key, first.Fingerprint)
 	if err != nil || !claimed {
 		t.Fatalf("claim first record: claimed=%v err=%v", claimed, err)
@@ -36,8 +36,8 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("aged pending claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
-	conflicting := idempotency.Record{Key: first.Key, Fingerprint: "second"}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, idempotency.ErrKeyConflict) {
+	conflicting := operation.ReplayRecord{Key: first.Key, Fingerprint: "second"}
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, extension.ErrInvocationConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
 	if completeErr := store.Complete(ctx, first); completeErr != nil {
@@ -55,7 +55,7 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if err != nil || claimed || string(got.Payload) != string(first.Payload) {
 		t.Fatalf("completed claim: record=%+v claimed=%v err=%v", got, claimed, err)
 	}
-	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, idempotency.ErrKeyConflict) {
+	if _, _, claimErr := store.Claim(ctx, conflicting.Key, conflicting.Fingerprint); !errors.Is(claimErr, extension.ErrInvocationConflict) {
 		t.Fatalf("claim conflicting record = %v, want ErrKeyConflict", claimErr)
 	}
 
@@ -74,7 +74,7 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	store := NewIdempotencyStore(db)
+	store := newIdempotencyStore(db)
 	record, claimed, err := store.Claim(t.Context(), "abandoned", "first")
 	if err != nil || !claimed {
 		t.Fatalf("initial claim = (%+v, %v, %v)", record, claimed, err)
@@ -93,24 +93,24 @@ func TestIdempotencyStoreKeepsAbandonedClaimAcrossReopen(t *testing.T) {
 		t.Fatalf("reopen: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = NewIdempotencyStore(db)
+	store = newIdempotencyStore(db)
 	got, claimed, err := store.Claim(t.Context(), record.Key, record.Fingerprint)
 	if err != nil || claimed || len(got.Payload) != 0 {
 		t.Fatalf("claim after reopen = (%+v, %v, %v), want unresolved reservation", got, claimed, err)
 	}
-	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, _, err := store.Claim(t.Context(), record.Key, "second"); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("reuse after reopen = %v, want ErrKeyConflict", err)
 	}
 }
 
 func TestIdempotencyNamespaceIdentifiesOneDurableStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	openNamespace := func() (*sql.DB, runtimeidentity.IdempotencyNamespace) {
+	openNamespace := func() (*sql.DB, operation.ReplayNamespace) {
 		db, err := openDatabase(t.Context(), path)
 		if err != nil {
 			t.Fatalf("open: %v", err)
 		}
-		namespace, err := IdempotencyNamespace(t.Context(), db)
+		namespace, err := idempotencyNamespace(t.Context(), db)
 		if err != nil {
 			_ = db.Close()
 			t.Fatalf("read namespace: %v", err)
@@ -153,7 +153,7 @@ func TestIdempotencyNamespaceRejectsCorruptIdentity(t *testing.T) {
 	); err != nil {
 		t.Fatalf("corrupt namespace fixture: %v", err)
 	}
-	if _, err := IdempotencyNamespace(t.Context(), db); err == nil {
+	if _, err := idempotencyNamespace(t.Context(), db); err == nil {
 		t.Fatal("read corrupt namespace succeeded")
 	}
 }

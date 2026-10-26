@@ -64,7 +64,7 @@ func (r *Resolver) Inspect(ctx context.Context, cwd string) (apphooks.Inspection
 	if err != nil {
 		return apphooks.Inspection{}, fmt.Errorf("hooks: locate project root for %q: %w", cwd, err)
 	}
-	all, err := Load(ctx, cwd, r.home)
+	all, err := loadCascade(ctx, cwd, r.home)
 	if err != nil {
 		return apphooks.Inspection{}, err
 	}

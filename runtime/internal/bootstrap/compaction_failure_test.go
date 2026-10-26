@@ -35,7 +35,7 @@ func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
 	})}
 	storage, handler, ctx, home := newSessionStateE2ERuntime(t, model)
 	stores = storage
-	endpoint, err := delivery.NewEndpoint(handler, delivery.EndpointConfig{Lifetime: ctx})
+	endpoint, err := delivery.NewEndpoint(handler, delivery.EndpointConfig{Lifetime: ctx, IdempotencyStore: stores.Idempotency})
 	if err != nil {
 		t.Fatal(err)
 	}

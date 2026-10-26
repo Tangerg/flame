@@ -54,7 +54,7 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 			return nil, protocol.ErrInvalidParams
 		}
 		if record.Found {
-			capabilities, _ := ClientCapabilitiesFrom(ctx)
+			capabilities, _ := clientCapabilitiesFrom(ctx)
 			fingerprint, err := runCommandFingerprint(RunsStart, *in.Request, capabilities)
 			if err != nil {
 				return nil, err

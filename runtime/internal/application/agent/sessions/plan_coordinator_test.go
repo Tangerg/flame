@@ -20,7 +20,7 @@ type planStoreFake struct {
 
 func TestNewPlanCoordinatorRequiresStore(t *testing.T) {
 	var typedNil *planStoreFake
-	for _, store := range []PlanStore{nil, typedNil} {
+	for _, store := range []planStore{nil, typedNil} {
 		if coordinator, err := NewPlanCoordinator(PlanDependencies{Store: store}); err == nil || coordinator != nil {
 			t.Fatalf("NewPlanCoordinator = (%v, %v), want missing store error", coordinator, err)
 		}

@@ -7,10 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Tangerg/scope/models/catalog"
-
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 func TestCatalogContainsProviderDefaults(t *testing.T) {
@@ -41,7 +40,7 @@ func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
 				t.Fatal(err)
 			}
 			models, err := (Capabilities{}).ListModels(t.Context(), entry)
-			if models != nil || !errors.Is(err, modelsapp.ErrProviderUnconfigured) || !errors.Is(err, ErrCredentialUnavailable) {
+			if models != nil || !errors.Is(err, modelsapp.ErrProviderUnconfigured) || !errors.Is(err, errCredentialUnavailable) {
 				t.Fatalf("listModels = (%v, %v), want configuration error preserving its credential cause", models, err)
 			}
 		})

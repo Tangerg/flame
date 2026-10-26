@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -349,16 +348,16 @@ func TestToolInvocationEqualityUsesCanonicalValues(t *testing.T) {
 	}
 	left := transcript.ToolInvocation{
 		Name: "shell", Arguments: leftArguments, Result: &leftResult,
-		Offload: &toolresult.Ref{ID: "BLOB234"},
+		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 	}
 	right := transcript.ToolInvocation{
 		Name: "shell", Arguments: rightArguments, Result: &rightResult,
-		Offload: &toolresult.Ref{ID: "BLOB234"},
+		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
 	}
 	if !left.Equal(right) {
 		t.Fatal("equivalent Tool invocations differ by canonical representation")
 	}
-	right.Offload = &toolresult.Ref{ID: "BLOB235"}
+	right.Offload = &transcript.ToolResultRef{ID: "BLOB235"}
 	if left.Equal(right) {
 		t.Fatal("Tool invocations with different offloads are equal")
 	}
@@ -379,7 +378,7 @@ func TestApprovalValidateRequiresAPendingRiskClassifiedTool(t *testing.T) {
 		{name: "padded tool", approval: transcript.Approval{Tool: transcript.ToolInvocation{Name: " shell"}, Risk: tool.RiskHigh}, wantErr: true},
 		{name: "missing risk", approval: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}}, wantErr: true},
 		{name: "completed result", approval: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell", Result: &result}, Risk: tool.RiskHigh}, wantErr: true},
-		{name: "offloaded result", approval: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell", Offload: &toolresult.Ref{ID: "BLOB234"}}, Risk: tool.RiskHigh}, wantErr: true},
+		{name: "offloaded result", approval: transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell", Offload: &transcript.ToolResultRef{ID: "BLOB234"}}, Risk: tool.RiskHigh}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

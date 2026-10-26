@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/plugins/github/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -53,8 +53,8 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 		t.Fatal(err)
 	}
 	cfg := poMCPConfig(t)
-	cfg.ApprovalMode = approval.ModeYolo
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.approvalMode = approval.ModeYolo
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "github"))
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Inputs) != 1 || !installed.Selected.Inputs[0].Secret || installed.Selected.Inputs[0].Required {
@@ -93,15 +93,15 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if name.Load().(string) == "" {
 		t.Fatal("installed GitHub Tool is missing")
 	}
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsoninput.Encode(rpc.IssueInput{Repository: "../private", Number: 42})
+	input, err := jsonvalue.Encode(testsupport.GitHubGetIssueV1Input{Repository: "../private", Number: 42})
 	if err != nil {
 		t.Fatal(err)
 	}
-	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Capability.Identity().String(), Method: contracts.Issue.Name(), Input: input.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
+	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: testsupport.GitHubGetIssueV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
 	if typed.Failure == nil || typed.Failure.Code != "invalid_resource" {
 		t.Fatalf("typed read bypassed resource admission: %+v", typed)
 	}

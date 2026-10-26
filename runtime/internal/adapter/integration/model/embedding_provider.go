@@ -7,7 +7,6 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/embedding"
-
 	"github.com/Tangerg/scope/models/alibaba"
 	"github.com/Tangerg/scope/models/azureopenai"
 	"github.com/Tangerg/scope/models/google"

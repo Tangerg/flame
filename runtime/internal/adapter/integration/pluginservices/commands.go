@@ -6,18 +6,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/samber/lo"
 )
 
 type CommandCalls struct {
@@ -30,7 +28,7 @@ type CommandCalls struct {
 }
 
 func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
-	if dependency.Missing(store) || dependency.Missing(selections) || dependency.Missing(compositions) || pool == nil || routing == nil {
+	if lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
 	return &CommandCalls{publish: publish, installations: store, selections: selections, compositions: compositions, pool: pool, routing: routing}, nil
@@ -61,7 +59,7 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 	return plugins.ContributionBinding{InstallationID: record.Provider.InstallationID, ContributionID: record.Contribution, Digest: record.Provider.Digest, ServerName: record.Server, ServerID: id, Export: record.Export, Contract: record.Contract}, nil
 }
 
-func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *capability.Contract, method string, input P, validate func(R) error) (commandReply[R], error) {
+func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *extension.Capability, method string, input P, validate func(R) error) (commandReply[R], error) {
 	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ContributionBinding, error) {
 		binding, found, err := plugins.SelectedContribution(ctx, c.installations, c.selections, required)
 		if err != nil {
@@ -74,12 +72,12 @@ func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *cap
 	}, nil)
 }
 func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error)) (commandReply[R], error) {
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return commandReply[R]{}, err
 	}
 	var value R
-	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result jsoninput.Input) error {
+	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result jsonvalue.Value) error {
 		if err := json.Unmarshal(result.JSON(), &value, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
@@ -87,8 +85,8 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 			return validate(value)
 		}
 		return nil
-	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) capability.Target {
-		return capability.Target{Scope: capability.ScopeInstallation, Reference: binding.InstallationID.String()}
+	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) extension.Target {
+		return extension.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
 	})
 	if err != nil {
 		var zero R
@@ -97,8 +95,8 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding, session: reply.session}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsoninput.Input, validate func(jsoninput.Input) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error), target func(plugins.ContributionBinding) capability.Target) (commandReply[jsoninput.Input], error) {
-	var zero commandReply[jsoninput.Input]
+func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted jsonvalue.Value, validate func(jsonvalue.Value) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func(), error), target func(plugins.ContributionBinding) extension.Target) (commandReply[jsonvalue.Value], error) {
+	var zero commandReply[jsonvalue.Value]
 	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
 	if err != nil {
 		return zero, err
@@ -122,7 +120,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
-	contract, err := capability.Parse(record.Contract.JSON())
+	contract, err := extension.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
@@ -131,10 +129,10 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
 	bound, err := exported.Method(method)
-	if err != nil || bound.Descriptor().Kind != capability.Mutation {
+	if err != nil || bound.Descriptor().Kind != extension.Mutation {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
 	}
-	var result jsoninput.Input
+	var result jsonvalue.Value
 	if record.Phase == plugin.CommandPrepared {
 		metadata := sdk.ParamsBase{}
 		if collaborators != nil {
@@ -158,7 +156,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 			err = plugin.ErrCommandUnconfirmed
 		}
 	}
-	_, known := errors.AsType[*capability.Refusal](err)
+	_, known := errors.AsType[*extension.Refusal](err)
 	if err != nil && !known {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
 	}
@@ -170,7 +168,7 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if observeErr := c.routing.Observe(ctx, id); observeErr != nil {
 		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
 	}
-	return commandReply[jsoninput.Input]{value: result, binding: binding, session: session}, err
+	return commandReply[jsonvalue.Value]{value: result, binding: binding, session: session}, err
 }
 
 // Prepared work may dispatch only with its original activation identity. A receipt
@@ -211,9 +209,9 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted jsoninput.Input, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) capability.Target, streaming bool) (plugin.CommandBinding, error) {
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted jsonvalue.Value, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) extension.Target, streaming bool) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
-	capture := func(binding plugins.ContributionBinding) (capability.Invocation, error) {
+	capture := func(binding plugins.ContributionBinding) (extension.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
 	}
 	command, found, routeErr := c.routing.Find(ctx, id, method, admitted)
@@ -228,7 +226,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if sessionErr != nil {
 			return plugin.CommandBinding{}, sessionErr
 		}
-		required, err := capability.Parse(candidate.Contract.JSON())
+		required, err := extension.ParseCapability(candidate.Contract.JSON())
 		if err != nil {
 			return plugin.CommandBinding{}, err
 		}
@@ -243,7 +241,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if (len(binding.Descriptor().Stream) != 0) != streaming {
 			return plugin.CommandBinding{}, plugin.ErrInvalid
 		}
-		if binding.Descriptor().Kind != capability.Mutation {
+		if binding.Descriptor().Kind != extension.Mutation {
 			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
 		}
 		if err := validateInput(ctx, binding, admitted); err != nil {
@@ -268,7 +266,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		}, capture)
 	}
 	if errors.Is(routeErr, plugin.ErrCommandConflict) {
-		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(idempotency.ErrKeyConflict, routeErr))
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(extension.ErrInvocationConflict, routeErr))
 	}
 	if routeErr != nil {
 		return plugin.CommandBinding{}, routeErr
@@ -279,7 +277,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		return plugin.CommandBinding{}, err
 	}
 	if invocation != record.Invocation {
-		return plugin.CommandBinding{}, errors.Join(idempotency.ErrKeyConflict, plugin.ErrCommandConflict)
+		return plugin.CommandBinding{}, errors.Join(extension.ErrInvocationConflict, plugin.ErrCommandConflict)
 	}
 	if accepts != nil {
 		if err := accepts(record); err != nil {

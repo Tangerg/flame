@@ -3,7 +3,7 @@ package runs
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -42,7 +42,7 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 		RunID: item.RunID(), Kind: o.Kind(),
 	}
 	switch o.Kind() {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		invocation, present := item.ToolInvocation()
 		if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
 			item.ApprovalDecision() != "" || !present {
@@ -52,7 +52,7 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 			Tool: invocation, Risk: o.Approval.Risk,
 			Reason: o.Approval.Reason, Rememberable: o.Approval.Rememberable,
 		}
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		question, present := item.Question()
 		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted ||
 			!present || question.Answered() {

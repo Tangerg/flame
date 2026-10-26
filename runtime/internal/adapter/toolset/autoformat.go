@@ -13,12 +13,11 @@ import (
 	"strings"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -196,7 +195,7 @@ func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.
 		return autoFormatSource{}, errors.Join(errAutoFormatFileTooLarge, cancellation.Err(ctx))
 	}
 	after, err := root.Lstat(path)
-	if err != nil || !fileinput.SameVersion(before, after) {
+	if err != nil || !filesystem.SameVersion(before, after) {
 		return autoFormatSource{}, errors.Join(errors.New("file changed while reading for formatting"), err, cancellation.Err(ctx))
 	}
 	if err := cancellation.Err(ctx); err != nil {
@@ -223,7 +222,7 @@ func applyFormattedFile(ctx context.Context, root *filesystemRoot, executor *fs.
 		return err
 	}
 	current, err := root.Lstat(path)
-	if err != nil || !fileinput.SameVersion(source.info, current) {
+	if err != nil || !filesystem.SameVersion(source.info, current) {
 		return errors.Join(errors.New("file changed while formatting"), err, cancellation.Err(ctx))
 	}
 	_, err = executor.Edit(ctx, fs.EditRequest{Path: path, OldString: source.content, NewString: string(data)})

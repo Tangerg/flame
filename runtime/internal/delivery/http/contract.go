@@ -1,12 +1,12 @@
 package http
 
 import (
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"reflect"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/go-chi/chi/v5"
 )
 
 // Request headers a client may send to this transport. The reader and the CORS
@@ -41,7 +41,7 @@ type EndpointKind string
 const (
 	EndpointKindRPC      EndpointKind = "rpc"
 	EndpointKindSidecar  EndpointKind = "sidecar"
-	EndpointKindResource EndpointKind = "resource"
+	endpointKindResource EndpointKind = "resource"
 )
 
 // EndpointAuthentication states the HTTP-layer gate applied before a handler.
@@ -49,8 +49,8 @@ type EndpointAuthentication string
 
 const (
 	EndpointAuthenticationNone          EndpointAuthentication = "none"
-	EndpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
-	EndpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
+	endpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
+	endpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
 )
 
 const (
@@ -103,7 +103,7 @@ var endpointRegistry = struct {
 }{
 	Endpoints: []endpointRegistration{
 		{
-			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: EndpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
+			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: endpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone}},
 			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
 		},
 		{
@@ -112,7 +112,7 @@ var endpointRegistry = struct {
 				Kind:             EndpointKindRPC,
 				Method:           http.MethodPost,
 				Path:             endpointPrefix + "/rpc",
-				Authentication:   EndpointAuthenticationLocalToken,
+				Authentication:   endpointAuthenticationLocalToken,
 				ResponseStatuses: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
 			},
 			handler: func(server *Server, w http.ResponseWriter, r *http.Request) { server.rpc.ServeHTTP(w, r) },
@@ -156,8 +156,8 @@ var endpointRegistry = struct {
 	},
 	Enums: []EnumSpec{
 		{Type: reflect.TypeFor[HealthStatus](), Values: []string{string(HealthOK), string(HealthDegraded), string(HealthUnhealthy)}},
-		{Type: reflect.TypeFor[LivenessState](), Values: []string{string(LivenessOK)}},
-		{Type: reflect.TypeFor[TransportKind](), Values: []string{string(Transport)}},
+		{Type: reflect.TypeFor[LivenessState](), Values: []string{string(livenessOK)}},
+		{Type: reflect.TypeFor[TransportKind](), Values: []string{string(transport)}},
 	},
 }
 

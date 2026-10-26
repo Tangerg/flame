@@ -41,7 +41,7 @@ type BuildConfig struct {
 	ToolResults    builtin.ToolResultStore        // backs read_tool_result (reads offloaded tool output); nil → omitted
 	SkillUsage     builtin.SkillUsageRecorder     // records skill loads for the idle-lifecycle curator; nil → use recording off
 	SkillProposals builtin.SkillProposalSubmitter // backs root-only propose_skill; nil → omitted
-	GoalReader     GoalReader                     // backs get_goal; nil → omitted
+	GoalReader     goalReader                     // backs get_goal; nil → omitted
 	GoalReporter   builtin.GoalOutcomeReporter    // backs report_goal_outcome; nil → omitted
 
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
@@ -62,7 +62,7 @@ type BuildConfig struct {
 // GoalReader supplies the Goal read model used by get_goal. Outcome-tool
 // availability is derived from immutable Run admission provenance instead of
 // mutable Goal state.
-type GoalReader interface {
+type goalReader interface {
 	builtin.GoalReader
 }
 

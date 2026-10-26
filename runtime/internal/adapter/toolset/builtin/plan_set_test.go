@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type stubStore struct {

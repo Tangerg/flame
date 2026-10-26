@@ -5,8 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/google/uuid"
 )
@@ -557,7 +556,7 @@ func testRelease(t *testing.T, seed string, declaration Declaration) Release {
 	return release
 }
 
-func testDigest(seed string) fingerprint.Digest { return fingerprint.Strings(seed) }
+func testDigest(seed string) identity.Digest { return identity.DigestStrings(seed) }
 
 func serverName(raw string) mcpserver.ServerName {
 	parsed, err := mcpserver.ParseServerName(raw)
@@ -567,9 +566,9 @@ func serverName(raw string) mcpserver.ServerName {
 	return parsed
 }
 
-func testInstallationID(t *testing.T) resourceid.InstallationID {
+func testInstallationID(t *testing.T) identity.InstallationID {
 	t.Helper()
-	id, err := resourceid.ParseInstallation(uuid.NewString())
+	id, err := identity.ParseInstallation(uuid.NewString())
 	if err != nil {
 		t.Fatal(err)
 	}

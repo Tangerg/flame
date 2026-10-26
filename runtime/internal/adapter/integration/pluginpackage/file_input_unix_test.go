@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -33,7 +33,7 @@ func TestPackagedCommandRefusesFIFOWithoutBlocking(t *testing.T) {
 	})
 	server := plugin.Server{Name: testsupport.ServerName("backend"), Transport: mcpserver.TransportStdio, Command: "./backend"}
 	err = fifoFailure(t, pipe, func() error { return inspectServerFiles(root, server) })
-	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, fileinput.ErrNotRegular) {
+	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("special packaged command lost its admission failure: %v", err)
 	}
 }
@@ -51,7 +51,7 @@ func TestPackageSourceRefusesFIFOWithoutBlocking(t *testing.T) {
 		}
 		return err
 	})
-	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, fileinput.ErrNotRegular) {
+	if !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("special package source lost its admission failure: %v", err)
 	}
 }
@@ -82,13 +82,13 @@ func TestVerifiedResourceRefusesReplacementFIFOWithoutBlocking(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = fifoFailure(t, pipe, func() error {
-		content, err := releases.readResource(t.Context(), installation, "notes.txt", MaxPackageBytes)
+		content, err := releases.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
 		if len(content) != 0 {
 			return errors.New("special node returned resource content")
 		}
 		return err
 	})
-	if !errors.Is(err, fileinput.ErrNotRegular) {
+	if !errors.Is(err, filesystem.ErrNotRegular) {
 		t.Fatalf("replacement node lost its file-kind failure: %v", err)
 	}
 }

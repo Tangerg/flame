@@ -6,13 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {

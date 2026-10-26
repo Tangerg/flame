@@ -8,24 +8,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 const testToolResultReaderName = "read_tool_result"
 
 type fakeOffloader struct {
 	calls     int
-	lastStage toolresult.Stage
+	lastStage transcript.ToolResultStage
 	err       error
 }
 
-func (f *fakeOffloader) Stage(_ context.Context, stage toolresult.Stage) error {
+func (f *fakeOffloader) Stage(_ context.Context, stage transcript.ToolResultStage) error {
 	f.calls++
 	f.lastStage = stage
 	return f.err
 }
 
-func evictForTest(t *testing.T, store toolResultOffloader, threshold int, sessionID, toolName, body string) (string, *toolresult.Ref) {
+func evictForTest(t *testing.T, store toolResultOffloader, threshold int, sessionID, toolName, body string) (string, *transcript.ToolResultRef) {
 	t.Helper()
 	policy, err := newToolResultOffloadPolicy(ToolResultOffloadPolicyValues{
 		Threshold: intPointer(threshold), ReaderName: testToolResultReaderName,

@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -17,7 +14,7 @@ import (
 // created or relocated. Session.Workspace is exact after admission, so
 // downstream use cases treat it as an invariant instead of repeatedly touching
 // the filesystem.
-type WorkspaceResolver interface {
+type workspaceResolver interface {
 	ResolveExistingDir(path string) (string, error)
 	Inspect(path string) (workspaceapp.Resolved, error)
 }
@@ -35,13 +32,27 @@ type Patch struct {
 }
 
 func (p Patch) clone() Patch {
-	p.Title = optional.Clone(p.Title)
-	p.ModelSelection.Provider = optional.Clone(p.ModelSelection.Provider)
-	p.ModelSelection.Model = optional.Clone(p.ModelSelection.Model)
-	p.ModelSelection.ReasoningEffort = optional.Clone(p.ModelSelection.ReasoningEffort)
-	p.WorkspacePath = optional.Clone(p.WorkspacePath)
-	p.Favorite = optional.Clone(p.Favorite)
-	p.Isolated = optional.Clone(p.Isolated)
+	if p.Title != nil {
+		p.Title = new(*p.Title)
+	}
+	if p.ModelSelection.Provider != nil {
+		p.ModelSelection.Provider = new(*p.ModelSelection.Provider)
+	}
+	if p.ModelSelection.Model != nil {
+		p.ModelSelection.Model = new(*p.ModelSelection.Model)
+	}
+	if p.ModelSelection.ReasoningEffort != nil {
+		p.ModelSelection.ReasoningEffort = new(*p.ModelSelection.ReasoningEffort)
+	}
+	if p.WorkspacePath != nil {
+		p.WorkspacePath = new(*p.WorkspacePath)
+	}
+	if p.Favorite != nil {
+		p.Favorite = new(*p.Favorite)
+	}
+	if p.Isolated != nil {
+		p.Isolated = new(*p.Isolated)
+	}
 	return p
 }
 
@@ -247,7 +258,7 @@ func (c *Coordinator) ApplyGeneratedTitle(ctx context.Context, id, title string)
 func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, error) {
 	resolved, err := c.paths.ResolveExistingDir(path)
 	if err != nil {
-		return session.Workspace{}, errors.Join(workspacepaths.ErrCWDUnavailable, err)
+		return session.Workspace{}, errors.Join(workspaceapp.ErrCWDUnavailable, err)
 	}
 	workspace, err := session.NewWorkspace(resolved)
 	if err != nil {

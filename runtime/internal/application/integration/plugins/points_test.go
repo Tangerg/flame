@@ -5,19 +5,18 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/point"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t *testing.T) {
-	contract, err := point.Admit(point.Definition{Protocol: capability.Protocol, Reference: "reviews.analyzers", Composition: capability.Collection, Scope: "installation", Optional: true, Ordering: point.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
+	contract, err := extension.AdmitPoint(extension.PointDescriptor{Protocol: extension.Protocol, Reference: "reviews.analyzers", Composition: extension.Collection, Scope: "installation", Optional: true, Ordering: extension.CanonicalKeys, Value: jsontext.Value(`{"type":"object","required":["title"],"properties":{"title":{"type":"string"}},"additionalProperties":false}`), Applicability: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := jsoninput.Parse([]byte(`{"title":"evidence"}`))
+	value, err := jsonvalue.Parse([]byte(`{"title":"evidence"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +38,7 @@ func TestInstalledPointValuesRequireTheConsumerContractAndRetainExactBindings(t 
 	consumer := makeSnapshot("reviews", plugin.Declaration{Points: []plugin.Point{{ID: "analyzers", Contract: contract.Identity()}}})
 	producer := makeSnapshot("checklist", plugin.Declaration{PointValues: []plugin.PointValue{{ID: "evidence", Contract: contract.Identity(), Value: value}}})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{producer, consumer}}
-	context := point.Context{Target: capability.Target{Scope: "installation", Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
+	context := extension.PointContext{Target: extension.Target{Scope: "installation", Reference: consumer.Installation.ID().String()}, Attributes: jsontext.Value(`{}`)}
 	bindings, err := ResolvePoint(t.Context(), store, contract, context, nil)
 	if err != nil || len(bindings) != 1 || bindings[0].Reference.Installation != producer.Installation.ID() || bindings[0].Digest != producer.Selected.Digest() || bindings[0].Value != value {
 		t.Fatalf("installed point binding: %+v, %v", bindings, err)

@@ -8,10 +8,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable transcript identity
@@ -190,7 +189,7 @@ type ToolInvocation struct {
 	Name          string
 	Arguments     tool.Arguments
 	Result        *tool.Result
-	Offload       *toolresult.Ref
+	Offload       *ToolResultRef
 }
 
 // Equal compares the semantic Tool invocation value without exposing the
@@ -227,7 +226,7 @@ type Interrupt struct {
 	// It is recorded rather than derived, because the derivation stops working
 	// exactly when it starts to matter.
 	RunID    string
-	Kind     interrupt.Kind
+	Kind     run.InterruptKind
 	Approval *Approval
 	Question *Question
 }
@@ -236,22 +235,22 @@ type Interrupt struct {
 // names, with a valid item and run identity. An open question that already holds
 // an accepted answer is no longer open, so it is rejected here rather than resumed.
 func (i Interrupt) Validate() error {
-	if err := resourceid.ValidateItem(i.ItemID); err != nil {
+	if err := identity.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if i.ItemOccurredAt.IsZero() {
 		return errors.New("item occurrence time is required")
 	}
-	if err := resourceid.ValidateRun(i.RunID); err != nil {
+	if err := identity.ValidateRun(i.RunID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	switch i.Kind {
-	case interrupt.Approval:
+	case run.InterruptApproval:
 		if i.Approval == nil || i.Question != nil {
 			return errors.New("approval interrupt requires only an approval payload")
 		}
 		return i.Approval.Validate()
-	case interrupt.Question:
+	case run.InterruptQuestion:
 		if i.Question == nil || i.Approval != nil {
 			return errors.New("question interrupt requires only a question payload")
 		}

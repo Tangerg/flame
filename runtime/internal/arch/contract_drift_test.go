@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
@@ -87,7 +87,7 @@ func regenerateContract(t *testing.T, root string) (artifacts, typescript, valid
 
 	artifacts, typescript, validators = t.TempDir(), t.TempDir(), t.TempDir()
 	cmd := exec.Command("go", "run", "github.com/Tangerg/flame/runtime/cmd/contractgen",
-		"-out", artifacts, "-ts", typescript, "-validators", validators,
+		"-out", artifacts, "-ts", typescript, "-validators", validators, "-samples", filepath.Join(root, "contract", "samples"),
 		"-go-local", t.TempDir(), "-go-client", t.TempDir())
 	cmd.Dir = root
 	if combined, err := cmd.CombinedOutput(); err != nil {
@@ -175,7 +175,7 @@ func TestGeneratedContractIsSubstantive(t *testing.T) {
 
 // TestRegistryShapeRulesReachTheGoValidator closes the server-side half of the
 // three-way contract: every union, conditional object and value-constrained shape
-// registered for schema/TypeScript also owns a generated ValidateWire method.
+// registered for schema/TypeScript also owns a generated validateWire method.
 func TestRegistryShapeRulesReachTheGoValidator(t *testing.T) {
 	source := string(readArtifact(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), validatorDir), validatorFile))
 	shapes := dispatch.WireShapes()
@@ -195,9 +195,9 @@ func TestRegistryShapeRulesReachTheGoValidator(t *testing.T) {
 		// hand-written methods do, so the expected signature is derived the
 		// same way rather than assuming one shared name.
 		receiver := strings.ToLower(shape.Name()[:1])
-		signature := "func (" + receiver + " " + shape.Name() + ") ValidateWire() error"
+		signature := "func (" + receiver + " " + shape.Name() + ") validateWire() error"
 		if !strings.Contains(source, signature) {
-			t.Errorf("%s is registered as a wire-constrained shape but has no generated ValidateWire method", shape.Name())
+			t.Errorf("%s is registered as a wire-constrained shape but has no generated validateWire method", shape.Name())
 		}
 	}
 }
@@ -724,8 +724,8 @@ func expectedCompiledConstraint(
 	union dispatch.UnionSpec,
 ) compiledConstraintExpectation {
 	t.Helper()
-	leaf := func() contractshape.Field {
-		_, field, found := contractshape.GoPath(goType, constraint.Field)
+	leaf := func() jsonvalue.Field {
+		_, field, found := jsonvalue.GoPath(goType, constraint.Field)
 		if !found {
 			t.Fatalf("%s has no field %q", shape, constraint.Field)
 		}
@@ -944,7 +944,7 @@ func statesGoConstraint(source, shape, helper, field string, constraint dispatch
 	// The generator names the receiver after its type, so both the method
 	// marker and the receiver argument are derived from the shape name.
 	receiver := strings.ToLower(shape[:1])
-	marker := "func (" + receiver + " " + shape + ") ValidateWire() error {"
+	marker := "func (" + receiver + " " + shape + ") validateWire() error {"
 	start := strings.Index(source, marker)
 	if start < 0 {
 		return false

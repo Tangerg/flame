@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func TestExecutionPreparationCancellationIsLocalToTheCaller(t *testing.T) {
@@ -26,7 +26,7 @@ func TestExecutionPreparationCancellationIsLocalToTheCaller(t *testing.T) {
 				if err := os.MkdirAll(r.executionDirectory(), 0700); err != nil {
 					t.Fatal(err)
 				}
-				namespace, err := advisorylock.AcquireDirectory(t.Context(), r.executionDirectory())
+				namespace, err := filesystem.AcquireDirectoryLease(t.Context(), r.executionDirectory())
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -20,7 +20,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	if err != nil {
 		t.Fatalf("describe public stream contract: %s, %v", output, err)
 	}
-	contract, err := capability.Parse(output)
+	contract, err := extension.ParseCapability(output)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	r := poMCPOpen(t, poMCPConfig(t))
 	defer r.close()
 	installed := installCallContributor(t, r, binary, "stream-drop", trace.URL, contract)
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: capability.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 	invoke := func() delivery.Result {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, delivery.Options{IdempotencyKey: "original-stream", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}

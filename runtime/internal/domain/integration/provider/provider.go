@@ -15,12 +15,12 @@ import (
 )
 
 var (
-	ErrIDRequired      = errors.New("provider: id is required")
-	ErrIDInvalid       = errors.New("provider: id is invalid")
+	errIDRequired      = errors.New("provider: id is required")
+	errIDInvalid       = errors.New("provider: id is invalid")
 	ErrAPIKeyRequired  = errors.New("provider: API key is required")
-	ErrAPIKeyInvalid   = errors.New("provider: API key cannot have surrounding whitespace or contain control characters")
-	ErrBaseURLInvalid  = errors.New("provider: base URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
-	ErrChangeCorrupted = errors.New("provider: change is corrupted")
+	errAPIKeyInvalid   = errors.New("provider: API key cannot have surrounding whitespace or contain control characters")
+	errBaseURLInvalid  = errors.New("provider: base URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
+	errChangeCorrupted = errors.New("provider: change is corrupted")
 )
 
 // APIKey is a validated opaque provider credential. It deliberately exposes
@@ -34,7 +34,7 @@ func NewAPIKey(value string) (APIKey, error) {
 		return APIKey{}, ErrAPIKeyRequired
 	}
 	if strings.TrimSpace(value) != value || strings.IndexFunc(value, unicode.IsControl) >= 0 {
-		return APIKey{}, ErrAPIKeyInvalid
+		return APIKey{}, errAPIKeyInvalid
 	}
 	return APIKey{value: value}, nil
 }
@@ -61,16 +61,16 @@ type BaseURL struct {
 func NewBaseURL(value string) (BaseURL, error) {
 	if strings.TrimSpace(value) != value || value == "" || strings.ContainsAny(value, "?#\\") ||
 		strings.IndexFunc(value, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }) >= 0 {
-		return BaseURL{}, ErrBaseURLInvalid
+		return BaseURL{}, errBaseURLInvalid
 	}
 	parsed, err := url.Parse(value)
 	if err != nil {
-		return BaseURL{}, ErrBaseURLInvalid
+		return BaseURL{}, errBaseURLInvalid
 	}
 	scheme := strings.ToLower(parsed.Scheme)
 	if (scheme != "http" && scheme != "https") || parsed.Host == "" || parsed.User != nil || parsed.Opaque != "" ||
 		!validHTTPAuthority(parsed.Host) {
-		return BaseURL{}, ErrBaseURLInvalid
+		return BaseURL{}, errBaseURLInvalid
 	}
 	parsed.Scheme = scheme
 	parsed.Host = strings.ToLower(parsed.Host)
@@ -131,14 +131,14 @@ func (c Credential) Format(state fmt.State, _ rune) {
 	_, _ = state.Write([]byte(value))
 }
 
-func StoredCredential(key APIKey) Credential {
+func storedCredential(key APIKey) Credential {
 	if !key.Present() {
 		return Credential{}
 	}
 	return Credential{key: key, source: KeyStored}
 }
 
-func EnvironmentCredential(key APIKey) Credential {
+func environmentCredential(key APIKey) Credential {
 	if !key.Present() {
 		return Credential{}
 	}
@@ -179,11 +179,11 @@ func (p Provider) Format(state fmt.State, _ rune) {
 
 func New(id string) (Provider, error) {
 	if strings.TrimSpace(id) == "" {
-		return Provider{}, ErrIDRequired
+		return Provider{}, errIDRequired
 	}
 	identity, err := modelchoice.NewProviderIdentity(id)
 	if err != nil {
-		return Provider{}, fmt.Errorf("%w: %v", ErrIDInvalid, err)
+		return Provider{}, fmt.Errorf("%w: %v", errIDInvalid, err)
 	}
 	return Provider{id: identity}, nil
 }
@@ -207,7 +207,7 @@ func (p Provider) WithEnvironmentFallback(key APIKey) Provider {
 	if p.credential.Configured() || !key.Present() {
 		return p
 	}
-	p.credential = EnvironmentCredential(key)
+	p.credential = environmentCredential(key)
 	return p
 }
 
@@ -259,7 +259,7 @@ func (c Change[T]) Resolve(current T) (T, error) {
 		return cleared, nil
 	default:
 		var cleared T
-		return cleared, ErrChangeCorrupted
+		return cleared, errChangeCorrupted
 	}
 }
 
@@ -273,13 +273,13 @@ func (p Patch) Empty() bool { return p.APIKey.Empty() && p.BaseURL.Empty() }
 
 func (p Patch) validate() error {
 	if p.APIKey.kind == changeSet && !p.APIKey.value.Present() {
-		return fmt.Errorf("%w: set API key", ErrChangeCorrupted)
+		return fmt.Errorf("%w: set API key", errChangeCorrupted)
 	}
 	if p.BaseURL.kind == changeSet && !p.BaseURL.value.Present() {
-		return fmt.Errorf("%w: set base URL", ErrChangeCorrupted)
+		return fmt.Errorf("%w: set base URL", errChangeCorrupted)
 	}
 	if p.APIKey.kind > changeClear || p.BaseURL.kind > changeClear {
-		return ErrChangeCorrupted
+		return errChangeCorrupted
 	}
 	return nil
 }
@@ -294,11 +294,11 @@ func (p Provider) Apply(patch Patch) (Provider, error) {
 	switch patch.APIKey.kind {
 	case changePreserve:
 	case changeSet:
-		p.credential = StoredCredential(patch.APIKey.value)
+		p.credential = storedCredential(patch.APIKey.value)
 	case changeClear:
 		p.credential = Credential{}
 	default:
-		return Provider{}, ErrChangeCorrupted
+		return Provider{}, errChangeCorrupted
 	}
 	baseURL, err := patch.BaseURL.Resolve(p.baseURL)
 	if err != nil {

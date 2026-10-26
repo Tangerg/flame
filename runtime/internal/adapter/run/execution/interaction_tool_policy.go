@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 // InteractionApprovalPolicy is the exact product policy view required at the
 // Interaction Tool boundary. Remembering a decision is not here: a standing rule
 // is derived and persisted by the acceptance owner, in the transaction that
 // accepts the answer, never by a Tool replay.
-type InteractionApprovalPolicy interface {
+type interactionApprovalPolicy interface {
 	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
 	Decide(ctx context.Context, query approval.Query) (approval.Decision, bool, error)
 }
@@ -29,7 +29,7 @@ type InteractionApprovalPolicy interface {
 // It returns a durable product prompt when a person is required; the executor
 // ACL alone maps that prompt to an Interaction wait and response Signal.
 type ToolAuthorizer struct {
-	policy   InteractionApprovalPolicy
+	policy   interactionApprovalPolicy
 	subjects approvalSubjectInterpreter
 }
 
@@ -38,11 +38,11 @@ type approvalSubjectInterpreter interface {
 }
 
 // NewToolAuthorizer binds the product approval policy.
-func NewToolAuthorizer(policy InteractionApprovalPolicy, subjects approvalSubjectInterpreter) (*ToolAuthorizer, error) {
-	if dependency.Missing(policy) {
+func NewToolAuthorizer(policy interactionApprovalPolicy, subjects approvalSubjectInterpreter) (*ToolAuthorizer, error) {
+	if lo.IsNil(policy) {
 		return nil, errors.New("execution: Tool approval policy is required")
 	}
-	if dependency.Missing(subjects) {
+	if lo.IsNil(subjects) {
 		return nil, errors.New("execution: Tool approval subject interpreter is required")
 	}
 	return &ToolAuthorizer{policy: policy, subjects: subjects}, nil
@@ -86,9 +86,9 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	}
 	switch plan.Action {
 	case approval.GatePass:
-		return AllowTool(), nil
+		return allowTool(), nil
 	case approval.GateDeny:
-		return DenyTool(approvalDenialMessage(plan.Denial, request.Tool.ModelName())), nil
+		return denyTool(approvalDenialMessage(plan.Denial, request.Tool.ModelName())), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
 			CallID: request.CallID,
@@ -99,7 +99,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 			Reason:       approvalPromptReason(plan.PromptCause),
 			Rememberable: true,
 		}
-		return AskToolApproval(prompt)
+		return askToolApproval(prompt)
 	default:
 		return ToolAuthorizationDecision{}, errors.New("execution: Tool approval policy returned an unknown action")
 	}
@@ -109,7 +109,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 	ctx context.Context,
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
-	resolution interrupt.Resolution,
+	resolution run.InterruptResolution,
 ) (ToolAuthorizationDecision, error) {
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return ToolAuthorizationDecision{}, err
@@ -127,12 +127,12 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		}
 	}
 	if !(verdict.Decision == approval.Allow) {
-		return DenyTool(denialReason(verdict.Reason)), nil
+		return denyTool(denialReason(verdict.Reason)), nil
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {
-		return AllowTool(), nil
+		return allowTool(), nil
 	}
-	return AllowToolWithArguments(arguments), nil
+	return allowToolWithArguments(arguments), nil
 }
 
 func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
@@ -189,16 +189,16 @@ func fileMutationScope(
 	if strings.TrimSpace(cwd) == "" {
 		return tool.FileMutationUnknown
 	}
-	root, err := pathidentity.Resolve("", cwd)
+	root, err := filesystem.ResolvePath("", cwd)
 	if err != nil {
 		return tool.FileMutationUnknown
 	}
 	for _, path := range paths {
-		target, err := pathidentity.Resolve(root, path)
+		target, err := filesystem.ResolvePath(root, path)
 		if err != nil {
 			return tool.FileMutationUnknown
 		}
-		inside, err := pathidentity.Contains(root, target)
+		inside, err := filesystem.ContainsPath(root, target)
 		if err != nil {
 			return tool.FileMutationUnknown
 		}
@@ -248,4 +248,4 @@ func denialReason(reason string) string {
 	return strings.TrimSpace(reason)
 }
 
-var _ InteractionToolAuthorizer = (*ToolAuthorizer)(nil)
+var _ interactionToolAuthorizer = (*ToolAuthorizer)(nil)

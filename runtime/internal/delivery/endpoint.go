@@ -7,11 +7,10 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/samber/lo"
 )
 
 const maxIdempotencyKeyBytes = 255
@@ -38,17 +37,16 @@ type Result struct {
 // transport envelope.
 type Endpoint struct {
 	target               any
-	idempotency          *replayStore
-	idempotencyNamespace runtimeidentity.IdempotencyNamespace
+	idempotency          *operation.Replay
+	idempotencyNamespace operation.ReplayNamespace
 	invocations          *invocationGroup
 	validateStorage      func() error
 }
 
-// EndpointConfig supplies durable operation mechanisms. A nil IdempotencyStore
-// selects a Runtime-instance-local store, useful for tests and non-durable hosts.
+// EndpointConfig supplies the durable operation owner and process lifetime.
 type EndpointConfig struct {
 	ValidateStorage      func() error
-	IdempotencyStore     idempotency.Store
+	IdempotencyStore     operation.ReplayStore
 	IdempotencyNamespace string
 	// Lifetime ends every in-flight operation and stream owned by this Runtime
 	// instance. Required: accepted streams may outlive their request context and
@@ -58,24 +56,24 @@ type EndpointConfig struct {
 
 // NewEndpoint constructs the binding-neutral Runtime delivery endpoint.
 func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
-	if dependency.Missing(config.Lifetime) {
+	if lo.IsNil(config.Lifetime) {
 		return nil, errors.New("delivery endpoint: lifetime is required")
 	}
-	if config.IdempotencyStore != nil && dependency.Missing(config.IdempotencyStore) {
-		return nil, errors.New("delivery endpoint: supplied idempotency store is nil")
-	}
-	namespace, _, err := runtimeidentity.ParseOptionalIdempotencyNamespace(config.IdempotencyNamespace)
+	replay, err := operation.NewReplay(config.IdempotencyStore)
 	if err != nil {
-		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
+		return nil, fmt.Errorf("delivery endpoint: %w", err)
 	}
-	store := config.IdempotencyStore
-	if store == nil {
-		store = newMemoryIdempotencyStore()
+	var namespace operation.ReplayNamespace
+	if config.IdempotencyNamespace != "" {
+		namespace, err = operation.ParseReplayNamespace(config.IdempotencyNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
+		}
 	}
 	return &Endpoint{
 		validateStorage:      config.ValidateStorage,
 		target:               target,
-		idempotency:          newReplayStore(store),
+		idempotency:          replay,
 		idempotencyNamespace: namespace,
 		invocations:          newInvocationGroup(config.Lifetime),
 	}, nil
@@ -98,7 +96,7 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 	if err := e.invocations.AwaitShutdown(ctx); err != nil {
 		return err
 	}
-	return e.idempotency.flushPending(ctx)
+	return e.idempotency.FlushPending(ctx)
 }
 
 // Invoke validates and executes the named operation through the catalog's
@@ -127,16 +125,10 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	}
 	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
 		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
-		return failed(protocol.NewFailure(
-			protocol.ErrIdempotencyStoreMismatch,
-			"idempotency namespace does not identify this Runtime store",
-		))
+		return failed(protocol.NewFailure(protocol.ErrIdempotencyStoreMismatch, "idempotency namespace does not identify this Runtime store"))
 	}
 	if reflect.TypeOf(parameters) != method.Meta.Params {
-		return failed(protocol.NewFailure(
-			protocol.ErrInvalidParams,
-			fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Meta.Params),
-		))
+		return failed(protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Meta.Params)))
 	}
 	if err := protocol.ValidateWireTree(parameters); err != nil {
 		return failed(protocol.InvalidParameters(err))
@@ -180,7 +172,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if options.IdempotencyKey != "" && method.Meta.Idempotency == IdempotencyOwnerRun {
 		// Serialize through the opening acknowledgement, never the stream lifetime.
 		// The durable Run acceptance remains the only command outcome authority.
-		releaseKey, err := e.idempotency.inFlight.Acquire(ctx, options.IdempotencyKey)
+		releaseKey, err := e.idempotency.Serialize(ctx, options.IdempotencyKey)
 		if err != nil {
 			return failed(projectError(err))
 		}
@@ -189,7 +181,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	} else if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() || method.Meta.Idempotency.OwnsOutcome() {
 		result = execute()
 	} else {
-		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute)
+		result = e.replayOperation(ctx, method, parameters, options.IdempotencyKey, execute)
 	}
 	if result.Events == nil {
 		return result
@@ -246,7 +238,7 @@ func allowsEvent(ctx context.Context, event any) bool {
 	if !ok {
 		return true
 	}
-	capabilities, ok := ClientCapabilitiesFrom(ctx)
+	capabilities, ok := clientCapabilitiesFrom(ctx)
 	if !ok {
 		return true
 	}
@@ -264,10 +256,7 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 	}
 	version := options.RequestMeta.ProtocolVersion
 	if version != "" && version != protocol.Version {
-		return protocol.NewFailure(
-			protocol.ErrInvalidProtocolVersion,
-			fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.Version),
-		)
+		return protocol.NewFailure(protocol.ErrInvalidProtocolVersion, fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.Version))
 	}
 	if options.IdempotencyKey != "" && !method.Idempotency.Replays() {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "this operation does not accept an idempotency key")
@@ -282,7 +271,7 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "an idempotency namespace requires an idempotency key")
 	}
 	if options.IdempotencyNamespace != "" {
-		if _, err := runtimeidentity.ParseIdempotencyNamespace(options.IdempotencyNamespace); err != nil {
+		if _, err := operation.ParseReplayNamespace(options.IdempotencyNamespace); err != nil {
 			return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("idempotency namespace: %v", err))
 		}
 	}
@@ -293,7 +282,7 @@ func validateOptions(method MethodMeta, options Options) *protocol.Failure {
 		if method.Operation == OperationCommand && options.IdempotencyKey == "" {
 			return protocol.NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
 		}
-		if err := runtimeidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
+		if err := flameidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
 			return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))
 		}
 	}

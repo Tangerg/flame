@@ -9,11 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestServersAndToolsUsePorts(t *testing.T) {
@@ -732,7 +731,7 @@ func (b *blockingPorts) BeginConnect(ctx context.Context, name mcpserver.ID) (At
 
 func configWithPorts(ports interface {
 	Connections
-	ToolCatalog
+	toolCatalog
 },
 ) Config {
 	registry := &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}

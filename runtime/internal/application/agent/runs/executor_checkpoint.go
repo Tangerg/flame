@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"slices"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // ErrExecutorCheckpointNotFound reports that no durable executor checkpoint
@@ -39,7 +38,7 @@ type ExecutionScope struct {
 // dependency projection; it is stored beside the payload so installation
 // admission never interprets continuation state.
 type ExecutorCheckpoint struct {
-	ToolResultIDs []toolresult.ID
+	ToolResultIDs []transcript.ToolResultID
 	Installations []plugin.Dependency
 	RootMemberID  string
 	SessionID     string
@@ -58,22 +57,22 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
-	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
+	if err := transcript.ValidateToolResultReferences(e.ToolResultIDs); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := plugin.ValidateDependencies(e.Installations); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
+	if err := ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if len(e.Payload) == 0 {
 		return fmt.Errorf("%w: payload is empty", ErrInvalidExecutorCheckpoint)
 	}
-	if _, err := runtimeidentity.ParseBuild(e.BuildID); err != nil {
+	if _, err := ParseBuild(e.BuildID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := resourceid.ValidateSession(e.SessionID); err != nil {
+	if err := identity.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	return nil
@@ -87,10 +86,10 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 	if err := e.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
+	if err := ValidateMember(rootMemberID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := identity.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if e.RootMemberID != rootMemberID {

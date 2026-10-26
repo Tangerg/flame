@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func goalTestCost(t *testing.T, usd float64) accounting.Cost {
@@ -29,7 +28,7 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	selection := testSelection(t)
 	value, err := New(
 		"ses_1", "finish the refactor", selection,
-		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question, interrupt.Approval}},
+		run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}},
 		"inc_1", now,
 	)
 	if err != nil {
@@ -41,7 +40,7 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if !value.CreatedAt().Equal(now) || value.CreatedAt().Location() != time.UTC {
 		t.Fatalf("created at = %v, want canonical UTC %v", value.CreatedAt(), now)
 	}
-	wantCapabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question}}
+	wantCapabilities := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}}
 	if !value.Capabilities().Equal(wantCapabilities) {
 		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
 	}
@@ -62,7 +61,7 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 		{name: "session whitespace", sessionID: " ses ", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "session interior whitespace", sessionID: "ses_ one", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "session non-printing", sessionID: "ses_\u200bhidden", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
-		{name: "session oversized", sessionID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "session oversized", sessionID: strings.Repeat("界", identity.MaximumResourceCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective missing", sessionID: "ses", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective blank", sessionID: "ses", objective: " \t ", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "incarnation missing", sessionID: "ses", objective: "obj", selection: selection, createdAt: now},
@@ -104,13 +103,13 @@ func TestGoalCanonicalizesObjectiveCommands(t *testing.T) {
 }
 
 func TestGoalOwnsCapabilityStorage(t *testing.T) {
-	input := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question, interrupt.Approval}}
+	input := run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}}
 	value := testGoal(t, input)
-	input.InterruptKinds[0] = interrupt.Approval
+	input.InterruptKinds[0] = run.InterruptApproval
 
 	read := value.Capabilities()
-	read.InterruptKinds[0] = interrupt.Question
-	if !value.Capabilities().Equal(run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question}}) {
+	read.InterruptKinds[0] = run.InterruptQuestion
+	if !value.Capabilities().Equal(run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion}}) {
 		t.Fatalf("Goal shares capability storage: %v", value.Capabilities())
 	}
 }
@@ -132,7 +131,7 @@ func TestRestoreRejectsImpossibleCommittedState(t *testing.T) {
 		}},
 		{name: "blocked without model detail", mutate: func(s *Snapshot) { s.Status, s.ReasonCode = StatusBlocked, ReasonBlockedByModel }},
 		{name: "noncanonical capabilities", mutate: func(s *Snapshot) {
-			s.Capabilities.InterruptKinds = []interrupt.Kind{interrupt.Question, interrupt.Approval}
+			s.Capabilities.InterruptKinds = []run.InterruptKind{run.InterruptQuestion, run.InterruptApproval}
 		}},
 	}
 	for _, test := range tests {
@@ -248,7 +247,7 @@ func TestTransitionRejectsInvalidReasonTimeAndState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := paused.Pause(ReasonStoppedByUser, "", now); !errors.Is(err, ErrInvalidTransition) {
+	if _, err := paused.Pause(ReasonStoppedByUser, "", now); !errors.Is(err, errInvalidTransition) {
 		t.Fatalf("double Pause = %v", err)
 	}
 }
@@ -297,7 +296,7 @@ func TestRecordRunRejectsAForeignOrUnfinishedRun(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
 	foreign := goalTestRun(t, "run_1", "inc_other", run.OutcomeCompleted, nil, 0, now)
-	if _, _, err := active.RecordRun(foreign); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, _, err := active.RecordRun(foreign); !errors.Is(err, errRunIdentityConflict) {
 		t.Fatalf("foreign Run error = %v", err)
 	}
 	if _, _, err := active.RecordRun(goalTestRunningRun(t, "inc_1", now)); err == nil {
@@ -322,7 +321,7 @@ func TestUsageOfFoldsTheIncarnationsTerminalRuns(t *testing.T) {
 	if _, available := used.Cost.USD(); err != nil || available || used.Runs != 2 || used.Steps != 6 {
 		t.Fatalf("mixed-price usage = %+v, %v", used, err)
 	}
-	if _, err := UsageOf("ses_1", "inc_other", []run.Run{priced}); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, err := UsageOf("ses_1", "inc_other", []run.Run{priced}); !errors.Is(err, errRunIdentityConflict) {
 		t.Fatalf("foreign incarnation error = %v", err)
 	}
 	if _, err := UsageOf("ses_1", "inc_1", []run.Run{goalTestRunningRun(t, "inc_1", now)}); err == nil {
@@ -353,10 +352,10 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 	if err != nil || used != (Usage{Runs: 1, Cost: goalTestCost(t, 0.75), Steps: 5}) {
 		t.Fatalf("delegated usage = %+v, %v", used, err)
 	}
-	if _, err := UsageOf("ses_1", "inc_1", []run.Run{child}); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{child}); !errors.Is(err, errRunIdentityConflict) {
 		t.Fatalf("missing root = %v", err)
 	}
-	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, child, child}); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, child, child}); !errors.Is(err, errRunIdentityConflict) {
 		t.Fatalf("duplicate Run = %v", err)
 	}
 	childSnapshot.SessionID = "ses_other"
@@ -364,7 +363,7 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, foreign}); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, foreign}); !errors.Is(err, errRunIdentityConflict) {
 		t.Fatalf("foreign Session = %v", err)
 	}
 	childSnapshot.SessionID = root.SessionID()
@@ -384,7 +383,7 @@ func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
 
 func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
-	active := testGoalAt(t, run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}, now)
+	active := testGoalAt(t, run.Capabilities{InterruptKinds: []run.InterruptKind{run.InterruptQuestion}}, now)
 	paused, err := active.Pause(ReasonStoppedByUser, "", now.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)

@@ -48,7 +48,7 @@ func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 
 	activate := func(source, key string) *protocol.PluginInstallation {

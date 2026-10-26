@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -16,11 +16,11 @@ import (
 // and can never replace its declaration.
 type ReleaseStore struct{ db *sql.DB }
 
-func NewReleaseStore(db *sql.DB) *ReleaseStore { return &ReleaseStore{db: db} }
+func newReleaseStore(db *sql.DB) *ReleaseStore { return &ReleaseStore{db: db} }
 
-func (s *ReleaseStore) Get(ctx context.Context, digest fingerprint.Digest) (plugin.Release, error) {
+func (s *ReleaseStore) Get(ctx context.Context, digest identity.Digest) (plugin.Release, error) {
 	var body string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT declaration FROM plugin_releases WHERE digest=?`, digest.String()).Scan(&body)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT declaration FROM plugin_releases WHERE digest=?`, digest.String()).Scan(&body)
 	if errors.Is(err, sql.ErrNoRows) {
 		return plugin.Release{}, plugin.ErrNotFound
 	}
@@ -44,8 +44,8 @@ func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error 
 		return err
 	}
 	digest := release.Digest().String()
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		db := sqlitebase.Connection(ctx, s.db)
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		db := sqlite.Connection(ctx, s.db)
 		result, err := db.ExecContext(ctx, `INSERT INTO plugin_releases(digest,declaration) VALUES(?,?) ON CONFLICT(digest) DO NOTHING`, digest, string(body))
 		if err != nil {
 			return err
@@ -64,19 +64,19 @@ func (s *ReleaseStore) Admit(ctx context.Context, release plugin.Release) error 
 }
 
 // Digests lists every admitted release.
-func (s *ReleaseStore) Digests(ctx context.Context) ([]fingerprint.Digest, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, `SELECT digest FROM plugin_releases ORDER BY digest`)
+func (s *ReleaseStore) Digests(ctx context.Context) ([]identity.Digest, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT digest FROM plugin_releases ORDER BY digest`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var result []fingerprint.Digest
+	var result []identity.Digest
 	for rows.Next() {
 		var text string
 		if err := rows.Scan(&text); err != nil {
 			return nil, err
 		}
-		digest, err := fingerprint.ParseDigest(text)
+		digest, err := identity.ParseDigest(text)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: decode release digest: %w", err)
 		}
@@ -88,7 +88,7 @@ func (s *ReleaseStore) Digests(ctx context.Context) ([]fingerprint.Digest, error
 // Remove deletes an unreferenced release with its server membership. An
 // installation still naming it makes the delete fail, so a referenced release
 // cannot be removed whatever its caller believes.
-func (s *ReleaseStore) Remove(ctx context.Context, digest fingerprint.Digest) error {
-	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
+func (s *ReleaseStore) Remove(ctx context.Context, digest identity.Digest) error {
+	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_releases WHERE digest=?`, digest.String())
 	return err
 }

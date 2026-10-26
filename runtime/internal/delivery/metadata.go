@@ -5,8 +5,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/optional"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -26,7 +24,7 @@ func RequestMetaFrom(ctx context.Context) (protocol.RequestMeta, bool) {
 }
 
 // ClientCapabilitiesFrom returns the capabilities declared for this operation.
-func ClientCapabilitiesFrom(ctx context.Context) (*protocol.ClientCapabilities, bool) {
+func clientCapabilitiesFrom(ctx context.Context) (*protocol.ClientCapabilities, bool) {
 	meta, ok := RequestMetaFrom(ctx)
 	if !ok || meta.ClientCapabilities == nil {
 		return nil, false
@@ -47,7 +45,9 @@ func AfterEventIDFrom(ctx context.Context) string {
 }
 
 func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
-	meta.ClientInfo = optional.Clone(meta.ClientInfo)
+	if meta.ClientInfo != nil {
+		meta.ClientInfo = new(*meta.ClientInfo)
+	}
 	if meta.ClientCapabilities != nil {
 		capabilities := *meta.ClientCapabilities
 		capabilities.InterruptTypes = slices.Clone(capabilities.InterruptTypes)

@@ -39,7 +39,7 @@ func TestToolValidate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			candidate := valid
 			mutate(&candidate)
-			if err := candidate.Validate(); !errors.Is(err, ErrInvalidDefinition) {
+			if err := candidate.Validate(); !errors.Is(err, errInvalidDefinition) {
 				t.Fatalf("Tool.Validate() error = %v, want ErrInvalidDefinition", err)
 			}
 		})

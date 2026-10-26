@@ -11,10 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -112,7 +111,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			callCtx, cancelCall := context.WithCancelCause(operation.Start(ctx, capability.Model, "test.model", "write"))
+			callCtx, cancelCall := context.WithCancelCause(operation.Start(ctx, extension.Model, "test.model", "write"))
 			defer cancelCall(nil)
 			result := make(chan error, 1)
 			go func() { _, err := bound.Call(callCtx, invocation); result <- err }()

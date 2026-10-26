@@ -14,7 +14,7 @@ import (
 
 func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd string) {
 	t.Helper()
-	if err := NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
+	if err := newSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(cwd),
 		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
 	})); err != nil {
@@ -24,7 +24,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd strin
 
 func seedWorkspaceMutationRun(t *testing.T, db *sql.DB, sessionID, runID string) {
 	t.Helper()
-	if err := NewRunStore(db).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
+	if err := newRunStore(db).Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Completed,
 		CreatedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), UpdatedAt: time.Unix(2, 0),
 	})); err != nil {
@@ -40,7 +40,7 @@ func TestWorkspaceMutationLogRoundTrip(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewWorkspaceMutationStore(db)
+	store := newWorkspaceMutationStore(db)
 	ctx := context.Background()
 	seedWorkspaceMutationSession(t, db, "ses_1", "/repo")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_1")
@@ -95,7 +95,7 @@ func TestUnfinishedWorkspaceMutationKeepsRecoveryOwnership(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := NewWorkspaceMutationStore(db)
+	store := newWorkspaceMutationStore(db)
 	ctx := context.Background()
 	seedWorkspaceMutationSession(t, db, "ses_1", "/a")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_1")
@@ -149,14 +149,14 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 	seedWorkspaceMutationSession(t, db, "ses_owner", "/repo")
 	seedWorkspaceMutationRun(t, db, "ses_owner", "run_target")
 	seedWorkspaceMutationSession(t, db, "ses_sibling", "/repo")
-	mutations := NewWorkspaceMutationStore(db)
+	mutations := newWorkspaceMutationStore(db)
 	if _, err := mutations.recordMutation(ctx, workspaceMutationRecord{
 		SessionID: "ses_owner", CWD: "/repo", ToRunID: "run_target", RestoreHistory: true,
 	}); err != nil {
 		t.Fatalf("record mutation: %v", err)
 	}
 
-	runs := NewRunStore(db)
+	runs := newRunStore(db)
 	for _, draft := range []run.Draft{
 		{RunID: "run_owner_next", SessionID: "ses_owner", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
 		{RunID: "run_sibling_next", SessionID: "ses_sibling", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
@@ -169,7 +169,7 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 	if err := runs.Delete(ctx, "ses_owner", "run_target"); err == nil {
 		t.Fatal("deleted rollback target while mutation was pending")
 	}
-	if err := NewSessionStore(db).Delete(ctx, "ses_owner"); err == nil {
+	if err := newSessionStore(db).Delete(ctx, "ses_owner"); err == nil {
 		t.Fatal("deleted Session while its workspace mutation was pending")
 	}
 

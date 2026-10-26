@@ -9,16 +9,12 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -29,7 +25,7 @@ func newRunStores(t *testing.T) (*RunStore, *InterruptStore) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewRunStore(db), NewInterruptStore(db)
+	return newRunStore(db), newInterruptStore(db)
 }
 
 func newRunProjectionStores(t *testing.T) (*RunStore, *InterruptStore, *TranscriptStore) {
@@ -39,7 +35,7 @@ func newRunProjectionStores(t *testing.T) (*RunStore, *InterruptStore, *Transcri
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return NewRunStore(db), NewInterruptStore(db), NewTranscriptStore(db)
+	return newRunStore(db), newInterruptStore(db), newTranscriptStore(db)
 }
 
 func storedRunReplacement(
@@ -68,7 +64,7 @@ func resumeParkedRun(ctx context.Context, store *RunStore, parked run.Run, segme
 }
 
 func suspendRun(ctx context.Context, store *RunStore, state run.Run, segmentID string) error {
-	return store.Suspend(ctx, state, segmentID, runtimeidentity.CommitID{})
+	return store.Suspend(ctx, state, segmentID, runs.CommitID{})
 }
 
 // runCreatedAt is when every fixture Run is admitted. The interrupt record
@@ -152,7 +148,7 @@ func parkedRunFromDraft(draft run.Draft) run.Run {
 
 func approvalInterrupts() []transcript.Interrupt {
 	return []transcript.Interrupt{{
-		ItemID: "item_approval", Kind: interrupt.Approval,
+		ItemID: "item_approval", Kind: run.InterruptApproval,
 		Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: tool.RiskMedium},
 	}}
 }
@@ -176,7 +172,7 @@ func pendingForRun(
 			MemberID:        memberID,
 			RequestID:       "request_" + copied[index].ItemID,
 		}
-		if copied[index].Kind == interrupt.Approval {
+		if copied[index].Kind == run.InterruptApproval {
 			bindings[index].ToolCallID = "call_" + copied[index].ItemID
 		}
 	}
@@ -211,7 +207,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runStore, ints := NewRunStore(db), NewInterruptStore(db)
+	runStore, ints := newRunStore(db), newInterruptStore(db)
 	ctx := context.Background()
 
 	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {
@@ -237,7 +233,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	// A park commit that fails after both writes leaves NEITHER: no interrupt, and
 	// the row stays running (a second admit is still rejected as busy).
 	boom := errors.New("boom")
-	if err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+	if err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		if err := park(ctx); err != nil {
 			return err
 		}
@@ -257,7 +253,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	}
 
 	// A successful park commit persists BOTH the interrupt and the suspended state.
-	if err := sqlitebase.RunInTx(ctx, db, park); err != nil {
+	if err := sqlite.RunInTx(ctx, db, park); err != nil {
 		t.Fatalf("park commit: %v", err)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 1 {
@@ -321,22 +317,22 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = database.Close() })
 			ctx := t.Context()
-			store := NewRunStore(database)
+			store := newRunStore(database)
 			draft := runDraft("run_invocation_owner", "ses_invocation_owner")
 			if err := store.Admit(ctx, draft); err != nil {
 				t.Fatalf("admit Run: %v", err)
 			}
 			startedAt := draft.CreatedAt.Add(time.Second)
-			if err := NewModelInvocationStore(database).StartModelInvocation(
+			if err := newModelInvocationStore(database).StartModelInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, run.ModelConversation); err != nil {
 				t.Fatalf("start model invocation: %v", err)
 			}
-			if err := NewModelInvocationStore(database).CompleteModelInvocation(
+			if err := newModelInvocationStore(database).CompleteModelInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, startedAt.Add(time.Second), nil, nil,
 			); err != nil {
 				t.Fatalf("complete model invocation: %v", err)
 			}
-			if err := NewToolInvocationStore(database).StartToolInvocation(
+			if err := newToolInvocationStore(database).StartToolInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID,
 				"tool_call_pending", "item_call_pending", startedAt,
 			); err != nil {
@@ -1144,7 +1140,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 
 	admitted := run.Capabilities{
 		ChildRuns:      true,
-		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
+		InterruptKinds: []run.InterruptKind{run.InterruptApproval, run.InterruptQuestion},
 	}
 	draft := runDraft("run_1", "ses_A")
 	draft.Capabilities = admitted

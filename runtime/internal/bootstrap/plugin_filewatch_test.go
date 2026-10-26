@@ -14,13 +14,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -42,9 +41,9 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg.ChatResolver = testChatResolver(client)
+	cfg.chatResolver = testChatResolver(client)
 	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,17 +90,17 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	}
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "filewatch"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := rpc.NewContracts()
+	contracts, err := extension.ParseCapability([]byte(testsupport.FilewatchCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	call := func(method string, value any, key string) string {
 		t.Helper()
-		encoded, err := jsoninput.Encode(value)
+		encoded, err := jsonvalue.Encode(value)
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "filewatch-operations", Contract: contracts.Capability.Identity().String(), Method: method, Input: encoded.String(), Target: capability.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "filewatch-operations", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("filewatch operation failed: %+v", result.Failure)
 		}
@@ -118,38 +117,40 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 			}
 		}
 	}
-	status := func(phase filewatch.Phase, revision int64) bool {
-		var value filewatch.Status
-		if err := json.Unmarshal([]byte(call(contracts.Status.Name(), struct{}{}, "")), &value); err != nil {
+	status := func(phase string, revision int64) bool {
+		var value testsupport.FilewatchStatusV1Output
+		if err := json.Unmarshal([]byte(call(testsupport.FilewatchStatusV1Method, struct{}{}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
-		if value.Phase == filewatch.Failed {
+		if value.Phase == "failed" {
 			t.Fatalf("published source failed: %+v", value)
 		}
 		return value.Phase == phase && value.Revision == revision
 	}
-	events := func() []filewatch.Header {
-		var value []filewatch.Header
-		if err := json.Unmarshal([]byte(call(contracts.Events.Name(), struct{}{}, "")), &value); err != nil {
+	events := func() testsupport.FilewatchEventsV1Output {
+		var value testsupport.FilewatchEventsV1Output
+		if err := json.Unmarshal([]byte(call(testsupport.FilewatchEventsV1Method, struct{}{}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
 		return value
 	}
-	capture := func(id string) filewatch.Event {
-		var value filewatch.Event
-		if err := json.Unmarshal([]byte(call(contracts.Event.Name(), rpc.EventInput{ID: id}, "")), &value); err != nil {
+	capture := func(id string) testsupport.FilewatchEventV1Output {
+		var value testsupport.FilewatchEventV1Output
+		if err := json.Unmarshal([]byte(call(testsupport.FilewatchEventV1Method, testsupport.FilewatchEventV1Input{Id: id}, "")), &value); err != nil {
 			t.Fatal(err)
 		}
 		return value
 	}
-	workspace := r.must(delivery.WorkspacesResolve, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.WorkspaceInfo)
+	workspace := r.must(delivery.WorkspacesResolve, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.WorkspaceInfo)
 	path := filepath.Join(workspace.Ref.Path, "source.txt")
 	if err := os.WriteFile(path, []byte("initial baseline"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	draft := filewatch.Draft{Title: "Original file trigger", Workspace: workspace.Ref.Path, Paths: []string{"source.txt"}, Instructions: "Inspect the original observed source.", Provider: cfg.Provider, Model: cfg.Model}
-	configured := call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source")
-	wait(func() bool { return status(filewatch.Watching, 2) })
+	draft := testsupport.FilewatchEventV1Output{}.Capture.Trigger
+	draft.Title, draft.Workspace, draft.Paths = "Original file trigger", workspace.Ref.Path, []string{"source.txt"}
+	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.provider, cfg.model
+	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 1, Trigger: &draft}, "configure-source")
+	wait(func() bool { return status("watching", 2) })
 	if err := os.WriteFile(path, []byte("external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +160,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	case <-time.After(10 * time.Second):
 		t.Fatal("external file edit did not reach canonical Run admission")
 	}
-	var original filewatch.Capture
+	original := testsupport.FilewatchEventV1Output{}.Capture
 	wait(func() bool {
 		values := events()
 		if len(values) != 1 {
@@ -168,17 +169,17 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		if values[0].Accepted {
 			t.Fatal("lost opening invented private acceptance")
 		}
-		original = capture(values[0].ID).Capture
+		original = capture(values[0].Id).Capture
 		return true
 	})
-	if original.RunID != accepted.RunID || original.Invocation.Origin != capability.Automatic || original.Invocation.Target.Reference != installed.ID || original.Kind != filewatch.Changed {
+	if original.RunId != accepted.RunID || original.Invocation.Origin != string(extension.Automatic) || original.Invocation.Target.Reference != installed.ID || original.Kind != "changed" {
 		t.Fatalf("capture differs from canonical opening: %+v %+v", original, accepted)
 	}
-	call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 2, Trigger: nil}, "disable-source")
-	wait(func() bool { return status(filewatch.Disabled, 3) })
+	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 2, Trigger: nil}, "disable-source")
+	wait(func() bool { return status("disabled", 3) })
 	wait(func() bool {
 		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
-		if run.SessionID != original.SessionID {
+		if run.SessionID != original.SessionId {
 			t.Fatal("canonical Run belongs to another captured Session")
 		}
 		return run.Outcome != nil && run.Outcome.Type == protocol.OutcomeCompleted
@@ -190,26 +191,26 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	r = poMCPOpen(t, cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	wait(func() bool { values := events(); return len(values) == 1 && values[0].Accepted })
-	if values := events(); !reflect.DeepEqual(capture(values[0].ID).Capture, original) || calls.Load() != 1 {
+	if values := events(); !reflect.DeepEqual(capture(values[0].Id).Capture, original) || calls.Load() != 1 {
 		t.Fatalf("recovery changed intent or reexecuted the accepted Run: %+v calls=%d", values, calls.Load())
 	}
-	if replay := call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 1, Trigger: &draft}, "configure-source"); replay != configured {
+	if replay := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 1, Trigger: &draft}, "configure-source"); replay != configured {
 		t.Fatal("configure replay replaced the disabled rule")
 	}
-	wait(func() bool { return status(filewatch.Disabled, 3) })
-	var disabled filewatch.Snapshot
-	if err := json.Unmarshal([]byte(call(contracts.Get.Name(), struct{}{}, "")), &disabled); err != nil || disabled.Revision != 3 || disabled.Trigger != nil {
+	wait(func() bool { return status("disabled", 3) })
+	var disabled testsupport.FilewatchGetV1Output
+	if err := json.Unmarshal([]byte(call(testsupport.FilewatchGetV1Method, struct{}{}, "")), &disabled); err != nil || disabled.Revision != 3 || disabled.Trigger != nil {
 		t.Fatalf("disabled rule changed after receipt replay: %+v %v", disabled, err)
 	}
 	draft.Instructions = "Inspect the second observed source."
-	call(contracts.Configure.Name(), rpc.ConfigureInput{ExpectedRevision: 3, Trigger: &draft}, "rearm-source")
-	wait(func() bool { return status(filewatch.Watching, 4) })
+	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureV1Input{ExpectedRevision: 3, Trigger: &draft}, "rearm-source")
+	wait(func() bool { return status("watching", 4) })
 	if err := os.WriteFile(path, []byte("second external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	wait(func() bool {
 		values := events()
-		return len(values) == 2 && values[0].Accepted && values[0].RunID != original.RunID
+		return len(values) == 2 && values[0].Accepted && values[0].RunId != original.RunId
 	})
 	wait(func() bool { return calls.Load() == 2 })
 }

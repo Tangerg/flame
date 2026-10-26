@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/tools/textread"
 )
@@ -29,7 +29,7 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	}
 	entries, err := SearchFiles(ctx, root, input.Path, "")
 	if err != nil {
-		if errors.Is(err, ErrListingTooLarge) {
+		if errors.Is(err, errListingTooLarge) {
 			return workspaceapp.GrepResult{}, errors.Join(workspaceapp.ErrGrepResultTooLarge, err)
 		}
 		return workspaceapp.GrepResult{}, err
@@ -104,13 +104,13 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 	if err != nil {
 		return grepSource{}, false, err
 	}
-	file, opened, err := fileinput.OpenAt(
+	file, opened, err := filesystem.OpenFileAt(
 		search.rootHandle,
 		filepath.FromSlash(path),
 		workspaceapp.MaxGrepFileBytes,
 	)
 	if err != nil {
-		if errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) {
+		if errors.Is(err, filesystem.ErrNotRegular) || errors.Is(err, filesystem.ErrFileTooLarge) {
 			return grepSource{}, false, nil
 		}
 		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)
@@ -132,7 +132,7 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 		matchLimit,
 		resultBytes,
 	)
-	verifyErr := fileinput.VerifyAtVersion(
+	verifyErr := filesystem.VerifyAtVersion(
 		source.file,
 		source.opened,
 		search.rootHandle,

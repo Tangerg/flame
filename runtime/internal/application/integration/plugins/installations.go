@@ -6,26 +6,25 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 // Catalog is the admitted release catalog, the only owner of release content.
 // Installations name releases by digest and read them here when needed.
-type Catalog interface {
-	Get(context.Context, fingerprint.Digest) (plugin.Release, error)
+type catalog interface {
+	Get(context.Context, identity.Digest) (plugin.Release, error)
 }
 
 // Packages owns release bytes: it admits a package as a candidate, publishes
 // and reclaims releases, prepares backends and observes realization.
-type Packages interface {
+type packages interface {
 	Materialize(context.Context, string) (Candidate, error)
-	Reclaim(context.Context, []fingerprint.Digest) error
+	Reclaim(context.Context, []identity.Digest) error
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
 	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
@@ -44,7 +43,7 @@ type Candidate interface {
 // Connections realizes installation sources in the MCP supervisor.
 // WithdrawInstallation runs inside the change's critical section and must not
 // block; ReconcileInstallation dials after it.
-type Connections interface {
+type connections interface {
 	WithdrawInstallation([]mcpserver.ID) error
 	ReconcileInstallation(context.Context, []mcpserver.ID) error
 }
@@ -56,8 +55,8 @@ type Connections interface {
 // held releases: live sessions, pending checkpoints and unresolved commands.
 // A change reports whether committed state invalidates unpublished execution,
 // independently of its quiescence requirement or a later withdrawal failure.
-type Dependencies interface {
-	ChangeInstallation(context.Context, resourceid.InstallationID, ChangeAdmission, func(held []plugin.Dependency) (executionChanged bool, err error)) error
+type dependencies interface {
+	ChangeInstallation(context.Context, identity.InstallationID, ChangeAdmission, func(held []plugin.Dependency) (executionChanged bool, err error)) error
 	UnderAdmission(context.Context, func(held []plugin.Dependency) error) error
 }
 
@@ -71,15 +70,15 @@ const (
 type Coordinator struct {
 	lifetime     context.Context
 	store        Store
-	catalog      Catalog
-	packages     Packages
-	connections  Connections
-	dependencies Dependencies
+	catalog      catalog
+	packages     packages
+	connections  connections
+	dependencies dependencies
 	publish      invalidation.Publish
 }
 
-func New(lifetime context.Context, store Store, catalog Catalog, packages Packages, connections Connections, dependencies Dependencies, publish invalidation.Publish) (*Coordinator, error) {
-	if dependency.Missing(lifetime) {
+func New(lifetime context.Context, store Store, catalog catalog, packages packages, connections connections, dependencies dependencies, publish invalidation.Publish) (*Coordinator, error) {
+	if lo.IsNil(lifetime) {
 		return nil, errors.New("plugins: runtime lifetime is required")
 	}
 	for _, required := range []struct {
@@ -89,7 +88,7 @@ func New(lifetime context.Context, store Store, catalog Catalog, packages Packag
 		{"installation store", store}, {"release catalog", catalog}, {"packages", packages},
 		{"connections", connections}, {"dependencies", dependencies},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("plugins: %s is required", required.name)
 		}
 	}
@@ -105,7 +104,7 @@ type Inspection struct {
 	Presentation Presentation
 }
 
-func (c *Coordinator) installationSnapshot(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+func (c *Coordinator) installationSnapshot(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, error) {
 	snapshot, found, err := c.store.Get(ctx, id)
 	if err != nil {
 		return plugin.Snapshot{}, err
@@ -177,7 +176,7 @@ func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (In
 
 // named reads a release a client named by digest. A digest the catalog has
 // never admitted cannot be the installation's release, so it is stale.
-func (c *Coordinator) named(ctx context.Context, digest fingerprint.Digest) (plugin.Release, error) {
+func (c *Coordinator) named(ctx context.Context, digest identity.Digest) (plugin.Release, error) {
 	release, err := c.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
 		return plugin.Release{}, fmt.Errorf("%w: release %s is not admitted", plugin.ErrStale, digest)
@@ -191,7 +190,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 		return Inspection{}, fmt.Errorf("plugins: materialize package: %w", err)
 	}
 	defer func() { err = errors.Join(err, candidate.Discard()) }()
-	id, err := resourceid.ParseInstallation(uuid.NewString())
+	id, err := identity.ParseInstallation(uuid.NewString())
 	if err != nil {
 		return Inspection{}, fmt.Errorf("plugins: allocate installation identity: %w", err)
 	}
@@ -232,7 +231,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	return inspection, nil
 }
 
-func (c *Coordinator) Stage(ctx context.Context, id resourceid.InstallationID, source string) (_ Inspection, err error) {
+func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, source string) (_ Inspection, err error) {
 	candidate, err := c.packages.Materialize(ctx, source)
 	if err != nil {
 		return Inspection{}, fmt.Errorf("plugins: materialize package: %w", err)
@@ -263,7 +262,7 @@ func (c *Coordinator) Reclaim(ctx context.Context) error {
 // release that cannot be reclaimed stays admitted, and so owned for the next
 // commit; that failure is returned apart from the change's, because the change
 // itself stands.
-func (c *Coordinator) commit(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, change func() (executionChanged bool, err error)) (unreclaimed, err error) {
+func (c *Coordinator) commit(ctx context.Context, id identity.InstallationID, admission ChangeAdmission, change func() (executionChanged bool, err error)) (unreclaimed, err error) {
 	err = c.dependencies.ChangeInstallation(ctx, id, admission, func(held []plugin.Dependency) (bool, error) {
 		executionChanged, changeErr := change()
 		unreclaimed = c.reclaim(ctx, held)
@@ -283,7 +282,7 @@ func (c *Coordinator) reclaim(ctx context.Context, held []plugin.Dependency) err
 	return nil
 }
 
-func (c *Coordinator) Select(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest) (Inspection, error) {
+func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest identity.Digest) (Inspection, error) {
 	return c.change(ctx, id, RequireQuiescent, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
 		staged, err := c.named(ctx, digest)
 		if err != nil {
@@ -295,20 +294,20 @@ func (c *Coordinator) Select(ctx context.Context, id resourceid.InstallationID, 
 
 // Restoring availability of the same selected code does not replace a held
 // execution dependency. Selection and configuration still require quiescence.
-func (c *Coordinator) Enable(ctx context.Context, id resourceid.InstallationID) (Inspection, error) {
+func (c *Coordinator) Enable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
 	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
 		return i.Enable(selected)
 	})
 }
 
 // Disable withdraws future dispatch and remains available while in use.
-func (c *Coordinator) Disable(ctx context.Context, id resourceid.InstallationID) (Inspection, error) {
+func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
 	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
 		i.Disable()
 		return nil
 	})
 }
-func (c *Coordinator) Configure(ctx context.Context, id resourceid.InstallationID, digest fingerprint.Digest, configuration plugin.Configuration) (Inspection, error) {
+func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest identity.Digest, configuration plugin.Configuration) (Inspection, error) {
 	return c.change(ctx, id, RequireQuiescent, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
 		release, err := c.named(ctx, digest)
 		if err != nil {
@@ -317,7 +316,7 @@ func (c *Coordinator) Configure(ctx context.Context, id resourceid.InstallationI
 		return i.Configure(release, configuration)
 	})
 }
-func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
+func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, admission ChangeAdmission, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
 	var reconcile []mcpserver.ID
 	var committed plugin.Snapshot
 	unreclaimed, err := c.commit(ctx, id, admission, func() (bool, error) {
@@ -393,7 +392,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 	}
 	return inspection, nil
 }
-func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationID) error {
+func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID) error {
 	var servers []mcpserver.ID
 	removed := false
 	// Removal withdraws every artifact a waiting operation needs to resume, so

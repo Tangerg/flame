@@ -29,11 +29,11 @@ func (r *resourceGitReader) StructuredDiff(_ context.Context, _, _ string, _ boo
 	for index := range files {
 		files[index].Rows = slices.Clone(files[index].Rows)
 	}
-	return StructuredDiffResult{Baseline: DiffBaseline{Type: DiffBaselineEmptyTree}, Files: files}, nil
+	return StructuredDiffResult{Baseline: DiffBaseline{Type: diffBaselineEmptyTree}, Files: files}, nil
 }
 
 func (r *resourceGitReader) RawDiff(context.Context, string, string, bool, int) (RawDiffResult, error) {
-	return RawDiffResult{Baseline: DiffBaseline{Type: DiffBaselineEmptyTree}, Patch: r.patch}, nil
+	return RawDiffResult{Baseline: DiffBaseline{Type: diffBaselineEmptyTree}, Patch: r.patch}, nil
 }
 
 func TestNewVCSRequiresCompleteDependencies(t *testing.T) {
@@ -41,7 +41,7 @@ func TestNewVCSRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		scope *Scope
-		git   GitReader
+		git   gitReader
 	}{
 		{name: "scope", git: &resourceGitReader{}},
 		{name: "reader", scope: scope},
@@ -55,7 +55,7 @@ func TestNewVCSRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newVCS(t *testing.T, scope *Scope, git GitReader) *VCS {
+func newVCS(t *testing.T, scope *Scope, git gitReader) *VCS {
 	t.Helper()
 	vcs, err := NewVCS(scope, git)
 	if err != nil {
@@ -65,7 +65,7 @@ func newVCS(t *testing.T, scope *Scope, git GitReader) *VCS {
 }
 
 func TestVCSRejectsUnboundedCompleteChangeCatalog(t *testing.T) {
-	changes := make([]FileChange, MaxWorkspaceChanges+1)
+	changes := make([]FileChange, maxWorkspaceChanges+1)
 	for index := range changes {
 		changes[index] = FileChange{Path: "changed", Status: FileStatusModified}
 	}
@@ -127,7 +127,7 @@ func TestVCSDiffRejectsRepeatedRetainedPath(t *testing.T) {
 
 func TestVCSRejectsUnboundedRawDiffFromDirectPort(t *testing.T) {
 	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
-		patch: strings.Repeat("p", MaxWorkspaceDiffBytes+1),
+		patch: strings.Repeat("p", maxWorkspaceDiffBytes+1),
 	})
 
 	if _, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo", Raw: true}); !errors.Is(err, ErrVCSResultTooLarge) {
@@ -148,8 +148,8 @@ func TestVCSPassesApplicationLimitsToTheGitReader(t *testing.T) {
 	if _, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo", RowLimit: limit}); err != nil {
 		t.Fatal(err)
 	}
-	if reader.changeMax != MaxWorkspaceChanges || reader.diffFiles != MaxWorkspaceDiffFiles ||
-		reader.diffRows != 42 || reader.diffBytes != MaxWorkspaceDiffBytes {
+	if reader.changeMax != maxWorkspaceChanges || reader.diffFiles != maxWorkspaceDiffFiles ||
+		reader.diffRows != 42 || reader.diffBytes != maxWorkspaceDiffBytes {
 		t.Fatalf(
 			"reader limits = changes:%d files:%d rows:%d bytes:%d",
 			reader.changeMax,
@@ -161,15 +161,15 @@ func TestVCSPassesApplicationLimitsToTheGitReader(t *testing.T) {
 }
 
 func TestDiffRowLimitOwnsDefaultAndClamp(t *testing.T) {
-	if rows := DefaultDiffRowLimit().Rows(); rows != MaxWorkspaceDiffRows {
-		t.Fatalf("default Rows = %d, want %d", rows, MaxWorkspaceDiffRows)
+	if rows := DefaultDiffRowLimit().Rows(); rows != maxWorkspaceDiffRows {
+		t.Fatalf("default Rows = %d, want %d", rows, maxWorkspaceDiffRows)
 	}
-	large, err := NewDiffRowLimit(MaxWorkspaceDiffRows + 1)
+	large, err := NewDiffRowLimit(maxWorkspaceDiffRows + 1)
 	if err != nil {
 		t.Fatalf("NewDiffRowLimit: %v", err)
 	}
-	if rows := large.Rows(); rows != MaxWorkspaceDiffRows {
-		t.Fatalf("clamped Rows = %d, want %d", rows, MaxWorkspaceDiffRows)
+	if rows := large.Rows(); rows != maxWorkspaceDiffRows {
+		t.Fatalf("clamped Rows = %d, want %d", rows, maxWorkspaceDiffRows)
 	}
 	for _, rows := range []int{0, -1} {
 		if _, constructErr := NewDiffRowLimit(rows); !errors.Is(constructErr, ErrPageLimit) {

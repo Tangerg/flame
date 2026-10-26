@@ -15,16 +15,14 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -1383,7 +1381,7 @@ type staticInteractionTools struct {
 	identities []domaintool.Ref
 }
 
-var _ InteractionToolResolver = (*toolset.Resolver)(nil)
+var _ interactionToolResolver = (*toolset.Resolver)(nil)
 
 func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, capturedMCP []domaintool.Ref) (toolset.Manifest, error) {
 	manifest, err := identifyTestManifest(s.manifest, s.identities...)
@@ -1428,21 +1426,21 @@ func (concurrentInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocatio
 type allowInteractionTools struct{}
 
 func (allowInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
-	return AllowTool(), nil
+	return allowTool(), nil
 }
 
-func (allowInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
-	return AllowTool(), nil
+func (allowInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, run.InterruptResolution) (ToolAuthorizationDecision, error) {
+	return allowTool(), nil
 }
 
 type denyingInteractionTools struct{ reason string }
 
 func (d denyingInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
-	return DenyTool(d.reason), nil
+	return denyTool(d.reason), nil
 }
 
-func (d denyingInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
-	return DenyTool(d.reason), nil
+func (d denyingInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, run.InterruptResolution) (ToolAuthorizationDecision, error) {
+	return denyTool(d.reason), nil
 }
 
 type selectiveDenyInteractionTools struct {
@@ -1455,16 +1453,16 @@ func (s selectiveDenyInteractionTools) AuthorizeTool(
 	request ToolAuthorizationRequest,
 ) (ToolAuthorizationDecision, error) {
 	if request.Tool.ModelName() != s.name {
-		return AllowTool(), nil
+		return allowTool(), nil
 	}
-	return DenyTool(s.reason), nil
+	return denyTool(s.reason), nil
 }
 
 func (s selectiveDenyInteractionTools) ResolveToolApproval(
 	ctx context.Context,
 	request ToolAuthorizationRequest,
 	_ runs.ApprovalPrompt,
-	_ interrupt.Resolution,
+	_ run.InterruptResolution,
 ) (ToolAuthorizationDecision, error) {
 	return s.AuthorizeTool(ctx, request)
 }

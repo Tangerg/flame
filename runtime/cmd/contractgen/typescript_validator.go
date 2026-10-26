@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"maps"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"

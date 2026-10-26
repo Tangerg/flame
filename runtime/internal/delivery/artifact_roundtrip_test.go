@@ -16,9 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -35,8 +33,7 @@ import (
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
 	if protocol.SessionArtifactVersion != 31 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v31",
-			protocol.SessionArtifactVersion)
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v31", protocol.SessionArtifactVersion)
 	}
 }
 
@@ -420,7 +417,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 
 		Capabilities: run.Capabilities{
 			ChildRuns:      true,
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
+			InterruptKinds: []run.InterruptKind{run.InterruptApproval},
 		},
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),
 		UpdatedAt: time.Unix(3, 0).UTC(), MessageMark: run.MessageMarkAt(1)}),
@@ -460,7 +457,7 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 			RetryAfter: 30 * time.Second,
 		}, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, ActiveDuration: 500 * time.Millisecond}),
 		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
+			InterruptKinds: []run.InterruptKind{run.InterruptQuestion},
 		},
 		CreatedAt: time.Unix(4, 0).UTC(), FinishedAt: time.Unix(5, 0).UTC(),
 		UpdatedAt: time.Unix(5, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),
@@ -553,8 +550,8 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	ctx := t.Context()
 	body := strings.Repeat("offloaded-", 200)
-	id := toolresult.ID(rand.Text())
-	if err := rt.toolResults.Stage(ctx, toolresult.Stage{
+	id := transcript.ToolResultID(rand.Text())
+	if err := rt.toolResults.Stage(ctx, transcript.ToolResultStage{
 		ID: id, SessionID: sessionID, Body: body,
 	}); err != nil {
 		t.Fatalf("stage tool result: %v", err)
@@ -569,7 +566,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
 		OccurredAt: time.Unix(10, 0).UTC(), FinishedAt: time.Unix(11, 0).UTC(),
 		Tool: &transcript.ToolInvocation{
-			Name: "vendor_tool", Result: &previewValue, Offload: &toolresult.Ref{ID: id},
+			Name: "vendor_tool", Result: &previewValue, Offload: &transcript.ToolResultRef{ID: id},
 		},
 	})); err != nil {
 		t.Fatalf("seed offloaded item: %v", err)

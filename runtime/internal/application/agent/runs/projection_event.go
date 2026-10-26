@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -84,7 +84,7 @@ type PlanSnapshot struct {
 // Plan state is useful to a cold query, but it is not a change and therefore is
 // never a plan.updated event.
 func (p PlanSnapshot) validate() error {
-	if err := resourceid.ValidateSession(p.SessionID); err != nil {
+	if err := flameidentity.ValidateSession(p.SessionID); err != nil {
 		return fmt.Errorf("runs: Plan snapshot: %w", err)
 	}
 	if p.Revision == 0 {
@@ -310,7 +310,7 @@ func (d ToolArgumentsItemDelta) Text() string { return d.text }
 func (d ToolOutputItemDelta) Text() string    { return d.text }
 
 func (i ItemChanged) validate() error {
-	if err := resourceid.ValidateItem(i.ItemID); err != nil {
+	if err := flameidentity.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("runs: changed Item: %w", err)
 	}
 	if i.Delta == nil {

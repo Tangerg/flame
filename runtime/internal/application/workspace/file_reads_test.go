@@ -13,7 +13,7 @@ func TestNewFilesRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		scope *Scope
-		files FileBrowser
+		files fileBrowser
 	}{
 		{name: "scope", files: &fileReadPort{}},
 		{name: "browser", scope: scope},
@@ -27,7 +27,7 @@ func TestNewFilesRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newFiles(t *testing.T, scope *Scope, browser FileBrowser) *Files {
+func newFiles(t *testing.T, scope *Scope, browser fileBrowser) *Files {
 	t.Helper()
 	files, err := NewFiles(scope, browser)
 	if err != nil {

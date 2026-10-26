@@ -6,8 +6,8 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -31,15 +31,15 @@ const (
 type CommandBinding struct {
 	ID           string
 	Method       string
-	Input        jsoninput.Input
-	Contract     jsoninput.Input
+	Input        jsonvalue.Value
+	Contract     jsonvalue.Value
 	Contribution ContributionID
 	Export       string
 	Provider     Dependency
 	Activation   Activation
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
-	Invocation   capability.Invocation
+	Invocation   extension.Invocation
 }
 
 type Command struct{ record CommandBinding }
@@ -59,15 +59,15 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Contribution.Validate(); err != nil {
 		return nil, err
 	}
-	if !capability.ValidExportName(record.Export) {
+	if !extension.ValidExportName(record.Export) {
 		return nil, fmt.Errorf("%w: command export", ErrInvalid)
 	}
-	contract, err := capability.Parse(record.Contract.JSON())
+	contract, err := extension.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return nil, err
 	}
 	method, found := contract.Method(record.Method)
-	if !found || method.Kind() != capability.Mutation {
+	if !found || method.Kind() != extension.Mutation {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
 	}
 	if err := record.Invocation.Validate(); err != nil {
@@ -87,7 +87,7 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 		return nil, fmt.Errorf("%w: command dependencies omit the original provider", ErrInvalid)
 	}
 	record.Activation = record.Activation.Clone()
-	if record.Invocation.Target.Scope == capability.ScopeInstallation && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
+	if record.Invocation.Target.Scope == extension.ScopeInstallation && record.Invocation.Target.Reference != record.Provider.InstallationID.String() {
 		return nil, fmt.Errorf("%w: command target differs from its installation", ErrInvalid)
 	}
 	if err := record.Server.Validate(); err != nil {
@@ -106,7 +106,7 @@ func (c *Command) Snapshot() CommandBinding {
 	record.Activation = record.Activation.Clone()
 	return record
 }
-func (c *Command) Matches(method string, input jsoninput.Input) bool {
+func (c *Command) Matches(method string, input jsonvalue.Value) bool {
 	return c.record.Method == method && c.record.Input == input
 }
 func (c *Command) Pending() bool {

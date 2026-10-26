@@ -10,14 +10,12 @@ import (
 	"path/filepath"
 	"slices"
 
-	sdk "github.com/Tangerg/scope/skills"
-
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	sdk "github.com/Tangerg/scope/skills"
 )
 
 // SkillSource is Runtime's finite admission boundary around the Agent
@@ -32,15 +30,15 @@ type SkillSource struct {
 // NewSkillSource admits documents and resources beneath an explicit physical
 // boundary. Discovery, execution and automatic revision share this admission.
 func NewSkillSource(root, boundary string) (*SkillSource, error) {
-	physicalRoot, err := pathidentity.Resolve("", root)
+	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: resolve root %q: %w", root, err)
 	}
-	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	physicalBoundary, err := filesystem.ResolvePath("", boundary)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: resolve boundary %q: %w", boundary, err)
 	}
-	inside, err := pathidentity.Contains(physicalBoundary, physicalRoot)
+	inside, err := filesystem.ContainsPath(physicalBoundary, physicalRoot)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: confine root %q: %w", root, err)
 	}
@@ -169,15 +167,15 @@ func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, erro
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
 	path := filepath.Join(name, sdk.SkillFile)
-	file, info, openErr := fileinput.OpenAt(root, path, domainskills.MaxAuthoredSkillDocumentBytes)
+	file, info, openErr := filesystem.OpenFileAt(root, path, domainskills.MaxAuthoredSkillDocumentBytes)
 	if openErr != nil {
 		if closeErr := root.Close(); closeErr != nil {
 			return nil, fmt.Errorf("runtime skill source: open %q: %w", name, errors.Join(openErr, closeErr))
 		}
 		switch {
-		case errors.Is(openErr, fileinput.ErrNotRegular):
+		case errors.Is(openErr, filesystem.ErrNotRegular):
 			return nil, fmt.Errorf("%w %q: document admission: %w", sdk.ErrInvalidSkill, name, openErr)
-		case errors.Is(openErr, fileinput.ErrTooLarge):
+		case errors.Is(openErr, filesystem.ErrFileTooLarge):
 			return nil, fmt.Errorf(
 				"%w: %q document admission: %w",
 				domainskills.ErrDocumentTooLarge,
@@ -196,7 +194,7 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 		cancellation.Reader(ctx, source.file),
 		domainskills.MaxAuthoredSkillDocumentBytes+1,
 	))
-	verifyErr := fileinput.VerifyAtVersion(source.file, source.info, source.root, source.path)
+	verifyErr := filesystem.VerifyAtVersion(source.file, source.info, source.root, source.path)
 	closeErr := source.close()
 	if readErr != nil || closeErr != nil {
 		return nil, fmt.Errorf(
@@ -264,7 +262,7 @@ func (r *SkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
-	directory, _, err := fileinput.OpenDirectoryAt(root, ".")
+	directory, _, err := filesystem.OpenDirectoryAt(root, ".")
 	if err != nil {
 		return nil, errors.Join(err, root.Close())
 	}

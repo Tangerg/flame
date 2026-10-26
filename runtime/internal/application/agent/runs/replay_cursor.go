@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/opaquetoken"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 // maximumReplayEpochBytes bounds the process-local authority carried inside
@@ -27,8 +26,8 @@ var (
 // journal is the only authority that may mint, interpret, or compare one.
 type replayPosition struct {
 	epoch     replayEpoch
-	runID     resourceid.RunID
-	segmentID resourceid.SegmentID
+	runID     identity.RunID
+	segmentID identity.SegmentID
 	sequence  uint64
 }
 
@@ -81,12 +80,12 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 	if err := position.validate(); err != nil {
 		return "", fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
-	token, err := opaquetoken.Encode(encodedReplayPosition{
+	token, err := pagination.EncodeToken(encodedReplayPosition{
 		Epoch: position.epoch.String(),
 		RunID: position.runID.String(), SegmentID: position.segmentID.String(), Sequence: position.sequence,
-	}, runtimeidentity.MaximumCursorCharacters)
+	}, identity.MaximumCursorCharacters)
 	if err != nil {
-		if errors.Is(err, opaquetoken.ErrTooLarge) {
+		if errors.Is(err, pagination.ErrTokenTooLarge) {
 			return "", errReplayCursorTooLarge
 		}
 		return "", fmt.Errorf("%w: encode: %v", errMalformedReplayCursor, err)
@@ -95,22 +94,22 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 }
 
 func decodeReplayCursor(token string) (replayPosition, error) {
-	if len(token) > runtimeidentity.MaximumCursorCharacters {
+	if len(token) > identity.MaximumCursorCharacters {
 		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, errReplayCursorTooLarge)
 	}
 	var encoded encodedReplayPosition
-	if err := opaquetoken.Decode(token, runtimeidentity.MaximumCursorCharacters, &encoded); err != nil {
+	if err := pagination.DecodeToken(token, identity.MaximumCursorCharacters, &encoded); err != nil {
 		return replayPosition{}, errMalformedReplayCursor
 	}
 	epoch, err := parseReplayEpoch(encoded.Epoch)
 	if err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
-	runID, err := resourceid.ParseRun(encoded.RunID)
+	runID, err := identity.ParseRun(encoded.RunID)
 	if err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
-	segmentID, err := resourceid.ParseSegment(encoded.SegmentID)
+	segmentID, err := identity.ParseSegment(encoded.SegmentID)
 	if err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
@@ -122,7 +121,7 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 }
 
 func validateReplayEpochText(epoch string) error {
-	if err := runtimeidentity.ValidateURISafeASCII(epoch, maximumReplayEpochBytes); err != nil {
+	if err := identity.ValidateURISafeASCII(epoch, maximumReplayEpochBytes); err != nil {
 		return fmt.Errorf("replay epoch %w", err)
 	}
 	return nil

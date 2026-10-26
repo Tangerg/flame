@@ -11,10 +11,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	schedulesqlite "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 type lostOpeningWriter struct {
@@ -41,7 +40,7 @@ func (w lostOpeningWriter) Write(body []byte) (int, error) {
 func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testing.T) {
 	cfg := poMCPConfig(t)
 	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.Stores.Idempotency, IdempotencyNamespace: cfg.Stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
 		_ = host.Close()
 		t.Fatal(err)
@@ -86,7 +85,7 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, scheduledomain.Draft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", CWD: cfg.DefaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
@@ -100,14 +99,8 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	}
 	current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	db, err := schedulesqlite.Open(t.Context(), filepath.Join(cfg.Stores.DataDirectory, "plugins", "data", installed.ID, "schedules.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending, readErr := schedulesqlite.NewScheduleStore(db).PendingManual(t.Context(), "", 1)
-	if err := errors.Join(readErr, db.Close()); err != nil || len(pending) != 1 || pending[0].RunID() != accepted.RunID || pending[0].SessionID() != current.SessionID {
-		t.Fatalf("Core acceptance did not leave original private pending work: %+v, %v", pending, err)
-	}
+	// The private capture is covered by Schedules' own lost-acceptance tests.
+	// Here, a restart must recover the same public Run receipt after Core retires it.
 	r.close()
 	r = poMCPOpen(t, cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: current.SessionID}, "retire-accepted-material")

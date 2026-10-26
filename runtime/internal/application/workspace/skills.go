@@ -10,9 +10,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/samber/lo"
 )
 
 var ErrSkillUnavailable = errors.New("workspace: skill is unavailable")
@@ -68,7 +68,7 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 		{name: "proposal store", value: proposals},
 		{name: "authored observation", value: observations},
 	} {
-		if dependency.Missing(required.value) {
+		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: skills %s is required", required.name)
 		}
 	}

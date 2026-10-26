@@ -326,7 +326,7 @@ func TestServersCloseCancelsAndJoinsStartupCleanup(t *testing.T) {
 	if err := servers.Close(); !errors.Is(err, cleanupErr) {
 		t.Fatalf("Close error = %v, want late cleanup error", err)
 	}
-	if err := <-clientErr; !errors.Is(err, ErrClosed) {
+	if err := <-clientErr; !errors.Is(err, errClosed) {
 		t.Fatalf("clientFor error = %v, want ErrClosed", err)
 	}
 }

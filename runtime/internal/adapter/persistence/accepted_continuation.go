@@ -6,7 +6,7 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 // AcceptedContinuationStore persists the Run-owned binding that lets boot recovery
@@ -15,12 +15,12 @@ import (
 // resolutions stay in the transcript. Put joins the acceptance transaction through
 // the context connection, so the binding and the answers it routes commit
 // together. The DB must have been opened via [Open].
-type AcceptedContinuationStore struct {
+type acceptedContinuationStore struct {
 	db *sql.DB
 }
 
-func NewAcceptedContinuationStore(db *sql.DB) *AcceptedContinuationStore {
-	return &AcceptedContinuationStore{db: db}
+func newAcceptedContinuationStore(db *sql.DB) *acceptedContinuationStore {
+	return &acceptedContinuationStore{db: db}
 }
 
 // acceptedContinuationRecord is SQLite's technical representation: the Session of
@@ -37,7 +37,7 @@ type acceptedSegmentRecord struct {
 	SegmentID string `json:"segment_id"`
 }
 
-func (s *AcceptedContinuationStore) saveContinuation(ctx context.Context, record acceptedContinuationRecord) error {
+func (s *acceptedContinuationStore) saveContinuation(ctx context.Context, record acceptedContinuationRecord) error {
 	payload, err := json.Marshal(record.Interrupt)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode accepted continuation: %w", err)
@@ -46,7 +46,7 @@ func (s *AcceptedContinuationStore) saveContinuation(ctx context.Context, record
 	if err != nil {
 		return err
 	}
-	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
+	_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`INSERT INTO accepted_continuations(root_run_id, session_id, interrupt, segments, input_item_id)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(root_run_id) DO UPDATE SET
@@ -59,8 +59,8 @@ func (s *AcceptedContinuationStore) saveContinuation(ctx context.Context, record
 	return nil
 }
 
-func (s *AcceptedContinuationStore) Delete(ctx context.Context, rootRunID string) error {
-	_, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx,
+func (s *acceptedContinuationStore) Delete(ctx context.Context, rootRunID string) error {
+	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx,
 		`DELETE FROM accepted_continuations WHERE root_run_id = ?`, rootRunID)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete accepted continuation: %w", err)
@@ -68,8 +68,8 @@ func (s *AcceptedContinuationStore) Delete(ctx context.Context, rootRunID string
 	return nil
 }
 
-func (s *AcceptedContinuationStore) continuationRecords(ctx context.Context) ([]acceptedContinuationRecord, error) {
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx,
+func (s *acceptedContinuationStore) continuationRecords(ctx context.Context) ([]acceptedContinuationRecord, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx,
 		`SELECT root_run_id, session_id, interrupt, segments, input_item_id FROM accepted_continuations ORDER BY root_run_id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list accepted continuations: %w", err)

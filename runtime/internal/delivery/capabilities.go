@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -44,7 +44,7 @@ func (e *Endpoint) missingFeatureRequirements(
 	if discovered == nil {
 		return nil, errors.New("operation: the runtime reported no capabilities")
 	}
-	client, _ := ClientCapabilitiesFrom(ctx)
+	client, _ := clientCapabilitiesFrom(ctx)
 	return protocol.MissingFeatureRequirements(
 		discovered.Capabilities.Features,
 		client,
@@ -85,7 +85,7 @@ func lookupValue(value reflect.Value, path string) (reflect.Value, bool) {
 		if !current.IsValid() || current.Kind() != reflect.Struct {
 			return reflect.Value{}, false
 		}
-		field, ok := contractshape.LookupField(current.Type(), segment)
+		field, ok := jsonvalue.LookupField(current.Type(), segment)
 		if !ok {
 			return reflect.Value{}, false
 		}

@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
-
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -157,7 +156,7 @@ func (m modelContextBudget) estimatedTokens(messages []chat.Message) (int, error
 	if len(effective) == 0 {
 		return 0, nil
 	}
-	tokens, err := modeltext.EstimateRequestTokens(&chat.Request{Messages: effective, Tools: m.tools, Options: m.options})
+	tokens, err := model.EstimateRequestTokens(&chat.Request{Messages: effective, Tools: m.tools, Options: m.options})
 	if err != nil {
 		return 0, fmt.Errorf("maintenance: estimate model context: %w", err)
 	}
