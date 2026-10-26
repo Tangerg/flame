@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	hookdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/optional"
 )
 
 func ctxBG() context.Context { return context.Background() }

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestResumeFingerprintCoversMeaningAndCanonicalSets(t *testing.T) {

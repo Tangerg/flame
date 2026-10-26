@@ -3,7 +3,7 @@ package models
 import (
 	"context"
 
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 

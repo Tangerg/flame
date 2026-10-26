@@ -48,14 +48,6 @@ func TestExportedNamesUseTheirPackageQualifier(t *testing.T) {
 	}
 }
 
-// acceptedQualifierEchoes names exact value families whose shared suffix is the
-// domain language rather than stutter. model.ModelIdentity is one of the parallel
-// {Provider,Model,ReasoningEffort}Identity trio; renaming it to model.Identity
-// would break that family the same way renaming run.Run would.
-var acceptedQualifierEchoes = map[string]bool{
-	"model.ModelIdentity": true,
-}
-
 func packageQualifierPrefixes(name string) []string {
 	prefixes := []string{name}
 	singular := name
@@ -76,7 +68,7 @@ func packageQualifierPrefixes(name string) []string {
 
 func assertNameUsesQualifier(t *testing.T, path, pkg string, prefixes []string, name string) {
 	t.Helper()
-	if !ast.IsExported(name) || acceptedQualifierEchoes[pkg+"."+name] {
+	if !ast.IsExported(name) {
 		return
 	}
 	for _, prefix := range prefixes {

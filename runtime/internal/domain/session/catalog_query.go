@@ -7,9 +7,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // MaximumCatalogSearchCharacters bounds one user-facing session catalog

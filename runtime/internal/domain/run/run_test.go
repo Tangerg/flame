@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 func mustRunSelection(t testing.TB) modelchoice.Selection {

@@ -3,6 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"reflect"
 	"testing"
 	"time"
@@ -12,9 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -26,14 +27,14 @@ func TestCompactionCommitsHistoryWatermarksAndItemTogether(t *testing.T) {
 	for _, boundary := range []string{"success", "item failure", "commit acknowledgement lost"} {
 		t.Run(boundary, func(t *testing.T) {
 			ctx := t.Context()
-			db, err := sqlite.Open(ctx, ":memory:")
+			db, err := persistencefixture.Open(t, ctx, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			state := sqlite.NewRunStore(db)
-			items := sqlite.NewTranscriptStore(db)
-			history := mustConversationStore(t, sqlite.NewMessageStore(db))
+			state := db.Runs
+			items := db.Transcript
+			history := mustConversationStore(t, db.ChatHistory)
 			at := time.Unix(20, 0).UTC()
 			previous := testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_previous", SessionID: "ses_1", State: run.Completed,
@@ -71,7 +72,7 @@ func TestCompactionCommitsHistoryWatermarksAndItemTogether(t *testing.T) {
 			}
 			commit := runs.EventCommit{RunID: "run_active", SessionID: "ses_1", SegmentID: "seg_active", CommitID: testCommitID("run_commit_compaction"), Items: []transcript.Item{item}, Compaction: new(plan)}
 			tx := func(ctx context.Context, apply func(context.Context) error) error {
-				return sqlitebase.RunInTx(ctx, db, apply)
+				return db.Transactor(ctx, apply)
 			}
 			compactions, err := persistence.NewConversationCompactions(history, state, tx)
 			if err != nil {

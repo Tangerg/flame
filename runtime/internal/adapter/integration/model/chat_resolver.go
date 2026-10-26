@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -90,42 +90,42 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Se
 	if err != nil {
 		return ResolvedChat{}, err
 	}
-	client, counter, err := llm.BuildChat(ctx, spec, selection.Model())
+	client, counter, err := buildChat(ctx, spec, selection.Model())
 	if err != nil {
 		return ResolvedChat{}, err
 	}
 	return NewResolvedChat(client, counter)
 }
 
-func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelchoice.Selection) (llm.ClientSpec, error) {
+func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelchoice.Selection) (clientSpec, error) {
 	if err := selection.ValidateExact(); err != nil {
-		return llm.ClientSpec{}, fmt.Errorf("model: chat selection: %w", err)
+		return clientSpec{}, fmt.Errorf("model: chat selection: %w", err)
 	}
 	providerID := selection.Provider()
 	entry, ok, err := c.providers.Get(ctx, providerID)
 	if err != nil {
-		return llm.ClientSpec{}, err
+		return clientSpec{}, err
 	}
 	if !ok {
 		entry, err = provider.New(providerID)
 		if err != nil {
-			return llm.ClientSpec{}, err
+			return clientSpec{}, err
 		}
 	}
 
 	inputs, err := resolveProviderClientInputs(providerID, entry)
 	if err != nil {
-		return llm.ClientSpec{}, err
+		return clientSpec{}, err
 	}
 	spec, err := inputs.clientSpec()
 	if err != nil {
 		if errors.Is(err, ErrCredentialUnavailable) {
-			return llm.ClientSpec{}, &run.FailureError{
+			return clientSpec{}, &run.FailureError{
 				Kind: run.FailureInvalidCredentials,
 				Err:  fmt.Errorf("model: provider %q requires an API key", providerID),
 			}
 		}
-		return llm.ClientSpec{}, err
+		return clientSpec{}, err
 	}
 	return spec, nil
 }

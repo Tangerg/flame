@@ -9,9 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	skillspec "github.com/Tangerg/scope/skills"

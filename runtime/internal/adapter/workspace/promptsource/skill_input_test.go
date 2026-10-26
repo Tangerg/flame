@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

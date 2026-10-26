@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // ProviderSelection owns a product composition choice. Availability and a

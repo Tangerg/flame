@@ -5,9 +5,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type requestMetaKey struct{}
@@ -35,9 +35,6 @@ func ClientCapabilitiesFrom(ctx context.Context) (*protocol.ClientCapabilities, 
 }
 
 func withAfterEventID(ctx context.Context, eventID string) context.Context {
-	if eventID == "" {
-		return ctx
-	}
 	return context.WithValue(ctx, afterEventIDKey{}, eventID)
 }
 

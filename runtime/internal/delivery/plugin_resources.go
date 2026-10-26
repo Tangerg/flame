@@ -9,8 +9,8 @@ import (
 	"path"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type resourceLease struct {

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // wireSessionErr maps the session domain's not-found sentinel onto the wire

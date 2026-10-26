@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/pagination"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type pausedInterruptPage struct {
@@ -44,23 +44,23 @@ func (p *pausedInterruptPage) ListPage(ctx context.Context, sessionID, rootRunID
 
 func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "runtime.db")
-	reader, err := sqlite.Open(t.Context(), path)
+	reader, err := openDatabase(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reader.Close() })
-	writer, err := sqlite.Open(t.Context(), path)
+	writer, err := openDatabase(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = writer.Close() })
 	created := time.Date(2026, 10, 9, 1, 0, 0, 0, time.UTC)
 	sess := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_snapshot", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: created, UpdatedAt: created})
-	if err := sqlite.NewSessionStore(writer).Insert(t.Context(), sess); err != nil {
+	if err := NewSessionStore(writer).Insert(t.Context(), sess); err != nil {
 		t.Fatal(err)
 	}
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	runStore := sqlite.NewRunStore(writer)
+	runStore := NewRunStore(writer)
 	draft := run.Draft{RunID: "run_snapshot", SessionID: sess.ID(), SegmentID: "seg_snapshot", ModelSelection: testsupport.DefaultModelSelection(), Capabilities: capabilities, CreatedAt: created}
 	if err := runStore.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
@@ -77,7 +77,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{ID: "item_snapshot", SessionID: sess.ID(), RunID: root.ID(), Kind: transcript.QuestionItem, OccurredAt: created, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}})
-	if err := sqlite.NewTranscriptStore(writer).AppendItem(t.Context(), item); err != nil {
+	if err := NewTranscriptStore(writer).AppendItem(t.Context(), item); err != nil {
 		t.Fatal(err)
 	}
 	pending := runs.Pending{RootRunID: root.ID(), ExecutorID: "execution_snapshot", CreatedAt: created.Add(time.Second),
@@ -85,14 +85,14 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		Bindings:      []runs.InterruptBinding{{InterruptItemID: item.ID(), MemberID: "member_snapshot", RequestID: "request_snapshot"}},
 		Continuations: []runs.Continuation{{RunID: root.ID(), MemberID: "member_snapshot"}},
 	}
-	if err := NewInterruptStore(sqlite.NewInterruptStore(writer)).Open(t.Context(), pending); err != nil {
+	if err := NewInterruptStore(writer).Open(t.Context(), pending); err != nil {
 		t.Fatal(err)
 	}
-	pages := &pausedInterruptPage{QueryInterruptReader: NewInterruptStore(sqlite.NewInterruptStore(reader)), observed: make(chan struct{}), resume: make(chan struct{})}
+	pages := &pausedInterruptPage{QueryInterruptReader: NewInterruptStore(reader), observed: make(chan struct{}), resume: make(chan struct{})}
 	observed := pages.observed
 	resume := sync.OnceFunc(func() { close(pages.resume) })
 	defer resume()
-	models, err := NewModelInvocationReader(sqlite.NewModelInvocationStore(reader))
+	models, err := NewModelInvocationReader(NewModelInvocationStore(reader))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,9 +100,9 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
 			return sqlitebase.RunReadSnapshot(ctx, reader, read)
 		},
-		Transcript: sqlite.NewTranscriptStore(reader), Interrupts: pages,
-		Runs: sqlite.NewRunStore(reader), Sessions: sqlite.NewSessionStore(reader), Plan: sqlite.NewPlanStore(reader),
-		Trajectory: &TrajectoryReader{store: sqlite.NewTrajectoryStore(reader)}, ModelInvocations: models,
+		Transcript: NewTranscriptStore(reader), Interrupts: pages,
+		Runs: NewRunStore(reader), Sessions: NewSessionStore(reader), Plan: NewPlanStore(reader),
+		Trajectory: &TrajectoryReader{store: newTrajectoryStore(reader)}, ModelInvocations: models,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = sqlitebase.RunInTx(t.Context(), writer, func(ctx context.Context) error {
-		if _, found, err := sqlite.NewInterruptStore(writer).Consume(ctx, root.ID()); err != nil || !found {
+		if _, found, err := NewInterruptStore(writer).Consume(ctx, root.ID()); err != nil || !found {
 			return fmt.Errorf("consume interrupt: found=%t: %w", found, err)
 		}
 		// Acceptance consumes the open set and resumes the Run in one transaction,
@@ -139,7 +139,7 @@ func TestInterruptPageReadsTheHandoffAndItemsFromOneSnapshot(t *testing.T) {
 		})); err != nil {
 			return err
 		}
-		return sqlite.NewTranscriptStore(writer).ReplaceItem(ctx, change)
+		return NewTranscriptStore(writer).ReplaceItem(ctx, change)
 	})
 	resume()
 	if err != nil {

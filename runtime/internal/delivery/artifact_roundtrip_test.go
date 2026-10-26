@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -21,8 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"maps"
 	"slices"
 	"strconv"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 // The TypeScript validator is COMPILED FROM THE SCHEMA TREE, for the same reason
@@ -216,7 +217,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	out.WriteString("export interface WireNotificationParams {\n")
 	for _, notification := range notifications {
 		node := c.set.walk(notification.ParamsType)
-		name, ok := strings.CutPrefix(node.Ref, refPrefix)
+		name, ok := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
 		if !ok {
 			panic(fmt.Sprintf("contractgen: notification %q params has no published shape", notification.Name))
 		}
@@ -259,9 +260,9 @@ export function projectNotificationParams(method: WireNotificationName, value: u
 
 // compile renders one schema node as a check expression, rendered as if it began at
 // column zero — a container re-indents what it embeds.
-func (c *checkEmitter) compile(node *schema) string {
+func (c *checkEmitter) compile(node *contractgen.Schema) string {
 	if node.Ref != "" {
-		name, _ := strings.CutPrefix(node.Ref, refPrefix)
+		name, _ := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
 		return c.call("ref", "() => CHECKS."+name)
 	}
 
@@ -282,18 +283,18 @@ func (c *checkEmitter) compile(node *schema) string {
 	return c.conjunction(parts)
 }
 
-func (c *checkEmitter) baseCheck(node *schema) string {
+func (c *checkEmitter) baseCheck(node *contractgen.Schema) string {
 	switch {
 	case node.Const != "":
 		return c.call("literal", strconv.Quote(node.Const))
 	case len(node.Enum) > 0:
-		return c.call("enumOf", "["+strings.Join(quoteAll(node.Enum), ", ")+"]")
+		return c.call("enumOf", "["+strings.Join(contractgen.QuoteAll(node.Enum), ", ")+"]")
 	default:
 		return c.value(node)
 	}
 }
 
-func (c *checkEmitter) stringChecks(node *schema) []string {
+func (c *checkEmitter) stringChecks(node *contractgen.Schema) []string {
 	var checks []string
 	if node.MinLength != nil {
 		checks = append(checks, c.call("minLength", strconv.Itoa(*node.MinLength)))
@@ -307,7 +308,7 @@ func (c *checkEmitter) stringChecks(node *schema) []string {
 	return checks
 }
 
-func (c *checkEmitter) numericChecks(node *schema) []string {
+func (c *checkEmitter) numericChecks(node *contractgen.Schema) []string {
 	var checks []string
 	if node.Minimum != nil {
 		checks = append(checks, c.call("minimum", strconv.Quote(strconv.FormatInt(*node.Minimum, 10))))
@@ -321,7 +322,7 @@ func (c *checkEmitter) numericChecks(node *schema) []string {
 	return checks
 }
 
-func (c *checkEmitter) collectionChecks(node *schema) []string {
+func (c *checkEmitter) collectionChecks(node *contractgen.Schema) []string {
 	var checks []string
 	if node.MinItems != nil {
 		checks = append(checks, c.call("minItems", strconv.Itoa(*node.MinItems)))
@@ -341,7 +342,7 @@ func (c *checkEmitter) collectionChecks(node *schema) []string {
 	return checks
 }
 
-func (c *checkEmitter) compositionChecks(node *schema) []string {
+func (c *checkEmitter) compositionChecks(node *contractgen.Schema) []string {
 	var checks []string
 	if len(node.OneOf) > 0 {
 		checks = append(checks, c.call("oneOf", c.list(node.OneOf)))
@@ -372,27 +373,27 @@ func (c *checkEmitter) conjunction(parts []string) string {
 }
 
 // value renders the `type` keyword and the constraints that ride on it.
-func (c *checkEmitter) value(node *schema) string {
+func (c *checkEmitter) value(node *contractgen.Schema) string {
 	keyword := node.Type
 	switch keyword {
-	case schemaTypeObject:
+	case contractgen.SchemaTypeObject:
 		if node.AdditionalProps != nil {
-			child, ok := node.AdditionalProps.(*schema)
+			child, ok := node.AdditionalProps.(*contractgen.Schema)
 			if !ok {
 				panic(fmt.Sprintf("contractgen: additionalProperties is %T, which the check compiler cannot read", node.AdditionalProps))
 			}
 			return c.call("record", c.compile(child))
 		}
 		return c.call("object", c.properties(node), values(node.Required))
-	case schemaTypeArray:
+	case contractgen.SchemaTypeArray:
 		return c.call("array", c.compile(node.Items))
-	case schemaTypeString:
+	case contractgen.SchemaTypeString:
 		return c.call("text")
-	case schemaTypeInteger:
+	case contractgen.SchemaTypeInteger:
 		return c.call("integer")
-	case schemaTypeNumber:
+	case contractgen.SchemaTypeNumber:
 		return c.call("numeric")
-	case schemaTypeBoolean:
+	case contractgen.SchemaTypeBoolean:
 		return c.call("flag")
 	case "":
 		// A union branch and a conditional rule state fields with no type keyword: the
@@ -406,7 +407,7 @@ func (c *checkEmitter) value(node *schema) string {
 	}
 }
 
-func (c *checkEmitter) properties(node *schema) string {
+func (c *checkEmitter) properties(node *contractgen.Schema) string {
 	names := slices.Sorted(maps.Keys(node.Properties))
 	if len(names) == 0 {
 		return "{}"
@@ -414,7 +415,7 @@ func (c *checkEmitter) properties(node *schema) string {
 	var out strings.Builder
 	out.WriteString("{\n")
 	for _, name := range names {
-		fmt.Fprintf(&out, "  %s: %s,\n", propertyKey(name), indent(c.property(node.Properties[name])))
+		fmt.Fprintf(&out, "  %s: %s,\n", contractgen.PropertyKey(name), indent(c.property(node.Properties[name])))
 	}
 	out.WriteString("}")
 	return out.String()
@@ -422,7 +423,7 @@ func (c *checkEmitter) properties(node *schema) string {
 
 func (c *checkEmitter) property(node any) string {
 	switch typed := node.(type) {
-	case *schema:
+	case *contractgen.Schema:
 		return c.compile(typed)
 	case bool:
 		if typed {
@@ -436,7 +437,7 @@ func (c *checkEmitter) property(node any) string {
 
 // list renders sibling schemas one per line, which keeps a union's diff readable:
 // adding a variant touches one line.
-func (c *checkEmitter) list(nodes []*schema) string {
+func (c *checkEmitter) list(nodes []*contractgen.Schema) string {
 	rendered := make([]string, 0, len(nodes))
 	for _, node := range nodes {
 		rendered = append(rendered, c.compile(node))
@@ -478,7 +479,7 @@ func block(items []string) string {
 }
 
 func values(items []string) string {
-	return "[" + strings.Join(quoteAll(items), ", ") + "]"
+	return "[" + strings.Join(contractgen.QuoteAll(items), ", ") + "]"
 }
 
 // indent moves an already-rendered expression one level into its container.

@@ -7,8 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type stubSkillProposals struct {

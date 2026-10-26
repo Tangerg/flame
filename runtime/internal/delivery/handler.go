@@ -3,11 +3,11 @@ package delivery
 import (
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // HandlerConfig declares the application use cases, notification sources, and

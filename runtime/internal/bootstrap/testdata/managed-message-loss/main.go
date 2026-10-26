@@ -14,7 +14,7 @@ import (
 	"sync"
 	"syscall"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

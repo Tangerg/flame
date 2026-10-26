@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMapGoalErrPreservesInvalidModelIdentity(t *testing.T) {

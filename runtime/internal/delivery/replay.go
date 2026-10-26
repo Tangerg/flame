@@ -17,9 +17,9 @@ import (
 
 	"encoding/json/jsontext"
 
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const idempotencyStoreWriteTimeout = 5 * time.Second

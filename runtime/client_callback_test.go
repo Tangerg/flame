@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

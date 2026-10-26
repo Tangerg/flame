@@ -19,8 +19,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/spf13/viper"
 )
 

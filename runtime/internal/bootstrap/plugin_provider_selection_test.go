@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t *testing.T) {

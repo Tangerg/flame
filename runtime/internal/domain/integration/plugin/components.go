@@ -7,9 +7,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 )
 
 // ComponentScope is the host context a client component renders in.

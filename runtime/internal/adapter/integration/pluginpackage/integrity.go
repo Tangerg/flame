@@ -10,10 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 // maxVerifiedBytes bounds the heap the integrity cache retains; it is the

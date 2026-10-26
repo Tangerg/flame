@@ -4,15 +4,14 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-type TrajectoryReader struct{ store *sqlite.TrajectoryStore }
+type TrajectoryReader struct{ store *trajectoryStore }
 
 func (r *TrajectoryReader) PageTrajectory(ctx context.Context, sessionID string, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]sessions.TrajectoryEntry, error) {
-	var position *sqlite.TrajectoryPosition
+	var position *trajectoryPosition
 	if anchor != nil {
-		position = &sqlite.TrajectoryPosition{OccurredAt: anchor.OccurredAt, Kind: string(anchor.Kind), ID: anchor.ID}
+		position = &trajectoryPosition{OccurredAt: anchor.OccurredAt, Kind: string(anchor.Kind), ID: anchor.ID}
 	}
 	rows, err := r.store.Page(ctx, sessionID, includeDescendants, position, limit)
 	if err != nil {

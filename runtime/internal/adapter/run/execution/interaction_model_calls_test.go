@@ -2,17 +2,18 @@ package execution
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -20,20 +21,20 @@ import (
 func TestIndependentModelPublisherUsesOriginalSourceAndCapturedMemberAfterCancellation(t *testing.T) {
 	for _, known := range []bool{true, false} {
 		t.Run(map[bool]string{true: "known", false: "unreported"}[known], func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "source.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "source.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
 			at := time.Now().UTC().Add(-time.Second)
-			if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_nested", CreatedAt: at, UpdatedAt: at})); err != nil {
+			if err := db.Sessions.Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_nested", CreatedAt: at, UpdatedAt: at})); err != nil {
 				t.Fatal(err)
 			}
 			draft := testsupport.RunDraft(run.Draft{SessionID: "ses_nested", RunID: "run_nested", SegmentID: "seg_nested", CreatedAt: at})
-			if err := sqlite.NewRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := db.Runs.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			journal := sqlite.NewModelInvocationStore(db)
+			journal := db.ModelInvocations
 			active := &interactionSession{scope: runs.ExecutionScope{SessionID: draft.SessionID}, modelEvidence: journal, lifetime: newInteractionLifetime(t.Context())}
 			detach, attached := active.state.attachObserver(t.Context())
 			if !attached {

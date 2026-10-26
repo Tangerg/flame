@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // shapes is the registered union / constraint contract.

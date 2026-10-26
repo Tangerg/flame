@@ -1,4 +1,4 @@
-package persistence_test
+package persistence
 
 import (
 	"path/filepath"
@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -33,7 +32,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
 	acceptance := sampleAcceptance()
 
-	db, err := sqlite.Open(ctx, path)
+	db, err := openDatabase(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,27 +40,27 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 		RunID: acceptance.RunID, SessionID: acceptance.SessionID, SegmentID: acceptance.SegmentID,
 		ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: time.Unix(100, 0).UTC(),
 	}
-	if err := sqlite.NewRunStore(db).Admit(ctx, admit); err != nil {
+	if err := NewRunStore(db).Admit(ctx, admit); err != nil {
 		t.Fatalf("admit run: %v", err)
 	}
-	if err := persistence.NewCommandAcceptanceStore(db).Save(ctx, acceptance); err != nil {
+	if err := NewCommandAcceptanceStore(db).Save(ctx, acceptance); err != nil {
 		t.Fatalf("save acceptance: %v", err)
 	}
 	// A second write under the same key is the global-key refusal that keeps a
 	// retried opening from admitting a second Run.
-	if err := persistence.NewCommandAcceptanceStore(db).Save(ctx, acceptance); err == nil {
+	if err := NewCommandAcceptanceStore(db).Save(ctx, acceptance); err == nil {
 		t.Fatal("re-saving the same key must violate the global command key")
 	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	reopened, err := sqlite.Open(ctx, path)
+	reopened, err := openDatabase(ctx, path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.Close() })
-	store := persistence.NewCommandAcceptanceStore(reopened)
+	store := NewCommandAcceptanceStore(reopened)
 
 	record, err := store.Lookup(ctx, acceptance.Key)
 	if err != nil {
@@ -86,7 +85,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 	}
 
 	// Importing the same RunID must not refill the retired material reference.
-	if err := sqlite.NewRunStore(reopened).Admit(ctx, admit); err != nil {
+	if err := NewRunStore(reopened).Admit(ctx, admit); err != nil {
 		t.Fatalf("re-admit run: %v", err)
 	}
 	refilled, err := store.Lookup(ctx, acceptance.Key)
@@ -103,7 +102,7 @@ func TestCommandAcceptanceSurvivesReopenAndRetiresWithItsRun(t *testing.T) {
 // retry refuses rather than misreading the row as its own acceptance.
 func TestCommandAcceptanceLookupReportsForeignOperation(t *testing.T) {
 	ctx := t.Context()
-	db, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "flame.db"))
+	db, err := openDatabase(ctx, filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +113,7 @@ func TestCommandAcceptanceLookupReportsForeignOperation(t *testing.T) {
 	); err != nil {
 		t.Fatalf("seed generic response: %v", err)
 	}
-	record, err := persistence.NewCommandAcceptanceStore(db).Lookup(ctx, "cancel-once")
+	record, err := NewCommandAcceptanceStore(db).Lookup(ctx, "cancel-once")
 	if err != nil {
 		t.Fatalf("lookup foreign key: %v", err)
 	}

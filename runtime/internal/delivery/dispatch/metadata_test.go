@@ -6,13 +6,15 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/go-sdk/jsonrpc"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 )
 
 func testID(value string) transport.ID {
@@ -150,7 +152,7 @@ func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
 		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.Version)),
 	}
 	original := string(req.Params)
-	newTestRouter(t, nil).Dispatch(context.Background(), req)
+	newTestRouter(t, nil).Dispatch(context.Background(), req, delivery.Options{})
 	if got := string(req.Params); got != original {
 		t.Fatalf("Dispatch mutated caller params: got %s, want %s", got, original)
 	}
@@ -251,10 +253,51 @@ func TestExtractRequestMetaRejectsUnknownFields(t *testing.T) {
 
 func dispatchMetadataFailure(t *testing.T, request *transport.Request) *transport.Error {
 	t.Helper()
-	result := newTestRouter(t, nil).Dispatch(t.Context(), request)
+	result := newTestRouter(t, nil).Dispatch(t.Context(), request, delivery.Options{})
 	if result.Response == nil {
 		return nil
 	}
 	rpcError, _ := errors.AsType[*transport.Error](result.Response.Error)
 	return rpcError
+}
+
+// The envelope is the sole author of request metadata, including an absent _meta.
+func TestEnvelopeMetadataReplacesCallerAndContextMetadata(t *testing.T) {
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("explicit=%t", explicit), func(t *testing.T) {
+			target := &metadataCaptureRuntime{capabilityRuntime: capabilityRuntime{}}
+			router := newTestRouter(t, target)
+			inherited := protocol.RequestMeta{ProtocolVersion: "invalid-parent", ClientInfo: &protocol.ClientInfo{Name: "parent"}}
+			ctx := delivery.WithRequestMeta(t.Context(), inherited)
+			supplied := protocol.RequestMeta{ProtocolVersion: "invalid-option", ClientInfo: &protocol.ClientInfo{Name: "option"}}
+			raw := `{"sinceDays":7}`
+			expected := protocol.RequestMeta{}
+			if explicit {
+				raw = fmt.Sprintf(`{"sinceDays":7,"_meta":{"protocolVersion":%q,"clientInfo":{"name":"envelope","version":"1"}}}`, protocol.Version)
+				expected = protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientInfo: &protocol.ClientInfo{Name: "envelope", Version: "1"}}
+			}
+			result := router.Dispatch(ctx, &transport.Request{ID: testID("metadata"), Method: "usage.summary", Params: jsontext.Value(raw)}, delivery.Options{RequestMeta: supplied})
+			if result.Response == nil || result.Response.Error != nil {
+				t.Fatalf("dispatch failed: %+v", result.Response)
+			}
+			if !target.called || !reflect.DeepEqual(target.metadata, expected) {
+				t.Fatalf("operation metadata = %+v, want %+v", target.metadata, expected)
+			}
+			if parent, _ := delivery.RequestMetaFrom(ctx); !reflect.DeepEqual(parent, inherited) {
+				t.Fatal("dispatch mutated parent metadata")
+			}
+		})
+	}
+}
+
+type metadataCaptureRuntime struct {
+	capabilityRuntime
+	called   bool
+	metadata protocol.RequestMeta
+}
+
+func (r *metadataCaptureRuntime) UsageSummary(ctx context.Context, request protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
+	r.called = true
+	r.metadata, _ = delivery.RequestMetaFrom(ctx)
+	return r.capabilityRuntime.UsageSummary(ctx, request)
 }

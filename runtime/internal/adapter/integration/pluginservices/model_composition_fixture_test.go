@@ -2,18 +2,20 @@ package pluginservices
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -63,7 +65,7 @@ func installedCallCompositionFixture(t *testing.T, contract *capability.Contract
 			t.Fatal(err)
 		}
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,13 +78,13 @@ func installedCallCompositionFixture(t *testing.T, contract *capability.Contract
 	if err := attempt.Run(); err != nil {
 		t.Fatal(err)
 	}
-	db, err := hostsqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	compositions := hostsqlite.NewCompositionStore(db)
-	selections := hostsqlite.NewProviderSelectionStore(db)
+	compositions := db.PluginCompositions
+	selections := db.ProviderSelections
 	if contract.Descriptor().Composition == capability.Selection {
 		choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contract.Descriptor().Reference, Installation: installation.ID(), Contribution: plugin.ContributionID(members[0])})
 		if err != nil {
@@ -104,7 +106,7 @@ func installedCallCompositionFixture(t *testing.T, contract *capability.Contract
 			t.Fatal(err)
 		}
 	}
-	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+	routing, err := plugins.NewCommands(db.PluginCommands, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}

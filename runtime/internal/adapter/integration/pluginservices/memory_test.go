@@ -4,20 +4,22 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	memorysqlite "github.com/Tangerg/flame/plugins/memory/backend/sqlite"
 	"github.com/Tangerg/flame/plugins/memory/backend/transport"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -27,9 +29,9 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -92,7 +94,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
 	callbacks := pluginsdk.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,12 +107,12 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err := attempt.Run(); err != nil {
 		t.Fatal(err)
 	}
-	host, err := hostsqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	host, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = host.Close() })
-	selections := hostsqlite.NewProviderSelectionStore(host)
+	selections := host.ProviderSelections
 	choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contracts.Capability.Descriptor().Reference, Installation: installation.ID(), Contribution: "memory-provider"})
 	if err != nil {
 		t.Fatal(err)
@@ -119,13 +121,13 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 		t.Fatal(err)
 	}
 	admission := plugins.NewAdmission()
-	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(host), admission)
+	routing, err := plugins.NewCommands(host.PluginCommands, admission)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var notices []invalidation.Notice
 	publication := invalidation.Publish(func(notice invalidation.Notice) { notices = append(notices, notice) })
-	calls, err := NewCommandCalls(store, selections, hostsqlite.NewCompositionStore(host), pool, routing, publication)
+	calls, err := NewCommandCalls(store, selections, host.PluginCompositions, pool, routing, publication)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +209,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if _, err := publicAdd.Invoke(addContext); err != nil {
 		t.Fatal(err)
 	}
-	stored, found, err := hostsqlite.NewPluginCommandStore(host).Get(t.Context(), operation.Identity(addContext))
+	stored, found, err := host.PluginCommands.Get(t.Context(), operation.Identity(addContext))
 	if err != nil || !found {
 		t.Fatalf("original add route: found=%v, %v", found, err)
 	}
@@ -249,7 +251,7 @@ func TestMemoryMaintenancePersistsBusinessInputInBothOwnersAndSearchResolutionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := hostsqlite.NewPluginCommandStore(host).Save(t.Context(), unconfirmed); err != nil {
+	if err := host.PluginCommands.Save(t.Context(), unconfirmed); err != nil {
 		t.Fatal(err)
 	}
 	if err := routing.Dispatch(t.Context(), unconfirmedRecord.ID, func(context.Context, plugin.CommandBinding) error { return nil }); err != nil {

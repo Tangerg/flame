@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"

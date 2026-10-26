@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrExecutorCheckpointNotFound reports that no durable executor checkpoint

@@ -9,13 +9,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/resourceid"
 	sdk "github.com/Tangerg/scope/skills"
 )
 

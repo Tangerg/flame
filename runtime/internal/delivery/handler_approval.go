@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // GetApprovalMode returns the runtime's default tool-permission stance

@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRuntimeStartupDoesNotCreateMCPServersFromEnvironment(t *testing.T) {

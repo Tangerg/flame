@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 )
 
 func TestNewScopeRequiresPathResolver(t *testing.T) {

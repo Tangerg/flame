@@ -10,7 +10,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 // LoadConfig loads the app config and resolves provider defaults plus env-key
@@ -24,7 +23,7 @@ func LoadConfig(configDirectories []string) (config.Settings, error) {
 }
 
 func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
-	profile, found := llm.LookupProvider(llm.Provider(settings.Provider))
+	profile, found := modeladapter.LookupProvider(modeladapter.Provider(settings.Provider))
 	if !found {
 		return config.Settings{}, fmt.Errorf("config: unknown provider %q (see providers.list for the supported set)", settings.Provider)
 	}
@@ -44,7 +43,7 @@ func resolveProviderConfig(settings config.Settings) (config.Settings, error) {
 
 // ProviderRegistry wraps the durable provider registry with env-key fallback.
 func ProviderRegistry(registry models.ProviderRegistry, settings config.Settings) (models.ProviderRegistry, error) {
-	environmentKeys := llm.EnvKeys()
+	environmentKeys := modeladapter.EnvKeys()
 	if apiKey, present := settings.APIKey.EnvironmentValue(); present {
 		environmentKeys[settings.Provider] = apiKey
 	}

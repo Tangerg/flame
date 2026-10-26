@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/pagination"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // A page request a read refuses is the client's to fix, so it has to reach the

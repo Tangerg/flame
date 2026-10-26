@@ -7,9 +7,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // providerFake satisfies the models coordinator's three provider-facing

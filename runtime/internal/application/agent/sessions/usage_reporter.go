@@ -9,11 +9,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // UsageSource reads retained physical evidence from one snapshot. The callback

@@ -1,4 +1,4 @@
-package persistence_test
+package persistence
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
@@ -55,7 +54,7 @@ func TestConversationStoreSeparatesRejectedFromUnknownWrites(t *testing.T) {
 		"unknown commit": {outcome: history.WriteOutcome{Uncertain: true}, uncertain: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			store, err := persistence.NewConversationStore(stubConversationMessages{outcome: testCase.outcome, err: cause})
+			store, err := NewConversationStore(stubConversationMessages{outcome: testCase.outcome, err: cause})
 			if err != nil {
 				t.Fatalf("NewConversationStore: %v", err)
 			}
@@ -71,7 +70,7 @@ func TestConversationStoreSeparatesRejectedFromUnknownWrites(t *testing.T) {
 }
 
 func TestConversationStoreRejectsAnUnaccountedSuccess(t *testing.T) {
-	store, err := persistence.NewConversationStore(stubConversationMessages{})
+	store, err := NewConversationStore(stubConversationMessages{})
 	if err != nil {
 		t.Fatalf("NewConversationStore: %v", err)
 	}

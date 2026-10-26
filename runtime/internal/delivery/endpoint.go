@@ -7,11 +7,11 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const maxIdempotencyKeyBytes = 255

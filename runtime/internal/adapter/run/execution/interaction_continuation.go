@@ -10,10 +10,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/resourceid"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )

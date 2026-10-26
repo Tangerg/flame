@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 

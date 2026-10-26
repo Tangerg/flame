@@ -8,8 +8,8 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/storage/directories"
 )
 
 func TestWorkingTreeAdmissionUsesTheWorkspacePhysicalIdentity(t *testing.T) {

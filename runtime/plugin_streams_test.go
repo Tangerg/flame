@@ -6,12 +6,12 @@ import (
 	"iter"
 	"testing"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type typedStreamCaller struct {

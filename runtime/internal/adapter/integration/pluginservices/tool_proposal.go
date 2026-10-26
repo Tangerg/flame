@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/scope/core/chat"
 )

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 )
 
 func TestExecutionPreparationCancellationIsLocalToTheCaller(t *testing.T) {

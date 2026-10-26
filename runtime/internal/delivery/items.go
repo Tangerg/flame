@@ -3,7 +3,7 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const ItemsList Name = "items.list"

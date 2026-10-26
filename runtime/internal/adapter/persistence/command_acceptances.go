@@ -9,8 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 // CommandAcceptanceStore writes immutable Run-owned receipts in their product
@@ -32,7 +32,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 	var steerInput []byte
 	if acceptance.Operation == runs.CommandSteerInput {
 		var err error
-		steerInput, err = sqlite.EncodeUserContent(acceptance.SteerInput)
+		steerInput, err = EncodeUserContent(acceptance.SteerInput)
 		if err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ func (s *CommandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			}
 			return nil
 		}
-		current, found, err := sqlite.NewRunStore(s.db).Run(ctx, acceptance.RunID)
+		current, found, err := NewRunStore(s.db).Run(ctx, acceptance.RunID)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		UserItemID:  userItemID.String,
 	}
 	if len(steerInput) > 0 {
-		acceptance.SteerInput, err = sqlite.DecodeUserContent(steerInput)
+		acceptance.SteerInput, err = DecodeUserContent(steerInput)
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, err
 		}
@@ -178,7 +178,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 	if materialRun.String != acceptance.RunID {
 		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: command material differs from its accepted Run")
 	}
-	current, found, err := sqlite.NewRunStore(s.db).Run(ctx, materialRun.String)
+	current, found, err := NewRunStore(s.db).Run(ctx, materialRun.String)
 	if err != nil {
 		return runs.CommandAcceptanceRecord{}, err
 	}
@@ -187,7 +187,7 @@ func (s *CommandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 	}
 	record.CurrentRun = &current
 	if acceptance.Operation == runs.CommandSteerInput {
-		item, found, err := sqlite.NewTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
+		item, found, err := NewTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, err
 		}

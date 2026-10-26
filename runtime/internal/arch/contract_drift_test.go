@@ -17,9 +17,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestGeneratedContractHasNoDrift compares freshly generated artifacts with
@@ -39,7 +39,7 @@ func TestGeneratedContractHasNoDrift(t *testing.T) {
 	// homes may hold other files, so the rule runs one way: every file the generator
 	// writes there must match the copy in the tree.
 	for _, outside := range []struct{ fresh, committed string }{
-		{regeneratedValidators, filepath.Join(root, validatorDir)},
+		{regeneratedValidators, filepath.Join(dependencyModuleRoot(t, sdkModulePath), validatorDir)},
 	} {
 		for _, name := range artifactNames(t, outside.fresh) {
 			if !bytes.Equal(readArtifact(t, outside.fresh, name), readArtifact(t, outside.committed, name)) {
@@ -49,7 +49,9 @@ func TestGeneratedContractHasNoDrift(t *testing.T) {
 	}
 
 	fresh := artifactNames(t, regenerated)
-	committed := artifactNames(t, filepath.Join(root, "contract"))
+	committed := slices.DeleteFunc(artifactNames(t, filepath.Join(root, "contract")), func(name string) bool {
+		return name == "go-api.json" // Authored and checked by tooling/goapi.
+	})
 	for _, name := range fresh {
 		if !slices.Contains(committed, name) {
 			t.Errorf("the generator writes %s and the tree has no copy — run `go generate ./...` and commit it", name)
@@ -85,7 +87,8 @@ func regenerateContract(t *testing.T, root string) (artifacts, typescript, valid
 
 	artifacts, typescript, validators = t.TempDir(), t.TempDir(), t.TempDir()
 	cmd := exec.Command("go", "run", "github.com/Tangerg/flame/runtime/cmd/contractgen",
-		"-out", artifacts, "-ts", typescript, "-validators", validators)
+		"-out", artifacts, "-ts", typescript, "-validators", validators,
+		"-go-local", t.TempDir(), "-go-client", t.TempDir())
 	cmd.Dir = root
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("run contractgen: %v\n%s", err, combined)
@@ -170,58 +173,11 @@ func TestGeneratedContractIsSubstantive(t *testing.T) {
 	}
 }
 
-// TestWireConstraintsStayPure checks that a DTO validator's
-// dependency graph contains no store, dispatcher or executor. The private,
-// reflection-only contractshape helper is the sole permitted internal import.
-//
-// A shape constraint is safe on either wire direction precisely because checking
-// it costs nothing and cannot fail for an environmental reason. Give ValidateWire
-// a repository and request "invalid_params" starts meaning "the database was slow"
-// while output validity starts depending on I/O; the generated client could not be
-// equivalent to either.
-func TestWireConstraintsStayPure(t *testing.T) {
-	root := moduleRoot(t)
-	for _, name := range []string{"wire_constraints.go", validatorFile} {
-		assertConstraintsArePure(t, filepath.Join(root, validatorDir, name))
-	}
-}
-
-func assertConstraintsArePure(t *testing.T, path string) {
-	t.Helper()
-
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
-	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
-	}
-	for _, spec := range file.Imports {
-		imported := strings.Trim(spec.Path.Value, `"`)
-		if strings.Contains(imported, "/internal/") && !strings.HasSuffix(imported, "/internal/contractshape") {
-			t.Errorf("wire constraints import %q; a shape constraint may only read the value it validates", imported)
-		}
-	}
-	// ValidateWire must also be reachable without a context: a check that needs one is
-	// a check that does I/O.
-	full, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
-	}
-	for _, decl := range full.Decls {
-		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Name.Name != "ValidateWire" || fn.Recv == nil {
-			continue
-		}
-		if fn.Type.Params != nil && len(fn.Type.Params.List) != 0 {
-			t.Errorf("%s.ValidateWire takes parameters; a shape constraint reads only its own value", exprString(fn.Recv.List[0].Type))
-		}
-	}
-}
-
 // TestRegistryShapeRulesReachTheGoValidator closes the server-side half of the
 // three-way contract: every union, conditional object and value-constrained shape
 // registered for schema/TypeScript also owns a generated ValidateWire method.
 func TestRegistryShapeRulesReachTheGoValidator(t *testing.T) {
-	root := moduleRoot(t)
-	source := string(readArtifact(t, filepath.Join(root, validatorDir), validatorFile))
+	source := string(readArtifact(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), validatorDir), validatorFile))
 	shapes := dispatch.WireShapes()
 
 	var registered []reflect.Type
@@ -302,7 +258,8 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 // TestProtocolContractIsRuntimeOwned prevents a consuming application from
 // becoming the Runtime's contract author again. Clients may vendor generated
 // bindings, but production code, generators and current architecture guidance
-// must resolve the protocol entirely inside this module.
+// must derive the contract from the Runtime registry; SDK/TypeScript copies
+// are generated projections, never a second author.
 func TestProtocolContractIsRuntimeOwned(t *testing.T) {
 	root := moduleRoot(t)
 	leaks := []string{
@@ -598,7 +555,7 @@ func TestEveryWireStructIsPublished(t *testing.T) {
 		}
 	}
 
-	for _, name := range exportedStructs(t, filepath.Join(root, "protocol")) {
+	for _, name := range exportedStructs(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), "protocol")) {
 		reason, excused := notOnTheWire[name]
 		switch {
 		case published[name] && excused:
@@ -608,7 +565,7 @@ func TestEveryWireStructIsPublished(t *testing.T) {
 		}
 	}
 	for name := range notOnTheWire {
-		if !slices.Contains(exportedStructs(t, filepath.Join(root, "protocol")), name) {
+		if !slices.Contains(exportedStructs(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), "protocol")), name) {
 			t.Errorf("%s is excused from the bundle and no longer exists", name)
 		}
 	}
@@ -669,7 +626,7 @@ func TestValueConstraintsAgreeAcrossArtifacts(t *testing.T) {
 	if err := json.Unmarshal(readArtifact(t, dir, "schema.json"), &bundle); err != nil {
 		t.Fatalf("decode schema.json: %v", err)
 	}
-	validator := string(readArtifact(t, filepath.Join(root, validatorDir), validatorFile))
+	validator := string(readArtifact(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), validatorDir), validatorFile))
 	_, generatedTS, _ := regenerateContract(t, root)
 	checks := checkEntries(t, string(readArtifact(t, filepath.Join(generatedTS, "src", "generated"), tsWireValidator)))
 

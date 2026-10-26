@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -35,7 +35,7 @@ func TestOriginalScheduleSourceAvailabilityPreservesRecoveryFailures(t *testing.
 			}
 			server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "echo"}
 			poolSource := toolSourceRegistry{server: server}
-			pool, err := mcpconnection.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil)
+			pool, err := mcp.Open(t.Context(), t.Context(), nil, nil, poolSource, nil, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

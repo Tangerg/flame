@@ -14,15 +14,15 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // defaultReadWindow bounds a read that names no limit, so a naive

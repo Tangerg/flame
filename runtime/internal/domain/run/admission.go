@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrSessionBusy reports that admitting a root Run was rejected because the

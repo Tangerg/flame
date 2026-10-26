@@ -3,9 +3,11 @@ package dispatch
 import (
 	"reflect"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/identity"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -18,8 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // The value constraints of wire shapes.

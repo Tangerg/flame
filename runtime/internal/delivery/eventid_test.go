@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestMapRunEvents_FramesWireEventID verifies delivery applies the evt_ wire

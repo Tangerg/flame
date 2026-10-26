@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // ErrInvalidLineage reports a Run whose root/child identity is incomplete or

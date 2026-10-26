@@ -11,12 +11,14 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -26,7 +28,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/resourceid"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -162,7 +163,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, prepare, nil, nil)
+			pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, prepare, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

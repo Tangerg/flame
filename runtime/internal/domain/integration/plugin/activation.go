@@ -3,7 +3,7 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 )
 
 // Activation is an immutable projection of a session-owned binding graph. Its

@@ -1,6 +1,6 @@
 package modelref
 
-import modelchoice "github.com/Tangerg/flame/runtime/model"
+import modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 
 // Role is an optional provider/model assignment for a specialized Runtime
 // capability. Unlike an execution model selection, it has no model-owned options;

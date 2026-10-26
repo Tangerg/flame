@@ -6,13 +6,12 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 // ModelInvocationReader translates the stored journal into application observations.
-type ModelInvocationReader struct{ store *sqlite.ModelInvocationStore }
+type ModelInvocationReader struct{ store *ModelInvocationStore }
 
-func NewModelInvocationReader(store *sqlite.ModelInvocationStore) (*ModelInvocationReader, error) {
+func NewModelInvocationReader(store *ModelInvocationStore) (*ModelInvocationReader, error) {
 	if store == nil {
 		return nil, errors.New("persistence: model invocation store is required")
 	}
@@ -34,7 +33,7 @@ func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 	return records, nil
 }
 
-func modelInvocationFromRecord(row sqlite.ModelInvocationRecord) (runs.ModelInvocationCommit, error) {
+func modelInvocationFromRecord(row ModelInvocationRecord) (runs.ModelInvocationCommit, error) {
 	record := runs.ModelInvocationCommit{
 		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage, KnownResponse: row.KnownResponse.Clone(),
 		CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State),

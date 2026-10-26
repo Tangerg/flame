@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ProblemChannel names where a first-party ProblemData type may ride. RPC

@@ -8,9 +8,10 @@ import (
 	"testing"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
 

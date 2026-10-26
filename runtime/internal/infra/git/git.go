@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 

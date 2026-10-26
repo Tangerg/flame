@@ -9,9 +9,10 @@ import (
 
 	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {

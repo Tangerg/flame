@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) {
-	for _, catalog := range []releaseCatalog{nil, (*sqlite.ReleaseStore)(nil)} {
+	for _, catalog := range []releaseCatalog{nil, (*persistence.ReleaseStore)(nil)} {
 		directory := filepath.Join(t.TempDir(), "releases")
 		releases, err := New(directory, catalog)
 		if err == nil || releases != nil {
@@ -32,7 +32,7 @@ func TestPackageSkillsRejectsMissingCollaborators(t *testing.T) {
 	}{
 		{"releases", nil, store},
 		{"installations", releases, nil},
-		{"typed nil installations", releases, (*sqlite.InstallationStore)(nil)},
+		{"typed nil installations", releases, (*persistence.InstallationStore)(nil)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			skills, err := NewSkills(test.releases, test.installations)

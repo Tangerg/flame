@@ -3,12 +3,13 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 type cancelPreparedStore struct {
@@ -30,7 +31,7 @@ func TestCanceledPreparedStreamRetiresWithoutAnyBackendInvocation(t *testing.T) 
 	f := newStreamFixture(t, "complete")
 	ctx, cancel := context.WithCancel(operation.Bind(t.Context(), "records.stream", "cancel-after-binding"))
 	defer cancel()
-	store := hostsqlite.NewPluginCommandStore(f.host)
+	store := f.host.PluginCommands
 	routing, err := plugins.NewCommands(cancelPreparedStore{CommandStore: store, cancel: cancel}, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
@@ -47,11 +48,11 @@ func TestCanceledPreparedStreamRetiresWithoutAnyBackendInvocation(t *testing.T) 
 	if err := f.host.Close(); err != nil {
 		t.Fatal(err)
 	}
-	f.host, err = hostsqlite.Open(t.Context(), f.hostPath)
+	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
 	if err != nil {
 		t.Fatal(err)
 	}
-	store = hostsqlite.NewPluginCommandStore(f.host)
+	store = f.host.PluginCommands
 	f.calls.routing, err = plugins.NewCommands(store, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)

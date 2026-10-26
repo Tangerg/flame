@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

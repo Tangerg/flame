@@ -6,8 +6,8 @@ import (
 	"mime"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type encodedContent struct {

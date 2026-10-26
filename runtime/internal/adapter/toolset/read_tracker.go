@@ -3,7 +3,7 @@ package toolset
 import (
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 )
 
 // readTracker records the file content each session has read. A mutation is

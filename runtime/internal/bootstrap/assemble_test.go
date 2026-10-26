@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -22,9 +23,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
@@ -121,7 +122,7 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 		},
 		{
 			name: "typed nil provider registry",
-			edit: func(cfg *Config) { cfg.ProviderRegistry = (*sqlitestore.ProviderStore)(nil) },
+			edit: func(cfg *Config) { cfg.ProviderRegistry = (*persistence.ProviderStore)(nil) },
 			want: "runtime: ProviderRegistry is required",
 		},
 	}
@@ -188,7 +189,7 @@ func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testin
 	}{
 		{name: "default model", edit: func(cfg *Config) { cfg.Provider = "" }},
 		{name: "typed nil chat resolver", edit: func(cfg *Config) { cfg.ChatResolver = (*modeladapter.ChatResolver)(nil) }},
-		{name: "typed nil provider registry", edit: func(cfg *Config) { cfg.ProviderRegistry = (*sqlitestore.ProviderStore)(nil) }},
+		{name: "typed nil provider registry", edit: func(cfg *Config) { cfg.ProviderRegistry = (*persistence.ProviderStore)(nil) }},
 		{name: "session-only approval mode", edit: func(cfg *Config) { cfg.ApprovalMode = approval.ModePlan }},
 		{name: "invalid offload policy", edit: func(cfg *Config) { cfg.ToolResultOffloadEnabled = true }},
 		{name: "missing feedback store", edit: func(cfg *Config) { cfg.Stores.Feedback = nil }},

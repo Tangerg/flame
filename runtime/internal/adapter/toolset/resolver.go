@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"

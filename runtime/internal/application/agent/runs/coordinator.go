@@ -7,16 +7,16 @@ import (
 	"iter"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"go.opentelemetry.io/otel/trace"
 )
 

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -123,16 +123,14 @@ func New(config Config) (*Persistence, error) {
 	}{
 		{"session store", config.Sessions}, {"run store", config.Runs},
 		{"interrupt store", config.Interrupts}, {"transcript store", config.Transcript},
-		{"conversation store", config.Messages}, {"executor checkpoint store", config.ExecutorCheckpoints},
+		{"conversation store", config.Messages}, {"goal run recorder", config.GoalRuns},
+		{"executor checkpoint store", config.ExecutorCheckpoints},
 		{"model invocation store", config.ModelInvocations}, {"tool invocation store", config.ToolInvocations},
 		{"child run start reservation store", config.ChildRunStarts}, {"transactor", config.Tx},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("recovery: %s is required", required.name)
 		}
-	}
-	if config.GoalRuns != nil && dependency.Missing(config.GoalRuns) {
-		return nil, errors.New("recovery: supplied goal run recorder is nil")
 	}
 	return &Persistence{
 		sessions:            config.Sessions,
@@ -368,9 +366,6 @@ func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryC
 
 func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, charged := range commit.GoalRuns() {
-		if p.goalRuns == nil {
-			return errors.New("recovery: Goal Run store is unavailable for a Goal-owned lost Run")
-		}
 		if err := p.goalRuns.RecordRun(ctx, charged); err != nil {
 			return fmt.Errorf("recovery: record Goal Run for Run %q: %w", charged.ID(), err)
 		}

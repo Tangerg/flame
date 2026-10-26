@@ -6,9 +6,9 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 var (

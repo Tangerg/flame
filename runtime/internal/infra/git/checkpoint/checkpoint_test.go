@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 func newTestStore(t *testing.T) (*Store, string) {

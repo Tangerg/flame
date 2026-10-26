@@ -3,8 +3,8 @@ package bootstrap
 import (
 	"context"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 

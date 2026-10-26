@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
-func saveTestPlan(ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) error {
+func saveTestPlan(ctx context.Context, store *persistence.PlanStore, sessionID string, steps []plan.Step) error {
 	current, err := store.State(ctx, sessionID)
 	if err != nil {
 		return err

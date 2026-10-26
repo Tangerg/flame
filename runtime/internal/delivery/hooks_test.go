@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // fakeHookTrust records the Hook catalog's trust calls (Trust/Untrust)

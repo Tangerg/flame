@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *testing.T) {

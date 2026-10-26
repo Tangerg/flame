@@ -6,16 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -24,11 +25,11 @@ type CommandCalls struct {
 	installations plugins.Store
 	selections    plugins.SelectionStore
 	compositions  plugins.CompositionStore
-	pool          *mcpconnection.Pool
+	pool          *mcp.Pool
 	routing       *plugins.Commands
 }
 
-func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcpconnection.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
+func NewCommandCalls(store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
 	if dependency.Missing(store) || dependency.Missing(selections) || dependency.Missing(compositions) || pool == nil || routing == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}

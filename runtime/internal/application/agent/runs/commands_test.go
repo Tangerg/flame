@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 

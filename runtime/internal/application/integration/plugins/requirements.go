@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // Collaborator is an explicit absence or a fixed set of named consumer bindings.

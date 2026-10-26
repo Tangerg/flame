@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestPlanUpdateCarriesTheCompletePlan proves the first-class run event carries the

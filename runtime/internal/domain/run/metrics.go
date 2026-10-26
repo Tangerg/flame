@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 

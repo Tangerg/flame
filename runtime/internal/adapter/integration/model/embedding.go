@@ -7,14 +7,14 @@ import (
 	"slices"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/google/uuid"
@@ -79,7 +79,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.S
 	if err != nil {
 		return nil, err
 	}
-	m, err := llm.BuildEmbeddingModel(ctx, spec, model)
+	m, err := buildEmbeddingModel(ctx, spec, model)
 	if err != nil {
 		return nil, err
 	}

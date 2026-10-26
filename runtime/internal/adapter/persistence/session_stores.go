@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 // SessionStores is the SQLite-backed adapter for the session lifecycle's
@@ -23,16 +22,16 @@ import (
 // application-decided mutation inside one storage transaction.
 type SessionStores struct {
 	commandAcceptances  *CommandAcceptanceStore
-	sessions            *sqlitestore.SessionStore
-	transcript          *sqlitestore.TranscriptStore
+	sessions            *SessionStore
+	transcript          *TranscriptStore
 	interrupts          *InterruptStore
-	runs                *sqlitestore.RunStore
+	runs                *RunStore
 	executorCheckpoints *ExecutorCheckpointStore
 	history             *runsapp.ConversationHistory
 	plan                planProjection
 	approvalRules       sessionStateCleaner
 	planModes           sessionStateCleaner
-	toolResults         *sqlitestore.ToolResultStore
+	toolResults         *ToolResultStore
 	childRunStarts      childRunStartReservationCleaner
 	goals               goalStore
 	goalRuns            goalRunRecorder
@@ -43,16 +42,16 @@ type SessionStores struct {
 // SessionStoresConfig is the durable collaborator set for SessionStores.
 type SessionStoresConfig struct {
 	CommandAcceptances  *CommandAcceptanceStore
-	Sessions            *sqlitestore.SessionStore
-	Transcript          *sqlitestore.TranscriptStore
+	Sessions            *SessionStore
+	Transcript          *TranscriptStore
 	Interrupts          *InterruptStore
-	Runs                *sqlitestore.RunStore
+	Runs                *RunStore
 	ExecutorCheckpoints *ExecutorCheckpointStore
 	History             *runsapp.ConversationHistory
 	Plan                planProjection
 	ApprovalRules       sessionStateCleaner
 	ApprovalModes       sessionStateCleaner
-	ToolResults         *sqlitestore.ToolResultStore
+	ToolResults         *ToolResultStore
 	ChildRunStarts      childRunStartReservationCleaner
 	Goals               goalStore
 	GoalRuns            goalRunRecorder

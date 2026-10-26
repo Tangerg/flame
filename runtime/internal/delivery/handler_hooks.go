@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListHooks reports the lifecycle hooks discovered for a cwd — global

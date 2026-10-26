@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {

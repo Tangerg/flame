@@ -1,26 +1,22 @@
 package main
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/protocol"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 // bundle publishes the reusable wire graph. OpenRPC derives closed request
 // projections from this graph; results retain its open object definitions.
 type bundle struct {
-	Schema  string             `json:"$schema"`
-	Title   string             `json:"title"`
-	Version string             `json:"protocolVersion"`
-	Defs    map[string]*schema `json:"$defs"`
+	Schema  string                         `json:"$schema"`
+	Title   string                         `json:"title"`
+	Version string                         `json:"protocolVersion"`
+	Defs    map[string]*contractgen.Schema `json:"$defs"`
 }
-
-// It carries no `$id`: without one, a relative `$ref` resolves against the file
-// it appears in, which is what lets OpenRPC result and enum references point at
-// `schema.json#/$defs/X`.
-const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 
 // walkWireTypes walks every type a client can send or receive: each method's
 // params, its result, and — for a streaming method — its events. Downstream
@@ -77,7 +73,7 @@ func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schem
 
 func newBundle(set *schemaSet) bundle {
 	return bundle{
-		Schema:  schemaDialect,
+		Schema:  contractgen.SchemaDialect,
 		Title:   "Flame Runtime Protocol wire types",
 		Version: protocol.Version,
 		Defs:    set.Definitions(),

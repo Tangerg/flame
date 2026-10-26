@@ -2,15 +2,16 @@ package main
 
 import (
 	"cmp"
+	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/protocol"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 // manifest is the machine-readable projection of the Contract Registry.
@@ -40,17 +41,18 @@ type manifest struct {
 }
 
 type httpEndpointEntry struct {
-	Name             string  `json:"name"`
-	Kind             string  `json:"kind"`
-	Method           string  `json:"method"`
-	Path             string  `json:"path"`
-	Authentication   string  `json:"authentication"`
-	ResponseStatuses []int   `json:"responseStatuses"`
-	Response         *schema `json:"response,omitzero"`
-	Projects         string  `json:"projects,omitzero"`
+	Name             string              `json:"name"`
+	Kind             string              `json:"kind"`
+	Method           string              `json:"method"`
+	Path             string              `json:"path"`
+	Authentication   string              `json:"authentication"`
+	ResponseStatuses []int               `json:"responseStatuses"`
+	Response         *contractgen.Schema `json:"response,omitzero"`
+	Projects         string              `json:"projects,omitzero"`
 }
 
 type methodEntry struct {
+	GoName       string   `json:"goName,omitempty"`
 	Name         string   `json:"name"`
 	Kind         string   `json:"kind"`
 	Operation    string   `json:"operation"`
@@ -125,8 +127,8 @@ type topicEntry struct {
 // The carrier is part of the answer: a bare type list would publish the shape
 // without saying where a client would ever meet it.
 type carriedEntry struct {
-	Carrier string  `json:"carrier"`
-	Schema  *schema `json:"schema"`
+	Carrier string              `json:"carrier"`
+	Schema  *contractgen.Schema `json:"schema"`
 }
 
 // toolResultPresentationEntry binds a built-in identity to the exact object Presenter puts
@@ -134,8 +136,8 @@ type carriedEntry struct {
 // it a client cannot distinguish two valid result objects that ride in the same
 // opaque carrier.
 type toolResultPresentationEntry struct {
-	ToolName string  `json:"toolName"`
-	Schema   *schema `json:"schema"`
+	ToolName string              `json:"toolName"`
+	Schema   *contractgen.Schema `json:"schema"`
 }
 
 type unionEntry struct {
@@ -201,10 +203,14 @@ func build(walked *schemaSet) (manifest, error) {
 	}
 	registry := delivery.Contract()
 	shapes := dispatch.WireShapes()
+	projectedMethods, err := methods(registry)
+	if err != nil {
+		return manifest{}, err
+	}
 	return manifest{
 		ProtocolVersion:     protocol.Version,
 		Features:            protocol.FeatureKeys(),
-		Methods:             methods(registry),
+		Methods:             projectedMethods,
 		Notifications:       notificationNames(shapes),
 		StreamingMethods:    registry.StreamMethods(),
 		HTTPEndpoints:       httpEndpoints(walked),
@@ -226,10 +232,10 @@ func httpEndpoints(walked *schemaSet) []httpEndpointEntry {
 	contract := runtimehttp.Contract()
 	out := make([]httpEndpointEntry, 0, len(contract.Endpoints))
 	for _, endpoint := range contract.Endpoints {
-		var response *schema
+		var response *contractgen.Schema
 		if endpoint.ResponseType != nil {
 			local := walked.walk(endpoint.ResponseType)
-			response = &schema{Ref: "schema.json" + local.Ref}
+			response = &contractgen.Schema{Ref: "schema.json" + local.Ref}
 		}
 		out = append(out, httpEndpointEntry{
 			Name:             endpoint.Name,
@@ -254,11 +260,19 @@ func notificationNames(shapes *dispatch.Shapes) []string {
 	return out
 }
 
-func methods(registry *delivery.Registry) []methodEntry {
+func methods(registry *delivery.Registry) ([]methodEntry, error) {
+	names := map[string]bool{}
 	metas := registry.Metas()
 	out := make([]methodEntry, 0, len(metas))
 	for _, meta := range metas {
+		if meta.GoName != "" {
+			if names[meta.GoName] {
+				return nil, fmt.Errorf("duplicate Go binding name %q", meta.GoName)
+			}
+			names[meta.GoName] = true
+		}
 		out = append(out, methodEntry{
+			GoName:       meta.GoName,
 			Name:         meta.Name.String(),
 			Kind:         meta.Kind.String(),
 			Operation:    meta.Operation.String(),
@@ -270,7 +284,7 @@ func methods(registry *delivery.Registry) []methodEntry {
 			Materializes: methodNames(meta.Materializes),
 		})
 	}
-	return out
+	return out, nil
 }
 
 func errors(registry *delivery.Registry) errorRegistry {
@@ -301,7 +315,7 @@ func runProblemTypes() []runProblemEntry {
 }
 
 func mcpStatusProblemTypes() []string {
-	values, ok := contractcatalog.EnumValues(reflect.TypeFor[protocol.MCPStatusProblemType]())
+	values, ok := enumValues(reflect.TypeFor[protocol.MCPStatusProblemType]())
 	if !ok {
 		panic("contractgen: MCPStatusProblemType has no registered wire values")
 	}

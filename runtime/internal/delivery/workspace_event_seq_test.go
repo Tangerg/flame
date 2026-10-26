@@ -4,7 +4,7 @@ import (
 	"context"
 	"iter"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // drainSeq bridges a workspace subscription's iter.Seq back to a channel so a

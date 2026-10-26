@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -103,7 +103,7 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 					}
 					servers = []mcpserver.Server{server}
 				}
-				pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, wrapped, nil, nil, nil, nil)
+				pool, err := mcp.Open(t.Context(), t.Context(), servers, nil, wrapped, nil, nil, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -3,8 +3,8 @@ package testsupport
 import (
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // MustRestoreSession fills irrelevant lifecycle defaults, restores snapshot, and

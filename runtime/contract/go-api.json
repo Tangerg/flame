@@ -1,113 +1,1012 @@
 {
   "packages": [
     {
-      "path": "github.com/Tangerg/flame/packages/local-runtime",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/arch"
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/cancellation",
       "imports": [
-        "context"
+        "context",
+        "io"
+      ],
+      "functions": [
+        {
+          "name": "Err",
+          "signature": "func(ctx context.Context) error"
+        },
+        {
+          "name": "Reader",
+          "signature": "func(ctx context.Context, r io.Reader) io.Reader"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/capability",
+      "imports": [
+        "encoding/json/jsontext",
+        "github.com/Tangerg/flame/packages/go-sdk/jsoninput"
       ],
       "constants": [
         {
-          "name": "DefaultListenAddress",
-          "type": "untyped string",
-          "value": "\"127.0.0.1:17171\""
+          "name": "Automatic",
+          "type": "Origin",
+          "value": "\"automatic\""
         },
         {
-          "name": "DefaultOrigin",
+          "name": "Collection",
+          "type": "Composition",
+          "value": "\"collection\""
+        },
+        {
+          "name": "Decoration",
+          "type": "Composition",
+          "value": "\"decoration\""
+        },
+        {
+          "name": "Human",
+          "type": "Origin",
+          "value": "\"human\""
+        },
+        {
+          "name": "Model",
+          "type": "Origin",
+          "value": "\"model\""
+        },
+        {
+          "name": "Mutation",
+          "type": "MethodKind",
+          "value": "\"command\""
+        },
+        {
+          "name": "Protocol",
           "type": "untyped string",
-          "value": "\"http://127.0.0.1:17171\""
+          "value": "\"io.github.tangerg.flame/backend/2026-10-15.3\""
+        },
+        {
+          "name": "Query",
+          "type": "MethodKind",
+          "value": "\"query\""
+        },
+        {
+          "name": "ScopeCall",
+          "type": "untyped string",
+          "value": "\"call\""
+        },
+        {
+          "name": "ScopeInstallation",
+          "type": "untyped string",
+          "value": "\"installation\""
+        },
+        {
+          "name": "Selection",
+          "type": "Composition",
+          "value": "\"selection\""
         }
+      ],
+      "functions": [
+        {
+          "name": "AdmitMethod",
+          "signature": "func(descriptor MethodDescriptor) (*Method, error)"
+        },
+        {
+          "name": "FromDescriptor",
+          "signature": "func(descriptor Descriptor) (*Contract, error)"
+        },
+        {
+          "name": "KindFor",
+          "signature": "func(encoded []byte, name string) (MethodKind, error)"
+        },
+        {
+          "name": "New",
+          "signature": "func(config Config, methods ...MethodDescriptor) (*Contract, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(data []byte) (*Contract, error)"
+        },
+        {
+          "name": "ValidExportName",
+          "signature": "func(name string) bool"
+        }
+      ],
+      "types": [
+        {
+          "name": "Composition",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Config",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Reference",
+              "type": "string"
+            },
+            {
+              "name": "Composition",
+              "type": "Composition"
+            },
+            {
+              "name": "Scope",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "Contract",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() Descriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Method",
+              "signature": "func(name string) (*Method, bool)"
+            }
+          ]
+        },
+        {
+          "name": "Descriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Protocol",
+              "type": "string",
+              "tag": "json:\"protocol\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            },
+            {
+              "name": "Composition",
+              "type": "Composition",
+              "tag": "json:\"composition\""
+            },
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Methods",
+              "type": "[]MethodDescriptor",
+              "tag": "json:\"methods\""
+            }
+          ]
+        },
+        {
+          "name": "Invocation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Origin",
+              "type": "Origin",
+              "tag": "json:\"origin\""
+            },
+            {
+              "name": "Parent",
+              "type": "string",
+              "tag": "json:\"parent,omitzero\""
+            },
+            {
+              "name": "Target",
+              "type": "Target",
+              "tag": "json:\"target\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Method",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Descriptor",
+              "signature": "func() MethodDescriptor"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() jsoninput.Input"
+            },
+            {
+              "name": "Kind",
+              "signature": "func() MethodKind"
+            },
+            {
+              "name": "Name",
+              "signature": "func() string"
+            },
+            {
+              "name": "ValidateChunk",
+              "signature": "func(chunk jsontext.Value) error"
+            },
+            {
+              "name": "ValidateInput",
+              "signature": "func(input jsoninput.Input) error"
+            },
+            {
+              "name": "ValidateOutput",
+              "signature": "func(output jsontext.Value) error"
+            }
+          ]
+        },
+        {
+          "name": "MethodDescriptor",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Kind",
+              "type": "MethodKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Target",
+              "type": "string",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            },
+            {
+              "name": "Input",
+              "type": "jsontext.Value",
+              "tag": "json:\"input\""
+            },
+            {
+              "name": "Output",
+              "type": "jsontext.Value",
+              "tag": "json:\"output\""
+            },
+            {
+              "name": "Stream",
+              "type": "jsontext.Value",
+              "tag": "json:\"stream,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() MethodDescriptor"
+            }
+          ]
+        },
+        {
+          "name": "MethodKind",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Origin",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "Refusal",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "string",
+              "tag": "json:\"code\""
+            },
+            {
+              "name": "Message",
+              "type": "string",
+              "tag": "json:\"message\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Target",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Scope",
+              "type": "string",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Reference",
+              "type": "string",
+              "tag": "json:\"reference\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/capture",
+      "functions": [
+        {
+          "name": "NewWriter",
+          "signature": "func(limit int) *Writer"
+        }
+      ],
+      "types": [
+        {
+          "name": "Writer",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Bytes",
+              "signature": "func() []byte"
+            },
+            {
+              "name": "Diagnostic",
+              "signature": "func() string"
+            },
+            {
+              "name": "Dropped",
+              "signature": "func() int"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Truncated",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Write",
+              "signature": "func(value []byte) (int, error)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/client",
+      "imports": [
+        "context",
+        "github.com/Tangerg/flame/packages/go-sdk/capability",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin",
+        "github.com/Tangerg/flame/packages/go-sdk/point",
+        "github.com/Tangerg/flame/packages/go-sdk/protocol",
+        "iter"
       ],
       "variables": [
         {
-          "name": "ErrInvalidDataDirectory",
+          "name": "ErrAcknowledgementUnknown",
           "type": "error"
         },
         {
-          "name": "ErrInvalidToken",
+          "name": "ErrClosed",
+          "type": "error"
+        },
+        {
+          "name": "ErrDisconnected",
           "type": "error"
         }
       ],
       "functions": [
         {
-          "name": "DataDirectoryAt",
-          "signature": "func(path string) (DataDirectory, error)"
+          "name": "BindPluginMethod",
+          "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *plugin.Method[P, R]) (*PluginMethod[P, R], error)"
         },
         {
-          "name": "DataDirectoryUnder",
-          "signature": "func(productRoot string) (DataDirectory, error)"
+          "name": "BindPluginStreamingMethod",
+          "signature": "func[P, C, R any](caller PluginStreamer, binding PluginBinding, method *plugin.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error)"
         },
         {
-          "name": "FirstPartyDirectory",
-          "signature": "func(executable string) (string, error)"
+          "name": "Connect",
+          "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
         },
         {
-          "name": "NodeForExecutable",
-          "signature": "func(executable string) (Node, error)"
+          "name": "ConnectCallback",
+          "signature": "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
         },
         {
-          "name": "OpenToken",
-          "signature": "func(path string) (*Token, error)"
+          "name": "NewPluginCallbackCaller",
+          "signature": "func(activation plugin.CallbackRef) (*PluginCallbackCaller, error)"
         },
         {
-          "name": "ReadToken",
-          "signature": "func(path string) (*Token, error)"
-        },
-        {
-          "name": "ResolveProductRoot",
-          "signature": "func(userHome string, configuredRoot string) (string, error)"
+          "name": "ResolvePointValues",
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *point.Contract, target capability.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
         {
-          "name": "DataDirectory",
+          "name": "Client",
           "kind": "struct",
           "methods": [
             {
-              "name": "DatabasePath",
-              "signature": "func() string"
+              "name": "ApproveSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
             {
-              "name": "LocalTokenPath",
-              "signature": "func() string"
+              "name": "ArchiveSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
             },
             {
-              "name": "Path",
-              "signature": "func() string"
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
+            },
+            {
+              "name": "CancelRun",
+              "signature": "func(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error)"
+            },
+            {
+              "name": "ClearGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "ConfigurePlugin",
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "CreateFeedback",
+              "signature": "func(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "CreateMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "CreateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "CreateSession",
+              "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "DeleteMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "DeleteSession",
+              "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "Discover",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error)"
+            },
+            {
+              "name": "ExportSession",
+              "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error)"
+            },
+            {
+              "name": "ExportTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error)"
+            },
+            {
+              "name": "ForgetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ForkSession",
+              "signature": "func(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetApprovalMode",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "GetDiscoveredSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
+              "name": "GetEmbeddingRole",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "GetGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "GetMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "GetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error)"
+            },
+            {
+              "name": "GetPlan",
+              "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error)"
+            },
+            {
+              "name": "GetPluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
+            },
+            {
+              "name": "GetRun",
+              "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
+            },
+            {
+              "name": "GetRunAcceptance",
+              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error)"
+            },
+            {
+              "name": "GetSession",
+              "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetSessionSnapshot",
+              "signature": "func(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error)"
+            },
+            {
+              "name": "GetSessionUsage",
+              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error)"
+            },
+            {
+              "name": "GetUsageSummary",
+              "signature": "func(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error)"
+            },
+            {
+              "name": "GetUtilityRole",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "GetWorkspaceDiff",
+              "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
+            },
+            {
+              "name": "ImportSession",
+              "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error)"
+            },
+            {
+              "name": "InstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "InvokeTool",
+              "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error)"
+            },
+            {
+              "name": "ListAgentDocs",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
+            },
+            {
+              "name": "ListApprovalRules",
+              "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error)"
+            },
+            {
+              "name": "ListDiscoveredSkills",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error)"
+            },
+            {
+              "name": "ListHooks",
+              "signature": "func(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error)"
+            },
+            {
+              "name": "ListInterrupts",
+              "signature": "func(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error)"
+            },
+            {
+              "name": "ListItems",
+              "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error)"
+            },
+            {
+              "name": "ListMCPServers",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)"
+            },
+            {
+              "name": "ListMCPTools",
+              "signature": "func(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)"
+            },
+            {
+              "name": "ListManagedSkills",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ListModelEndpoints",
+              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
+            },
+            {
+              "name": "ListModelInvocations",
+              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
+            },
+            {
+              "name": "ListModels",
+              "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error)"
+            },
+            {
+              "name": "ListPluginCompositions",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error)"
+            },
+            {
+              "name": "ListPluginProviders",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
+            },
+            {
+              "name": "ListPlugins",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
+            },
+            {
+              "name": "ListProviders",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error)"
+            },
+            {
+              "name": "ListRuns",
+              "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error)"
+            },
+            {
+              "name": "ListSessionTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
+            },
+            {
+              "name": "ListSessions",
+              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error)"
+            },
+            {
+              "name": "ListSkillProposals",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
+            },
+            {
+              "name": "ListTools",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
+            },
+            {
+              "name": "ListWorkspaceFileChanges",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)"
+            },
+            {
+              "name": "ListWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
+            },
+            {
+              "name": "ListWorkspaces",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "NotifyPluginChange",
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "OpenPluginResources",
+              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
+            },
+            {
+              "name": "ReadPluginResource",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
+            },
+            {
+              "name": "ReadWorkspaceFile",
+              "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error)"
+            },
+            {
+              "name": "ReconnectMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "RejectSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ResolvePluginComposition",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)"
+            },
+            {
+              "name": "ResolvePluginPoint",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
+            },
+            {
+              "name": "ResolvePluginRequirements",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
+            },
+            {
+              "name": "ResolveWorkspace",
+              "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error)"
+            },
+            {
+              "name": "RestoreSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ResumeGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "ResumeRun",
+              "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "RetirePluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "RollbackSession",
+              "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error)"
+            },
+            {
+              "name": "SearchWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error)"
+            },
+            {
+              "name": "SelectPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SelectPluginProvider",
+              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error)"
+            },
+            {
+              "name": "SetApprovalMode",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "SetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetEmbeddingRole",
+              "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "SetHookTrust",
+              "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetPluginComposition",
+              "signature": "func(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error)"
+            },
+            {
+              "name": "SetPluginEnablement",
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SetUtilityRole",
+              "signature": "func(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "StagePlugin",
+              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "StartGoal",
+              "signature": "func(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StartRun",
+              "signature": "func(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SteerRun",
+              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error)"
+            },
+            {
+              "name": "StopGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            },
+            {
+              "name": "SubscribeRun",
+              "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SubscribeRuntime",
+              "signature": "func(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)"
+            },
+            {
+              "name": "TestMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error)"
+            },
+            {
+              "name": "TestProvider",
+              "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error)"
+            },
+            {
+              "name": "UninstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "UpdateGoal",
+              "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "UpdateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "UpdateProvider",
+              "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error)"
+            },
+            {
+              "name": "UpdateSession",
+              "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
             }
           ]
         },
         {
-          "name": "Node",
+          "name": "PluginBinding",
           "kind": "struct",
-          "methods": [
+          "fields": [
             {
-              "name": "Arguments",
-              "signature": "func(entry string) []string"
+              "name": "InstallationID",
+              "type": "string"
             },
             {
-              "name": "Command",
-              "signature": "func() string"
+              "name": "Digest",
+              "type": "string"
             },
             {
-              "name": "Identity",
-              "signature": "func() string"
+              "name": "Contribution",
+              "type": "string"
             },
             {
-              "name": "Verify",
-              "signature": "func(ctx context.Context) (err error)"
+              "name": "Contract",
+              "type": "*capability.Contract"
+            },
+            {
+              "name": "Target",
+              "type": "capability.Target"
             }
           ]
         },
         {
-          "name": "Token",
+          "name": "PluginCallbackCaller",
           "kind": "struct",
           "methods": [
             {
-              "name": "Path",
-              "signature": "func() string"
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (result *protocol.CallPluginResponse, err error)"
+            },
+            {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginCaller",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "CallPlugin",
+              "signature": "func(context.Context, protocol.CallPluginRequest, protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Call",
+              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) (R, error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginStreamer",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "StreamPlugin",
+              "signature": "func(context.Context, protocol.CallPluginRequest, protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            }
+          ]
+        },
+        {
+          "name": "PluginStreamingMethod",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Stream",
+              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
+            }
+          ]
+        },
+        {
+          "name": "PointResolver",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "ResolvePluginPoint",
+              "signature": "func(context.Context, protocol.ResolvePluginPointRequest, protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
+            }
+          ]
+        },
+        {
+          "name": "PointValue",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string"
+            },
+            {
+              "name": "Digest",
+              "type": "string"
+            },
+            {
+              "name": "Contribution",
+              "type": "string"
             },
             {
               "name": "Value",
+              "type": "T"
+            }
+          ]
+        },
+        {
+          "name": "RemoteConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Endpoint",
+              "type": "string"
+            },
+            {
+              "name": "Token",
+              "type": "string"
+            },
+            {
+              "name": "MaxMessageBytes",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "name": "TransportError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "StatusCode",
+              "type": "int"
+            },
+            {
+              "name": "Type",
+              "type": "string"
+            },
+            {
+              "name": "RequestID",
+              "type": "string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
               "signature": "func() string"
             }
           ]
@@ -115,13 +1014,1581 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/plugin-sdk",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/contractgen",
+      "constants": [
+        {
+          "name": "RefPrefix",
+          "type": "untyped string",
+          "value": "\"#/$defs/\""
+        },
+        {
+          "name": "SchemaDialect",
+          "type": "untyped string",
+          "value": "\"https://json-schema.org/draft/2020-12/schema\""
+        },
+        {
+          "name": "SchemaTypeArray",
+          "type": "SchemaType",
+          "value": "\"array\""
+        },
+        {
+          "name": "SchemaTypeBoolean",
+          "type": "SchemaType",
+          "value": "\"boolean\""
+        },
+        {
+          "name": "SchemaTypeInteger",
+          "type": "SchemaType",
+          "value": "\"integer\""
+        },
+        {
+          "name": "SchemaTypeNull",
+          "type": "SchemaType",
+          "value": "\"null\""
+        },
+        {
+          "name": "SchemaTypeNumber",
+          "type": "SchemaType",
+          "value": "\"number\""
+        },
+        {
+          "name": "SchemaTypeObject",
+          "type": "SchemaType",
+          "value": "\"object\""
+        },
+        {
+          "name": "SchemaTypeString",
+          "type": "SchemaType",
+          "value": "\"string\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "BuildFeature",
+          "signature": "func(data []byte) (*Feature, error)"
+        },
+        {
+          "name": "NewTypeScript",
+          "signature": "func(definitions Definitions) *TypeScript"
+        },
+        {
+          "name": "PropertyKey",
+          "signature": "func(name string) string"
+        },
+        {
+          "name": "QuoteAll",
+          "signature": "func(values []string) []string"
+        }
+      ],
+      "types": [
+        {
+          "name": "Definitions",
+          "kind": "defined",
+          "underlying": "map[string]*Schema"
+        },
+        {
+          "name": "Feature",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "CapabilityJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Go",
+              "signature": "func(output GoOptions) ([]byte, error)"
+            },
+            {
+              "name": "MethodsJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Reference",
+              "signature": "func() string"
+            },
+            {
+              "name": "SchemaJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "TypeScript",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "GoOptions",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Package",
+              "type": "string"
+            },
+            {
+              "name": "Prefix",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "Schema",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Ref",
+              "type": "string",
+              "tag": "json:\"$ref,omitempty\""
+            },
+            {
+              "name": "Type",
+              "type": "SchemaType",
+              "tag": "json:\"type,omitempty\""
+            },
+            {
+              "name": "Format",
+              "type": "string",
+              "tag": "json:\"format,omitempty\""
+            },
+            {
+              "name": "ContentEncoding",
+              "type": "string",
+              "tag": "json:\"contentEncoding,omitempty\""
+            },
+            {
+              "name": "Enum",
+              "type": "[]string",
+              "tag": "json:\"enum,omitempty\""
+            },
+            {
+              "name": "MinLength",
+              "type": "*int",
+              "tag": "json:\"minLength,omitzero\""
+            },
+            {
+              "name": "MaxLength",
+              "type": "*int",
+              "tag": "json:\"maxLength,omitzero\""
+            },
+            {
+              "name": "Const",
+              "type": "string",
+              "tag": "json:\"const,omitempty\""
+            },
+            {
+              "name": "Pattern",
+              "type": "string",
+              "tag": "json:\"pattern,omitempty\""
+            },
+            {
+              "name": "TypeScriptType",
+              "type": "string",
+              "tag": "json:\"-\""
+            },
+            {
+              "name": "Minimum",
+              "type": "*int64",
+              "tag": "json:\"minimum,omitzero\""
+            },
+            {
+              "name": "ExclusiveMinimum",
+              "type": "*int64",
+              "tag": "json:\"exclusiveMinimum,omitzero\""
+            },
+            {
+              "name": "Maximum",
+              "type": "*int64",
+              "tag": "json:\"maximum,omitzero\""
+            },
+            {
+              "name": "MinItems",
+              "type": "*int",
+              "tag": "json:\"minItems,omitzero\""
+            },
+            {
+              "name": "MaxItems",
+              "type": "*int",
+              "tag": "json:\"maxItems,omitzero\""
+            },
+            {
+              "name": "MinProperties",
+              "type": "*int",
+              "tag": "json:\"minProperties,omitzero\""
+            },
+            {
+              "name": "UniqueItems",
+              "type": "bool",
+              "tag": "json:\"uniqueItems,omitzero\""
+            },
+            {
+              "name": "Items",
+              "type": "*Schema",
+              "tag": "json:\"items,omitzero\""
+            },
+            {
+              "name": "Properties",
+              "type": "map[string]any",
+              "tag": "json:\"properties,omitempty\""
+            },
+            {
+              "name": "AdditionalProps",
+              "type": "any",
+              "tag": "json:\"additionalProperties,omitzero\""
+            },
+            {
+              "name": "PropertyNames",
+              "type": "*Schema",
+              "tag": "json:\"propertyNames,omitzero\""
+            },
+            {
+              "name": "UnevaluatedProps",
+              "type": "*bool",
+              "tag": "json:\"unevaluatedProperties,omitzero\""
+            },
+            {
+              "name": "Required",
+              "type": "[]string",
+              "tag": "json:\"required,omitempty\""
+            },
+            {
+              "name": "OneOf",
+              "type": "[]*Schema",
+              "tag": "json:\"oneOf,omitempty\""
+            },
+            {
+              "name": "AnyOf",
+              "type": "[]*Schema",
+              "tag": "json:\"anyOf,omitempty\""
+            },
+            {
+              "name": "AllOf",
+              "type": "[]*Schema",
+              "tag": "json:\"allOf,omitempty\""
+            },
+            {
+              "name": "If",
+              "type": "*Schema",
+              "tag": "json:\"if,omitzero\""
+            },
+            {
+              "name": "Then",
+              "type": "*Schema",
+              "tag": "json:\"then,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "SchemaType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "TypeScript",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Definition",
+              "signature": "func(name string, node *Schema) string"
+            },
+            {
+              "name": "ObjectBody",
+              "signature": "func(node *Schema, substitute string) string"
+            },
+            {
+              "name": "TypeOf",
+              "signature": "func(node *Schema) string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/contractshape",
+      "imports": [
+        "encoding/json/jsontext",
+        "reflect"
+      ],
+      "functions": [
+        {
+          "name": "DecodeValue",
+          "signature": "func(raw jsontext.Value, dst any, path string) error"
+        },
+        {
+          "name": "Deref",
+          "signature": "func(t reflect.Type) reflect.Type"
+        },
+        {
+          "name": "Embeds",
+          "signature": "func(owner reflect.Type) []reflect.Type"
+        },
+        {
+          "name": "FieldNames",
+          "signature": "func(owner reflect.Type) []string"
+        },
+        {
+          "name": "Fields",
+          "signature": "func(owner reflect.Type) []Field"
+        },
+        {
+          "name": "GoPath",
+          "signature": "func(root reflect.Type, path string) (selector string, leaf Field, ok bool)"
+        },
+        {
+          "name": "HasPath",
+          "signature": "func(root reflect.Type, path string) error"
+        },
+        {
+          "name": "LookupField",
+          "signature": "func(owner reflect.Type, name string) (Field, bool)"
+        },
+        {
+          "name": "MapPath",
+          "signature": "func(parent string, key string) string"
+        },
+        {
+          "name": "PathFields",
+          "signature": "func(root reflect.Type, path string) ([]Field, bool)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Field",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string"
+            },
+            {
+              "name": "Type",
+              "type": "reflect.Type"
+            },
+            {
+              "name": "GoName",
+              "type": "string"
+            },
+            {
+              "name": "Optional",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "name": "ShapeError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Field",
+              "type": "string"
+            },
+            {
+              "name": "Detail",
+              "type": "string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/dependency",
+      "functions": [
+        {
+          "name": "Missing",
+          "signature": "func(value any) bool"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/exactint",
+      "constants": [
+        {
+          "name": "Maximum",
+          "type": "untyped int",
+          "value": "9007199254740991"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrExhausted",
+          "type": "error"
+        },
+        {
+          "name": "ErrNotSuccessor",
+          "type": "error"
+        },
+        {
+          "name": "ErrOutOfRange",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "First",
+          "signature": "func() Counter"
+        },
+        {
+          "name": "Follows",
+          "signature": "func(previous uint64, next uint64) error"
+        },
+        {
+          "name": "Restore",
+          "signature": "func(value uint64) (Counter, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Counter",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "IsZero",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Next",
+              "signature": "func() (Counter, error)"
+            },
+            {
+              "name": "Value",
+              "signature": "func() uint64"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/exactjson",
+      "imports": [
+        "encoding/json",
+        "encoding/json/v2"
+      ],
+      "functions": [
+        {
+          "name": "Number",
+          "signature": "func(literal string) json.Number"
+        },
+        {
+          "name": "Numbers",
+          "signature": "func() json.Options"
+        },
+        {
+          "name": "UnmarshalNonNull",
+          "signature": "func(raw []byte, target any) error"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/fileinput",
+      "imports": [
+        "os"
+      ],
+      "variables": [
+        {
+          "name": "ErrChanged",
+          "type": "error"
+        },
+        {
+          "name": "ErrNotDirectory",
+          "type": "error"
+        },
+        {
+          "name": "ErrNotRegular",
+          "type": "error"
+        },
+        {
+          "name": "ErrTooLarge",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Open",
+          "signature": "func(path string, maximumBytes int64) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenAt",
+          "signature": "func(root *os.Root, name string, maximumBytes int64) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenAtExpected",
+          "signature": "func(root *os.Root, name string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenDirectory",
+          "signature": "func(path string) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenDirectoryAt",
+          "signature": "func(root *os.Root, name string) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenDirectoryAtExpected",
+          "signature": "func(root *os.Root, name string, expected os.FileInfo) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenDirectoryExpected",
+          "signature": "func(path string, expected os.FileInfo) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "OpenExpected",
+          "signature": "func(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error)"
+        },
+        {
+          "name": "SameVersion",
+          "signature": "func(left os.FileInfo, right os.FileInfo) bool"
+        },
+        {
+          "name": "VerifyAtVersion",
+          "signature": "func(file *os.File, opened os.FileInfo, root *os.Root, name string) error"
+        },
+        {
+          "name": "VerifyPathVersion",
+          "signature": "func(file *os.File, opened os.FileInfo, path string) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "SizeLimitError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Size",
+              "type": "int64"
+            },
+            {
+              "name": "Limit",
+              "type": "int64"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
+            },
+            {
+              "name": "Unwrap",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/fingerprint",
+      "variables": [
+        {
+          "name": "ErrInvalidDigest",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "DigestPattern",
+          "signature": "func() string"
+        },
+        {
+          "name": "ParseDigest",
+          "signature": "func(text string) (Digest, error)"
+        },
+        {
+          "name": "Strings",
+          "signature": "func(fields ...string) Digest"
+        },
+        {
+          "name": "Sum",
+          "signature": "func(sum [32]byte) Digest"
+        }
+      ],
+      "types": [
+        {
+          "name": "Digest",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "IsZero",
+              "signature": "func() bool"
+            },
+            {
+              "name": "MarshalText",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalText",
+              "signature": "func(text []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/httpresponse",
+      "imports": [
+        "net/http"
+      ],
+      "functions": [
+        {
+          "name": "LimitBody",
+          "signature": "func(response *http.Response, maxFrameBytes int64, tooLarge error)"
+        },
+        {
+          "name": "NewClient",
+          "signature": "func(maxFrameBytes int64, tooLarge error) *http.Client"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/idempotency",
+      "imports": [
+        "context",
+        "time"
+      ],
+      "constants": [
+        {
+          "name": "Retention",
+          "type": "time.Duration",
+          "value": "86400000000000"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrClaimLost",
+          "type": "error"
+        },
+        {
+          "name": "ErrKeyConflict",
+          "type": "error"
+        },
+        {
+          "name": "ErrOutcomeConflict",
+          "type": "error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Record",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Key",
+              "type": "string"
+            },
+            {
+              "name": "Fingerprint",
+              "type": "string"
+            },
+            {
+              "name": "Payload",
+              "type": "[]byte"
+            }
+          ]
+        },
+        {
+          "name": "Store",
+          "kind": "interface",
+          "methods": [
+            {
+              "name": "Claim",
+              "signature": "func(ctx context.Context, key string, fingerprint string) (record Record, claimed bool, err error)"
+            },
+            {
+              "name": "Complete",
+              "signature": "func(ctx context.Context, record Record) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
+      "constants": [
+        {
+          "name": "BuildPrefix",
+          "type": "untyped string",
+          "value": "\"sha256:\""
+        },
+        {
+          "name": "BuildScheme",
+          "type": "untyped string",
+          "value": "\"sha256\""
+        },
+        {
+          "name": "CommitPrefix",
+          "type": "untyped string",
+          "value": "\"run_commit_\""
+        },
+        {
+          "name": "DeclarationIDPattern",
+          "type": "untyped string",
+          "value": "\"^[a-z][a-z0-9._-]{0,63}$\""
+        },
+        {
+          "name": "EventPrefix",
+          "type": "untyped string",
+          "value": "\"evt_\""
+        },
+        {
+          "name": "IdempotencyNamespaceHexCharacters",
+          "type": "untyped int",
+          "value": "32"
+        },
+        {
+          "name": "IdempotencyNamespacePrefix",
+          "type": "untyped string",
+          "value": "\"idp_\""
+        },
+        {
+          "name": "ItemPrefix",
+          "type": "untyped string",
+          "value": "\"item_\""
+        },
+        {
+          "name": "MaximumCursorCharacters",
+          "type": "untyped int",
+          "value": "65536"
+        },
+        {
+          "name": "MaximumEventCharacters",
+          "type": "int",
+          "value": "65540"
+        },
+        {
+          "name": "MaximumExecutorIdentityBytes",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumModelCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumProviderCharacters",
+          "type": "untyped int",
+          "value": "64"
+        },
+        {
+          "name": "MaximumReasoningEffortCharacters",
+          "type": "untyped int",
+          "value": "32"
+        },
+        {
+          "name": "MaximumResourceCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "ProductName",
+          "type": "untyped string",
+          "value": "\"flame\""
+        },
+        {
+          "name": "RunPrefix",
+          "type": "untyped string",
+          "value": "\"run_\""
+        },
+        {
+          "name": "RuntimeInstancePrefix",
+          "type": "untyped string",
+          "value": "\"runtime_\""
+        },
+        {
+          "name": "SegmentPrefix",
+          "type": "untyped string",
+          "value": "\"seg_\""
+        },
+        {
+          "name": "SessionPrefix",
+          "type": "untyped string",
+          "value": "\"ses_\""
+        },
+        {
+          "name": "URISafeASCIIPattern",
+          "type": "untyped string",
+          "value": "\"^[A-Za-z0-9._:-]+$\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrIncompleteModelSelection",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidBuild",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidCommit",
+          "type": "error"
+        },
+        {
+          "name": "ErrModelIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrProviderIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortWithoutModel",
+          "type": "error"
+        },
+        {
+          "name": "IdempotencyNamespacePattern",
+          "type": "string"
+        }
+      ],
+      "functions": [
+        {
+          "name": "BuildFromSHA256",
+          "signature": "func(digest [32]byte) BuildID"
+        },
+        {
+          "name": "NewCommit",
+          "signature": "func() CommitID"
+        },
+        {
+          "name": "NewRuntimeInstance",
+          "signature": "func() RuntimeInstanceID"
+        },
+        {
+          "name": "ParseBuild",
+          "signature": "func(raw string) (BuildID, error)"
+        },
+        {
+          "name": "ParseCommit",
+          "signature": "func(raw string) (CommitID, error)"
+        },
+        {
+          "name": "ParseEffect",
+          "signature": "func(text string) (EffectID, error)"
+        },
+        {
+          "name": "ParseIdempotencyNamespace",
+          "signature": "func(text string) (IdempotencyNamespace, error)"
+        },
+        {
+          "name": "ParseMember",
+          "signature": "func(text string) (MemberID, error)"
+        },
+        {
+          "name": "ParseOptionalIdempotencyNamespace",
+          "signature": "func(text string) (IdempotencyNamespace, bool, error)"
+        },
+        {
+          "name": "ParseRuntimeInstance",
+          "signature": "func(text string) (RuntimeInstanceID, error)"
+        },
+        {
+          "name": "ValidDeclarationID",
+          "signature": "func(value string) bool"
+        },
+        {
+          "name": "ValidateEffect",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateEventIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateExecutor",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateLowercaseHex",
+          "signature": "func(value string, characters int) error"
+        },
+        {
+          "name": "ValidateMember",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateModelIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateModelSelection",
+          "signature": "func(provider string, model string, reasoningEffort string) error"
+        },
+        {
+          "name": "ValidateOptionalMember",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateProviderIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateReasoningEffortIdentity",
+          "signature": "func(value string) error"
+        },
+        {
+          "name": "ValidateRequest",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateResource",
+          "signature": "func(kind string, value string, maximumCharacters int) error"
+        },
+        {
+          "name": "ValidateText",
+          "signature": "func(value string, maximumCharacters int) error"
+        },
+        {
+          "name": "ValidateURISafeASCII",
+          "signature": "func(value string, maximumBytes int) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "BuildID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "CommitID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "IsZero",
+              "signature": "func() bool"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "EffectID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "IdempotencyNamespace",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "MemberID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "RuntimeInstanceID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/instant",
+      "imports": [
+        "time"
+      ],
+      "functions": [
+        {
+          "name": "Validate",
+          "signature": "func(values ...time.Time) error"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/jsoninput",
+      "imports": [
+        "encoding/json/jsontext"
+      ],
+      "functions": [
+        {
+          "name": "Encode",
+          "signature": "func[T any](value T) (Input, error)"
+        },
+        {
+          "name": "Parse",
+          "signature": "func(data []byte) (Input, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Input",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Digest",
+              "signature": "func() string"
+            },
+            {
+              "name": "JSON",
+              "signature": "func() jsontext.Value"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/model",
+      "constants": [
+        {
+          "name": "Independent",
+          "type": "Use",
+          "value": "\"independent\""
+        },
+        {
+          "name": "Interaction",
+          "type": "Use",
+          "value": "\"interaction\""
+        },
+        {
+          "name": "MaximumModelIdentityCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
+          "name": "MaximumProviderIdentityCharacters",
+          "type": "untyped int",
+          "value": "64"
+        },
+        {
+          "name": "MaximumReasoningEffortCharacters",
+          "type": "untyped int",
+          "value": "32"
+        },
+        {
+          "name": "RequestBytes",
+          "type": "InputKind",
+          "value": "\"request\""
+        },
+        {
+          "name": "TextBytes",
+          "type": "InputKind",
+          "value": "\"text\""
+        },
+        {
+          "name": "Utility",
+          "type": "Use",
+          "value": "\"utility\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrIncomplete",
+          "type": "error"
+        },
+        {
+          "name": "ErrModelIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrProviderIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortIdentity",
+          "type": "error"
+        },
+        {
+          "name": "ErrReasoningEffortWithoutModel",
+          "type": "error"
+        },
+        {
+          "name": "ErrUnsupported",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "IsInvalid",
+          "signature": "func(err error) bool"
+        },
+        {
+          "name": "New",
+          "signature": "func(provider string, model string) (Selection, error)"
+        },
+        {
+          "name": "NewModelIdentity",
+          "signature": "func(value string) (ModelIdentity, error)"
+        },
+        {
+          "name": "NewProviderIdentity",
+          "signature": "func(value string) (ProviderIdentity, error)"
+        },
+        {
+          "name": "NewReasoningEffortIdentity",
+          "signature": "func(value string) (ReasoningEffortIdentity, error)"
+        },
+        {
+          "name": "NewWithReasoningEffort",
+          "signature": "func(provider string, model string, reasoningEffort string) (Selection, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "InputKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ModelIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Patch",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Provider",
+              "type": "*string"
+            },
+            {
+              "name": "Model",
+              "type": "*string"
+            },
+            {
+              "name": "ReasoningEffort",
+              "type": "*string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Apply",
+              "signature": "func(current Selection) (Selection, error)"
+            },
+            {
+              "name": "Empty",
+              "signature": "func() bool"
+            }
+          ]
+        },
+        {
+          "name": "ProviderIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "ReasoningEffortIdentity",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Selection",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Configured",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Equal",
+              "signature": "func(other Selection) bool"
+            },
+            {
+              "name": "JSONSchemaModel",
+              "signature": "func() any"
+            },
+            {
+              "name": "MarshalJSON",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Model",
+              "signature": "func() string"
+            },
+            {
+              "name": "Provider",
+              "signature": "func() string"
+            },
+            {
+              "name": "ReasoningEffort",
+              "signature": "func() string"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalJSON",
+              "signature": "func(data []byte) error"
+            },
+            {
+              "name": "ValidateExact",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SelectionContext",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Use",
+              "type": "Use",
+              "tag": "json:\"use\""
+            },
+            {
+              "name": "Limits",
+              "type": "*SelectionLimits",
+              "tag": "json:\"limits,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SelectionLimits",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InputKind",
+              "type": "InputKind",
+              "tag": "json:\"inputKind\""
+            },
+            {
+              "name": "MaxInputBytes",
+              "type": "int64",
+              "tag": "json:\"maxInputBytes\" jsonschema:\"minimum=1\""
+            },
+            {
+              "name": "MaxOutputTokens",
+              "type": "int64",
+              "tag": "json:\"maxOutputTokens\" jsonschema:\"minimum=1\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "Use",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "JSONSchemaEnum",
+              "signature": "func() []string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/model/catalog",
+      "imports": [
+        "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/scope/core/chat"
+      ],
+      "variables": [
+        {
+          "name": "ErrUnsupportedInputModality",
+          "type": "error"
+        },
+        {
+          "name": "ErrUnsupportedReasoningEffort",
+          "type": "error"
+        }
+      ],
+      "types": [
+        {
+          "name": "Selections",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "AdmitInput",
+              "signature": "func(selection model.Selection, messages []chat.Message) error"
+            },
+            {
+              "name": "AdmitSelection",
+              "signature": "func(selection model.Selection) error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/model/text",
+      "imports": [
+        "github.com/Tangerg/scope/core/chat"
+      ],
+      "constants": [
+        {
+          "name": "ASCIIBytesPerEstimatedToken",
+          "type": "untyped int",
+          "value": "4"
+        },
+        {
+          "name": "MediaMarker",
+          "type": "untyped string",
+          "value": "\"[media content omitted]\""
+        },
+        {
+          "name": "ModelInputBytes",
+          "type": "untyped int",
+          "value": "524288"
+        }
+      ],
+      "functions": [
+        {
+          "name": "EstimateRequestTokens",
+          "signature": "func(source *chat.Request) (int, error)"
+        },
+        {
+          "name": "EstimateTextTokens",
+          "signature": "func(text string) int"
+        },
+        {
+          "name": "HeadTail",
+          "signature": "func(s string, limit int, marker func(elided int) string) string"
+        },
+        {
+          "name": "RenderToolOutput",
+          "signature": "func(output chat.ToolOutput) string"
+        },
+        {
+          "name": "RenderTranscript",
+          "signature": "func(msgs []chat.Message) string"
+        },
+        {
+          "name": "SaturatedAdd",
+          "signature": "func(total int, values ...int) int"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/opaquetoken",
+      "variables": [
+        {
+          "name": "ErrTooLarge",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Decode",
+          "signature": "func(token string, maximumCharacters int, target any) error"
+        },
+        {
+          "name": "Encode",
+          "signature": "func(value any, maximumCharacters int) (string, error)"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/optional",
+      "functions": [
+        {
+          "name": "Clone",
+          "signature": "func[T any](value *T) *T"
+        },
+        {
+          "name": "Positive",
+          "signature": "func[T ~int | ~int64](value *T, fallback T, field string) (T, error)"
+        },
+        {
+          "name": "Present",
+          "signature": "func[T any](value *T) (T, bool)"
+        },
+        {
+          "name": "Value",
+          "signature": "func[T any](value *T, fallback T) T"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/pagination",
+      "variables": [
+        {
+          "name": "ErrCursorTooLarge",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidCursor",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidCursorMaterial",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidLimit",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Decode",
+          "signature": "func(cursor string, namespace string, filters []string) ([]string, error)"
+        },
+        {
+          "name": "DefaultLimit",
+          "signature": "func() RequestedLimit"
+        },
+        {
+          "name": "Encode",
+          "signature": "func(namespace string, filters []string, key []string) (string, error)"
+        },
+        {
+          "name": "NewLimit",
+          "signature": "func(value int) (RequestedLimit, error)"
+        },
+        {
+          "name": "PageOf",
+          "signature": "func[T any](rows []T, limit int, namespace string, filters []string, nextKey func(T) []string) (Page[T], error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Page",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Rows",
+              "type": "[]T"
+            },
+            {
+              "name": "NextCursor",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "RequestedLimit",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Explicit",
+              "signature": "func() *int"
+            },
+            {
+              "name": "Resolve",
+              "signature": "func(ceiling int) (int, error)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/pathidentity",
+      "functions": [
+        {
+          "name": "Contains",
+          "signature": "func(root string, target string) (bool, error)"
+        },
+        {
+          "name": "Resolve",
+          "signature": "func(root string, path string) (string, error)"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin",
       "imports": [
         "context",
         "encoding/json/jsontext",
-        "github.com/Tangerg/flame/runtime/capability",
-        "github.com/Tangerg/flame/runtime/jsoninput",
-        "github.com/Tangerg/flame/runtime/model",
+        "github.com/Tangerg/flame/packages/go-sdk/capability",
+        "github.com/Tangerg/flame/packages/go-sdk/jsoninput",
+        "github.com/Tangerg/flame/packages/go-sdk/model",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
@@ -1290,7 +3757,7 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/plugin-sdk/memory",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/memory",
       "imports": [
         "time"
       ],
@@ -2287,12 +4754,12 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/plugin-sdk/sqlite",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite",
       "imports": [
         "context",
         "database/sql",
-        "github.com/Tangerg/flame/packages/plugin-sdk",
-        "github.com/Tangerg/flame/runtime/jsoninput",
+        "github.com/Tangerg/flame/packages/go-sdk/jsoninput",
+        "github.com/Tangerg/flame/packages/go-sdk/plugin",
         "github.com/Tangerg/go-sdk/mcp"
       ],
       "constants": [
@@ -2369,1842 +4836,20 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/runtime-client/go",
-      "imports": [
-        "context",
-        "github.com/Tangerg/flame/packages/plugin-sdk",
-        "github.com/Tangerg/flame/runtime/capability",
-        "github.com/Tangerg/flame/runtime/point",
-        "github.com/Tangerg/flame/runtime/protocol",
-        "iter"
-      ],
-      "variables": [
-        {
-          "name": "ErrAcknowledgementUnknown",
-          "type": "error"
-        },
-        {
-          "name": "ErrClosed",
-          "type": "error"
-        },
-        {
-          "name": "ErrDisconnected",
-          "type": "error"
-        }
-      ],
+      "path": "github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure",
       "functions": [
         {
-          "name": "BindPluginMethod",
-          "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *plugin.Method[P, R]) (*PluginMethod[P, R], error)"
-        },
-        {
-          "name": "BindPluginStreamingMethod",
-          "signature": "func[P, C, R any](caller PluginStreamer, binding PluginBinding, method *plugin.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error)"
-        },
-        {
-          "name": "Connect",
-          "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
-        },
-        {
-          "name": "ConnectCallback",
-          "signature": "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
-        },
-        {
-          "name": "NewPluginCallbackCaller",
-          "signature": "func(activation plugin.CallbackRef) (*PluginCallbackCaller, error)"
-        },
-        {
-          "name": "ResolvePointValues",
-          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *point.Contract, target capability.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
-        }
-      ],
-      "types": [
-        {
-          "name": "Client",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "ApproveSkillProposal",
-              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ArchiveSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "CallPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
-            },
-            {
-              "name": "CancelRun",
-              "signature": "func(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error)"
-            },
-            {
-              "name": "ClearGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "Close",
-              "signature": "func() error"
-            },
-            {
-              "name": "ConfigurePlugin",
-              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "CreateFeedback",
-              "signature": "func(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "CreateMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
-            },
-            {
-              "name": "CreateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
-            },
-            {
-              "name": "CreateSession",
-              "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "DeleteMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "DeleteSession",
-              "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "Discover",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error)"
-            },
-            {
-              "name": "ExportSession",
-              "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error)"
-            },
-            {
-              "name": "ExportTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error)"
-            },
-            {
-              "name": "ForgetApprovalRule",
-              "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ForkSession",
-              "signature": "func(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "GetApprovalMode",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error)"
-            },
-            {
-              "name": "GetDiscoveredSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error)"
-            },
-            {
-              "name": "GetEmbeddingRole",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error)"
-            },
-            {
-              "name": "GetGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "GetMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
-            },
-            {
-              "name": "GetMCPToolExposure",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error)"
-            },
-            {
-              "name": "GetPlan",
-              "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error)"
-            },
-            {
-              "name": "GetPluginCommand",
-              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
-            },
-            {
-              "name": "GetRun",
-              "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
-            },
-            {
-              "name": "GetRunAcceptance",
-              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error)"
-            },
-            {
-              "name": "GetSession",
-              "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "GetSessionSnapshot",
-              "signature": "func(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error)"
-            },
-            {
-              "name": "GetSessionUsage",
-              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error)"
-            },
-            {
-              "name": "GetUsageSummary",
-              "signature": "func(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error)"
-            },
-            {
-              "name": "GetUtilityRole",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error)"
-            },
-            {
-              "name": "GetWorkspaceDiff",
-              "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
-            },
-            {
-              "name": "ImportSession",
-              "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error)"
-            },
-            {
-              "name": "InstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "InvokeTool",
-              "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error)"
-            },
-            {
-              "name": "ListAgentDocs",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
-            },
-            {
-              "name": "ListApprovalRules",
-              "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error)"
-            },
-            {
-              "name": "ListDiscoveredSkills",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error)"
-            },
-            {
-              "name": "ListHooks",
-              "signature": "func(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error)"
-            },
-            {
-              "name": "ListInterrupts",
-              "signature": "func(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error)"
-            },
-            {
-              "name": "ListItems",
-              "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error)"
-            },
-            {
-              "name": "ListMCPServers",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)"
-            },
-            {
-              "name": "ListMCPTools",
-              "signature": "func(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)"
-            },
-            {
-              "name": "ListManagedSkills",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
-            },
-            {
-              "name": "ListModelEndpoints",
-              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
-            },
-            {
-              "name": "ListModelInvocations",
-              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
-            },
-            {
-              "name": "ListModels",
-              "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error)"
-            },
-            {
-              "name": "ListPluginCompositions",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error)"
-            },
-            {
-              "name": "ListPluginProviders",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
-            },
-            {
-              "name": "ListPlugins",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
-            },
-            {
-              "name": "ListProviders",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error)"
-            },
-            {
-              "name": "ListRuns",
-              "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error)"
-            },
-            {
-              "name": "ListSessionTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
-            },
-            {
-              "name": "ListSessions",
-              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error)"
-            },
-            {
-              "name": "ListSkillProposals",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
-            },
-            {
-              "name": "ListTools",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
-            },
-            {
-              "name": "ListWorkspaceFileChanges",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)"
-            },
-            {
-              "name": "ListWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
-            },
-            {
-              "name": "ListWorkspaces",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
-            },
-            {
-              "name": "NotifyPluginChange",
-              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "OpenPluginResources",
-              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
-            },
-            {
-              "name": "ReadPluginResource",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
-            },
-            {
-              "name": "ReadWorkspaceFile",
-              "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error)"
-            },
-            {
-              "name": "ReconnectMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "RejectSkillProposal",
-              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ResolvePluginComposition",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)"
-            },
-            {
-              "name": "ResolvePluginPoint",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
-            },
-            {
-              "name": "ResolvePluginRequirements",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
-            },
-            {
-              "name": "ResolveWorkspace",
-              "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error)"
-            },
-            {
-              "name": "RestoreSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ResumeGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "ResumeRun",
-              "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "RetirePluginCommand",
-              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "RollbackSession",
-              "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error)"
-            },
-            {
-              "name": "SearchWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error)"
-            },
-            {
-              "name": "SelectPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "SelectPluginProvider",
-              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error)"
-            },
-            {
-              "name": "SetApprovalMode",
-              "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error)"
-            },
-            {
-              "name": "SetApprovalRule",
-              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetEmbeddingRole",
-              "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error)"
-            },
-            {
-              "name": "SetHookTrust",
-              "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetMCPToolExposure",
-              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetPluginComposition",
-              "signature": "func(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error)"
-            },
-            {
-              "name": "SetPluginEnablement",
-              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "SetUtilityRole",
-              "signature": "func(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error)"
-            },
-            {
-              "name": "StagePlugin",
-              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "StartGoal",
-              "signature": "func(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "StartRun",
-              "signature": "func(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "SteerRun",
-              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error)"
-            },
-            {
-              "name": "StopGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
-            },
-            {
-              "name": "SubscribeRun",
-              "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "SubscribeRuntime",
-              "signature": "func(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)"
-            },
-            {
-              "name": "TestMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error)"
-            },
-            {
-              "name": "TestProvider",
-              "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error)"
-            },
-            {
-              "name": "UninstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "UpdateGoal",
-              "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "UpdateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
-            },
-            {
-              "name": "UpdateProvider",
-              "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error)"
-            },
-            {
-              "name": "UpdateSession",
-              "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            }
-          ]
-        },
-        {
-          "name": "PluginBinding",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InstallationID",
-              "type": "string"
-            },
-            {
-              "name": "Digest",
-              "type": "string"
-            },
-            {
-              "name": "Contribution",
-              "type": "string"
-            },
-            {
-              "name": "Contract",
-              "type": "*capability.Contract"
-            },
-            {
-              "name": "Target",
-              "type": "capability.Target"
-            }
-          ]
-        },
-        {
-          "name": "PluginCallbackCaller",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "CallPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (result *protocol.CallPluginResponse, err error)"
-            },
-            {
-              "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
-            }
-          ]
-        },
-        {
-          "name": "PluginCaller",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "CallPlugin",
-              "signature": "func(context.Context, protocol.CallPluginRequest, protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
-            }
-          ]
-        },
-        {
-          "name": "PluginMethod",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Call",
-              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) (R, error)"
-            }
-          ]
-        },
-        {
-          "name": "PluginStreamer",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "StreamPlugin",
-              "signature": "func(context.Context, protocol.CallPluginRequest, protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
-            }
-          ]
-        },
-        {
-          "name": "PluginStreamingMethod",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Stream",
-              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
-            }
-          ]
-        },
-        {
-          "name": "PointResolver",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "ResolvePluginPoint",
-              "signature": "func(context.Context, protocol.ResolvePluginPointRequest, protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
-            }
-          ]
-        },
-        {
-          "name": "PointValue",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InstallationID",
-              "type": "string"
-            },
-            {
-              "name": "Digest",
-              "type": "string"
-            },
-            {
-              "name": "Contribution",
-              "type": "string"
-            },
-            {
-              "name": "Value",
-              "type": "T"
-            }
-          ]
-        },
-        {
-          "name": "RemoteConfig",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Endpoint",
-              "type": "string"
-            },
-            {
-              "name": "Token",
-              "type": "string"
-            },
-            {
-              "name": "MaxMessageBytes",
-              "type": "int"
-            }
-          ]
-        },
-        {
-          "name": "TransportError",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "StatusCode",
-              "type": "int"
-            },
-            {
-              "name": "Type",
-              "type": "string"
-            },
-            {
-              "name": "RequestID",
-              "type": "string"
-            }
-          ],
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
-            }
-          ]
+          "name": "Definite",
+          "signature": "func(cause error) error"
         }
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/runtime",
-      "imports": [
-        "context",
-        "github.com/Tangerg/flame/runtime/protocol",
-        "iter"
-      ],
-      "variables": [
-        {
-          "name": "ErrClosed",
-          "type": "error"
-        }
-      ],
-      "functions": [
-        {
-          "name": "Open",
-          "signature": "func(ctx context.Context, cfg Config) (*Runtime, error)"
-        }
-      ],
-      "types": [
-        {
-          "name": "Config",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "DataDirectory",
-              "type": "string"
-            },
-            {
-              "name": "DefaultWorkspacePath",
-              "type": "string"
-            },
-            {
-              "name": "UserHomePath",
-              "type": "string"
-            },
-            {
-              "name": "ConfigDirectories",
-              "type": "[]string"
-            }
-          ]
-        },
-        {
-          "name": "Runtime",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "ApproveSkillProposal",
-              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ArchiveSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "CallPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
-            },
-            {
-              "name": "CancelRun",
-              "signature": "func(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error)"
-            },
-            {
-              "name": "ClearGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "Close",
-              "signature": "func() error"
-            },
-            {
-              "name": "ConfigurePlugin",
-              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "CreateFeedback",
-              "signature": "func(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "CreateMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
-            },
-            {
-              "name": "CreateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
-            },
-            {
-              "name": "CreateSession",
-              "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "DeleteMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "DeleteSession",
-              "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "Discover",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error)"
-            },
-            {
-              "name": "ExportSession",
-              "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error)"
-            },
-            {
-              "name": "ExportTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error)"
-            },
-            {
-              "name": "ForgetApprovalRule",
-              "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ForkSession",
-              "signature": "func(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "GetApprovalMode",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error)"
-            },
-            {
-              "name": "GetDiscoveredSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error)"
-            },
-            {
-              "name": "GetEmbeddingRole",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error)"
-            },
-            {
-              "name": "GetGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "GetMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
-            },
-            {
-              "name": "GetMCPToolExposure",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error)"
-            },
-            {
-              "name": "GetPlan",
-              "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error)"
-            },
-            {
-              "name": "GetPluginCommand",
-              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
-            },
-            {
-              "name": "GetRun",
-              "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
-            },
-            {
-              "name": "GetRunAcceptance",
-              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error)"
-            },
-            {
-              "name": "GetSession",
-              "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error)"
-            },
-            {
-              "name": "GetSessionSnapshot",
-              "signature": "func(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error)"
-            },
-            {
-              "name": "GetSessionUsage",
-              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error)"
-            },
-            {
-              "name": "GetUsageSummary",
-              "signature": "func(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error)"
-            },
-            {
-              "name": "GetUtilityRole",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error)"
-            },
-            {
-              "name": "GetWorkspaceDiff",
-              "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
-            },
-            {
-              "name": "ImportSession",
-              "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error)"
-            },
-            {
-              "name": "InstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "InvokeTool",
-              "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error)"
-            },
-            {
-              "name": "ListAgentDocs",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
-            },
-            {
-              "name": "ListApprovalRules",
-              "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error)"
-            },
-            {
-              "name": "ListDiscoveredSkills",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error)"
-            },
-            {
-              "name": "ListHooks",
-              "signature": "func(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error)"
-            },
-            {
-              "name": "ListInterrupts",
-              "signature": "func(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error)"
-            },
-            {
-              "name": "ListItems",
-              "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error)"
-            },
-            {
-              "name": "ListMCPServers",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)"
-            },
-            {
-              "name": "ListMCPTools",
-              "signature": "func(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)"
-            },
-            {
-              "name": "ListManagedSkills",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
-            },
-            {
-              "name": "ListModelEndpoints",
-              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
-            },
-            {
-              "name": "ListModelInvocations",
-              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
-            },
-            {
-              "name": "ListModels",
-              "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error)"
-            },
-            {
-              "name": "ListPluginCompositions",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error)"
-            },
-            {
-              "name": "ListPluginProviders",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
-            },
-            {
-              "name": "ListPlugins",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
-            },
-            {
-              "name": "ListProviders",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error)"
-            },
-            {
-              "name": "ListRuns",
-              "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error)"
-            },
-            {
-              "name": "ListSessionTrajectory",
-              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
-            },
-            {
-              "name": "ListSessions",
-              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error)"
-            },
-            {
-              "name": "ListSkillProposals",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
-            },
-            {
-              "name": "ListTools",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
-            },
-            {
-              "name": "ListWorkspaceFileChanges",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)"
-            },
-            {
-              "name": "ListWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
-            },
-            {
-              "name": "ListWorkspaces",
-              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
-            },
-            {
-              "name": "NotifyPluginChange",
-              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "OpenPluginResources",
-              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
-            },
-            {
-              "name": "ReadPluginResource",
-              "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
-            },
-            {
-              "name": "ReadWorkspaceFile",
-              "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error)"
-            },
-            {
-              "name": "ReconnectMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "RejectSkillProposal",
-              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ResolvePluginComposition",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)"
-            },
-            {
-              "name": "ResolvePluginPoint",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
-            },
-            {
-              "name": "ResolvePluginRequirements",
-              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
-            },
-            {
-              "name": "ResolveWorkspace",
-              "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error)"
-            },
-            {
-              "name": "RestoreSkill",
-              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "ResumeGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "ResumeRun",
-              "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "RetirePluginCommand",
-              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "RollbackSession",
-              "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error)"
-            },
-            {
-              "name": "SearchWorkspaceFiles",
-              "signature": "func(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error)"
-            },
-            {
-              "name": "SelectPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "SelectPluginProvider",
-              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error)"
-            },
-            {
-              "name": "SetApprovalMode",
-              "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error)"
-            },
-            {
-              "name": "SetApprovalRule",
-              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetEmbeddingRole",
-              "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error)"
-            },
-            {
-              "name": "SetHookTrust",
-              "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetMCPToolExposure",
-              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "SetPluginComposition",
-              "signature": "func(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error)"
-            },
-            {
-              "name": "SetPluginEnablement",
-              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "SetUtilityRole",
-              "signature": "func(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error)"
-            },
-            {
-              "name": "StagePlugin",
-              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
-            },
-            {
-              "name": "StartGoal",
-              "signature": "func(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "StartRun",
-              "signature": "func(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "SteerRun",
-              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error)"
-            },
-            {
-              "name": "StopGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "StreamPlugin",
-              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
-            },
-            {
-              "name": "SubscribeRun",
-              "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
-            },
-            {
-              "name": "SubscribeRuntime",
-              "signature": "func(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)"
-            },
-            {
-              "name": "TestMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error)"
-            },
-            {
-              "name": "TestProvider",
-              "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error)"
-            },
-            {
-              "name": "UninstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error"
-            },
-            {
-              "name": "UpdateGoal",
-              "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "UpdateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
-            },
-            {
-              "name": "UpdateProvider",
-              "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error)"
-            },
-            {
-              "name": "UpdateSession",
-              "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/capability",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/point",
       "imports": [
         "encoding/json/jsontext",
-        "github.com/Tangerg/flame/runtime/jsoninput"
-      ],
-      "constants": [
-        {
-          "name": "Automatic",
-          "type": "Origin",
-          "value": "\"automatic\""
-        },
-        {
-          "name": "Collection",
-          "type": "Composition",
-          "value": "\"collection\""
-        },
-        {
-          "name": "Decoration",
-          "type": "Composition",
-          "value": "\"decoration\""
-        },
-        {
-          "name": "Human",
-          "type": "Origin",
-          "value": "\"human\""
-        },
-        {
-          "name": "Model",
-          "type": "Origin",
-          "value": "\"model\""
-        },
-        {
-          "name": "Mutation",
-          "type": "MethodKind",
-          "value": "\"command\""
-        },
-        {
-          "name": "Protocol",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-15.3\""
-        },
-        {
-          "name": "Query",
-          "type": "MethodKind",
-          "value": "\"query\""
-        },
-        {
-          "name": "ScopeCall",
-          "type": "untyped string",
-          "value": "\"call\""
-        },
-        {
-          "name": "ScopeInstallation",
-          "type": "untyped string",
-          "value": "\"installation\""
-        },
-        {
-          "name": "Selection",
-          "type": "Composition",
-          "value": "\"selection\""
-        }
-      ],
-      "functions": [
-        {
-          "name": "AdmitMethod",
-          "signature": "func(descriptor MethodDescriptor) (*Method, error)"
-        },
-        {
-          "name": "FromDescriptor",
-          "signature": "func(descriptor Descriptor) (*Contract, error)"
-        },
-        {
-          "name": "KindFor",
-          "signature": "func(encoded []byte, name string) (MethodKind, error)"
-        },
-        {
-          "name": "New",
-          "signature": "func(config Config, methods ...MethodDescriptor) (*Contract, error)"
-        },
-        {
-          "name": "Parse",
-          "signature": "func(data []byte) (*Contract, error)"
-        },
-        {
-          "name": "ValidExportName",
-          "signature": "func(name string) bool"
-        }
-      ],
-      "types": [
-        {
-          "name": "Composition",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Config",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Reference",
-              "type": "string"
-            },
-            {
-              "name": "Composition",
-              "type": "Composition"
-            },
-            {
-              "name": "Scope",
-              "type": "string"
-            }
-          ]
-        },
-        {
-          "name": "Contract",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Descriptor",
-              "signature": "func() Descriptor"
-            },
-            {
-              "name": "Identity",
-              "signature": "func() jsoninput.Input"
-            },
-            {
-              "name": "Method",
-              "signature": "func(name string) (*Method, bool)"
-            }
-          ]
-        },
-        {
-          "name": "Descriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Protocol",
-              "type": "string",
-              "tag": "json:\"protocol\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            },
-            {
-              "name": "Composition",
-              "type": "Composition",
-              "tag": "json:\"composition\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Methods",
-              "type": "[]MethodDescriptor",
-              "tag": "json:\"methods\""
-            }
-          ]
-        },
-        {
-          "name": "Invocation",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Origin",
-              "type": "Origin",
-              "tag": "json:\"origin\""
-            },
-            {
-              "name": "Parent",
-              "type": "string",
-              "tag": "json:\"parent,omitzero\""
-            },
-            {
-              "name": "Target",
-              "type": "Target",
-              "tag": "json:\"target\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Method",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Descriptor",
-              "signature": "func() MethodDescriptor"
-            },
-            {
-              "name": "Identity",
-              "signature": "func() jsoninput.Input"
-            },
-            {
-              "name": "Kind",
-              "signature": "func() MethodKind"
-            },
-            {
-              "name": "Name",
-              "signature": "func() string"
-            },
-            {
-              "name": "ValidateChunk",
-              "signature": "func(chunk jsontext.Value) error"
-            },
-            {
-              "name": "ValidateInput",
-              "signature": "func(input jsoninput.Input) error"
-            },
-            {
-              "name": "ValidateOutput",
-              "signature": "func(output jsontext.Value) error"
-            }
-          ]
-        },
-        {
-          "name": "MethodDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Kind",
-              "type": "MethodKind",
-              "tag": "json:\"kind\""
-            },
-            {
-              "name": "Target",
-              "type": "string",
-              "tag": "json:\"target\""
-            },
-            {
-              "name": "Description",
-              "type": "string",
-              "tag": "json:\"description\""
-            },
-            {
-              "name": "Input",
-              "type": "jsontext.Value",
-              "tag": "json:\"input\""
-            },
-            {
-              "name": "Output",
-              "type": "jsontext.Value",
-              "tag": "json:\"output\""
-            },
-            {
-              "name": "Stream",
-              "type": "jsontext.Value",
-              "tag": "json:\"stream,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Clone",
-              "signature": "func() MethodDescriptor"
-            }
-          ]
-        },
-        {
-          "name": "MethodKind",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Origin",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Refusal",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Code",
-              "type": "string",
-              "tag": "json:\"code\""
-            },
-            {
-              "name": "Message",
-              "type": "string",
-              "tag": "json:\"message\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "Target",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/idempotency",
-      "imports": [
-        "context",
-        "time"
-      ],
-      "constants": [
-        {
-          "name": "Retention",
-          "type": "time.Duration",
-          "value": "86400000000000"
-        }
-      ],
-      "variables": [
-        {
-          "name": "ErrClaimLost",
-          "type": "error"
-        },
-        {
-          "name": "ErrKeyConflict",
-          "type": "error"
-        },
-        {
-          "name": "ErrOutcomeConflict",
-          "type": "error"
-        }
-      ],
-      "types": [
-        {
-          "name": "Record",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Key",
-              "type": "string"
-            },
-            {
-              "name": "Fingerprint",
-              "type": "string"
-            },
-            {
-              "name": "Payload",
-              "type": "[]byte"
-            }
-          ]
-        },
-        {
-          "name": "Store",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "Claim",
-              "signature": "func(ctx context.Context, key string, fingerprint string) (record Record, claimed bool, err error)"
-            },
-            {
-              "name": "Complete",
-              "signature": "func(ctx context.Context, record Record) error"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/jsoninput",
-      "imports": [
-        "encoding/json/jsontext"
-      ],
-      "functions": [
-        {
-          "name": "Encode",
-          "signature": "func[T any](value T) (Input, error)"
-        },
-        {
-          "name": "Parse",
-          "signature": "func(data []byte) (Input, error)"
-        }
-      ],
-      "types": [
-        {
-          "name": "Input",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Digest",
-              "signature": "func() string"
-            },
-            {
-              "name": "JSON",
-              "signature": "func() jsontext.Value"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/model",
-      "constants": [
-        {
-          "name": "Independent",
-          "type": "Use",
-          "value": "\"independent\""
-        },
-        {
-          "name": "Interaction",
-          "type": "Use",
-          "value": "\"interaction\""
-        },
-        {
-          "name": "MaximumModelIdentityCharacters",
-          "type": "untyped int",
-          "value": "256"
-        },
-        {
-          "name": "MaximumProviderIdentityCharacters",
-          "type": "untyped int",
-          "value": "64"
-        },
-        {
-          "name": "MaximumReasoningEffortCharacters",
-          "type": "untyped int",
-          "value": "32"
-        },
-        {
-          "name": "RequestBytes",
-          "type": "InputKind",
-          "value": "\"request\""
-        },
-        {
-          "name": "TextBytes",
-          "type": "InputKind",
-          "value": "\"text\""
-        },
-        {
-          "name": "Utility",
-          "type": "Use",
-          "value": "\"utility\""
-        }
-      ],
-      "variables": [
-        {
-          "name": "ErrIncomplete",
-          "type": "error"
-        },
-        {
-          "name": "ErrModelIdentity",
-          "type": "error"
-        },
-        {
-          "name": "ErrProviderIdentity",
-          "type": "error"
-        },
-        {
-          "name": "ErrReasoningEffortIdentity",
-          "type": "error"
-        },
-        {
-          "name": "ErrReasoningEffortWithoutModel",
-          "type": "error"
-        },
-        {
-          "name": "ErrUnsupported",
-          "type": "error"
-        }
-      ],
-      "functions": [
-        {
-          "name": "IsInvalid",
-          "signature": "func(err error) bool"
-        },
-        {
-          "name": "New",
-          "signature": "func(provider string, model string) (Selection, error)"
-        },
-        {
-          "name": "NewModelIdentity",
-          "signature": "func(value string) (ModelIdentity, error)"
-        },
-        {
-          "name": "NewProviderIdentity",
-          "signature": "func(value string) (ProviderIdentity, error)"
-        },
-        {
-          "name": "NewReasoningEffortIdentity",
-          "signature": "func(value string) (ReasoningEffortIdentity, error)"
-        },
-        {
-          "name": "NewWithReasoningEffort",
-          "signature": "func(provider string, model string, reasoningEffort string) (Selection, error)"
-        }
-      ],
-      "types": [
-        {
-          "name": "InputKind",
-          "kind": "defined",
-          "underlying": "string",
-          "methods": [
-            {
-              "name": "JSONSchemaEnum",
-              "signature": "func() []string"
-            }
-          ]
-        },
-        {
-          "name": "ModelIdentity",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "Patch",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Provider",
-              "type": "*string"
-            },
-            {
-              "name": "Model",
-              "type": "*string"
-            },
-            {
-              "name": "ReasoningEffort",
-              "type": "*string"
-            }
-          ],
-          "methods": [
-            {
-              "name": "Apply",
-              "signature": "func(current Selection) (Selection, error)"
-            },
-            {
-              "name": "Empty",
-              "signature": "func() bool"
-            }
-          ]
-        },
-        {
-          "name": "ProviderIdentity",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "ReasoningEffortIdentity",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "Selection",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Configured",
-              "signature": "func() bool"
-            },
-            {
-              "name": "Equal",
-              "signature": "func(other Selection) bool"
-            },
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "Model",
-              "signature": "func() string"
-            },
-            {
-              "name": "Provider",
-              "signature": "func() string"
-            },
-            {
-              "name": "ReasoningEffort",
-              "signature": "func() string"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            },
-            {
-              "name": "ValidateExact",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "SelectionContext",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Use",
-              "type": "Use",
-              "tag": "json:\"use\""
-            },
-            {
-              "name": "Limits",
-              "type": "*SelectionLimits",
-              "tag": "json:\"limits,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "SelectionLimits",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InputKind",
-              "type": "InputKind",
-              "tag": "json:\"inputKind\""
-            },
-            {
-              "name": "MaxInputBytes",
-              "type": "int64",
-              "tag": "json:\"maxInputBytes\" jsonschema:\"minimum=1\""
-            },
-            {
-              "name": "MaxOutputTokens",
-              "type": "int64",
-              "tag": "json:\"maxOutputTokens\" jsonschema:\"minimum=1\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Use",
-          "kind": "defined",
-          "underlying": "string",
-          "methods": [
-            {
-              "name": "JSONSchemaEnum",
-              "signature": "func() []string"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/model/catalog",
-      "imports": [
-        "github.com/Tangerg/flame/runtime/model",
-        "github.com/Tangerg/scope/core/chat"
-      ],
-      "variables": [
-        {
-          "name": "ErrUnsupportedInputModality",
-          "type": "error"
-        },
-        {
-          "name": "ErrUnsupportedReasoningEffort",
-          "type": "error"
-        }
-      ],
-      "types": [
-        {
-          "name": "Selections",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "AdmitInput",
-              "signature": "func(selection model.Selection, messages []chat.Message) error"
-            },
-            {
-              "name": "AdmitSelection",
-              "signature": "func(selection model.Selection) error"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/runtime/point",
-      "imports": [
-        "encoding/json/jsontext",
-        "github.com/Tangerg/flame/runtime/capability",
-        "github.com/Tangerg/flame/runtime/jsoninput"
+        "github.com/Tangerg/flame/packages/go-sdk/capability",
+        "github.com/Tangerg/flame/packages/go-sdk/jsoninput"
       ],
       "constants": [
         {
@@ -4351,10 +4996,10 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/runtime/protocol",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/protocol",
       "imports": [
         "encoding/json/jsontext",
-        "github.com/Tangerg/flame/runtime/capability",
+        "github.com/Tangerg/flame/packages/go-sdk/capability",
         "time"
       ],
       "constants": [
@@ -14635,7 +15280,329 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/runtime/storage/sqlite",
+      "path": "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc",
+      "imports": [
+        "encoding/json/jsontext",
+        "github.com/Tangerg/go-sdk/jsonrpc"
+      ],
+      "functions": [
+        {
+          "name": "DecodeMessage",
+          "signature": "func(encoded []byte) (Message, error)"
+        },
+        {
+          "name": "EncodeMessage",
+          "signature": "func(message Message) ([]byte, error)"
+        },
+        {
+          "name": "NewError",
+          "signature": "func(code int, message string, data jsontext.Value) *Error"
+        },
+        {
+          "name": "NewNotification",
+          "signature": "func(method string, params any) (*Request, error)"
+        },
+        {
+          "name": "NewResponseError",
+          "signature": "func(id ID, rpcError *Error) *Response"
+        },
+        {
+          "name": "NewResponseResult",
+          "signature": "func(id ID, result any) (*Response, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Error",
+          "kind": "alias",
+          "underlying": "jsonrpc.Error"
+        },
+        {
+          "name": "ID",
+          "kind": "alias",
+          "underlying": "jsonrpc.ID"
+        },
+        {
+          "name": "Message",
+          "kind": "alias",
+          "underlying": "jsonrpc.Message"
+        },
+        {
+          "name": "Request",
+          "kind": "alias",
+          "underlying": "jsonrpc.Request"
+        },
+        {
+          "name": "Response",
+          "kind": "alias",
+          "underlying": "jsonrpc.Response"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/resourceid",
+      "functions": [
+        {
+          "name": "InstallationIDPattern",
+          "signature": "func() string"
+        },
+        {
+          "name": "ParseInstallation",
+          "signature": "func(text string) (InstallationID, error)"
+        },
+        {
+          "name": "ParseRun",
+          "signature": "func(text string) (RunID, error)"
+        },
+        {
+          "name": "ParseSegment",
+          "signature": "func(text string) (SegmentID, error)"
+        },
+        {
+          "name": "ParseSession",
+          "signature": "func(text string) (SessionID, error)"
+        },
+        {
+          "name": "ValidateItem",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateRun",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateSegment",
+          "signature": "func(text string) error"
+        },
+        {
+          "name": "ValidateSession",
+          "signature": "func(text string) error"
+        }
+      ],
+      "types": [
+        {
+          "name": "InstallationID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "RunID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SegmentID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SessionID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/sandbox",
+      "imports": [
+        "context",
+        "github.com/Tangerg/scope/tools/shell"
+      ],
+      "constants": [
+        {
+          "name": "MaxCommandOutputBytes",
+          "type": "untyped int",
+          "value": "262144"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrShutdown",
+          "type": "error"
+        },
+        {
+          "name": "ErrUnavailable",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Available",
+          "signature": "func() bool"
+        },
+        {
+          "name": "New",
+          "signature": "func(ctx context.Context, config Config, source string) (*Workspace, error)"
+        },
+        {
+          "name": "NewConfiner",
+          "signature": "func(userHome string, readOnlyPaths []string) (*Confiner, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Command",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string"
+            },
+            {
+              "name": "Args",
+              "type": "[]string"
+            },
+            {
+              "name": "Env",
+              "type": "[]string"
+            }
+          ]
+        },
+        {
+          "name": "Config",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "BaseDir",
+              "type": "string"
+            },
+            {
+              "name": "UserHome",
+              "type": "string"
+            },
+            {
+              "name": "ReadOnlyPaths",
+              "type": "[]string"
+            }
+          ]
+        },
+        {
+          "name": "Confiner",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Confine",
+              "signature": "func(root string, command string) (Command, error)"
+            }
+          ]
+        },
+        {
+          "name": "Workspace",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Path",
+              "signature": "func() (string, error)"
+            },
+            {
+              "name": "Run",
+              "signature": "func(ctx context.Context, input shell.Input) (shell.Output, error)"
+            },
+            {
+              "name": "Shutdown",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock",
+      "imports": [
+        "context"
+      ],
+      "variables": [
+        {
+          "name": "ErrUnsupported",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "AcquireDirectory",
+          "signature": "func(ctx context.Context, directory string) (*Lease, error)"
+        },
+        {
+          "name": "TryDirectory",
+          "signature": "func(directory string) (*Lease, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Lease",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Release",
+              "signature": "func() error"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/storage/directories",
+      "functions": [
+        {
+          "name": "Canonical",
+          "signature": "func(path string) (string, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Resolver",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "ResolveExistingDir",
+              "signature": "func(path string) (string, error)"
+            },
+            {
+              "name": "ResolveRoot",
+              "signature": "func(path string) (string, error)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite",
       "imports": [
         "context",
         "database/sql"
@@ -14682,6 +15649,595 @@
             {
               "name": "QueryRowContext",
               "signature": "func(ctx context.Context, query string, args ...any) *sql.Row"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/workspace",
+      "variables": [
+        {
+          "name": "ErrAbsolutePathRequired",
+          "type": "error"
+        },
+        {
+          "name": "ErrCWDUnavailable",
+          "type": "error"
+        },
+        {
+          "name": "ErrNotDirectory",
+          "type": "error"
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/local-runtime",
+      "imports": [
+        "context"
+      ],
+      "constants": [
+        {
+          "name": "DefaultListenAddress",
+          "type": "untyped string",
+          "value": "\"127.0.0.1:17171\""
+        },
+        {
+          "name": "DefaultOrigin",
+          "type": "untyped string",
+          "value": "\"http://127.0.0.1:17171\""
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrInvalidDataDirectory",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidToken",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "DataDirectoryAt",
+          "signature": "func(path string) (DataDirectory, error)"
+        },
+        {
+          "name": "DataDirectoryUnder",
+          "signature": "func(productRoot string) (DataDirectory, error)"
+        },
+        {
+          "name": "FirstPartyDirectory",
+          "signature": "func(executable string) (string, error)"
+        },
+        {
+          "name": "NodeForExecutable",
+          "signature": "func(executable string) (Node, error)"
+        },
+        {
+          "name": "OpenToken",
+          "signature": "func(path string) (*Token, error)"
+        },
+        {
+          "name": "ReadToken",
+          "signature": "func(path string) (*Token, error)"
+        },
+        {
+          "name": "ResolveProductRoot",
+          "signature": "func(userHome string, configuredRoot string) (string, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "DataDirectory",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "DatabasePath",
+              "signature": "func() string"
+            },
+            {
+              "name": "LocalTokenPath",
+              "signature": "func() string"
+            },
+            {
+              "name": "Path",
+              "signature": "func() string"
+            }
+          ]
+        },
+        {
+          "name": "Node",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Arguments",
+              "signature": "func(entry string) []string"
+            },
+            {
+              "name": "Command",
+              "signature": "func() string"
+            },
+            {
+              "name": "Identity",
+              "signature": "func() string"
+            },
+            {
+              "name": "Verify",
+              "signature": "func(ctx context.Context) (err error)"
+            }
+          ]
+        },
+        {
+          "name": "Token",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Path",
+              "signature": "func() string"
+            },
+            {
+              "name": "Value",
+              "signature": "func() string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/runtime",
+      "imports": [
+        "context",
+        "github.com/Tangerg/flame/packages/go-sdk/protocol",
+        "iter"
+      ],
+      "variables": [
+        {
+          "name": "ErrClosed",
+          "type": "error"
+        }
+      ],
+      "functions": [
+        {
+          "name": "Open",
+          "signature": "func(ctx context.Context, cfg Config) (*Runtime, error)"
+        }
+      ],
+      "types": [
+        {
+          "name": "Config",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "DataDirectory",
+              "type": "string"
+            },
+            {
+              "name": "DefaultWorkspacePath",
+              "type": "string"
+            },
+            {
+              "name": "UserHomePath",
+              "type": "string"
+            },
+            {
+              "name": "ConfigDirectories",
+              "type": "[]string"
+            }
+          ]
+        },
+        {
+          "name": "Runtime",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "ApproveSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ArchiveSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "CallPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)"
+            },
+            {
+              "name": "CancelRun",
+              "signature": "func(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error)"
+            },
+            {
+              "name": "ClearGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "ConfigurePlugin",
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "CreateFeedback",
+              "signature": "func(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "CreateMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "CreateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "CreateSession",
+              "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "DeleteMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "DeleteSession",
+              "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "Discover",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error)"
+            },
+            {
+              "name": "ExportSession",
+              "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error)"
+            },
+            {
+              "name": "ExportTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error)"
+            },
+            {
+              "name": "ForgetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ForkSession",
+              "signature": "func(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetApprovalMode",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "GetDiscoveredSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
+              "name": "GetEmbeddingRole",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "GetGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "GetMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "GetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error)"
+            },
+            {
+              "name": "GetPlan",
+              "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error)"
+            },
+            {
+              "name": "GetPluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
+            },
+            {
+              "name": "GetRun",
+              "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
+            },
+            {
+              "name": "GetRunAcceptance",
+              "signature": "func(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error)"
+            },
+            {
+              "name": "GetSession",
+              "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetSessionSnapshot",
+              "signature": "func(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error)"
+            },
+            {
+              "name": "GetSessionUsage",
+              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error)"
+            },
+            {
+              "name": "GetUsageSummary",
+              "signature": "func(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error)"
+            },
+            {
+              "name": "GetUtilityRole",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "GetWorkspaceDiff",
+              "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error)"
+            },
+            {
+              "name": "ImportSession",
+              "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error)"
+            },
+            {
+              "name": "InstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "InvokeTool",
+              "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error)"
+            },
+            {
+              "name": "ListAgentDocs",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
+            },
+            {
+              "name": "ListApprovalRules",
+              "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error)"
+            },
+            {
+              "name": "ListDiscoveredSkills",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error)"
+            },
+            {
+              "name": "ListHooks",
+              "signature": "func(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error)"
+            },
+            {
+              "name": "ListInterrupts",
+              "signature": "func(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error)"
+            },
+            {
+              "name": "ListItems",
+              "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error)"
+            },
+            {
+              "name": "ListMCPServers",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)"
+            },
+            {
+              "name": "ListMCPTools",
+              "signature": "func(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)"
+            },
+            {
+              "name": "ListManagedSkills",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ListModelEndpoints",
+              "signature": "func(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error)"
+            },
+            {
+              "name": "ListModelInvocations",
+              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
+            },
+            {
+              "name": "ListModels",
+              "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error)"
+            },
+            {
+              "name": "ListPluginCompositions",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error)"
+            },
+            {
+              "name": "ListPluginProviders",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)"
+            },
+            {
+              "name": "ListPlugins",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
+            },
+            {
+              "name": "ListProviders",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error)"
+            },
+            {
+              "name": "ListRuns",
+              "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error)"
+            },
+            {
+              "name": "ListSessionTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
+            },
+            {
+              "name": "ListSessions",
+              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error)"
+            },
+            {
+              "name": "ListSkillProposals",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
+            },
+            {
+              "name": "ListTools",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
+            },
+            {
+              "name": "ListWorkspaceFileChanges",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)"
+            },
+            {
+              "name": "ListWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.Page[protocol.FileEntry], error)"
+            },
+            {
+              "name": "ListWorkspaces",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "NotifyPluginChange",
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "OpenPluginResources",
+              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
+            },
+            {
+              "name": "ReadPluginResource",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error)"
+            },
+            {
+              "name": "ReadWorkspaceFile",
+              "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error)"
+            },
+            {
+              "name": "ReconnectMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "RejectSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ResolvePluginComposition",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error)"
+            },
+            {
+              "name": "ResolvePluginPoint",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error)"
+            },
+            {
+              "name": "ResolvePluginRequirements",
+              "signature": "func(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error)"
+            },
+            {
+              "name": "ResolveWorkspace",
+              "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error)"
+            },
+            {
+              "name": "RestoreSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ResumeGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "ResumeRun",
+              "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "RetirePluginCommand",
+              "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "RollbackSession",
+              "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error)"
+            },
+            {
+              "name": "SearchWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error)"
+            },
+            {
+              "name": "SelectPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SelectPluginProvider",
+              "signature": "func(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error)"
+            },
+            {
+              "name": "SetApprovalMode",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "SetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetEmbeddingRole",
+              "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "SetHookTrust",
+              "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "SetPluginComposition",
+              "signature": "func(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error)"
+            },
+            {
+              "name": "SetPluginEnablement",
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "SetUtilityRole",
+              "signature": "func(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "StagePlugin",
+              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
+              "name": "StartGoal",
+              "signature": "func(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StartRun",
+              "signature": "func(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SteerRun",
+              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error)"
+            },
+            {
+              "name": "StopGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StreamPlugin",
+              "signature": "func(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error)"
+            },
+            {
+              "name": "SubscribeRun",
+              "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SubscribeRuntime",
+              "signature": "func(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)"
+            },
+            {
+              "name": "TestMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error)"
+            },
+            {
+              "name": "TestProvider",
+              "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error)"
+            },
+            {
+              "name": "UninstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "UpdateGoal",
+              "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "UpdateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "UpdateProvider",
+              "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error)"
+            },
+            {
+              "name": "UpdateSession",
+              "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
             }
           ]
         }

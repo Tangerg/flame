@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 var ErrCredentialUnavailable = errors.New("model: provider credential is unavailable")
@@ -14,28 +13,28 @@ var ErrCredentialUnavailable = errors.New("model: provider credential is unavail
 // validated domain values intact until the exact call that needs primitives.
 type providerClientInputs struct {
 	entry   provider.Provider
-	profile llm.ProviderProfile
+	profile ProviderProfile
 }
 
 func resolveProviderClientInputs(expectedID string, entry provider.Provider) (providerClientInputs, error) {
 	if entry.ID() != expectedID {
 		return providerClientInputs{}, fmt.Errorf("model: provider registry identity mismatch: got %q for %q", entry.ID(), expectedID)
 	}
-	profile, found := llm.LookupProvider(llm.Provider(expectedID))
+	profile, found := LookupProvider(Provider(expectedID))
 	if !found {
 		return providerClientInputs{}, fmt.Errorf("model: unsupported provider %q", expectedID)
 	}
 	return providerClientInputs{entry: entry, profile: profile}, nil
 }
 
-func (i providerClientInputs) clientSpec() (llm.ClientSpec, error) {
+func (i providerClientInputs) clientSpec() (clientSpec, error) {
 	apiKey, configured := i.entry.APIKey()
 	if !configured {
-		return llm.ClientSpec{}, ErrCredentialUnavailable
+		return clientSpec{}, ErrCredentialUnavailable
 	}
-	spec, err := llm.NewClientSpec(i.profile.ID(), apiKey)
+	spec, err := newClientSpec(i.profile.ID(), apiKey)
 	if err != nil {
-		return llm.ClientSpec{}, err
+		return clientSpec{}, err
 	}
 	baseURL, configured := i.entry.BaseURL()
 	if !configured {

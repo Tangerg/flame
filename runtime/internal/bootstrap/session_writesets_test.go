@@ -3,11 +3,13 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -22,9 +24,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -43,7 +45,7 @@ func bootstrapGoalRunCost(t *testing.T, usd float64) accounting.Cost {
 	return cost
 }
 
-func insertBootstrapSession(t *testing.T, store *sqlite.SessionStore, value session.Session) {
+func insertBootstrapSession(t *testing.T, store *persistence.SessionStore, value session.Session) {
 	t.Helper()
 	if err := store.Insert(t.Context(), value); err != nil {
 		t.Fatalf("insert Session %q: %v", value.ID(), err)
@@ -145,34 +147,34 @@ func bootstrapPending(
 // fixture while delegating every tested write-set to the persistence adapter.
 type sessionStores struct {
 	*persistence.SessionStores
-	sessions    *sqlite.SessionStore
-	transcript  *sqlite.TranscriptStore
+	sessions    *persistence.SessionStore
+	transcript  *persistence.TranscriptStore
 	interrupts  *persistence.InterruptStore
-	runs        *sqlite.RunStore
+	runs        *persistence.RunStore
 	checkpoints *persistence.ExecutorCheckpointStore
 	history     *runsapp.ConversationHistory
-	plan        *sqlite.PlanStore
-	approvals   *sqlite.ApprovalRuleStore
-	modes       *sqlite.ModeStore
-	toolResults *sqlite.ToolResultStore
-	childStarts *sqlite.ChildRunStartReservationStore
-	goals       *sqlite.GoalStore
+	plan        *persistence.PlanStore
+	approvals   *persistence.ApprovalRuleStore
+	modes       *persistence.ModeStore
+	toolResults *persistence.ToolResultStore
+	childStarts *persistence.ChildRunStartReservationStore
+	goals       *persistence.GoalStore
 }
 
 // newWriteSetFixture builds the persistence adapter over a fresh sqlite
 // database so the atomic write-sets run against the real stores + transactor.
-func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persistence.InterruptStore) {
+func newWriteSetFixture(t *testing.T) (sessionStores, *persistence.RunStore, *persistence.InterruptStore) {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	runs := sqlite.NewRunStore(db)
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	plan := sqlite.NewPlanStore(db)
-	approvals := sqlite.NewApprovalRuleStore(db)
-	messages, err := persistence.NewConversationStore(sqlite.NewMessageStore(db))
+	runs := db.Runs
+	ints := db.Interrupts
+	plan := db.Plan
+	approvals := db.ApprovalRules
+	messages, err := persistence.NewConversationStore(db.ChatHistory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,30 +183,30 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		t.Fatal(err)
 	}
 	ss := sessionStores{
-		sessions:    sqlite.NewSessionStore(db),
-		transcript:  sqlite.NewTranscriptStore(db),
+		sessions:    db.Sessions,
+		transcript:  db.Transcript,
 		interrupts:  ints,
 		runs:        runs,
-		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		checkpoints: db.ExecutorCheckpoints,
 		history:     history,
 		plan:        plan,
 		approvals:   approvals,
-		modes:       sqlite.NewModeStore(db),
-		toolResults: sqlite.NewToolResultStore(db),
-		childStarts: sqlite.NewChildRunStartReservationStore(db),
-		goals:       sqlite.NewGoalStore(db),
+		modes:       db.ApprovalModes,
+		toolResults: db.ToolResults,
+		childStarts: db.ChildRunStarts,
+		goals:       db.Goals,
 	}
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		CommandAcceptances: persistence.NewCommandAcceptanceStore(db),
+		CommandAcceptances: db.CommandAcceptances,
 		Sessions:           ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
-			return sqlitebase.RunReadSnapshot(ctx, db, read)
+			return db.ReadSnapshot(ctx, read)
 		},
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -214,7 +216,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	return ss, runs, ints
 }
 
-func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) plan.State {
+func replaceFixturePlan(t *testing.T, ctx context.Context, store *persistence.PlanStore, sessionID string, steps []plan.Step) plan.State {
 	t.Helper()
 	state, err := mustPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).Replace(ctx, sessionID, steps)
 	if err != nil {
@@ -223,7 +225,7 @@ func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanSto
 	return state
 }
 
-func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *plan.Replacement {
+func prepareFixturePlan(t *testing.T, ctx context.Context, store *persistence.PlanStore, sessionID string, steps []plan.Step) *plan.Replacement {
 	t.Helper()
 	replacement, err := mustPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {
@@ -258,8 +260,8 @@ func restoredRun(sessionID, runID string, at time.Time) run.Run {
 
 func parkSessionARootRun(
 	t *testing.T,
-	sessions *sqlite.SessionStore,
-	runs *sqlite.RunStore,
+	sessions *persistence.SessionStore,
+	runs *persistence.RunStore,
 	ints *persistence.InterruptStore,
 	checkpoints *persistence.ExecutorCheckpointStore,
 ) string {
@@ -268,8 +270,8 @@ func parkSessionARootRun(
 
 func parkWithGoalLease(
 	t *testing.T,
-	sessions *sqlite.SessionStore,
-	runs *sqlite.RunStore,
+	sessions *persistence.SessionStore,
+	runs *persistence.RunStore,
 	ints *persistence.InterruptStore,
 	checkpoints *persistence.ExecutorCheckpointStore,
 	sessionID, runID, goalIncarnationID string,
@@ -714,7 +716,7 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 	ss, runs, ints := newWriteSetFixture(t)
 	ctx := context.Background()
 	memberID := parkSessionARootRun(t, ss.sessions, runs, ints, ss.checkpoints)
-	childStart := sqlite.ChildRunStartReservationRecord{
+	childStart := persistence.ChildRunStartReservationRecord{
 		MemberID: "member_child_start", SessionID: "ses_A",
 		Payload: []byte(`{"run":"child"}`), CreatedAt: parkCreatedAt,
 	}

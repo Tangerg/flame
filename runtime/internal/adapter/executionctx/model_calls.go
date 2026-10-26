@@ -3,7 +3,7 @@ package executionctx
 import (
 	"context"
 
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 // ModelCalls binds nested consumption to the admitted execution member. Finish

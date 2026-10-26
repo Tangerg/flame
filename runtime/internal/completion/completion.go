@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 )
 
 // Wait joins done or retains the caller's cancellation category and cause.

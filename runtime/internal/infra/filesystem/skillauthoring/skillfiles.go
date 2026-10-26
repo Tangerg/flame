@@ -13,8 +13,8 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 func readSkill(root *os.Root, dir string) ([]byte, bool, error) {

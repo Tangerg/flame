@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 type alreadyTerminalRuns struct{}

@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (

@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/protocol"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

@@ -3,7 +3,7 @@ package delivery
 import (
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 )
 

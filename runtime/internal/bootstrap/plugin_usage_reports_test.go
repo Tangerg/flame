@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	reports "github.com/Tangerg/flame/plugins/usagereports"
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *testing.T) {
@@ -22,7 +22,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if err := os.RemoveAll(filepath.Join(source, "backend")); err != nil {
 		t.Fatal(err)
 	}
-	build := exec.CommandContext(t.Context(), "node", "../../../packages/plugin-sdk/typescript/testing/build.mjs", filepath.Join(source, "backend"), "../../../runtime/internal/testsupport/testdata/usage-reply-loss.ts")
+	build := exec.CommandContext(t.Context(), "node", "../../../packages/backend-sdk/testing/build.mjs", filepath.Join(source, "backend"), "../../../runtime/internal/testsupport/testdata/usage-reply-loss.ts")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build response-loss backend: %s: %v", output, err)
 	}

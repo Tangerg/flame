@@ -5,12 +5,12 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 

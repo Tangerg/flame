@@ -7,12 +7,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/optional"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

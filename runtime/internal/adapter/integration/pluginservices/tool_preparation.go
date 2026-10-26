@@ -5,18 +5,19 @@ import (
 	"errors"
 	"maps"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -29,7 +30,7 @@ type ToolPreparationConfig struct {
 	Invalidations invalidation.Publish
 }
 
-func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPreparation, error) {
+func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, error) {
 	memoryContract, err := capability.Parse([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
@@ -37,7 +38,7 @@ func NewToolPreparation(config ToolPreparationConfig) (mcpconnection.ToolPrepara
 	if dependency.Missing(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
 		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
 	}
-	return func(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost) (mcpconnection.ToolCall, func(), error) {
+	return func(ctx context.Context, executable mcp.Executable, host mcp.ToolHost) (mcp.ToolCall, func(), error) {
 		source := executable.SourceConfig().Server
 		snapshot, installed, err := admitInstalledSource(ctx, config.Installations, source)
 		if err != nil {
@@ -79,7 +80,7 @@ func admitInstalledSource(ctx context.Context, store plugins.Store, source mcpse
 	return snapshot, true, nil
 }
 
-func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcpconnection.ToolHost, invalidations invalidation.Publish) (mcpconnection.ToolCall, func(), error) {
+func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcp.ToolHost, invalidations invalidation.Publish) (mcp.ToolCall, func(), error) {
 	metadata, release, err := host(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -102,7 +103,7 @@ func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Contex
 
 // Memory owns a narrow two-call model/embedding grant, deliberately not the
 // canonical installed grant the ordinary Tool path receives.
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (mcpconnection.ToolCall, func(), error) {
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error)) (mcp.ToolCall, func(), error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")

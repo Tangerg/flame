@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"path/filepath"
 	"testing"
@@ -11,8 +12,8 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient/safeguard"
@@ -27,12 +28,12 @@ func TestScopeDefiniteModelFailureSettlesWithoutHostCancellation(t *testing.T) {
 	for _, scope := range []safeguard.Scope{safeguard.ScopeInput, safeguard.ScopeOutput} {
 		for _, streaming := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/streaming=%t", scope, streaming), func(t *testing.T) {
-				db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "evidence.db"))
+				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "evidence.db")))
 				if err != nil {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = db.Close() })
-				journal := sqlite.NewModelInvocationStore(db)
+				journal := db.ModelInvocations
 				var calls int
 				physical := safeguardedTestModel{
 					Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {

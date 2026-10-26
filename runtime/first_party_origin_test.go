@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testing.T) {

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 )
 
 type blockingCancelRuntime struct {
@@ -43,7 +43,8 @@ func canceledRootResponse(runID string) *protocol.CancelRunResponse {
 func TestReplayClaimSerializesConcurrentMutation(t *testing.T) {
 	runtime := &blockingCancelRuntime{started: make(chan struct{}), release: make(chan struct{})}
 	router := newTestRouter(t, runtime)
-	ctx := transportmeta.WithIdempotencyKey(context.Background(), "cancel-once")
+	ctx := context.Background()
+	options := delivery.Options{IdempotencyKey: "cancel-once"}
 	params, err := json.Marshal(protocol.CancelRunRequest{RunID: "run_1"})
 	if err != nil {
 		t.Fatalf("marshal request params: %v", err)
@@ -51,9 +52,9 @@ func TestReplayClaimSerializesConcurrentMutation(t *testing.T) {
 	first := &transport.Request{ID: testID("first"), Method: "runs.cancel", Params: params}
 	second := &transport.Request{ID: testID("second"), Method: "runs.cancel", Params: params}
 	results := make(chan Result, 2)
-	go func() { results <- router.Dispatch(ctx, first) }()
+	go func() { results <- router.Dispatch(ctx, first, options) }()
 	<-runtime.started
-	go func() { results <- router.Dispatch(ctx, second) }()
+	go func() { results <- router.Dispatch(ctx, second, options) }()
 	close(runtime.release)
 
 	var replayedResults []string

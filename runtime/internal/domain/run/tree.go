@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // ErrInvalidTree reports a set of Run identities that cannot form one

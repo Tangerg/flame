@@ -5,16 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	memorycontract "github.com/Tangerg/flame/packages/plugin-sdk/memory"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+
+	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ import (
 type Memory struct {
 	contract      *capability.Contract
 	installations plugins.Store
-	pool          *mcpconnection.Pool
+	pool          *mcp.Pool
 	callbacks     *pluginsdk.Callbacks
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (models.TextEmbedder, error)
@@ -36,7 +37,7 @@ type ConversationReader interface {
 }
 type MemoryConfig struct {
 	Installations plugins.Store
-	Connections   *mcpconnection.Pool
+	Connections   *mcp.Pool
 	Callbacks     *pluginsdk.Callbacks
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (models.TextEmbedder, error)

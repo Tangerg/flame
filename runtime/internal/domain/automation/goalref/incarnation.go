@@ -8,7 +8,7 @@ package goalref
 import (
 	"errors"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // MaximumIncarnationCharacters bounds every durable Goal-incarnation key.

@@ -10,14 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

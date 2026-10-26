@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestProviderMetadataRejectsIncompletePolicies(t *testing.T) {

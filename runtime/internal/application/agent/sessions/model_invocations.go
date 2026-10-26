@@ -4,9 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/pagination"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 type QueryModelInvocationReader interface {

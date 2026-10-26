@@ -7,12 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type failingWaitingCheckpointStore struct {
@@ -288,7 +287,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
 				fixture.replaceEffects(func(config *Config) {
 					config.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-						return sqlitebase.RunInTx(ctx, fixture.db, func(txCtx context.Context) error {
+						return fixture.db.Transactor(ctx, func(txCtx context.Context) error {
 							if err := fn(txCtx); err != nil {
 								return err
 							}
@@ -345,7 +344,7 @@ func (w *waitingCancellationSQLiteFixture) replaceEffects(
 		State:               w.runState,
 		ExecutorCheckpoints: w.checkpoints,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, w.db, fn)
+			return w.db.Transactor(ctx, fn)
 		},
 	}
 	configure(&config)

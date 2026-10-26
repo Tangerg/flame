@@ -2,14 +2,14 @@ package model
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // TestChatResolverRejectsUnconfigured verifies an explicit provider that
@@ -17,11 +17,11 @@ import (
 // resolves a client from the current registry snapshot. The provider is taken
 // as given — never inferred from the model.
 func TestChatResolverRejectsUnconfigured(t *testing.T) {
-	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ps := sqlitestore.NewProviderStore(db) // empty: deepseek not configured
+	ps := db.Providers // empty: deepseek not configured
 	r, err := NewChatResolver(ps)
 	if err != nil {
 		t.Fatal(err)

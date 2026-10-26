@@ -5,6 +5,8 @@ import (
 	"io"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -22,8 +24,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/pagination"
 )
 
 // Every interface below is defined by Delivery — the consuming side. They keep

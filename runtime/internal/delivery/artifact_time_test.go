@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSessionImportPreservesExactTimeBoundsAndEpoch(t *testing.T) {

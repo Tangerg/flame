@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	modeltext "github.com/Tangerg/flame/runtime/model/text"
+	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 
 	"github.com/Tangerg/scope/core/chat"
 )

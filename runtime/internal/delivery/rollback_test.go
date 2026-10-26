@@ -3,17 +3,17 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	appRuns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -21,22 +21,22 @@ import (
 // service + history + interrupt store, plus the in-memory conversation map.
 func rollbackHarness(t *testing.T) (*Handler, *stubRuntime) {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	rt := &stubRuntime{
-		sess:        sqlite.NewSessionStore(db),
+		sess:        db.Sessions,
 		model:       "default-model",
 		history:     map[string][]chat.Message{},
-		hist:        sqlite.NewTranscriptStore(db),
-		runs:        sqlite.NewRunStore(db),
-		goals:       sqlite.NewGoalStore(db),
-		toolResults: sqlite.NewToolResultStore(db),
-		interrupts:  persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		muts:        persistence.NewWorkspaceMutationStore(sqlite.NewWorkspaceMutationStore(db)),
-		plan:        sqlite.NewPlanStore(db),
+		hist:        db.Transcript,
+		runs:        db.Runs,
+		goals:       db.Goals,
+		toolResults: db.ToolResults,
+		interrupts:  db.Interrupts,
+		muts:        db.WorkspaceMutations,
+		plan:        db.Plan,
 		db:          db,
 	}
 	return newTestHandler(rt), rt

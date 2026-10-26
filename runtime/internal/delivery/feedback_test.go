@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type feedbackRecorderFake struct {

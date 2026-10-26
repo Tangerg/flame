@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 func writeHooks(t *testing.T, dir, body string) {

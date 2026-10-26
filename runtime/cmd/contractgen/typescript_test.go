@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"strings"
 	"testing"
@@ -18,7 +19,7 @@ func TestTypeScriptPublishesUnconditionalRequirements(t *testing.T) {
 
 	shape := reflect.TypeFor[unconditionalRequiredShape]()
 	set := &schemaSet{
-		defs:   make(map[string]*schema),
+		defs:   make(map[string]*contractgen.Schema),
 		origin: make(map[string]reflect.Type),
 		enums:  make(map[reflect.Type][]string),
 		unions: make(map[reflect.Type]dispatch.UnionSpec),
@@ -27,35 +28,8 @@ func TestTypeScriptPublishesUnconditionalRequirements(t *testing.T) {
 		},
 		values: make(map[reflect.Type][]dispatch.FieldConstraint),
 	}
-	body := (&tsEmitter{}).objectBody(set.object(shape), "")
+	body := contractgen.NewTypeScript(nil).ObjectBody(set.object(shape), "")
 	if strings.Contains(body, "createdAt?") || !strings.Contains(body, "createdAt: string;") {
 		t.Fatalf("TypeScript body = %q, want required createdAt", body)
-	}
-}
-
-func TestTypeScriptNestedNarrowingPreservesRequiredFieldsAndLiteralTypes(t *testing.T) {
-	set := &schemaSet{defs: map[string]*schema{
-		"Problem": {
-			Type: schemaTypeObject,
-			Properties: map[string]any{
-				"detail": &schema{Type: schemaTypeString},
-				"type":   &schema{Ref: refPrefix + "ProblemType"},
-			},
-			Required: []string{"type"},
-		},
-		"ProblemType": {Enum: []string{"timeout", "toolFailed"}},
-	}}
-	emitter := &tsEmitter{tsTypes: tsTypes{set: set}}
-
-	got := emitter.narrow(
-		&schema{Ref: refPrefix + "Problem"},
-		&schema{
-			Properties: map[string]any{"type": &schema{Enum: []string{"toolFailed"}}},
-			Required:   []string{"detail"},
-		},
-	)
-	const want = `{ detail: string; type: "toolFailed" }`
-	if got != want {
-		t.Fatalf("nested narrowing = %s, want %s", got, want)
 	}
 }

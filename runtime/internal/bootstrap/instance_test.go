@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestInstanceConfigRequiresExactAbsoluteHostPaths(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 )
 
-// Pipeline composes the post-Run maintenance workers. It keeps the lifecycle
-// host-owned Skill maintenance beside the committed Run boundary. The optional
-// Memory backend receives that boundary and owns its extraction/curation gate.
+// MemoryMaintenance runs after successful Scope Interaction completion, before
+// committing the Flame Segment terminal fact. The selected Memory backend owns
+// its extraction and curation decisions.
 type MemoryMaintenance interface {
 	MaintainMemory(context.Context, executionadapter.RunMaintenanceInput) error
 }
@@ -20,7 +20,7 @@ type Pipeline struct {
 	skillArchiver *IdleSkillArchiver
 }
 
-// NewPipeline composes the default maintenance workers for clean Run endings.
+// NewPipeline composes maintenance workers for successful Scope Interaction completion.
 func NewPipeline(consolidator MemoryMaintenance, skillMiner *SkillProposalMiner, skillArchiver *IdleSkillArchiver) (*Pipeline, error) {
 	if consolidator == nil || skillMiner == nil || skillArchiver == nil {
 		return nil, errors.New("maintenance: all pipeline workers are required")

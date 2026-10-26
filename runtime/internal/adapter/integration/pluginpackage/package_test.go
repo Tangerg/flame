@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
@@ -22,8 +23,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/resourceid"
+
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 type emptySelections struct{ plugins.SelectionStore }
@@ -86,15 +88,15 @@ func TestStartupRecoversSealedStagingAndNormalReclaimPreservesCandidates(t *test
 	}
 }
 
-func testReleaseStore(t *testing.T) (*Releases, *sqlite.InstallationStore, *sqlite.MCPServerStore) {
+func testReleaseStore(t *testing.T) (*Releases, *persistence.InstallationStore, *persistence.MCPServerStore) {
 	t.Helper()
 	directory := t.TempDir()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	r, err := New(directory, sqlite.NewReleaseStore(db))
+	r, err := New(directory, db.PluginReleases)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,7 @@ func testReleaseStore(t *testing.T) (*Releases, *sqlite.InstallationStore, *sqli
 			return err
 		})
 	})
-	return r, sqlite.NewInstallationStore(db), sqlite.NewMCPServerStore(db)
+	return r, db.Installations, db.MCPServers
 }
 func writePackage(t *testing.T, files map[string]string) string {
 	t.Helper()

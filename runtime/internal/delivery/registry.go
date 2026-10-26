@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 // Registry is the single catalog of Runtime operations. It owns both the

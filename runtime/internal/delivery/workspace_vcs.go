@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListWorkspaceFileChanges projects application VCS status onto the wire.

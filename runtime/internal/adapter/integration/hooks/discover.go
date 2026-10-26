@@ -10,10 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/exactjson"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 

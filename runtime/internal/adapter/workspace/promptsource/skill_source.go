@@ -12,11 +12,11 @@ import (
 
 	sdk "github.com/Tangerg/scope/skills"
 
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/fileinput"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 

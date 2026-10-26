@@ -3,7 +3,7 @@ package sessions
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // DeletePlan removes exactly one addressed conversation. User-created forks

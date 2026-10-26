@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListDiscoveredSkills maps the application-owned, name-ordered visible Skill

@@ -2,19 +2,19 @@ package execution
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/agenttest"
 )
 
 func TestSQLiteTreeCommitterConformance(t *testing.T) {
 	agenttest.RunTreeCommitterConformance(t, func() agenttest.TreeCommitterConformanceDriver {
-		db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "tree.db"))
+		db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "tree.db")))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -26,7 +26,7 @@ func TestSQLiteTreeCommitterConformance(t *testing.T) {
 		driver := &sqliteTreeCommitterDriver{interactionSession: &interactionSession{
 			start: runs.RootExecutionStart{SessionID: "session"}, lifetime: newInteractionLifetime(t.Context()),
 			executionTrees: &scopeCommitCheckingStore{
-				ExecutionTreeStore: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+				ExecutionTreeStore: db.ExecutorCheckpoints,
 			},
 		}}
 		t.Cleanup(driver.lifetime.stopRelease)

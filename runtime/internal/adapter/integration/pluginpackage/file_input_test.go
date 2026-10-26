@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 type cancelingPackageInput struct {

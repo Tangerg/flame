@@ -8,7 +8,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 )
 
 // observationRoots pins every configured physical boundary for one observer.

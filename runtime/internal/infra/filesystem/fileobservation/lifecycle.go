@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -159,9 +161,12 @@ func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
 		if _, keep := next[directory]; keep {
 			continue
 		}
-		// Automatic retirement may remove the kernel registration after Remove
-		// found it in the backend's map. Both absence errors settle the removal.
-		if err := o.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) {
+		// Linux may retire the kernel watch before fsnotify observes its deletion,
+		// so Remove returns EINVAL for that absent watch. stateMu keeps this
+		// watcher's descriptor alive until reconciliation has finished.
+		if err := o.fsw.Remove(directory); err != nil &&
+			!errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) &&
+			!(runtime.GOOS == "linux" && errors.Is(err, syscall.EINVAL)) {
 			return fmt.Errorf("%s: unwatch directory %q: %w", o.label, directory, err)
 		}
 	}

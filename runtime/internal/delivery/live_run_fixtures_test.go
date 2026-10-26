@@ -2,17 +2,17 @@ package delivery
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"testing"
 
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -27,16 +27,16 @@ type blockingRunRuntime struct {
 
 func newBlockingHandler(t *testing.T) *Handler {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open blocking runtime store: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	return newTestHandler(&blockingRunRuntime{stubRuntime: stubRuntime{
-		sess:       sqlite.NewSessionStore(db),
-		hist:       sqlite.NewTranscriptStore(db),
-		runs:       sqlite.NewRunStore(db),
-		interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
+		sess:       db.Sessions,
+		hist:       db.Transcript,
+		runs:       db.Runs,
+		interrupts: db.Interrupts,
 		history:    map[string][]chat.Message{},
 	}})
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 )
 
 func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {

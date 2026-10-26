@@ -3,8 +3,8 @@ package dispatch
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 )
 
 const (

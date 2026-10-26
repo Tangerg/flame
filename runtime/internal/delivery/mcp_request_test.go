@@ -5,10 +5,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func TestToolReferenceRejectsInvalidMCPIdentity(t *testing.T) {

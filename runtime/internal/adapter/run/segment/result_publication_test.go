@@ -3,7 +3,8 @@ package segment
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
@@ -13,15 +14,16 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/metadata"
@@ -31,29 +33,29 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 	for _, lostReceipt := range []bool{false, true} {
 		t.Run(map[bool]string{false: "acknowledged", true: "receipt lost"}[lostReceipt], func(t *testing.T) {
 			ctx := t.Context()
-			db, err := sqlite.Open(ctx, ":memory:")
+			db, err := persistencefixture.Open(t, ctx, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			state := sqlite.NewRunStore(db)
-			messages := sqlite.NewMessageStore(db)
-			history := sqlite.NewTranscriptStore(db)
+			state := db.Runs
+			messages := db.ChatHistory
+			history := db.Transcript
 			started := time.Unix(1, 0).UTC()
 			draft := run.Draft{RunID: "run_publication", SessionID: "ses_publication", SegmentID: "seg_first", CreatedAt: started, ModelSelection: testsupport.DefaultModelSelection()}
 			if err := state.Admit(ctx, draft); err != nil {
 				t.Fatal(err)
 			}
-			trees := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+			trees := db.ExecutorCheckpoints
 			payload := []byte(`{"tree":"settled"}`)
 			update := runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{Sequence: 1, CommitID: "initial", CommitDigest: "initial", SessionID: draft.SessionID, RootID: "root", Writer: "writer", Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(payload)), Payload: payload}}
 			rollback := true
 			transactions := 0
 			effects := mustNewEffects(Config{
-				ExecutionTrees: trees, State: state, Transcript: history, Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
+				ExecutionTrees: trees, State: state, Transcript: history, Conversation: mustConversationStore(t, messages), ToolInvocations: db.ToolInvocations,
 				Tx: func(ctx context.Context, fn func(context.Context) error) error {
 					transactions++
-					err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+					err := db.Transactor(ctx, func(ctx context.Context) error {
 						if err := fn(ctx); err != nil {
 							return err
 						}
@@ -167,21 +169,21 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 		t.Run(fmt.Sprintf("restart=%t", restart), func(t *testing.T) {
 			ctx := t.Context()
 			path := filepath.Join(t.TempDir(), "flame.db")
-			var db *sql.DB
-			var state *sqlite.RunStore
-			var messages *sqlite.MessageStore
+			var db *persistencefixture.Stores
+			var state *persistence.RunStore
+			var messages *persistence.MessageStore
 			var effects *Effects
 			open := func() {
 				var err error
-				db, err = sqlite.Open(ctx, path)
+				db, err = persistencefixture.Open(t, ctx, filepath.Dir(path))
 				if err != nil {
 					t.Fatal(err)
 				}
-				state, messages = sqlite.NewRunStore(db), sqlite.NewMessageStore(db)
+				state, messages = db.Runs, db.ChatHistory
 				effects = mustNewEffects(Config{
-					State: state, Transcript: sqlite.NewTranscriptStore(db), Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
+					State: state, Transcript: db.Transcript, Conversation: mustConversationStore(t, messages), ToolInvocations: db.ToolInvocations,
 					Tx: func(ctx context.Context, fn func(context.Context) error) error {
-						return sqlitebase.RunInTx(ctx, db, fn)
+						return db.Transactor(ctx, fn)
 					},
 				})
 			}

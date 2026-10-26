@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, parameters any) *protocol.Failure {

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 

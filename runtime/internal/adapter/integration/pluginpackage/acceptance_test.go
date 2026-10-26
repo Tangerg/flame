@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func TestUnknownRootFieldIsDiagnosedAndOtherwiseIgnored(t *testing.T) {

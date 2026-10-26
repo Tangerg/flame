@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // InteractionToolResolver builds the exact Tool manifest for one staged root.

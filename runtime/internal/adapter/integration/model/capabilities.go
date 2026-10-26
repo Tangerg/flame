@@ -14,7 +14,6 @@ import (
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 // Capabilities implements the three model-configuration ports consumed by
@@ -29,7 +28,7 @@ const (
 )
 
 func (Capabilities) Supported() []modelsapp.ProviderMetadata {
-	supported := llm.SupportedProviders()
+	supported := supportedProviders()
 	out := make([]modelsapp.ProviderMetadata, 0, len(supported))
 	for _, value := range supported {
 		out = append(out, providerMetadata(value))
@@ -38,7 +37,7 @@ func (Capabilities) Supported() []modelsapp.ProviderMetadata {
 }
 
 func (Capabilities) Metadata(id string) (modelsapp.ProviderMetadata, bool) {
-	profile, found := llm.LookupProvider(llm.Provider(id))
+	profile, found := LookupProvider(Provider(id))
 	if !found {
 		return modelsapp.ProviderMetadata{}, false
 	}
@@ -85,7 +84,7 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	if err != nil {
 		return err
 	}
-	client, _, err := llm.BuildChat(ctx, spec, defaultModel)
+	client, _, err := buildChat(ctx, spec, defaultModel)
 	if err != nil {
 		return err
 	}
@@ -127,14 +126,14 @@ func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string,
 		}
 		return nil, err
 	}
-	ids, err := llm.ListModels(ctx, spec)
+	ids, err := listModels(ctx, spec)
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
 	}
 	return ids, err
 }
 
-func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
+func providerMetadata(value ProviderProfile) modelsapp.ProviderMetadata {
 	endpoint := modelsapp.ProviderEndpointOptional
 	if value.RequiresConfiguredEndpoint() {
 		endpoint = modelsapp.ProviderEndpointRequired

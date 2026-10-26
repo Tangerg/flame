@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"

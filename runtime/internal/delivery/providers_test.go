@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func modelLimitFacts(t *testing.T, values modelref.TokenLimitValues) modelref.TokenLimits {

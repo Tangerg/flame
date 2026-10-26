@@ -3,9 +3,9 @@ package delivery
 import (
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func runtimeProduced(detail string, cause error) *protocol.Failure {

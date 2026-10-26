@@ -3,7 +3,7 @@ package accounting
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 
 	"github.com/Tangerg/scope/core/chat"
 )

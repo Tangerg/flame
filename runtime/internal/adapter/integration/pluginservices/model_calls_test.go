@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"net/http"
 	"path/filepath"
@@ -14,18 +15,19 @@ import (
 	"testing"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -81,7 +83,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			}
 			composition, _, _ := installedObserverFixture(t, mode)
 			path := filepath.Join(t.TempDir(), "model-calls.db")
-			db, err := sqlite.Open(t.Context(), path)
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,7 +98,7 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-" + request.Options.Model, Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3}}}, nil
 			})
 			routing := &routedCallResolver{model: endpoint}
-			observed, err := models.NewObservedResolver(routing, sqlite.NewModelInvocationStore(db), func(_ string, _ string, _ *chat.Usage) accounting.Cost {
+			observed, err := models.NewObservedResolver(routing, db.ModelInvocations, func(_ string, _ string, _ *chat.Usage) accounting.Cost {
 				value, _ := accounting.NewCost(1.5)
 				return value
 			})
@@ -137,12 +139,12 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 			if err := db.Close(); err != nil {
 				t.Fatal(err)
 			}
-			db, err = sqlite.Open(t.Context(), path)
+			db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			store := sqlite.NewModelInvocationStore(db)
+			store := db.ModelInvocations
 			rows, err := store.PageEndpointInvocations(t.Context(), "original-plugin-operation", 0, "", 10)
 			if err != nil || len(rows) != 3 {
 				t.Fatalf("durable independent endpoints: %+v %v", rows, err)
@@ -244,13 +246,13 @@ func TestSelectedModelStreamIsLazyPreservesEvidenceAndJoinsOnRelease(t *testing.
 	for _, stopEarly := range []bool{false, true} {
 		t.Run(fmt.Sprint(stopEarly), func(t *testing.T) {
 			composition, _, _ := installedObserverFixture(t, "transparent")
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "stream.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "stream.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
 			endpoint := &selectedStreamModel{joined: make(chan struct{})}
-			observed, err := models.NewObservedResolver(&routedCallResolver{model: endpoint}, sqlite.NewModelInvocationStore(db), nil)
+			observed, err := models.NewObservedResolver(&routedCallResolver{model: endpoint}, db.ModelInvocations, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -281,7 +283,7 @@ func TestSelectedModelStreamIsLazyPreservesEvidenceAndJoinsOnRelease(t *testing.
 			if !stopEarly && (result == nil || result.Failure != nil || result.Response.Text() != "first second" || result.Response.Metadata.Usage.OutputTokens != 2) {
 				t.Fatalf("canonical final outcome: %+v", result)
 			}
-			row, found, err := sqlite.NewModelInvocationStore(db).EndpointForCaller(t.Context(), "independent-stream")
+			row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent-stream")
 			if err != nil || !found || row.Invocation.Caller.Parent != "original-plugin-operation" || row.Invocation.Caller.Origin != capability.Model || row.Invocation.Request.Messages[0].Text() != "original input" {
 				t.Fatalf("stream original evidence: %+v %v", row, err)
 			}
@@ -331,21 +333,21 @@ func TestSelectedModelResolvesInstalledSelectionForEveryIndependentCall(t *testi
 
 func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *testing.T) {
 	composition, _, _ := installedObserverFixture(t, "transparent")
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "executing-owner.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "executing-owner.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
 	sessionID := "ses_executing_owner"
-	if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: sessionID})); err != nil {
+	if err := db.Sessions.Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: sessionID})); err != nil {
 		t.Fatal(err)
 	}
 	draft := testsupport.RunDraft(run.Draft{RunID: "run_executing_owner", SessionID: sessionID, SegmentID: "seg_executing_owner", CreatedAt: time.Unix(100, 0).UTC()})
-	runStore := sqlite.NewRunStore(db)
+	runStore := db.Runs
 	if err := runStore.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	journal := sqlite.NewModelInvocationStore(db)
+	journal := db.ModelInvocations
 	if err := journal.StartModelInvocation(t.Context(), sessionID, draft.RunID, draft.SegmentID, "logical_executing_owner", draft.CreatedAt, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +462,7 @@ func TestIndependentModelCallbackRetainsExecutingOwnerBeforeProviderDispatch(t *
 
 // This fixture verifies physical admission; the real Run pump is covered separately.
 type sourceAdmissionPublisher struct {
-	journal *sqlite.ModelInvocationStore
+	journal *persistence.ModelInvocationStore
 	draft   run.Draft
 }
 

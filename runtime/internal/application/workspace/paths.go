@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 )
 
 // Workspace input failures are stable application errors.

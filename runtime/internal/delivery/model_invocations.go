@@ -6,8 +6,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {

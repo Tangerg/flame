@@ -5,10 +5,10 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ResumeAcceptance is the answer write-set an opening transaction accepts

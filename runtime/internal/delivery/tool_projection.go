@@ -6,7 +6,7 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
 )
 
 // The public protocol represents schemas as objects. A schema states its bounds

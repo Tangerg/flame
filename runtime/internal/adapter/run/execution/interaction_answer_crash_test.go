@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,13 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
@@ -111,11 +111,11 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspace := os.Getenv("FLAME_TEST_ANSWER_WORKSPACE")
-	db, err := sqlite.Open(t.Context(), filepath.Join(workspace, "tree.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(workspace, "tree.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	store := db.ExecutorCheckpoints
 	executor := answerCrashExecutor(t, answerCrashTrees{ExecutionTreeStore: store, count: count}, workspace)
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
@@ -160,7 +160,7 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(workspace, "effects.txt")); !os.IsNotExist(err) {
 				t.Fatalf("paused Tool executed: %v", err)
 			}
-			db, err := sqlite.Open(t.Context(), filepath.Join(workspace, "tree.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(workspace, "tree.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -169,7 +169,7 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			if err := db.QueryRowContext(t.Context(), `SELECT root_member_id FROM executor_checkpoints`).Scan(&rootID); err != nil {
 				t.Fatal(err)
 			}
-			store := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+			store := db.ExecutorCheckpoints
 			checkpoint, err := store.LoadCheckpoint(t.Context(), rootID)
 			if err != nil {
 				t.Fatal(err)

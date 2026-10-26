@@ -3,8 +3,8 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	"github.com/Tangerg/flame/runtime/point"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/point"
 )
 
 type Point struct {

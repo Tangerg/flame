@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )

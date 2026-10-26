@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestRequestMetaContextOwnsSnapshot(t *testing.T) {
@@ -38,5 +38,16 @@ func TestRequestMetaContextOwnsSnapshot(t *testing.T) {
 	second, _ := RequestMetaFrom(ctx)
 	if second.ClientCapabilities.InterruptTypes[0] != "approval" {
 		t.Fatal("RequestMetaFrom exposed context-owned backing storage")
+	}
+}
+
+func TestEmptyOperationCursorReplacesParentCursor(t *testing.T) {
+	parent := withAfterEventID(t.Context(), "parent-event")
+	operation := withAfterEventID(parent, "")
+	if got := AfterEventIDFrom(operation); got != "" {
+		t.Fatalf("new operation inherited cursor %q", got)
+	}
+	if got := AfterEventIDFrom(parent); got != "parent-event" {
+		t.Fatalf("binding changed parent cursor %q", got)
 	}
 }

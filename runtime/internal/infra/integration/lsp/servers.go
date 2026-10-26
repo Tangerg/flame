@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 // ErrNoServer means no configured language server handles the target — an

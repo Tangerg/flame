@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 )
 
 // ChildFileTarget identifies a bounded collection of authored files. FileName

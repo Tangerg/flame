@@ -8,8 +8,8 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 const recoveryInterval = time.Second

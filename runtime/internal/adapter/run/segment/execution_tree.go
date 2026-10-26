@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) (commitErr error) {
@@ -72,7 +73,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 			if err != nil {
 				return err
 			}
-			if _, err := e.childRunStarts.Conclude(ctx, record, sqlite.ChildRunStartConclusionAborted); err != nil {
+			if _, err := e.childRunStarts.Conclude(ctx, record, persistence.ChildRunStartConclusionAborted); err != nil {
 				return err
 			}
 		}
@@ -110,7 +111,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 			if recordErr != nil {
 				return errors.Join(err, recordErr)
 			}
-			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, sqlite.ChildRunStartConclusionAborted)
+			confirmed, lookupErr := e.childRunStarts.Concluded(readCtx, record, persistence.ChildRunStartConclusionAborted)
 			if lookupErr != nil || !confirmed {
 				return errors.Join(err, lookupErr)
 			}

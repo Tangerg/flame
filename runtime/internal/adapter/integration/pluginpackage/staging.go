@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/fileinput"
 )
 
 // staging is a private directory inside the release directory that receives

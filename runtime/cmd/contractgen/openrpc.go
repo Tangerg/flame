@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // The OpenRPC document is the method surface: what a client may call, what it
@@ -33,12 +34,12 @@ type openrpcDocument struct {
 }
 
 type openrpcComponents struct {
-	Schemas map[string]*schema `json:"schemas"`
+	Schemas map[string]*contractgen.Schema `json:"schemas"`
 }
 
 type openrpcNotification struct {
-	Name   string  `json:"name"`
-	Params *schema `json:"params"`
+	Name   string              `json:"name"`
+	Params *contractgen.Schema `json:"params"`
 }
 
 type openrpcInfo struct {
@@ -61,30 +62,30 @@ type openrpcMethod struct {
 	// The x-flame extensions carry what OpenRPC has no vocabulary for: retry
 	// semantics, cursor pagination, capability gating, and the event stream a
 	// streaming method's response body becomes.
-	Kind         string          `json:"x-flame-kind"`
-	Operation    string          `json:"x-flame-operation"`
-	Idempotency  string          `json:"x-flame-idempotency"`
-	ReplayCursor string          `json:"x-flame-replayCursor"`
-	Pagination   string          `json:"x-flame-pagination"`
-	Features     []string        `json:"x-flame-features,omitempty"`
-	Capabilities []capabilityRow `json:"x-flame-capabilityRules,omitempty"`
-	StreamEvent  *schema         `json:"x-flame-streamEvent,omitzero"`
+	Kind         string              `json:"x-flame-kind"`
+	Operation    string              `json:"x-flame-operation"`
+	Idempotency  string              `json:"x-flame-idempotency"`
+	ReplayCursor string              `json:"x-flame-replayCursor"`
+	Pagination   string              `json:"x-flame-pagination"`
+	Features     []string            `json:"x-flame-features,omitempty"`
+	Capabilities []capabilityRow     `json:"x-flame-capabilityRules,omitempty"`
+	StreamEvent  *contractgen.Schema `json:"x-flame-streamEvent,omitzero"`
 
 	// RequestFrame references the whole params object. By-name params describe the
 	// fields one at a time and so cannot express a cross-field rule; the frame
 	// schema is where those live, and pointing at it beats restating them.
-	RequestFrame *schema `json:"x-flame-requestFrame"`
+	RequestFrame *contractgen.Schema `json:"x-flame-requestFrame"`
 }
 
 type openrpcParam struct {
-	Name     string  `json:"name"`
-	Required bool    `json:"required,omitzero"`
-	Schema   *schema `json:"schema"`
+	Name     string              `json:"name"`
+	Required bool                `json:"required,omitzero"`
+	Schema   *contractgen.Schema `json:"schema"`
 }
 
 type openrpcResult struct {
-	Name   string  `json:"name"`
-	Schema *schema `json:"schema"`
+	Name   string              `json:"name"`
+	Schema *contractgen.Schema `json:"schema"`
 }
 
 // openrpcError pairs the symbolic problem type a client branches on with the
@@ -97,7 +98,7 @@ type openrpcError struct {
 
 func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schemaSet) openrpcDocument {
 	codes := problemCodes(registry)
-	requests := requestSchemas{set: set, definitions: make(map[string]*schema)}
+	requests := requestSchemas{set: set, definitions: make(map[string]*contractgen.Schema)}
 	document := openrpcDocument{
 		OpenRPC: openrpcVersion,
 		Info: openrpcInfo{
@@ -146,11 +147,11 @@ func openrpcMethodFor(meta delivery.MethodMeta, requests *requestSchemas, codes 
 		Name:   requestMetaField,
 		Schema: requests.project(set.walk(reflect.TypeFor[protocol.RequestMeta]())),
 	})
-	result := &schema{Type: schemaTypeObject}
+	result := &contractgen.Schema{Type: contractgen.SchemaTypeObject}
 	if meta.Result != nil {
 		result = set.walk(meta.Result)
 		if meta.ResultNullable {
-			result = &schema{AnyOf: []*schema{result, {Type: schemaTypeNull}}}
+			result = &contractgen.Schema{AnyOf: []*contractgen.Schema{result, {Type: contractgen.SchemaTypeNull}}}
 		}
 	}
 	method.Result = &openrpcResult{Name: "result", Schema: external(result)}
@@ -171,17 +172,17 @@ const requestMetaField = "_meta"
 
 type requestSchemas struct {
 	set         *schemaSet
-	definitions map[string]*schema
+	definitions map[string]*contractgen.Schema
 }
 
-func (r *requestSchemas) frame(business *schema) *schema {
+func (r *requestSchemas) frame(business *contractgen.Schema) *contractgen.Schema {
 	body := business
 	if business.Ref != "" {
-		name, _ := strings.CutPrefix(business.Ref, refPrefix)
+		name, _ := strings.CutPrefix(business.Ref, contractgen.RefPrefix)
 		body = r.set.defs[name]
 	}
 	frame := r.closure(body)
-	frame.AllOf = []*schema{external(business)}
+	frame.AllOf = []*contractgen.Schema{external(business)}
 	if frame.Properties == nil {
 		frame.Properties = make(map[string]any)
 	}
@@ -189,63 +190,63 @@ func (r *requestSchemas) frame(business *schema) *schema {
 	return frame
 }
 
-func (r *requestSchemas) project(node *schema) *schema {
+func (r *requestSchemas) project(node *contractgen.Schema) *contractgen.Schema {
 	if node.Ref != "" {
-		name, _ := strings.CutPrefix(node.Ref, refPrefix)
+		name, _ := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
 		body := r.set.defs[name]
 		if body == nil {
 			panic("contractgen: request references an undefined shape " + name)
 		}
-		if body.Type != schemaTypeObject {
+		if body.Type != contractgen.SchemaTypeObject {
 			return external(node)
 		}
 		if _, defined := r.definitions[name]; !defined {
 			// Reserve the component before walking its recursive references.
 			r.definitions[name] = nil
 			projection := r.closure(body)
-			projection.AllOf = []*schema{external(node)}
+			projection.AllOf = []*contractgen.Schema{external(node)}
 			r.definitions[name] = projection
 		}
-		return &schema{Ref: "#/components/schemas/" + name}
+		return &contractgen.Schema{Ref: "#/components/schemas/" + name}
 	}
-	if node.Type != schemaTypeObject && node.Type != schemaTypeArray {
+	if node.Type != contractgen.SchemaTypeObject && node.Type != contractgen.SchemaTypeArray {
 		return external(node)
 	}
 	projection := r.closure(node)
-	projection.AllOf = []*schema{external(node)}
+	projection.AllOf = []*contractgen.Schema{external(node)}
 	return projection
 }
 
 // closure projects only request structure. Value and cross-field constraints
 // remain references to the reusable schema rather than a second published copy.
-func (r *requestSchemas) closure(node *schema) *schema {
+func (r *requestSchemas) closure(node *contractgen.Schema) *contractgen.Schema {
 	if node.Ref != "" {
-		name, _ := strings.CutPrefix(node.Ref, refPrefix)
-		if body := r.set.defs[name]; body != nil && body.Type == schemaTypeObject {
+		name, _ := strings.CutPrefix(node.Ref, contractgen.RefPrefix)
+		if body := r.set.defs[name]; body != nil && body.Type == contractgen.SchemaTypeObject {
 			return r.project(node)
 		}
-		return &schema{}
+		return &contractgen.Schema{}
 	}
 	switch node.Type {
-	case schemaTypeArray:
-		return &schema{Items: r.closure(node.Items)}
-	case schemaTypeObject:
-		out := &schema{Properties: make(map[string]any, len(node.Properties))}
+	case contractgen.SchemaTypeArray:
+		return &contractgen.Schema{Items: r.closure(node.Items)}
+	case contractgen.SchemaTypeObject:
+		out := &contractgen.Schema{Properties: make(map[string]any, len(node.Properties))}
 		for name, property := range node.Properties {
-			if child, ok := property.(*schema); ok {
+			if child, ok := property.(*contractgen.Schema); ok {
 				out.Properties[name] = r.closure(child)
 			} else {
 				out.Properties[name] = property
 			}
 		}
-		if child, ok := node.AdditionalProps.(*schema); ok {
+		if child, ok := node.AdditionalProps.(*contractgen.Schema); ok {
 			out.AdditionalProps = r.closure(child)
 		} else if node.AdditionalProps == nil {
 			out.UnevaluatedProps = new(false)
 		}
 		return out
 	default:
-		return &schema{}
+		return &contractgen.Schema{}
 	}
 }
 
@@ -254,9 +255,9 @@ func (r *requestSchemas) closure(node *schema) *schema {
 // belong to the field in its owner (for example expectedRevision >= 1); a fresh
 // type walk would lose that owner context and publish a weaker parameter than
 // both the runtime validator and x-flame-requestFrame.
-func requestPropertySchema(set *schemaSet, frame *schema, owner reflect.Type, field string) *schema {
+func requestPropertySchema(set *schemaSet, frame *contractgen.Schema, owner reflect.Type, field string) *contractgen.Schema {
 	body := frame
-	if name, ok := strings.CutPrefix(frame.Ref, refPrefix); ok {
+	if name, ok := strings.CutPrefix(frame.Ref, contractgen.RefPrefix); ok {
 		body = set.defs[name]
 	}
 	if body == nil || body.Properties == nil {
@@ -266,7 +267,7 @@ func requestPropertySchema(set *schemaSet, frame *schema, owner reflect.Type, fi
 	if !ok {
 		panic(fmt.Sprintf("contractgen: %s request frame has no property %q", owner, field))
 	}
-	node, ok := property.(*schema)
+	node, ok := property.(*contractgen.Schema)
 	if !ok {
 		panic(fmt.Sprintf("contractgen: %s.%s is forbidden and cannot be an OpenRPC parameter", owner, field))
 	}
@@ -290,7 +291,7 @@ func capabilityRowsFor(meta delivery.MethodMeta) []capabilityRow {
 // type []ContentBlock walks to an array whose items reference the bundle — and the
 // two documents must stay independent, so rendering one can never leave a
 // bundle-local reference in the other or a foreign one in the bundle.
-func external(node *schema) *schema {
+func external(node *contractgen.Schema) *contractgen.Schema {
 	if node == nil {
 		return nil
 	}
@@ -308,7 +309,7 @@ func external(node *schema) *schema {
 	if node.Properties != nil {
 		out.Properties = make(map[string]any, len(node.Properties))
 		for name, value := range node.Properties {
-			if child, ok := value.(*schema); ok {
+			if child, ok := value.(*contractgen.Schema); ok {
 				out.Properties[name] = external(child)
 				continue
 			}
@@ -316,18 +317,18 @@ func external(node *schema) *schema {
 			out.Properties[name] = value
 		}
 	}
-	if child, ok := node.AdditionalProps.(*schema); ok {
+	if child, ok := node.AdditionalProps.(*contractgen.Schema); ok {
 		out.AdditionalProps = external(child)
 	}
 	// Required and Enum are read-only in both documents, so the slices are shared.
 	return &out
 }
 
-func externalAll(nodes []*schema) []*schema {
+func externalAll(nodes []*contractgen.Schema) []*contractgen.Schema {
 	if nodes == nil {
 		return nil
 	}
-	out := make([]*schema, 0, len(nodes))
+	out := make([]*contractgen.Schema, 0, len(nodes))
 	for _, node := range nodes {
 		out = append(out, external(node))
 	}

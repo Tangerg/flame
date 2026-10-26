@@ -1,9 +1,9 @@
 package delivery
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func (s *Handler) observeFileChanges(observe func(func(workspaceapp.FileChangeNotice))) {

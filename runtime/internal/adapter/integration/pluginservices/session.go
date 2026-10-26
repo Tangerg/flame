@@ -6,20 +6,21 @@ import (
 	"errors"
 	"fmt"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	"github.com/Tangerg/flame/runtime/jsoninput"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 var errInactive = errors.New("managed plugin: no enabled owner")
 
-func contributionSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcpconnection.Pool, required *capability.Contract) (plugins.ContributionBinding, *sdk.ClientSession, error) {
+func contributionSession(ctx context.Context, store plugins.Store, selections plugins.SelectionStore, pool *mcp.Pool, required *capability.Contract) (plugins.ContributionBinding, *sdk.ClientSession, error) {
 	binding, found, err := plugins.SelectedContribution(ctx, store, selections, required)
 	if err != nil {
 		return binding, nil, err

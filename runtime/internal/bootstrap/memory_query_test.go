@@ -3,11 +3,11 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	memorydomain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	memoryrpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func memoryQuery(r *poMCPRuntime, input memoryrpc.ListInput) (protocol.CallPluginRequest, error) {

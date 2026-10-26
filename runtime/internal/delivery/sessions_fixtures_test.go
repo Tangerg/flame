@@ -2,7 +2,8 @@ package delivery
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"errors"
 	"fmt"
 	"iter"
@@ -10,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -29,9 +31,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -39,7 +41,7 @@ var sessionFixtureSequence atomic.Uint64
 
 func insertSessionFixture(
 	ctx context.Context,
-	store *sqlite.SessionStore,
+	store *persistence.SessionStore,
 	title, cwd string,
 ) (session.Session, error) {
 	workspace, err := session.NewWorkspace(cwd)
@@ -64,7 +66,7 @@ func insertSessionFixture(
 
 func insertSessionSnapshot(
 	ctx context.Context,
-	store *sqlite.SessionStore,
+	store *persistence.SessionStore,
 	snapshot session.Snapshot,
 ) (session.Session, error) {
 	if !snapshot.Selection.Configured() {
@@ -82,7 +84,7 @@ func insertSessionSnapshot(
 
 func forkSessionFixture(
 	ctx context.Context,
-	store *sqlite.SessionStore,
+	store *persistence.SessionStore,
 	parent session.Session,
 ) (session.Session, error) {
 	child, err := parent.Fork(
@@ -186,16 +188,16 @@ type executionRuntime interface {
 // executor + effects (testRuntime) over its own in-memory + sqlite stores, and
 // the coordinator-provider seams for Sessions, queries, and execution control.
 type stubRuntime struct {
-	sess               *sqlite.SessionStore
+	sess               *persistence.SessionStore
 	model              string
-	history            map[string][]chat.Message // per-session chat history (fork copies it)
-	hist               *sqlite.TranscriptStore   // durable Item history
-	runs               *sqlite.RunStore          // durable Run records (rollback/fork read runs)
-	goals              *sqlite.GoalStore         // autonomous objective included in mounted material reads
-	toolResults        *sqlite.ToolResultStore
-	plan               *sqlite.PlanStore                   // exported, restored, and dropped with the Session
+	history            map[string][]chat.Message    // per-session chat history (fork copies it)
+	hist               *persistence.TranscriptStore // durable Item history
+	runs               *persistence.RunStore        // durable Run records (rollback/fork read runs)
+	goals              *persistence.GoalStore       // autonomous objective included in mounted material reads
+	toolResults        *persistence.ToolResultStore
+	plan               *persistence.PlanStore              // exported, restored, and dropped with the Session
 	interrupts         *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
-	db                 *sql.DB                             // seeds the Runs a test hand-off reads its facts from
+	db                 *persistencefixture.Stores          // seeds the Runs a test hand-off reads its facts from
 	muts               *persistence.WorkspaceMutationStore // recoverable file-rollback log
 	execution          executionRuntime
 	admissions         *ownership.Gate
@@ -298,7 +300,7 @@ func nonNilRunProjection(projection runs.Projection) runs.Projection {
 
 func itemProjectionFor(rt testRuntime) runs.ItemProjection {
 	provider, ok := rt.(interface {
-		Transcript() *sqlite.TranscriptStore
+		Transcript() *persistence.TranscriptStore
 	})
 	if !ok || provider.Transcript() == nil {
 		return inertItemProjection{}
@@ -449,8 +451,8 @@ func handlerWithTools(useCases toolUseCases) *Handler {
 	return &Handler{tools: useCases}
 }
 
-func (s stubRuntime) Transcript() *sqlite.TranscriptStore     { return s.hist }
-func (s stubRuntime) Interrupts() *persistence.InterruptStore { return s.interrupts }
+func (s stubRuntime) Transcript() *persistence.TranscriptStore { return s.hist }
+func (s stubRuntime) Interrupts() *persistence.InterruptStore  { return s.interrupts }
 
 // openPending opens a test hand-off after giving it the Runs that own its
 // facts; the root Run admits exactly the interrupt kinds the hand-off parks on.
@@ -471,7 +473,7 @@ func (s *stubRuntime) openPendingWith(ctx context.Context, t *testing.T, session
 	for index, continuation := range pending.Continuations {
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
-	testsupport.SeedParkedRuns(t, s.db, sessionID, pending.RootRunID, "", capabilities, members)
+	testsupport.SeedParkedRuns(t, s.db.DB, sessionID, pending.RootRunID, "", capabilities, members)
 	s.seedInterruptItems(ctx, t, sessionID, pending)
 	return s.interrupts.Open(ctx, pending)
 }
@@ -484,7 +486,7 @@ func (s *stubRuntime) openPendingWithoutItems(ctx context.Context, t *testing.T,
 	for index, continuation := range pending.Continuations {
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
-	testsupport.SeedParkedRuns(t, s.db, sessionID, pending.RootRunID, "", run.Capabilities{}, members)
+	testsupport.SeedParkedRuns(t, s.db.DB, sessionID, pending.RootRunID, "", run.Capabilities{}, members)
 	return s.interrupts.Open(ctx, pending)
 }
 
@@ -1064,7 +1066,7 @@ func fixtureDefaultModelSelection() modelchoice.Selection {
 
 // emptySessionRunStore is the explicit no-Run dependency for delivery fixtures
 // that exercise Session CRUD without constructing SQLite Run persistence. A
-// typed nil *sqlite.RunStore would satisfy the interface and panic on its first
+// typed nil *persistence.RunStore would satisfy the interface and panic on its first
 // activity read, disguising a malformed fixture as an application failure.
 type emptySessionRunStore struct{}
 
@@ -1149,14 +1151,14 @@ func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (runs.Executor
 	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
 }
 func (inertRuntimeStores) DeleteCheckpoints(context.Context, string, []string) error { return nil }
-func (inertRuntimeStores) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {
+func (inertRuntimeStores) Reserve(context.Context, persistence.ChildRunStartReservationRecord) error {
 	return nil
 }
 
 func (inertRuntimeStores) Conclude(
 	context.Context,
-	sqlite.ChildRunStartReservationRecord,
-	sqlite.ChildRunStartConclusion,
+	persistence.ChildRunStartReservationRecord,
+	persistence.ChildRunStartConclusion,
 ) (bool, error) {
 	return true, nil
 }
@@ -1251,7 +1253,7 @@ func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordi
 	return coordinator
 }
 
-func nonNilSessionStore(store *sqlite.SessionStore) sessions.Store {
+func nonNilSessionStore(store *persistence.SessionStore) sessions.Store {
 	if store == nil {
 		return inertRuntimeStores{}
 	}
@@ -1265,7 +1267,7 @@ func nonNilSessionInterrupts(store *persistence.InterruptStore) sessions.Interru
 	return store
 }
 
-func nonNilSessionTranscript(store *sqlite.TranscriptStore) sessions.TranscriptStore {
+func nonNilSessionTranscript(store *persistence.TranscriptStore) sessions.TranscriptStore {
 	if store == nil {
 		return inertSessionTranscript{}
 	}
@@ -1279,21 +1281,21 @@ func nonNilRunsegmentInterrupts(store *persistence.InterruptStore, fallback iner
 	return store
 }
 
-func nonNilRunsegmentSessions(store *sqlite.SessionStore, fallback inertRuntimeStores) segment.SessionStore {
+func nonNilRunsegmentSessions(store *persistence.SessionStore, fallback inertRuntimeStores) segment.SessionStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentTranscript(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.TranscriptStore {
+func nonNilRunsegmentTranscript(store *persistence.TranscriptStore, fallback inertRuntimeStores) segment.TranscriptStore {
 	if store == nil {
 		return fallback
 	}
 	return store
 }
 
-func nonNilRunsegmentItems(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.ItemReplacer {
+func nonNilRunsegmentItems(store *persistence.TranscriptStore, fallback inertRuntimeStores) segment.ItemReplacer {
 	if store == nil {
 		return fallback
 	}
@@ -1445,17 +1447,17 @@ func (s stubRuntime) SeedHistory(_ context.Context, id string, msgs []chat.Messa
 	return nil
 }
 
-func newSessionHandler(t *testing.T) (*Handler, *sqlite.SessionStore, *stubRuntime) {
+func newSessionHandler(t *testing.T) (*Handler, *persistence.SessionStore, *stubRuntime) {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	svc := sqlite.NewSessionStore(db)
+	svc := db.Sessions
 	// Interrupts is always wired in production (runtime composition root), and
 	// the wire status now reads it (liveStatus), so give the stub a real store.
-	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), db: db}
+	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: db.Interrupts, db: db}
 	return newTestHandler(runtime), svc, runtime
 }
 
@@ -1608,7 +1610,7 @@ func (noDeliveryCommandAcceptances) Lookup(context.Context, string) (runs.Comman
 	return runs.CommandAcceptanceRecord{}, nil
 }
 
-func (inertRuntimeStores) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
+func (inertRuntimeStores) Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error) {
 	return false, nil
 }
 

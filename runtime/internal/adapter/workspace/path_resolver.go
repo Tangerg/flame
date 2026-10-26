@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/storage/directories"
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 

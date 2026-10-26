@@ -1,0 +1,108 @@
+package http
+
+import (
+	json "encoding/json/v2"
+	"net/http"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+)
+
+type RuntimeServerInfo struct {
+	InstanceID string `json:"instanceId"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+}
+
+type RuntimeInfoEndpoints struct {
+	RPC       string `json:"rpc"`
+	Info      string `json:"info"`
+	Liveness  string `json:"liveness"`
+	Readiness string `json:"readiness"`
+}
+
+type TransportKind string
+
+const Transport TransportKind = "http"
+
+type RuntimeInfo struct {
+	ProtocolVersion string               `json:"protocolVersion"`
+	Server          RuntimeServerInfo    `json:"server"`
+	Transport       TransportKind        `json:"transport"`
+	Endpoints       RuntimeInfoEndpoints `json:"endpoints"`
+}
+
+func newInfoResponse(server protocol.ServerInfo) RuntimeInfo {
+	return RuntimeInfo{
+		ProtocolVersion: protocol.Version,
+		Server: RuntimeServerInfo{
+			InstanceID: server.InstanceID,
+			Name:       server.Name,
+			Version:    server.Version,
+		},
+		Transport: Transport,
+		Endpoints: RuntimeInfoEndpoints{
+			RPC:       endpointPath(endpointRPC),
+			Info:      endpointPath(endpointInfo),
+			Liveness:  endpointPath(endpointLiveness),
+			Readiness: endpointPath(endpointReadiness),
+		},
+	}
+}
+
+func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.MarshalWrite(w, s.info); err != nil {
+		return
+	}
+}
+
+type LivenessState string
+
+const LivenessOK LivenessState = "ok"
+
+type LivenessStatus struct {
+	InstanceID string        `json:"instanceId"`
+	Status     LivenessState `json:"status"`
+}
+
+func (s *Server) handleLiveness(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	if err := json.MarshalWrite(w, LivenessStatus{
+		InstanceID: s.info.Server.InstanceID,
+		Status:     LivenessOK,
+	}); err != nil {
+		return
+	}
+}
+
+type ReadinessStatus struct {
+	InstanceID string                  `json:"instanceId"`
+	Status     HealthStatus            `json:"status"`
+	Checks     map[string]HealthStatus `json:"checks,omitempty"`
+}
+
+func (s *Server) handleReadiness(w http.ResponseWriter, r *http.Request) {
+	overall, checks := runHealthProbes(r.Context(), s.healthProbes)
+
+	status := http.StatusOK
+	if overall != HealthOK {
+		status = http.StatusServiceUnavailable
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+
+	if err := json.MarshalWrite(w, ReadinessStatus{
+		InstanceID: s.info.Server.InstanceID,
+		Status:     overall,
+		Checks:     checks,
+	}); err != nil {
+		return
+	}
+}

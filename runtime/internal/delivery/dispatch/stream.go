@@ -1,6 +1,6 @@
 package dispatch
 
-import transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
+import transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 
 // StreamFrame is one ready-to-write downstream notification on a streaming
 // method's event stream. The dispatch produces these from domain events so

@@ -2,20 +2,21 @@ package segment
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestCommitEventRollsBackAllProjectionsWhenProgressIsStale(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +27,7 @@ func TestCommitEventRollsBackAllProjectionsWhenProgressIsStale(t *testing.T) {
 		RunID: "run_progress", SessionID: "ses_progress", SegmentID: "seg_progress",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
-	state := sqlite.NewRunStore(db)
+	state := db.Runs
 	if err := state.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
@@ -34,13 +35,13 @@ func TestCommitEventRollsBackAllProjectionsWhenProgressIsStale(t *testing.T) {
 	if err := state.UpdateProgress(t.Context(), current); err != nil {
 		t.Fatal(err)
 	}
-	history := sqlite.NewTranscriptStore(db)
-	messages := sqlite.NewMessageStore(db)
+	history := db.Transcript
+	messages := db.ChatHistory
 	conversation := mustConversationStore(t, messages)
 	effects := mustNewEffects(Config{
 		Transcript: history, Conversation: conversation, State: state, RunProgress: state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	commit := runs.EventCommit{

@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -32,28 +32,28 @@ func (r *exportSnapshotReader) ReadSnapshot(context.Context, string) (sessions.S
 
 func trajectoryExportFixture(t *testing.T) (*TrajectoryExportReader, *sql.DB, *exportSnapshotReader) {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "export.sqlite"))
+	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "export.sqlite"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_export"})
-	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	run := testsupport.MustRestoreRun(run.Snapshot{ID: "run_export", SessionID: ses.ID(), State: run.Completed})
-	if err := sqlite.NewRunStore(db).Restore(t.Context(), run); err != nil {
+	if err := NewRunStore(db).Restore(t.Context(), run); err != nil {
 		t.Fatal(err)
 	}
-	modelReader, err := NewModelInvocationReader(sqlite.NewModelInvocationStore(db))
+	modelReader, err := NewModelInvocationReader(NewModelInvocationStore(db))
 	if err != nil {
 		t.Fatal(err)
 	}
 	snapshots := &exportSnapshotReader{value: sessions.Snapshot{Session: ses}}
 	snapshots.value.Runs = append(snapshots.value.Runs, run)
 	reader, err := NewTrajectoryExportReader(TrajectoryExportConfig{
-		Snapshots: snapshots, Sessions: sqlite.NewSessionStore(db), ModelInvocations: modelReader,
-		ToolInvocations: sqlite.NewToolInvocationStore(db), Feedback: sqlite.NewFeedbackStore(db),
+		Snapshots: snapshots, Sessions: NewSessionStore(db), ModelInvocations: modelReader,
+		ToolInvocations: NewToolInvocationStore(db), Feedback: NewFeedbackStore(db),
 		ReadSnapshot: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlitebase.RunReadSnapshot(ctx, db, fn)
 		},
@@ -142,7 +142,7 @@ func TestTrajectoryExportRejectsMismatchedJournalOwnershipBeforeLoading(t *testi
 
 func TestTrajectoryExportIncludesSessionOnlyKnownEndpointEvidence(t *testing.T) {
 	reader, db, _ := trajectoryExportFixture(t)
-	store := sqlite.NewModelInvocationStore(db)
+	store := NewModelInvocationStore(db)
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original prompt")))
 	message := chat.NewAssistantMessage(chat.NewTextPart("known answer"))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9007199254740993, OutputTokens: 2}}}

@@ -3,8 +3,8 @@ package runtime
 
 import (
 	"context"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"iter"
 )
 

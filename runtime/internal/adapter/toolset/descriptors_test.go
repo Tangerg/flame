@@ -3,6 +3,7 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -21,9 +22,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -248,7 +249,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 
 func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "approvals.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "approvals.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +258,7 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 			t.Error(err)
 		}
 	})
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewModeStore(db), testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, db.ApprovalRules, db.ApprovalModes, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

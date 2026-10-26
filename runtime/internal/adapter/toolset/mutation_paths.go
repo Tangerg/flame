@@ -7,7 +7,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 )
 
 // FileMutationReporter supplies prospective paths for approval, locking, and

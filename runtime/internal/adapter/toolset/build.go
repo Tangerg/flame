@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/sandbox"
 	scopea2a "github.com/Tangerg/scope/a2a"
 )
 

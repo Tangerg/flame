@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // mcp.* is runtime-global, so these methods take no workspace reference.

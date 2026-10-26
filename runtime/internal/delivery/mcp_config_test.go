@@ -8,9 +8,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestMCPErrorProjectionPreservesInstallationOwnershipCause(t *testing.T) {

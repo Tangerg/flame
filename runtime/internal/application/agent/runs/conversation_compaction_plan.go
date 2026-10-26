@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ConversationCompactionPlan is the complete cross-aggregate write-set for one

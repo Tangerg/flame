@@ -8,11 +8,12 @@ import (
 	"reflect"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 // ReserveChildRunStart durably records one invisible child identity. It does
@@ -39,7 +40,7 @@ func (e *Effects) applyStartedChildRun(ctx context.Context, started runs.Started
 	if err != nil {
 		return err
 	}
-	changed, err := e.childRunStarts.Conclude(ctx, record, sqlite.ChildRunStartConclusionStarted)
+	changed, err := e.childRunStarts.Conclude(ctx, record, persistence.ChildRunStartConclusionStarted)
 	if err != nil {
 		return fmt.Errorf("segment: conclude started child Run reservation: %w", err)
 	}
@@ -64,7 +65,7 @@ func (e *Effects) AbortChildRunStart(
 	}
 	return e.runInTx(ctx, func(ctx context.Context) error {
 		if _, err := e.childRunStarts.Conclude(
-			ctx, record, sqlite.ChildRunStartConclusionAborted,
+			ctx, record, persistence.ChildRunStartConclusionAborted,
 		); err != nil {
 			return fmt.Errorf("segment: abort child Run start: %w", err)
 		}
@@ -74,9 +75,9 @@ func (e *Effects) AbortChildRunStart(
 
 func childRunStartReservationRecord(
 	reservation runs.ChildRunStartReservation,
-) (sqlite.ChildRunStartReservationRecord, error) {
+) (persistence.ChildRunStartReservationRecord, error) {
 	if err := reservation.Validate(); err != nil {
-		return sqlite.ChildRunStartReservationRecord{}, fmt.Errorf("segment: invalid child Run start reservation: %w", err)
+		return persistence.ChildRunStartReservationRecord{}, fmt.Errorf("segment: invalid child Run start reservation: %w", err)
 	}
 	payload, err := json.Marshal(childRunStartReservationPayload{
 		ExecutorID:      reservation.ExecutorID,
@@ -89,9 +90,9 @@ func childRunStartReservationRecord(
 		RootRunID:       reservation.RootRunID,
 	})
 	if err != nil {
-		return sqlite.ChildRunStartReservationRecord{}, fmt.Errorf("segment: encode child Run start reservation: %w", err)
+		return persistence.ChildRunStartReservationRecord{}, fmt.Errorf("segment: encode child Run start reservation: %w", err)
 	}
-	return sqlite.ChildRunStartReservationRecord{
+	return persistence.ChildRunStartReservationRecord{
 		MemberID: reservation.Member.MemberID, SessionID: reservation.SessionID,
 		Payload: payload, CreatedAt: reservation.ReservedAt.UTC(),
 	}, nil

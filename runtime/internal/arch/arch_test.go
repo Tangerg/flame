@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestProductionDoesNotImportTestSupport keeps builders and in-memory fakes
@@ -172,19 +172,10 @@ func TestDependencyRule(t *testing.T) {
 	}
 }
 
-// TestTransparentAliasesStayAtTheTransportBoundary prevents one ring from
-// pretending to own another ring's type through a transparent alias. The only
-// deliberate aliases are the transport package's JSON-RPC vocabulary: they
-// make the external codec types the shared wire boundary without duplicating
-// the protocol implementation or leaking its import across every transport.
+// TestTransparentAliasesStayAtTheTransportBoundary keeps Runtime types with their
+// real owner. The SDK alone owns the five external JSON-RPC codec aliases.
 func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 	root := moduleRoot(t)
-	// The boundary is the package, not a file in it: splitting or renaming a file
-	// inside delivery/transport does not change which ring owns the alias.
-	const aliasBoundary = "delivery/transport"
-	allowed := map[string]struct{}{
-		"Message": {}, "Request": {}, "Response": {}, "ID": {}, "Error": {},
-	}
 	internal := filepath.Join(root, "internal")
 	err := filepath.WalkDir(internal, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -211,8 +202,7 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 				if !typeSpec.Assign.IsValid() {
 					continue
 				}
-				_, named := allowed[typeSpec.Name.Name]
-				if filepath.ToSlash(filepath.Dir(rel)) != aliasBoundary || !named {
+				{
 					t.Errorf("%s declares transparent alias %s; use the owning type directly or define a semantic boundary type", rel, typeSpec.Name.Name)
 				}
 			}
@@ -336,8 +326,7 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"internal/capture", "internal/completion", "exactint", "exactjson", "idempotency",
-		"identity", "optional",
+		"internal/completion",
 	} {
 		forbidExternalImports(t, filepath.Join(root, name), []string{
 			domainPkg,
@@ -352,10 +341,8 @@ func TestSharedCapabilitiesStayPure(t *testing.T) {
 
 func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "capability"), frameworkImports)
-	forbidExternalImports(t, filepath.Join(root, "point"), frameworkImports)
 	checked := make(map[string]bool)
-	err := walkProductionGoFiles(filepath.Join(root, "internal"), func(path string, _ *ast.File) error {
+	err := walkProductionGoFiles(root, func(path string, _ *ast.File) error {
 		directory := filepath.Dir(path)
 		relative, err := filepath.Rel(root, directory)
 		if err != nil {
@@ -830,14 +817,6 @@ func TestApplicationEventFreeOfProtocol(t *testing.T) {
 // domain/application — the wire package itself must import neither ring, so wire
 // shapes never become a business dependency. (Delivery as a whole MAY import
 // domain/application to drive them; this constrains only the protocol subpackage.)
-func TestProtocolStaysWireOnly(t *testing.T) {
-	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "protocol"),
-		[]string{
-			"github.com/Tangerg/flame/runtime/internal/domain",
-			"github.com/Tangerg/flame/runtime/internal/application",
-		})
-}
 
 // TestDomainValuesCarryNoJSONTags keeps serialization ownership at the adapter
 // boundary. Domain values may define semantic JSON *values* (for example an
@@ -990,7 +969,7 @@ func TestDeliveryHandlerDependsOnUseCaseBoundaries(t *testing.T) {
 			"github.com/Tangerg/flame/runtime/internal/adapter",
 			"github.com/Tangerg/flame/runtime/internal/infra",
 			"github.com/Tangerg/flame/runtime/internal/bootstrap",
-			"github.com/Tangerg/flame/runtime/idempotency",
+			"github.com/Tangerg/flame/packages/go-sdk/idempotency",
 		})
 	}
 }
@@ -1041,7 +1020,7 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 		"defaultItemPageLimit":    "how wide a page may be is the read's policy",
 		"defaultSessionPageLimit": "how wide a page may be is the read's policy",
 	})
-	paginationPkg := runtimeModule + "/pagination"
+	paginationPkg := sdkModulePath + "/pagination"
 	forbidCalls(t, "./internal/delivery/...", map[string]string{
 		paginationPkg + ".Decode": "a cursor is decoded by the read that minted it",
 		paginationPkg + ".Encode": "a cursor is minted by the read that knows the sort position",
@@ -1260,7 +1239,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 	allowed := map[string]struct{}{
 		"internal/application/agent/sessions": {},
 		"internal/delivery":                   {},
-		"internal/infra/sqlite":               {},
+		"internal/adapter/persistence":        {},
 		"internal/testsupport":                {},
 	}
 	walkErr := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
@@ -1487,7 +1466,7 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 
 var crossRingCapabilityImports = []string{
 	"github.com/Tangerg/flame/runtime/internal/completion",
-	"github.com/Tangerg/flame/runtime/idempotency",
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency",
 }
 
 // domainPkg is the bounded-context ring. Prefix-matched.
@@ -1495,7 +1474,7 @@ const domainPkg = "github.com/Tangerg/flame/runtime/internal/domain"
 
 // protocolPkg is the wire-type package; it must stay pure wire (no domain /
 // application import) so protocol types never leak inward.
-const protocolPkg = "github.com/Tangerg/flame/runtime/protocol"
+const protocolPkg = "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 // externalSDKs are the external agent-SDK / driver / framework libraries the
 // inner + delivery rings must never import directly (the internal infra edges are
@@ -1886,16 +1865,10 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "contract/samples", "dependency", "exactint", "exactjson", "fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
+	case "contract/samples":
 		return ringValue
-	case "pagination", "internal/cancellation", "internal/capture", "internal/completion", "idempotency", "internal/keylock", "internal/opaquetoken":
+	case "internal/completion", "internal/keylock":
 		return ringMechanism
-	case "internal/contractshape":
-		return ringProtocol
-	case "internal/contractcatalog":
-		return ringGenerator
-	case "plugin", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "model/catalog", "model/text", "sandbox", "fileinput", "transport/httpredirect", "transport/httpresponse", "storage/directories":
-		return ringInfra
 	}
 	switch {
 	case rel == "." || inPackageTree(rel, "internal/bootstrap") || inPackageTree(rel, "internal/config"):
@@ -1904,10 +1877,6 @@ func layerOf(rel string) string {
 		return ringGenerator
 	case inPackageTree(rel, "cmd"):
 		return ringComposition
-	case inPackageTree(rel, "protocol"):
-		return ringProtocol
-	case inPackageTree(rel, "localruntime"):
-		return ringDeployment
 	case inPackageTree(rel, "internal/delivery"):
 		return ringDelivery
 	case inPackageTree(rel, "internal/adapter"):
@@ -1968,22 +1937,23 @@ func forbidden(from, to string) bool {
 }
 
 // moduleRoot walks up from the test's working directory to the directory
-// holding go.mod (the flame module root).
+// holding the Runtime go.mod, independently of the surrounding checkout.
 func moduleRoot(t *testing.T) string {
 	t.Helper()
-	dir, err := os.Getwd()
+	directory, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("getwd: %v", err)
+		t.Fatal(err)
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "runtime.go")); err == nil {
-			return dir
+		data, err := os.ReadFile(filepath.Join(directory, "go.mod"))
+		if err == nil && strings.Contains(string(data), "module "+runtimeModulePath+"\n") {
+			return directory
 		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("Runtime source root not found walking up from test dir")
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			t.Fatal("Runtime module root not found")
 		}
-		dir = parent
+		directory = parent
 	}
 }
 
@@ -2000,9 +1970,7 @@ func moduleRoot(t *testing.T) string {
 // included, encodes or decodes with the v1 codec.
 func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
-	exact := map[string]string{
-		"exactjson": "names json.Number as the exact-number carrier",
-	}
+	exact := map[string]string{}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {

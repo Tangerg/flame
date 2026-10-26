@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 const (

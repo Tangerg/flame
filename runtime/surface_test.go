@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
-	"github.com/Tangerg/flame/runtime/protocol"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 func TestAPIKeyInputFormattingNeverRevealsTheCredential(t *testing.T) {

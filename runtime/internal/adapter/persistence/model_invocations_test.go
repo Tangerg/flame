@@ -1,13 +1,12 @@
-package persistence_test
+package persistence
 
 import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -24,7 +23,7 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 		{name: "terminal without settlement", edit: "finished_at = NULL", rejectWrite: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), ":memory:")
+			db, err := openDatabase(t.Context(), ":memory:")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -34,17 +33,17 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				RunID: "run_evidence", SessionID: "session_evidence", SegmentID: "segment_evidence",
 				ModelSelection: testsupport.MustModelSelection("test", "test-model"), CreatedAt: at,
 			}
-			if err := sqlite.NewRunStore(db).Admit(t.Context(), draft); err != nil {
+			if err := NewRunStore(db).Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
-			store := sqlite.NewModelInvocationStore(db)
+			store := NewModelInvocationStore(db)
 			if err := store.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, run.ModelConversation); err != nil {
 				t.Fatal(err)
 			}
 			if err := store.CompleteModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_evidence", at, at.Add(time.Second), new(int64(0)), &chat.Usage{}); err != nil {
 				t.Fatal(err)
 			}
-			reader, err := persistence.NewModelInvocationReader(store)
+			reader, err := NewModelInvocationReader(store)
 			if err != nil {
 				t.Fatal(err)
 			}

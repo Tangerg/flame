@@ -3,7 +3,7 @@ package modelref
 import (
 	"testing"
 
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestRoleOwnsProviderModelOnly(t *testing.T) {

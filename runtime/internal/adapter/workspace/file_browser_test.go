@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/scope/tools/textread"
 )
 

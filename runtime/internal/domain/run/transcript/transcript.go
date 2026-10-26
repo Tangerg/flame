@@ -10,8 +10,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // --- run timeline (the rollback / fork boundary invariant) ---

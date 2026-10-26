@@ -10,7 +10,8 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -19,7 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type countingCancelService struct {

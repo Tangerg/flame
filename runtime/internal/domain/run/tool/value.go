@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
 )
 
 // canonicalJSON is the spelling every stored Arguments and Result already

@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,14 +16,15 @@ import (
 	"time"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -370,7 +372,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				db, err := sqlite.Open(t.Context(), directory.DatabasePath())
+				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(directory.DatabasePath()))
 				if err != nil {
 					t.Fatal(err)
 				}

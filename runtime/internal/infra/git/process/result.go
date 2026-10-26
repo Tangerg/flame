@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/capture"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 

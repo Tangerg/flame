@@ -11,11 +11,10 @@ import (
 
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
 func TestCatalogContainsProviderDefaults(t *testing.T) {
-	for _, provider := range llm.SupportedProviders() {
+	for _, provider := range supportedProviders() {
 		model, hasDefault := provider.DefaultChatModel()
 		if !hasDefault {
 			continue
@@ -43,7 +42,7 @@ func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
 			}
 			models, err := (Capabilities{}).ListModels(t.Context(), entry)
 			if models != nil || !errors.Is(err, modelsapp.ErrProviderUnconfigured) || !errors.Is(err, ErrCredentialUnavailable) {
-				t.Fatalf("ListModels = (%v, %v), want configuration error preserving its credential cause", models, err)
+				t.Fatalf("listModels = (%v, %v), want configuration error preserving its credential cause", models, err)
 			}
 		})
 	}
@@ -60,7 +59,7 @@ func TestListModelsClassifiesRemoteFailures(t *testing.T) {
 			t.Cleanup(server.Close)
 			models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
 			if models != nil || !errors.Is(err, modelsapp.ErrModelDiscoveryFailed) {
-				t.Fatalf("ListModels = (%v, %v), want discovery failure", models, err)
+				t.Fatalf("listModels = (%v, %v), want discovery failure", models, err)
 			}
 		})
 	}

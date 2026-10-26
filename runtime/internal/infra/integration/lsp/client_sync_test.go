@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/sourcegraph/jsonrpc2"
 )
 

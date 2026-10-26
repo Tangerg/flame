@@ -10,18 +10,18 @@ import (
 	"strings"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
 func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *testing.T) {
 	source := t.TempDir()
-	build := exec.CommandContext(t.Context(), "node", "../../../packages/plugin-sdk/typescript/testing/build.mjs", source, "../../../runtime/internal/testsupport/testdata/managed-backend.ts")
+	build := exec.CommandContext(t.Context(), "node", "../../../packages/backend-sdk/testing/build.mjs", source, "../../../runtime/internal/testsupport/testdata/managed-backend.ts")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build managed fixture: %s: %v", output, err)
 	}

@@ -2,19 +2,20 @@ package pluginservices
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/jsoninput"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -27,14 +28,14 @@ func (r endpointResolver) ResolveChat(context.Context, modelchoice.Selection) (m
 func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T) {
 	observers, bindings, _ := installedPublishedObserverFixture(t, "outer-failure")
 	path := filepath.Join(t.TempDir(), "endpoint.db")
-	db, err := sqlite.Open(t.Context(), path)
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("durable inner"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, sqlite.NewModelInvocationStore(db), func(provider, served string, usage *chat.Usage) accounting.Cost {
+	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, db.ModelInvocations, func(provider, served string, usage *chat.Usage) accounting.Cost {
 		if provider != "anthropic" || served != "served-model" || usage.InputTokens != 11 {
 			t.Fatal("pricing replaced captured provider/served identity")
 		}
@@ -64,12 +65,12 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	db, err = sqlite.Open(t.Context(), path)
+	db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewModelInvocationStore(db)
+	store := db.ModelInvocations
 	source, found, err := store.EndpointForCaller(t.Context(), "original-endpoint-parent")
 	if err != nil || !found || source.CostUSD == nil || *source.CostUSD != 1.5 {
 		t.Fatalf("restart lost captured source price: %+v %v", source, err)

@@ -32,8 +32,9 @@ func releasedDuringProjection(err error) bool {
 
 // interactionLifetime owns every goroutine and channel whose lifetime is the
 // staged Interaction session. The execution context follows the external
-// owner; its reconciliation child can stop before post-Run maintenance without
-// canceling that maintenance. Release and finish remain one-shot transitions
+// owner; its reconciliation child can stop after successful Scope Interaction
+// completion, before committing the Flame Segment terminal fact, without
+// canceling maintenance. Release and finish remain one-shot transitions
 // joined through the worker groups.
 type interactionLifetime struct {
 	execution       context.Context

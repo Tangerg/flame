@@ -11,7 +11,49 @@ import (
 	"testing"
 )
 
-const runtimeModulePath = "github.com/Tangerg/flame/runtime"
+const (
+	runtimeModulePath      = "github.com/Tangerg/flame/runtime"
+	sdkModulePath          = "github.com/Tangerg/flame/packages/go-sdk"
+	localRuntimeModulePath = "github.com/Tangerg/flame/packages/local-runtime"
+)
+
+// repositoryLayer classifies real module import paths. An unrecognized repository
+// package fails closed instead of escaping the Runtime dependency rule.
+func repositoryLayer(path string) (string, bool) {
+	if path == runtimeModulePath {
+		return ringComposition, true
+	}
+	if relative, ok := strings.CutPrefix(path, runtimeModulePath+"/"); ok {
+		return layerOf(relative), true
+	}
+	if relative, ok := strings.CutPrefix(path, sdkModulePath+"/"); ok {
+		return sdkLayer(relative), true
+	}
+	if path == localRuntimeModulePath {
+		return ringDeployment, true
+	}
+	if path == "github.com/Tangerg/flame" || strings.HasPrefix(path, "github.com/Tangerg/flame/") {
+		return ringUnknown, true
+	}
+	return "", false
+}
+
+func sdkLayer(path string) string {
+	switch path {
+	case "dependency", "exactint", "exactjson", "fingerprint", "identity", "optional", "resourceid", "instant", "jsoninput", "capability", "point", "model", "workspace":
+		return ringValue
+	case "pagination", "cancellation", "capture", "idempotency", "opaquetoken", "pathidentity":
+		return ringMechanism
+	case "protocol", "protocol/jsonrpc", "contractshape":
+		return ringProtocol
+	case "plugin", "plugin/memory", "plugin/sqlite", "plugin/toolfailure", "storage/sqlite", "storage/advisorylock", "storage/directories", "model/catalog", "model/text", "sandbox", "fileinput", "httpresponse", "client":
+		return ringInfra
+	case "contractgen", "cmd/contractgen", "cmd/archive", "cmd/backendbindings":
+		return ringGenerator
+	default:
+		return ringUnknown
+	}
+}
 
 // TestTargetDependencyRuleRejectsOutwardFixture proves the production DAG gate
 // has a failing counterexample. The fixture is parsed, not compiled, so it can
@@ -44,16 +86,12 @@ func dependencyViolationsInFile(path, fromRing string) ([]dependencyViolation, e
 	var violations []dependencyViolation
 	for _, imported := range file.Imports {
 		importPath := strings.Trim(imported.Path.Value, `"`)
-		relativeImport, internal := strings.CutPrefix(importPath, runtimeModulePath+"/")
-		if importPath == runtimeModulePath {
-			relativeImport, internal = ".", true
-		}
+		toRing, internal := repositoryLayer(importPath)
 		if !internal {
 			continue
 		}
-		toRing := layerOf(relativeImport)
 		if forbidden(fromRing, toRing) {
-			violations = append(violations, dependencyViolation{importPath: relativeImport, toRing: toRing})
+			violations = append(violations, dependencyViolation{importPath: importPath, toRing: toRing})
 		}
 	}
 	return violations, nil
@@ -89,18 +127,18 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		dependency     string
 		wantViolations int
 	}{
-		{name: "inward", dependency: "internal/application/agent/runs"},
-		{name: "adapter", dependency: "internal/adapter/run/execution", wantViolations: 1},
-		{name: "bootstrap", dependency: "internal/bootstrap", wantViolations: 1},
-		{name: "unknown target", dependency: "internal/newfeature", wantViolations: 1},
-		{name: "public protocol", dependency: "protocol"},
-		{name: "public backend transport", dependency: "plugin", wantViolations: 1},
-		{name: "pure value", dependency: "identity"},
-		{name: "technical mechanism", dependency: "internal/keylock"},
-		{name: "generator", dependency: "internal/contractcatalog", wantViolations: 1},
-		{name: "test support", dependency: "internal/testsupport", wantViolations: 1},
-		{name: "fixture inside a ring", dependency: "internal/domain/testdata/fixture", wantViolations: 1},
-		{name: "deployment", dependency: "localruntime", wantViolations: 1},
+		{name: "inward", dependency: runtimeModulePath + "/internal/application/agent/runs"},
+		{name: "adapter", dependency: runtimeModulePath + "/internal/adapter/run/execution", wantViolations: 1},
+		{name: "bootstrap", dependency: runtimeModulePath + "/internal/bootstrap", wantViolations: 1},
+		{name: "unknown target", dependency: runtimeModulePath + "/internal/newfeature", wantViolations: 1},
+		{name: "public protocol", dependency: sdkModulePath + "/protocol"},
+		{name: "public backend transport", dependency: sdkModulePath + "/plugin", wantViolations: 1},
+		{name: "pure value", dependency: sdkModulePath + "/identity"},
+		{name: "technical mechanism", dependency: sdkModulePath + "/opaquetoken"},
+		{name: "generator", dependency: runtimeModulePath + "/cmd/contractgen", wantViolations: 1},
+		{name: "test support", dependency: runtimeModulePath + "/internal/testsupport", wantViolations: 1},
+		{name: "fixture inside a ring", dependency: runtimeModulePath + "/internal/domain/testdata/fixture", wantViolations: 1},
+		{name: "deployment", dependency: localRuntimeModulePath, wantViolations: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := filepath.Join(t.TempDir(), "internal", "delivery", "newmechanism")
@@ -108,7 +146,7 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 				t.Fatal(err)
 			}
 			path := filepath.Join(directory, "mechanism.go")
-			source := "package newmechanism\nimport _ \"" + runtimeModulePath + "/" + test.dependency + "\"\n"
+			source := "package newmechanism\nimport _ \"" + test.dependency + "\"\n"
 			if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -138,39 +176,40 @@ func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
 		from, to string
 		allowed  bool
 	}{
-		{from: ".", to: "internal/bootstrap", allowed: true},
-		{from: "plugin/sqlite", to: "storage/sqlite", allowed: true},
-		{from: "internal/domain/newaggregate", to: "model", allowed: true},
-		{from: "plugin/sqlite", to: "idempotency", allowed: true},
-		{from: "idempotency", to: "internal/application/agent/runs"},
-		{from: "model", to: "model/catalog"},
-		{from: "model/catalog", to: "model", allowed: true},
-		{from: "storage/sqlite", to: "internal/cancellation", allowed: true},
-		{from: "storage/sqlite", to: "internal/application/agent/runs"},
-		{from: "internal/domain/newaggregate", to: "storage/sqlite"},
-		{from: "internal/domain/newaggregate", to: "identity", allowed: true},
-		{from: "internal/domain/newaggregate", to: "protocol"},
-		{from: "internal/domain/newaggregate", to: "capability", allowed: true},
-		{from: "internal/application/agent/newusecase", to: "capability", allowed: true},
-		{from: "internal/domain/newaggregate", to: "plugin"},
-		{from: "internal/application/agent/newusecase", to: "plugin"},
-		{from: "capability", to: "plugin"},
-		{from: "capability", to: "jsoninput", allowed: true},
-		{from: "internal/domain/newaggregate", to: "internal/completion"},
-		{from: "internal/application/agent/newusecase", to: "internal/completion", allowed: true},
-		{from: "identity", to: "internal/domain/session"},
-		{from: "internal/completion", to: "internal/application/agent/runs"},
-		{from: "protocol", to: "internal/contractshape", allowed: true},
-		{from: "protocol", to: "internal/application/agent/runs"},
-		{from: "protocol", to: "internal/capture"},
-		{from: "localruntime", to: "internal/bootstrap"},
-		{from: "cmd/contractgen", to: "internal/contractcatalog", allowed: true},
-		{from: "internal/adapter/newtranslation", to: "internal/contractcatalog"},
-		{from: ".", to: "internal/testsupport"},
-		{from: "internal/testsupport", to: "internal/application/agent/runs", allowed: true},
+		{from: runtimeModulePath, to: runtimeModulePath + "/internal/bootstrap", allowed: true},
+		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/storage/sqlite", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/model", allowed: true},
+		{from: sdkModulePath + "/plugin/sqlite", to: sdkModulePath + "/idempotency", allowed: true},
+		{from: sdkModulePath + "/idempotency", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: sdkModulePath + "/model", to: sdkModulePath + "/model/catalog"},
+		{from: sdkModulePath + "/model/catalog", to: sdkModulePath + "/model", allowed: true},
+		{from: sdkModulePath + "/storage/sqlite", to: sdkModulePath + "/cancellation", allowed: true},
+		{from: sdkModulePath + "/storage/sqlite", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/storage/sqlite"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/identity", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/protocol"},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/capability", allowed: true},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/capability", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: sdkModulePath + "/plugin"},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: sdkModulePath + "/plugin"},
+		{from: sdkModulePath + "/capability", to: sdkModulePath + "/plugin"},
+		{from: sdkModulePath + "/capability", to: sdkModulePath + "/jsoninput", allowed: true},
+		{from: runtimeModulePath + "/internal/domain/newaggregate", to: runtimeModulePath + "/internal/completion"},
+		{from: runtimeModulePath + "/internal/application/agent/newusecase", to: runtimeModulePath + "/internal/completion", allowed: true},
+		{from: sdkModulePath + "/identity", to: runtimeModulePath + "/internal/domain/session"},
+		{from: runtimeModulePath + "/internal/completion", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/contractshape", allowed: true},
+		{from: sdkModulePath + "/protocol", to: runtimeModulePath + "/internal/application/agent/runs"},
+		{from: sdkModulePath + "/protocol", to: sdkModulePath + "/capture"},
+		{from: localRuntimeModulePath, to: runtimeModulePath + "/internal/bootstrap"},
+		{from: runtimeModulePath + "/cmd/contractgen", to: runtimeModulePath + "/cmd/contractgen", allowed: true},
+		{from: runtimeModulePath + "/internal/adapter/newtranslation", to: runtimeModulePath + "/cmd/contractgen"},
+		{from: runtimeModulePath, to: runtimeModulePath + "/internal/testsupport"},
+		{from: runtimeModulePath + "/internal/testsupport", to: runtimeModulePath + "/internal/application/agent/runs", allowed: true},
 	} {
 		t.Run(test.from+" -> "+test.to, func(t *testing.T) {
-			from, to := layerOf(test.from), layerOf(test.to)
+			from, _ := repositoryLayer(test.from)
+			to, _ := repositoryLayer(test.to)
 			if from == ringUnknown || to == ringUnknown {
 				t.Fatalf("intended boundary is unclassified: %s -> %s", from, to)
 			}

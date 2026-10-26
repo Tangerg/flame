@@ -14,7 +14,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 

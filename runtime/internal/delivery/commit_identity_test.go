@@ -1,6 +1,6 @@
 package delivery
 
-import runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+import runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 
 func testCommitID(raw string) runtimeidentity.CommitID {
 	identity, err := runtimeidentity.ParseCommit(raw)

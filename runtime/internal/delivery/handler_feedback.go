@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/feedback"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // CreateFeedback records an ungated quality signal in the runtime's durable

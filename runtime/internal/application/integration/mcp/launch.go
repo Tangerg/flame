@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 )
 
 // Launch transfers a fresh launch to the connection owner. Server describes

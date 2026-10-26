@@ -7,9 +7,9 @@ import (
 	"slices"
 	"sync"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
 

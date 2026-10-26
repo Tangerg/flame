@@ -4,46 +4,34 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-// InterruptStore translates the Application-owned waiting-tree hand-off to
-// SQLite's technical record. The database adapter never imports Application or
-// acquires ownership of resume semantics.
-type InterruptStore struct {
-	storage *sqlite.InterruptStore
-}
-
-func NewInterruptStore(storage *sqlite.InterruptStore) *InterruptStore {
-	return &InterruptStore{storage: storage}
-}
-
-func (i *InterruptStore) Open(ctx context.Context, pending runs.Pending) error {
+func (s *InterruptStore) Open(ctx context.Context, pending runs.Pending) error {
 	if err := pending.Validate(); err != nil {
 		return err
 	}
-	return i.storage.Open(ctx, interruptRecord(pending))
+	return s.insertPending(ctx, interruptRecord(pending))
 }
 
-func (i *InterruptStore) List(ctx context.Context, sessionID string) ([]runs.Pending, error) {
-	records, err := i.storage.List(ctx, sessionID)
+func (s *InterruptStore) List(ctx context.Context, sessionID string) ([]runs.Pending, error) {
+	records, err := s.pendingRecords(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
 	return pendingValues(records)
 }
 
-func (i *InterruptStore) ListPage(
+func (s *InterruptStore) ListPage(
 	ctx context.Context,
 	sessionID, rootRunID string,
 	afterCreatedAt int64,
 	afterRootRunID string,
 	limit int,
 ) ([]runs.Pending, error) {
-	records, err := i.storage.ListPage(
+	records, err := s.pendingRecordsPage(
 		ctx,
 		sessionID,
 		rootRunID,
@@ -57,8 +45,8 @@ func (i *InterruptStore) ListPage(
 	return pendingValues(records)
 }
 
-func (i *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
-	record, ok, err := i.storage.Get(ctx, rootRunID)
+func (s *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+	record, ok, err := s.loadPending(ctx, rootRunID)
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
 	}
@@ -72,8 +60,8 @@ func (i *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pendin
 	return pending, true, nil
 }
 
-func (i *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
-	record, ok, err := i.storage.Consume(ctx, rootRunID)
+func (s *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+	record, ok, err := s.consumePending(ctx, rootRunID)
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
 	}
@@ -87,11 +75,7 @@ func (i *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pe
 	return pending, true, nil
 }
 
-func (i *InterruptStore) Delete(ctx context.Context, rootRunID string) error {
-	return i.storage.Delete(ctx, rootRunID)
-}
-
-func pendingValues(records []sqlite.InterruptRecord) ([]runs.Pending, error) {
+func pendingValues(records []pendingRecord) ([]runs.Pending, error) {
 	values := make([]runs.Pending, len(records))
 	for index, record := range records {
 		value, err := pendingValue(record)
@@ -106,21 +90,21 @@ func pendingValues(records []sqlite.InterruptRecord) ([]runs.Pending, error) {
 	return values, nil
 }
 
-func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
-	continuations := make([]sqlite.ContinuationRecord, len(pending.Continuations))
+func interruptRecord(pending runs.Pending) pendingRecord {
+	continuations := make([]continuationRecord, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
-		drained := make([]sqlite.DrainedToolRecord, len(continuation.DrainedTools))
+		drained := make([]drainedToolRecord, len(continuation.DrainedTools))
 		for toolIndex, tool := range continuation.DrainedTools {
-			drained[toolIndex] = sqlite.DrainedToolRecord(tool)
+			drained[toolIndex] = drainedToolRecord(tool)
 		}
-		continuations[index] = sqlite.ContinuationRecord{
+		continuations[index] = continuationRecord{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			DrainedTools: drained,
 		}
 	}
-	bindings := make([]sqlite.InterruptBindingRecord, len(pending.Bindings))
+	bindings := make([]interruptBindingRecord, len(pending.Bindings))
 	for index, binding := range pending.Bindings {
-		bindings[index] = sqlite.InterruptBindingRecord{
+		bindings[index] = interruptBindingRecord{
 			InterruptItemID:   binding.InterruptItemID,
 			MemberID:          binding.MemberID,
 			RequestID:         binding.RequestID,
@@ -129,16 +113,16 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 			SourceFingerprint: binding.SourceFingerprint.String(),
 		}
 	}
-	interrupts := make([]sqlite.OpenInterruptRecord, len(pending.Interrupts))
+	interrupts := make([]openInterruptRecord, len(pending.Interrupts))
 	for index, open := range pending.Interrupts {
-		interrupts[index] = sqlite.OpenInterruptRecord{ItemID: open.ItemID}
+		interrupts[index] = openInterruptRecord{ItemID: open.ItemID}
 		if review := open.Approval; review != nil {
-			interrupts[index].Approval = &sqlite.ApprovalReviewRecord{
+			interrupts[index].Approval = &approvalReviewRecord{
 				Risk: review.Risk, Reason: review.Reason, Rememberable: review.Rememberable,
 			}
 		}
 	}
-	return sqlite.InterruptRecord{
+	return pendingRecord{
 		RootRunID: pending.RootRunID, ExecutorID: pending.ExecutorID,
 		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
@@ -146,7 +130,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 	}
 }
 
-func pendingValue(record sqlite.InterruptRecord) (runs.Pending, error) {
+func pendingValue(record pendingRecord) (runs.Pending, error) {
 	continuations := make([]runs.Continuation, len(record.Continuations))
 	for index, continuation := range record.Continuations {
 		var drained []runs.DrainedTool

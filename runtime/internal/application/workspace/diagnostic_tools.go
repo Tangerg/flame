@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 

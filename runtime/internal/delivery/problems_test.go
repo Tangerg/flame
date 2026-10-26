@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {

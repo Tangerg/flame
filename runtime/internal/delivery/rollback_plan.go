@@ -3,8 +3,8 @@ package delivery
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func rollbackScopeFromWire(in protocol.RollbackSessionRequest) (sessions.RestoreScope, error) {

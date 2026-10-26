@@ -5,10 +5,10 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func TestUnavailableInstallationRetainsExposureChoices(t *testing.T) {

@@ -2,9 +2,8 @@ package skillauthoring
 
 import (
 	"fmt"
-	"strings"
-
 	"gopkg.in/yaml.v3"
+	"strings"
 
 	skillspec "github.com/Tangerg/scope/skills"
 

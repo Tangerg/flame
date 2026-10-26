@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/optional"
 )
 
 // WorkspaceResolver is the filesystem boundary needed when a Session is

@@ -3,10 +3,10 @@ package bootstrap
 import (
 	"context"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // modelEnvironment is the composition-time graph shared by interactive model

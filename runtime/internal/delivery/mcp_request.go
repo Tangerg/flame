@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerInput, error) {

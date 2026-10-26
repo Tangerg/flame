@@ -7,6 +7,10 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+
+	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
@@ -26,9 +30,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/flame/runtime/model/catalog"
-	"github.com/Tangerg/flame/runtime/sandbox"
-	"github.com/Tangerg/flame/runtime/storage/directories"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.

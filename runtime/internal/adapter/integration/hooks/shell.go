@@ -10,10 +10,10 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/exactjson"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/capture"
+	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
-	"github.com/Tangerg/flame/runtime/internal/capture"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // ChildRunBinding is the application identity assigned to one opaque executor

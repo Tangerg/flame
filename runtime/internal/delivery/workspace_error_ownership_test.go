@@ -4,10 +4,10 @@ import (
 	"errors"
 	"testing"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestHandlersUseTheOneWorkspaceTranslation(t *testing.T) {

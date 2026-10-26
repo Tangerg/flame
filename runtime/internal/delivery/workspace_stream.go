@@ -9,11 +9,11 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // errSubscriptionAdmissionsClosed reports that a runtime subscription could not

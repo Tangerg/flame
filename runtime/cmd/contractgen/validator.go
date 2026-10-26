@@ -8,11 +8,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // The Go wire validator enforces registered constraints at Runtime boundaries.
@@ -459,13 +458,13 @@ func enumChecks(shape reflect.Type) []string {
 	recv := receiverName(shape)
 	var checks []string
 	for _, field := range contractshape.Fields(shape) {
-		if values, found := contractcatalog.EnumValues(field.Type); found {
+		if values, found := enumValues(field.Type); found {
 			checks = append(checks, fmt.Sprintf("closedEnum(%s, string(%s.%s), %s, %t)",
 				strconv.Quote(field.Name), recv, field.GoName, valueList(values), field.Optional))
 			continue
 		}
 		if field.Type.Kind() == reflect.Slice {
-			if values, found := contractcatalog.EnumValues(field.Type.Elem()); found {
+			if values, found := enumValues(field.Type.Elem()); found {
 				checks = append(checks, fmt.Sprintf("closedEnumItems(%s, %s.%s, %s)",
 					strconv.Quote(field.Name), recv, field.GoName, valueList(values)))
 			}

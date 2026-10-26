@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestWorkspaceVcsUnavailable(t *testing.T) {

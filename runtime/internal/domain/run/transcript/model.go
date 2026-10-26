@@ -8,10 +8,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ErrIdentityConflict reports an attempt to reuse a durable transcript identity

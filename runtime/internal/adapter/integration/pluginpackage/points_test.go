@@ -5,8 +5,8 @@ import (
 	json "encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/point"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/point"
 )
 
 func TestPackageAdmitsLocalPointContractsAndIsolatesInvalidValues(t *testing.T) {

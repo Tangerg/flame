@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestStorageHealthProbeSeparatesBusyFromBroken(t *testing.T) {

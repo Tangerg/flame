@@ -3,22 +3,23 @@ package plugins_test
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
-	db, err := sqlite.Open(t.Context(), path)
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
-	store := sqlite.NewPluginCommandStore(db)
+	store := db.PluginCommands
 	commands, err := plugins.NewCommands(store, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
@@ -32,12 +33,12 @@ func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	db, err = sqlite.Open(t.Context(), path)
+	db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store = sqlite.NewPluginCommandStore(db)
+	store = db.PluginCommands
 	commands, err = plugins.NewCommands(store, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
@@ -83,12 +84,12 @@ func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.
 func TestCommandDispatchAndRetirementHaveExactlyOneWinner(t *testing.T) {
 	for _, first := range []string{"dispatch", "retire"} {
 		t.Run(first, func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			store := sqlite.NewPluginCommandStore(db)
+			store := db.PluginCommands
 			admission := plugins.NewAdmission()
 			commands, err := plugins.NewCommands(store, admission)
 			if err != nil {

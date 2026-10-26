@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/exactint"
-	"github.com/Tangerg/flame/runtime/instant"
-	"github.com/Tangerg/flame/runtime/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
 )
 
 // Status is one Step's execution state.

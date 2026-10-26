@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListTools projects the complete safe direct-invocation catalog in the

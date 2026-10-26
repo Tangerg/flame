@@ -25,7 +25,7 @@ A Goal outcome report requires the immutable Goal incarnation that admitted its 
 | Domain      | Aggregates, values, invariants, legal transitions, and pure policy               |
 | Application | Use-case ordering, transactions, workflow lifetime, and consumer-owned ports     |
 | Adapter     | Translation to Scope, providers, MCP, persistence, and other external systems    |
-| Infra       | Filesystem, SQLite, Git, process, LSP, telemetry, and other technical mechanisms |
+| Infra       | Filesystem, Git, process, LSP, telemetry, and other technical mechanisms         |
 | Delivery    | Binding-neutral endpoint, dispatch, HTTP/SSE transport, and protocol projection  |
 | Bootstrap   | Concrete construction, ownership transfer, startup, recovery, and shutdown       |
 
@@ -64,8 +64,20 @@ or acquiring those aggregates.
 The workspace VCS adapter translates Git results and failures directly from
 `infra/git`. Checkpoint adapters remain separate because they own snapshot
 eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
-`adapter/persistence` likewise retains its real atomic material-read and write-set
-translation; `infra/sqlite` owns SQL and physical transaction mechanics.
+`adapter/persistence` owns Runtime product schema, SQL, strict storage codecs and
+Application port translation in one database lifecycle. Public
+`packages/go-sdk/storage/sqlite` owns shared schema admission, connection and
+transaction mechanisms; it carries no host or backend business tables.
+Workspace mutation intents commit independently before filesystem changes and
+retire independently after their effects; they never join an ambient business
+transaction.
+
+`adapter/integration/model` owns provider construction, capability preservation,
+selection translation and evidence observation. `adapter/integration/mcp` owns
+source authorization and a single private connection ledger behind `Pool`. It
+constructs the complete pool and admits startup attempts before releasing any
+configuration or handshake work. `delivery/http` passes fresh `delivery.Options`
+for each HTTP request; dispatch obtains request metadata only from that envelope.
 
 The dependency gate classifies every production Go package and local import.
 Besides the rings, it distinguishes public protocol values, deterministic shared
@@ -310,7 +322,7 @@ plugin release bytes or backend directories. Plugin inspection owns resource ava
 observations; the connection supervisor owns live lifecycle and published tools. Backend
 loss or repair changes an observation or connection outcome, never registry membership.
 
-Plugin package file inputs use the shared `infra/filesystem/fileinput` boundary for
+Plugin package file inputs use the shared `packages/go-sdk/fileinput` boundary for
 regular-file admission and identity across opening. Directory copies and release scans
 encode metadata from the opened file and verify its version after consuming its bytes;
 ZIP extraction verifies the archive's version before completing. The package adapter
@@ -373,14 +385,14 @@ A failure the transport answers itself is not an operation's failure, and says s
 
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
-Public Go operation methods share one binding implementation between an owned `Runtime` and an attached `Client`. The local invocation enters Endpoint directly; the remote invocation translates the HTTP envelope, metadata, strict response decoding, and SSE lifetime. Neither path reconstructs admission, recovery, or execution policy. Remote close detaches only that client. Accepted execution remains owned by the serving Runtime.
+Public Go operation methods on an owned `Runtime` and an attached SDK `Client` are generated from the same Delivery registry. The local invocation enters Endpoint directly; the remote invocation translates the HTTP envelope, metadata, strict response decoding, and SSE lifetime. Neither path reconstructs admission, recovery, or execution policy. Remote close detaches only that client. Accepted execution remains owned by the serving Runtime.
 
 Run-owned command acceptance requires caller-retained identity. Endpoint rejects
 Start, Resume and Steer without an idempotency key before invoking their handlers.
 Clients retain the exact request, original key and discovered store namespace before
 dispatch. Internal Goal and automation admission keep their explicit origin facts.
 
-`contract/typescript/client` is the TypeScript protocol consumer shared by Web and Desktop. It owns transport, exact wire values, immutable mutation requests and replay evidence; renderer stores and native host APIs remain with their clients. Each client owns its command journal and retires it explicitly. Creating another client does not revoke an unrelated client's authority.
+`packages/runtime-client` is the TypeScript protocol consumer shared by Web and Desktop. It owns transport, exact wire values, immutable mutation requests and replay evidence; renderer stores and native host APIs remain with their clients. Each client owns its command journal and retires it explicitly. Creating another client does not revoke an unrelated client's authority.
 
 The shared client captures immutable mutation parameters before dispatch. Its journal persists a salted request fingerprint and the original replay identity. Start, Resume and Steer additionally retain their complete frozen request and request metadata for original-command lookup and explicit retry after application restart; other mutations store no request body. Run command records include authored content, reviewed choices and original admission capabilities, using the client's existing storage lifetime. Current preferences cannot change a redelivered command's metadata. Receipt queries retain the current observation context. The SDK owns identity creation, authorization, and settlement. Recovery never reserves a replacement identity or restarts its age. The original expiry and the current retention applied to the original creation time both bound replay. Local authorization or storage failures preserve unresolved evidence; definitive settlement removes the record. Incompatible journal records remain intact and are refused without fallback decoding.
 
@@ -473,13 +485,13 @@ Foreground Run and Session commands wait, with caller cancellation, while an in-
 
 Process-local authority follows the facts that justify it. Working-context construction requires the user home and the agent-memory, Goal, Plan, and hook readers; absent user content is an owner-provided empty result. Session cleanup requires the working-context, tool, and shell owners at construction. Segment effects require a context invalidator and clear derived Session authority only after confirming the compaction commit. Replacing, rolling back, or compacting effective model context clears that Session's read-before-write evidence. Restoring a working tree clears such evidence for every Session that observed paths below the shared workspace.
 
-Context compaction is decided only at an imminent main-model call from that call's complete request footprint: instructions, durable and transient messages, Tools, model options, provider limits, and provider-native counting when available. Protocol message count and Run completion are not pressure signals. The Compactor computes an immutable proposal through a read-only port. After request preparation succeeds, the Application commits history replacement, exact Run-watermark replacements, and the Compaction Item through one acknowledged execution fact and one storage transaction. Events propagate that confirmed commit. Preparation failure writes nothing; subsequent provider or event-publication failure cannot erase the committed compaction. Post-Run maintenance only consumes the resulting fact.
+Context compaction is decided only at an imminent main-model call from that call's complete request footprint: instructions, durable and transient messages, Tools, model options, provider limits, and provider-native counting when available. Protocol message count and Run completion are not pressure signals. The Compactor computes an immutable proposal through a read-only port. After request preparation succeeds, the Application commits history replacement, exact Run-watermark replacements, and the Compaction Item through one acknowledged execution fact and one storage transaction. Events propagate that confirmed commit. Preparation failure writes nothing; subsequent provider or event-publication failure cannot erase the committed compaction. Maintenance runs after successful Scope Interaction completion, before committing the Flame Segment terminal fact, and only consumes the resulting compaction fact.
 
 The bounded summary transcript retains Tool call identities, names, arguments, and result error status alongside output. Summarization may reduce content but must not erase the operation that produced it or turn a failed operation into apparent success. Request budgeting uses the complete model request; auxiliary transcript rendering does not own a competing size estimate.
 
 That boundary first commits completed Delegate results already present in the imminent request. Durable context comparison must observe those results even when background reconciliation has not run yet, including after canceling a waiting sibling and restoring the parent.
 
-Required compaction resolves its current lifecycle Hook policy before calling the summary model or rewriting history. A configuration or trust-read failure stops compaction and preserves its cause. Hook command, observe-only lifecycle Hook, refetchable Tool projection, Skill usage recording, and post-Run maintenance failures produce diagnostics without requiring an active tracing span. Their best-effort policy does not revise the committed Tool result or published lifecycle boundary.
+Required compaction resolves its current lifecycle Hook policy before calling the summary model or rewriting history. A configuration or trust-read failure stops compaction and preserves its cause. Hook command, observe-only lifecycle Hook, refetchable Tool projection, Skill usage recording, and successful-Interaction maintenance failures produce diagnostics without requiring an active tracing span. Their best-effort policy does not revise a committed Tool result or the completed main execution. Utility evidence remains attached to the live Segment before its terminal fact commits.
 
 Working-tree checkpoints are scoped by both Session and canonical workspace identity. A Session relocation may retain independent history for each workspace, but a Run checkpoint can only restore the exact workspace that produced it; the storage adapter verifies the complete persisted identity before any Git mutation.
 

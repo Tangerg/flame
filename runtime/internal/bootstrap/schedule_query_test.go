@@ -3,12 +3,12 @@ package bootstrap
 import (
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-	"github.com/Tangerg/flame/runtime/capability"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPluginRequest {

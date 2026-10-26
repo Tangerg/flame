@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListAgentDocs maps the application-owned unique, render-ordered instruction

@@ -3,26 +3,27 @@ package plugins_test
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"testing/synctest"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestCommandsKeepOriginalRouteAndAdmitDispatchOnlyOnce(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewPluginCommandStore(db)
+	store := db.PluginCommands
 	commands, err := plugins.NewCommands(store, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
@@ -161,12 +162,12 @@ func capturedCommand(binding plugins.ContributionBinding) (capability.Invocation
 }
 
 func TestBackgroundRestoresOnlyItsDispatchedOriginalCaller(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	commands, err := plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+	commands, err := plugins.NewCommands(db.PluginCommands, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,12 +231,12 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 		for _, origin := range []capability.Origin{capability.Human, capability.Model, capability.Automatic} {
 			t.Run(target.Scope+"/"+string(origin), func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "flame.db")
-				db, err := sqlite.Open(t.Context(), path)
+				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 				if err != nil {
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = db.Close() })
-				commands, err := plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+				commands, err := plugins.NewCommands(db.PluginCommands, plugins.NewAdmission())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -259,11 +260,11 @@ func TestBackgroundRestoresOriginalResourceTargetAfterRestart(t *testing.T) {
 				if err := db.Close(); err != nil {
 					t.Fatal(err)
 				}
-				db, err = sqlite.Open(t.Context(), path)
+				db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 				if err != nil {
 					t.Fatal(err)
 				}
-				commands, err = plugins.NewCommands(sqlite.NewPluginCommandStore(db), plugins.NewAdmission())
+				commands, err = plugins.NewCommands(db.PluginCommands, plugins.NewAdmission())
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
 func TestValidateSteps(t *testing.T) {

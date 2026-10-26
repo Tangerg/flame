@@ -14,14 +14,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 type blockingGoalProjection struct {
-	*sqlite.GoalStore
+	*GoalStore
 	entered chan struct{}
 	release chan struct{}
 }
@@ -38,20 +38,20 @@ func (b *blockingGoalProjection) Get(ctx context.Context, sessionID string) (goa
 
 func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.T) {
 	databasePath := filepath.Join(t.TempDir(), "runtime.db")
-	readerDB, err := sqlite.Open(t.Context(), databasePath)
+	readerDB, err := openDatabase(t.Context(), databasePath)
 	if err != nil {
 		t.Fatalf("open reader database: %v", err)
 	}
 	t.Cleanup(func() { _ = readerDB.Close() })
-	writerDB, err := sqlite.Open(t.Context(), databasePath)
+	writerDB, err := openDatabase(t.Context(), databasePath)
 	if err != nil {
 		t.Fatalf("open writer database: %v", err)
 	}
 	t.Cleanup(func() { _ = writerDB.Close() })
 	ctx := t.Context()
 	createdAt := time.Date(2026, 8, 14, 1, 0, 0, 0, time.UTC)
-	readerSessionStore := sqlite.NewSessionStore(readerDB)
-	writerSessionStore := sqlite.NewSessionStore(writerDB)
+	readerSessionStore := NewSessionStore(readerDB)
+	writerSessionStore := NewSessionStore(writerDB)
 	original := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_snapshot", Workspace: testsupport.MustWorkspace("/workspace"), Title: "before",
 		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
@@ -59,8 +59,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if insertErr := writerSessionStore.Insert(ctx, original); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
-	readerPlanStore := sqlite.NewPlanStore(readerDB)
-	writerPlanStore := sqlite.NewPlanStore(writerDB)
+	readerPlanStore := NewPlanStore(readerDB)
+	writerPlanStore := NewPlanStore(writerDB)
 	originalPlan, err := (plan.Current{}).Replace([]plan.Step{{
 		Description: "before", Status: plan.StatusInProgress,
 	}}, createdAt)
@@ -74,8 +74,8 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if saveErr := writerPlanStore.Save(ctx, original.ID(), originalPlanReplacement); saveErr != nil {
 		t.Fatalf("seed Plan: %v", saveErr)
 	}
-	readerGoalStore := sqlite.NewGoalStore(readerDB)
-	writerGoalStore := sqlite.NewGoalStore(writerDB)
+	readerGoalStore := NewGoalStore(readerDB)
+	writerGoalStore := NewGoalStore(writerDB)
 	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	blockingGoal := &blockingGoalProjection{
 		GoalStore: readerGoalStore, entered: make(chan struct{}), release: make(chan struct{}),
 	}
-	readerMessages := sqlite.NewMessageStore(readerDB)
+	readerMessages := NewMessageStore(readerDB)
 	readerHistory, err := runsapp.NewConversationHistory(mustConversationStore(t, readerMessages))
 	if err != nil {
 		t.Fatal(err)
@@ -110,16 +110,16 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	stores, err := NewSessionStores(SessionStoresConfig{
 		CommandAcceptances:  NewCommandAcceptanceStore(readerDB),
 		Sessions:            readerSessionStore,
-		Transcript:          sqlite.NewTranscriptStore(readerDB),
-		Interrupts:          NewInterruptStore(sqlite.NewInterruptStore(readerDB)),
-		Runs:                sqlite.NewRunStore(readerDB),
-		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(readerDB)),
+		Transcript:          NewTranscriptStore(readerDB),
+		Interrupts:          NewInterruptStore(readerDB),
+		Runs:                NewRunStore(readerDB),
+		ExecutorCheckpoints: NewExecutorCheckpointStore(readerDB),
 		History:             readerHistory,
 		Plan:                readerPlanStore,
-		ApprovalRules:       sqlite.NewApprovalRuleStore(readerDB),
-		ApprovalModes:       sqlite.NewModeStore(readerDB),
-		ToolResults:         sqlite.NewToolResultStore(readerDB),
-		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(readerDB),
+		ApprovalRules:       NewApprovalRuleStore(readerDB),
+		ApprovalModes:       NewModeStore(readerDB),
+		ToolResults:         NewToolResultStore(readerDB),
+		ChildRunStarts:      NewChildRunStartReservationStore(readerDB),
 		Goals:               blockingGoal,
 		GoalRuns:            mustGoalRuns(t, writerGoalStore),
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
@@ -227,7 +227,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 
 // mustConversationStore wraps the durable history store in the Session-keyed
 // port the conversation use cases address it by.
-func mustConversationStore(tb testing.TB, messages *sqlite.MessageStore) *ConversationStore {
+func mustConversationStore(tb testing.TB, messages *MessageStore) *ConversationStore {
 	tb.Helper()
 	store, err := NewConversationStore(messages)
 	if err != nil {

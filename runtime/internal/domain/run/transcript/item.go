@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/optional"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // ItemIdentity is the immutable ownership and occurrence identity shared by

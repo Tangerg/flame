@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListModels projects the application-owned unique, ID-ordered model-discovery

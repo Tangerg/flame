@@ -4,7 +4,7 @@ import (
 	"encoding/json/v2"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestApprovalArgumentOverrideSurvivesBindingEncoding(t *testing.T) {

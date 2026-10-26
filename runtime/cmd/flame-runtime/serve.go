@@ -13,7 +13,7 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
 	"github.com/Tangerg/flame/runtime/internal/infra/telemetry"
 )

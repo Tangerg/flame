@@ -6,27 +6,26 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 type TrajectoryExportConfig struct {
 	Snapshots        sessions.SnapshotReader
-	Sessions         *sqlite.SessionStore
+	Sessions         *SessionStore
 	ModelInvocations *ModelInvocationReader
-	ToolInvocations  *sqlite.ToolInvocationStore
-	Feedback         *sqlite.FeedbackStore
+	ToolInvocations  *ToolInvocationStore
+	Feedback         *FeedbackStore
 	ReadSnapshot     Transactor
 }
 
 type TrajectoryExportReader struct {
 	snapshots        sessions.SnapshotReader
-	sessions         *sqlite.SessionStore
+	sessions         *SessionStore
 	modelInvocations *ModelInvocationReader
-	toolInvocations  *sqlite.ToolInvocationStore
-	feedback         *sqlite.FeedbackStore
+	toolInvocations  *ToolInvocationStore
+	feedback         *FeedbackStore
 	readSnapshot     Transactor
 }
 

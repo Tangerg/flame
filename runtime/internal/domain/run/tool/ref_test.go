@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 const testInstallation = "8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746"

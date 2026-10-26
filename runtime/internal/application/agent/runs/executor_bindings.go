@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"maps"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	"github.com/Tangerg/flame/runtime/resourceid"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 )
 
 // bindExecutorMember records the immutable application-Run to opaque executor

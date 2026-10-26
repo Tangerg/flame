@@ -3,7 +3,7 @@ package sessions
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
 func explicitPageLimit(t *testing.T, value int) pagination.RequestedLimit {

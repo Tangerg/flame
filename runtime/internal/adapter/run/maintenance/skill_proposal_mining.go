@@ -8,16 +8,16 @@ import (
 	"strings"
 	"sync"
 
-	modeltext "github.com/Tangerg/flame/runtime/model/text"
+	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/optional"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 const (
@@ -136,7 +136,7 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 }
 
 // MineIfDue distills the session's recent trajectory into a Skill proposal
-// when the just-finished Run was complex enough and the per-session
+// when the completed Scope Interaction was complex enough and the per-session
 // cadence is due. A distillation that yields no reusable skill, an unparseable
 // or invalid document, or an obviously-dangerous one is dropped silently
 // (return nil) — only a real read/save/LLM failure surfaces as an error.

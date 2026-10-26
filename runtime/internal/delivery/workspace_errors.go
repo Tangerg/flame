@@ -3,11 +3,11 @@ package delivery
 import (
 	"errors"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func workspaceRefPath(ref *protocol.WorkspaceRef) string {

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"golang.org/x/sys/unix"
 )

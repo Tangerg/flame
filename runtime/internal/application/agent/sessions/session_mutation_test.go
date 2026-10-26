@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
 	"github.com/Tangerg/scope/core/chat"
 

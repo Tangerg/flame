@@ -8,6 +8,8 @@ import (
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -25,7 +27,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 )
 
 // policyComposition contains the application policies that share the same

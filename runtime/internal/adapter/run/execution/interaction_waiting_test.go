@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -23,8 +25,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modeltext "github.com/Tangerg/flame/runtime/model/text"
-	"github.com/Tangerg/flame/runtime/sandbox"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"

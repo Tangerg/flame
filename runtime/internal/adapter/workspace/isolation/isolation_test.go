@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/sandbox"
+	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
 func TestNewRequiresExplicitAbsolutePaths(t *testing.T) {

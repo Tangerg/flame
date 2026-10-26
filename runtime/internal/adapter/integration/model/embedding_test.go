@@ -2,15 +2,16 @@ package model
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -30,12 +31,12 @@ func (f embeddingModelFixture) Call(_ context.Context, request *embedding.Reques
 }
 
 func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewModelInvocationStore(db)
+	store := db.ModelInvocations
 	subject := &embedder{id: "space", model: embeddingModelFixture{served: "served-embed"}, selection: testsupport.MustModelSelection("openai", "embed-model"), journal: store}
 	ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "embed-call", Origin: capability.Automatic, Parent: "owner-operation", Target: capability.Target{Scope: "call", Reference: "embed-call"}})
 	if err != nil {

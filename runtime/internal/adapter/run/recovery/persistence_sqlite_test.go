@@ -3,11 +3,13 @@ package recovery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"reflect"
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -16,10 +18,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -52,7 +54,7 @@ func (c childRunStartReservationsFunc) DeleteSession(ctx context.Context, sessio
 }
 
 func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -67,7 +69,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Admit domain Run: %v", err)
 	}
-	runStore := sqlite.NewRunStore(db)
+	runStore := db.Runs
 	if err := runStore.Admit(ctx, draft); err != nil {
 		t.Fatalf("Admit stored Run: %v", err)
 	}
@@ -78,14 +80,14 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecoverLost: %v", err)
 	}
-	childStarts := sqlite.NewChildRunStartReservationStore(db)
-	if reserveErr := childStarts.Reserve(ctx, sqlite.ChildRunStartReservationRecord{
+	childStarts := db.ChildRunStarts
+	if reserveErr := childStarts.Reserve(ctx, persistence.ChildRunStartReservationRecord{
 		MemberID: "member_abandoned", SessionID: "session_abandoned",
 		Payload: []byte(`{"run":"child_abandoned"}`), CreatedAt: createdAt,
 	}); reserveErr != nil {
 		t.Fatalf("Reserve: %v", reserveErr)
 	}
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := db.ExecutorCheckpoints
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
 		SessionID: "session_abandoned",
@@ -95,17 +97,18 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 	cleanupFailure := errors.New("child-start cleanup failed")
 	failingStore, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
-		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)),
+		Sessions: db.Sessions, Runs: db.Runs,
+		Interrupts: db.Interrupts,
+		Transcript: db.Transcript, Messages: mustConversationStore(t, db.ChatHistory),
+		GoalRuns:            mustGoalRuns(t, db.Goals),
 		ExecutorCheckpoints: checkpointStore,
-		ModelInvocations:    sqlite.NewModelInvocationStore(db),
-		ToolInvocations:     sqlite.NewToolInvocationStore(db),
+		ModelInvocations:    db.ModelInvocations,
+		ToolInvocations:     db.ToolInvocations,
 		ChildRunStarts: childRunStartReservationsFunc(func(context.Context, string) error {
 			return cleanupFailure
 		}),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -130,15 +133,16 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 
 	store, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
-		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)),
+		Sessions: db.Sessions, Runs: db.Runs,
+		Interrupts: db.Interrupts,
+		Transcript: db.Transcript, Messages: mustConversationStore(t, db.ChatHistory),
+		GoalRuns:            mustGoalRuns(t, db.Goals),
 		ExecutorCheckpoints: checkpointStore,
-		ModelInvocations:    sqlite.NewModelInvocationStore(db),
-		ToolInvocations:     sqlite.NewToolInvocationStore(db),
+		ModelInvocations:    db.ModelInvocations,
+		ToolInvocations:     db.ToolInvocations,
 		ChildRunStarts:      childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -177,27 +181,27 @@ func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 // TestRecoveryRepairsWholeDurableLifecycle proves
 // terminal_run_explains_how_it_ended at the runs.recovery boundary.
 func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
-	runStore := sqlite.NewRunStore(db)
-	sessionStore := sqlite.NewSessionStore(db)
+	runStore := db.Runs
+	sessionStore := db.Sessions
 	if insertErr := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/workspace"), CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	transcriptStore := sqlite.NewTranscriptStore(db)
-	messageStore := sqlite.NewMessageStore(db)
-	goalStore := sqlite.NewGoalStore(db)
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	modelInvocations := sqlite.NewModelInvocationStore(db)
-	toolInvocations := sqlite.NewToolInvocationStore(db)
+	interruptStore := db.Interrupts
+	transcriptStore := db.Transcript
+	messageStore := db.ChatHistory
+	goalStore := db.Goals
+	checkpointStore := db.ExecutorCheckpoints
+	modelInvocations := db.ModelInvocations
+	toolInvocations := db.ToolInvocations
 	selection, err := modelchoice.New("provider", "model")
 	if err != nil {
 		t.Fatal(err)
@@ -282,9 +286,9 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    modelInvocations,
 		ToolInvocations:     toolInvocations,
-		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
+		ChildRunStarts:      db.ChildRunStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -330,9 +334,9 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    modelInvocations,
 		ToolInvocations:     toolInvocations,
-		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
+		ChildRunStarts:      db.ChildRunStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -396,23 +400,23 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 // TestRecoveryRejectsPartialParkWithoutMutatingIt proves
 // parked_tree_has_exactly_one_open_interrupt_set at the runs.recovery boundary.
 func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	createdAt := time.Date(2026, 8, 1, 4, 0, 0, 0, time.UTC)
-	runStore := sqlite.NewRunStore(db)
-	sessionStore := sqlite.NewSessionStore(db)
+	runStore := db.Runs
+	sessionStore := db.Sessions
 	if insertErr := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/workspace"), CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("seed Session: %v", insertErr)
 	}
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	transcriptStore := sqlite.NewTranscriptStore(db)
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	interruptStore := db.Interrupts
+	transcriptStore := db.Transcript
+	checkpointStore := db.ExecutorCheckpoints
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: "run_partial", SessionID: "session", SegmentID: "segment", CreatedAt: createdAt,
 		ModelSelection: testsupport.DefaultModelSelection(),
@@ -459,11 +463,11 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	persistence, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore, Transcript: transcriptStore,
-		Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: checkpointStore,
-		ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db),
-		ChildRunStarts: sqlite.NewChildRunStartReservationStore(db),
+		Messages: mustConversationStore(t, db.ChatHistory), GoalRuns: mustGoalRuns(t, db.Goals), ExecutorCheckpoints: checkpointStore,
+		ModelInvocations: db.ModelInvocations, ToolInvocations: db.ToolInvocations,
+		ChildRunStarts: db.ChildRunStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if err != nil {
@@ -491,7 +495,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 
 // mustConversationStore wraps the durable history store in the Session-keyed
 // port recovery addresses it by.
-func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persistence.ConversationStore {
+func mustConversationStore(t *testing.T, messages *persistence.MessageStore) *persistence.ConversationStore {
 	t.Helper()
 	store, err := persistence.NewConversationStore(messages)
 	if err != nil {

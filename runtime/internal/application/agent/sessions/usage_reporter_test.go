@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	"github.com/Tangerg/scope/core/chat"
 )
 

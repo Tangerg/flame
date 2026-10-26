@@ -11,10 +11,10 @@ import (
 	"os"
 	"sync"
 
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 // Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
@@ -32,35 +32,35 @@ type Bundle struct {
 	Transactor           func(context.Context, func(context.Context) error) error
 	ReadSnapshot         func(context.Context, func(context.Context) error) error
 
-	Sessions              *sqlitestore.SessionStore
-	Runs                  *sqlitestore.RunStore
+	Sessions              *SessionStore
+	Runs                  *RunStore
 	CommandAcceptances    *CommandAcceptanceStore
 	WorkspaceMutations    *WorkspaceMutationStore
 	ExecutorCheckpoints   *ExecutorCheckpointStore
 	Interrupts            *InterruptStore
-	Transcript            *sqlitestore.TranscriptStore
-	Feedback              *sqlitestore.FeedbackStore
-	Providers             *sqlitestore.ProviderStore
-	MCPServers            *sqlitestore.MCPServerStore
-	Installations         *sqlitestore.InstallationStore
-	PluginReleases        *sqlitestore.ReleaseStore
-	PluginCommands        *sqlitestore.PluginCommandStore
-	ProviderSelections    *sqlitestore.ProviderSelectionStore
-	PluginCompositions    *sqlitestore.CompositionStore
-	ChatHistory           *sqlitestore.MessageStore
+	Transcript            *TranscriptStore
+	Feedback              *FeedbackStore
+	Providers             *ProviderStore
+	MCPServers            *MCPServerStore
+	Installations         *InstallationStore
+	PluginReleases        *ReleaseStore
+	PluginCommands        *PluginCommandStore
+	ProviderSelections    *ProviderSelectionStore
+	PluginCompositions    *CompositionStore
+	ChatHistory           *MessageStore
 	Trajectory            *TrajectoryReader
-	ModelInvocations      *sqlitestore.ModelInvocationStore
-	ToolInvocations       *sqlitestore.ToolInvocationStore
-	ChildRunStarts        *sqlitestore.ChildRunStartReservationStore
-	Plan                  *sqlitestore.PlanStore
-	ApprovalModes         *sqlitestore.ModeStore
-	Goals                 *sqlitestore.GoalStore
-	ApprovalRules         *sqlitestore.ApprovalRuleStore
-	UtilityRole           *sqlitestore.UtilityRoleStore
-	Trust                 *sqlitestore.TrustStore
-	EmbeddingRole         *sqlitestore.EmbeddingRoleStore
-	ToolResults           *sqlitestore.ToolResultStore
-	Idempotency           *sqlitestore.IdempotencyStore
+	ModelInvocations      *ModelInvocationStore
+	ToolInvocations       *ToolInvocationStore
+	ChildRunStarts        *ChildRunStartReservationStore
+	Plan                  *PlanStore
+	ApprovalModes         *ModeStore
+	Goals                 *GoalStore
+	ApprovalRules         *ApprovalRuleStore
+	UtilityRole           *UtilityRoleStore
+	Trust                 *TrustStore
+	EmbeddingRole         *EmbeddingRoleStore
+	ToolResults           *ToolResultStore
+	Idempotency           *IdempotencyStore
 	AcceptedContinuations *AcceptedContinuationStore
 }
 
@@ -90,11 +90,11 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if chmodErr := os.Chmod(config.DataDirectory, 0o700); chmodErr != nil {
 		return nil, fmt.Errorf("persistence: protect data directory %q: %w", config.DataDirectory, chmodErr)
 	}
-	db, err := sqlitestore.Open(ctx, dataDirectory.DatabasePath())
+	db, err := openDatabase(ctx, dataDirectory.DatabasePath())
 	if err != nil {
 		return nil, err
 	}
-	idempotencyNamespace, err := sqlitestore.IdempotencyNamespace(ctx, db)
+	idempotencyNamespace, err := IdempotencyNamespace(ctx, db)
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
@@ -114,36 +114,36 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ReadSnapshot: func(ctx context.Context, read func(context.Context) error) error {
 			return sqlitebase.RunReadSnapshot(ctx, db, read)
 		},
-		Sessions:              sqlitestore.NewSessionStore(db),
-		Runs:                  sqlitestore.NewRunStore(db),
+		Sessions:              NewSessionStore(db),
+		Runs:                  NewRunStore(db),
 		CommandAcceptances:    NewCommandAcceptanceStore(db),
-		WorkspaceMutations:    NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
-		ExecutorCheckpoints:   NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
-		Interrupts:            NewInterruptStore(sqlitestore.NewInterruptStore(db)),
-		Transcript:            sqlitestore.NewTranscriptStore(db),
-		Feedback:              sqlitestore.NewFeedbackStore(db),
-		Providers:             sqlitestore.NewProviderStore(db),
-		MCPServers:            sqlitestore.NewMCPServerStore(db),
-		Installations:         sqlitestore.NewInstallationStore(db),
-		PluginReleases:        sqlitestore.NewReleaseStore(db),
-		PluginCommands:        sqlitestore.NewPluginCommandStore(db),
-		ProviderSelections:    sqlitestore.NewProviderSelectionStore(db),
-		PluginCompositions:    sqlitestore.NewCompositionStore(db),
-		ChatHistory:           sqlitestore.NewMessageStore(db),
-		Trajectory:            &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
-		ModelInvocations:      sqlitestore.NewModelInvocationStore(db),
-		ToolInvocations:       sqlitestore.NewToolInvocationStore(db),
-		ChildRunStarts:        sqlitestore.NewChildRunStartReservationStore(db),
-		Plan:                  sqlitestore.NewPlanStore(db),
-		ApprovalModes:         sqlitestore.NewModeStore(db),
-		Goals:                 sqlitestore.NewGoalStore(db),
-		ApprovalRules:         sqlitestore.NewApprovalRuleStore(db),
-		UtilityRole:           sqlitestore.NewUtilityRoleStore(db),
-		Trust:                 sqlitestore.NewTrustStore(db),
-		EmbeddingRole:         sqlitestore.NewEmbeddingRoleStore(db),
-		ToolResults:           sqlitestore.NewToolResultStore(db),
-		Idempotency:           sqlitestore.NewIdempotencyStore(db),
-		AcceptedContinuations: NewAcceptedContinuationStore(sqlitestore.NewAcceptedContinuationStore(db)),
+		WorkspaceMutations:    NewWorkspaceMutationStore(db),
+		ExecutorCheckpoints:   NewExecutorCheckpointStore(db),
+		Interrupts:            NewInterruptStore(db),
+		Transcript:            NewTranscriptStore(db),
+		Feedback:              NewFeedbackStore(db),
+		Providers:             NewProviderStore(db),
+		MCPServers:            NewMCPServerStore(db),
+		Installations:         NewInstallationStore(db),
+		PluginReleases:        NewReleaseStore(db),
+		PluginCommands:        NewPluginCommandStore(db),
+		ProviderSelections:    NewProviderSelectionStore(db),
+		PluginCompositions:    NewCompositionStore(db),
+		ChatHistory:           NewMessageStore(db),
+		Trajectory:            &TrajectoryReader{store: newTrajectoryStore(db)},
+		ModelInvocations:      NewModelInvocationStore(db),
+		ToolInvocations:       NewToolInvocationStore(db),
+		ChildRunStarts:        NewChildRunStartReservationStore(db),
+		Plan:                  NewPlanStore(db),
+		ApprovalModes:         NewModeStore(db),
+		Goals:                 NewGoalStore(db),
+		ApprovalRules:         NewApprovalRuleStore(db),
+		UtilityRole:           NewUtilityRoleStore(db),
+		Trust:                 NewTrustStore(db),
+		EmbeddingRole:         NewEmbeddingRoleStore(db),
+		ToolResults:           NewToolResultStore(db),
+		Idempotency:           NewIdempotencyStore(db),
+		AcceptedContinuations: NewAcceptedContinuationStore(db),
 	}, nil
 }
 
@@ -181,6 +181,6 @@ func (b *Bundle) Close() error {
 	return b.closeErr
 }
 
-func (b *Bundle) MCPAuthorization() *sqlitestore.MCPAuthorizationStore {
-	return sqlitestore.NewMCPAuthorizationStore(b.db)
+func (b *Bundle) MCPAuthorization() *MCPAuthorizationStore {
+	return NewMCPAuthorizationStore(b.db)
 }

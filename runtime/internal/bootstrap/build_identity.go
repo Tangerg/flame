@@ -8,8 +8,8 @@ import (
 	"math"
 	"os"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ExecutableBuildID returns the content identity of the running executable.

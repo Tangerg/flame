@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
-	modeltext "github.com/Tangerg/flame/runtime/model/text"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/core/media"

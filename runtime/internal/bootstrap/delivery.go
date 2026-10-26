@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/protocol"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 // runtimeApplication is the immutable application capsule owned by Instance. Delivery

@@ -2,7 +2,8 @@ package segment
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"errors"
 	"fmt"
 	"reflect"
@@ -10,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -22,9 +24,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
 )
@@ -45,7 +47,7 @@ const checkpointBuildID = testsupport.BuildID
 // transaction consumes.
 func mustResumeAcceptance(
 	t testing.TB,
-	items *sqlite.TranscriptStore,
+	items *persistence.TranscriptStore,
 	pending runs.Pending,
 	answers []runs.InterruptAnswer,
 ) runs.ResumeAcceptance {
@@ -69,14 +71,14 @@ func mustResumeAcceptance(
 // TestCommitOpeningResumePreservesAnswerClaimOnRollback proves the continuation
 // opening leaves its open hand-off unconsumed when Run-state validation fails.
 func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	history := sqlite.NewTranscriptStore(db)
-	state := sqlite.NewRunStore(db)
+	ints := db.Interrupts
+	history := db.Transcript
+	state := db.Runs
 	ctx := context.Background()
 	createdAt := time.Now().UTC()
 	stalePending := singleRunPending(
@@ -112,7 +114,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	resume := testsupport.MustResumeRuns(
@@ -129,14 +131,14 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 }
 
 func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	history := sqlite.NewTranscriptStore(db)
-	state := sqlite.NewRunStore(db)
+	ints := db.Interrupts
+	history := db.Transcript
+	state := db.Runs
 	ctx := context.Background()
 	created := time.Now().UTC()
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})); admitErr != nil {
@@ -167,7 +169,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: ints, transcript: history}, Config{
 		State: state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	parked, found, err := state.Run(ctx, "run_1")
@@ -226,14 +228,14 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 }
 
 func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
-	state := sqlite.NewRunStore(db)
-	history := sqlite.NewTranscriptStore(db)
+	state := db.Runs
+	history := db.Transcript
 	createdAt := time.Unix(1, 0).UTC()
 	draft := run.Draft{
 		RunID: "run_ambiguous_opening", SessionID: "ses_ambiguous_opening",
@@ -257,7 +259,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	effects := mustNewEffects(Config{
 		State: state, Transcript: history,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
+			runInTxErr := db.Transactor(ctx, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -297,7 +299,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 }
 
 func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -305,22 +307,22 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	ctx := t.Context()
 	startedAt := time.Date(2026, 8, 8, 1, 2, 3, 0, time.UTC)
 	finishedAt := startedAt.Add(time.Second)
-	runState := sqlite.NewRunStore(db)
+	runState := db.Runs
 	if admitErr := runState.Admit(ctx, run.Draft{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	history := sqlite.NewTranscriptStore(db)
-	invocations := sqlite.NewModelInvocationStore(db)
+	history := db.Transcript
+	invocations := db.ModelInvocations
 	effects := mustNewEffects(Config{
 		Transcript:       history,
 		ModelInvocations: invocations,
 		State:            runState,
 		RunProgress:      runState,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	start := runs.ModelInvocationCommit{
@@ -395,7 +397,7 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 }
 
 func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +407,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	parkedAt := startedAt.Add(time.Second)
 	resumedAt := parkedAt.Add(time.Second)
 	finishedAt := resumedAt.Add(time.Second)
-	store := sqlite.NewRunStore(db)
+	store := db.Runs
 	draft := run.Draft{
 		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
@@ -438,7 +440,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	effects := mustNewEffects(Config{
 		State: store,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -458,14 +460,14 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 }
 
 func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	startedAt := time.Date(2026, 8, 15, 2, 0, 0, 0, time.UTC)
-	store := sqlite.NewRunStore(db)
+	store := db.Runs
 	draft := run.Draft{
 		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
@@ -489,12 +491,12 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	})); resumeErr != nil {
 		t.Fatal(resumeErr)
 	}
-	history := sqlite.NewTranscriptStore(db)
-	messages := sqlite.NewMessageStore(db)
+	history := db.Transcript
+	messages := db.ChatHistory
 	effects := mustNewEffects(Config{
 		State: store, Transcript: history, Conversation: mustConversationStore(t, messages),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -526,7 +528,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 }
 
 func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -534,19 +536,19 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	ctx := t.Context()
 	startedAt := time.Date(2026, 8, 8, 4, 5, 6, 0, time.UTC)
 	finishedAt := startedAt.Add(time.Second)
-	runState := sqlite.NewRunStore(db)
+	runState := db.Runs
 	if admitErr := runState.Admit(ctx, run.Draft{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	history := sqlite.NewTranscriptStore(db)
-	invocations := sqlite.NewToolInvocationStore(db)
+	history := db.Transcript
+	invocations := db.ToolInvocations
 	effects := mustNewEffects(Config{
 		Transcript: history, ToolInvocations: invocations, State: runState, RunProgress: runState,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	starts := []runs.ToolInvocationCommit{
@@ -665,7 +667,7 @@ func TestCommitOpeningResumesRunTreeAtomically(t *testing.T) {
 
 type openingResumeFixture struct {
 	ctx        context.Context
-	database   *sql.DB
+	database   *persistencefixture.Stores
 	interrupts *persistence.InterruptStore
 	effects    *Effects
 	resume     run.TreeResumeDraft
@@ -674,14 +676,14 @@ type openingResumeFixture struct {
 
 func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixture {
 	t.Helper()
-	database, err := sqlite.Open(t.Context(), ":memory:")
+	database, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	ctx := t.Context()
-	runStore := sqlite.NewRunStore(database)
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
+	runStore := database.Runs
+	interruptStore := database.Interrupts
 	createdAt := time.Now().UTC()
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
@@ -733,7 +735,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
 	}
-	transcriptStore := sqlite.NewTranscriptStore(database)
+	transcriptStore := database.Transcript
 	childQuestion, err := transcript.NewQuestion(transcript.ItemIdentity{
 		SessionID: "session_1", RunID: "run_child", ItemID: "item_child", OccurredAt: time.Unix(1, 0).UTC(),
 	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
@@ -750,7 +752,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore}, Config{
 		State: runStore,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, database, fn)
+			return database.Transactor(ctx, fn)
 		},
 	})
 	return openingResumeFixture{
@@ -819,7 +821,7 @@ func waitingTestSessionRun(
 
 }
 
-func assertStoredRunState(t testing.TB, db *sql.DB, runID, want string) {
+func assertStoredRunState(t testing.TB, db *persistencefixture.Stores, runID, want string) {
 	t.Helper()
 	var got string
 	if err := db.QueryRowContext(t.Context(), `SELECT state FROM runs WHERE run_id = ?`, runID).Scan(&got); err != nil {
@@ -833,17 +835,17 @@ func assertStoredRunState(t testing.TB, db *sql.DB, runID, want string) {
 func TestActorOpeningCommitsAcceptanceAndRollsBackWithdrawal(t *testing.T) {
 	for _, withdrawn := range []bool{false, true} {
 		t.Run(fmt.Sprint(withdrawn), func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), ":memory:")
+			db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			sessions := sqlite.NewSessionStore(db)
-			state := sqlite.NewRunStore(db)
-			receipts := persistence.NewCommandAcceptanceStore(db)
+			sessions := db.Sessions
+			state := db.Runs
+			receipts := db.CommandAcceptances
 			authority := actorAuthority{withdrawn: withdrawn}
 			effects := sqliteEffects(sqliteOpeningStores{}, Config{Sessions: sessions, State: state, CommandAcceptances: receipts, ActorAuthority: authority, Tx: func(ctx context.Context, fn func(context.Context) error) error {
-				return sqlitebase.RunInTx(ctx, db, fn)
+				return db.Transactor(ctx, fn)
 			}})
 			now := time.Now().UTC()
 			initial := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_automation", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: now, UpdatedAt: now, Revision: 1})
@@ -910,15 +912,15 @@ func (a actorAuthority) Admit(context.Context, operation.Actor) error {
 // terminal Run fact, not a best-effort follow-up by the Goal driver. Both the
 // Run state and the Goal aggregate must become visible together.
 func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	created := time.Now().UTC()
-	goals := sqlite.NewGoalStore(db)
-	sessions := sqlite.NewSessionStore(db)
+	goals := db.Goals
+	sessions := db.Sessions
 	goalSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_goal", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: created, UpdatedAt: created, Revision: 1,
 	})
@@ -941,7 +943,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if saved, saveErr := goals.Save(ctx, goalReplacement); saveErr != nil || !saved {
 		t.Fatalf("seed goal saved=%v err=%v", saved, saveErr)
 	}
-	state := sqlite.NewRunStore(db)
+	state := db.Runs
 	draft := run.Draft{
 		RunID: "run_goal", SessionID: g.SessionID(), SegmentID: "seg_open",
 		GoalIncarnationID: g.IncarnationID(), ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: created,
@@ -949,12 +951,12 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit goal run: %v", admitErr)
 	}
-	history := sqlite.NewTranscriptStore(db)
+	history := db.Transcript
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
 		GoalRuns: mustGoalRuns(t, goals),
 		State:    state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	costUSD := 0.25
@@ -1002,14 +1004,14 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 // lands the pending set, opaque executor checkpoint, and suspended Run together
 // while a fresh admission is refused.
 func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	history := sqlite.NewTranscriptStore(db)
-	state := sqlite.NewRunStore(db)
+	ints := db.Interrupts
+	history := db.Transcript
+	state := db.Runs
 	ctx := t.Context()
 	createdAt := time.Unix(1, 0).UTC()
 	parkedAt := time.Unix(2, 0).UTC()
@@ -1024,8 +1026,8 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	const rootMemberID = "member_1"
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	toolInvocations := sqlite.NewToolInvocationStore(db)
+	checkpointStore := db.ExecutorCheckpoints
+	toolInvocations := db.ToolInvocations
 	toolStartedAt := createdAt.Add(500 * time.Millisecond)
 	if startToolInvocationErr := toolInvocations.StartToolInvocation(
 		ctx, "ses_1", "run_1", "seg_open", "tool_ask", "item_tool", toolStartedAt,
@@ -1045,7 +1047,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		ExecutorCheckpoints: checkpointStore,
 		ToolInvocations:     toolInvocations,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
+			runInTxErr := db.Transactor(ctx, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -1126,7 +1128,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 }
 
 func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -1136,20 +1138,20 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	parkedAt := time.Unix(2, 0).UTC()
 	const rootMemberID = "member_rollback"
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := db.ExecutorCheckpoints
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
 		BuildID:   checkpointBuildID,
 		SessionID: "ses_rollback",
 	})
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	interruptStore := db.Interrupts
 	effects := sqliteEffects(sqliteOpeningStores{
 		interrupts: interruptStore,
-		transcript: sqlite.NewTranscriptStore(db),
+		transcript: db.Transcript,
 	}, Config{
-		State:               sqlite.NewRunStore(db),
+		State:               db.Runs,
 		ExecutorCheckpoints: checkpointStore,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	pending := singleRunPending(
@@ -1220,8 +1222,8 @@ func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 
 type terminalCheckpointFixture struct {
 	ctx          context.Context
-	database     *sql.DB
-	runStore     *sqlite.RunStore
+	database     *persistencefixture.Stores
+	runStore     *persistence.RunStore
 	checkpoints  *persistence.ExecutorCheckpointStore
 	pending      runs.Pending
 	rootMemberID string
@@ -1237,14 +1239,14 @@ func newTerminalCheckpointFixture(
 	failChildStartCleanup bool,
 ) terminalCheckpointFixture {
 	t.Helper()
-	database, err := sqlite.Open(t.Context(), ":memory:")
+	database, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	ctx := t.Context()
 	createdAt := time.Unix(1, 0).UTC()
-	runStore := sqlite.NewRunStore(database)
+	runStore := database.Runs
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
@@ -1252,7 +1254,7 @@ func newTerminalCheckpointFixture(
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
+	checkpointStore := database.ExecutorCheckpoints
 	const rootMemberID = "member_terminal"
 	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", runs.ExecutorCheckpoint{
 		BuildID:   checkpointBuildID,
@@ -1260,7 +1262,7 @@ func newTerminalCheckpointFixture(
 	})); err != nil {
 		t.Fatalf("seed checkpoint: %v", err)
 	}
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
+	interruptStore := database.Interrupts
 	pending := singleRunPending(
 		t,
 		"run_terminal", "ses_terminal", rootMemberID, "request_terminal", "item_terminal", createdAt.Add(time.Second),
@@ -1275,7 +1277,7 @@ func newTerminalCheckpointFixture(
 			err:                     errors.New("delete unavailable"),
 		}
 	}
-	childStarts := ChildRunStartReservationStore(sqlite.NewChildRunStartReservationStore(database))
+	childStarts := ChildRunStartReservationStore(database.ChildRunStarts)
 	if failChildStartCleanup {
 		childStarts = failingChildRunStartReservationStore{
 			ChildRunStartReservationStore: childStarts,
@@ -1286,7 +1288,7 @@ func newTerminalCheckpointFixture(
 		State: runStore, Interrupts: interruptStore, ExecutorCheckpoints: checkpointDeleter,
 		ChildRunStarts: childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, database, fn)
+			return database.Transactor(ctx, fn)
 		},
 	})
 	return terminalCheckpointFixture{
@@ -1457,7 +1459,7 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 					State:               fixture.runState,
 					ExecutorCheckpoints: fixture.checkpoints,
 					Tx: func(ctx context.Context, fn func(context.Context) error) error {
-						err := sqlitebase.RunInTx(ctx, fixture.db, fn)
+						err := fixture.db.Transactor(ctx, fn)
 						if err == nil && loseReceipt {
 							loseReceipt = false
 							cancelCommit()
@@ -1518,13 +1520,13 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 
 type waitingCancellationSQLiteFixture struct {
 	ctx                   context.Context
-	db                    *sql.DB
+	db                    *persistencefixture.Stores
 	effects               *Effects
 	interrupts            *persistence.InterruptStore
-	transcript            *sqlite.TranscriptStore
+	transcript            *persistence.TranscriptStore
 	conversation          *persistence.ConversationStore
 	checkpoints           *persistence.ExecutorCheckpointStore
-	runState              *sqlite.RunStore
+	runState              *persistence.RunStore
 	rootRun               run.Run
 	childRun              run.Run
 	grandchildRun         run.Run
@@ -1609,16 +1611,16 @@ func newWaitingCancellationSQLiteFixtureWithSurvivingBoundary(
 	survivingBoundary bool,
 ) waitingCancellationSQLiteFixture {
 	t.Helper()
-	return newWaitingCancellationSQLiteFixtureAt(t, ":memory:", survivingBoundary)
+	return newWaitingCancellationSQLiteFixtureAt(t, t.TempDir(), survivingBoundary)
 }
 
 func newWaitingCancellationSQLiteFixtureAt(
 	t *testing.T,
-	dataSourceName string,
+	dataDirectory string,
 	survivingBoundary bool,
 ) waitingCancellationSQLiteFixture {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), dataSourceName)
+	db, err := persistencefixture.Open(t, t.Context(), dataDirectory)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -1642,7 +1644,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		ParentRunID:     "run_root",
 		RootRunID:       "run_root",
 	}
-	state := sqlite.NewRunStore(db)
+	state := db.Runs
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
@@ -1655,7 +1657,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	}); admitErr != nil {
 		t.Fatalf("admit root: %v", admitErr)
 	}
-	transcriptStore := sqlite.NewTranscriptStore(db)
+	transcriptStore := db.Transcript
 	parentItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID:  "session_1",
 		ID:         childLineage.SpawnedByItemID,
@@ -1863,7 +1865,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if validateErr := pending.Validate(); validateErr != nil {
 		t.Fatalf("pending fixture: %v", validateErr)
 	}
-	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	interruptStore := db.Interrupts
 	children := []testsupport.ParkedMember{
 		{RunID: grandchildRun.ID(), Lineage: grandchildLineage},
 		{RunID: childRun.ID(), Lineage: childLineage},
@@ -1876,7 +1878,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		t.Fatalf("seed Pending: %v", openErr)
 	}
 
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := db.ExecutorCheckpoints
 	const rootMemberID = "member_root"
 	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
 		BuildID:   testsupport.AlternateBuildID,
@@ -1920,7 +1922,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		BuildID:   testsupport.AlternateBuildID,
 		SessionID: rootRun.SessionID(),
 	})
-	conversationStore := sqlite.NewMessageStore(db)
+	conversationStore := db.ChatHistory
 	effects := sqliteEffects(
 		sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore},
 		Config{
@@ -1929,7 +1931,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			State:               state,
 			ExecutorCheckpoints: checkpointStore,
 			Tx: func(ctx context.Context, fn func(context.Context) error) error {
-				return sqlitebase.RunInTx(ctx, db, fn)
+				return db.Transactor(ctx, fn)
 			},
 		},
 	)
@@ -1988,7 +1990,7 @@ func executorCheckpoint(
 
 type sqliteOpeningStores struct {
 	interrupts *persistence.InterruptStore
-	transcript *sqlite.TranscriptStore
+	transcript *persistence.TranscriptStore
 }
 
 func sqliteEffects(stores sqliteOpeningStores, cfg Config) *Effects {
@@ -2011,16 +2013,16 @@ func sqliteEffects(stores sqliteOpeningStores, cfg Config) *Effects {
 // would produce a session whose history mentions a run that does not exist, and no
 // later write supplies it.
 func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	created := time.Now().UTC()
-	history := sqlite.NewTranscriptStore(db)
-	messages := sqlite.NewMessageStore(db)
-	state := sqlite.NewRunStore(db)
+	history := db.Transcript
+	messages := db.ChatHistory
+	state := db.Runs
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})); admitErr != nil {
 		t.Fatalf("admit the first run: %v", admitErr)
 	}
@@ -2029,7 +2031,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
@@ -2070,14 +2072,14 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 }
 
 func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
-	state := sqlite.NewRunStore(db)
-	messages := sqlite.NewMessageStore(db)
+	state := db.Runs
+	messages := db.ChatHistory
 	draft := run.Draft{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
@@ -2089,7 +2091,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
@@ -2118,14 +2120,14 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 // to success. The exact replay must do the same without appending its messages
 // twice, while a different terminal result remains a conflict.
 func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
-	state := sqlite.NewRunStore(db)
-	messages := sqlite.NewMessageStore(db)
+	state := db.Runs
+	messages := db.ChatHistory
 	draft := run.Draft{
 		RunID: "run_ambiguous", SessionID: "ses_ambiguous", SegmentID: "seg_open",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
@@ -2141,7 +2143,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
+			runInTxErr := db.Transactor(ctx, fn)
 			if runInTxErr == nil && loseReceipt {
 				loseReceipt = false
 				cancelCommit()
@@ -2266,7 +2268,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 // serial, so the exact latest marker remains available until this receipt has
 // settled and is replaced only by the next canonical fact.
 func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -2278,18 +2280,18 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		RunID: "run_authoritative", SessionID: "ses_authoritative",
 		SegmentID: "seg_authoritative", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
-	state := sqlite.NewRunStore(db)
+	state := db.Runs
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	messages := sqlite.NewMessageStore(db)
-	invocations := sqlite.NewModelInvocationStore(db)
+	messages := db.ChatHistory
+	invocations := db.ModelInvocations
 	baseConfig := Config{
 		Conversation: mustConversationStore(t, messages), ModelInvocations: invocations,
 		State: state, RunProgress: state,
 	}
 	baseConfig.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-		return sqlitebase.RunInTx(ctx, db, fn)
+		return db.Transactor(ctx, fn)
 	}
 	effects := mustNewEffects(baseConfig)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
@@ -2309,7 +2311,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	t.Cleanup(cancelCommit)
 	ambiguousConfig := baseConfig
 	ambiguousConfig.Tx = func(ctx context.Context, fn func(context.Context) error) error {
-		runInTxErr := sqlitebase.RunInTx(ctx, db, fn)
+		runInTxErr := db.Transactor(ctx, fn)
 		if runInTxErr == nil && loseReceipt {
 			loseReceipt = false
 			cancelCommit()
@@ -2420,16 +2422,16 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 // one durable row per delegated child and leaves reserve-before-crash rows
 // unreachable.
 func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
 	createdAt := time.Unix(1, 0).UTC()
-	state := sqlite.NewRunStore(db)
-	messages := sqlite.NewMessageStore(db)
-	childStarts := sqlite.NewChildRunStartReservationStore(db)
+	state := db.Runs
+	messages := db.ChatHistory
+	childStarts := db.ChildRunStarts
 	draft := run.Draft{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
@@ -2437,7 +2439,7 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 	if err := state.Admit(ctx, draft); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	for _, record := range []sqlite.ChildRunStartReservationRecord{
+	for _, record := range []persistence.ChildRunStartReservationRecord{
 		{MemberID: "member_child_1", SessionID: "ses_1", Payload: []byte(`{"run":"child_1"}`), CreatedAt: createdAt},
 		{MemberID: "member_other", SessionID: "ses_2", Payload: []byte(`{"run":"other"}`), CreatedAt: createdAt},
 	} {
@@ -2446,13 +2448,13 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 		}
 	}
 	effects := mustNewEffects(Config{
-		Interrupts:          persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
+		Interrupts:          db.Interrupts,
 		Conversation:        mustConversationStore(t, messages),
 		State:               state,
-		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		ExecutorCheckpoints: db.ExecutorCheckpoints,
 		ChildRunStarts:      childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
@@ -2489,14 +2491,14 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 // later write will supply them. Reading it back through ListRuns is the only way to
 // see whether the commit carried them or merely flipped a state column.
 func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
-	history := sqlite.NewTranscriptStore(db)
-	state := sqlite.NewRunStore(db)
+	history := db.Transcript
+	state := db.Runs
 	draft := testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: time.Unix(1, 0).UTC()})
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
@@ -2505,7 +2507,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
 		State: state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, fn)
+			return db.Transactor(ctx, fn)
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeFailed)
@@ -2562,7 +2564,7 @@ func parkedRunRecord(runID, sessionID string, createdAt time.Time) run.Run {
 	return value
 }
 
-func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
+func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *persistencefixture.Stores) {
 	t.Helper()
 	var integrity string
 	if err := db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrity); err != nil || integrity != "ok" {
@@ -2583,7 +2585,7 @@ func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
 
 // mustConversationStore wraps the durable history store in the Session-keyed
 // port every consumer above persistence addresses it by.
-func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persistence.ConversationStore {
+func mustConversationStore(t *testing.T, messages *persistence.MessageStore) *persistence.ConversationStore {
 	t.Helper()
 	store, err := persistence.NewConversationStore(messages)
 	if err != nil {
@@ -2594,10 +2596,10 @@ func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persist
 
 // seedPending gives a test hand-off the Runs that own its facts: the root Run
 // with its capabilities, and each child member with its lineage.
-func seedPending(t *testing.T, db *sql.DB, sessionID string, pending runs.Pending, capabilities run.Capabilities, children ...testsupport.ParkedMember) {
+func seedPending(t *testing.T, db *persistencefixture.Stores, sessionID string, pending runs.Pending, capabilities run.Capabilities, children ...testsupport.ParkedMember) {
 	t.Helper()
 	members := append([]testsupport.ParkedMember{{RunID: pending.RootRunID}}, children...)
-	testsupport.SeedParkedRuns(t, db, sessionID, pending.RootRunID, "", capabilities, members)
+	testsupport.SeedParkedRuns(t, db.DB, sessionID, pending.RootRunID, "", capabilities, members)
 }
 
 // questionCapabilities is the Run contract singleRunPending's question needs.

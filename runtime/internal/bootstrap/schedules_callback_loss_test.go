@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	schedulesqlite "github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
-	"github.com/Tangerg/flame/runtime/protocol"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 type lostOpeningWriter struct {

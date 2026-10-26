@@ -5,6 +5,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"path/filepath"
 	"slices"
 	"testing"
 	"time"
@@ -13,9 +15,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
 )
@@ -53,7 +55,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	db, err := sqlite.Open(t.Context(), layout.DatabasePath())
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(layout.DatabasePath()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		Lineage: run.Lineage{SpawnedByItemID: "item_export_spawn", ParentRunID: root.ID(), RootRunID: root.ID()},
 	})
 	for _, value := range []run.Run{root, child} {
-		if err := sqlite.NewRunStore(db).Restore(t.Context(), value); err != nil {
+		if err := db.Runs.Restore(t.Context(), value); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -83,11 +85,11 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "child evidence"}}, OccurredAt: at,
 		}),
 	} {
-		if err := sqlite.NewTranscriptStore(db).AppendItem(t.Context(), value); err != nil {
+		if err := db.Transcript.AppendItem(t.Context(), value); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := sqlite.NewMessageStore(db).Write(t.Context(), history.ConversationID(ses.ID),
+	if _, err := db.ChatHistory.Write(t.Context(), history.ConversationID(ses.ID),
 		chat.NewUserMessage(chat.NewTextPart("retained question")),
 	); err != nil {
 		t.Fatal(err)
@@ -124,7 +126,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		{SessionID: ses.ID, RunID: "run_already_removed", Text: "retained orphan feedback", CreatedAt: at},
 		{Text: "general feedback", CreatedAt: at},
 	} {
-		if err := sqlite.NewFeedbackStore(db).Append(t.Context(), entry); err != nil {
+		if err := db.Feedback.Append(t.Context(), entry); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -3,7 +3,7 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ResolveWorkspace projects the application's current filesystem identity onto

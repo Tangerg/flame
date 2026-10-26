@@ -1,0 +1,171 @@
+package http_test
+
+import (
+	"bytes"
+	"context"
+	"iter"
+	netHTTP "net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+)
+
+// StartRun lets the fake drive the streamable path: it returns a runId ack plus
+// a finite RunEvent sequence so a POST runs.start exercises serveStream
+// end-to-end.
+func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	events := seq2(
+		protocol.RunEvent{
+			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
+			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
+				RunSummary: protocol.RunSummary{
+					ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
+					Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
+				},
+				ActiveSegmentID: "seg_x",
+			}},
+		},
+		protocol.RunEvent{
+			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
+			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()}}},
+		},
+	)
+	return &protocol.StartRunResponse{
+		RunID: "run_x", SegmentID: "seg_x", UserItemID: "item_x",
+	}, events, nil
+}
+
+type sseFrame struct{ id, data string }
+
+// parseSSE splits a text/event-stream body into frames, lifting the id and
+// data lines and skipping comments / blanks.
+func parseSSE(raw string) []sseFrame {
+	var out []sseFrame
+	for _, block := range strings.Split(strings.TrimSpace(raw), "\n\n") {
+		var f sseFrame
+		hasData := false
+		for _, line := range strings.Split(block, "\n") {
+			switch {
+			case strings.HasPrefix(line, "id:"):
+				f.id = strings.TrimSpace(line[len("id:"):])
+			case strings.HasPrefix(line, "data:"):
+				f.data += strings.TrimSpace(line[len("data:"):])
+				hasData = true
+			}
+		}
+		if hasData {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// TestStreamableRunStart confirms a streaming method's POST response is itself
+// the event stream: 200 text/event-stream, first frame is the JSON-RPC ack, then
+// run-event frames each carrying eventId as the SSE id.
+func TestStreamableRunStart(t *testing.T) {
+	ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
+	r0, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
+	_ = r0.Body.Close()
+
+	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.start","params":{"sessionId":"ses_1","input":[{"type":"text","text":"hi"}]}}`)
+	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", "stream-start")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	resp, err := netHTTP.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != netHTTP.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		t.Fatalf("Content-Type = %q, want text/event-stream", ct)
+	}
+
+	frames := parseSSE(readBody(resp))
+	if len(frames) != 3 {
+		t.Fatalf("frames = %d, want 3 (ack + started + finished)", len(frames))
+	}
+	if frames[0].id != "" || !strings.Contains(frames[0].data, `"runId":"run_x"`) {
+		t.Fatalf("ack frame = %+v, want runId result with no SSE id", frames[0])
+	}
+	if frames[1].id != "evt_00000000001" || !strings.Contains(frames[1].data, "segment.started") {
+		t.Fatalf("frame[1] = %+v, want segment.started @ evt 1", frames[1])
+	}
+	if frames[2].id != "evt_00000000002" || !strings.Contains(frames[2].data, "segment.finished") {
+		t.Fatalf("frame[2] = %+v, want segment.finished @ evt 2", frames[2])
+	}
+}
+
+// SubscribeRun records the reconnect cursor so the test below can assert the
+// transport plumbed the Last-Event-Id header onto the dispatch ctx.
+func (f *fakeRuntime) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	f.gotLastEventID = delivery.AfterEventIDFrom(ctx)
+	return &protocol.SubscribeRunResponse{RunID: in.RunID, SegmentID: in.SegmentID},
+		seq2[protocol.RunEvent](), nil
+}
+
+// TestSubscribeCarriesLastEventID confirms the transport lifts the
+// Last-Event-Id request header onto the ctx so runs.subscribe resumes from it
+// instead of full-replaying.
+func TestSubscribeCarriesLastEventID(t *testing.T) {
+	ts, api := newTestServer(t)
+	defer ts.Close()
+
+	discoverBody := []byte(`{"jsonrpc":"2.0","id":"1","method":"runtime.discover","params":{}}`)
+	r0, _ := netHTTP.Post(ts.URL+"/v2/rpc", "application/json", bytes.NewReader(discoverBody))
+	_ = r0.Body.Close()
+
+	body := []byte(`{"jsonrpc":"2.0","id":"2","method":"runs.subscribe","params":{"runId":"run_1","segmentId":"seg_1"}}`)
+	req, _ := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Last-Event-Id", "evt_00000000042")
+	resp, err := netHTTP.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("do: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	if api.gotLastEventID != "evt_00000000042" {
+		t.Fatalf("SubscribeRun saw Last-Event-Id %q, want evt_00000000042", api.gotLastEventID)
+	}
+
+	// A later request without a cursor must start at the current head.
+	request, err := netHTTP.NewRequest("POST", ts.URL+"/v2/rpc", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "text/event-stream")
+	response, err := netHTTP.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = response.Body.Close()
+	if api.gotLastEventID != "" {
+		t.Fatalf("request without Last-Event-Id reused %q", api.gotLastEventID)
+	}
+}
+
+// seq2 presents a finite event slice as the error-carrying stream contract.
+func seq2[Event any](events ...Event) iter.Seq2[Event, error] {
+	return func(yield func(Event, error) bool) {
+		for _, event := range events {
+			if !yield(event, nil) {
+				return
+			}
+		}
+	}
+}

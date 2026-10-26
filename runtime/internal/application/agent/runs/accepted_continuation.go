@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // AcceptedContinuation is the Run-owned binding that lets boot recovery revive an

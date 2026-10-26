@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )

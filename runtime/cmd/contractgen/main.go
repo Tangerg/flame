@@ -22,10 +22,10 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/contract/samples"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // The two union types the manifest projects extra policy from. Kept as vars so
@@ -39,26 +39,13 @@ func main() {
 	out := flag.String("out", ".", "directory for generated artifacts; empty writes only requested projections")
 	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
-	feature := flag.String("feature", "", "typed capability descriptor file, or - for stdin; replaces Runtime registry generation")
-	goOutput := flag.String("go-out", "", "feature Go projection output file")
-	goPackage := flag.String("go-package", "", "feature Go projection package")
-	goPrefix := flag.String("go-prefix", "", "feature Go projection exported prefix")
 	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
 	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
 	flag.Parse()
 
-	var err error
-	if *feature != "" {
-		if *validators != "" {
-			err = fmt.Errorf("feature Go types are canonical inputs; validators flag is for Runtime generation")
-		} else {
-			err = runFeature(*feature, *out, *ts, featureGoOutput{Path: *goOutput, Package: *goPackage, Prefix: *goPrefix})
-		}
-	} else {
-		err = writeGoBindings(*localBinding, *remoteBinding)
-		if err == nil {
-			err = run(*out, *validators, *ts)
-		}
+	err := writeGoBindings(*localBinding, *remoteBinding)
+	if err == nil {
+		err = run(*out, *validators, *ts)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "contractgen:", err)
@@ -91,10 +78,6 @@ func run(dir, validatorDir, tsDir string) error {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-	goAPI, err := loadPublicGoAPI()
-	if err != nil {
-		return err
-	}
 
 	for _, artifact := range []struct {
 		name    string
@@ -103,7 +86,6 @@ func run(dir, validatorDir, tsDir string) error {
 		{"manifest.json", built},
 		{"schema.json", newBundle(walked)},
 		{"openrpc.json", newOpenRPC(registry, shapes, walked)},
-		{"go-api.json", goAPI},
 	} {
 		if err := writeJSON(filepath.Join(dir, artifact.name), artifact.content); err != nil {
 			return err

@@ -6,7 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestCatalogFilterOwnsNormalizedSearchWorkspaceAndCursorIdentity(t *testing.T) {

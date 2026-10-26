@@ -13,18 +13,18 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/resourceid"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type reconnectObserver struct {
-	*mcpconnection.Pool
+	*mcp.Pool
 	finished chan error
 }
 
@@ -86,7 +86,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("source definition = %v, %v", found, err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	if err != nil || len(sources) != 1 {
 		t.Fatalf("sources = %v, %v", sources, err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		})
 	}
 	t.Run("startup", func(t *testing.T) {
-		pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil, nil)
+		pool, err := mcp.Open(t.Context(), t.Context(), sources, nil, registry, nil, nil, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -376,7 +376,7 @@ func (unusedDependencies) UnderAdmission(context.Context, func([]plugin.Dependen
 	return errors.New("unexpected admission")
 }
 
-func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+func connectPool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
 	attempt, err := pool.BeginConnect(ctx, name)
 	if err != nil {
 		return err
@@ -385,7 +385,7 @@ func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.I
 	return attempt.Run()
 }
 
-func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+func authorizePool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
 	attempt, err := pool.BeginAuthorize(ctx, name)
 	if err != nil {
 		return err
@@ -394,7 +394,7 @@ func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver
 	return attempt.Run()
 }
 
-func awaitPackageConnection(t *testing.T, pool *mcpconnection.Pool) {
+func awaitPackageConnection(t *testing.T, pool *mcp.Pool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for {

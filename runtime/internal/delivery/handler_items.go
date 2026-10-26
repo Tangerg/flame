@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/pagination"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // wirePageError maps a read's page-request rejection onto invalid_params. A

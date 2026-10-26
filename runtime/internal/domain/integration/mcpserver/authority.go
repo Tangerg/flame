@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 )
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 )
 
 const (

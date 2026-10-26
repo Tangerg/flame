@@ -2,7 +2,8 @@ package execution
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"errors"
 	"iter"
 	"path/filepath"
@@ -16,7 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -44,12 +46,12 @@ func testTrees(t *testing.T) *testExecutionTrees {
 }
 func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
 	if config.ModelEvidence == nil && config.ChatResolver != nil {
-		db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+		db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "model-evidence.db")))
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = db.Close() })
-		journal := sqlite.NewModelInvocationStore(db)
+		journal := db.ModelInvocations
 		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -187,13 +189,13 @@ func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx con
 // This Session-only model fixture does not simulate relational Run association;
 // that boundary is verified with admitted SQLite Model/Tool owners.
 type fixtureEndpointJournal struct {
-	*sqlite.ModelInvocationStore
-	db *sql.DB
+	*persistence.ModelInvocationStore
+	db *persistencefixture.Stores
 }
 
 func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, _ string) error {
 	if invocation.SessionID != "" {
-		sessions := sqlite.NewSessionStore(j.db)
+		sessions := j.db.Sessions
 		if _, err := sessions.Get(ctx, invocation.SessionID); errors.Is(err, session.ErrNotFound) {
 			if err := sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{ID: invocation.SessionID})); err != nil {
 				return err
@@ -207,12 +209,12 @@ func (j fixtureEndpointJournal) StartEndpointInvocation(ctx context.Context, inv
 
 func newPricedObservedTestInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "priced-model-evidence.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "priced-model-evidence.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	journal := sqlite.NewModelInvocationStore(db)
+	journal := db.ModelInvocations
 	var counter modeladapter.InputTokenCounter
 	if value, ok := model.(modeladapter.InputTokenCounter); ok {
 		counter = value

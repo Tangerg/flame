@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/storage/directories"
-	workspacepaths "github.com/Tangerg/flame/runtime/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
+	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"

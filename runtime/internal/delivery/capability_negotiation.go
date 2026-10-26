@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // Capability negotiation: what a request is entitled to, resolved once.

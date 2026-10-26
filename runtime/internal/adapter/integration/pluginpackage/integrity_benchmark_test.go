@@ -2,6 +2,7 @@ package pluginpackage
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -9,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func benchmarkRelease(b *testing.B, files map[string]string) (*Releases, plugin.Release) {
@@ -24,7 +24,7 @@ func benchmarkRelease(b *testing.B, files map[string]string) (*Releases, plugin.
 			b.Fatal(err)
 		}
 	}
-	db, err := sqlite.Open(b.Context(), filepath.Join(b.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(b, b.Context(), filepath.Dir(filepath.Join(b.TempDir(), "flame.db")))
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func benchmarkRelease(b *testing.B, files map[string]string) (*Releases, plugin.
 			return err
 		})
 	})
-	releases, err := New(directory, sqlite.NewReleaseStore(db))
+	releases, err := New(directory, db.PluginReleases)
 	if err != nil {
 		b.Fatal(err)
 	}

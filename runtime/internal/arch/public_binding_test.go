@@ -33,18 +33,18 @@ import (
 "path/filepath"
 
 flameruntime "github.com/Tangerg/flame/runtime"
-runtimeclient "github.com/Tangerg/flame/packages/runtime-client/go"
-"github.com/Tangerg/flame/runtime/capability"
-"github.com/Tangerg/flame/runtime/jsoninput"
-"github.com/Tangerg/flame/runtime/idempotency"
+runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+"github.com/Tangerg/flame/packages/go-sdk/capability"
+"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 "github.com/Tangerg/flame/packages/local-runtime"
-modelchoice "github.com/Tangerg/flame/runtime/model"
-"github.com/Tangerg/flame/runtime/model/catalog"
-pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-pluginstorage "github.com/Tangerg/flame/packages/plugin-sdk/sqlite"
-sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
-"github.com/Tangerg/flame/runtime/point"
-"github.com/Tangerg/flame/runtime/protocol"
+modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+"github.com/Tangerg/flame/packages/go-sdk/point"
+"github.com/Tangerg/flame/packages/go-sdk/protocol"
 "github.com/Tangerg/scope/core/chat"
 )
 
@@ -163,13 +163,13 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 `
 	writeConsumerFile(t, filepath.Join(directory, "go.mod"), goMod)
 	writeConsumerFile(t, filepath.Join(directory, "consumer_test.go"), source)
-	checksums, err := os.ReadFile(filepath.Join(root, "..", "go.sum"))
+	checksums, err := os.ReadFile(filepath.Join(root, "go.sum"))
 	if err != nil {
 		t.Fatalf("read Runtime dependency checksums: %v", err)
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%s\n%s\n%s\n)\n", filepath.ToSlash(directory), filepath.ToSlash(filepath.Dir(root)), filepath.ToSlash(filepath.Join(root, "..", "packages", "local-runtime")))
+	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory
@@ -196,4 +196,21 @@ func writeConsumerFile(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("write external consumer fixture %s: %v", path, err)
 	}
+}
+
+// dependencyModuleRoot follows the selected module graph for source-based contract
+// checks. It works in both a workspace and an independently downloaded module.
+func dependencyModuleRoot(t *testing.T, module string) string {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", module)
+	command.Dir = moduleRoot(t)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("resolve dependency module %s: %v\n%s", module, err, output)
+	}
+	directory := strings.TrimSpace(string(output))
+	if directory == "" {
+		t.Fatalf("dependency module %s has no resolved source directory", module)
+	}
+	return directory
 }

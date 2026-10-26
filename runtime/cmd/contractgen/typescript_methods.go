@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"maps"
 	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // The method surface, as TypeScript reads it: which methods exist, what each one
@@ -35,7 +36,7 @@ type methodsEmitter struct {
 }
 
 func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
-	emitter := &methodsEmitter{tsTypes: tsTypes{set: set}, imported: make(map[string]bool)}
+	emitter := &methodsEmitter{tsTypes: tsTypes{set: set, TypeScript: contractgen.NewTypeScript(set.defs)}, imported: make(map[string]bool)}
 	metas := registry.Metas()
 
 	// Rendered first: the shapes it names decide the import list.
@@ -178,7 +179,7 @@ func renderRule(rule delivery.CapabilityRule) string {
 		}
 		members = append(members, "when: ["+strings.Join(conditions, ", ")+"]")
 	}
-	members = append(members, "requires: ["+strings.Join(quoteAll(rule.Requires), ", ")+"]")
+	members = append(members, "requires: ["+strings.Join(contractgen.QuoteAll(rule.Requires), ", ")+"]")
 	return strings.Join(members, ", ")
 }
 

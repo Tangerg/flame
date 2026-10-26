@@ -6,9 +6,9 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 // treeContinuation is the application-private execution hand-off shared by

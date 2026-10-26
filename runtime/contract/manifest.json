@@ -20,6 +20,7 @@
   ],
   "methods": [
     {
+      "goName": "Discover",
       "name": "runtime.discover",
       "kind": "unary",
       "operation": "query",
@@ -28,6 +29,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListSessionTrajectory",
       "name": "sessions.trajectory",
       "kind": "unary",
       "operation": "query",
@@ -49,6 +51,7 @@
       ]
     },
     {
+      "goName": "ExportTrajectory",
       "name": "sessions.exportTrajectory",
       "kind": "unary",
       "operation": "query",
@@ -73,6 +76,7 @@
       ]
     },
     {
+      "goName": "ListSessions",
       "name": "sessions.list",
       "kind": "unary",
       "operation": "query",
@@ -81,6 +85,7 @@
       "pagination": "cursor"
     },
     {
+      "goName": "GetSession",
       "name": "sessions.get",
       "kind": "unary",
       "operation": "query",
@@ -92,6 +97,7 @@
       ]
     },
     {
+      "goName": "GetSessionSnapshot",
       "name": "sessions.snapshot",
       "kind": "unary",
       "operation": "query",
@@ -114,6 +120,7 @@
       ]
     },
     {
+      "goName": "CreateSession",
       "name": "sessions.create",
       "kind": "unary",
       "operation": "command",
@@ -125,6 +132,7 @@
       ]
     },
     {
+      "goName": "UpdateSession",
       "name": "sessions.update",
       "kind": "unary",
       "operation": "command",
@@ -143,6 +151,7 @@
       ]
     },
     {
+      "goName": "DeleteSession",
       "name": "sessions.delete",
       "kind": "unary",
       "operation": "command",
@@ -154,6 +163,7 @@
       ]
     },
     {
+      "goName": "ForkSession",
       "name": "sessions.fork",
       "kind": "unary",
       "operation": "command",
@@ -166,6 +176,7 @@
       ]
     },
     {
+      "goName": "RollbackSession",
       "name": "sessions.rollback",
       "kind": "unary",
       "operation": "command",
@@ -185,6 +196,7 @@
       ]
     },
     {
+      "goName": "ExportSession",
       "name": "sessions.export",
       "kind": "unary",
       "operation": "query",
@@ -200,6 +212,7 @@
       ]
     },
     {
+      "goName": "ImportSession",
       "name": "sessions.import",
       "kind": "unary",
       "operation": "command",
@@ -214,6 +227,7 @@
       ]
     },
     {
+      "goName": "ListModelEndpoints",
       "name": "modelInvocations.endpoints",
       "kind": "unary",
       "operation": "query",
@@ -225,6 +239,7 @@
       ]
     },
     {
+      "goName": "ListModelInvocations",
       "name": "modelInvocations.list",
       "kind": "unary",
       "operation": "query",
@@ -237,6 +252,7 @@
       ]
     },
     {
+      "goName": "StartRun",
       "name": "runs.start",
       "kind": "stream",
       "operation": "command",
@@ -254,6 +270,7 @@
       ]
     },
     {
+      "goName": "ResumeRun",
       "name": "runs.resume",
       "kind": "stream",
       "operation": "command",
@@ -268,6 +285,7 @@
       ]
     },
     {
+      "goName": "SubscribeRun",
       "name": "runs.subscribe",
       "kind": "stream",
       "operation": "subscription",
@@ -286,6 +304,7 @@
       ]
     },
     {
+      "goName": "CancelRun",
       "name": "runs.cancel",
       "kind": "unary",
       "operation": "command",
@@ -300,6 +319,7 @@
       ]
     },
     {
+      "goName": "SteerRun",
       "name": "runs.steer",
       "kind": "unary",
       "operation": "command",
@@ -315,6 +335,7 @@
       ]
     },
     {
+      "goName": "GetRun",
       "name": "runs.get",
       "kind": "unary",
       "operation": "query",
@@ -327,6 +348,7 @@
       ]
     },
     {
+      "goName": "GetRunAcceptance",
       "name": "runs.getAcceptance",
       "kind": "unary",
       "operation": "query",
@@ -335,6 +357,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListRuns",
       "name": "runs.list",
       "kind": "unary",
       "operation": "query",
@@ -349,6 +372,7 @@
       ]
     },
     {
+      "goName": "ListInterrupts",
       "name": "interrupts.list",
       "kind": "unary",
       "operation": "query",
@@ -361,6 +385,7 @@
       ]
     },
     {
+      "goName": "GetPlan",
       "name": "plan.get",
       "kind": "unary",
       "operation": "query",
@@ -376,6 +401,7 @@
       ]
     },
     {
+      "goName": "ListItems",
       "name": "items.list",
       "kind": "unary",
       "operation": "query",
@@ -392,6 +418,7 @@
       ]
     },
     {
+      "goName": "ResolveWorkspace",
       "name": "workspaces.resolve",
       "kind": "unary",
       "operation": "query",
@@ -403,6 +430,7 @@
       ]
     },
     {
+      "goName": "ListWorkspaces",
       "name": "workspaces.list",
       "kind": "unary",
       "operation": "query",
@@ -411,6 +439,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListWorkspaceFileChanges",
       "name": "workspace.changes.list",
       "kind": "unary",
       "operation": "query",
@@ -427,6 +456,7 @@
       ]
     },
     {
+      "goName": "GetWorkspaceDiff",
       "name": "workspace.diff.get",
       "kind": "unary",
       "operation": "query",
@@ -444,6 +474,7 @@
       ]
     },
     {
+      "goName": "SearchWorkspaceFiles",
       "name": "workspace.files.search",
       "kind": "unary",
       "operation": "query",
@@ -456,6 +487,7 @@
       ]
     },
     {
+      "goName": "ListWorkspaceFiles",
       "name": "workspace.files.list",
       "kind": "unary",
       "operation": "query",
@@ -468,6 +500,7 @@
       ]
     },
     {
+      "goName": "ReadWorkspaceFile",
       "name": "workspace.files.read",
       "kind": "unary",
       "operation": "query",
@@ -481,6 +514,7 @@
       ]
     },
     {
+      "goName": "SubscribeRuntime",
       "name": "runtime.subscribe",
       "kind": "stream",
       "operation": "subscription",
@@ -495,6 +529,7 @@
       ]
     },
     {
+      "goName": "ListDiscoveredSkills",
       "name": "skills.discovered.list",
       "kind": "unary",
       "operation": "query",
@@ -510,6 +545,7 @@
       ]
     },
     {
+      "goName": "GetDiscoveredSkill",
       "name": "skills.discovered.get",
       "kind": "unary",
       "operation": "query",
@@ -527,6 +563,7 @@
       ]
     },
     {
+      "goName": "ListManagedSkills",
       "name": "skills.library.list",
       "kind": "unary",
       "operation": "query",
@@ -541,6 +578,7 @@
       ]
     },
     {
+      "goName": "ArchiveSkill",
       "name": "skills.library.archive",
       "kind": "unary",
       "operation": "command",
@@ -556,6 +594,7 @@
       ]
     },
     {
+      "goName": "RestoreSkill",
       "name": "skills.library.restore",
       "kind": "unary",
       "operation": "command",
@@ -571,6 +610,7 @@
       ]
     },
     {
+      "goName": "ListSkillProposals",
       "name": "skills.proposals.list",
       "kind": "unary",
       "operation": "query",
@@ -586,6 +626,7 @@
       ]
     },
     {
+      "goName": "ApproveSkillProposal",
       "name": "skills.proposals.approve",
       "kind": "unary",
       "operation": "command",
@@ -602,6 +643,7 @@
       ]
     },
     {
+      "goName": "RejectSkillProposal",
       "name": "skills.proposals.reject",
       "kind": "unary",
       "operation": "command",
@@ -618,6 +660,7 @@
       ]
     },
     {
+      "goName": "ListAgentDocs",
       "name": "agentDocs.list",
       "kind": "unary",
       "operation": "query",
@@ -630,6 +673,7 @@
       ]
     },
     {
+      "goName": "GetMCPToolExposure",
       "name": "mcp.tools.exposure",
       "kind": "unary",
       "operation": "query",
@@ -644,6 +688,7 @@
       ]
     },
     {
+      "goName": "SetMCPToolExposure",
       "name": "mcp.tools.setExposure",
       "kind": "unary",
       "operation": "command",
@@ -658,6 +703,7 @@
       ]
     },
     {
+      "goName": "ListMCPServers",
       "name": "mcp.servers.list",
       "kind": "unary",
       "operation": "query",
@@ -672,6 +718,7 @@
       ]
     },
     {
+      "goName": "CreateMCPServer",
       "name": "mcp.servers.create",
       "kind": "unary",
       "operation": "command",
@@ -687,6 +734,7 @@
       ]
     },
     {
+      "goName": "UpdateMCPServer",
       "name": "mcp.servers.update",
       "kind": "unary",
       "operation": "command",
@@ -702,6 +750,7 @@
       ]
     },
     {
+      "goName": "DeleteMCPServer",
       "name": "mcp.servers.delete",
       "kind": "unary",
       "operation": "command",
@@ -717,6 +766,7 @@
       ]
     },
     {
+      "goName": "TestMCPServer",
       "name": "mcp.servers.test",
       "kind": "unary",
       "operation": "query",
@@ -731,6 +781,7 @@
       ]
     },
     {
+      "goName": "ListMCPTools",
       "name": "mcp.tools.list",
       "kind": "unary",
       "operation": "query",
@@ -745,6 +796,7 @@
       ]
     },
     {
+      "goName": "ReconnectMCPServer",
       "name": "mcp.servers.reconnect",
       "kind": "unary",
       "operation": "command",
@@ -761,6 +813,7 @@
       ]
     },
     {
+      "goName": "CreateMCPAuthorizationAttempt",
       "name": "mcp.authorizationAttempts.create",
       "kind": "unary",
       "operation": "command",
@@ -777,6 +830,7 @@
       ]
     },
     {
+      "goName": "GetMCPAuthorizationAttempt",
       "name": "mcp.authorizationAttempts.get",
       "kind": "unary",
       "operation": "query",
@@ -792,6 +846,7 @@
       ]
     },
     {
+      "goName": "GetPluginCommand",
       "name": "plugins.getCommand",
       "kind": "unary",
       "operation": "query",
@@ -812,6 +867,7 @@
       ]
     },
     {
+      "goName": "RetirePluginCommand",
       "name": "plugins.retireCommand",
       "kind": "unary",
       "operation": "command",
@@ -832,6 +888,7 @@
       ]
     },
     {
+      "goName": "StreamPlugin",
       "name": "plugins.stream",
       "kind": "stream",
       "operation": "extension",
@@ -852,6 +909,7 @@
       ]
     },
     {
+      "goName": "NotifyPluginChange",
       "name": "plugins.notifyChange",
       "kind": "unary",
       "operation": "command",
@@ -866,6 +924,7 @@
       ]
     },
     {
+      "goName": "OpenPluginResources",
       "name": "plugins.openResources",
       "kind": "stream",
       "operation": "subscription",
@@ -886,6 +945,7 @@
       ]
     },
     {
+      "goName": "ReadPluginResource",
       "name": "plugins.readResource",
       "kind": "unary",
       "operation": "query",
@@ -906,6 +966,7 @@
       ]
     },
     {
+      "goName": "ResolvePluginPoint",
       "name": "plugins.resolvePoint",
       "kind": "unary",
       "operation": "query",
@@ -926,6 +987,7 @@
       ]
     },
     {
+      "goName": "ResolvePluginRequirements",
       "name": "plugins.resolveRequirements",
       "kind": "unary",
       "operation": "query",
@@ -946,6 +1008,7 @@
       ]
     },
     {
+      "goName": "CallPlugin",
       "name": "plugins.call",
       "kind": "unary",
       "operation": "extension",
@@ -966,6 +1029,7 @@
       ]
     },
     {
+      "goName": "ListPluginProviders",
       "name": "plugins.listProviders",
       "kind": "unary",
       "operation": "query",
@@ -986,6 +1050,7 @@
       ]
     },
     {
+      "goName": "SelectPluginProvider",
       "name": "plugins.selectProvider",
       "kind": "unary",
       "operation": "command",
@@ -1006,6 +1071,7 @@
       ]
     },
     {
+      "goName": "ListPluginCompositions",
       "name": "plugins.listCompositions",
       "kind": "unary",
       "operation": "query",
@@ -1026,6 +1092,7 @@
       ]
     },
     {
+      "goName": "SetPluginComposition",
       "name": "plugins.setComposition",
       "kind": "unary",
       "operation": "command",
@@ -1046,6 +1113,7 @@
       ]
     },
     {
+      "goName": "ResolvePluginComposition",
       "name": "plugins.resolveComposition",
       "kind": "unary",
       "operation": "query",
@@ -1066,6 +1134,7 @@
       ]
     },
     {
+      "goName": "ListPlugins",
       "name": "plugins.list",
       "kind": "unary",
       "operation": "query",
@@ -1086,6 +1155,7 @@
       ]
     },
     {
+      "goName": "InstallPlugin",
       "name": "plugins.install",
       "kind": "unary",
       "operation": "command",
@@ -1106,6 +1176,7 @@
       ]
     },
     {
+      "goName": "StagePlugin",
       "name": "plugins.stage",
       "kind": "unary",
       "operation": "command",
@@ -1126,6 +1197,7 @@
       ]
     },
     {
+      "goName": "SelectPlugin",
       "name": "plugins.select",
       "kind": "unary",
       "operation": "command",
@@ -1146,6 +1218,7 @@
       ]
     },
     {
+      "goName": "ConfigurePlugin",
       "name": "plugins.configure",
       "kind": "unary",
       "operation": "command",
@@ -1166,6 +1239,7 @@
       ]
     },
     {
+      "goName": "SetPluginEnablement",
       "name": "plugins.setEnablement",
       "kind": "unary",
       "operation": "command",
@@ -1186,6 +1260,7 @@
       ]
     },
     {
+      "goName": "UninstallPlugin",
       "name": "plugins.uninstall",
       "kind": "unary",
       "operation": "command",
@@ -1206,6 +1281,7 @@
       ]
     },
     {
+      "goName": "ListHooks",
       "name": "hooks.list",
       "kind": "unary",
       "operation": "query",
@@ -1217,6 +1293,7 @@
       ]
     },
     {
+      "goName": "SetHookTrust",
       "name": "hooks.setTrust",
       "kind": "unary",
       "operation": "command",
@@ -1228,6 +1305,7 @@
       ]
     },
     {
+      "goName": "SetApprovalRule",
       "name": "approval.setRule",
       "kind": "unary",
       "operation": "command",
@@ -1236,6 +1314,7 @@
       "pagination": "none"
     },
     {
+      "goName": "GetApprovalMode",
       "name": "approval.getMode",
       "kind": "unary",
       "operation": "query",
@@ -1244,6 +1323,7 @@
       "pagination": "none"
     },
     {
+      "goName": "SetApprovalMode",
       "name": "approval.setMode",
       "kind": "unary",
       "operation": "command",
@@ -1252,6 +1332,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListApprovalRules",
       "name": "approval.listRules",
       "kind": "unary",
       "operation": "query",
@@ -1260,6 +1341,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ForgetApprovalRule",
       "name": "approval.forgetRule",
       "kind": "unary",
       "operation": "command",
@@ -1268,6 +1350,7 @@
       "pagination": "none"
     },
     {
+      "goName": "StartGoal",
       "name": "goals.start",
       "kind": "unary",
       "operation": "command",
@@ -1283,6 +1366,7 @@
       ]
     },
     {
+      "goName": "UpdateGoal",
       "name": "goals.update",
       "kind": "unary",
       "operation": "command",
@@ -1298,6 +1382,7 @@
       ]
     },
     {
+      "goName": "ClearGoal",
       "name": "goals.clear",
       "kind": "unary",
       "operation": "command",
@@ -1313,6 +1398,7 @@
       ]
     },
     {
+      "goName": "GetGoal",
       "name": "goals.get",
       "kind": "unary",
       "operation": "query",
@@ -1328,6 +1414,7 @@
       ]
     },
     {
+      "goName": "StopGoal",
       "name": "goals.stop",
       "kind": "unary",
       "operation": "command",
@@ -1343,6 +1430,7 @@
       ]
     },
     {
+      "goName": "ResumeGoal",
       "name": "goals.resume",
       "kind": "unary",
       "operation": "command",
@@ -1358,6 +1446,7 @@
       ]
     },
     {
+      "goName": "ListProviders",
       "name": "providers.list",
       "kind": "unary",
       "operation": "query",
@@ -1366,6 +1455,7 @@
       "pagination": "none"
     },
     {
+      "goName": "UpdateProvider",
       "name": "providers.update",
       "kind": "unary",
       "operation": "command",
@@ -1374,6 +1464,7 @@
       "pagination": "none"
     },
     {
+      "goName": "TestProvider",
       "name": "providers.test",
       "kind": "unary",
       "operation": "query",
@@ -1382,6 +1473,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListModels",
       "name": "models.list",
       "kind": "unary",
       "operation": "query",
@@ -1393,6 +1485,7 @@
       ]
     },
     {
+      "goName": "GetUtilityRole",
       "name": "models.getUtilityRole",
       "kind": "unary",
       "operation": "query",
@@ -1401,6 +1494,7 @@
       "pagination": "none"
     },
     {
+      "goName": "SetUtilityRole",
       "name": "models.setUtilityRole",
       "kind": "unary",
       "operation": "command",
@@ -1409,6 +1503,7 @@
       "pagination": "none"
     },
     {
+      "goName": "GetEmbeddingRole",
       "name": "models.getEmbeddingRole",
       "kind": "unary",
       "operation": "query",
@@ -1417,6 +1512,7 @@
       "pagination": "none"
     },
     {
+      "goName": "SetEmbeddingRole",
       "name": "models.setEmbeddingRole",
       "kind": "unary",
       "operation": "command",
@@ -1425,6 +1521,7 @@
       "pagination": "none"
     },
     {
+      "goName": "ListTools",
       "name": "tools.list",
       "kind": "unary",
       "operation": "query",
@@ -1433,6 +1530,7 @@
       "pagination": "none"
     },
     {
+      "goName": "InvokeTool",
       "name": "tools.invoke",
       "kind": "unary",
       "operation": "command",
@@ -1445,6 +1543,7 @@
       ]
     },
     {
+      "goName": "GetSessionUsage",
       "name": "usage.session",
       "kind": "unary",
       "operation": "query",
@@ -1456,6 +1555,7 @@
       ]
     },
     {
+      "goName": "GetUsageSummary",
       "name": "usage.summary",
       "kind": "unary",
       "operation": "query",
@@ -1464,6 +1564,7 @@
       "pagination": "none"
     },
     {
+      "goName": "CreateFeedback",
       "name": "feedback.create",
       "kind": "unary",
       "operation": "command",

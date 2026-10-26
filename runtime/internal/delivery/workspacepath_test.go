@@ -3,7 +3,7 @@ package delivery
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/storage/directories"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
 )
 
 func canonicalWorkspacePath(t *testing.T, path string) string {

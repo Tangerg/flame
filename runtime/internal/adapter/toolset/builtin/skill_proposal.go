@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/plugin-sdk/toolfailure"
-	"github.com/Tangerg/flame/runtime/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/toolfailure"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	"github.com/Tangerg/flame/runtime/resourceid"
 )
 
 const proposalDescription = `Propose a reusable Skill for future work.

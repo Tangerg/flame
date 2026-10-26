@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // CapabilityGapError carries every missing capability of one operation.

@@ -1,4 +1,4 @@
-package persistence_test
+package persistence
 
 import (
 	"context"
@@ -7,31 +7,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore, *sqlite.RunStore, *persistence.ConversationCompactions) {
+func newCompactionFixture(t *testing.T) (*sql.DB, *ConversationStore, *RunStore, *ConversationCompactions) {
 	t.Helper()
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	messages, err := persistence.NewConversationStore(sqlite.NewMessageStore(db))
+	messages, err := NewConversationStore(NewMessageStore(db))
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := sqlite.NewRunStore(db)
-	compactions, err := persistence.NewConversationCompactions(
+	runs := NewRunStore(db)
+	compactions, err := NewConversationCompactions(
 		messages,
 		runs,
 		func(ctx context.Context, fn func(context.Context) error) error {
@@ -42,13 +41,13 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore
 		t.Fatal(err)
 	}
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
-	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
+	if err := NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)
 	}
 	return db, messages, runs, compactions
 }
 
-func seedCompactionHistory(t *testing.T, messages *persistence.ConversationStore, runs *sqlite.RunStore) []chat.Message {
+func seedCompactionHistory(t *testing.T, messages *ConversationStore, runs *RunStore) []chat.Message {
 	t.Helper()
 	history := make([]chat.Message, 0, 8)
 	for index := range 4 {
@@ -192,7 +191,7 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 	}
 }
 
-func applyTestCompaction(t *testing.T, store *persistence.ConversationCompactions, runs *sqlite.RunStore) error {
+func applyTestCompaction(t *testing.T, store *ConversationCompactions, runs *RunStore) error {
 	t.Helper()
 	proposal, err := conversation.NewCompaction(8, 6, 1, compactedMessages())
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"path/filepath"
 	"reflect"
@@ -14,21 +15,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *testing.T) {
 	for _, withhold := range []bool{true, false} {
 		t.Run(fmt.Sprint(withhold), func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "model-evidence.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			journal := sqlite.NewModelInvocationStore(db)
+			journal := db.ModelInvocations
 			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return interactionUsageTextResponse("physical answer", 12, 3), nil
 			})
@@ -107,12 +108,12 @@ func TestFailedOuterModelRetainsKnownResponseAndAccounting(t *testing.T) {
 func TestModelFailureAccountsOnlyDispatchedEndpoints(t *testing.T) {
 	for _, dispatched := range []bool{false, true} {
 		t.Run(fmt.Sprint(dispatched), func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "model-evidence.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			journal := sqlite.NewModelInvocationStore(db)
+			journal := db.ModelInvocations
 			calls := 0
 			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				calls++
@@ -191,12 +192,12 @@ func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
 		{name: "invalid chunk"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "model-evidence.db"))
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "model-evidence.db")))
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			journal := sqlite.NewModelInvocationStore(db)
+			journal := db.ModelInvocations
 			provider := budgetStopCompleteModel{text: "physical answer", usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}
 			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) accounting.Cost {
 				cost, _ := accounting.NewCost(.25)

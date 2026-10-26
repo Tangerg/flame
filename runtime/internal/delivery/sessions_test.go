@@ -2,7 +2,8 @@ package delivery
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"errors"
 	"os"
 	"testing"
@@ -13,9 +14,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -133,17 +134,17 @@ func TestUpdateSession(t *testing.T) {
 // orphan (the bug: items.list / runs.listOpenInterrupts kept resolving a
 // deleted session).
 func TestDeleteSession_Cascade(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := context.Background()
 
-	svc := sqlite.NewSessionStore(db)
-	hist := sqlite.NewTranscriptStore(db)
-	runStore := sqlite.NewRunStore(db)
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	svc := db.Sessions
+	hist := db.Transcript
+	runStore := db.Runs
+	ints := db.Interrupts
 	created, _ := insertSessionFixture(ctx, svc, "doomed", "/w")
 	id := created.ID()
 	now := time.Now().UTC()
@@ -213,16 +214,16 @@ func TestDeleteSession_RejectsActiveSession(t *testing.T) {
 }
 
 func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := context.Background()
 
-	svc := sqlite.NewSessionStore(db)
-	hist := sqlite.NewTranscriptStore(db)
-	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	svc := db.Sessions
+	hist := db.Transcript
+	ints := db.Interrupts
 	created, _ := insertSessionFixture(ctx, svc, "parked", "/w")
 	id := created.ID()
 	if err := openSeededPending(ctx, t, db, ints, id, serverPending(
@@ -237,7 +238,7 @@ func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
 	}
 
 	executions := &recordingExecutions{}
-	s := newTestHandler(&stubRuntime{sess: svc, hist: hist, runs: sqlite.NewRunStore(db), interrupts: ints, history: map[string][]chat.Message{}, execution: executions})
+	s := newTestHandler(&stubRuntime{sess: svc, hist: hist, runs: db.Runs, interrupts: ints, history: map[string][]chat.Message{}, execution: executions})
 	if err := s.DeleteSession(ctx, id); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
@@ -257,17 +258,17 @@ func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
 // history into the child, and honors a title override; a run-boundary fork
 // (fromRunId) against an unknown run is run_not_found.
 func TestForkSession(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	svc := sqlite.NewSessionStore(db)
+	svc := db.Sessions
 	ctx := context.Background()
 	parent, _ := insertSessionFixture(ctx, svc, "research", "/work/proj")
 
 	hist := map[string][]chat.Message{parent.ID(): {chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi"))}}
-	s := newTestHandler(&stubRuntime{sess: svc, history: hist, hist: sqlite.NewTranscriptStore(db), runs: sqlite.NewRunStore(db)})
+	s := newTestHandler(&stubRuntime{sess: svc, history: hist, hist: db.Transcript, runs: db.Runs})
 
 	child, err := s.ForkSession(ctx, protocol.ForkSessionRequest{SessionID: parent.ID(), Title: "branch A"})
 	if err != nil {
@@ -294,8 +295,8 @@ func TestForkSession(t *testing.T) {
 	}
 }
 
-func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, sessionID string, pending runs.Pending) error {
+func openSeededPending(ctx context.Context, t *testing.T, db *persistencefixture.Stores, ints *persistence.InterruptStore, sessionID string, pending runs.Pending) error {
 	t.Helper()
-	runtime := stubRuntime{db: db, interrupts: ints, hist: sqlite.NewTranscriptStore(db)}
+	runtime := stubRuntime{db: db, interrupts: ints, hist: db.Transcript}
 	return runtime.openPending(ctx, t, sessionID, pending)
 }

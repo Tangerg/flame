@@ -20,7 +20,8 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -148,7 +149,7 @@ func TestToolEnvironmentDialsMCPServer(t *testing.T) {
 // entries with the same Name must abort tool construction rather than
 // silently overwriting.
 func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
-	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
+	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://example.invalid/"},
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://other.invalid/"},
 	}, nil, testSourceRegistry(nil), nil, nil, nil, nil)
@@ -161,7 +162,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 // failures at build time so operators don't discover the
 // problem on the first tool call.
 func TestToolEnvironmentRejectsBadMCPEndpoint(t *testing.T) {
-	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
+	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("bad"), Transport: mcpserver.TransportStreamableHTTP}, // empty URL fails validation
 	}, nil, testSourceRegistry(nil), nil, nil, nil, nil)
 	if err == nil {
@@ -216,7 +217,7 @@ func TestToolEnvironmentDialsStdioMCP(t *testing.T) {
 // TestToolEnvironmentRejectsEmptyStdioCommand mirrors the
 // HTTP empty-endpoint guard for the stdio path.
 func TestToolEnvironmentRejectsEmptyStdioCommand(t *testing.T) {
-	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{{
+	_, err := mcp.Open(context.Background(), t.Context(), []mcpserver.Server{{
 		Source:    mcpserver.UserSource(),
 		Name:      testsupport.ServerName("bad"),
 		Transport: mcpserver.TransportStdio,
@@ -280,9 +281,9 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 	}
 }
 
-func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.Built, *mcpconnection.Pool) {
+func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.Built, *mcp.Pool) {
 	t.Helper()
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers), nil, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers), nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Open MCP pool: %v", err)
 	}
@@ -420,7 +421,7 @@ func attachedRun(t *testing.T) context.Context {
 	})
 }
 
-func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+func connectPool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
 	attempt, err := pool.BeginConnect(ctx, name)
 	if err != nil {
 		return err
@@ -429,7 +430,7 @@ func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.I
 	return attempt.Run()
 }
 
-func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+func authorizePool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
 	attempt, err := pool.BeginAuthorize(ctx, name)
 	if err != nil {
 		return err

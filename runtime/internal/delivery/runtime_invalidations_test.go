@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestEveryInvalidationResourceIsPublishable: the application's resource set and the wire

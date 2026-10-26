@@ -5,33 +5,32 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
 	ctx := t.Context()
-	db, err := sqlite.Open(ctx, ":memory:")
+	db, err := persistencefixture.Open(t, ctx, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	state, history := sqlite.NewRunStore(db), sqlite.NewTranscriptStore(db)
+	state, history := db.Runs, db.Transcript
 	draft := run.Draft{RunID: "run_steer", SessionID: "ses_steer", SegmentID: "seg_steer", CreatedAt: time.Unix(1, 0).UTC(), ModelSelection: testsupport.DefaultModelSelection()}
 	if err := state.Admit(ctx, draft); err != nil {
 		t.Fatal(err)
 	}
-	commands := persistence.NewCommandAcceptanceStore(db)
-	trees := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	commands := db.CommandAcceptances
+	trees := db.ExecutorCheckpoints
 	input := []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "original guidance"}, {Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image")}}
 	acceptance := runs.CommandAcceptance{Key: "steer-original", Fingerprint: strings.Repeat("a", 64), Operation: runs.CommandSteerInput, SessionID: draft.SessionID, RunID: draft.RunID, SegmentID: draft.SegmentID, UserItemID: "item_steer", SteerInput: input}
 	payload := []byte(`{"head":"signal admitted"}`)
@@ -41,7 +40,7 @@ func TestSteerAcceptanceSharesTreeTransactionAndExactApplication(t *testing.T) {
 	transactions := 0
 	effects := mustNewEffects(Config{State: state, Transcript: history, ExecutionTrees: trees, ExecutorCheckpoints: trees, CommandAcceptances: commands, Tx: func(ctx context.Context, apply func(context.Context) error) error {
 		transactions++
-		err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+		err := db.Transactor(ctx, func(ctx context.Context) error {
 			if err := apply(ctx); err != nil {
 				return err
 			}

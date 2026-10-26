@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -24,7 +24,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -201,12 +202,12 @@ type ExecutorCheckpointStore interface {
 // the Application-owned child-start write-set. Its payload is opaque to SQLite;
 // this adapter alone translates the application value.
 type ChildRunStartReservationStore interface {
-	Reserve(ctx context.Context, record sqlite.ChildRunStartReservationRecord) error
-	Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error)
+	Reserve(ctx context.Context, record persistence.ChildRunStartReservationRecord) error
+	Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error)
 	Conclude(
 		ctx context.Context,
-		record sqlite.ChildRunStartReservationRecord,
-		conclusion sqlite.ChildRunStartConclusion,
+		record persistence.ChildRunStartReservationRecord,
+		conclusion persistence.ChildRunStartConclusion,
 	) (changed bool, err error)
 	DeleteSession(ctx context.Context, sessionID string) error
 }

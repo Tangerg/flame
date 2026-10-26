@@ -3,8 +3,8 @@ package delivery
 import (
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestPresentSafetyValues(t *testing.T) {

@@ -13,12 +13,12 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/optional"
+	"github.com/Tangerg/flame/packages/go-sdk/pathidentity"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
-	"github.com/Tangerg/flame/runtime/optional"
 )
 
 const (

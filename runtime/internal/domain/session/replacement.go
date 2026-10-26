@@ -3,7 +3,7 @@ package session
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
 // Replacement binds one already-decided Session state to the exact aggregate

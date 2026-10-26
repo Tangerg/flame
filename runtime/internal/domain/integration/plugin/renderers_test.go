@@ -3,7 +3,7 @@ package plugin
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 )
 
 func TestRendererComponentAdmissionAndReleaseCopies(t *testing.T) {

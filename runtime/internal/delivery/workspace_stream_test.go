@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // subscribe is a broadcast-only convenience used by the workspace-hub tests: a

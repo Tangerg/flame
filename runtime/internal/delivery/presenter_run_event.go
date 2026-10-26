@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {

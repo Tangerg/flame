@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
@@ -34,7 +32,7 @@ func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 }
 
 func TestBundleCloseIsIdempotent(t *testing.T) {
-	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )

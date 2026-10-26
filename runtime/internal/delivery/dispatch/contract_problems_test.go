@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestProblemCatalogOwnsEveryFirstPartyUnionVariant(t *testing.T) {

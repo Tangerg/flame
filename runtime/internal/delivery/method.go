@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Name is the binding-neutral identity of one Runtime operation. Concrete

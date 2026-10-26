@@ -3,19 +3,21 @@ package toolset
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
@@ -85,19 +87,19 @@ func TestAuthorityFingerprintsTrackEndpointsAndExcludeCredentials(t *testing.T) 
 }
 
 func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	registry := sqlite.NewMCPServerStore(db)
+	registry := db.MCPServers
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://one.example/mcp", Authorization: "Bearer first"}
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
 	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
-	store := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewModeStore(db), NewAuthorities(userDefinitions(registry), nil), nil)
+	store := db.ApprovalRules
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, db.ApprovalModes, NewAuthorities(userDefinitions(registry), nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,13 +151,13 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 }
 
 func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewApprovalRuleStore(db)
-	modes := sqlite.NewModeStore(db)
+	store := db.ApprovalRules
+	modes := db.ApprovalModes
 	agent := A2AAgentConfig{Name: "research", CardURL: "https://one.example/card", AllowedRPCOrigins: []string{"https://rpc.example"}}
 	ref, err := tool.A2A(agent.Name)
 	if err != nil {
@@ -184,7 +186,7 @@ func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
 
 // userDefinitions reads only the user registry, which is every source these
 // tests create.
-func userDefinitions(registry *sqlite.MCPServerStore) func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
+func userDefinitions(registry *persistence.MCPServerStore) func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
 	return func(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
 		if id.Origin().Kind() != mcpserver.OriginUser {
 			return mcpserver.Server{}, false, nil

@@ -6,34 +6,22 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-// WorkspaceMutationStore translates the Session rollback use case's durable
-// intent into a SQLite technical record. The transaction ordering remains an
-// Application concern; SQLite only persists and lists records.
-type WorkspaceMutationStore struct {
-	storage *sqlite.WorkspaceMutationStore
-}
-
-func NewWorkspaceMutationStore(storage *sqlite.WorkspaceMutationStore) *WorkspaceMutationStore {
-	return &WorkspaceMutationStore{storage: storage}
-}
-
-func (w *WorkspaceMutationStore) Record(ctx context.Context, mutation sessions.WorkspaceMutation) (bool, error) {
-	created, err := w.storage.Record(ctx, storedWorkspaceMutation(mutation))
-	if errors.Is(err, sqlite.ErrWorkspaceMutationPending) {
+func (s *WorkspaceMutationStore) Record(ctx context.Context, mutation sessions.WorkspaceMutation) (bool, error) {
+	created, err := s.recordMutation(ctx, storedWorkspaceMutation(mutation))
+	if errors.Is(err, errWorkspaceMutationPending) {
 		return false, fmt.Errorf("%w: %w", sessions.ErrWorkspaceMutationPending, err)
 	}
 	return created, err
 }
 
-func (w *WorkspaceMutationStore) Complete(ctx context.Context, mutation sessions.WorkspaceMutation) error {
-	return w.storage.Complete(ctx, storedWorkspaceMutation(mutation))
+func (s *WorkspaceMutationStore) Complete(ctx context.Context, mutation sessions.WorkspaceMutation) error {
+	return s.completeMutation(ctx, storedWorkspaceMutation(mutation))
 }
 
-func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
-	records, err := w.storage.ListPending(ctx)
+func (s *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
+	records, err := s.pendingMutations(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +37,8 @@ func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.Wo
 	return mutations, nil
 }
 
-func storedWorkspaceMutation(mutation sessions.WorkspaceMutation) sqlite.WorkspaceMutationRecord {
-	return sqlite.WorkspaceMutationRecord{
+func storedWorkspaceMutation(mutation sessions.WorkspaceMutation) workspaceMutationRecord {
+	return workspaceMutationRecord{
 		SessionID:      mutation.SessionID,
 		CWD:            mutation.CWD,
 		ToRunID:        mutation.ToRunID,

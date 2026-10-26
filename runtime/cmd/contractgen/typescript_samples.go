@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 )
 
 // The canonical sample index, projected for the side that cannot read Go.
@@ -37,7 +35,7 @@ export interface WireSample {
 
 export const WIRE_SAMPLES: readonly WireSample[] = [
 `)
-	for _, sample := range contractcatalog.Samples() {
+	for _, sample := range contractSamples() {
 		fmt.Fprintf(&out, "  { file: %s, shape: %s },\n", strconv.Quote(sample.File), strconv.Quote(defName(sample.Type)))
 	}
 	out.WriteString("];\n")
@@ -52,7 +50,7 @@ type sampleEntry struct {
 }
 
 func canonicalSamples() []sampleEntry {
-	samples := contractcatalog.Samples()
+	samples := contractSamples()
 	out := make([]sampleEntry, 0, len(samples))
 	for _, sample := range samples {
 		out = append(out, sampleEntry{File: sample.File, Shape: defName(sample.Type)})

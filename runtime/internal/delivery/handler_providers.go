@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // ListProviders projects the application-owned, ID-ordered supported-provider

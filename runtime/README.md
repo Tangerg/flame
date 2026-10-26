@@ -71,7 +71,7 @@ bindings and transitive dependencies before starting a Run. The original Tool
 retains schema, approval and mutation authority: transformed arguments are
 admitted before approval, executed unchanged and retained as canonical history.
 Approval recovery consumes the saved final proposal without rerunning contributors.
-See [`plugin/README.md`](../packages/plugin-sdk/README.md#tool-proposal-transformation) for authoring.
+See [`plugin/README.md`](../packages/go-sdk/plugin/README.md#tool-proposal-transformation) for authoring.
 
 The private checkpoint now requires `tool_proposals`. Preserve earlier directories
 and finish old waiting work with its original binary; no compatibility reader or
@@ -223,13 +223,13 @@ migration. Use a fresh data directory when upgrading.
 
 ## Public surfaces
 
-- `runtime.Runtime` is the concrete in-process binding; `runtimeclient.Client` from `packages/runtime-client/go` attaches
+- `runtime.Runtime` is the concrete in-process binding; `runtimeclient.Client` from `packages/go-sdk/client` attaches
   over HTTP/SSE. Both enter one Delivery Endpoint for validation, capabilities,
   command identity, invocation lifetime, Application calls and error/event projection.
 - `protocol` owns binding-neutral requests, responses, events and validation.
   [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
   manifest, OpenRPC and schema are projections of the operation catalog.
-- [`plugin`](../packages/plugin-sdk/README.md) owns public typed backend methods, streams,
+- [`plugin`](../packages/go-sdk/plugin/README.md) owns public typed backend methods, streams,
   receipts and captured host collaborators. [`capability`](capability/contract.go)
   owns callable metadata; [`point`](point/contract.go) owns typed value points.
 - `localruntime` owns the executable/companion-package layout and credential handoff.
@@ -263,7 +263,7 @@ chunk/vector index and private import receipts. Typed operations and MCP search
 share retrieval; context v2 supplies original user input separately from host
 trailers. Embedding v2 returns the actual vector space with its vectors. See
 [`Knowledge base`](../plugins/knowledgebase/README.md) and the public
-[`SDK contracts`](../packages/plugin-sdk/README.md) for use and coordinated rebuild requirements.
+[`SDK contracts`](../packages/go-sdk/plugin/README.md) for use and coordinated rebuild requirements.
 
 ## Selection, composition and host callbacks
 
@@ -282,7 +282,7 @@ media, byte/output and token admission see that final request. Authored conversa
 and retry identity remain original. Transparent observers receive one unchanged
 call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
 may transform arguments while execution retains Tool identity, schema and approval.
-See the [public authoring contracts](../packages/plugin-sdk/README.md).
+See the [public authoring contracts](../packages/go-sdk/plugin/README.md).
 
 `plugin.Callbacks` owns one lifecycle-bound loopback link. Bootstrap publishes
 canonical RPC once before backends can receive its reference. Nested operations
@@ -978,7 +978,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 
 - Runtime is a product backend, not another Agent Framework. Scope owns Process, strategy, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`plugin`](../packages/plugin-sdk/README.md) owns the public typed backend MCP wire binding, immutable Go-owned method contracts and logical Tool metadata translation. Memory, Schedules and independent Reviews use this same package. Private business mutation and receipt ownership stay with each backend; the binding never turns an unrecognized failure into a definite business refusal.
+- [`plugin`](../packages/go-sdk/plugin/README.md) owns the public typed backend MCP wire binding, immutable Go-owned method contracts and logical Tool metadata translation. Memory, Schedules and independent Reviews use this same package. Private business mutation and receipt ownership stay with each backend; the binding never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1403,8 +1403,8 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 ## SQLite transaction lifetime
 
-`runtime/storage/sqlite` is the public schema/transaction owner used by Runtime
-and plugin authors. `packages/plugin-sdk/sqlite` owns reusable private command admission
+`packages/go-sdk/storage/sqlite` is the public schema/transaction owner used by Runtime
+and plugin authors. `packages/go-sdk/plugin/sqlite` owns reusable private command admission
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.
 Host business tables remain in Runtime, and private business tables stay with their
@@ -1415,7 +1415,7 @@ accidentally enter the first owner's write-set. Nested work for one database joi
 its transaction; an independent transaction for that same active database is
 refused before connection acquisition. Separate owners do not become a distributed
 transaction. See [SQLite ownership](storage/sqlite/README.md) and
-[private receipt ownership](../packages/plugin-sdk/sqlite/README.md).
+[private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
 rollback. Connection acquisition and statements retain the caller's context;

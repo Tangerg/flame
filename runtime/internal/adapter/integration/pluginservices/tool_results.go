@@ -4,24 +4,25 @@ import (
 	"context"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/dependency"
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
-	"github.com/Tangerg/flame/runtime/jsoninput"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type ToolResults struct {
 	installations plugins.Store
-	pool          *mcpconnection.Pool
+	pool          *mcp.Pool
 }
 
 func (s *ToolResults) OwnsToolSource(ctx context.Context, ref tool.Ref, release fingerprint.Digest) (bool, error) {
@@ -96,7 +97,7 @@ func (s *ToolResults) originalToolSession(ctx context.Context, ref tool.Ref, rel
 	return s.pool.BoundServiceSession(ctx, source, authority)
 }
 
-func NewToolResults(store plugins.Store, pool *mcpconnection.Pool) (*ToolResults, error) {
+func NewToolResults(store plugins.Store, pool *mcp.Pool) (*ToolResults, error) {
 	if dependency.Missing(store) || pool == nil {
 		return nil, errors.New("tool results: installation store and connections are required")
 	}

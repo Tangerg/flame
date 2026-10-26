@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"

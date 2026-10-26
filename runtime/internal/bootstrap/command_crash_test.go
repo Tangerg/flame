@@ -4,16 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/protocol"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const commandCrashExit = 73
@@ -58,15 +59,12 @@ func (s commandCrashExecutor) CancelRun(ctx context.Context, _ protocol.CancelRu
 	return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: protocol.RunRef{ID: "run_crash", SessionID: "ses_crash", Status: protocol.RunStatusFinished, Provider: "test", Model: "test-model", CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(), Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled}}}, nil
 }
 
-func crashCommand(t *testing.T, db, effects *sql.DB, phase string) (*protocol.CancelRunResponse, error) {
+func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase string) (*protocol.CancelRunResponse, error) {
 	t.Helper()
-	namespace, err := sqlite.IdempotencyNamespace(t.Context(), db)
-	if err != nil {
-		t.Fatal(err)
-	}
+	namespace := db.IdempotencyNamespace
 	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: namespace.String(),
-		IdempotencyStore: commandCrashStore{Store: sqlite.NewIdempotencyStore(db), phase: phase},
+		IdempotencyStore: commandCrashStore{Store: db.Idempotency, phase: phase},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +81,7 @@ func TestCommandCrashHelper(t *testing.T) {
 	if phase == "" {
 		return
 	}
-	db, err := sqlite.Open(t.Context(), os.Getenv("FLAME_TEST_COMMAND_DB"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(os.Getenv("FLAME_TEST_COMMAND_DB")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +107,7 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 			if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
 				t.Fatalf("abrupt exit: %v\n%s", err, output)
 			}
-			db, err := sqlite.Open(t.Context(), path)
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 			if err != nil {
 				t.Fatal(err)
 			}

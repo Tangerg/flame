@@ -1,0 +1,345 @@
+package mcp
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"testing/synctest"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestConnectSessionLifetimeDoesNotInheritHandshakeDeadline(t *testing.T) {
+	owner, stopOwner := context.WithCancel(context.Background())
+	var lifetime context.Context
+	timeout := time.Hour
+	session, cancel, err := connectSession(t.Context(), owner, &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
+		lifetime = ctx
+		return new(sdkmcp.ClientSession), nil
+	})
+	defer cancel()
+	if err != nil || session == nil {
+		t.Fatalf("connectSession = (%v, %v), want session", session, err)
+	}
+	if _, hasDeadline := lifetime.Deadline(); hasDeadline {
+		t.Fatal("live session lifetime inherited the handshake deadline")
+	}
+	select {
+	case <-lifetime.Done():
+		t.Fatalf("live session lifetime ended after handshake: %v", lifetime.Err())
+	default:
+	}
+	stopOwner()
+	select {
+	case <-lifetime.Done():
+	case <-time.After(time.Second):
+		t.Fatal("process lifetime cancellation did not end the live session")
+	}
+}
+
+func TestConnectSessionHandshakeTimeoutCancelsInFlightConnect(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		started := make(chan struct{})
+		timeout := 20 * time.Millisecond
+		_, _, err := connectSession(t.Context(), t.Context(), &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
+			close(started)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+		select {
+		case <-started:
+		default:
+			t.Fatal("connect callback did not start")
+		}
+		if !errors.Is(err, context.Canceled) || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("connectSession error = %v, want canceled transport and handshake timeout", err)
+		}
+	})
+}
+
+func TestServerConfigValidate(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  ServerConfig
+		ok   bool
+	}{
+		{"http ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, true},
+		{"http relative endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "/mcp"}}, false},
+		{"http non-http endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "file:///tmp/mcp"}}, false},
+		{"stdio ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx"}}, true},
+		{"missing source", ServerConfig{Server: mcpserver.Server{Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server"}}, false},
+		{"missing name", ServerConfig{Server: mcpserver.Server{Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, false},
+		{"zero transport", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), URL: "https://e/"}}, false},
+		{"http without endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}, false},
+		{"http with command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Command: "npx"}}, false},
+		{"http with args", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Args: []string{"--stdio"}}}, false},
+		{"http with environment", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Env: map[string]string{"TOKEN": "value"}}}, false},
+		{"http with directory", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Dir: "/tmp"}}, false},
+		{"http invalid header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Headers: map[string]string{"X-Key": "bad\r\nvalue"}}}, false},
+		{"http invalid authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Authorization: "bad\r\nvalue"}}, false},
+		{"stdio loader injection", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"LD_PRELOAD": "/tmp/inject.so"}}}, false},
+		{"stdio NUL argument", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Args: []string{"bad\x00value"}}}, false},
+		{"stdio without command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio}}, false},
+		{"stdio with endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx", URL: "https://e/"}}, false},
+		{"http auth fields ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}}, true},
+		{"http authorization header duplicate", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}, false},
+		{"http oauth with static authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"http oauth with authorization header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"stdio with auth", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Authorization: "Bearer t"}}, false},
+		{"stdio with headers", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.Validate()
+			if tc.ok {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+func mustHandshakeTimeout(t *testing.T, value time.Duration) mcpserver.HandshakeTimeout {
+	t.Helper()
+	policy, err := mcpserver.NewHandshakeTimeout(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
+
+func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.T) {
+	stdio := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": "first"}}}
+	rotated := stdio.Clone()
+	rotated.Env["TOKEN"] = "second"
+	if stdio.Server.SameConnection(rotated.Server) {
+		t.Fatal("rotated process credentials retained the old connection binding")
+	}
+	inherited := stdio.Clone()
+	inherited.Env = nil
+	empty := inherited.Clone()
+	empty.Env = map[string]string{}
+	if inherited.Server.SameConnection(empty.Server) {
+		t.Fatal("inherited and explicitly empty process environments share a binding")
+	}
+	changedLimit := stdio.Clone()
+	changedLimit.HandshakeTimeout = mustHandshakeTimeout(t, time.Minute)
+	if !stdio.Server.SameConnection(changedLimit.Server) {
+		t.Fatal("future handshake policy invalidated a connected executable")
+	}
+	http := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}}
+	refreshed := http.Clone()
+	refreshed.OAuthHandler = oauthHandlerStub{}
+	if !http.Server.SameConnection(refreshed.Server) {
+		t.Fatal("live OAuth credentials became a competing connection descriptor")
+	}
+}
+
+func TestProcessEnvironmentPreservesInheritanceAndExplicitEmpty(t *testing.T) {
+	if inherited := processEnvironment(nil); inherited != nil {
+		t.Fatal("absent environment stopped inheriting the parent")
+	}
+	if empty := processEnvironment(map[string]string{}); empty == nil || len(empty) != 0 {
+		t.Fatal("explicitly empty environment became parent inheritance")
+	}
+	require.Equal(t, []string{"A=one", "B=two"}, processEnvironment(map[string]string{"B": "two", "A": "one"}))
+}
+
+func TestDialValidatesBeforeDialing(t *testing.T) {
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "URL is required")
+}
+
+func TestDialNilClient(t *testing.T) {
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "client must not be nil")
+}
+
+func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
+	_, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
+		Server: mcpserver.Server{
+			Source: mcpserver.UserSource(),
+			Name:   testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: server.URL,
+		},
+	}})
+	require.Error(t, err)
+	assert.Nil(t, cleanup)
+}
+
+func TestHeaderHTTPClientSetsAuthorization(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	client, err := endpointHTTPClient(srv.URL, "Bearer secret-token", nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+
+	assert.Equal(t, "Bearer secret-token", got)
+	assert.Empty(t, req.Header.Get("Authorization"), "RoundTripper must not mutate caller request")
+}
+
+func TestHeaderHTTPClientSetsCustomHeaders(t *testing.T) {
+	var apiKey, auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiKey = r.Header.Get("X-API-Key")
+		auth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	client, err := endpointHTTPClient(srv.URL, "Bearer wins", map[string]string{
+		"X-API-Key":     "k-123",
+		"Authorization": "Bearer loses",
+	})
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+
+	assert.Equal(t, "k-123", apiKey)
+	assert.Equal(t, "Bearer wins", auth)
+}
+
+func TestEndpointHTTPClientEnforcesOriginWithoutHeaders(t *testing.T) {
+	client, err := endpointHTTPClient("https://example.com/mcp", "", nil)
+	require.NoError(t, err)
+	assert.NotNil(t, client)
+}
+
+func TestEndpointHTTPClientBoundsServerFrames(t *testing.T) {
+	client, err := endpointHTTPClient("https://example.com/mcp", "", nil)
+	require.NoError(t, err)
+	transport := client.Transport.(*headerRoundTripper)
+	transport.maxResponseFrameBytes = 8
+	transport.base = mcpRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(strings.Repeat("x", 9))),
+			Request:    request,
+		}, nil
+	})
+	response, err := client.Get("https://example.com/mcp")
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, response.Body.Close()) })
+	_, err = io.ReadAll(response.Body)
+	assert.ErrorIs(t, err, errMCPResponseFrameTooLarge)
+}
+
+type mcpRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f mcpRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
+}
+
+func TestEndpointHTTPClientFollowsSameOriginRedirect(t *testing.T) {
+	var gotAuthorization string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/mcp", http.StatusFound)
+			return
+		}
+		gotAuthorization = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	client, err := endpointHTTPClient(srv.URL+"/start", "Bearer secret-token", nil)
+	require.NoError(t, err)
+	resp, err := client.Get(srv.URL + "/start")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, "Bearer secret-token", gotAuthorization)
+}
+
+func TestEndpointHTTPClientRejectsCrossOriginRedirect(t *testing.T) {
+	var targetHit atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		targetHit.Store(true)
+	}))
+	defer target.Close()
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer source.Close()
+
+	client, err := endpointHTTPClient(source.URL, "Bearer secret-token", map[string]string{"X-API-Key": "secret"})
+	require.NoError(t, err)
+	resp, err := client.Get(source.URL)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, errCrossOriginRedirect)
+	assert.False(t, targetHit.Load(), "cross-origin redirect reached target")
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+}
+
+func TestHeaderRoundTripperRejectsUnboundTarget(t *testing.T) {
+	client, err := endpointHTTPClient("https://trusted.example/mcp", "Bearer secret-token", nil)
+	require.NoError(t, err)
+	req, err := http.NewRequest(http.MethodGet, "https://other.example/mcp", nil)
+	require.NoError(t, err)
+	_, err = client.Do(req)
+	if !errors.Is(err, errCrossOrigin) {
+		t.Fatalf("Do error = %v, want errCrossOrigin", err)
+	}
+}
+
+// TestServerConfigFormattingRedactsCredentials mirrors the domain server's own
+// redaction test. This is the adapter the domain type defers raw credentials
+// to, so it is the last boundary before a diagnostic or a failing test prints
+// one.
+func TestServerConfigFormattingRedactsCredentials(t *testing.T) {
+	config := ServerConfig{
+		Server: mcpserver.Server{
+			Source:        mcpserver.UserSource(),
+			Name:          testsupport.ServerName("private"),
+			Transport:     mcpserver.TransportStreamableHTTP,
+			URL:           "https://url-user:url-secret@example.com/mcp",
+			Authorization: "Bearer authorization-secret",
+			Headers:       map[string]string{"X-Key": "header-secret"},
+			Env:           map[string]string{"TOKEN": "environment-secret"},
+		},
+	}
+
+	formatted := fmt.Sprintf("%+v", config)
+	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret", "environment-secret"} {
+		if strings.Contains(formatted, secret) {
+			t.Fatalf("formatted config exposed %q: %s", secret, formatted)
+		}
+	}
+	if got := strings.Count(formatted, "[REDACTED]"); got != 4 {
+		t.Fatalf("formatted config redactions = %d, want 4: %s", got, formatted)
+	}
+}

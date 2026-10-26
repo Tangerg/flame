@@ -15,7 +15,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -25,7 +25,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -930,14 +931,14 @@ func (n *nonReentrantTx) run(ctx context.Context, fn func(context.Context) error
 
 type fakeChildRunStarts struct{ conclusions int }
 
-func (*fakeChildRunStarts) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {
+func (*fakeChildRunStarts) Reserve(context.Context, persistence.ChildRunStartReservationRecord) error {
 	return nil
 }
 
 func (f *fakeChildRunStarts) Conclude(
 	context.Context,
-	sqlite.ChildRunStartReservationRecord,
-	sqlite.ChildRunStartConclusion,
+	persistence.ChildRunStartReservationRecord,
+	persistence.ChildRunStartConclusion,
 ) (bool, error) {
 	f.conclusions++
 	return true, nil
@@ -1139,7 +1140,7 @@ func (*recordingExecutionTrees) ExecutionResultCommitted(context.Context, string
 	return false, nil
 }
 
-func (*fakeChildRunStarts) Concluded(context.Context, sqlite.ChildRunStartReservationRecord, sqlite.ChildRunStartConclusion) (bool, error) {
+func (*fakeChildRunStarts) Concluded(context.Context, persistence.ChildRunStartReservationRecord, persistence.ChildRunStartConclusion) (bool, error) {
 	return false, nil
 }
 

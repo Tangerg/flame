@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 // capabilityRuntime is a Runtime that only answers discovery — enough to drive
@@ -95,7 +95,7 @@ func call(t *testing.T, features map[string]bool, method, params string) *transp
 	d := newTestRouter(t, &capabilityRuntime{features: features})
 	res := d.Dispatch(t.Context(), &transport.Request{
 		ID: testID("1"), Method: method, Params: jsontext.Value(params),
-	})
+	}, delivery.Options{})
 	if res.Response == nil {
 		t.Fatalf("%s returned no response", method)
 	}

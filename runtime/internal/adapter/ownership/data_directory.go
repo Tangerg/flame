@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 )
 
 var ErrDataDirectoryInUse = errors.New("runtime data directory is already in use")

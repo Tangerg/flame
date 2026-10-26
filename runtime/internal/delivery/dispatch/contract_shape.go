@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"strings"
 	"testing"
 
@@ -15,7 +16,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	document := newOpenRPC(registry, shapes, testWalkWireTypes(t, registry, shapes))
 
 	ack := openRPCMethod(t, document, "sessions.delete")
-	if ack.Result == nil || ack.Result.Schema == nil || ack.Result.Schema.Type != schemaTypeObject {
+	if ack.Result == nil || ack.Result.Schema == nil || ack.Result.Schema.Type != contractgen.SchemaTypeObject {
 		t.Fatalf("sessions.delete result = %#v, want an explicit object acknowledgement", ack.Result)
 	}
 
@@ -25,7 +26,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	}
 	foundNull := false
 	for _, option := range nullable.Result.Schema.AnyOf {
-		foundNull = foundNull || option.Type == schemaTypeNull
+		foundNull = foundNull || option.Type == contractgen.SchemaTypeNull
 	}
 	if !foundNull {
 		t.Fatalf("goals.get result anyOf = %#v, want a null option", nullable.Result.Schema.AnyOf)

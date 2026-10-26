@@ -2,18 +2,17 @@ package segment
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func acceptedRootOpening(t *testing.T, commitRaw string, draft run.Draft, key, fingerprint, userItemID string) runs.OpeningCommit {
@@ -36,19 +35,19 @@ func acceptedRootOpening(t *testing.T, commitRaw string, draft run.Draft, key, f
 
 func TestResponseOnlyResumeAcceptanceCommitsWithAnswersAndRejectsKeyReuse(t *testing.T) {
 	ctx := t.Context()
-	db, err := sqlite.Open(ctx, ":memory:")
+	db, err := persistencefixture.Open(t, ctx, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	state, items := sqlite.NewRunStore(db), sqlite.NewTranscriptStore(db)
-	interrupts := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	commands := persistence.NewCommandAcceptanceStore(db)
-	bindings := persistence.NewAcceptedContinuationStore(sqlite.NewAcceptedContinuationStore(db))
+	state, items := db.Runs, db.Transcript
+	interrupts := db.Interrupts
+	commands := db.CommandAcceptances
+	bindings := db.AcceptedContinuations
 	effects := sqliteEffects(sqliteOpeningStores{interrupts: interrupts, transcript: items}, Config{
 		State: state, CommandAcceptances: commands, AcceptedContinuations: bindings,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, apply)
+			return db.Transactor(ctx, apply)
 		},
 	})
 	for index := range 2 {
@@ -109,20 +108,20 @@ func TestResponseOnlyResumeAcceptanceCommitsWithAnswersAndRejectsKeyReuse(t *tes
 // the whole opening back so no Run is admitted under a duplicate identity.
 func TestCommandAcceptanceCommitsAndRollsBackWithTheOpening(t *testing.T) {
 	ctx := t.Context()
-	db, err := sqlite.Open(ctx, filepath.Join(t.TempDir(), "runtime.db"))
+	db, err := persistencefixture.Open(t, ctx, filepath.Dir(filepath.Join(t.TempDir(), "runtime.db")))
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	runStore := sqlite.NewRunStore(db)
-	acceptances := persistence.NewCommandAcceptanceStore(db)
+	runStore := db.Runs
+	acceptances := db.CommandAcceptances
 	effects := mustNewEffects(Config{
 		State:              runStore,
-		Transcript:         sqlite.NewTranscriptStore(db),
+		Transcript:         db.Transcript,
 		CommandAcceptances: acceptances,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, apply)
+			return db.Transactor(ctx, apply)
 		},
 	})
 	fingerprint := strings.Repeat("a", 64)

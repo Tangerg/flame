@@ -2,7 +2,8 @@ package pluginservices
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	json "encoding/json/v2"
 	"errors"
 	"iter"
@@ -14,17 +15,18 @@ import (
 	"sync/atomic"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/idempotency"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	hostsqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -32,7 +34,7 @@ type streamFixture struct {
 	calls       *CommandCalls
 	request     plugins.CallRequest
 	store       *toolInstallationStore
-	host        *sql.DB
+	host        *persistencefixture.Stores
 	hostPath    string
 	invocations atomic.Int32
 	mu          sync.Mutex
@@ -229,7 +231,7 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
+	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,16 +245,16 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 		t.Fatal(err)
 	}
 	f.hostPath = filepath.Join(t.TempDir(), "host.db")
-	f.host, err = hostsqlite.Open(t.Context(), f.hostPath)
+	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = f.host.Close() })
-	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(f.host), plugins.NewAdmission())
+	routing, err := plugins.NewCommands(f.host.PluginCommands, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), hostsqlite.NewCompositionStore(f.host), pool, routing, nil)
+	f.calls, err = NewCommandCalls(f.store, f.host.ProviderSelections, f.host.PluginCompositions, pool, routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,22 +289,22 @@ func TestInstalledStreamObservesFinalAndRestoresOnlyOriginalReceipt(t *testing.T
 	if err != nil || len(events) != 2 || events[0].Kind != plugins.StreamChunk || events[1].Kind != plugins.StreamResult {
 		t.Fatalf("installed stream=%+v %v", events, err)
 	}
-	row, found, err := hostsqlite.NewPluginCommandStore(f.host).Get(t.Context(), operation.Identity(ctx))
+	row, found, err := f.host.PluginCommands.Get(t.Context(), operation.Identity(ctx))
 	if err != nil || !found || row.Snapshot().Phase != plugin.CommandObserved {
 		t.Fatalf("original route=%+v %v", row, err)
 	}
 	if err := f.host.Close(); err != nil {
 		t.Fatal(err)
 	}
-	f.host, err = hostsqlite.Open(t.Context(), f.hostPath)
+	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
 	if err != nil {
 		t.Fatal(err)
 	}
-	routing, err := plugins.NewCommands(hostsqlite.NewPluginCommandStore(f.host), plugins.NewAdmission())
+	routing, err := plugins.NewCommands(f.host.PluginCommands, plugins.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.calls, err = NewCommandCalls(f.store, hostsqlite.NewProviderSelectionStore(f.host), hostsqlite.NewCompositionStore(f.host), f.calls.pool, routing, nil)
+	f.calls, err = NewCommandCalls(f.store, f.host.ProviderSelections, f.host.PluginCompositions, f.calls.pool, routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +333,7 @@ func TestInstalledStreamMissingReceiptNeverResubmits(t *testing.T) {
 	if f.invocations.Load() != 1 {
 		t.Fatalf("original stream resubmitted %d times", f.invocations.Load())
 	}
-	row, _, err := hostsqlite.NewPluginCommandStore(f.host).Get(t.Context(), operation.Identity(ctx))
+	row, _, err := f.host.PluginCommands.Get(t.Context(), operation.Identity(ctx))
 	if err != nil || row.Snapshot().Phase != plugin.CommandDispatched {
 		t.Fatalf("uncertainty retired: %+v %v", row, err)
 	}
@@ -346,7 +348,7 @@ func TestInstalledStreamKnownRefusalObservesAndRestoresOriginalReceipt(t *testin
 			t.Fatalf("known refusal became uncertain: %v", err)
 		}
 	}
-	row, _, err := hostsqlite.NewPluginCommandStore(f.host).Get(t.Context(), operation.Identity(ctx))
+	row, _, err := f.host.PluginCommands.Get(t.Context(), operation.Identity(ctx))
 	if err != nil || row.Snapshot().Phase != plugin.CommandObserved || f.invocations.Load() != 1 {
 		t.Fatalf("known refusal route=%+v %v calls=%d", row, err, f.invocations.Load())
 	}
@@ -431,7 +433,7 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 	if commands != 0 {
 		t.Fatalf("query created %d durable command routes", commands)
 	}
-	dependencies, err := hostsqlite.NewPluginCommandStore(f.host).PendingCommandDependencies(t.Context())
+	dependencies, err := f.host.PluginCommands.PendingCommandDependencies(t.Context())
 	if err != nil || len(dependencies) != 0 || f.receipt.Found || f.invocations.Load() != 2 {
 		t.Fatalf("query acquired command recovery evidence: dependencies=%v receipt=%+v invocations=%d error=%v", dependencies, f.receipt, f.invocations.Load(), err)
 	}

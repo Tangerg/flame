@@ -3,25 +3,26 @@ package model
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"iter"
 	"path/filepath"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	modelchoice "github.com/Tangerg/flame/runtime/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewModelInvocationStore(db)
+	store := db.ModelInvocations
 	cause := errors.New("provider returned malformed response")
 	invalid := &chat.Response{}
 	model := &observedEndpoint{
@@ -64,12 +65,12 @@ func (endpointStreamFixture) Stream(context.Context, *chat.Request) iter.Seq2[*c
 }
 
 func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewModelInvocationStore(db)
+	store := db.ModelInvocations
 	resolve, err := NewObservedResolver(recordingChatResolver{resolve: func(_ modelchoice.Selection) (ResolvedChat, error) {
 		return NewResolvedChat(endpointStreamFixture{}, nil)
 	}}, store, nil)

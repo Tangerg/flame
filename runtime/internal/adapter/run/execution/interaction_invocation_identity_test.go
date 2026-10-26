@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	agent "github.com/Tangerg/scope/agent"
 )
 

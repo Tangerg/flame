@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 func TestNewEntryValidatesSignalAndTimestamp(t *testing.T) {

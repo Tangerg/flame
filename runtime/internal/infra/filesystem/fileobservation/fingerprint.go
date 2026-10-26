@@ -11,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Tangerg/flame/runtime/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 type fingerprint [sha256.Size]byte

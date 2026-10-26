@@ -2,29 +2,30 @@ package recovery
 
 import (
 	"context"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/capability"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
+
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func endpointRecovery(t *testing.T, db *sql.DB) *runs.Recovery {
+func endpointRecovery(t *testing.T, db *persistencefixture.Stores) *runs.Recovery {
 	t.Helper()
-	store, err := New(Config{Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db), Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)), ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db), ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Tx: func(ctx context.Context, fn func(context.Context) error) error {
-		return sqlitebase.RunInTx(ctx, db, fn)
+	store, err := New(Config{Sessions: db.Sessions, Runs: db.Runs, Interrupts: db.Interrupts, Transcript: db.Transcript, Messages: mustConversationStore(t, db.ChatHistory), GoalRuns: mustGoalRuns(t, db.Goals), ExecutorCheckpoints: db.ExecutorCheckpoints, ModelInvocations: db.ModelInvocations, ToolInvocations: db.ToolInvocations, ChildRunStarts: db.ChildRunStarts, Tx: func(ctx context.Context, fn func(context.Context) error) error {
+		return db.Transactor(ctx, fn)
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -59,13 +60,13 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "recovery.db")
-			db, err := sqlite.Open(t.Context(), path)
+			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			at := time.Now().UTC().Add(-time.Minute)
-			if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_source", CreatedAt: at, UpdatedAt: at})); err != nil {
+			if err := db.Sessions.Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_source", CreatedAt: at, UpdatedAt: at})); err != nil {
 				t.Fatal(err)
 			}
 			selection := testsupport.MustModelSelection("anthropic", "captured-model")
@@ -81,11 +82,11 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if err != nil {
 				t.Fatal(err)
 			}
-			if applied, err := sqlite.NewGoalStore(db).Save(t.Context(), opening); err != nil || !applied {
+			if applied, err := db.Goals.Save(t.Context(), opening); err != nil || !applied {
 				t.Fatalf("seed Goal: %v", err)
 			}
 			draft := run.Draft{RunID: "run_source", SessionID: "ses_source", SegmentID: "seg_source", ModelSelection: selection, GoalIncarnationID: goalValue.IncarnationID(), CreatedAt: at}
-			runsStore := sqlite.NewRunStore(db)
+			runsStore := db.Runs
 			if err := runsStore.Admit(t.Context(), draft); err != nil {
 				t.Fatal(err)
 			}
@@ -105,7 +106,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if err := runsStore.UpdateProgress(t.Context(), active); err != nil {
 				t.Fatal(err)
 			}
-			journal := sqlite.NewModelInvocationStore(db)
+			journal := db.ModelInvocations
 			purpose := run.ModelConversation
 			if test.independent {
 				purpose = run.ModelIndependent
@@ -137,11 +138,11 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if err := db.Close(); err != nil {
 				t.Fatal(err)
 			}
-			db, err = sqlite.Open(t.Context(), path)
+			db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 			if err != nil {
 				t.Fatal(err)
 			}
-			journal = sqlite.NewModelInvocationStore(db)
+			journal = db.ModelInvocations
 			if err := journal.ReconcileEndpointInvocations(t.Context(), time.Now().UTC()); err != nil {
 				t.Fatal(err)
 			}
@@ -152,11 +153,11 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if _, err := endpointRecovery(t, db).Reconcile(t.Context()); err == nil {
 				t.Fatal("recovery ignored rejected Run update")
 			}
-			unchanged, _, err := sqlite.NewRunStore(db).Run(t.Context(), draft.RunID)
+			unchanged, _, err := db.Runs.Run(t.Context(), draft.RunID)
 			if err != nil || !unchanged.Metrics().Equal(active.Metrics()) {
 				t.Fatalf("failed recovery changed usage: %v", err)
 			}
-			goalStore := sqlite.NewGoalStore(db)
+			goalStore := db.Goals
 			unchangedGoal, err := goalStore.Get(t.Context(), draft.SessionID)
 			if err != nil || unchangedGoal.Version() != goalValue.Version() {
 				t.Fatalf("failed recovery changed Goal: %+v %v", unchangedGoal, err)
@@ -171,7 +172,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if count, err := endpointRecovery(t, db).Reconcile(t.Context()); err != nil || count != 1 {
 				t.Fatalf("known recovery failed: %d %v", count, err)
 			}
-			recovered, _, err := sqlite.NewRunStore(db).Run(t.Context(), draft.RunID)
+			recovered, _, err := db.Runs.Run(t.Context(), draft.RunID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -216,7 +217,7 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 			if count, err := endpointRecovery(t, db).Reconcile(t.Context()); err != nil || count != 0 {
 				t.Fatalf("settled recovery repeated: %d %v", count, err)
 			}
-			again, _, err := sqlite.NewRunStore(db).Run(t.Context(), draft.RunID)
+			again, _, err := db.Runs.Run(t.Context(), draft.RunID)
 			if err != nil || !again.Metrics().Equal(recovered.Metrics()) {
 				t.Fatal("restart charged the same source twice")
 			}
@@ -230,12 +231,12 @@ func TestRecoveryAccruesOnlyUncommittedDispatchedEndpointsAcrossRestart(t *testi
 
 func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "independent-recovery.db")
-	db, err := sqlite.Open(t.Context(), path)
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
 	at := time.Now().UTC().Add(-time.Minute)
-	if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_independent", CreatedAt: at, UpdatedAt: at})); err != nil {
+	if err := db.Sessions.Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: "ses_independent", CreatedAt: at, UpdatedAt: at})); err != nil {
 		t.Fatal(err)
 	}
 	selection := testsupport.MustModelSelection("anthropic", "captured-model")
@@ -252,16 +253,16 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	goalStore := sqlite.NewGoalStore(db)
+	goalStore := db.Goals
 	if applied, err := goalStore.Save(t.Context(), goalReplacement); err != nil || !applied {
 		t.Fatalf("seed Goal: %v", err)
 	}
 	draft := run.Draft{RunID: "run_independent", SessionID: "ses_independent", SegmentID: "seg_independent", ModelSelection: selection, GoalIncarnationID: goalValue.IncarnationID(), CreatedAt: at}
-	store := sqlite.NewRunStore(db)
+	store := db.Runs
 	if err := store.Admit(t.Context(), draft); err != nil {
 		t.Fatal(err)
 	}
-	journal := sqlite.NewModelInvocationStore(db)
+	journal := db.ModelInvocations
 	if err := journal.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "original_model", at, run.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +364,7 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	db, err = sqlite.Open(t.Context(), path)
+	db, err = persistencefixture.Open(t, t.Context(), filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,11 +372,11 @@ func TestRecoveryAccruesIndependentKnownSourcesOnceWithoutChangingContext(t *tes
 	if count, err := endpointRecovery(t, db).Reconcile(t.Context()); err != nil || count != 0 {
 		t.Fatalf("restart billed a second time: %d %v", count, err)
 	}
-	next, _, err := sqlite.NewRunStore(db).Run(t.Context(), draft.RunID)
+	next, _, err := db.Runs.Run(t.Context(), draft.RunID)
 	if err != nil || !next.Metrics().Equal(recovered.Metrics()) {
 		t.Fatal("restart changed original consumption")
 	}
-	row, found, err := sqlite.NewModelInvocationStore(db).EndpointForCaller(t.Context(), "independent_unknown")
+	row, found, err := db.ModelInvocations.EndpointForCaller(t.Context(), "independent_unknown")
 	if err != nil || !found || row.Response != nil || row.CostUSD != nil {
 		t.Fatalf("unknown invented a price/report: %+v %v", row, err)
 	}

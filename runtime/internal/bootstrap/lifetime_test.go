@@ -10,11 +10,11 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestDirectoryLeaseOutlivesCloseTimeout(t *testing.T) {

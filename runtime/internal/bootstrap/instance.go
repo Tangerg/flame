@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"path/filepath"
 
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // InstanceConfig is the exact host snapshot required to open one complete

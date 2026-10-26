@@ -3,7 +3,7 @@ package dispatch
 import (
 	"encoding/json/jsontext"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func decodeParams(raw jsontext.Value, dst any) error {

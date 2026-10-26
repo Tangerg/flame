@@ -6,53 +6,39 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-// ExecutorCheckpointStore translates the Application-owned checkpoint
-// aggregate to SQLite's technical record. SQLite never imports Application and
-// never becomes an owner of executor lifecycle semantics.
-type ExecutorCheckpointStore struct {
-	storage *sqlite.ExecutorCheckpointStore
-}
-
-func NewExecutorCheckpointStore(storage *sqlite.ExecutorCheckpointStore) *ExecutorCheckpointStore {
-	return &ExecutorCheckpointStore{storage: storage}
-}
-
-func (e *ExecutorCheckpointStore) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
-	value, found, err := e.storage.LoadExecutionTree(ctx, sessionID, rootID)
+func (s *ExecutorCheckpointStore) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
+	value, found, err := s.loadExecutionTreeRecord(ctx, sessionID, rootID)
 	return runs.ExecutionTreeHead{SessionID: value.SessionID, RootID: value.RootID, Writer: value.Writer, Digest: value.Digest, Payload: value.Payload, Sequence: value.Sequence, CommitID: value.CommitID, CommitDigest: value.CommitDigest}, found, err
 }
 
-func (e *ExecutorCheckpointStore) ExecutionResultCommitted(ctx context.Context, sessionID string, publication runs.ResultPublication) (bool, error) {
-	return e.storage.ExecutionResultCommitted(ctx, sessionID, publication.ID, publication.Digest)
+func (s *ExecutorCheckpointStore) ExecutionResultCommitted(ctx context.Context, sessionID string, publication runs.ResultPublication) (bool, error) {
+	return s.executionResultCommitted(ctx, sessionID, publication.ID, publication.Digest)
 }
 
-func (e *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
+func (s *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
 	if err := update.Validate(); err != nil {
 		return err
 	}
 	h := update.Head
-	err := e.storage.SaveExecutionTree(ctx, update.PreviousWriter, update.PreviousDigest, sqlite.ExecutionTreeRecord{SessionID: h.SessionID, RootID: h.RootID, Writer: h.Writer, Digest: h.Digest, Payload: h.Payload, Sequence: h.Sequence, CommitID: h.CommitID, CommitDigest: h.CommitDigest})
+	err := s.saveExecutionTreeRecord(ctx, update.PreviousWriter, update.PreviousDigest, executionTreeRecord{SessionID: h.SessionID, RootID: h.RootID, Writer: h.Writer, Digest: h.Digest, Payload: h.Payload, Sequence: h.Sequence, CommitID: h.CommitID, CommitDigest: h.CommitDigest})
 	switch {
-	case errors.Is(err, sqlite.ErrExecutionTreeCommitConflict):
+	case errors.Is(err, errExecutionTreeCommitConflict):
 		return errors.Join(runs.ErrExecutionTreeCommitConflict, err)
-	case errors.Is(err, sqlite.ErrExecutionTreeConflict):
+	case errors.Is(err, errExecutionTreeConflict):
 		return errors.Join(runs.ErrExecutionTreeWriterConflict, err)
 	default:
 		return err
 	}
 }
 
-func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
+func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	if err := checkpoint.Validate(); err != nil {
 		return err
 	}
-	err := e.storage.SaveCheckpoint(ctx, sqlite.ExecutorCheckpointRecord{
+	err := s.saveCheckpointRecord(ctx, executorCheckpointRecord{
 		ToolResultIDs: slices.Clone(checkpoint.ToolResultIDs),
 		Installations: slices.Clone(checkpoint.Installations),
 		RootMemberID:  checkpoint.RootMemberID,
@@ -63,8 +49,8 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 	return translateCheckpointStorageError(err)
 }
 
-func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
-	record, err := e.storage.LoadCheckpoint(ctx, rootMemberID)
+func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
+	record, err := s.loadCheckpointRecord(ctx, rootMemberID)
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, translateCheckpointStorageError(err)
 	}
@@ -82,8 +68,8 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	return checkpoint, nil
 }
 
-func (e *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (runs.ExecutorCheckpoint, bool, error) {
-	record, found, err := e.storage.LoadSessionCheckpoint(ctx, sessionID)
+func (s *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (runs.ExecutorCheckpoint, bool, error) {
+	record, found, err := s.loadSessionCheckpointRecord(ctx, sessionID)
 	if err != nil || !found {
 		return runs.ExecutorCheckpoint{}, found, translateCheckpointStorageError(err)
 	}
@@ -91,27 +77,23 @@ func (e *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, ses
 	return checkpoint, true, checkpoint.Validate()
 }
 
-func (e *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error {
-	return translateCheckpointStorageError(e.storage.DeleteCheckpoints(ctx, sessionID, rootIDs))
+func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error {
+	return translateCheckpointStorageError(s.deleteCheckpoints(ctx, sessionID, rootIDs))
 }
 
-func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, sessionID string) error {
-	return translateCheckpointStorageError(e.storage.DeleteSessionCheckpoints(ctx, sessionID))
+func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, sessionID string) error {
+	return translateCheckpointStorageError(s.deleteSessionCheckpoints(ctx, sessionID))
 }
 
 func translateCheckpointStorageError(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, sqlite.ErrExecutorCheckpointRecordNotFound):
+	case errors.Is(err, errExecutorCheckpointRecordNotFound):
 		return fmt.Errorf("%w: %w", runs.ErrExecutorCheckpointNotFound, err)
-	case errors.Is(err, sqlite.ErrInvalidExecutorCheckpointRecord):
+	case errors.Is(err, errInvalidExecutorCheckpointRecord):
 		return fmt.Errorf("%w: %w", runs.ErrInvalidExecutorCheckpoint, err)
 	default:
 		return err
 	}
-}
-
-func (e *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	return e.storage.PendingCheckpointDependencies(ctx)
 }

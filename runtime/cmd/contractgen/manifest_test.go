@@ -1,15 +1,16 @@
 package main
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
@@ -29,7 +30,7 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 			continue
 		}
 		found++
-		cursor, ok := set.defs[definition].Properties[cursorField].(*schema)
+		cursor, ok := set.defs[definition].Properties[cursorField].(*contractgen.Schema)
 		if !ok || cursor.MaxLength == nil || *cursor.MaxLength != protocol.MaximumPaginationCursorCharacters {
 			t.Errorf("%s.%s = %#v, want maxLength %d", definition, cursorField, cursor, protocol.MaximumPaginationCursorCharacters)
 		}

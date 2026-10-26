@@ -3,14 +3,14 @@ package main
 import (
 	"encoding/json/jsontext"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
@@ -37,58 +37,6 @@ import (
 // client as defensive code, forever. The validator rejects it instead, which is
 // where a broken frame should surface.
 
-// refPrefix is where a reusable definition lives inside the bundle. Request
-// projections rewrite object references to their closed receiving context.
-const refPrefix = "#/$defs/"
-
-type schemaType string
-
-const (
-	schemaTypeArray   schemaType = "array"
-	schemaTypeBoolean schemaType = "boolean"
-	schemaTypeInteger schemaType = "integer"
-	schemaTypeNull    schemaType = "null"
-	schemaTypeNumber  schemaType = "number"
-	schemaTypeObject  schemaType = "object"
-	schemaTypeString  schemaType = "string"
-)
-
-// schema is a JSON Schema node, holding only the keywords this contract needs.
-//
-// Properties values are `any` because a forbidden field is the boolean schema
-// `false` — the one keyword that says "this may not be present at all", which is
-// how a union variant excludes another variant's fields.
-type schema struct {
-	Ref              string         `json:"$ref,omitempty"`
-	Type             schemaType     `json:"type,omitempty"`
-	Format           string         `json:"format,omitempty"`
-	ContentEncoding  string         `json:"contentEncoding,omitempty"`
-	Enum             []string       `json:"enum,omitempty"`
-	MinLength        *int           `json:"minLength,omitzero"`
-	MaxLength        *int           `json:"maxLength,omitzero"`
-	Const            string         `json:"const,omitempty"`
-	Pattern          string         `json:"pattern,omitempty"`
-	TypeScriptType   string         `json:"-"`
-	Minimum          *int64         `json:"minimum,omitzero"`
-	ExclusiveMinimum *int64         `json:"exclusiveMinimum,omitzero"`
-	Maximum          *int64         `json:"maximum,omitzero"`
-	MinItems         *int           `json:"minItems,omitzero"`
-	MaxItems         *int           `json:"maxItems,omitzero"`
-	MinProperties    *int           `json:"minProperties,omitzero"`
-	UniqueItems      bool           `json:"uniqueItems,omitzero"`
-	Items            *schema        `json:"items,omitzero"`
-	Properties       map[string]any `json:"properties,omitempty"`
-	AdditionalProps  any            `json:"additionalProperties,omitzero"`
-	PropertyNames    *schema        `json:"propertyNames,omitzero"`
-	UnevaluatedProps *bool          `json:"unevaluatedProperties,omitzero"`
-	Required         []string       `json:"required,omitempty"`
-	OneOf            []*schema      `json:"oneOf,omitempty"`
-	AnyOf            []*schema      `json:"anyOf,omitempty"`
-	AllOf            []*schema      `json:"allOf,omitempty"`
-	If               *schema        `json:"if,omitzero"`
-	Then             *schema        `json:"then,omitzero"`
-}
-
 var (
 	timeType       = reflect.TypeFor[time.Time]()
 	rawMessageType = reflect.TypeFor[jsontext.Value]()
@@ -97,7 +45,8 @@ var (
 // schemaSet is the walked type graph: one definition per named wire type, plus
 // the specs that tell the walk what reflection cannot see.
 type schemaSet struct {
-	defs   map[string]*schema
+	walked map[reflect.Type]*contractgen.Schema
+	defs   map[string]*contractgen.Schema
 	origin map[string]reflect.Type
 	enums  map[reflect.Type][]string
 
@@ -120,7 +69,7 @@ type schemaSet struct {
 
 func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 	set := &schemaSet{
-		defs:        make(map[string]*schema),
+		defs:        make(map[string]*contractgen.Schema),
 		origin:      make(map[string]reflect.Type),
 		enums:       make(map[reflect.Type][]string),
 		embedded:    make(map[string]bool),
@@ -145,8 +94,8 @@ func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 // walked definition except the embedded owners, whose fields are inlined into
 // their carriers and which therefore name no standalone JSON frame. Names are
 // sorted by the JSON encoder, so the bundle's diff is stable across runs.
-func (s *schemaSet) Definitions() map[string]*schema {
-	out := make(map[string]*schema, len(s.defs))
+func (s *schemaSet) Definitions() map[string]*contractgen.Schema {
+	out := make(map[string]*contractgen.Schema, len(s.defs))
 	for name, def := range s.defs {
 		if s.embedded[name] && !s.referenced[name] {
 			continue
@@ -168,47 +117,53 @@ func (s *schemaSet) registerEnum(t reflect.Type, values []string) {
 
 // walk returns the schema for a Go type, defining it in the bundle if it is a
 // named type worth referencing.
-func (s *schemaSet) walk(t reflect.Type) *schema {
+func (s *schemaSet) walk(t reflect.Type) (node *contractgen.Schema) {
+	defer func() {
+		if s.walked == nil {
+			s.walked = make(map[reflect.Type]*contractgen.Schema)
+		}
+		s.walked[t] = node
+	}()
 	switch t {
 	case timeType:
 		// RFC 3339 in, RFC 3339 out — time.Time's own JSON encoding.
-		return &schema{Type: schemaTypeString, Format: "date-time"}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeString, Format: "date-time"}
 	case rawMessageType:
 		// An opaque passthrough: any JSON value, by design. Naming a shape here
 		// would be inventing one the runtime does not enforce.
-		return &schema{}
+		return &contractgen.Schema{}
 	}
 	switch t.Kind() {
 	case reflect.Pointer:
 		return s.walk(t.Elem())
 	case reflect.Interface:
-		return &schema{}
+		return &contractgen.Schema{}
 	case reflect.Bool:
-		return &schema{Type: schemaTypeBoolean}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeBoolean}
 	case reflect.String:
 		if values, ok := s.enums[t]; ok {
-			return s.define(t, &schema{Type: schemaTypeString, Enum: slices.Clone(values)})
+			return s.define(t, &contractgen.Schema{Type: contractgen.SchemaTypeString, Enum: slices.Clone(values)})
 		}
-		if values, ok := contractcatalog.EnumValues(t); ok {
-			return s.define(t, &schema{Type: schemaTypeString, Enum: values})
+		if values, ok := enumValues(t); ok {
+			return s.define(t, &contractgen.Schema{Type: contractgen.SchemaTypeString, Enum: values})
 		}
-		return &schema{Type: schemaTypeString}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeString}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return &schema{Type: schemaTypeInteger}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeInteger}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return &schema{Type: schemaTypeInteger, Minimum: new(int64(0))}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeInteger, Minimum: new(int64(0))}
 	case reflect.Float32, reflect.Float64:
-		return &schema{Type: schemaTypeNumber}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeNumber}
 	case reflect.Slice, reflect.Array:
 		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
-			return &schema{Type: schemaTypeString, ContentEncoding: "base64"}
+			return &contractgen.Schema{Type: contractgen.SchemaTypeString, ContentEncoding: "base64"}
 		}
-		return &schema{Type: schemaTypeArray, Items: s.walk(t.Elem())}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeArray, Items: s.walk(t.Elem())}
 	case reflect.Map:
 		if t.Key().Kind() != reflect.String {
 			panic(fmt.Sprintf("contractgen: %s has a non-string map key; that is not JSON", t))
 		}
-		return &schema{Type: schemaTypeObject, AdditionalProps: s.walk(t.Elem())}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeObject, AdditionalProps: s.walk(t.Elem())}
 	case reflect.Struct:
 		if t.Name() == "" {
 			return s.object(t)
@@ -222,7 +177,7 @@ func (s *schemaSet) walk(t reflect.Type) *schema {
 // define reserves a definition name, then fills it. The name is reserved BEFORE
 // the body is walked so a type that reaches itself resolves to a reference
 // instead of recursing forever.
-func (s *schemaSet) define(t reflect.Type, body *schema) *schema {
+func (s *schemaSet) define(t reflect.Type, body *contractgen.Schema) *contractgen.Schema {
 	name := defName(t)
 	// define is the standalone-reference path: a $ref to this name is being placed
 	// into a shape, which keeps the definition in the published bundle even if the
@@ -232,10 +187,10 @@ func (s *schemaSet) define(t reflect.Type, body *schema) *schema {
 		if existing != t {
 			panic(fmt.Sprintf("contractgen: %s and %s would both be published as %q", existing, t, name))
 		}
-		return &schema{Ref: refPrefix + name}
+		return &contractgen.Schema{Ref: contractgen.RefPrefix + name}
 	}
 	s.reserve(t, body)
-	return &schema{Ref: refPrefix + name}
+	return &contractgen.Schema{Ref: contractgen.RefPrefix + name}
 }
 
 // defineEmbedded records that an owner is flattened into a carrier and walks it so
@@ -251,7 +206,7 @@ func (s *schemaSet) defineEmbedded(t reflect.Type) {
 
 // reserve fills a definition, reserving its name before the body is walked so a
 // type that reaches itself resolves to a reference instead of recursing forever.
-func (s *schemaSet) reserve(t reflect.Type, body *schema) {
+func (s *schemaSet) reserve(t reflect.Type, body *contractgen.Schema) {
 	s.origin[defName(t)] = t
 	if body == nil {
 		body = s.object(t)
@@ -262,8 +217,8 @@ func (s *schemaSet) reserve(t reflect.Type, body *schema) {
 // object walks a struct's fields. Optionality starts with the json tag, then an
 // unconditional requirement may narrow an omittable field into a required wire
 // fact.
-func (s *schemaSet) object(t reflect.Type) *schema {
-	out := &schema{Type: schemaTypeObject, Properties: make(map[string]any)}
+func (s *schemaSet) object(t reflect.Type) *contractgen.Schema {
+	out := &contractgen.Schema{Type: contractgen.SchemaTypeObject, Properties: make(map[string]any)}
 	// Flattened fields still have a public named owner and its wire validator.
 	for i := range t.NumField() {
 		field := t.Field(i)
@@ -296,12 +251,12 @@ func (s *schemaSet) object(t reflect.Type) *schema {
 		if !strings.Contains(constraint.Field, ".") {
 			continue
 		}
-		branch := &schema{}
+		branch := &contractgen.Schema{}
 		parent, leaf := descend(branch, t, constraint.Field, false)
 		if parent.Properties == nil {
 			parent.Properties = make(map[string]any)
 		}
-		narrowed := &schema{}
+		narrowed := &contractgen.Schema{}
 		applyValueConstraints(narrowed, []dispatch.FieldConstraint{constraint})
 		parent.Properties[leaf] = narrowed
 		out.AllOf = append(out.AllOf, branch)
@@ -331,18 +286,18 @@ func (s *schemaSet) object(t reflect.Type) *schema {
 // variants renders a discriminated union as `oneOf`: each branch pins or narrows
 // the discriminator, requires that branch's fields, and forbids every field
 // belonging to another branch.
-func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*schema {
+func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*contractgen.Schema {
 	tagValues := s.discriminatorValues(t, union)
 	roots := contractshape.FieldNames(t)
 
-	out := make([]*schema, 0, len(union.Variants)+1)
+	out := make([]*contractgen.Schema, 0, len(union.Variants)+1)
 	for _, variant := range union.Variants {
 		if tagValues != nil && !slices.Contains(tagValues, variant.Tag) {
 			panic(fmt.Sprintf("contractgen: %s variant %q is not a value of its discriminator type", t.Name(), variant.Tag))
 		}
 		claimed := slices.Concat(variant.Required, variant.Optional)
-		branch := &schema{
-			Properties: map[string]any{union.Discriminator: &schema{Const: variant.Tag}},
+		branch := &contractgen.Schema{
+			Properties: map[string]any{union.Discriminator: &contractgen.Schema{Const: variant.Tag}},
 			Required:   []string{union.Discriminator},
 		}
 		forbiddenFields := append(forbidden(t, union.Discriminator, roots, claimed), union.Forbidden...)
@@ -353,9 +308,9 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*schema
 	}
 	if pattern := union.PatternVariant; pattern != nil {
 		claimed := slices.Concat(pattern.Required, pattern.Optional)
-		branch := &schema{
-			Properties: map[string]any{union.Discriminator: &schema{
-				Type: schemaTypeString, Pattern: pattern.TagPattern,
+		branch := &contractgen.Schema{
+			Properties: map[string]any{union.Discriminator: &contractgen.Schema{
+				Type: contractgen.SchemaTypeString, Pattern: pattern.TagPattern,
 				TypeScriptType: pattern.TypeScriptType,
 			}},
 			Required: []string{union.Discriminator},
@@ -376,7 +331,7 @@ func (s *schemaSet) discriminatorValues(t reflect.Type, union dispatch.UnionSpec
 	if !ok {
 		return nil
 	}
-	values, ok := contractcatalog.EnumValues(field.Type)
+	values, ok := enumValues(field.Type)
 	if !ok {
 		return nil
 	}
@@ -420,11 +375,11 @@ func forbidden(t reflect.Type, discriminator string, roots, claimed []string) []
 
 // presence renders one cross-field rule as `if/then`, or as a bare requirement
 // when the rule is unconditional.
-func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *schema {
-	then := &schema{}
+func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *contractgen.Schema {
+	then := &contractgen.Schema{}
 	constrain(then, t, rule.Required, rule.Forbidden)
 	for _, field := range rule.RequiredAny {
-		alternative := &schema{}
+		alternative := &contractgen.Schema{}
 		constrain(alternative, t, []string{field}, nil)
 		then.AnyOf = append(then.AnyOf, alternative)
 	}
@@ -433,7 +388,7 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 	if len(rule.When) == 0 {
 		return then
 	}
-	condition := &schema{}
+	condition := &contractgen.Schema{}
 	for _, when := range rule.When {
 		parent, leaf := descend(condition, t, when.Field, true)
 		if parent.Properties == nil {
@@ -443,7 +398,7 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 		// the field be there, which `required` already says.
 		switch when.Operator {
 		case delivery.OperatorEquals:
-			parent.Properties[leaf] = &schema{Const: when.Value}
+			parent.Properties[leaf] = &contractgen.Schema{Const: when.Value}
 		case delivery.OperatorPresent:
 		default:
 			panic(fmt.Sprintf(
@@ -456,16 +411,16 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 		parent.Required = append(parent.Required, leaf)
 	}
 	normalize(condition)
-	return &schema{If: condition, Then: then}
+	return &contractgen.Schema{If: condition, Then: then}
 }
 
-func restrictAllowedValues(node *schema, owner reflect.Type, sets []dispatch.AllowedValueSet) {
+func restrictAllowedValues(node *contractgen.Schema, owner reflect.Type, sets []dispatch.AllowedValueSet) {
 	for _, set := range sets {
 		restrictAllowedValueSet(node, owner, set)
 	}
 }
 
-func restrictAllowedValueSet(node *schema, owner reflect.Type, set dispatch.AllowedValueSet) {
+func restrictAllowedValueSet(node *contractgen.Schema, owner reflect.Type, set dispatch.AllowedValueSet) {
 	_, leaf, found := contractshape.GoPath(owner, set.Field)
 	if !found {
 		panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
@@ -476,7 +431,7 @@ func restrictAllowedValueSet(node *schema, owner reflect.Type, set dispatch.Allo
 }
 
 func checkAllowedEnumSubset(owner reflect.Type, set dispatch.AllowedValueSet, fieldType reflect.Type) {
-	values, known := contractcatalog.EnumValues(fieldType)
+	values, known := enumValues(fieldType)
 	if !known {
 		return
 	}
@@ -490,16 +445,16 @@ func checkAllowedEnumSubset(owner reflect.Type, set dispatch.AllowedValueSet, fi
 	}
 }
 
-func setAllowedValues(parent *schema, name string, owner reflect.Type, set dispatch.AllowedValueSet) {
+func setAllowedValues(parent *contractgen.Schema, name string, owner reflect.Type, set dispatch.AllowedValueSet) {
 	if parent.Properties == nil {
 		parent.Properties = make(map[string]any)
 	}
 	existing, present := parent.Properties[name]
 	if !present {
-		parent.Properties[name] = &schema{Enum: slices.Clone(set.Values)}
+		parent.Properties[name] = &contractgen.Schema{Enum: slices.Clone(set.Values)}
 		return
 	}
-	narrowed, ok := existing.(*schema)
+	narrowed, ok := existing.(*contractgen.Schema)
 	if !ok || narrowed.Const != "" || len(narrowed.Enum) != 0 {
 		panic(fmt.Sprintf("contractgen: %s.%s has conflicting branch constraints", owner.Name(), set.Field))
 	}
@@ -508,7 +463,7 @@ func setAllowedValues(parent *schema, name string, owner reflect.Type, set dispa
 
 // constrain applies required and forbidden JSON paths to a sub-schema, descending
 // into nested frames for a dotted path.
-func constrain(node *schema, owner reflect.Type, required, forbid []string) {
+func constrain(node *contractgen.Schema, owner reflect.Type, required, forbid []string) {
 	for _, path := range required {
 		// A frame that must contain something must itself be present.
 		parent, leaf := descend(node, owner, path, true)
@@ -526,7 +481,7 @@ func constrain(node *schema, owner reflect.Type, required, forbid []string) {
 
 // descend walks a dotted path, creating the nested sub-schemas it passes through,
 // and returns the sub-schema owning the last segment plus that segment's name.
-func descend(node *schema, owner reflect.Type, path string, markIntermediate bool) (*schema, string) {
+func descend(node *contractgen.Schema, owner reflect.Type, path string, markIntermediate bool) (*contractgen.Schema, string) {
 	segments := strings.Split(path, ".")
 	current := node
 	for _, segment := range segments[:len(segments)-1] {
@@ -538,9 +493,9 @@ func descend(node *schema, owner reflect.Type, path string, markIntermediate boo
 		if current.Properties == nil {
 			current.Properties = make(map[string]any)
 		}
-		child, ok := current.Properties[segment].(*schema)
+		child, ok := current.Properties[segment].(*contractgen.Schema)
 		if !ok {
-			child = &schema{}
+			child = &contractgen.Schema{}
 			current.Properties[segment] = child
 		}
 		if markIntermediate {
@@ -554,14 +509,14 @@ func descend(node *schema, owner reflect.Type, path string, markIntermediate boo
 // normalize sorts and dedupes every `required` list in a subtree so the emitted
 // artifact is byte-stable — the drift gate compares bytes, so an unstable
 // generator would report drift on every run.
-func normalize(node *schema) {
+func normalize(node *contractgen.Schema) {
 	if node == nil {
 		return
 	}
 	slices.Sort(node.Required)
 	node.Required = slices.Compact(node.Required)
 	for _, value := range node.Properties {
-		if child, ok := value.(*schema); ok {
+		if child, ok := value.(*contractgen.Schema); ok {
 			normalize(child)
 		}
 	}
@@ -596,13 +551,13 @@ func defName(t reflect.Type) string {
 
 // applyValueConstraints states a declared value constraint in JSON Schema terms, so
 // the schema and the generated validators refuse the same frames.
-func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint) {
+func applyValueConstraints(node *contractgen.Schema, constraints []dispatch.FieldConstraint) {
 	for _, constraint := range constraints {
 		switch constraint.Kind {
 		case dispatch.ConstraintNonEmpty:
 			node.MinLength = new(1)
 		case dispatch.ConstraintPositive:
-			if node.Type == schemaTypeNumber {
+			if node.Type == contractgen.SchemaTypeNumber {
 				node.ExclusiveMinimum = new(int64(0))
 			} else {
 				node.Minimum = new(int64(1))
@@ -657,22 +612,22 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 // allOf member rather than silently replacing the first one. This matters for
 // framed identities: their prefix and printable identity alphabet are separate
 // public promises and both must survive into every generated artifact.
-func addPattern(node *schema, pattern string) {
+func addPattern(node *contractgen.Schema, pattern string) {
 	if node.Pattern == "" {
 		node.Pattern = pattern
 		return
 	}
-	if node.Pattern == pattern || slices.ContainsFunc(node.AllOf, func(member *schema) bool {
+	if node.Pattern == pattern || slices.ContainsFunc(node.AllOf, func(member *contractgen.Schema) bool {
 		return member.Pattern == pattern
 	}) {
 		return
 	}
-	node.AllOf = append(node.AllOf, &schema{Pattern: pattern})
+	node.AllOf = append(node.AllOf, &contractgen.Schema{Pattern: pattern})
 }
 
-func propertyNames(node *schema) *schema {
+func propertyNames(node *contractgen.Schema) *contractgen.Schema {
 	if node.PropertyNames == nil {
-		node.PropertyNames = &schema{}
+		node.PropertyNames = &contractgen.Schema{}
 	}
 	return node.PropertyNames
 }

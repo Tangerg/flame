@@ -3,8 +3,8 @@ package delivery
 import (
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestPluginDataInvalidationProjectsToARuntimeSignal(t *testing.T) {

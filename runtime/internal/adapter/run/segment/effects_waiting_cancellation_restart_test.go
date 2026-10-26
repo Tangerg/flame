@@ -2,7 +2,6 @@ package segment
 
 import (
 	"context"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
@@ -11,8 +10,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func TestWaitingSubtreeCancellationSurvivesSQLiteRestart(t *testing.T) {
@@ -39,10 +39,10 @@ func TestWaitingSubtreeCancellationSurvivesSQLiteRestart(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "runtime.db")
+			dataDirectory := t.TempDir()
 			fixture := newWaitingCancellationSQLiteFixtureAt(
 				t,
-				path,
+				dataDirectory,
 				test.survivingBoundary,
 			)
 			result, err := fixture.effects.CommitWaitingSubtreeCancellation(
@@ -56,7 +56,7 @@ func TestWaitingSubtreeCancellationSurvivesSQLiteRestart(t *testing.T) {
 				t.Fatalf("close first runtime database: %v", err)
 			}
 
-			stores := reopenWaitingCancellationStores(t, path)
+			stores := reopenWaitingCancellationStores(t, dataDirectory)
 			assertRestartedCancellationResult(t, fixture, stores.query, result)
 			assertRestartedRunTopology(t, fixture, stores.runs, test.wantPostorder)
 			assertRestartedExecutorCheckpoint(t, fixture, stores.checkpoints)
@@ -84,9 +84,9 @@ func TestWaitingSubtreeCancellationSurvivesSQLiteRestart(t *testing.T) {
 }
 
 type restartedWaitingCancellationStores struct {
-	runs        *sqlite.RunStore
+	runs        *persistence.RunStore
 	interrupts  *persistence.InterruptStore
-	transcript  *sqlite.TranscriptStore
+	transcript  *persistence.TranscriptStore
 	checkpoints *persistence.ExecutorCheckpointStore
 	query       runQuery
 }
@@ -95,19 +95,19 @@ type runQuery interface {
 	Run(context.Context, string) (run.Run, bool, error)
 }
 
-func reopenWaitingCancellationStores(t *testing.T, path string) restartedWaitingCancellationStores {
+func reopenWaitingCancellationStores(t *testing.T, dataDirectory string) restartedWaitingCancellationStores {
 	t.Helper()
-	database, err := sqlite.Open(t.Context(), path)
+	database, err := persistencefixture.Open(t, t.Context(), dataDirectory)
 	if err != nil {
 		t.Fatalf("reopen runtime database: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
-	runStore := sqlite.NewRunStore(database)
+	runStore := database.Runs
 	return restartedWaitingCancellationStores{
 		runs:        runStore,
-		interrupts:  persistence.NewInterruptStore(sqlite.NewInterruptStore(database)),
-		transcript:  sqlite.NewTranscriptStore(database),
-		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database)),
+		interrupts:  database.Interrupts,
+		transcript:  database.Transcript,
+		checkpoints: database.ExecutorCheckpoints,
 		query:       runStore,
 	}
 }
@@ -138,7 +138,7 @@ func assertRestartedCancellationResult(
 func assertRestartedRunTopology(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	runStore *sqlite.RunStore,
+	runStore *persistence.RunStore,
 	wantPostorder []string,
 ) {
 	t.Helper()
@@ -186,7 +186,7 @@ func assertRestartedExecutorCheckpoint(
 func assertRestartedTerminalItems(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	transcriptStore *sqlite.TranscriptStore,
+	transcriptStore *persistence.TranscriptStore,
 ) {
 	t.Helper()
 	for _, replacement := range fixture.commit.TerminalItems() {
@@ -256,9 +256,9 @@ func assertReplacementCheckpoint(
 func assertRestartedWaitingBoundary(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	runStore *sqlite.RunStore,
+	runStore *persistence.RunStore,
 	interruptStore *persistence.InterruptStore,
-	transcriptStore *sqlite.TranscriptStore,
+	transcriptStore *persistence.TranscriptStore,
 	checkpointStore *persistence.ExecutorCheckpointStore,
 ) {
 	t.Helper()
@@ -314,7 +314,7 @@ func assertRestartedWaitingBoundary(
 func assertRestartedRunningBoundary(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	runStore *sqlite.RunStore,
+	runStore *persistence.RunStore,
 	interruptStore *persistence.InterruptStore,
 ) {
 	t.Helper()

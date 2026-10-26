@@ -8,8 +8,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/dependency"
-	runtimeidentity "github.com/Tangerg/flame/runtime/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"

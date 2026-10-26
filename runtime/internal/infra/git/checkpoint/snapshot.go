@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
+	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB

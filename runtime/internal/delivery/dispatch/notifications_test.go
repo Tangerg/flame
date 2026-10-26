@@ -3,11 +3,12 @@ package dispatch
 import (
 	"context"
 	"encoding/json/jsontext"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 )
 
 func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {
@@ -17,7 +18,7 @@ func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {
 		Params: jsontext.Value(`{"_meta":null}`),
 	}
 
-	if got := router.Dispatch(context.Background(), message); got.Response != nil {
+	if got := router.Dispatch(context.Background(), message, delivery.Options{}); got.Response != nil {
 		t.Fatalf("notification returned a response: %+v", got.Response)
 	}
 }

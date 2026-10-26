@@ -3,7 +3,8 @@ package segment
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -16,20 +17,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sqlitebase "github.com/Tangerg/flame/runtime/storage/sqlite"
 )
 
 func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "runtime.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "runtime.db")))
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	runStore := sqlite.NewRunStore(db)
-	transcriptStore := sqlite.NewTranscriptStore(db)
+	runStore := db.Runs
+	transcriptStore := db.Transcript
 	capabilities := run.Capabilities{
 		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
@@ -44,7 +44,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		State:      runStore,
 		Transcript: transcriptStore,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, apply)
+			return db.Transactor(ctx, apply)
 		},
 	})
 	arguments, err := tool.ParseArguments(`{"description":"delegate"}`)
@@ -107,7 +107,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 			err:   rollbackErr,
 		},
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			return sqlitebase.RunInTx(ctx, db, apply)
+			return db.Transactor(ctx, apply)
 		},
 	})
 	rolledBackItem := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -144,15 +144,15 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 }
 
 func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "runtime.db"))
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "runtime.db")))
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
-	runStore := sqlite.NewRunStore(db)
-	transcriptStore := sqlite.NewTranscriptStore(db)
-	childStarts := sqlite.NewChildRunStartReservationStore(db)
+	runStore := db.Runs
+	transcriptStore := db.Transcript
+	childStarts := db.ChildRunStarts
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
@@ -193,9 +193,9 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	t.Cleanup(cancelCommit)
 	effects := mustNewEffects(Config{
 		State: runStore, Transcript: transcriptStore, ChildRunStarts: childStarts,
-		ExecutionTrees: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		ExecutionTrees: db.ExecutorCheckpoints,
 		Tx: func(ctx context.Context, apply func(context.Context) error) error {
-			runInTxErr := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+			runInTxErr := db.Transactor(ctx, func(ctx context.Context) error {
 				if err := apply(ctx); err != nil {
 					return err
 				}
@@ -233,7 +233,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if _, found, err := runStore.Run(ctx, child.RunID); err != nil || found {
 		t.Fatalf("rolled-back tree published child: found=%t err=%v", found, err)
 	}
-	trees := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	trees := db.ExecutorCheckpoints
 	if _, found, err := trees.LoadExecutionTree(ctx, root.SessionID, update.Head.RootID); err != nil || found {
 		t.Fatalf("rolled-back opening published tree: found=%t err=%v", found, err)
 	}
@@ -269,7 +269,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 }
 
 type appendThenFail struct {
-	store *sqlite.TranscriptStore
+	store *persistence.TranscriptStore
 	err   error
 }
 
@@ -280,7 +280,7 @@ func (a appendThenFail) AppendItem(ctx context.Context, item transcript.Item) er
 	return a.err
 }
 
-func requireChildOpeningSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
+func requireChildOpeningSQLiteHealthy(t *testing.T, ctx context.Context, db *persistencefixture.Stores) {
 	t.Helper()
 	var integrity string
 	if err := db.QueryRowContext(ctx, `PRAGMA integrity_check`).Scan(&integrity); err != nil || integrity != "ok" {

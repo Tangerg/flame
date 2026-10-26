@@ -7,11 +7,9 @@ import (
 	"iter"
 	"reflect"
 
-	transportmeta "github.com/Tangerg/flame/runtime/internal/delivery/transport"
-
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/protocol"
-	transport "github.com/Tangerg/flame/runtime/protocol/jsonrpc"
 )
 
 // Router adapts JSON-RPC envelopes to the binding-neutral Delivery Endpoint.
@@ -36,7 +34,7 @@ type Result struct {
 
 // Dispatch validates the envelope, decodes its typed parameters and delegates
 // the operation itself to the shared endpoint.
-func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result {
+func (r *Router) Dispatch(ctx context.Context, message transport.Message, options delivery.Options) Result {
 	request, ok := message.(*transport.Request)
 	if !ok || request == nil {
 		return responseError(transport.ID{}, badEnvelope("expected a JSON-RPC request"))
@@ -50,11 +48,6 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 
 	requestCopy := *request
 	request = &requestCopy
-	options := delivery.Options{
-		IdempotencyKey:       transportmeta.IdempotencyKeyFrom(ctx),
-		IdempotencyNamespace: transportmeta.IdempotencyNamespaceFrom(ctx),
-		AfterEventID:         transportmeta.LastEventIDFrom(ctx),
-	}
 	metadata, metadataError := extractRequestMeta(request)
 	if metadataError != nil {
 		if !request.IsCall() {

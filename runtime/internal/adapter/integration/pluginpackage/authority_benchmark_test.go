@@ -2,6 +2,7 @@ package pluginpackage
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func BenchmarkInstalledSourceRuleList(b *testing.B) {
@@ -33,12 +33,12 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-	db, err := sqlite.Open(b.Context(), filepath.Join(b.TempDir(), "flame.db"))
+	db, err := persistencefixture.Open(b, b.Context(), filepath.Dir(filepath.Join(b.TempDir(), "flame.db")))
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { _ = db.Close() })
-	releases, err := New(b.TempDir(), sqlite.NewReleaseStore(db))
+	releases, err := New(b.TempDir(), db.PluginReleases)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -61,16 +61,16 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 	if err := installation.Enable(release); err != nil {
 		b.Fatal(err)
 	}
-	installations := sqlite.NewInstallationStore(db)
+	installations := db.Installations
 	if err := installations.Save(b.Context(), installation); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases, sqlite.NewProviderSelectionStore(db), sqlite.NewCompositionStore(db))
+	registry, err := plugins.NewRegistry(db.MCPServers, installations, releases, db.ProviderSelections, db.PluginCompositions)
 	if err != nil {
 		b.Fatal(err)
 	}
-	rules := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, rules, sqlite.NewModeStore(db), toolset.NewAuthorities(registry.Definition, nil), nil)
+	rules := db.ApprovalRules
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, rules, db.ApprovalModes, toolset.NewAuthorities(registry.Definition, nil), nil)
 	if err != nil {
 		b.Fatal(err)
 	}

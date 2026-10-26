@@ -4,7 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func TestRequiredBindingsCannotBeRetargetedThroughInputOrSnapshot(t *testing.T) {

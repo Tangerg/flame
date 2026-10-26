@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/runtime/model"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
 func TestReplaceDerivesTheStateFromItsExpectedRun(t *testing.T) {

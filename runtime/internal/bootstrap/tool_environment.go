@@ -7,7 +7,7 @@ import (
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
-	pluginsdk "github.com/Tangerg/flame/packages/plugin-sdk"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -15,7 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -32,7 +32,7 @@ import (
 // generic toolset does not expose application integration ports.
 type toolEnvironment struct {
 	tools           toolset.Built
-	mcp             *mcpconnection.Pool
+	mcp             *mcp.Pool
 	memory          *pluginservices.Memory
 	toolResults     *pluginservices.ToolResults
 	pluginCalls     *pluginservices.CommandCalls
@@ -79,7 +79,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return toolEnvironment{}, err
 	}
-	mcpPool, err := mcpconnection.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.Stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}

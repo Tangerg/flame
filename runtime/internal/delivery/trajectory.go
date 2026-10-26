@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const SessionsTrajectory Name = "sessions.trajectory"

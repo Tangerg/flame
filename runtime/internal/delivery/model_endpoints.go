@@ -3,9 +3,9 @@ package delivery
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/pagination"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type endpointObservationUseCases interface {
