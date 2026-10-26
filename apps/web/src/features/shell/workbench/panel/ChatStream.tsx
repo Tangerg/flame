@@ -2,6 +2,7 @@ import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
 import { brandAssets } from "@/lib/brand";
 import { tupleKey } from "@/lib/tupleKey";
+import { useT } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/public/input";
 import { type FocusEvent, memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
@@ -26,7 +27,7 @@ import { pendingQuestionRequest } from "@/features/chat/public/message/rendering
 import { QuestionCard } from "@/features/chat/public/message/rendering";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { vocab } from "@flame/ui";
+import { ScrollRegion, vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
 import { useAgentShellElement } from "@/ui/agent/index";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@/features/shell/workbench/panel/notificationSpace";
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
+  notices: { maxHeight: "40%", paddingBlock: 0 },
   queryable: { containerType: "inline-size", "--transcript-jump-gap": space.s2 },
   emptyQuery: { containerType: "size", containerName: "empty-conversation" },
   rail: {
@@ -105,12 +107,17 @@ interface Props {
 }
 
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
+  const t = useT();
   return (
-    <div {...stylex.props(rc.box, rc.gutter, vocab.hold)}>
+    <ScrollRegion
+      label={t("chat.notices")}
+      data-focus-inset=""
+      styles={[rc.box, rc.gutter, vocab.hold, cst.notices, cst.hideWhenEmpty]}
+    >
       <CwdMissingBanner key={sessionId} />
       <RunErrorBanner />
       <Slot name="chat.banner.top" wrapper {...stylex.props(cst.tray)} />
-    </div>
+    </ScrollRegion>
   );
 });
 

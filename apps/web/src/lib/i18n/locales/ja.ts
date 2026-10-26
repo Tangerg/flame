@@ -130,6 +130,7 @@ export const ja: Record<string, string> = {
   "composer.action.stop": "停止",
   "composer.slash.heading": "コマンド",
 
+  "chat.notices": "会話の通知",
   "chat.error.title": "レンダリングエラー",
   "chat.error.retry": "再試行",
   "chat.jumpToBottom": "最下部へ移動",

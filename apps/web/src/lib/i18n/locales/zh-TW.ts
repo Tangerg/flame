@@ -129,6 +129,7 @@ export const zhTW: Record<string, string> = {
   "composer.mention.heading": "檔案",
   "composer.slash.heading": "命令",
 
+  "chat.notices": "對話通知",
   "chat.error.title": "顯示錯誤",
   "chat.error.retry": "重試",
   "chat.jumpToBottom": "跳到底部",

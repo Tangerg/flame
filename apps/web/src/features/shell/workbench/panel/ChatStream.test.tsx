@@ -8,9 +8,12 @@ prepareTestClient(() => {
 });
 import { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
+import { type AgentProblem } from "@/features/agent/public/sessionView";
+import { contributeLayout } from "@/extensions/contributeHelpers";
+import { contributeForTest } from "@/test/kernel";
 
 import {
   beginComposerDraftReplacement,
@@ -23,7 +26,15 @@ import { ContentVisibility } from "@/ui/index";
 import { AgentAppShell } from "@/ui/agent/index";
 import { COMPOSER_OVERLAY_PROPERTY } from "@/features/shell/workbench/panel/composerOverlay";
 
-const material = vi.hoisted(() => ({ rows: [] as TranscriptRow[] }));
+const material = vi.hoisted(() => ({
+  rows: [] as TranscriptRow[],
+  problem: null as AgentProblem | null,
+}));
+
+vi.mock("@/features/agent/public/run", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/agent/public/run")>()),
+  useActiveSessionProblem: () => material.problem,
+}));
 
 vi.mock("@/features/agent/public/conversation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/conversation")>()),
@@ -127,6 +138,7 @@ function mount() {
 
 beforeEach(() => {
   material.rows = [userRow()];
+  material.problem = null;
   testClient.agent.access.selectAgentSession("stream-session");
   replaceComposerDraft(testClient.composer.access, { text: "Keep this authored draft" });
 });
@@ -437,5 +449,56 @@ describe("ChatStream question focus handoff", () => {
     view.showRows([userRow()]);
 
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+describe("ChatStream conversation notices", () => {
+  it("retains the complete error, reader focus and authored draft across transcript changes", () => {
+    const detail =
+      "The configured model refused this input.\n\n  model: private-preview\nEnd of provider details.";
+    material.problem = { code: "provider_rejected", recovery: "stop", message: detail };
+    const view = mount();
+    const notices = screen.getByRole("region", { name: "Conversation notices" });
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    expect(notices.tabIndex).toBe(0);
+    expect(notices.contains(screen.getByRole("alert"))).toBe(true);
+    expect(notices.textContent).toContain(detail);
+    expect(notices.contains(screen.getByRole("button", { name: "Inspect context" }))).toBe(true);
+    expect(notices.contains(screen.getByRole("button", { name: "Diagnostics" }))).toBe(true);
+    act(() => notices.focus());
+
+    view.showRows([userRow(), { ...userRow(), message: { ...userRow().message, id: "user-2" } }]);
+
+    expect(screen.getByRole("region", { name: "Conversation notices" })).toBe(notices);
+    expect(document.activeElement).toBe(notices);
+    expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
+    expect(draft.value).toBe("Keep this authored draft");
+  });
+
+  it("includes contributed notices and their actions in the same keyboard reader", async () => {
+    const acknowledge = vi.fn();
+    await contributeForTest((ctx) => {
+      contributeLayout(ctx, "chat.banner.top", {
+        id: "notice",
+        component: () => (
+          <div role="status">
+            Connection requires attention.
+            <button onClick={acknowledge}>Inspect connection</button>
+          </div>
+        ),
+      });
+    });
+    mount();
+    const notices = screen.getByRole("region", { name: "Conversation notices" });
+    expect(within(notices).getByRole("status").textContent).toContain(
+      "Connection requires attention.",
+    );
+    const action = screen.getByRole("button", { name: "Inspect connection" });
+    expect(notices.contains(action)).toBe(true);
+    fireEvent.click(action);
+    expect(acknowledge).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" }).value,
+    ).toBe("Keep this authored draft");
   });
 });

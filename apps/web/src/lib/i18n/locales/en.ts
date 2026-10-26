@@ -138,6 +138,7 @@ export const en: Record<string, string> = {
   "composer.drop.images": "Drop images to attach",
   "composer.slash.heading": "Commands",
 
+  "chat.notices": "Conversation notices",
   "chat.error.title": "Render error",
   "chat.error.retry": "Retry",
   "chat.jumpToBottom": "Jump to bottom",

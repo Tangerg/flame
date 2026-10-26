@@ -119,6 +119,12 @@ navigation request a match reveal; hiding or closing retires the observer with
 the existing search lifetime. The Find scope owns Escape and query navigation;
 zero-result navigation buttons keep focus while refusing activation.
 
+Conversation notices share one named keyboard reader, capped at 40% of their
+conversation pane. Long Run errors, working-directory notices and contributed
+content retain their complete text and actions while leaving room for the reply
+and Composer. An empty stack collapses; error recovery and dismissal retain their
+existing owners.
+
 Image galleries keep the complete captured description in a named, keyboard
 scroll region. The header takes its natural height, and long descriptions stay
 bounded while the existing image viewport fits the remaining space. Selection

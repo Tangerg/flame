@@ -131,6 +131,7 @@ export const zh: Record<string, string> = {
   "composer.mention.heading": "文件",
   "composer.slash.heading": "命令",
 
+  "chat.notices": "对话通知",
   "chat.error.title": "渲染出错",
   "chat.error.retry": "重试",
   "chat.jumpToBottom": "跳到底部",

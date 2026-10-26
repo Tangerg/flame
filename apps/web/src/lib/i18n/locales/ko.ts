@@ -128,6 +128,7 @@ export const ko: Record<string, string> = {
   "composer.action.stop": "중지",
   "composer.slash.heading": "명령",
 
+  "chat.notices": "대화 알림",
   "chat.error.title": "렌더링 오류",
   "chat.error.retry": "재시도",
   "chat.jumpToBottom": "맨 아래로 이동",

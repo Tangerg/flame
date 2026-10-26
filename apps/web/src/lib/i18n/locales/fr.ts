@@ -132,6 +132,7 @@ export const fr: Record<string, string> = {
   "composer.action.stop": "Arrêter",
   "composer.slash.heading": "Commandes",
 
+  "chat.notices": "Avis de conversation",
   "chat.error.title": "Erreur d'affichage",
   "chat.error.retry": "Réessayer",
   "chat.jumpToBottom": "Aller en bas",

@@ -15362,6 +15362,122 @@ engagement pins the current parent state; untouched and header-only groups keep
 their automatic policy. No turn-history latch or replacement collapse rule was
 needed.
 
+### Conversation notices and continued authoring
+
+At frozen base `139e851ffb2c46d8cf7103911fd7b2b8accede1e`, actual Wails
+EN/light/14 px reproduces an unbounded notice stack. A 2,829-character canonical
+provider detail makes its alert **1,335 px** and the stack **1,355 px** tall in a
+**1440 × 900 CSS px** viewport. The Composer begins at **y=1401**; the reply and
+normal authoring space are displaced. Dismissing the local problem restores the
+input, confirming allocation by the notice host rather than lost draft content.
+
+`ChatBanners` sits before the transcript's scrolling layout. Its nonshrinking
+wrapper has no bound, so one long leaf or combined contributed notices consume
+all available space. The host now uses the existing shared `ScrollRegion`,
+capped at **40% of its own conversation pane**, with zero extra block padding.
+The existing `:empty` rule collapses the empty reader without reconstructing
+working-directory, Run-problem or contribution visibility in a second owner.
+Eight locales provide its accessible name. No visible heading, helper copy,
+truncation, disclosure state, observer, event handler or new primitive is added.
+
+The original whitespace-preserving error body, alert role, status code, actions,
+countdown, accepted Retry, dismissal and relocation lifetimes remain intact.
+The same host bounds working-directory and extension notices; these leaves do
+not acquire independent competing height policies. Production code changes only
+`ChatStream.tsx` and localized names, with its composed regression and README.
+
+Read-only ZCode `packages/ui/src/ChatErrorBanner.tsx:280–362` explicitly separates
+long details to prevent chat expansion, using a modal in that product. Flame
+applies the bounded supplemental-reading principle within its existing recovery
+surface; its model parsing and modal lifecycle are not copied. HeroUI's actual
+`alert.tsx` informs part hierarchy, not native scrolling evidence. Prior Radix,
+ChatGPT and Ace research remains contextual; static examples cannot qualify this
+interaction. Better-series review covers the following inspected scope.
+
+| Domain        | Review and outcome                                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Named Tab stop, End, retained reader focus, complete errors and existing actions; empty reader leaves native AX scope |
+| Layout        | Bounded whole stack, natural empty collapse, visible Composer, 1440 × 900 and native 200% / 720 × 450                 |
+| Writing       | Accessible name in eight locales; existing error and action copy retained, with no auxiliary visible text             |
+| Typography    | Literal line breaks and indentation retained, wrapping at EN 14 px and ZH 18 px; provider text stays literal          |
+| Colors        | Existing light/Orange and dark/pale-accent error, surface and focus roles retained; no new contrast measurements      |
+| UI polish     | Existing card geometry and reduced-motion behavior retained; shared inset focus ring stays visible                    |
+
+| Severity       | Owner                               | Before                                                                         | After                                                                       | Why                                                            |
+| -------------- | ----------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| HIGH, repaired | `ChatStream.tsx`, whole notice host | Long error expands outside the transcript and pushes Composer below the window | One bounded keyboard reader preserves full text/actions and authoring space | Reading a failure must leave the next authoring step available |
+
+Passed actual Wails tasks:
+
+- EN/light/14 px/Flame Orange: the same 1,355 px stack takes **341.59375 px**;
+  Composer stays at **y=797–884**. Confirmed native paste authors
+  `Keep the recovery review draft.`. Ordinary Tab enters Conversation notices;
+  End reaches line 28, the final provider sentence and both recovery actions.
+  Mouse scrolling changes its offset from **1013 to 114** while the input stays
+  fixed. Keyboard activation of the alert's Diagnostics opens the actual
+  contributed diagnostics material. Dismiss collapses the host and removes its
+  named AX region. Explicit input focus continues the same draft to
+  `Keep the recovery review draft. Continue after checking.`.
+- ZH/dark/18 px/`#ffe066`/contrast 100: native paste authors
+  `核对失败原因后继续。`; Tab and End reach the same literal detail and localized
+  actions. Actual Size plus twenty native Zoom In actions establishes
+  **720 × 450 CSS px / 200%**. Notices take **96.796875 px** of the constrained
+  pane, leaving Composer at **y=352.796875–434**. End reveals the final sentence
+  and actions. Diagnostics selects its existing Dock material; the existing
+  full-width opener enters its actual reader, and Close returns to conversation.
+  Dismiss removes the empty reader. Continued native paste produces
+  `核对失败原因后继续。 已核对，继续。`; Actual Size restores the original viewport.
+
+An initial unscoped Diagnostics AX lookup reached the fixture sidebar and is not
+credited as recovery activation; the accepted alert-button keyboard path is
+separately observed. The first large zoom automation call times out after
+reaching 190%; fresh process/AX/geometry observations establish that state before
+the remaining two increments, rather than replaying the sequence. Escape in the
+full-width generic diagnostics material does not return; its explicit Close
+control supplies the accepted return. No automatic material reveal is claimed
+for the narrow Diagnostics action. That action-to-reading transition is a
+concrete follow-up candidate; it is outside this stack allocation repair.
+
+Baseline prerequisites, **3 files / 25 tests**, assets and native build pass in
+**16.55 s**. Both new owner regressions fail on the unchanged host (**2 failed /
+11 skipped**, **3.43 s** wrapper) because it has no named keyboard reader.
+The first candidate test pass exposes an overly broad status query matching a
+separate loading output; the final query is scoped to the actual notices reader.
+Final **6 files / 132 tests** pass in **9.93 s**, covering complete error capture,
+retained reader/draft nodes through transcript updates, a real contributed
+notice/action, existing Run recovery, Composer, Slot, inspection and Session
+ownership. Happy DOM does not supply native height/scroll proof.
+
+The **13-command / 45.33 s** serial chain passes targeted formatting, Web
+typecheck/lint, design-system/chrome/styles/tokens/locales/resource guards,
+production native checks, private candidate assets and two native builds.
+`make check-native` passes in **27.70 s**, including production Web staging and
+Desktop Go test/vet/build/Wails build. After the test-query correction, final
+formatting, the six-file tests, typecheck and lint pass serially in **13.04 s**.
+Existing nonfatal linker/deployment-target and bundle-size notices remain.
+No check or valid assertion is weakened. No browser visual suite, performance
+benchmark, Claude CLI, subagent, live Runtime/provider call or Send runs.
+VoiceOver speech, OS IME, RTL, other-platform GUI, full-motion timing, live
+recovery persistence and a combined native relocation/contribution scenario are
+not qualified. No award-level or whole-product conformance claim is made.
+
+All **8** recorded PIDs are dead and three exact bundles are unregistered.
+Cleanup removes seven new checkout output/cache roots, six owned Library paths
+and three bundle-temp directories, restoring the original native-check binary.
+All **39** output-presence baselines, **4** original files, **18** Library
+baselines, **5,830** accepted non-Markdown inputs, eleven installed resources and
+two read-only reference files remain preserved before and after private-root
+deletion. `flame-notice-space-1027-tpbD9d` is absent. Verified in-memory gzip
+retains **59** flat UTF-8 records, **24** capture digests, 598 assets per
+baseline/candidate, twelve module artifacts, bundle hashes and preservation
+maps; SHA-256 `49e585e28bfe3bc765828c029bfab1f99957722a973e35fce7ac569240953dc5`.
+
+Verdict: **Approve for bounded conversation notices and these reading/authoring
+tasks**. The whole-product goal remains open. The user's requested fetch/merge
+finds remote main `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` already included,
+with zero incoming commits. This batch stays on the owned local branch; no push
+or primary checkout edit occurs. Further work needs fresh observed value.
+
 ## Sidebar / navigation surface audit
 
 A deep audit of the sidebar + navigation surface (session/project list, rows,
