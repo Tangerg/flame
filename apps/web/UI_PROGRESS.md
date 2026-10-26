@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows now reveal complete names during focus and context-menu use, qualified below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result filters now reveal their first matching row while preserving unchanged reading, qualified below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -8367,6 +8367,131 @@ files** and **six screenshot digests**, gzip SHA-256
 `7e78236de5d35df17cc662f668dfaae479ff48656df0ac2c4f13cfd2030d612c`.
 This documentation receipt changes no accepted product source. Primary user data
 and parallel work remain preserved; the continuous UI goal remains active.
+
+### Recorded result filter position
+
+The feedback document's G02/G03/G04 concerns are narrowed to draft → captured
+file-search result → scroll → filter/refine → continue the last page → clear/close
+Find → return to the original draft. A parallel Dock file visit checks unchanged
+reading. Frozen local base: `d4e9513fade210075eb75c439f412108d9057777`.
+This extends recorded-row filtering; the command-output Find contract immediately
+above remains delivered and has a different navigation owner.
+
+Actual Wails reproduces the gap with 82 captured paths: after End reaches the
+first page's bottom, filtering to 41 matches updates the caption to `40 of 41
+matches` but leaves `candidate-058` at the visible top. `candidate-000` is above
+the viewport. The content remains reachable by scrolling, so this is a MEDIUM
+reading-efficiency defect, not a claim of inaccessible or missing evidence.
+
+| Severity         | Domain                | Location                                           | Before                                                                                   | After                                                                             | Why                                                                                            |
+| ---------------- | --------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| MEDIUM, repaired | UI / reading position | `plugins/tool-results/component/component.tsx:419` | The query and presented rows change while the viewport keeps the previous list's offset. | A layout effect keyed only by the existing filter reveals the first matching row. | A changed query needs a visible starting point; counts alone do not reveal its first evidence. |
+
+`RecordedRows` owns the query, page limit and existing viewport. A three-line
+effect resets that viewport only when the filter value changes, including clear
+and close of a nonempty query. It does not move focus. Ordinary rerenders,
+opening/closing an unchanged blank Find and manual scrolling retain their
+position. The existing continuation intent still reveals the first new page and
+returns focus to the reader. No query cache, navigation state, observer, timer,
+handler override, shared control API or Runtime/SDK contract is added. The module
+README describes the behavior and its installed ESM is regenerated normally.
+
+Recon covers AGENTS, PROJECT_RULES, DEVELOPMENT, Web/visual/tool-results READMEs,
+the existing architecture/design and progress records, and all six better owning
+skills. Read-only ZCode `ToolCallBlocks/renderers/search.tsx` and `ToolLayout.tsx`
+separate object summary and optional detail, but do not establish this filter's
+scroll semantics. Earlier ChatGPT/HeroUI/Radix/Arc and Ace research retains its
+recorded scope; no fresh static-artwork or animation comparison is claimed.
+Implementation preserves React, Base UI-backed shared controls, CodeFrame,
+CodeCaption and existing semantic tokens.
+
+| Domain        | Evidence inspected                                                                                  | Scoped result                                                                                                            |
+| ------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Accessibility | Existing named reader/search, keyboard End, Find, Tab/Return, Escape and visible native focus       | New queries retain input focus; closing Find returns to the reader. VoiceOver speech and OS IME are not verified.        |
+| Layout        | Bounded row reader/caption, long paths, native narrow workspace and Chinese 200% scene              | First matching content and controls remain readable in exercised scenes; no new layout or 320 px viewport qualification. |
+| Writing       | Existing result/page counts, filter/clear/close and no-match recovery in EN/ZH/DE                   | The visible starting point agrees with the current query; no new product strings.                                        |
+| Typography    | Code-role paths, wrapping and literal names at 14/18 px                                             | Long captured paths remain complete and selectable; type scale is unchanged.                                             |
+| Color         | Native light/dark scenes, Orange/blue/purple field and reader focus, existing semantic source roles | No token or palette change; rendered contrast ratios are not freshly measured.                                           |
+| UI polish     | Query refinement, continuation, clear, close, unchanged manual reading and parallel Dock navigation | Explicit query changes reposition; unrelated reading stays stable. Full/off motion adds no animation.                    |
+
+Verification:
+
+- Original focused baseline: **1 file / 53 tests** passes. Six new regressions
+  expose **5 failures / 54 passes** on the original implementation: changed
+  source/file/web filters and clear/close offsets fail; unchanged manual reading
+  already passes. An initial Clear probe used the wrong accessible label; it
+  was corrected to the existing `Clear search` before this failure receipt.
+  The repaired suite passes **59 tests** without weakening existing assertions.
+- Final affected integration coverage passes **8 files / 95 tests**: recorded
+  results, installed workspace/delegated continuity, ToolInspector, renderer
+  selection, grouped members/groups and renderer ownership. Web and plugin
+  typecheck/lint, Web design-system/token/chrome/style checks, plugin locale and
+  exact regenerated-resource checks pass. Serial `make check-native` passes in
+  **22.52 s**, including Web staging and Desktop test/vet/build; three candidate
+  native apps also build. Duplicate `-lobjc` remains non-failing. The earlier
+  unchanged main layer-check failure is recorded under Plugin installation and
+  edit recovery; this import-free repair does not claim it passed or rerun it.
+- Actual Wails EN/light/14 px/Orange/full motion repeats the original End/Find
+  task with the same captured paths. Query `keep` now shows `candidate-000`
+  first and keeps field focus. Native wheel reading followed by refinement to
+  `keep/candidate` returns to that first match. Keyboard continuation exposes
+  final `candidate-080`, changes the count to `41 of 41` and focuses the reader.
+  Clear returns to `40 of 82` and the first row while keeping the input. A
+  no-match query shows the existing local recovery, Escape restores the reader,
+  and collapsing the result permits continuation of the original English draft.
+- Actual Wails ZH/dark/18 px/custom blue/motion off uses the production workspace
+  with the sidebars explicitly closed. Native Left half respects the host's
+  1120 px minimum; Actual Size plus twenty native Zoom In actions exercises
+  **200%**. End/Find shows the first matching path with input focus. After
+  keyboard scrolling the filtered result to its bottom, Escape closes Find,
+  restores the complete list at its first row and returns reader focus. The
+  original Chinese draft remains and continues.
+- Actual Wails DE/light/18 px/custom purple/motion off keeps Files beside the
+  conversation in the native minimum-width window; the Dock reports **364 px**.
+  New filtering shows the first path. Wheel reading reaches the range around
+  `candidate-040`–`048`; opening Dock README.md and returning preserves that
+  visible range and `keep`. Refining the query then reveals `candidate-000`.
+  Escape restores the full result/reader and the original German draft continues.
+  The initial Cmd+End probe inserted at the current caret; Undo restored the
+  draft, AX text selection was unavailable, and native Cmd+Down established the
+  verified append position. Only the corrected continuation qualifies that claim.
+
+All scenes use production components, fold, installed-component boundary and
+actual Wails, with 82 private captured hits substituted as fixture input. No
+production interaction or focus handler is replaced, and no passive measurement
+observer is injected. These are captured-result and deterministic Dock file reads,
+not live search/Runtime execution or a direct result-hit file-opening feature.
+The unrelated raw Read sample initially considered during recon omits the category
+that Runtime's `presentTool` supplies for built-ins; its JSON presentation does
+not prove a missing renderer or a production result regression. No such production
+change is made. Live Send, provider recovery, real OS IME, VoiceOver speech, RTL,
+other-platform GUI, the known final-LF limitation and new contrast measurements
+remain unverified. Browser visual suites, benchmarks, Claude CLI and subagents do
+not run.
+
+**Approve** for the inspected filter/return task with the limits above. Goal CHECK
+review: typography, whitespace and hierarchy retain the established reading frame;
+color preserves semantic source/focus roles; motion adds no distraction;
+micro-interaction aligns visible content with explicit query intent; responsive
+reading passes the exercised narrow/200% scenes; originality preserves Flame's
+brand without decorative additions. This is not a whole-product award-level
+verdict. Continue from fresh complete task evidence in the feedback review.
+
+All **11** recorded runner/app processes are dead. Four apps are unregistered and
+removed with **8** owned Library paths, **4** bundle-temp paths, **6** new checkout
+output roots and one new native binary. The original native-check binary is
+restored byte for byte. All **34** output-presence baselines, **3** original file
+inventories, **5,819** accepted non-Markdown sources and **11** accepted installed
+resources pass retirement verification; Tool-results ESM is the sole intended
+resource change. Artifact maps contain **596** baseline and **596** candidate
+assets, **16** module-proxy files and **4** native binaries. The independently
+round-trip-verified in-memory archive holds **71** UTF-8 files and **28** screenshot
+digests, gzip SHA-256
+`03aa957e5d733fd17fb92f9b4433ba924d6639fc620006d21153c84b4c8b5ee3`.
+The guarded root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-result-filter-1026-wOKFJK`
+is absent. Delivery stays local on `codex/ui-feedback-local-1026`; no main refresh,
+remote push or primary-checkout integration is performed.
 
 ### Hosted titles and reading density
 

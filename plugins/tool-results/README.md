@@ -21,7 +21,9 @@ Rows and command output use the shared `CodeFrame` and `CodeCaption`, so recogni
 results read like the generic inspector's captured code: the caption names the
 content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the
 recorded text, without ANSI styling for command output. Result filters open on
-demand beneath the caption, above one bounded scrolling body. A web fetch names its
+demand beneath the caption, above one bounded scrolling body. Changing or clearing
+the row filter reveals the first matching row without moving input focus; unchanged
+queries and ordinary rerenders preserve manual reading position. A web fetch names its
 format in the caption. Paged results retain the shown and matching row counts in
 that caption. Continuing a page reveals its first new row and returns focus to the
 named result viewport, including the last page, instead of carrying keyboard focus

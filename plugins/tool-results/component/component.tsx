@@ -416,6 +416,9 @@ function RecordedRows({
   useLayoutEffect(() => {
     if (finding) search.current?.focus();
   }, [finding]);
+  useLayoutEffect(() => {
+    if (viewport.current) viewport.current.scrollTop = 0;
+  }, [filter]);
   function closeFind() {
     setFinding(false);
     setFilter("");

@@ -652,6 +652,80 @@ it("continues paged result reading at the first newly revealed row through the f
   expect(screen.queryByRole("button", { name: /more matching rows/ })).toBeNull();
 });
 
+it.each(["read", "glob", "web_search"])(
+  "%s starts a changed filter at its first matching row without moving input focus",
+  (name) => {
+    const rows = Array.from(
+      { length: 82 },
+      (_, index) => `${index % 2 === 0 ? "keep" : "other"}/candidate-${index}`,
+    );
+    const source =
+      name === "read"
+        ? rows.join("\n")
+        : JSON.stringify(
+            name === "glob"
+              ? { hits: rows.map((path) => ({ path })) }
+              : { results: rows.map((title) => ({ title, url: `https://example.test/${title}` })) },
+          );
+    testClient.render(<RecordedResult context={capturedContext(name, source)} />);
+    const reader = screen.getByRole("region", { name: "Result" });
+    reader.scrollTop = 900;
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    const field = screen.getByRole("searchbox", { name: "Filter result" });
+    expect(reader.scrollTop).toBe(900);
+
+    fireEvent.change(field, { target: { value: "keep" } });
+    expect(reader.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(field);
+    expect(within(reader).getByText("keep/candidate-0", { exact: true })).toBeTruthy();
+    expect(screen.getByText("40 of 41 matches")).toBeTruthy();
+
+    reader.scrollTop = 400;
+    fireEvent.change(field, { target: { value: "keep/candidate" } });
+    expect(reader.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(field);
+    expect(screen.getByText("40 of 41 matches")).toBeTruthy();
+  },
+);
+
+it("preserves manual result reading across rerenders and an unchanged Find task", () => {
+  const context = capturedContext(
+    "read",
+    Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n"),
+  );
+  const rendered = testClient.render(<RecordedResult context={context} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  reader.scrollTop = 600;
+  fireEvent.scroll(reader);
+  rendered.rerender(<RecordedResult context={context} />);
+  expect(reader.scrollTop).toBe(600);
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  expect(reader.scrollTop).toBe(600);
+  fireEvent.click(screen.getByRole("button", { name: "Close find" }));
+  expect(reader.scrollTop).toBe(600);
+  expect(document.activeElement).toBe(reader);
+});
+
+it.each(["clear", "close"])("%s starts the restored result list at its first row", (action) => {
+  const source = Array.from(
+    { length: 82 },
+    (_, index) => `${index % 2 === 0 ? "keep" : "other"}/candidate-${index}`,
+  ).join("\n");
+  testClient.render(<RecordedResult context={capturedContext("read", source)} />);
+  const reader = screen.getByRole("region", { name: "Result" });
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "keep" } });
+  reader.scrollTop = 700;
+  fireEvent.click(
+    screen.getByRole("button", { name: action === "clear" ? "Clear search" : "Close find" }),
+  );
+  expect(reader.scrollTop).toBe(0);
+  expect(document.activeElement).toBe(action === "clear" ? field : reader);
+  expect(screen.getByText("40 of 82 rows")).toBeTruthy();
+  expect(within(reader).getByText("other/candidate-1", { exact: true })).toBeTruthy();
+});
+
 function selectAll(reader: HTMLElement, modifier: "metaKey" | "ctrlKey" = "metaKey") {
   reader.focus();
   return fireEvent.keyDown(reader, { key: "a", [modifier]: true });
