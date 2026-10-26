@@ -10958,8 +10958,8 @@ input and clicked-reader traversal limits retain their recorded scope.
 | Originality       | Flame workbench, brand and existing controls retained; no decorative rail, slogan or new component system |
 
 Verdict: **Approve for captured argument inspection and the inspected tasks**.
-This is not whole-product award-level acceptance. Next, study the compact scope
-of repeated same-name calls: their full inputs are now available, but their
+This is not whole-product award-level acceptance. On an explicit future resume,
+study the compact scope of repeated same-name calls: their full inputs are now available, but their
 collapsed labels remain alike. Use recorded provenance and actual reading tasks;
 do not infer page numbers or create a second cursor/state owner.
 
@@ -10995,8 +10995,19 @@ date**; no source or dependency changed and no merge-only validation is repeated
 The owned checkout is clean with **0 / 0** ahead/behind after implementation
 publication. Post-hook and post-push preservation recheck all 5,784 accepted
 source hashes, 11 resources, 36 output baselines, three original files, 12 dead
-processes and the absent private root. This documentation receipt follows as a
-separate normal commit and push. The overall UI goal remains active.
+processes and the absent private root. Delivery receipt
+`6eb3ad1bce028c50a3f51270f42e4d72ab09e0de` is also committed and pushed to main.
+
+#### Milestone pause (2026-10-26)
+
+The user explicitly requests a milestone pause after this completed batch, with
+all owned work integrated and pushed to main. No next batch is started. The
+implementation and delivery receipt above are already on remote main; this
+closure changes only this progress file. Accepted regression/native evidence
+remains valid, so no source checks or native builds are repeated for the pause.
+The owned checkout and retired-resource preservation are rechecked, and the
+primary parallel checkout remains untouched. User-requested state: **paused**;
+resume only after a new explicit instruction.
 
 ### Recorded Skill pages
 
@@ -14567,7 +14578,7 @@ beside a visible value.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
 - Commit explicit owned paths, push verified milestones to remote `main`, preserve unrelated working files during integration and clean owned resources. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's explicit 2026-10-21 resume restores continuous batches until they ask to stop. Retain verification, integration into `main`, push and cleanup for every batch.
+- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's explicit 2026-10-26 milestone pause supersedes the earlier continuous-run instruction; start no further batch until an explicit resume. Retain verification, integration into `main`, push and cleanup when work resumes.
 
 ## Milestone closure (2026-10-23)
 
