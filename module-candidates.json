@@ -19,7 +19,8 @@
   "github.com/Tangerg/flame/packages/go-sdk": {
     "v0.1.0-architecture.20261026.2": "158b5e3b2b544f6572d4c03ba43abe821df715b5",
     "v0.1.0-consolidation.20261026.1": "de4dfbf40cedf0c62acaf3af711691bb12d1166c",
-    "v0.1.0-consolidation.20261026.2": "070ca2a8f19a3570b7ccae16bd9e706e7ec80197"
+    "v0.1.0-consolidation.20261026.2": "070ca2a8f19a3570b7ccae16bd9e706e7ec80197",
+    "v0.1.0-memory.20261027.1": "18220f6245ace458d5ff55b3473048686a22eb10"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
