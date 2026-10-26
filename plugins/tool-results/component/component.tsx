@@ -145,6 +145,60 @@ function skillPageRows(page: SkillPage, rows: Row[]): Row[] {
     : rows;
 }
 
+function webPage(page: Record<string, unknown>) {
+  const { snapshotId, url, format, content, offset, totalRunes, nextOffset } =
+    page;
+  if (
+    Object.keys(page).some(
+      (key) =>
+        ![
+          "snapshotId",
+          "url",
+          "format",
+          "content",
+          "offset",
+          "totalRunes",
+          "nextOffset",
+        ].includes(key),
+    ) ||
+    typeof snapshotId !== "string" ||
+    !/^[0-9a-f]{64}$/.test(snapshotId) ||
+    typeof url !== "string" ||
+    !url ||
+    typeof format !== "string" ||
+    !["markdown", "html", "text"].includes(format) ||
+    typeof content !== "string" ||
+    typeof offset !== "number" ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    typeof totalRunes !== "number" ||
+    !Number.isSafeInteger(totalRunes) ||
+    totalRunes < offset
+  )
+    return undefined;
+  const end = offset + Array.from(content).length;
+  if (
+    end > totalRunes ||
+    (nextOffset === undefined
+      ? end !== totalRunes
+      : typeof nextOffset !== "number" ||
+        !Number.isSafeInteger(nextOffset) ||
+        nextOffset !== end ||
+        nextOffset <= offset ||
+        nextOffset >= totalRunes)
+  )
+    return undefined;
+  return {
+    snapshotId,
+    url,
+    format,
+    content,
+    offset,
+    totalRunes,
+    ...(typeof nextOffset === "number" ? { nextOffset } : {}),
+  };
+}
+
 function xmlElements(element: Element): Element[] | undefined {
   if (
     element.attributes.length ||
@@ -284,6 +338,35 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
       };
   }
   const result = parsed(source);
+  if (tool.name === "web_fetch" || tool.name === "web_browse") {
+    const page = webPage(result);
+    return page
+      ? {
+          kind: "rows",
+          label: page.format,
+          continues: page.nextOffset !== undefined,
+          rows: [
+            { kind: "located", location: page.url, body: page.content },
+            {
+              kind: "located",
+              location: "snapshotId / offset / totalRunes / nextOffset",
+              body: JSON.stringify(
+                {
+                  snapshotId: page.snapshotId,
+                  offset: page.offset,
+                  totalRunes: page.totalRunes,
+                  ...(page.nextOffset === undefined
+                    ? {}
+                    : { nextOffset: page.nextOffset }),
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+        }
+      : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+  }
   if (Array.isArray(result.changes))
     return { kind: "changes", changes: result.changes.map(record) };
   if (Array.isArray(result.hits))
@@ -331,12 +414,7 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
       ],
     };
   }
-  if (tool.name === "web_fetch" && typeof result.content === "string")
-    return {
-      kind: "rows",
-      label: text(result.format ?? "text"),
-      rows: [{ kind: "located", body: result.content }],
-    };
+
   return {
     kind: "rows",
     label: t("caption.result"),
