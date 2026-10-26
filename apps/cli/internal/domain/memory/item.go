@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
 type Scope string
@@ -30,6 +32,7 @@ const (
 // Item retains only the publisher fields used by terminal presentation.
 type Item struct {
 	ID        string
+	Revision  uint64
 	Scope     Scope
 	Content   string
 	Origin    Origin
@@ -45,6 +48,9 @@ type Item struct {
 // an identity and content, a known scope, origin and status, timestamps, and an
 // update no earlier than creation. A user-authored item is only ever active.
 func (i Item) Validate() error {
+	if i.Revision == 0 || i.Revision > exactint.Maximum {
+		return fmt.Errorf("agent memory item requires a positive exact revision")
+	}
 	if i.ID == "" || strings.TrimSpace(i.Content) == "" {
 		return fmt.Errorf("agent memory item requires identity and content")
 	}

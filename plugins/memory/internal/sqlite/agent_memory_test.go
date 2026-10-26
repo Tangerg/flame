@@ -196,21 +196,21 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 		t.Fatalf("proposals = %d, want 2", len(proposals))
 	}
 	approve, reject := proposals[0], proposals[1]
-	if err := store.Review(t.Context(), approve.ID(), agentmemory.ReviewApprove, now); err != nil {
+	if err := store.Review(t.Context(), approve.ID(), approve.Revision(), agentmemory.ReviewApprove, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Review(t.Context(), reject.ID(), agentmemory.ReviewReject, now); err != nil {
+	if err := store.Review(t.Context(), reject.ID(), reject.Revision(), agentmemory.ReviewReject, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Review(t.Context(), approve.ID(), agentmemory.ReviewReject, now); !errors.Is(err, agentmemory.ErrNotPending) {
+	if err := store.Review(t.Context(), approve.ID(), approve.Revision()+1, agentmemory.ReviewReject, now); !errors.Is(err, agentmemory.ErrNotPending) {
 		t.Fatalf("second review = %v, want ErrNotPending", err)
 	}
 	rewritten := "rewritten tombstone"
 	pinned := true
-	if _, err := store.Update(t.Context(), reject.ID(), &rewritten, &pinned, now.Add(time.Minute)); !errors.Is(err, agentmemory.ErrNotVisible) {
+	if _, err := store.Update(t.Context(), reject.ID(), reject.Revision()+1, &rewritten, &pinned, now.Add(time.Minute)); !errors.Is(err, agentmemory.ErrNotVisible) {
 		t.Fatalf("rejected update = %v, want ErrNotVisible", err)
 	}
-	if err := store.Delete(t.Context(), reject.ID()); !errors.Is(err, agentmemory.ErrNotVisible) {
+	if err := store.Delete(t.Context(), reject.ID(), reject.Revision()+1); !errors.Is(err, agentmemory.ErrNotVisible) {
 		t.Fatalf("rejected delete = %v, want ErrNotVisible", err)
 	}
 	tombstone, found, err := store.get(t.Context(), reject.ID())
@@ -267,11 +267,11 @@ func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
 					t.Fatalf("proposals = (%+v, %v), want one pending item", items, err)
 				}
 				pinned := true
-				item, err := store.Update(t.Context(), items[0].ID(), nil, &pinned, editedAt)
+				item, err := store.Update(t.Context(), items[0].ID(), items[0].Revision(), nil, &pinned, editedAt)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := store.Review(t.Context(), item.ID(), decision, clock.now); err == nil {
+				if err := store.Review(t.Context(), item.ID(), item.Revision(), decision, clock.now); err == nil {
 					t.Error("review accepted a time before the current item")
 				}
 				stored, found, err := store.get(t.Context(), item.ID())
@@ -279,7 +279,7 @@ func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
 					stored.Content() != item.Content() || !stored.CreatedAt().Equal(createdAt) || !stored.UpdatedAt().Equal(editedAt) {
 					t.Fatalf("failed review changed pending item = (%+v, %t, %v)", stored, found, err)
 				}
-				if err := store.Review(t.Context(), item.ID(), decision, editedAt); err != nil {
+				if err := store.Review(t.Context(), item.ID(), item.Revision(), decision, editedAt); err != nil {
 					t.Fatalf("review after clock recovery: %v", err)
 				}
 			})
@@ -308,8 +308,8 @@ func TestAgentMemorySchemaRejectsInvalidDomainVocabulary(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := db.Exec(`INSERT INTO agent_memory_items(
-				id, scope, project, content, digest, origin, status, created_at, updated_at
-			) VALUES (?, ?, '/repo', 'fact', ?, ?, ?, 1, 1)`,
+				id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, ?, '/repo', 'fact', ?, ?, ?, 1, 1, 1)`,
 				storedAgentMemoryItemID(index).String(), test.scope, "digest_"+test.name, test.origin, test.status)
 			if err == nil {
 				t.Fatal("invalid agent-memory row was accepted")
@@ -334,8 +334,8 @@ func TestAgentMemorySchemaRejectsNonCanonicalItemIdentity(t *testing.T) {
 	}
 	for index, id := range invalidIDs {
 		if _, err := db.Exec(`INSERT INTO agent_memory_items(
-			id, scope, project, content, digest, origin, status, created_at, updated_at
-		) VALUES (?, 'project', '/repo', 'fact', ?, 'user', 'active', 1, 1)`, id, fmt.Sprintf("digest_%d", index)); err == nil {
+			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, 'project', '/repo', 'fact', ?, 'user', 'active', 1, 1, 1)`, id, fmt.Sprintf("digest_%d", index)); err == nil {
 			t.Fatalf("non-canonical agent-memory identity %q was persisted", id)
 		}
 	}
@@ -350,8 +350,8 @@ func TestAgentMemorySchemaRejectsContentBeyondDomainBound(t *testing.T) {
 
 	oversized := strings.Repeat("界", agentmemory.MaxContentCharacters+1)
 	if _, err := db.Exec(`INSERT INTO agent_memory_items(
-		id, scope, project, content, digest, origin, status, created_at, updated_at
-	) VALUES (?, 'project', '/repo', ?, 'digest', 'user', 'active', 1, 1)`, storedAgentMemoryItemID(0).String(), oversized); err == nil {
+		id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, 'project', '/repo', ?, 'digest', 'user', 'active', 1, 1, 1)`, storedAgentMemoryItemID(0).String(), oversized); err == nil {
 		t.Fatal("agent memory item beyond the Domain bound was persisted")
 	}
 	if _, err := db.Exec(`INSERT INTO agent_memory_ledger(
@@ -376,7 +376,7 @@ func TestPinningAgentMemoryPreservesItsEmbeddingCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	pinned := true
-	if _, err := store.Update(t.Context(), item.ID(), nil, &pinned, now.Add(time.Minute)); err != nil {
+	if _, err := store.Update(t.Context(), item.ID(), item.Revision(), nil, &pinned, now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	corpus, err := store.SearchCorpus(t.Context(), "/repo")
@@ -406,7 +406,7 @@ func TestRejectedMemoryContentEditPreservesTheCompleteProposal(t *testing.T) {
 		t.Fatal(err)
 	}
 	content, pinned := existing.Content(), true
-	if _, err := store.Update(t.Context(), items[0].ID(), &content, &pinned, now.Add(time.Minute)); err == nil {
+	if _, err := store.Update(t.Context(), items[0].ID(), items[0].Revision(), &content, &pinned, now.Add(time.Minute)); err == nil {
 		t.Fatal("content edit overwrote another item's digest identity")
 	}
 	retained, found, err := store.get(t.Context(), items[0].ID())
@@ -439,13 +439,17 @@ func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
 				}
 			}
 			if status == agentmemory.StatusActive {
-				if err := store.Review(t.Context(), original.ID(), agentmemory.ReviewApprove, createdAt); err != nil {
+				if err := store.Review(t.Context(), original.ID(), original.Revision(), agentmemory.ReviewApprove, createdAt); err != nil {
 					t.Fatal(err)
 				}
 			}
+			original, _, err = store.get(t.Context(), original.ID())
+			if err != nil {
+				t.Fatal(err)
+			}
 			content := "user correction"
 			editedAt := createdAt.Add(24 * time.Hour)
-			edited, err := store.Update(t.Context(), original.ID(), &content, nil, editedAt)
+			edited, err := store.Update(t.Context(), original.ID(), original.Revision(), &content, nil, editedAt)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -497,9 +501,11 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	}
 	content := "always run make lint before commit"
 	pinned := true
-	if _, updateErr := store.Update(t.Context(), item.ID(), &content, &pinned, now); updateErr != nil {
+	updated, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &content, &pinned, now)
+	if updateErr != nil {
 		t.Fatal(updateErr)
 	}
+	item = updated
 	got, ok, err := store.get(t.Context(), item.ID())
 	if err != nil || !ok || !got.Pinned() || got.Content() != "always run make lint before commit" {
 		t.Fatalf("after edit = (%+v, %v, %v)", got, ok, err)
@@ -514,11 +520,12 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	}
 
 	unpinned := false
-	if _, updateErr := store.Update(t.Context(), item.ID(), nil, &unpinned, now); updateErr != nil {
+	item, updateErr = store.Update(t.Context(), item.ID(), item.Revision(), nil, &unpinned, now)
+	if updateErr != nil {
 		t.Fatal(updateErr)
 	}
 	blank := "  "
-	if _, updateErr := store.Update(t.Context(), item.ID(), &blank, &pinned, now.Add(time.Second)); updateErr == nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &blank, &pinned, now.Add(time.Second)); updateErr == nil {
 		t.Fatal("Update accepted blank content")
 	}
 	unchanged, ok, err := store.get(t.Context(), item.ID())
@@ -526,17 +533,17 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 		t.Fatalf("failed Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}
 	oversized := strings.Repeat("界", agentmemory.MaxContentCharacters+1)
-	if _, updateErr := store.Update(t.Context(), item.ID(), &oversized, &pinned, now.Add(2*time.Second)); updateErr == nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &oversized, &pinned, now.Add(2*time.Second)); updateErr == nil {
 		t.Fatal("Update accepted oversized content")
 	}
 	unchanged, ok, err = store.get(t.Context(), item.ID())
 	if err != nil || !ok || unchanged.Pinned() {
 		t.Fatalf("oversized Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}
-	if err := store.Delete(t.Context(), item.ID()); err != nil {
+	if err := store.Delete(t.Context(), item.ID(), item.Revision()); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Delete(t.Context(), item.ID()); !errors.Is(err, agentmemory.ErrNotFound) {
+	if err := store.Delete(t.Context(), item.ID(), item.Revision()); !errors.Is(err, agentmemory.ErrNotFound) {
 		t.Fatalf("second delete = %v, want ErrNotFound", err)
 	}
 }
@@ -618,8 +625,8 @@ func TestAgentMemoryListRejectsCorruptOverfullTarget(t *testing.T) {
 	}
 	for index := range 513 {
 		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
-			id, scope, project, content, digest, origin, status, created_at, updated_at
-		) VALUES (?, 'project', '/repo', ?, ?, 'user', 'active', 1, 1)`,
+			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, 'project', '/repo', ?, ?, 'user', 'active', 1, 1, 1)`,
 			storedAgentMemoryItemID(index).String(), fmt.Sprintf("memory %d", index), fmt.Sprintf("digest_%d", index))
 		if err != nil {
 			_ = tx.Rollback()
@@ -663,7 +670,7 @@ func TestAgentMemoryExplicitAddRevivesRejectedProposal(t *testing.T) {
 	if err != nil || len(items) != 1 {
 		t.Fatalf("proposal list = (%+v, %v)", items, err)
 	}
-	if reviewErr := store.Review(t.Context(), items[0].ID(), agentmemory.ReviewReject, now.Add(time.Second)); reviewErr != nil {
+	if reviewErr := store.Review(t.Context(), items[0].ID(), items[0].Revision(), agentmemory.ReviewReject, now.Add(time.Second)); reviewErr != nil {
 		t.Fatal(reviewErr)
 	}
 	revived, created, err := store.Add(
@@ -688,8 +695,8 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 	}
 	for index := range maximumRejected {
 		_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
-			id, scope, project, content, digest, origin, status, created_at, updated_at
-		) VALUES (?, 'project', '/repo', ?, ?, 'auto', 'rejected', 1, ?)`,
+			id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, 'project', '/repo', ?, ?, 'auto', 'rejected', 1, ?, 1)`,
 			storedAgentMemoryItemID(index).String(), fmt.Sprintf("old rejection %d", index),
 			fmt.Sprintf("old_digest_%d", index), index+1)
 		if err != nil {
@@ -699,8 +706,8 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 	}
 	newID := storedAgentMemoryItemID(maximumRejected)
 	_, err = tx.ExecContext(t.Context(), `INSERT INTO agent_memory_items(
-		id, scope, project, content, digest, origin, status, created_at, updated_at
-	) VALUES (?, 'project', '/repo', 'new rejection', 'new_digest', 'auto', 'pending', 1, 1)`, newID.String())
+		id, scope, project, content, digest, origin, status, created_at, updated_at, revision
+) VALUES (?, 'project', '/repo', 'new rejection', 'new_digest', 'auto', 'pending', 1, 1, 1)`, newID.String())
 	if err != nil {
 		_ = tx.Rollback()
 		t.Fatal(err)
@@ -710,7 +717,7 @@ func TestAgentMemoryReviewBoundsRejectedTombstones(t *testing.T) {
 	}
 	store := NewAgentMemoryStore(db)
 	if err := store.Review(
-		t.Context(), newID, agentmemory.ReviewReject,
+		t.Context(), newID, 1, agentmemory.ReviewReject,
 		time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC),
 	); err != nil {
 		t.Fatal(err)
@@ -741,7 +748,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 
 	proposals, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	for _, item := range proposals {
-		if err := store.Review(t.Context(), item.ID(), agentmemory.ReviewApprove, now); err != nil {
+		if err := store.Review(t.Context(), item.ID(), item.Revision(), agentmemory.ReviewApprove, now); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -822,7 +829,7 @@ func TestAgentMemoryLateEmbeddingDoesNotOverwriteEditedContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := "new content"
-	if _, updateErr := store.Update(t.Context(), item.ID(), &content, nil, now.Add(time.Second)); updateErr != nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), item.Revision(), &content, nil, now.Add(time.Second)); updateErr != nil {
 		t.Fatal(updateErr)
 	}
 	if setEmbeddingsErr := store.SetEmbeddings(t.Context(), []agentmemory.EmbeddingUpdate{late}); setEmbeddingsErr != nil {

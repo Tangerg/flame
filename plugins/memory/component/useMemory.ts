@@ -90,7 +90,7 @@ export function useMemory(context: ComponentContext) {
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const page = await operations.query(
-          "flame.memory/list.v1",
+          "flame.memory/list.v2",
           {
             Scope: scope,
             CWD: cwd,

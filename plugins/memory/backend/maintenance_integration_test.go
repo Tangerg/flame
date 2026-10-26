@@ -161,7 +161,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatal(err)
 	}
 	content, pinned := "human edit during curation", true
-	human, err := callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, memoryContract(t), "memory", rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), Content: &content, Pinned: &pinned}, sdk.ParamsBase{})
+	human, err := callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, memoryContract(t), "memory", rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), ExpectedRevision: added.Item.Revision, Content: &content, Pinned: &pinned}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}

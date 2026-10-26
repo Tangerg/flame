@@ -30,7 +30,7 @@ describe("visual Runtime transport", () => {
     );
     try {
       for (const [binding, method, page] of [
-        [VISUAL_MEMORY_BINDING, "flame.memory/list.v1", VISUAL_MEMORY_PAGE],
+        [VISUAL_MEMORY_BINDING, "flame.memory/list.v2", VISUAL_MEMORY_PAGE],
         [VISUAL_SCHEDULES_BINDING, "flame.schedules/list.v1", VISUAL_SCHEDULES_PAGE],
       ] as const) {
         const response = await client.plugins.call({

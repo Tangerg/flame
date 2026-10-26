@@ -11,7 +11,7 @@ package publishes those schemas and the existing business-owned caller policy.
 The workspace coordinator runs this before generating backend package resources.
 Generated files are projections, never independently edited definitions.
 
-Implementations parse `CapabilityJSON` through `capability.Parse` and bind their
+Implementations parse `CapabilityJSON` through `extension.ParseCapability` and bind their
 own codecs with `plugin.ImplementMethod`. The first-party backend uses this same
 path. Changing an implementation's module namespace cannot change the contract's
 identity. Invalid input is refused before business execution; invalid output
@@ -22,8 +22,10 @@ Author exports carry the implementation, component and package resources. This
 public contract comes from their pinned, vendored Flame module. Running their
 `go generate` only reprojects that contract; it cannot republish a different role
 under the host's existing identity. To define different callable behavior, author
-and publish a distinct contract with `plugin.NewMethod` and `capability.New`.
+and publish a distinct contract with `plugin.NewMethod` and `extension.NewCapability`.
 
-The former private Runtime contract package is removed. Consumers use this public
-package directly. This source move preserves the exact wire schemas and private
-business data; no alias, fallback reader or data migration is introduced.
+Item operations use `v2`. Snapshots project the backend-owned positive exact
+`Revision`; update, review and deletion require its observed `ExpectedRevision`.
+The former methods are removed. An implementation must reject stale intent and
+preserve original receipts across subsequent changes. The first-party private
+schema refuses revisionless directories; it does not migrate them implicitly.

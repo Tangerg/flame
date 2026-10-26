@@ -38,7 +38,7 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := memory.Item{ID: testMemoryID, Scope: memory.ScopeProject, Content: "fact", Origin: memory.OriginAuto, Status: memory.StatusPending, CreatedAt: now, UpdatedAt: now}
+	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.ScopeProject, Content: "fact", Origin: memory.OriginAuto, Status: memory.StatusPending, CreatedAt: now, UpdatedAt: now}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 
 func TestMemoryProjectionRequiresVisiblePublisherState(t *testing.T) {
 	now := time.Now()
-	valid := memory.Item{ID: testMemoryID, Scope: memory.ScopeUser, Content: "fact", Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: now, UpdatedAt: now}
+	valid := memory.Item{Revision: 1, ID: testMemoryID, Scope: memory.ScopeUser, Content: "fact", Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: now, UpdatedAt: now}
 	for _, mutate := range []func(*memory.Item){
 		func(row *memory.Item) { row.ID = "" },
 		func(row *memory.Item) { row.Content = " " },

@@ -32,7 +32,7 @@ func TestPendingMemoryReviewKeepsItsDecisionBeforeTargetReads(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	lost := &unconfirmedMemoryReview{agentMemoryServiceStub: &agentMemoryServiceStub{}, cancel: cancel}
-	if err := workbench.ExecuteMemoryReview(ctx, lost, store, policy, terminalMemoryPendingID, memory.ReviewApprove); err == nil {
+	if err := workbench.ExecuteMemoryReview(ctx, lost, store, policy, terminalMemoryPendingID, 1, memory.ReviewApprove); err == nil {
 		t.Fatal("lost acknowledgement became success")
 	}
 	original := store.PendingInstalledCommands()[0]

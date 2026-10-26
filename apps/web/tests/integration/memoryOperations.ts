@@ -1,14 +1,15 @@
+import { projectNumber } from "@flame/runtime-client/json";
 import { parseJSON, stringifyJSON, type FlameClient } from "@flame/runtime-client";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
 } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
-type MemoryScope = MethodInputs["flame.memory/list.v1"]["Scope"];
-type MemoryRecord = MethodOutputs["flame.memory/list.v1"]["Rows"][number];
+type MemoryScope = MethodInputs["flame.memory/list.v2"]["Scope"];
+type MemoryRecord = MethodOutputs["flame.memory/list.v2"]["Rows"][number];
 type MemoryOrigin = MemoryRecord["Origin"];
 type MemoryStatus = Exclude<MemoryRecord["Status"], "rejected">;
-type ReviewDecision = MethodInputs["flame.memory/review.v1"]["Decision"];
+type ReviewDecision = MethodInputs["flame.memory/review.v2"]["Decision"];
 
 interface MemoryAddInput {
   scope: MemoryScope;
@@ -18,6 +19,7 @@ interface MemoryAddInput {
 
 interface MemoryItem {
   id: string;
+  revision: number;
   scope: MemoryScope;
   content: string;
   origin: MemoryOrigin;
@@ -29,7 +31,7 @@ interface MemoryItem {
   updatedAt: string;
 }
 
-type MemoryPage = MethodOutputs["flame.memory/list.v1"];
+type MemoryPage = MethodOutputs["flame.memory/list.v2"];
 
 export async function readInstalledMemory(
   client: FlameClient,
@@ -40,7 +42,7 @@ export async function readInstalledMemory(
   const binding = {
     ...(await selectMemoryBinding(client, signal)),
     contract: CAPABILITY_JSON,
-    method: "flame.memory/list.v1",
+    method: "flame.memory/list.v2",
   };
   const items: MemoryItem[] = [];
   const seen = new Set<string>();
@@ -78,10 +80,13 @@ export async function readInstalledMemory(
       throw new Error("memory page exceeds its declared traversal bounds");
     capacity = pageCapacity;
     for (const row of page.Rows) {
+      const revision = projectNumber(row.Revision);
       if (
         row.Scope !== scope ||
         seen.has(row.ID) ||
         !row.ID ||
+        !Number.isSafeInteger(revision) ||
+        revision < 1 ||
         !["active", "pending"].includes(row.Status) ||
         !["auto", "user"].includes(row.Origin)
       )
@@ -89,6 +94,7 @@ export async function readInstalledMemory(
       seen.add(row.ID);
       items.push({
         id: row.ID,
+        revision,
         scope,
         content: row.Content,
         origin: row.Origin as MemoryItem["origin"],
@@ -129,15 +135,19 @@ async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
 export async function deleteInstalledMemory(
   client: FlameClient,
   id: string,
+  expectedRevision: number,
   signal?: AbortSignal,
 ): Promise<void> {
-  const input: MethodInputs["flame.memory/delete.v1"] = { ID: id };
+  const input: MethodInputs["flame.memory/delete.v2"] = {
+    ID: id,
+    ExpectedRevision: expectedRevision,
+  };
   return client.plugins
     .command(
       `memory-delete:${id}`,
       {
         contract: CAPABILITY_JSON,
-        method: "flame.memory/delete.v1",
+        method: "flame.memory/delete.v2",
         input: stringifyJSON(input),
       },
       () => selectMemoryBinding(client, signal),
@@ -150,19 +160,21 @@ export async function deleteInstalledMemory(
 export function reviewInstalledMemory(
   client: FlameClient,
   id: string,
+  expectedRevision: number,
   decision: ReviewDecision,
   signal?: AbortSignal,
 ): Promise<void> {
-  const input: MethodInputs["flame.memory/review.v1"] = {
+  const input: MethodInputs["flame.memory/review.v2"] = {
     Decision: decision,
     ID: id,
+    ExpectedRevision: expectedRevision,
   };
   return client.plugins
     .command(
       `memory-review:${id}`,
       {
         contract: CAPABILITY_JSON,
-        method: "flame.memory/review.v1",
+        method: "flame.memory/review.v2",
         input: stringifyJSON(input),
       },
       () => selectMemoryBinding(client, signal),
@@ -172,7 +184,7 @@ export function reviewInstalledMemory(
     .then(() => undefined);
 }
 
-function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memory/delete.v1"] {
+function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memory/delete.v2"] {
   if (
     !output ||
     typeof output !== "object" ||
@@ -180,17 +192,18 @@ function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memo
     Object.keys(output).length !== 0
   )
     throw new Error("memory command acknowledgement is invalid");
-  return output as MethodOutputs["flame.memory/delete.v1"];
+  return output as MethodOutputs["flame.memory/delete.v2"];
 }
 
 export function updateInstalledMemory(
   client: FlameClient,
-  input: MethodInputs["flame.memory/update.v1"],
+  input: MethodInputs["flame.memory/update.v2"],
   signal?: AbortSignal,
 ): Promise<MemoryItem> {
-  const patch: MethodInputs["flame.memory/update.v1"] = {
+  const patch: MethodInputs["flame.memory/update.v2"] = {
     ...(input.Content === undefined ? {} : { Content: input.Content }),
     ID: input.ID,
+    ExpectedRevision: input.ExpectedRevision,
     ...(input.Pinned === undefined ? {} : { Pinned: input.Pinned }),
   };
   if (patch.Content === undefined && patch.Pinned === undefined)
@@ -199,7 +212,7 @@ export function updateInstalledMemory(
     `memory-update:${patch.ID}`,
     {
       contract: CAPABILITY_JSON,
-      method: "flame.memory/update.v1",
+      method: "flame.memory/update.v2",
       input: stringifyJSON(patch),
     },
     () => selectMemoryBinding(client, signal),
@@ -214,10 +227,13 @@ export function updateInstalledMemory(
 }
 
 function decodeMemoryItem(output: unknown): MemoryItem {
-  const row = output as MethodOutputs["flame.memory/update.v1"];
+  const row = output as MethodOutputs["flame.memory/update.v2"];
+  const revision = projectNumber(row?.Revision);
   if (
     !row ||
     !row.ID ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1 ||
     typeof row.Content !== "string" ||
     !row.Content.trim() ||
     typeof row.Pinned !== "boolean" ||
@@ -233,6 +249,7 @@ function decodeMemoryItem(output: unknown): MemoryItem {
     throw new Error("memory item acknowledgement is invalid");
   return {
     id: row.ID,
+    revision,
     scope: row.Scope as MemoryScope,
     content: row.Content,
     origin: row.Origin as MemoryOrigin,
@@ -252,7 +269,7 @@ export function addInstalledMemory(
 ): Promise<MemoryItem> {
   if (input.scope === "project" && !input.cwd)
     return Promise.reject(new Error("project memory addition requires a captured workspace"));
-  const request: MethodInputs["flame.memory/add.v1"] = {
+  const request: MethodInputs["flame.memory/add.v2"] = {
     CWD: input.scope === "project" ? input.cwd! : "",
     Content: input.content,
     Scope: input.scope,
@@ -261,12 +278,12 @@ export function addInstalledMemory(
     "memory-add",
     {
       contract: CAPABILITY_JSON,
-      method: "flame.memory/add.v1",
+      method: "flame.memory/add.v2",
       input: stringifyJSON(request),
     },
     () => selectMemoryBinding(client, signal),
     (output) => {
-      const result = output as MethodOutputs["flame.memory/add.v1"];
+      const result = output as MethodOutputs["flame.memory/add.v2"];
       if (!result || typeof result.Changed !== "boolean")
         throw new Error("memory addition acknowledgement is invalid");
       const item = decodeMemoryItem(result.Item);

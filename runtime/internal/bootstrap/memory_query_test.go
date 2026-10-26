@@ -9,7 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-func memoryQuery(r *poMCPRuntime, input memorycontract.ListV1Input) (protocol.CallPluginRequest, error) {
+func memoryQuery(r *poMCPRuntime, input memorycontract.ListV2Input) (protocol.CallPluginRequest, error) {
 	providers := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])
 	installations := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	contracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
@@ -31,19 +31,19 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListV1Input) (protocol.Ca
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV1Method, Input: string(encoded), Target: extension.Target{Scope: "installation", Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV2Method, Input: string(encoded), Target: extension.Target{Scope: "installation", Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }
-func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListV1Input) delivery.Result {
+func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListV2Input) delivery.Result {
 	request, err := memoryQuery(r, input)
 	if err != nil {
 		return delivery.Result{Failure: protocol.NewFailure(err, err.Error())}
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
-func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV1Input) *protocol.Page[memorycontract.UpdateV1Output] {
+func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV2Input) *protocol.Page[memorycontract.UpdateV2Output] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -53,20 +53,20 @@ func readMemoryPage(r *poMCPRuntime, input memorycontract.ListV1Input) *protocol
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var page memorycontract.ListV1Output
+	var page memorycontract.ListV2Output
 	if err := json.Unmarshal([]byte(reply.Output), &page); err != nil {
 		r.t.Fatal(err)
 	}
-	values := make([]memorycontract.UpdateV1Output, len(page.Rows))
+	values := make([]memorycontract.UpdateV2Output, len(page.Rows))
 	for index, row := range page.Rows {
-		values[index] = memorycontract.UpdateV1Output(row)
+		values[index] = memorycontract.UpdateV2Output(row)
 	}
 	return protocol.NewPageWithCursor(values, page.NextCursor)
 }
 
-func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV1Input) protocol.CallPluginRequest {
+func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV2Input) protocol.CallPluginRequest {
 	r.t.Helper()
-	request, err := memoryQuery(r, memorycontract.ListV1Input{})
+	request, err := memoryQuery(r, memorycontract.ListV2Input{})
 	if err != nil {
 		r.t.Fatal(err)
 	}
@@ -74,19 +74,19 @@ func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddV1Input) protocol
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.AddV1Method, string(encoded)
+	request.Method, request.Input = memorycontract.AddV2Method, string(encoded)
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.UpdateV1Output {
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.UpdateV2Output {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {
 		r.t.Fatal(reply.Failure)
 	}
-	var result memorycontract.AddV1Output
+	var result memorycontract.AddV2Output
 	if err := json.Unmarshal([]byte(reply.Output), &result); err != nil {
 		r.t.Fatal(err)
 	}
-	item := memorycontract.UpdateV1Output(result.Item)
+	item := memorycontract.UpdateV2Output(result.Item)
 	return &item
 }

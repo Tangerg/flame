@@ -7,6 +7,15 @@ configuration. It supplies a captured conversation and the actual compaction fac
 the backend decides whether extraction and curation are due. Publication uses the
 same watermark compare-and-set and human-review invariants as every other write.
 
+Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
+or explicitly reactivating a record advances that revision; derived embeddings
+and unchanged edits do not. Update, review and deletion require the caller's
+observed `ExpectedRevision`. A stale command is refused before changing data,
+while replay of an acknowledged command returns its original receipt. The
+published item operations use `v2`; the former methods are removed. The private
+schema requires revisions and refuses older data directories without conversion.
+Retain the old directory separately and open a fresh directory for this build.
+
 The installed stdio process opens only `PLUGIN_DATA/memory.db`, under an exclusive
 process lease. Its local declaration binds `memory-provider` to the `memory`
 server and export with the exact [public consumer contract](../../packages/go-sdk/plugin/memory/README.md). The first-party and independent backends bind this same published contract; changing an implementation module does not redefine its schemas. Multiple candidates may be enabled; product composition explicitly

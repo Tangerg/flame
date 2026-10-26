@@ -59,7 +59,7 @@ func TestManagedMemoryToolUsesCapturedWorkspaceWithoutAnEmbeddingRole(t *testing
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
+	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: fact}), "prepare-fact")
 	if item.Status != "active" {
 		t.Fatal("human-created fact was not active")
 	}

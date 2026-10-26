@@ -137,8 +137,12 @@ export function MemoryReport({
                             disabled={disabled}
                             onClick={() =>
                               command(
-                                "flame.memory/review.v1",
-                                { ID: item.ID, Decision: "approve" },
+                                "flame.memory/review.v2",
+                                {
+                                  ID: item.ID,
+                                  ExpectedRevision: item.Revision,
+                                  Decision: "approve",
+                                },
                                 t("command.approve", { id: item.ID }),
                               )
                             }
@@ -152,8 +156,12 @@ export function MemoryReport({
                             disabled={disabled}
                             onClick={() =>
                               command(
-                                "flame.memory/review.v1",
-                                { ID: item.ID, Decision: "reject" },
+                                "flame.memory/review.v2",
+                                {
+                                  ID: item.ID,
+                                  ExpectedRevision: item.Revision,
+                                  Decision: "reject",
+                                },
                                 t("command.reject", { id: item.ID }),
                               )
                             }
@@ -181,8 +189,12 @@ export function MemoryReport({
                                   : t("action.pin"),
                                 onSelect: () =>
                                   command(
-                                    "flame.memory/update.v1",
-                                    { ID: item.ID, Pinned: !item.Pinned },
+                                    "flame.memory/update.v2",
+                                    {
+                                      ID: item.ID,
+                                      ExpectedRevision: item.Revision,
+                                      Pinned: !item.Pinned,
+                                    },
                                     item.Pinned
                                       ? t("command.unpin", { id: item.ID })
                                       : t("command.pin", { id: item.ID }),

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
@@ -46,6 +47,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 			day        TEXT    NOT NULL DEFAULT '',
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
+			revision   INTEGER NOT NULL CHECK (revision BETWEEN 1 AND %[11]d),
 			-- Search-owned derived cache. embedding_space identifies the exact
 			-- vector space that produced the content vector; both values are empty
 			-- until a configured embedder lazily fills them.
@@ -67,6 +69,7 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 			agentmemory.StatusActive,
 			agentmemory.StatusPending,
 			agentmemory.StatusRejected,
+			exactint.Maximum,
 		),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
 			ON agent_memory_items(scope, project)`,

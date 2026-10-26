@@ -1225,7 +1225,7 @@ for await (const line of lines) {
       expect(await readInstalledMemory(client, "project", workspace.path)).toContainEqual(created);
     } finally {
       await activateManagedOwner("memory");
-      if (created) await deleteInstalledMemory(client, created.id);
+      if (created) await deleteInstalledMemory(client, created.id, created.revision);
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
     }
@@ -2146,7 +2146,7 @@ for await (const line of lines) {
       streamController.signal,
     );
     const events = subscription.events[Symbol.asyncIterator]();
-    let memoryId: string | undefined;
+    let memoryRecord: Awaited<ReturnType<typeof addInstalledMemory>> | undefined;
 
     try {
       const added = await callAfterCommitLoss("plugins.call", (faultClient) =>
@@ -2156,7 +2156,7 @@ for await (const line of lines) {
           content: "agent-memory replay cutpoint",
         }),
       );
-      memoryId = added.id;
+      memoryRecord = added;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2169,10 +2169,12 @@ for await (const line of lines) {
       const updated = await callAfterCommitLoss("plugins.call", (faultClient) =>
         updateInstalledMemory(faultClient, {
           ID: added.id,
+          ExpectedRevision: added.revision,
           Content: "agent-memory replay cutpoint updated",
           Pinned: true,
         }),
       );
+      memoryRecord = updated;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2190,9 +2192,9 @@ for await (const line of lines) {
       });
 
       await callAfterCommitLoss("plugins.call", (faultClient) =>
-        deleteInstalledMemory(faultClient, added.id),
+        deleteInstalledMemory(faultClient, added.id, updated.revision),
       );
-      memoryId = undefined;
+      memoryRecord = undefined;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2204,7 +2206,10 @@ for await (const line of lines) {
         ).data,
       ).toEqual([]);
     } finally {
-      if (memoryId) await deleteInstalledMemory(client, memoryId).catch(() => undefined);
+      if (memoryRecord)
+        await deleteInstalledMemory(client, memoryRecord.id, memoryRecord.revision).catch(
+          () => undefined,
+        );
       streamController.abort();
       await events.return?.();
     }
@@ -4216,6 +4221,7 @@ for await (const line of lines) {
 
     const updated = await updateInstalledMemory(client, {
       ID: project.id,
+      ExpectedRevision: project.revision,
       Content: "project memory marker updated",
       Pinned: true,
     });
@@ -4238,15 +4244,17 @@ for await (const line of lines) {
         }),
       ],
     });
-    await expect(reviewInstalledMemory(client, project.id, "approve")).rejects.toSatisfy(
+    await expect(
+      reviewInstalledMemory(client, project.id, updated.revision, "approve"),
+    ).rejects.toSatisfy(
       (error: unknown) => error instanceof OperationFailure && error.code === "not_pending",
     );
 
-    await deleteInstalledMemory(client, project.id);
+    await deleteInstalledMemory(client, project.id, updated.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });
-    await deleteInstalledMemory(client, user.id);
+    await deleteInstalledMemory(client, user.id, user.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });

@@ -119,11 +119,11 @@ func (a *AgentMemoryStore) autoItems(ctx context.Context, project string) ([]age
 func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item) (bool, error) {
 	result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
 		`INSERT OR IGNORE INTO agent_memory_items(
-			id, scope, project, content, digest, origin, status, pinned, session_id, day, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, scope, project, content, digest, origin, status, pinned, session_id, day, created_at, updated_at, revision
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		item.ID().String(), item.Scope().String(), item.Project(), item.Content(), agentmemory.Digest(item.Content()),
 		item.Origin().String(), item.Status().String(), boolToInt(item.Pinned()), item.SessionID(), item.Day(),
-		item.CreatedAt().UnixNano(), item.UpdatedAt().UnixNano())
+		item.CreatedAt().UnixNano(), item.UpdatedAt().UnixNano(), item.Revision())
 	if err != nil {
 		return false, fmt.Errorf("sqlite: insert agent memory item: %w", err)
 	}
@@ -134,7 +134,7 @@ func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item
 	return inserted == 1, nil
 }
 
-const agentMemoryItemColumns = `id, scope, project, content, origin, status, pinned, session_id, day, created_at, updated_at`
+const agentMemoryItemColumns = `id, scope, project, content, origin, status, pinned, session_id, day, created_at, updated_at, revision`
 
 func scanItem(row scanRow) (agentmemory.Item, error) {
 	var (
@@ -145,7 +145,7 @@ func scanItem(row scanRow) (agentmemory.Item, error) {
 		createdAt, updatedAt              int64
 	)
 	if err := row.Scan(&rawID, &scopeText, &snapshot.Project, &snapshot.Content, &originText, &statusText,
-		&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt); err != nil {
+		&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.Revision); err != nil {
 		return agentmemory.Item{}, fmt.Errorf("sqlite: scan agent memory item: %w", err)
 	}
 	if err := decodeItemSnapshot(&snapshot, rawID, scopeText, originText, statusText, pinned, createdAt, updatedAt); err != nil {
@@ -231,7 +231,7 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 			blob                              []byte
 		)
 		if scanErr := rows.Scan(&rawID, &scopeText, &snapshot.Project, &snapshot.Content, &originText, &statusText,
-			&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.EmbeddingSpace, &blob); scanErr != nil {
+			&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.Revision, &snapshot.EmbeddingSpace, &blob); scanErr != nil {
 			return nil, fmt.Errorf("sqlite: scan agent memory item: %w", scanErr)
 		}
 		if err := decodeItemSnapshot(&snapshot, rawID, scopeText, originText, statusText, pinned, createdAt, updatedAt); err != nil {
@@ -314,7 +314,7 @@ func (a *AgentMemoryStore) get(ctx context.Context, id agentmemory.ItemID) (agen
 	return item, true, nil
 }
 
-func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
+func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
 	err := sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.get(ctx, id)
@@ -324,7 +324,7 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 		if !found {
 			return agentmemory.ErrNotFound
 		}
-		change, err := current.Edit(content, pinned, now)
+		change, err := current.Edit(expectedRevision, content, pinned, now)
 		if err != nil {
 			return err
 		}
@@ -344,7 +344,7 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 	return updated, nil
 }
 
-func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, decision agentmemory.ReviewDecision, now time.Time) error {
+func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, decision agentmemory.ReviewDecision, now time.Time) error {
 	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		current, found, err := a.get(ctx, id)
 		if err != nil {
@@ -353,13 +353,13 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, de
 		if !found {
 			return agentmemory.ErrNotFound
 		}
-		replacement, err := current.Review(decision, now)
+		replacement, err := current.Review(expectedRevision, decision, now)
 		if err != nil {
 			return err
 		}
 		result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
-			`UPDATE agent_memory_items SET status = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
-			replacement.Status().String(), replacement.UpdatedAt().UnixNano(), id.String())
+			`UPDATE agent_memory_items SET status = ?, updated_at = ?, revision = ? WHERE id = ? AND status = 'pending'`,
+			replacement.Status().String(), replacement.UpdatedAt().UnixNano(), replacement.Revision(), id.String())
 		if err != nil {
 			return fmt.Errorf("sqlite: review agent memory item: %w", err)
 		}
@@ -391,7 +391,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 	return nil
 }
 
-func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) error {
+func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64) error {
 	return sqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
 		item, found, err := a.get(ctx, id)
 		if err != nil {
@@ -400,7 +400,7 @@ func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) er
 		if !found {
 			return agentmemory.ErrNotFound
 		}
-		if err := item.ValidateVisible(); err != nil {
+		if err := item.ValidateRemoval(expectedRevision); err != nil {
 			return err
 		}
 		result, err := sqlite.Connection(ctx, a.db).ExecContext(ctx,
@@ -523,7 +523,7 @@ func (a *AgentMemoryStore) replaceItem(
 		SET content = ?, digest = ?, origin = ?, status = ?, pinned = ?,
 			session_id = ?, day = ?,
 			embedding_space = CASE WHEN ? THEN '' ELSE embedding_space END,
-			embedding = CASE WHEN ? THEN x'' ELSE embedding END, updated_at = ?
+			embedding = CASE WHEN ? THEN x'' ELSE embedding END, updated_at = ?, revision = ?
 		WHERE id = ?`,
 		item.Content(),
 		agentmemory.Digest(item.Content()),
@@ -535,6 +535,7 @@ func (a *AgentMemoryStore) replaceItem(
 		discardEmbedding,
 		discardEmbedding,
 		item.UpdatedAt().UTC().UnixNano(),
+		item.Revision(),
 		item.ID().String(),
 	)
 	if err != nil {

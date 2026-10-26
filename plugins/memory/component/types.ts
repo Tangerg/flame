@@ -1,12 +1,12 @@
 import { type MutationPromise } from "@flame/runtime-client";
 import { type MethodOutputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
-export type MemoryItem = MethodOutputs["flame.memory/list.v1"]["Rows"][number];
-export type MemoryPage = MethodOutputs["flame.memory/list.v1"];
+export type MemoryItem = MethodOutputs["flame.memory/list.v2"]["Rows"][number];
+export type MemoryPage = MethodOutputs["flame.memory/list.v2"];
 export type MutationName =
-  | "flame.memory/add.v1"
-  | "flame.memory/update.v1"
-  | "flame.memory/delete.v1"
-  | "flame.memory/review.v1";
+  | "flame.memory/add.v2"
+  | "flame.memory/update.v2"
+  | "flame.memory/delete.v2"
+  | "flame.memory/review.v2";
 export type Scope = "project" | "user";
 export type Accepted = {
   page: MemoryPage;

@@ -125,7 +125,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		}
 		request.Contract = memorycontract.CapabilityJSON
 		request.Contribution = "memory-provider"
-		request.Method = memorycontract.AddV1Method
+		request.Method = memorycontract.AddV2Method
 		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
 	}
 	if name == "usagereports" {
@@ -169,20 +169,20 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if !selected {
 			t.Fatal("restart replaced the selected independent provider")
 		}
-		request.Method = memorycontract.ListV1Method
+		request.Method = memorycontract.ListV2Method
 		request.Input = `{"Scope":"user","CWD":"","Cursor":""}`
 		reply, err := host.CallPlugin(t.Context(), request, protocol.PluginCallOptions{})
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read independent Memory: %+v, %v", reply, err)
 		}
-		var page memorycontract.ListV1Output
+		var page memorycontract.ListV2Output
 		if err := json.Unmarshal([]byte(reply.Output), &page, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
 		if len(page.Rows) != 1 || page.Rows[0].Content != "independent author fact" {
 			t.Fatalf("recovery changed the private business result: %+v", page)
 		}
-		var added memorycontract.AddV1Output
+		var added memorycontract.AddV2Output
 		if err := json.Unmarshal([]byte(original.Output), &added, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}

@@ -82,14 +82,14 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 			return rpc.AddResult{Item: item.Snapshot(), Changed: changed}, err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
-			item, err := review.Update(ctx, input.ID, input.Content, input.Pinned)
+			item, err := review.Update(ctx, input.ID, input.ExpectedRevision, input.Content, input.Pinned)
 			return item.Snapshot(), err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Delete(ctx, input.ID)
+			return rpc.Ack{}, review.Delete(ctx, input.ID, input.ExpectedRevision)
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Review, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Review(ctx, input.ID, input.Decision)
+			return rpc.Ack{}, review.Review(ctx, input.ID, input.ExpectedRevision, input.Decision)
 		}),
 		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
 			input := command.Input

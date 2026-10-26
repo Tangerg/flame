@@ -45,7 +45,7 @@ async function openMemory() {
   const settle = vi.fn<(request: CallPluginRequest, key: string) => Promise<CallPluginResponse>>(
     async (request) => ({
       output: JSON.stringify(
-        request.method === "flame.memory/add.v1"
+        request.method === "flame.memory/add.v2"
           ? ({
               Item: {
                 ...VISUAL_MEMORY_PAGE.Rows[1]!,
@@ -53,8 +53,8 @@ async function openMemory() {
                 Content: "Keep my unsaved memory draft.",
               },
               Changed: true,
-            } satisfies MemoryOutputs["flame.memory/add.v1"])
-          : request.method === "flame.memory/update.v1"
+            } satisfies MemoryOutputs["flame.memory/add.v2"])
+          : request.method === "flame.memory/update.v2"
             ? VISUAL_MEMORY_PAGE.Rows[1]
             : {},
       ),
@@ -63,7 +63,7 @@ async function openMemory() {
   const original = runtime.plugins.call;
   let count = 0;
   const call = vi.spyOn(runtime.plugins, "call").mockImplementation((request, options) => {
-    if (request.method === "flame.memory/list.v1") return original(request, options);
+    if (request.method === "flame.memory/list.v2") return original(request, options);
     const key = `memory-command-${++count}`;
     return mutationResult((key) => settle(request, key), key);
   });
@@ -259,7 +259,7 @@ it.each(["empty", "unavailable"] as const)(
     const { call } = await openMemory();
     const admitted = call.getMockImplementation()!;
     call.mockImplementation((request, options) =>
-      request.method === "flame.memory/list.v1"
+      request.method === "flame.memory/list.v2"
         ? ((state === "empty"
             ? Promise.resolve({ output: JSON.stringify({ ...VISUAL_MEMORY_PAGE, Rows: [] }) })
             : Promise.reject(new Error("Memory catalog is unavailable."))) as never)
@@ -382,9 +382,9 @@ it("names the captured target and keeps editor and record feedback apart", async
   await within(catalog()).findByText(`Edit ${active.ID} · confirmed.`);
   expect(screen.queryByRole("region", { name: "Edit memory" })).toBeNull();
   expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual([
-    { ID: active.ID, Content: "Keep my edited content." },
-    { ID: pending.ID, Decision: "approve" },
-    { ID: active.ID, Content: "Keep my edited content." },
+    { ID: active.ID, ExpectedRevision: active.Revision, Content: "Keep my edited content." },
+    { ID: pending.ID, ExpectedRevision: pending.Revision, Decision: "approve" },
+    { ID: active.ID, ExpectedRevision: active.Revision, Content: "Keep my edited content." },
   ]);
 });
 
@@ -443,7 +443,7 @@ it("settles authoring before the catalog read and preserves a later focus choice
   const admitted = call.getMockImplementation()!;
   const refresh = Promise.withResolvers<CallPluginResponse>();
   call.mockImplementation((request, options) =>
-    request.method === "flame.memory/list.v1"
+    request.method === "flame.memory/list.v2"
       ? (refresh.promise as never)
       : admitted(request, options),
   );
@@ -469,7 +469,7 @@ it("keeps known results visible without a catalog and retires notices with their
   await within(catalog()).findByText(`Approve ${pending.ID} · confirmed.`);
   const admitted = call.getMockImplementation()!;
   call.mockImplementation((request, options) =>
-    request.method === "flame.memory/list.v1"
+    request.method === "flame.memory/list.v2"
       ? (Promise.reject(new Error("Memory catalog is unavailable.")) as never)
       : admitted(request, options),
   );
@@ -480,7 +480,7 @@ it("keeps known results visible without a catalog and retires notices with their
     output: JSON.stringify({
       Item: { ...active, Scope: "user", Content: "Keep my unsaved memory draft." },
       Changed: true,
-    } satisfies MemoryOutputs["flame.memory/add.v1"]),
+    } satisfies MemoryOutputs["flame.memory/add.v2"]),
   });
   const { editor } = startDraft();
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
@@ -545,7 +545,7 @@ it("closes a submitted draft only after its own command succeeds", async () => {
   const { add, editor } = startDraft();
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
   await within(catalog()).findByText("Add project memory · confirmed.");
-  expect(settle.mock.calls[0]![0].method).toBe("flame.memory/add.v1");
+  expect(settle.mock.calls[0]![0].method).toBe("flame.memory/add.v2");
   expect(JSON.parse(settle.mock.calls[0]![0].input)).toMatchObject({
     Content: "Keep my unsaved memory draft.",
   });
@@ -587,12 +587,20 @@ it("distinguishes a record pin from saving content for the same memory", async (
   fireEvent.click(within(editor).getByRole("button", { name: "Save" }));
   await waitFor(() => expect(screen.queryByRole("region", { name: "Edit memory" })).toBeNull());
   expect(settle.mock.calls.map(([request]) => request.method)).toEqual([
-    "flame.memory/update.v1",
-    "flame.memory/update.v1",
+    "flame.memory/update.v2",
+    "flame.memory/update.v2",
   ]);
   expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual([
-    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, Pinned: false },
-    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, Content: "Keep my edited content." },
+    {
+      ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID,
+      ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision,
+      Pinned: false,
+    },
+    {
+      ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID,
+      ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision,
+      Content: "Keep my edited content.",
+    },
   ]);
 });
 
@@ -623,7 +631,7 @@ it.each(["editor", "record"] as const)(
       "memory-command-1",
     ]);
     expect(
-      call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v1"),
+      call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v2"),
     ).toHaveLength(1);
     expect(screen.queryByRole("region", { name: "Add memory" }) !== null).toBe(source === "record");
     expect(content.value).toBe("Keep my unsaved memory draft.");
@@ -636,7 +644,7 @@ it("requires confirmation for the captured memory and excludes another form", as
   fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
   expect(settle).not.toHaveBeenCalled();
   expect(
-    call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v1"),
+    call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v2"),
   ).toHaveLength(0);
   const confirmation = screen.getByRole("region", { name: "Confirm memory deletion" });
   expect(confirmation.textContent).toContain(VISUAL_MEMORY_PAGE.Rows[1]!.Content);
@@ -647,7 +655,7 @@ it("requires confirmation for the captured memory and excludes another form", as
   fireEvent.click(cancel);
   expect(settle).not.toHaveBeenCalled();
   expect(
-    call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v1"),
+    call.mock.calls.filter(([request]) => request.method !== "flame.memory/list.v2"),
   ).toHaveLength(0);
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   await waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -658,9 +666,10 @@ it("requires confirmation for the captured memory and excludes another form", as
   await within(catalog()).findByText(`Delete ${active.ID} · confirmed.`);
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   expect(settle).toHaveBeenCalledOnce();
-  expect(settle.mock.calls[0]![0]).toMatchObject({ method: "flame.memory/delete.v1" });
+  expect(settle.mock.calls[0]![0]).toMatchObject({ method: "flame.memory/delete.v2" });
   expect(JSON.parse(settle.mock.calls[0]![0].input)).toEqual({
     ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID,
+    ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision,
   });
 });
 
@@ -683,7 +692,7 @@ it("retains a deletion target until its original command is confirmed", async ()
   expect(screen.queryByRole("region", { name: "Confirm memory deletion" })).toBeNull();
   expect(settle.mock.calls.map(([, key]) => key)).toEqual(["memory-command-1", "memory-command-1"]);
   expect(settle.mock.calls.map(([request]) => JSON.parse(request.input))).toEqual([
-    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID },
-    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID },
+    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision },
+    { ID: VISUAL_MEMORY_PAGE.Rows[1]!.ID, ExpectedRevision: VISUAL_MEMORY_PAGE.Rows[1]!.Revision },
   ]);
 });

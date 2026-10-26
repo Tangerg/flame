@@ -107,7 +107,7 @@ func (a *app) AddAgentMemory(argument string) error {
 			if content == "" {
 				return errors.New("memory content is empty")
 			}
-			return a.addAgentMemory(&target, memory.AddV1Input{Scope: string(target.Scope), CWD: target.Workspace, Content: content}, complete)
+			return a.addAgentMemory(&target, memory.AddV2Input{Scope: string(target.Scope), CWD: target.Workspace, Content: content}, complete)
 		},
 	})
 	return nil
@@ -141,7 +141,7 @@ func (a *app) EditAgentMemory(argument string) error {
 					complete(nil)
 					return nil
 				}
-				return a.updateAgentMemory(&target, memory.UpdateV1Input{ID: item.ID, Content: &content}, "updating agent memory "+item.ID, complete)
+				return a.updateAgentMemory(&target, memory.UpdateV2Input{ID: item.ID, ExpectedRevision: item.Revision, Content: &content}, "updating agent memory "+item.ID, complete)
 			},
 		})
 	})
@@ -164,7 +164,7 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 			a.message("agent memory is already " + state + " · " + item.ID)
 			return
 		}
-		if err := a.updateAgentMemory(&target, memory.UpdateV1Input{ID: item.ID, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
+		if err := a.updateAgentMemory(&target, memory.UpdateV2Input{ID: item.ID, ExpectedRevision: item.Revision, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
 			a.message(err.Error())
 		}
 	})
@@ -212,7 +212,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 			return err
 		}
 		if found {
-			a.reviewAgentMemory(nil, input.ID, decision)
+			a.reviewAgentMemory(nil, input.ID, input.ExpectedRevision, decision)
 			return nil
 		}
 	}
@@ -225,7 +225,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 			action+" agent memory",
 			action+" pending item "+item.ID+"?",
 			action,
-			func() { a.reviewAgentMemory(&target, item.ID, decision) },
+			func() { a.reviewAgentMemory(&target, item.ID, item.Revision, decision) },
 		)
 	})
 }
@@ -244,13 +244,13 @@ func (a *app) PrepareDeleteAgentMemory(argument string) error {
 			return err
 		}
 		if found {
-			a.deleteAgentMemory(nil, input.ID)
+			a.deleteAgentMemory(nil, input.ID, input.ExpectedRevision)
 			return nil
 		}
 	}
 	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target conversation.MemoryTarget, item memory.Item) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
-			a.deleteAgentMemory(&target, item.ID)
+			a.deleteAgentMemory(&target, item.ID, item.Revision)
 		})
 	})
 }
@@ -335,14 +335,14 @@ func parseAgentMemoryReference(argument string) (memory.Scope, string, error) {
 	return scope, identity, nil
 }
 
-func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.AddV1Input, complete func(error) bool) error {
+func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.AddV2Input, complete func(error) bool) error {
 	presentation := a.session.context
 	a.status.note("adding agent memory")
 	if !a.runApplicationOperation(agentMemoryOperation, false,
-		func(ctx context.Context) (memory.AddV1Output, error) {
+		func(ctx context.Context) (memory.AddV2Output, error) {
 			return workbench.ExecuteMemoryAddition(ctx, a.agentMemory, a.workbench, a.replayPolicy, request)
 		},
-		func(result memory.AddV1Output, err error) {
+		func(result memory.AddV2Output, err error) {
 			if err != nil {
 				message := "add agent memory failed: " + err.Error()
 				if a.workbench != nil {
@@ -375,7 +375,7 @@ func (a *app) addAgentMemory(target *conversation.MemoryTarget, request memory.A
 	return nil
 }
 
-func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memory.UpdateV1Input, label string, complete func(error) bool) error {
+func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memory.UpdateV2Input, label string, complete func(error) bool) error {
 	if request.Content != nil {
 		request.Content = new(*request.Content)
 	}
@@ -417,13 +417,13 @@ func (a *app) updateAgentMemory(target *conversation.MemoryTarget, request memor
 	return nil
 }
 
-func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, decision memory.ReviewDecision) {
+func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, expectedRevision uint64, decision memory.ReviewDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (string, error) {
-			err := workbench.ExecuteMemoryReview(ctx, a.agentMemory, a.workbench, a.replayPolicy, id, decision)
+			err := workbench.ExecuteMemoryReview(ctx, a.agentMemory, a.workbench, a.replayPolicy, id, expectedRevision, decision)
 			return id, err
 		},
 		func(reviewed string, err error) {
@@ -453,12 +453,12 @@ func (a *app) reviewAgentMemory(target *conversation.MemoryTarget, id string, de
 	}
 }
 
-func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string) {
+func (a *app) deleteAgentMemory(target *conversation.MemoryTarget, id string, expectedRevision uint64) {
 	presentation := a.session.context
 	a.status.note("deleting agent memory " + id)
 	if !a.runApplicationOperation(agentMemoryOperation, false,
 		func(ctx context.Context) (string, error) {
-			err := workbench.ExecuteMemoryDeletion(ctx, a.agentMemory, a.workbench, a.replayPolicy, id)
+			err := workbench.ExecuteMemoryDeletion(ctx, a.agentMemory, a.workbench, a.replayPolicy, id, expectedRevision)
 			return id, err
 		},
 		func(deleted string, err error) {

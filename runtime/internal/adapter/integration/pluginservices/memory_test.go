@@ -224,11 +224,11 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 		t.Fatal(err)
 	}
 	addContext := operation.Bind(t.Context(), "memory.add", "keyword")
-	addition, err := jsonvalue.Encode(memorycontract.AddV1Input{Scope: "project", CWD: project, Content: "keyword fact"})
+	addition, err := jsonvalue.Encode(memorycontract.AddV2Input{Scope: "project", CWD: project, Content: "keyword fact"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV1Method, Input: addition, Target: extension.Target{Scope: "installation", Reference: installation.ID().String()}})
+	publicAdd, err := calls.Prepare(t.Context(), plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: addition, Target: extension.Target{Scope: "installation", Reference: installation.ID().String()}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +239,7 @@ func TestMemoryMaintenanceCapturesBusinessInputAndRecoversBackendReceipts(t *tes
 	if err != nil || !found {
 		t.Fatalf("original add route: found=%v, %v", found, err)
 	}
-	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV1Method, Input: stored.Snapshot().Input, Target: stored.Snapshot().Invocation.Target}
+	request := plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "memory-provider", Contract: contract, Method: memorycontract.AddV2Method, Input: stored.Snapshot().Input, Target: stored.Snapshot().Invocation.Target}
 	installed, err := calls.Prepare(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)

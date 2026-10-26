@@ -261,8 +261,8 @@ export function Memory({ context }: { context: ComponentContext }) {
               disabled={locked}
               onClick={() =>
                 change(
-                  "flame.memory/delete.v1",
-                  { ID: edit.item.ID },
+                  "flame.memory/delete.v2",
+                  { ID: edit.item.ID, ExpectedRevision: edit.item.Revision },
                   t("command.delete", { id: edit.item.ID }),
                   "editor",
                 )
@@ -324,7 +324,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               onClick={() =>
                 edit.type === "add"
                   ? change(
-                      "flame.memory/add.v1",
+                      "flame.memory/add.v2",
                       {
                         Scope: scope,
                         CWD: cwd!,
@@ -334,9 +334,10 @@ export function Memory({ context }: { context: ComponentContext }) {
                       "editor",
                     )
                   : change(
-                      "flame.memory/update.v1",
+                      "flame.memory/update.v2",
                       {
                         ID: edit.item.ID,
+                        ExpectedRevision: edit.item.Revision,
                         Content: edit.content.trim(),
                       },
                       t("command.edit", { id: edit.item.ID }),

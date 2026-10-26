@@ -115,7 +115,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	fact := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "owned fact"}), "fact")
+	fact := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "owned fact"}), "fact")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		return r.endpoint.Invoke(t.Context(), method, input, delivery.Options{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -134,18 +134,18 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 			t.Fatal("independent candidate lost enablement")
 		}
 	}
-	reused := invoke(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "different fact"}), "fact")
+	reused := invoke(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "different fact"}), "fact")
 	if !errors.Is(reused.Failure, protocol.ErrIdempotencyConflict) {
 		t.Fatalf("private command identity conflict=%v", reused.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: false}, "disable")
-	unavailable := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
+	unavailable := memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("withdrawn owner remained callable=%v", unavailable.Failure)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *fact) {
 		t.Fatalf("reenable lost private facts=%+v", page)
 	}
@@ -192,7 +192,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 }
 
 func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
-	source, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v1", "response")
+	source, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v2", "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -202,7 +202,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
-	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "committed before transport loss"})
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "committed before transport loss"})
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "lost", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("withheld reply appeared successful")
@@ -222,18 +222,18 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	}
 	var add extension.MethodDescriptor
 	for _, method := range document.Methods {
-		if method.Name == "flame.memory/add.v1" {
+		if method.Name == "flame.memory/add.v2" {
 			add = method
 		}
 	}
 	if add.Kind != extension.Mutation || len(add.Input) == 0 || len(add.Output) == 0 {
-		t.Fatalf("original contract did not capture flame.memory/add.v1: %+v", document.Methods)
+		t.Fatalf("original contract did not capture flame.memory/add.v2: %+v", document.Methods)
 	}
 	requireManagedServiceChange(t, changed)
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-memory")
-	unavailable := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
+	unavailable := memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
 	if !errors.Is(unavailable.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled Memory remained callable: %v", unavailable.Failure)
 	}
@@ -250,7 +250,7 @@ func TestMemoryCommittedReplyLossReplaysFromItsSingleOwner(t *testing.T) {
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable-memory")
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	replay := mustMemoryAdd(r, request, "lost")
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *replay) {
 		t.Fatalf("lost reply replay repeated the mutation=%+v", page.Data)
 	}
