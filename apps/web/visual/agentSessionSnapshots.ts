@@ -306,7 +306,7 @@ function settledTool(
     startedAt: CREATED_AT,
     durationMillis: 120,
     finishedAt: "2026-07-31T08:00:00.120Z",
-    tool: { name, arguments: args, result },
+    tool: { name, category: toolCategoryForName(name), arguments: args, result },
   };
 }
 

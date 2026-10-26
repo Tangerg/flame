@@ -1,14 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Goal stop reasons now have a named keyboard reader and retain their native reading position through disclosure close/reopen. Native reason/source/return, objective cancellation and draft continuation qualify the change below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Recorded-tool task scenes now carry the Runtime category facts needed to qualify their real summaries and secondary arguments. Native evidence reading, Dock inspection, filtering and draft continuation qualify the inspected flows below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/goal-reason-reading-1026`. Goal stop-reason qualification uses frozen
-base `fac2a7db7c398a13779d044b3fd0f55ff767cce3`; see Goal stop-reason reading below.
+is on `codex/tool-evidence-flow-1026`. Recorded-tool evidence qualification uses
+frozen base `035ad3de24ce8dc68f332dc576ed1919d3d3f393`; see Canonical tool-evidence
+qualification below. Goal stop-reason implementation
+`cda3e1b6f7fd5709c7fd443b64121356f0b0826a` and receipt
+`035ad3de24ce8dc68f332dc576ed1919d3d3f393` remain published and retired.
 Loaded-plugin error implementation `1d8bfdd8084171aac8a330f18e1df840fee0229c` and
 receipt `fac2a7db7c398a13779d044b3fd0f55ff767cce3` remain published and retired.
 Find refresh implementation
@@ -10610,6 +10613,162 @@ evidence files and 19 screenshot digests, gzip SHA-256
 `0626ff7fb2400dbb3eeb538853af88fe22d2141355da7ba331fa49e44de75e1f`.
 Primary work, user data and references remain untouched. This documentation-only
 receipt changes no tested source.
+
+### Canonical tool-evidence qualification
+
+Actual Wails inspection of the existing tool-agentic scene showed its unknown
+workspace inspection with a complete Result but no Arguments disclosure or Copy
+arguments action. This was an acceptance-data defect: `settledTool` omitted the
+category which Runtime's `presentToolInvocation` always supplies. The real fold
+intentionally uses that category to expose unknown arguments and derive search
+identity. The same omission reduced glob and web-search summaries to tool names.
+It is not evidence of a production argument-loss defect.
+
+The fixture constructor now uses the already imported test-only
+`toolCategoryForName`, matching the existing narrative fixture. Three observable
+regressions exercise the production snapshot projection: complete unknown
+arguments/result, the glob pattern, and the web-search query. No production
+inference, alternate view model, wire change, renderer change, cache, preference,
+Runtime state, generated resource or migration is added. Explicit member closure
+was not redefined as retained reading; its existing lifecycle remains intact.
+
+#### Scope and coverage
+
+This review covers reading the final reply, expanding recorded calls, inspecting
+results and secondary parameters, local Find, related Files/Trajectory material,
+returning and continuing the same draft. Stack and conventions remain React,
+Base UI, shared @flame/ui, StyleX and semantic tokens. Recon uses AGENTS,
+PROJECT_RULES, DEVELOPMENT, Web/native/tool-results READMEs and the existing
+progress record. Better-interface's six owning skills informed this bounded
+review. The full product and every recorded renderer are outside the verdict.
+
+Read-only ZCode ToolSummaryRow and HeroUI Disclosure separate object identity,
+trigger and content. Arc Accordion retains its disclosure cue with reduced motion.
+The [Radix Collapsible documentation](https://www.radix-ui.com/primitives/docs/components/collapsible)
+confirms trigger/content and Enter/Space behavior; it supplies no descendant
+scroll-retention guarantee. Existing ChatGPT material/source and Ace Alpaca/Marketer
+composition studies above are inherited with their original limits; no new Ace
+image inspection is claimed. Flame's existing result, parameter and Dock owners
+already implement the relevant task separation, so no cosmetic restyling follows
+from this fixture correction. The three freshly read local reference files retain
+their original hashes.
+
+| Domain        | Evidence inspected                                                                                                            | Result                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Accessibility | Native named Result/Arguments readers, keyboard End/Home/Tab/Return, local Find Escape, Dock keyboard tabs and visible focus  | Inspected flow clear; VoiceOver speech and OS IME not verified               |
+| Layout        | Result before secondary Arguments, long wrapped workspace root, EN full window, ZH native half-window at 200%, DE 320 px Dock | Complete material and return controls remain reachable                       |
+| Writing       | Existing EN/ZH/DE result, parameter, filter, recovery and return labels compared with their actions                           | Clear; no new product copy                                                   |
+| Typography    | Native 14/18 px scenes, literal paths/markup, original prose, grouped summaries and bounded code                              | Clear for inspected material; no font or scale change                        |
+| Colors        | Native Orange/light, custom blue/dark and custom purple/warm surfaces; unchanged semantic palette/focus owners                | No visible state ambiguity; quantitative contrast was not remeasured         |
+| UI polish     | Chevron disclosure, explicit word wrap, filtered-empty recovery, reduced-motion end states and native resizing                | Clear within these tasks; timing and hover replay not exhaustively inspected |
+
+#### Findings
+
+No actionable production interface findings were established in the inspected
+flows. The ranked acceptance-data finding below is resolved; it does not turn the
+initial missing-arguments scene into a claimed production failure.
+
+| Severity | Domain                  | Location                              | Before                                                                                    | After                                                                                            | Why                                                                                         |
+| -------- | ----------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| MEDIUM   | Layout / evidence scope | `visual/agentSessionSnapshots.ts:309` | Missing category removes the unknown-tool parameter task and search object from the scene | The existing fixture mapping supplies the same classified invocation the Runtime presenter sends | A scene must exercise the actual summary/detail contract before it can support UI decisions |
+
+#### Verification
+
+The focused baseline passes **3 files / 19 tests**. Adding the three regressions
+against the original constructor yields **3 failed / 19 passed** in 2.24 s, exposing
+empty arguments and both lost search objects. The corrected constructor passes
+**5 files / 78 tests**, including real-fold projections, ToolInspector,
+ToolGroupMember and recorded-result behavior. Web typecheck, lint and changed-file
+Prettier checks pass. The serial candidate check and native build chain completes
+in **25.77 s**. No valid assertion or check was weakened. `git diff --check` passes.
+
+Four real Wails v3 beta.34 production binaries use the current native host with a
+private asset/name/scene overlay and immutable module artifacts. No zoom, input,
+native behavior or business owner is replaced. The baseline and three final
+scenes use the real Web fixture, fold and registered result components; all final
+scenes have no diagnostic DOM, input driver, geometry observer or polling hook.
+The existing window-chrome/font setup is the only private Web import.
+
+- EN/light/14 px/Orange: keyboard End reaches the 24th file in the Result; Tab and
+  Return open the secondary Arguments. Word wrap and End reach the complete
+  long workspace value and literal `<component>` note. A load-skill query
+  `invariant` survives inspecting the same call in Trajectory and switching back
+  to Files. Escape returns to that Result. The draft continues exactly as
+  `Continue after reviewing the captured evidence. Ready.`.
+- ZH/dark/18 px/custom blue/reduced motion: web summary names the original query
+  and two results. An unmatched local query shows the existing Close find
+  recovery; Escape restores Result focus and all recorded entries. Native Window
+  → Move & Resize → Left plus twenty Zoom In actions from Actual Size qualifies
+  the half-window at 200%. End/Home expose the final snippet and beginning;
+  material entry becomes explicit full-width Files. Its ordinary Close returns
+  to the Conversation and the same expanded evidence. This manual presentation
+  has no source-return anchor, and Escape in its file reader does not dismiss it;
+  no modal or source-return guarantee is inferred. The draft continues exactly
+  as `核对网页证据后继续。 已核对。` before restoring Actual Size.
+- DE/light/18 px/custom purple/warm/reduced motion: glob summary names
+  `runtime/**/*_test.go` and three hits. Actual Tab traversal reaches the
+  resizer, Home sets its exposed width from 660 to **320 px**, and native arrow
+  keys switch to Trajectory and back to Files. Filtering `atomicity` leaves
+  only its recorded path; Escape restores all three paths and Result focus.
+  The draft continues exactly as
+  `Nach der Prüfung weiterarbeiten. Geprüft.`.
+
+An initial Chinese sequence used indices from before fixture-sidebar collapse;
+it establishes no draft or action acceptance. A fresh-index typing attempt also
+left the 18 px Composer empty. Explicit native text paste then established and
+continued the verified draft. This preserves the earlier native input qualification;
+it is not a new diagnosis or an input fix. Similarly, clicking the DE splitter
+alone did not put it in keyboard focus; the accepted minimum-width path uses the
+observed Tab traversal. Every app exits through native Cmd+Q.
+
+A final fresh-instance zoom follow-up distinguishes the reader from its outer
+transcript position. After native zoom, Home alone can leave the first result
+title partly beneath the sticky group header. Clicking the native Result and
+reverse-Tab also reproduces the previously documented clicked-reader traversal
+limit; this is excluded from keyboard acceptance. Opening Find and pressing
+Escape through the product owner reveals the complete caption and first title;
+subsequent Shift+Tab reaches Copy result with a visible focus ring. No exact
+pixel retention or platform traversal fix is claimed by this batch.
+
+The **5,784** accepted non-Markdown source hashes are frozen at
+`cb543fd1f629bf9c35b2302b6c515fcdb2733b99a2edd50c97abb5ae846f28e9`.
+Each private asset set has **600** files. All **11** portable resource bytes remain
+unchanged. These are isolated recorded-material/UI tasks, not live tool execution,
+network requests, provider operation, filesystem writes or Run lifecycle tests.
+Send, Resume, Save and destructive commands were not invoked. Unchanged complete
+Web/shared UI/Runtime/CLI suites, make check-native, browser visual/performance
+suites, live credentials, other-platform GUI, RTL, 320 px whole-window width,
+quantitative contrast, VoiceOver speech and OS IME were not rerun or verified.
+No Claude CLI or subagents were used.
+
+| Goal CHECK        | Scoped result                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------- |
+| Typography        | Stable reading scale and complete original values in native 14/18 px scenes                     |
+| Whitespace        | Existing reading axis, grouped calls and bounded result/parameter frames remain coherent        |
+| Visual hierarchy  | Final answer, supporting calls, primary Result and secondary Arguments remain distinct          |
+| Color             | Existing semantic surfaces and custom primary colors retained; no unmeasured ratio claimed      |
+| Motion            | Reduced-motion scenes retain explicit disclosure/selection state; no timing award claim         |
+| Micro interaction | Find, Escape, keyboard reader, word wrap, Dock tab navigation and draft continuation qualified  |
+| Responsive        | Native half-window/200% and 320 px Dock qualified; other width combinations excluded above      |
+| Originality       | Approved Flame identity and existing workbench vocabulary retained without decorative additions |
+
+Verdict: **Approve for the inspected recorded-evidence tasks and fixture repair**.
+This is progress on the continuous goal, not acceptance of every renderer or a
+claim that the whole product meets an award-level/no-visible-improvement bar.
+Continue from fresh complete task evidence rather than expanding this fixture
+repair or inventing cosmetic findings.
+
+Owned-resource retirement is complete. All **10** recorded process IDs are dead,
+four exact bundles are unregistered, and the private root is absent. Cleanup removed
+three newly generated checkout output/cache paths, eight bundle-specific Library
+paths and four bundle temporary directories. All **36** output-presence baselines,
+three pre-existing output files, **11** resources, three read-only references and
+all **5,784** accepted non-Markdown sources are preserved byte-for-byte. A private
+in-memory archive retains **68** flat UTF-8 records and **25** screenshot digests;
+its verified gzip SHA-256 is
+`0d5b0f605aa3b03087bed97687caf70bedafe4d3b1454c66a687e6f6d3662598`.
+The primary checkout, user data, compiler caches, dependencies and unrelated
+processes remain untouched. Publication is pending the final main synchronization.
 
 ### Recorded Tool failure layout
 

@@ -9,6 +9,28 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it("retains unknown tool arguments for secondary inspection through the real fold", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-agentic"];
+    const recorded = snapshot.items.find((item) => item.id === "item_agentic_inspect_workspace");
+    if (recorded?.type !== "toolCall") throw new Error("Missing recorded workspace inspection");
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const call = view.toolCalls[recorded.id]!;
+
+    expect(call.args).not.toBe("");
+    expect(JSON.parse(call.args)).toEqual(recorded.tool.arguments);
+    expect(JSON.parse(call.result!)).toEqual(JSON.parse(recorded.tool.result as string));
+  });
+
+  it.each([
+    ["tool-search", "item_search_glob", "runtime/**/*_test.go"],
+    ["tool-remote", "item_remote_web_search", "sqlite wal checkpoint starvation"],
+  ] as const)("retains the searched object in %s summaries", (state, id, query) => {
+    const view = projectAgentSessionSnapshot(
+      projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]),
+    );
+    expect(view.toolCalls[id]?.fn).toBe(query);
+  });
+
   it("retains each recorded delegation's purpose in its projected label", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS.delegated;
     const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
