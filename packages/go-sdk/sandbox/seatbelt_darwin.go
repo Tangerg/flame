@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -128,12 +129,10 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 	cmd.Dir = realDir
 	cmd.Env = confined.Env
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error {
-		if cmd.Process == nil {
-			return os.ErrProcessDone
-		}
-		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-	}
+	// Cancellation and normal teardown share one signal. After a successful kill,
+	// Darwin may report EPERM while the group contains only exiting processes.
+	stop := sync.OnceValue(func() error { return killProcessGroup(cmd) })
+	cmd.Cancel = stop
 	cmd.WaitDelay = sandboxProcessWaitDelay
 	stdout, stderr := capture.NewWriter(MaxCommandOutputBytes), capture.NewWriter(MaxCommandOutputBytes)
 	cmd.Stdout = stdout
@@ -141,7 +140,10 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 
 	started := time.Now()
 	err = cmd.Run()
-	cleanupErr := killProcessGroup(cmd)
+	cleanupErr := stop()
+	if errors.Is(cleanupErr, os.ErrProcessDone) {
+		cleanupErr = nil
+	}
 	out := toolshell.Output{
 		Stdout:               outputWithMarker(stdout),
 		Stderr:               outputWithMarker(stderr),
@@ -163,10 +165,13 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 
 func killProcessGroup(cmd *exec.Cmd) error {
 	if cmd.Process == nil {
-		return nil
+		return os.ErrProcessDone
 	}
 	err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-	if err == nil || errors.Is(err, syscall.ESRCH) {
+	if errors.Is(err, syscall.ESRCH) {
+		return os.ErrProcessDone
+	}
+	if err == nil {
 		return nil
 	}
 	return fmt.Errorf("sandbox: stop command descendants: %w", err)

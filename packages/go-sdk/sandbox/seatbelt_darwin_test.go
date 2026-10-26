@@ -3,14 +3,42 @@
 package sandbox
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
+
+func TestSeatbeltRunnerSettlesCancellationAfterStoppingTheCommandGroup(t *testing.T) {
+	runner, err := platformRunner(t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name           string
+		parentDeadline bool
+	}{{"command timeout", false}, {"parent cancellation", true}} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			input := toolshell.Input{Cmd: "sleep 10 & wait", Timeout: 100 * time.Millisecond}
+			if test.parentDeadline {
+				ctx, cancel = context.WithTimeout(ctx, input.Timeout)
+				defer cancel()
+				input.Timeout = 0
+			}
+			out, err := runner.Run(ctx, t.TempDir(), input)
+			if err != nil || !out.CancellationObserved || out.ExitCode != -1 {
+				t.Fatalf("group cancellation did not settle its execution fact: %+v %v", out, err)
+			}
+		})
+	}
+}
 
 func TestSeatbeltRunnerConfinesWritesAndEnvironment(t *testing.T) {
 	workspace := t.TempDir()
