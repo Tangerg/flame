@@ -1,4 +1,5 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
+import { useId } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
@@ -64,6 +65,7 @@ export function DelegatedRunLink({
   const workspaceAccess = useWorkspace();
 
   const t = useT();
+  const summaryId = useId();
   const current = useWorkspaceSubagentRunId() === run.id;
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
   return (
@@ -84,7 +86,11 @@ export function DelegatedRunLink({
         </span>
         <span {...stylex.props(styles.detail)}>
           <RecordSummary
-            title={<span title={model.label}>{model.label}</span>}
+            title={
+              <span id={summaryId} title={model.label}>
+                {model.label}
+              </span>
+            }
             status={
               <span {...stylex.props(vocab.line, vocab.hold, toneInk[model.ink])}>
                 <StatusDot tone={model.dotTone} />
@@ -113,7 +119,7 @@ export function DelegatedRunLink({
       </Pressable>
       {model.cancelable && (
         <span {...stylex.props(styles.cancel, vocab.firstLine, typeStep.uiMd)}>
-          <SubagentStopButton run={run} />
+          <SubagentStopButton run={run} summaryId={summaryId} />
         </span>
       )}
     </div>

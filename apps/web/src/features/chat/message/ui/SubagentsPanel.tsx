@@ -1,7 +1,7 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { Activity, useLayoutEffect, useMemo, useRef } from "react";
+import { Activity, useId, useLayoutEffect, useMemo, useRef } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { useT } from "@/lib/i18n/index";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
@@ -87,6 +87,7 @@ export function SubagentsPanel() {
   const workspaceAccess = useWorkspace();
 
   const t = useT();
+  const summaryId = useId();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
@@ -165,7 +166,11 @@ export function SubagentsPanel() {
         )}
         {summary ? (
           <div {...stylex.props(styles.summary)}>
-            <span data-slot="subagent-identity" {...stylex.props(styles.name, typeStep.uiSm)}>
+            <span
+              id={summaryId}
+              data-slot="subagent-identity"
+              {...stylex.props(styles.name, typeStep.uiSm)}
+            >
               {summary.label}
             </span>
             <span {...stylex.props(vocab.line, toneInk[summary.ink], typeStep.uiXs)}>
@@ -187,7 +192,9 @@ export function SubagentsPanel() {
             {running > 0 && ` · ${t("subagents.running", { count: running })}`}
           </span>
         )}
-        {selected && summary?.cancelable && <SubagentStopButton run={selected.narrative.run} />}
+        {selected && summary?.cancelable && (
+          <SubagentStopButton run={selected.narrative.run} summaryId={summaryId} />
+        )}
       </header>
       <Activity key={entries[0]?.narrative.run.sessionId} mode={selectedId ? "hidden" : "visible"}>
         <ScrollArea className={stylex.props(styles.scroller, styles.overview).className}>

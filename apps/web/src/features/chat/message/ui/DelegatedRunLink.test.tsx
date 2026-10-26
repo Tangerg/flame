@@ -95,4 +95,70 @@ describe("DelegatedRunLink", () => {
     expect(actions.open).toHaveBeenLastCalledWith(testClient.workspace.access, "child-run", opener);
     actions.selected = null;
   });
+
+  it("identifies same-purpose cancellation targets after keyed row reordering", () => {
+    const first = run({ id: "child first 1" });
+    const second = run({ id: "child\tsecond 2" });
+    const rows = (runs: AgentRunView[]) =>
+      runs.map((entry, index) => (
+        <DelegatedRunLink
+          key={entry.id}
+          run={entry}
+          ordinal={index + 1}
+          siblingCount={runs.length}
+          taskLabel="Audit boundary"
+        />
+      ));
+    actions.open.mockClear();
+    const { rerender } = testClient.render(rows([first, second]));
+    const secondCancel = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Audit boundary · Sub-agent 2 of 2",
+    });
+    expect(
+      screen.getByRole("button", {
+        name: "Cancel this run",
+        description: "Audit boundary · Sub-agent 1 of 2",
+      }),
+    ).not.toBe(secondCancel);
+
+    rerender(rows([second, first]));
+    const current = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Audit boundary · Sub-agent 1 of 2",
+    });
+    expect(current).toBe(secondCancel);
+    fireEvent.click(current);
+    expect(actions.cancel).toHaveBeenLastCalledWith({
+      sessionId: "session-1",
+      runId: second.id,
+    });
+    expect(actions.open).not.toHaveBeenCalled();
+  });
+
+  it("keeps cancellation described by the current title without its progress detail", () => {
+    const view = (taskLabel: string) => (
+      <DelegatedRunLink run={run()} ordinal={1} siblingCount={1} taskLabel={taskLabel} />
+    );
+    const { rerender } = testClient.render(view("Audit old scope"));
+    const cancel = screen.getByRole("button", {
+      name: "Cancel this run",
+      description: "Audit old scope",
+    });
+
+    rerender(view("Audit current scope"));
+
+    expect(
+      screen.getByRole("button", {
+        name: "Cancel this run",
+        description: "Audit current scope",
+      }),
+    ).toBe(cancel);
+    expect(
+      screen.queryByRole("button", {
+        name: "Cancel this run",
+        description: /old scope|Reviewing tests/,
+      }),
+    ).toBeNull();
+  });
 });

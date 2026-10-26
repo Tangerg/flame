@@ -52,7 +52,9 @@ the same `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` is already an ancestor of
 the local UI branch. There are zero incoming commits; merge reports already up
 to date. This confirmation does not restart the UI verification chain or change
 the primary checkout. The latest repeated request is checked against a fresh
-remote fetch with the same result while completing the file-header and project-choice batches below.
+remote fetch with the same result while completing the file-header, project-choice
+and subagent-action batches below. Both local main and the freshly fetched remote
+still identify `e616e1a4c`; no incoming commits or new integration checks are needed.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -85,6 +87,8 @@ see Diff filtered-result arrival. Same-name project choices now expose complete
 folder paths and the exact current folder; see Project choice identity.
 Denied Tool records with captured arguments also retain inline inspection while
 empty denied records stay static; see Denied Tool argument reading.
+Subagent cancellation controls now reference their existing visible task identity;
+see Subagent cancellation target context.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -4576,6 +4580,102 @@ native binaries, immutable module artifacts and references. Post-retirement
 verification again matches all **5,784** accepted non-Markdown inputs and their
 source hash above. This documentation-only receipt changes no qualified product
 source. The continuous UI goal remains active.
+
+### Subagent cancellation target context
+
+Row and selected-reader cancellation controls now reference the existing visible
+identity with `aria-describedby`. `DelegatedRunLink` and `SubagentsPanel` each
+allocate one React ID at their rendering boundary; `SubagentStopButton` receives
+that relationship. The short localized action name, Tooltip, icon, admission
+rules and exact Session/Run command target retain their existing owners. No
+copied task text, extra state, effect, purpose parser or new interface copy is
+needed. The main transcript still presents a delegation's purpose once in its
+named group; its child action references the existing local child identity.
+
+The frozen original Wails scene exposes no description on any cancellation
+button, including the selected header reached by Tab. Three regression cases
+fail against that original relationship. The final tests distinguish identical
+purposes by their existing sibling ordinals, retain each keyed button through
+reordering, follow refreshed titles, and associate a newly selected nested task
+with its own identity. Progress text is excluded from the description.
+
+The reviewed flow is reply → subagent overview → selected task/action → another
+task → source return → continued Composer draft. The source and feedback review
+retain the scope documented above. The better-interface skills guide the six
+domains below; React best practices confirm this derived relationship needs no
+new synchronized state or effect. Read-only ZCode `ToolSummaryRow.tsx` informs
+keeping actions beside their primary identity/status; HeroUI's icon-only button
+example informs the concise explicit action name. Neither reference establishes
+Flame's cancellation policy or native description behavior. Existing
+ChatGPT/ArcUI/Radix/Ace research remains in place; no new award-level benchmark
+or full-product qualification is claimed.
+
+| Domain        | Inspected behavior                                                                                  | Scoped result                                                |
+| ------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Accessibility | Visible-summary ID references, computed button descriptions, native Tab/Shift+Tab and source return | Each inspected target resolves exactly one existing identity |
+| Layout        | Overview, selected header, resized window and 200% full-pane presentation                           | Existing identity and action remain reachable                |
+| Writing       | Short EN/ZH action names, purpose-once grouping and sibling labels                                  | No added labels or helper copy                               |
+| Typography    | Existing wrapping title at 14 px EN and 18 px ZH                                                    | No new type scale or clamp                                   |
+| Colors        | Light Orange and dark custom-yellow focus rings and Tooltips                                        | Existing tokens retained; no fresh contrast measurement      |
+| UI            | Pointer selection, keyboard action focus, index/source return and draft continuation                | Existing navigation owners retained; no new animation        |
+
+| Severity | Location                                                                               | Before                                                                          | After                                                              |
+| -------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| MEDIUM   | `chat/message/ui/SubagentStopButton.tsx`, `DelegatedRunLink.tsx`, `SubagentsPanel.tsx` | Repeated cancellation actions have no relationship to the visible task identity | Each action references its current row or selected-reader identity |
+
+Verification uses frozen base `a2a8533a043b7bd7e97042c36944452ddb3f6322`:
+
+- The five-command baseline passes in **12.85 s**, including **5 files / 52
+  tests** and the original native host. New regression assertions fail as
+  expected: **3 failures / 16 passes** in **3.99 s**. The candidate chain passes
+  in **16.03 s**, including **5 files / 54 tests**, private assets and both
+  candidate native hosts. Suites cover row/header rendering, transcript
+  integration, Run command ownership and canonical snapshots.
+- All eleven final checks pass in **33.12 s**: targeted formatting, Web
+  typecheck/lint, design system, chrome, styles, tokens, locales, resource
+  consistency, `make check-native` (**27.21 s**) and production plugin-module
+  linking. The eleven installed ESM resources remain unchanged. Existing native
+  linker warnings are recorded; no check is weakened or skipped.
+- EN/light/14 px/Orange and ZH/dark/18 px/custom yellow both qualify overview
+  selection, row and selected-header Tab focus, task switching, index return,
+  source entry and Escape return in the actual Wails app. Native pixels show the
+  action focus ring and Tooltip beside the correct current task. Passive DOM
+  reports resolve each tested description to exactly **one** ID, including the
+  new task after selection changes. Main-transcript child actions retain their
+  existing localized child name inside the named purpose group.
+- Twenty native Zoom In commands reach **720 × 450** CSS px in EN. Pointer
+  resizing reaches **1121 × 729** in ZH, followed by **560 × 364** at 200%.
+  Selected identity, cancellation focus and the full-pane source return remain
+  reachable. Escape first dismisses the action Tooltip; the following Escape
+  restores the exact main child opener. Actual Size restores the layout, then
+  the original drafts continue exactly as `Keep this subagent target draft.
+Continue after task review.` and `保留子任务操作草稿。 已核对目标，继续。` before Quit.
+
+CUA's AX text does not print computed descriptions. The regression queries and
+passive DOM observations qualify that relationship; native AX/pixels qualify
+focus, presentation and navigation. VoiceOver speech is not verified. Native
+cancellation is deliberately not invoked: the canonical isolated visual
+transport has no Run-cancel operation. Existing UI and command-owner tests cover
+exact targets, disconnected controls, terminal Runs and mismatched Sessions;
+these scenes do not establish live cancellation, provider Send or Runtime
+recovery. No fresh wheel-retention, IME, RTL, contrast or motion matrix is claimed.
+Paper and motion are off. No CSS, palette, type, protocol or persisted-data
+migration changes are required. All eight goal CHECK dimensions retain their
+existing scoped receipts; this semantic correction does not certify the whole
+product as complete.
+
+All seven owned processes are dead. The three exact native app registrations,
+seven new output/cache roots, six Library roots and three bundle temp roots are
+retired. All **39** output-presence baselines, **four** original file hashes,
+**18** Library baselines, **5,832** accepted non-Markdown inputs, **eleven**
+resources and **three** read-only references are preserved. The temporary root
+is absent. The verified in-memory gzip contains **62** UTF-8 records and **27**
+capture digests; SHA-256 is
+`4edaa2a4fec92f9c6a711a8d8fc73368295ea4a294e1a889fc291f26c51cd659`.
+The user's repeated explicit main-sync request freshly confirms both main refs
+at `e616e1a4c`, already contained in the owned branch, with zero incoming commits.
+Delivery remains local only; the primary checkout is untouched and the overall
+UI goal remains open.
 
 ### Explicit-main task return and index focus
 

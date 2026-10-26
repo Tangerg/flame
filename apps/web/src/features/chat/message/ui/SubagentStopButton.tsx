@@ -5,7 +5,13 @@ import { useT } from "@/lib/i18n/index";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { iconGlyph } from "@/ui/icons/index";
-export function SubagentStopButton({ run }: { run: Pick<AgentRunView, "id" | "sessionId"> }) {
+export function SubagentStopButton({
+  run,
+  summaryId,
+}: {
+  run: Pick<AgentRunView, "id" | "sessionId">;
+  summaryId: string;
+}) {
   const agentAccess = useAgent();
 
   const t = useT();
@@ -18,6 +24,7 @@ export function SubagentStopButton({ run }: { run: Pick<AgentRunView, "id" | "se
       round
       disabled={!available}
       aria-label={t("agent.runTree.action.cancel")}
+      aria-describedby={summaryId}
       onClick={() => agentAccess.cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
     />
   );

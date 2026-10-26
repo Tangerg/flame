@@ -120,6 +120,10 @@ same complete capture; no Tool is replayed to inspect it.
 Selected subagent readers keep the complete task purpose and sibling identity
 visible in their header. Overview rows retain their compact summaries; retained
 reading state, source navigation and return focus stay with the inspection owner.
+Row and selected-header cancellation actions reference their existing visible
+identity as their accessible description. Target changes and keyed reordering
+retain that relationship without copying task text; cancellation admission and
+the exact Session/Run command target retain their existing owners.
 
 Conversation Find follows rendered message changes while its query is open.
 Refreshes retain the selected occurrence in its message, rebuild current highlight

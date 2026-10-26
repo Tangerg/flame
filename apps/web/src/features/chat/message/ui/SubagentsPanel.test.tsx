@@ -523,11 +523,26 @@ it("explains unconfirmed effects for the selected terminal child without replaci
 
 it("cancels the currently selected child and disables mutations while disconnected", () => {
   material.rows = rows();
+  for (const [id, title] of [
+    ["delegate", "Audit child scope"],
+    ["nested", "Audit nested scope"],
+  ] as const) {
+    material.rows[0]!.facts.toolCalls[id] = {
+      id,
+      runId: "root",
+      name: "delegate_task",
+      fn: title,
+      args: "{}",
+      status: "ok",
+    };
+  }
   material.available = true;
   testClient.navigation.go({ session: "session" });
   openWorkspaceSubagentRun(testClient.workspace.access, "child");
   const { rerender } = testClient.render(<SubagentsPanel />);
-  fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Cancel this run", description: "Audit child scope" }),
+  );
   expect(material.cancel).toHaveBeenLastCalledWith({
     sessionId: "session",
     runId: "child",
@@ -535,16 +550,20 @@ it("cancels the currently selected child and disables mutations while disconnect
   const nested = material.rows[0]!.facts.delegatedRuns.nested![0]!;
   nested.run = { ...child, id: "nested", parentRunId: "child", spawnedByItemId: "nested" };
   act(() => openWorkspaceSubagentRun(testClient.workspace.access, "nested"));
-  fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Cancel this run", description: "Audit nested scope" }),
+  );
   expect(material.cancel).toHaveBeenLastCalledWith({
     sessionId: "session",
     runId: "nested",
   });
   material.available = false;
   rerender(<SubagentsPanel />);
-  expect(screen.getByRole("button", { name: "Cancel this run" }).hasAttribute("disabled")).toBe(
-    true,
-  );
+  expect(
+    screen
+      .getByRole("button", { name: "Cancel this run", description: "Audit nested scope" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
   material.available = true;
 });
 
