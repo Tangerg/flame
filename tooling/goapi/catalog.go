@@ -58,7 +58,7 @@ type publicGoField struct {
 }
 
 func loadPublicGoAPI(repository string) (publicGoAPI, error) {
-	configuration := &packages.Config{Dir: repository, Env: append(os.Environ(), "GOWORK="+filepath.Join(repository, "go.work")), Mode: packages.NeedModule | packages.NeedName | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedTypesSizes}
+	configuration := &packages.Config{Dir: repository, Env: append(os.Environ(), "GOWORK="+filepath.Join(repository, "go.work")), Mode: packages.NeedFiles | packages.NeedModule | packages.NeedName | packages.NeedImports | packages.NeedDeps | packages.NeedTypes | packages.NeedTypesSizes}
 	loaded, err := packages.Load(configuration, "github.com/Tangerg/flame/packages/go-sdk/...", runtimeModulePath, "github.com/Tangerg/flame/packages/local-runtime/...")
 	if err != nil {
 		return publicGoAPI{}, fmt.Errorf("load public Go packages: %w", err)
@@ -75,7 +75,7 @@ func loadPublicGoAPI(repository string) (publicGoAPI, error) {
 
 	api := publicGoAPI{Packages: make([]publicGoPackage, 0, len(loaded))}
 	for _, pkg := range loaded {
-		if pkg.Name == "main" || strings.Contains(pkg.PkgPath, "/internal/") || strings.HasSuffix(pkg.PkgPath, "/testsupport") {
+		if len(pkg.GoFiles) == 0 || pkg.Name == "main" || strings.Contains(pkg.PkgPath, "/internal/") || strings.HasSuffix(pkg.PkgPath, "/testsupport") {
 			continue
 		}
 		projection, err := projectPublicGoPackage(pkg)

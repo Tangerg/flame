@@ -8,10 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	schedulerpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
 
@@ -94,19 +93,19 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	contracts, err := schedulerpc.NewContracts()
+	contract, err := extension.ParseCapability([]byte(SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(schedulerpc.ListInput{})
+	input, err := json.Marshal(SchedulesListV1Input{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Capability.Identity().JSON()), Method: schedulerpc.List, Input: string(input), Target: capability.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: SchedulesListV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
-	var schedules schedulerpc.Page
+	var schedules SchedulesListV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &schedules); err != nil || len(schedules.Rows) != 0 {
 		t.Fatalf("default schedules: %+v, %v", schedules, err)
 	}
