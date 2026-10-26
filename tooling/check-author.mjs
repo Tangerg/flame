@@ -12,6 +12,32 @@ import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { run, root, buildShared, proxyEnvironment } from "./workspace.mjs";
 const scratch = await mkdtemp(join(tmpdir(), "flame-author-check-"));
+const loopbackProbe = `
+import net from "node:net";
+import { readFileSync } from "node:fs";
+const server = net.createServer(socket => socket.end("callback"));
+await new Promise((resolve, reject) => {
+  server.once("error", reject);
+  server.listen(0, "127.0.0.1", resolve);
+});
+const client = net.connect({host: "127.0.0.1", port: server.address().port});
+let body = "";
+client.on("data", chunk => body += chunk);
+await new Promise((resolve, reject) => {
+  client.once("end", resolve);
+  client.once("error", reject);
+});
+await new Promise(resolve => server.close(resolve));
+if (body !== "callback") throw new Error("loopback callback was lost");
+const external = net.connect({host: "203.0.113.1", port: 443});
+external.setTimeout(1000, () => external.destroy(new Error("external access was not denied")));
+const refusal = await new Promise(resolve => external.once("error", resolve));
+if (!["EPERM", "EACCES"].includes(refusal.code)) throw refusal;
+let sourceDenied = false;
+try { readFileSync(process.argv[1]); }
+catch (error) { sourceDenied = ["EPERM", "EACCES"].includes(error.code); }
+if (!sourceDenied) throw new Error("checkout source access was not denied");
+`;
 function isolated(policy, command, directory, env, expectedError) {
   // Pipes keep the sandbox from inheriting a repository-local redirected log
   // descriptor. Its source-read denial also applies to descriptor metadata.
@@ -114,9 +140,32 @@ try {
         "offline author verification requires the supported macOS network sandbox",
       );
     const policy = `(version 1) (allow default) (deny network*) (deny file-read* (subpath ${JSON.stringify(root)}))`;
-    if (!managed)
+    // SDK callback fixtures need local HTTP; generation and builds remain fully offline.
+    const callbackPolicy = `${policy}
+      (allow network-bind (local ip "localhost:*"))
+      (allow network-inbound (local ip "localhost:*"))
+      (allow network-outbound (remote ip "localhost:*"))`;
+    if (!managed) {
+      isolated(
+        callbackPolicy,
+        [
+          "node",
+          "--input-type=module",
+          "-e",
+          loopbackProbe,
+          join(root, "AGENTS.md"),
+        ],
+        project,
+        env,
+      );
       for (const command of ["test", "generate", "build"])
-        isolated(policy, ["go", command, "./..."], project, env);
+        isolated(
+          command === "test" ? callbackPolicy : policy,
+          ["go", command, "./..."],
+          project,
+          env,
+        );
+    }
     if (managed) {
       if (existsSync(join(project, "go.mod")))
         throw new Error(

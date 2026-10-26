@@ -53,8 +53,11 @@ author directories may contain spaces, Unicode and URL-reserved characters.
 
 `--offline` resolves Go artifacts from the prepared file proxy and verified Go
 cache with `GONOPROXY=none`, local toolchain and candidate-only `GONOSUMDB`. Missing
-materials fail. `make check-author` additionally denies network and checkout
+materials fail. `make check-author` additionally denies external network and checkout
 reads, empties build/module caches and runs test/generate/build using vendor.
+Go tests may use loopback HTTP for SDK callback fixtures. A sandbox probe verifies
+that local callbacks work while external connections and checkout reads stay denied;
+generation, builds and managed JavaScript checks retain the complete network denial.
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
 TypeScript-only exports have no Go module or DTO source prerequisite. They include
