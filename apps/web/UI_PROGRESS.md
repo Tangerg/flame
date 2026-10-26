@@ -89,6 +89,8 @@ Denied Tool records with captured arguments also retain inline inspection while
 empty denied records stay static; see Denied Tool argument reading.
 Subagent cancellation controls now reference their existing visible task identity;
 see Subagent cancellation target context.
+Remembered-rule removal now continues local keyboard focus into the remaining
+list or its empty context; see Rule removal and keyboard continuity.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -13908,6 +13910,118 @@ Verification for this surface (2026-10-21):
 - Complete `npm run check --workspace @flame/web` passed **386 files / 3,044 tests** and all subsequent checks in 189.43 seconds under Node 22.22.1. `make check-native` passed in 56.48 seconds. Main `bde826dbe` then supplied a Go catalog package-qualifier/caller/test rename across nine disjoint paths. All nine reviewed source hashes stayed stable; the native check passed again in 30.36 seconds and the final private native build in 9.32 seconds. The complete Web and independent shared UI/portable suites were not repeated after the Go-only update. No protocol, persisted-data, locale, dependency or installed-resource migration is required by this UI repair.
 - Final main-first integration retains `76f036114`, the 240-path Go plugin-SDK flattening. Its three generated contracts are structurally identical after substituting only the old/new Go SDK definition-reference prefix. UI, shared UI/icons and TypeScript Runtime-client sources do not change. The first integrated typecheck failed because primary had cleaned the shared outputs and omitted staging; no source workaround was added. After `make stage-web` (5.95 seconds), complete Web validation passed again (**386 files / 3,044 tests**, all remaining gates, 148.20 seconds), followed by native checks in 60.68 seconds and a private native build in 5.43 seconds. Actual new Wails host ZH/dark18/custom-blue query → project action focus/Tooltip → Escape/Tab → Settings Close passed over the exact same SDK-validated capture. All nine reviewed hashes remain stable. The earlier VoiceOver boundary still applies.
 - Cleanup completed: four native processes and both bounded CLI processes exited; the exact bundle was unregistered and its app, disposable homes/data, captures, overlays, prompts/reports, SDK-validator setup, logs and pointer were removed. Eleven newly created worktree output/cache paths and the unique bundle's Caches/WebKit paths passed preexistence, UID and birth-time guards before removal. Pre-existing shared UI Vite caches, installed dependencies, shared compiler/package caches, read-only references and all unrelated user work remain. The primary checkout's plugin-SDK relocation became the retained main commit above. Its integration acceptance root was also cleaned: one additional native process exited, its exact bundle was unregistered, and ten newly created output/cache paths plus its unique Caches/WebKit paths were removed under the same guards. The app, disposable data, captures, overlays, scripts, logs and pointer were removed; no owned acceptance root remains.
+
+### Rule removal and keyboard continuity
+
+`RulesRow` now retains the local keyboard destination when an accepted query
+update removes its focused control. It focuses the next remaining rule at that
+position, the preceding rule when the last record disappears, or the named rules
+context when none remain. A focused record that merely reorders stays focused;
+its current position determines a later removal destination. Clear all keeps its
+own control through partial updates and reaches the same empty context at the
+end. Later focus and hidden content keep their own destination.
+
+The list owns this presentation handoff. A DOM focus reference records the
+focused element and position; the layout effect acts only after that element
+disconnects while browser focus is at BODY and the existing ContentVisibility
+owner still presents the list. Explicit blur to another target releases the
+reference. One named, programmatically focusable group survives the existing
+DataView's populated/empty/error transitions and reuses SettingRow's visible
+label. Existing rule IDs, descriptions, pending controls, query projection,
+commands and Runtime approval policy retain their owners. No business state,
+async completion callback, timer, global focus listener, CSS or locale is added.
+
+The frozen original actual Wails app reproduces the gap: removing the focused
+first rule leaves three rules, focus at HTML/BODY and the next Tab at Clear all.
+The first private scene accidentally retained the canonical fixture gateway's
+no-op forget operation; those activation attempts establish no removal result.
+The corrected private overlay forwards only that test gateway method to the
+existing Runtime client. Four sample-shaped, disposable rule reads and forget
+responses then exercise the normal Agent command, query commit and repair flow
+over an isolated in-memory transport. Production fixtures and policy data are
+unchanged; no live Runtime rule or approval mode is modified.
+
+The complete flow is conversation draft → Settings → remembered rules → remove
+or clear → return → continue drafting. The source feedback's T19/T34 and
+better-accessibility's logical fallback guidance inform the scope. The existing
+MessageBlock retirement implementation supplies a local project precedent for
+restoring only disconnected owned focus. Read-only ZCode OffPeakTaskList confirms
+record-scoped action dispatch, and HeroUI's disabled ListBox example separates
+item identity and availability. Neither reference demonstrates asynchronous
+removal focus; Flame's native comparison and regressions supply that evidence.
+Existing ChatGPT/ArcUI/Radix/Ace research remains applicable, without a new
+product-wide or award-level benchmark claim.
+
+| Domain        | Evidence inspected                                                                                       | Scoped result                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Accessibility | Native removal, focus continuation, named empty context, later focus, visibility and reorder regressions | Original local position loss repaired                                 |
+| Layout        | Existing SettingsGroup/SettingRow, EN 200%, ZH resized and 200% review                                   | No new geometry or repeated title                                     |
+| Writing       | Current rule scope/subject, Forget/Clear all and empty copy                                              | Existing names and descriptions retained                              |
+| Typography    | EN 14 px and ZH 18 px with literal CJK/spaced paths                                                      | Existing wrapping and type system retained                            |
+| Colors        | Light Orange and dark custom-yellow focus indicators                                                     | Existing semantic tokens retained; fresh contrast ratios not measured |
+| UI            | Pointer entry, keyboard actions, scrolling, Settings Close and continued drafts                          | No new decorative surface or motion                                   |
+
+| Severity | Location                             | Before                                                                      | After                                                                | Why                                                                |
+| -------- | ------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| MEDIUM   | `features/approvals/ui/RulesRow.tsx` | Accepted removal disconnects the focused action without a local destination | Remaining rule or named empty context receives only that owned focus | Continue reviewing policy records without losing keyboard position |
+
+Verification uses base `06be7e46c7e1a725c1a0ab8ab832158cefd0e476`:
+
+- The original five-command chain passes **3 files / 15 tests** and the native
+  baseline in **11.90 s**. Correcting the private gateway requires only the
+  private asset rebuild (**2.51 s**), not a product change. Final new regressions
+  against the original component fail **5 / 11 cases**, with **6 passes**, in
+  **2.27 s**. An earlier identical five-failure run precedes a correction that
+  ensures the outside-focus test actually rerenders its query projection.
+- The candidate chain passes **3 files / 23 tests**, assets and both native hosts
+  in **15.08 s**. Cases cover next/preceding/empty destinations, Clear all's
+  partial updates, reordering, later outside focus, hidden content and command
+  rejection. Existing exact command-target and contextual-description assertions
+  remain. The first final gate catches an over-narrow DOM cast in typecheck.
+  Using HTMLElement for focus targets removes that cast; the corrected
+  **6.66 s** chain passes all 23 tests and rebuilds all **598** candidate files
+  byte-for-byte identically. The loaded native apps therefore retain those exact
+  accepted runtime assets; no runtime behavior is inferred from a type assertion.
+- All eleven corrected final checks pass in **44.36 s**, including Web format,
+  typecheck/lint, design system, chrome, styles, tokens, locales, resource
+  consistency, `make check-native` (**37.82 s**) and production module linkage.
+  The initial typecheck failure remains recorded; no assertion or check is
+  weakened. Installed resources stay unchanged. Existing chunk and native
+  duplicate-linker warnings remain non-failing.
+- EN/light/14 px/Orange qualifies keyboard removal of the first record into the
+  next and removal of the last into the preceding record. Twenty native Zoom In
+  commands reach **720 × 450** CSS px. Clear all of the remaining two rules lands
+  in the visible named empty context with its existing focus ring. Actual Size,
+  Settings Close and continued editing preserve exactly `Keep the rules review
+draft. Continue after rules review.` before Quit.
+- ZH/dark/18 px/custom yellow qualifies removal followed immediately by moving
+  to Settings search and entering `审批`; completion keeps that search focus and
+  three remaining records. Subsequent observed Tab traversal reaches Clear all,
+  so that activation qualifies bulk clearing and empty-context focus, not a
+  separate individual-removal case. Pointer resizing reaches **1121 × 729**;
+  twenty native Zoom In commands reach **560 × 364**. Native wheel reading
+  reaches the retained empty message beneath the compact Settings navigation.
+  This does not claim automatic focus reveal across zoom. Actual Size/Close and
+  continued editing preserve exactly `审批规则检查草稿。 已返回，继续编辑。` before Quit.
+
+Native acceptance covers disposable UI command responses, not live policy
+persistence, trust changes, provider execution or recovery. Failure, reorder,
+hidden-content and sole-last-rule cases have component coverage; they are not
+all separately repeated natively. VoiceOver speech, OS IME, RTL, other platforms,
+contrast measurements, full motion matrices, browser suites and performance
+benchmarks are not newly qualified. The eight goal CHECK dimensions retain their
+existing scoped receipts; the overall UI goal remains open.
+
+All **12** owned processes are dead and three exact native registrations are
+retired. Seven new output/cache roots, six Library roots and three bundle temp
+roots are removed. All **39** output-presence baselines, **four** original file
+hashes, **18** Library baselines, **5,832** accepted non-Markdown inputs,
+**eleven** installed resources and **three** read-only references are preserved.
+The temporary root is absent. The verified in-memory gzip contains **68** UTF-8
+records and **23** capture digests; SHA-256 is
+`42a76d84a3b8d866f9505a64e1ae129b900f11512d9a320f58105bae271085ca`.
+Delivery stays local on the owned UI branch. No push, main mutation or new main
+fetch is performed for this batch.
 
 ## Hooks scope and source identity
 
