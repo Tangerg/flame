@@ -1,4 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { screen } from "@testing-library/react";
 import { type AnyPlugin, type Host } from "dougong";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginProvider } from "@/extensions/host/PluginProvider";
@@ -27,7 +35,7 @@ describe("PluginProvider kernel ownership", () => {
   it("stops the owned kernel when the provider unmounts", async () => {
     const owned = host();
     mocks.startKernel.mockResolvedValue(owned);
-    const view = render(
+    const view = testClient.render(
       <PluginProvider plugins={[]}>
         <div>workspace</div>
       </PluginProvider>,
@@ -43,7 +51,7 @@ describe("PluginProvider kernel ownership", () => {
     const startup = Promise.withResolvers<Host>();
     const owned = host();
     mocks.startKernel.mockReturnValue(startup.promise);
-    const view = render(
+    const view = testClient.render(
       <PluginProvider plugins={[]}>
         <div>workspace</div>
       </PluginProvider>,
@@ -63,7 +71,7 @@ it("replaces only its owned plugin generation and waits for the injected success
   const initialPlugins: AnyPlugin[] = [];
   const successorPlugins: AnyPlugin[] = [];
   mocks.startKernel.mockResolvedValueOnce(first).mockReturnValueOnce(successor.promise);
-  const view = render(
+  const view = testClient.render(
     <PluginProvider plugins={initialPlugins}>
       <div>workspace</div>
     </PluginProvider>,
@@ -96,7 +104,7 @@ it("does not reuse readiness when the same plugin list is installed again", asyn
     .mockResolvedValueOnce(initialHost)
     .mockReturnValueOnce(intermediate.promise)
     .mockReturnValueOnce(successor.promise);
-  const view = render(
+  const view = testClient.render(
     <PluginProvider plugins={initialPlugins}>
       <div>workspace</div>
     </PluginProvider>,

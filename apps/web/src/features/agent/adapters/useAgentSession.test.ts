@@ -1,6 +1,14 @@
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { navigator } from "@/lib/navigation";
+import { createAgentGatewayFixture } from "@/test/agentOwners";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, waitFor } from "@testing-library/react";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
 import {
@@ -12,8 +20,7 @@ import {
   type RunRef,
 } from "@flame/runtime-client";
 import { agentTextInput } from "@/features/agent/domain/input";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+
 import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
@@ -56,12 +63,12 @@ beforeEach(async () => {
       sessions: { snapshot: async () => ({ items: [], runs: [], interrupts: [] }) },
       runs: { recoverCommands: async () => [] },
     }) as unknown as FlameClient;
-  navigator().go({ session: SID });
+  testClient.navigation.go({ session: SID });
 });
 
 afterEach(async () => {
-  useAgentStore.getState().dropSession(SID);
-  useAgentStore.getState().dropSession(SID_B);
+  testClient.agent.projection.store.getState().dropSession(SID);
+  testClient.agent.projection.store.getState().dropSession(SID_B);
 
   vi.restoreAllMocks();
 });
@@ -69,7 +76,7 @@ afterEach(async () => {
 describe("useAgentSession driver lifecycle", () => {
   it("holds a directly mounted session open before lifecycle pruning can drop its view", () => {
     const { driver } = parkedDriver();
-    useAgentSessionStore.setState({ openSessionIds: [], lastSessionId: "" });
+    testClient.agent.sessions.store.setState({ openSessionIds: [], lastSessionId: "" });
     runtimeClient = () =>
       ({
         sessions: {
@@ -84,11 +91,13 @@ describe("useAgentSession driver lifecycle", () => {
         },
       }) as unknown as FlameClient;
 
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
 
-    expect(useAgentSessionStore.getState().openSessionIds).toContain(SID);
-    expect(useAgentSessionStore.getState().lastSessionId).toBe(SID);
-    expect(useAgentStore.getState().sessions[SID]!.send).not.toBeNull();
+    expect(testClient.agent.sessions.store.getState().openSessionIds).toContain(SID);
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe(SID);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.send).not.toBeNull();
   });
 
   it("tells the user when restoring the mounted session projection fails", async () => {
@@ -99,7 +108,9 @@ describe("useAgentSession driver lifecycle", () => {
         sessions: { snapshot: vi.fn().mockRejectedValue(new Error("snapshot rejected")) },
       }) as unknown as FlameClient;
 
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
 
     await waitFor(() => {
       expect(useNotificationStore.getState().log).toContainEqual(
@@ -118,9 +129,15 @@ describe("useAgentSession driver lifecycle", () => {
       makeDriver: () => RuntimeAgentDriver;
       sessionId: string;
     };
-    const { rerender } = renderHook(
+    const { rerender } = testClient.renderHook(
       ({ makeDriver, sessionId }: HookProps) =>
-        useAgentSession(getRuntimeClient, makeDriver, sessionId, vi.fn()),
+        useAgentSession(
+          testClient.sessionDependencies,
+          getRuntimeClient,
+          makeDriver,
+          sessionId,
+          vi.fn(),
+        ),
       { initialProps: { makeDriver: firstFactory, sessionId: SID } },
     );
 
@@ -131,50 +148,58 @@ describe("useAgentSession driver lifecycle", () => {
 
     rerender({ makeDriver: secondFactory, sessionId: SID_B });
     expect(secondFactory).toHaveBeenCalledTimes(1);
-    expect(useAgentStore.getState().sessions[SID]!.send).toBeNull();
-    expect(useAgentStore.getState().sessions[SID_B]!.send).not.toBeNull();
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.send).toBeNull();
+    expect(testClient.agent.projection.store.getState().sessions[SID_B]!.send).not.toBeNull();
   });
 });
 
 describe("useAgentSession send re-entrancy", () => {
   it("ignores a second send before the first run starts (no duplicate run/bubble)", async () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+      ).toBeGreaterThan(0n),
     );
 
     act(() => {
-      const send = useAgentStore.getState().sessions[SID]!.send!;
+      const send = testClient.agent.projection.store.getState().sessions[SID]!.send!;
       send(agentTextInput("first"));
       send(agentTextInput("second"));
     });
 
     expect(start).toHaveBeenCalledTimes(1);
-    const msgs = useAgentStore.getState().sessions[SID]!.view.messages;
+    const msgs = testClient.agent.projection.store.getState().sessions[SID]!.view.messages;
     expect(msgs).toHaveLength(1);
     expect(msgs[0]!.blocks.some((b) => "text" in b && b.text === "first")).toBe(true);
   });
 
   it("rejects a fresh send while the current root is parked for HITL", () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunSnapshot(SID, runRef({ status: "waiting", activeSegmentId: undefined }));
     });
 
     let accepted = true;
     act(() => {
-      accepted = useAgentStore.getState().sessions[SID]!.send!(
+      accepted = testClient.agent.projection.store.getState().sessions[SID]!.send!(
         agentTextInput("must wait for the interrupt"),
       );
     });
 
     expect(accepted).toBe(false);
     expect(start).not.toHaveBeenCalled();
-    expect(useAgentStore.getState().sessions[SID]!.view.messages).toHaveLength(0);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.view.messages).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -197,24 +222,30 @@ describe("useAgentSession run timing guards", () => {
         parkUntilAborted(signal),
       ),
     } as unknown as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+      ).toBeGreaterThan(0n),
     );
 
     act(() => {
-      useAgentStore.getState().sessions[SID]!.send!(agentTextInput("first"));
+      testClient.agent.projection.store.getState().sessions[SID]!.send!(agentTextInput("first"));
     });
 
     await waitFor(() => {
-      expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toMatchObject({
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+      ).toMatchObject({
         message: "gone",
         code: "session_not_found",
       });
     });
 
     act(() => {
-      useAgentStore.getState().sessions[SID]!.send!(agentTextInput("second"));
+      testClient.agent.projection.store.getState().sessions[SID]!.send!(agentTextInput("second"));
     });
 
     expect(start).toHaveBeenCalledTimes(2);
@@ -230,15 +261,19 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+      ).toBeGreaterThan(0n),
     );
 
     let firstAccepted = false;
     let secondAccepted = true;
     act(() => {
-      const resumeAction = useAgentStore.getState().sessions[SID]!.resume!;
+      const resumeAction = testClient.agent.projection.store.getState().sessions[SID]!.resume!;
       firstAccepted = resumeAction("run_parent" as never, []);
       secondAccepted = resumeAction("run_parent" as never, []);
     });
@@ -281,13 +316,17 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+      ).toBeGreaterThan(0n),
     );
 
     act(() => {
-      useAgentStore.getState().sessions[SID]!.resume!(
+      testClient.agent.projection.store.getState().sessions[SID]!.resume!(
         "run_parent" as never,
         [],
         onSettled,
@@ -298,25 +337,29 @@ describe("useAgentSession run timing guards", () => {
     await waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledTimes(2));
     act(() => {
-      useAgentStore.getState().applyRunEvents(SID, [startedRunEvent("run_resume", "seg_resume")]);
+      testClient.agent.projection.store
+        .getState()
+        .applyRunEvents(SID, [startedRunEvent("run_resume", "seg_resume")]);
     });
     errorSpy.mockClear();
 
     act(() => {
-      useAgentStore.getState().sessions[SID]!.stop?.();
+      testClient.agent.projection.store.getState().sessions[SID]!.stop?.();
     });
 
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("run_resume"));
-    expect(selectCurrentRootRun(useAgentStore.getState().sessions[SID]!.view)?.status).toBe(
-      "running",
-    );
+    expect(
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[SID]!.view)
+        ?.status,
+    ).toBe("running");
 
     readSnapshot.mockResolvedValue({ items: [], runs: [canceledRun], interrupts: [] });
     cancellation.resolve({ type: "root", run: canceledRun });
     await waitFor(() => {
-      expect(selectCurrentRootRun(useAgentStore.getState().sessions[SID]!.view)?.status).toBe(
-        "finished",
-      );
+      expect(
+        selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[SID]!.view)
+          ?.status,
+      ).toBe("finished");
     });
 
     expect(onStartError).not.toHaveBeenCalled();
@@ -329,17 +372,19 @@ describe("useAgentSession run timing guards", () => {
     runtimeClient = () =>
       ({ runs: { recoverCommands: async () => [], cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunEvents(SID, [startedRunEvent("run-retired-cancel", "seg-retired-cancel")]);
-      useAgentStore.getState().sessions[SID]!.cancelRun?.("run-retired-cancel");
+      testClient.agent.projection.store.getState().sessions[SID]!.cancelRun?.("run-retired-cancel");
     });
     await waitFor(() => expect(cancel).toHaveBeenCalledWith("run-retired-cancel"));
 
     act(() => {
-      const store = useAgentStore.getState();
+      const store = testClient.agent.projection.store.getState();
       store.retireProjectionGeneration([SID]);
       void store.sessions[SID]!.synchronize?.("retire-live");
     });
@@ -361,7 +406,9 @@ describe("useAgentSession run timing guards", () => {
     });
 
     expect(
-      useAgentStore.getState().sessions[SID]!.view.runsById["run-retired-cancel"],
+      testClient.agent.projection.store.getState().sessions[SID]!.view.runsById[
+        "run-retired-cancel"
+      ],
     ).toMatchObject({ status: "running", activeSegmentId: "seg-retired-cancel" });
   });
 
@@ -380,17 +427,21 @@ describe("useAgentSession run timing guards", () => {
         runs: { recoverCommands: async () => [], cancel: predecessorCancel },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunEvents(SID, [startedRunEvent("run-replaced-cancel", "seg-replaced-cancel")]);
-      useAgentStore.getState().sessions[SID]!.cancelRun?.("run-replaced-cancel");
+      testClient.agent.projection.store
+        .getState()
+        .sessions[SID]!.cancelRun?.("run-replaced-cancel");
     });
     await waitFor(() => expect(predecessorCancel).toHaveBeenCalledOnce());
 
     act(() => {
-      const store = useAgentStore.getState();
+      const store = testClient.agent.projection.store.getState();
       store.retireProjectionGeneration([SID]);
       void store.sessions[SID]!.synchronize?.("retire-live");
     });
@@ -428,13 +479,15 @@ describe("useAgentSession run timing guards", () => {
 
     let replacement!: Promise<boolean>;
     act(() => {
-      const store = useAgentStore.getState();
+      const store = testClient.agent.projection.store.getState();
       store.retireProjectionGeneration([SID]);
       replacement = store.sessions[SID]!.synchronize!("replace-live");
     });
     await expect(replacement).resolves.toBe(true);
     act(() => {
-      useAgentStore.getState().sessions[SID]!.cancelRun?.("run-replaced-cancel");
+      testClient.agent.projection.store
+        .getState()
+        .sessions[SID]!.cancelRun?.("run-replaced-cancel");
     });
     await waitFor(() => expect(successorCancel).toHaveBeenCalledOnce());
 
@@ -453,7 +506,9 @@ describe("useAgentSession run timing guards", () => {
       await Promise.resolve();
     });
     expect(
-      useAgentStore.getState().sessions[SID]!.view.runsById["run-replaced-cancel"],
+      testClient.agent.projection.store.getState().sessions[SID]!.view.runsById[
+        "run-replaced-cancel"
+      ],
     ).toMatchObject({ status: "waiting", activeSegmentId: null });
 
     successorCancellation.resolve({
@@ -468,7 +523,9 @@ describe("useAgentSession run timing guards", () => {
     });
     await waitFor(() =>
       expect(
-        useAgentStore.getState().sessions[SID]!.view.runsById["run-replaced-cancel"],
+        testClient.agent.projection.store.getState().sessions[SID]!.view.runsById[
+          "run-replaced-cancel"
+        ],
       ).toMatchObject({ status: "finished", outcome: { type: "canceled" } }),
     );
     expect(predecessorCancel).toHaveBeenCalledOnce();
@@ -486,22 +543,28 @@ describe("useAgentSession run timing guards", () => {
     runtimeClient = () =>
       ({ runs: { recoverCommands: async () => [], cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunEvents(SID, [startedRunEvent("run_failed_cancel", "seg_failed_cancel")]);
-      useAgentStore.getState().sessions[SID]!.stop?.();
+      testClient.agent.projection.store.getState().sessions[SID]!.stop?.();
     });
 
     await waitFor(() => {
-      expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toEqual({
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+      ).toEqual({
         code: "stale_segment",
         recovery: "refetch",
         message: "run already moved",
       });
     });
-    expect(useAgentStore.getState().sessions[SID]!.view.runsById.run_failed_cancel).toMatchObject({
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.view.runsById.run_failed_cancel,
+    ).toMatchObject({
       status: "running",
       activeSegmentId: "seg_failed_cancel",
     });
@@ -538,20 +601,25 @@ describe("useAgentSession run timing guards", () => {
       }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunEvents(SID, [startedRunEvent("run_remote_terminal", "seg_remote")]);
-      useAgentStore.getState().sessions[SID]!.stop?.();
+      testClient.agent.projection.store.getState().sessions[SID]!.stop?.();
     });
 
     await waitFor(() => {
       expect(
-        useAgentStore.getState().sessions[SID]!.view.runsById.run_remote_terminal,
+        testClient.agent.projection.store.getState().sessions[SID]!.view.runsById
+          .run_remote_terminal,
       ).toMatchObject({ status: "finished", outcome: { type: "completed" } });
     });
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toBeNull();
     expect(errorSpy).not.toHaveBeenCalled();
   });
   it.each(["completed", "canceled"] as const)(
@@ -574,17 +642,25 @@ describe("useAgentSession run timing guards", () => {
         }) as unknown as FlameClient;
       vi.spyOn(console, "error").mockImplementation(() => undefined);
       const { driver } = parkedDriver();
-      const mounted = renderHook(() =>
-        useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()),
+      const mounted = testClient.renderHook(() =>
+        useAgentSession(
+          testClient.sessionDependencies,
+          getRuntimeClient,
+          () => driver,
+          SID,
+          vi.fn(),
+        ),
       );
       await waitFor(() =>
-        expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+        expect(
+          testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+        ).toBeGreaterThan(0n),
       );
       act(() => {
-        useAgentStore
+        testClient.agent.projection.store
           .getState()
           .applyRunEvents(SID, [startedRunEvent(terminal.id, "seg_cancel_failure")]);
-        useAgentStore.getState().sessions[SID]!.stop?.();
+        testClient.agent.projection.store.getState().sessions[SID]!.stop?.();
       });
       await waitFor(() => expect(cancel).toHaveBeenCalledWith(terminal.id));
       readSnapshot.mockResolvedValue({ items: [], runs: [terminal], interrupts: [] });
@@ -595,20 +671,32 @@ describe("useAgentSession run timing guards", () => {
         }),
       );
       await waitFor(() =>
-        expect(useAgentStore.getState().sessions[SID]!.problem.commandError?.code).toBe(
-          "internal_error",
-        ),
+        expect(
+          testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError?.code,
+        ).toBe("internal_error"),
       );
-      expect(useAgentStore.getState().sessions[SID]!.view.runsById[terminal.id]?.outcome).toEqual({
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.view.runsById[terminal.id]
+          ?.outcome,
+      ).toEqual({
         type: outcome,
       });
       mounted.unmount();
-      useAgentStore.getState().dropSession(SID);
-      renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
-      await waitFor(() =>
-        expect(useAgentStore.getState().sessions[SID]!.view.runsById[terminal.id]?.outcome).toEqual(
-          { type: outcome },
+      testClient.agent.projection.store.getState().dropSession(SID);
+      testClient.renderHook(() =>
+        useAgentSession(
+          testClient.sessionDependencies,
+          getRuntimeClient,
+          () => driver,
+          SID,
+          vi.fn(),
         ),
+      );
+      await waitFor(() =>
+        expect(
+          testClient.agent.projection.store.getState().sessions[SID]!.view.runsById[terminal.id]
+            ?.outcome,
+        ).toEqual({ type: outcome }),
       );
       expect(cancel).toHaveBeenCalledTimes(1);
     },
@@ -627,22 +715,33 @@ describe("useAgentSession run timing guards", () => {
     useNotificationStore.setState({ log: [] });
     const onConnectionLost = vi.fn();
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, onConnectionLost));
+    testClient.renderHook(() =>
+      useAgentSession(
+        testClient.sessionDependencies,
+        getRuntimeClient,
+        () => driver,
+        SID,
+        onConnectionLost,
+      ),
+    );
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+      ).toBeGreaterThan(0n),
     );
     act(() => {
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .applyRunEvents(SID, [startedRunEvent("run_unavailable_cancel", "seg_unavailable_cancel")]);
-      useAgentStore.getState().sessions[SID]!.stop?.();
+      testClient.agent.projection.store.getState().sessions[SID]!.stop?.();
     });
     await waitFor(() => expect(cancel).toHaveBeenCalledOnce());
     snapshot.mockRejectedValue(new RpcConnectionError("terminal query unavailable"));
     receipt.reject(new RpcError({ message: "already finished", data: { type: "run_finished" } }));
     await waitFor(() => expect(onConnectionLost).toHaveBeenCalled());
     expect(
-      useAgentStore.getState().sessions[SID]!.view.runsById.run_unavailable_cancel?.outcome,
+      testClient.agent.projection.store.getState().sessions[SID]!.view.runsById
+        .run_unavailable_cancel?.outcome,
     ).toBeNull();
   });
 });
@@ -693,10 +792,10 @@ describe("useAgentSession durable recovery", () => {
   }
 
   beforeEach(() => {
-    navigator().go({ session: RID });
+    testClient.navigation.go({ session: RID });
   });
   afterEach(() => {
-    useAgentStore.getState().dropSession(RID);
+    testClient.agent.projection.store.getState().dropSession(RID);
   });
 
   it("settles an accepted resume before failed observation and recovers without another submission", async () => {
@@ -707,13 +806,26 @@ describe("useAgentSession durable recovery", () => {
       observation: { type: "snapshot", sessionId: RID },
     });
     const driver = { ...parkedDriver().driver, resume } as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+    testClient.renderHook(() =>
+      useAgentSession(
+        testClient.sessionDependencies,
+        getRuntimeClient,
+        () => driver,
+        RID,
+        onConnectionLost,
+      ),
+    );
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
     readSnapshot.mockRejectedValueOnce(new RpcConnectionError("accepted observation lost"));
     const settled = vi.fn();
     const rejected = vi.fn();
     act(() => {
-      useAgentStore.getState().sessions[RID]!.resume!("run_accepted", [], settled, rejected);
+      testClient.agent.projection.store.getState().sessions[RID]!.resume!(
+        "run_accepted",
+        [],
+        settled,
+        rejected,
+      );
     });
     await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
     expect(settled).toHaveBeenCalledOnce();
@@ -721,9 +833,11 @@ describe("useAgentSession durable recovery", () => {
       readSnapshot.mock.invocationCallOrder[1]!,
     );
     expect(rejected).not.toHaveBeenCalled();
-    expect(useAgentStore.getState().sessions[RID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[RID]!.problem.commandError,
+    ).toBeNull();
     await act(async () => {
-      await useAgentStore.getState().sessions[RID]!.synchronize!("after-live");
+      await testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("after-live");
     });
     expect(resume).toHaveBeenCalledOnce();
     expect(subscribe).not.toHaveBeenCalled();
@@ -748,10 +862,12 @@ describe("useAgentSession durable recovery", () => {
       observation: { type: "snapshot", sessionId: RID },
     });
     const driver = { ...parkedDriver().driver, start } as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
     act(() => {
-      useAgentStore.getState().sessions[RID]!.send!(agentTextInput("original"));
+      testClient.agent.projection.store.getState().sessions[RID]!.send!(agentTextInput("original"));
     });
     await waitFor(() =>
       expect(subscribe).toHaveBeenCalledWith(
@@ -760,7 +876,8 @@ describe("useAgentSession durable recovery", () => {
       ),
     );
     expect(
-      selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.activeSegmentId,
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view)
+        ?.activeSegmentId,
     ).toBe("seg_current");
     expect(start).toHaveBeenCalledOnce();
     expect((await start.mock.results[0]!.value).result.segmentId).toBe("seg_original");
@@ -780,15 +897,17 @@ describe("useAgentSession durable recovery", () => {
       observation: { type: "retired", sessionId: RID },
     });
     const driver = { ...parkedDriver().driver, start } as RuntimeAgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
     act(() => {
-      useAgentStore.getState().sessions[RID]!.send!(agentTextInput("original"));
+      testClient.agent.projection.store.getState().sessions[RID]!.send!(agentTextInput("original"));
     });
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledTimes(2));
     expect(subscribe).not.toHaveBeenCalled();
     expect(start).toHaveBeenCalledOnce();
-    expect(useAgentStore.getState().sessions[RID]!.view.messages).toEqual([]);
+    expect(testClient.agent.projection.store.getState().sessions[RID]!.view.messages).toEqual([]);
     expect(useNotificationStore.getState().log).toContainEqual(
       expect.objectContaining({
         level: "info",
@@ -797,7 +916,8 @@ describe("useAgentSession durable recovery", () => {
       }),
     );
     expect(
-      selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.activeSegmentId,
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view)
+        ?.activeSegmentId,
     ).toBe("seg_replacement");
   });
 
@@ -806,10 +926,18 @@ describe("useAgentSession durable recovery", () => {
     readSnapshot.mockRejectedValue(new RpcConnectionError("Runtime disconnected"));
     const onConnectionLost = vi.fn();
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+    testClient.renderHook(() =>
+      useAgentSession(
+        testClient.sessionDependencies,
+        getRuntimeClient,
+        () => driver,
+        RID,
+        onConnectionLost,
+      ),
+    );
 
     await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
-    expect(useAgentStore.getState().sessions[RID]!.view.messages).toEqual([]);
+    expect(testClient.agent.projection.store.getState().sessions[RID]!.view.messages).toEqual([]);
   });
 
   it("reports a lost connection when a completed run needs a final recovery snapshot", async () => {
@@ -831,14 +959,22 @@ describe("useAgentSession durable recovery", () => {
     );
     const onConnectionLost = vi.fn();
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+    testClient.renderHook(() =>
+      useAgentSession(
+        testClient.sessionDependencies,
+        getRuntimeClient,
+        () => driver,
+        RID,
+        onConnectionLost,
+      ),
+    );
 
     await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
     expect(subscribe).toHaveBeenCalledOnce();
     expect(readSnapshot).toHaveBeenCalledTimes(2);
-    expect(useAgentStore.getState().sessions[RID]!.view.runsById[running.id]?.status).toBe(
-      "running",
-    );
+    expect(
+      testClient.agent.projection.store.getState().sessions[RID]!.view.runsById[running.id]?.status,
+    ).toBe("running");
   });
 
   it("rebuilds pending approval cards from the material snapshot", async () => {
@@ -859,12 +995,16 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => {
-      expect(useAgentStore.getState().sessions[RID]!.view.pendingInterrupts).toHaveLength(1);
+      expect(
+        testClient.agent.projection.store.getState().sessions[RID]!.view.pendingInterrupts,
+      ).toHaveLength(1);
     });
-    const view = useAgentStore.getState().sessions[RID]!.view;
+    const view = testClient.agent.projection.store.getState().sessions[RID]!.view;
     expect(view.pendingInterrupts[0]!.runId).toBe("run_int");
     const approval = view.messages
       .flatMap((m) => m.blocks)
@@ -907,19 +1047,24 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => {
-      expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.status).toBe(
-        "running",
-      );
+      expect(
+        selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view)
+          ?.status,
+      ).toBe("running");
     });
     expect(subscribe).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalledWith(
       { runId: "run_live", segmentId: "seg_live", snapshot: true },
       expect.any(AbortSignal),
     );
-    expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.id).toBe("run_live");
+    expect(
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view)?.id,
+    ).toBe("run_live");
   });
 
   it("replaces a non-cooperative live generation before Runtime restart reconciliation", async () => {
@@ -1013,18 +1158,21 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
-
-    await waitFor(() => expect(releaseOldNext).toBeTypeOf("function"));
-    expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.id).toBe(
-      "run_before_restart",
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
     );
 
+    await waitFor(() => expect(releaseOldNext).toBeTypeOf("function"));
+    expect(
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view)?.id,
+    ).toBe("run_before_restart");
+
     restarted = true;
-    const synchronization = useAgentStore.getState().sessions[RID]!.synchronize!("replace-live");
+    const synchronization =
+      testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("replace-live");
     await expect(synchronization).resolves.toBe(true);
 
-    const view = useAgentStore.getState().sessions[RID]!.view;
+    const view = testClient.agent.projection.store.getState().sessions[RID]!.view;
     expect(closeOldStream).toHaveBeenCalledOnce();
     expect(selectCurrentRootRun(view)).toMatchObject({
       id: "run_after_restart",
@@ -1115,15 +1263,18 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [] },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => expect(firstSignal).toBeInstanceOf(AbortSignal));
     restarted = true;
-    const synchronization = useAgentStore.getState().sessions[RID]!.synchronize!("replace-live");
+    const synchronization =
+      testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("replace-live");
     await expect(synchronization).resolves.toBe(true);
 
     expect(firstSignal?.aborted).toBe(true);
-    const view = useAgentStore.getState().sessions[RID]!.view;
+    const view = testClient.agent.projection.store.getState().sessions[RID]!.view;
     expect(selectCurrentRootRun(view)).toMatchObject({
       id: "run_restarted_waiting",
       status: "waiting",
@@ -1150,9 +1301,9 @@ describe("useAgentSession durable recovery", () => {
       }),
     );
     await Promise.resolve();
-    expect(JSON.stringify(useAgentStore.getState().sessions[RID]!.view)).not.toContain(
-      "must stay retired",
-    );
+    expect(
+      JSON.stringify(testClient.agent.projection.store.getState().sessions[RID]!.view),
+    ).not.toContain("must stay retired");
   });
 
   it("closes a reattach stream whose opening resolves after Runtime replacement", async () => {
@@ -1197,14 +1348,16 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     restarted = true;
     await expect(
-      useAgentStore.getState().sessions[RID]!.synchronize!("replace-live"),
+      testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("replace-live"),
     ).resolves.toBe(true);
-    expect(useAgentStore.getState().sessions[RID]!.view.plan).toMatchObject({
+    expect(testClient.agent.projection.store.getState().sessions[RID]!.view.plan).toMatchObject({
       revision: 2,
     });
 
@@ -1219,7 +1372,9 @@ describe("useAgentSession durable recovery", () => {
       },
     });
     await waitFor(() => expect(closeOldStream).toHaveBeenCalledOnce());
-    expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)).toBeNull();
+    expect(
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view),
+    ).toBeNull();
   });
 
   it("replaces a non-cooperative reconnect opening after the live stream drops", async () => {
@@ -1279,15 +1434,17 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     restarted = true;
     await expect(
-      useAgentStore.getState().sessions[RID]!.synchronize!("replace-live"),
+      testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("replace-live"),
     ).resolves.toBe(true);
 
-    const view = useAgentStore.getState().sessions[RID]!.view;
+    const view = testClient.agent.projection.store.getState().sessions[RID]!.view;
     expect(view.plan).toMatchObject({ revision: 2 });
     expect(selectCurrentRootRun(view)).toBeNull();
 
@@ -1302,7 +1459,9 @@ describe("useAgentSession durable recovery", () => {
       },
     });
     await waitFor(() => expect(closeReconnect).toHaveBeenCalledOnce());
-    expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)).toBeNull();
+    expect(
+      selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[RID]!.view),
+    ).toBeNull();
   });
 
   it("replaces a non-cooperative exact Run read after the live stream finishes", async () => {
@@ -1365,15 +1524,17 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], get, subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => expect(get).toHaveBeenCalledOnce());
     restarted = true;
     await expect(
-      useAgentStore.getState().sessions[RID]!.synchronize!("replace-live"),
+      testClient.agent.projection.store.getState().sessions[RID]!.synchronize!("replace-live"),
     ).resolves.toBe(true);
 
-    const view = useAgentStore.getState().sessions[RID]!.view;
+    const view = testClient.agent.projection.store.getState().sessions[RID]!.view;
     expect(view.plan).toMatchObject({ revision: 2 });
     expect(selectCurrentRootRun(view)).toBeNull();
     expect(JSON.stringify(view)).not.toContain("run_exact_read");
@@ -1389,9 +1550,9 @@ describe("useAgentSession durable recovery", () => {
       }),
     );
     await Promise.resolve();
-    expect(JSON.stringify(useAgentStore.getState().sessions[RID]!.view)).not.toContain(
-      "run_exact_read",
-    );
+    expect(
+      JSON.stringify(testClient.agent.projection.store.getState().sessions[RID]!.view),
+    ).not.toContain("run_exact_read");
   });
 
   it("treats a run that finishes between snapshot and subscribe as synchronized", async () => {
@@ -1425,11 +1586,14 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => {
       expect(
-        useAgentStore.getState().sessions[RID]!.view.runsById.run_raced_terminal,
+        testClient.agent.projection.store.getState().sessions[RID]!.view.runsById
+          .run_raced_terminal,
       ).toMatchObject({ status: "finished", outcome: { type: "completed" } });
     });
 
@@ -1486,7 +1650,9 @@ describe("useAgentSession durable recovery", () => {
         runs: { recoverCommands: async () => [], subscribe, cancel },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
+    testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, RID, vi.fn()),
+    );
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledWith(
@@ -1495,7 +1661,7 @@ describe("useAgentSession durable recovery", () => {
       );
     });
     act(() => {
-      useAgentStore.getState().sessions[RID]!.cancelRun?.("run_child");
+      testClient.agent.projection.store.getState().sessions[RID]!.cancelRun?.("run_child");
     });
 
     await waitFor(() => {
@@ -1504,7 +1670,9 @@ describe("useAgentSession durable recovery", () => {
         expect.any(AbortSignal),
       );
     });
-    expect(useAgentStore.getState().sessions[RID]!.view.runsById.run_child).toMatchObject({
+    expect(
+      testClient.agent.projection.store.getState().sessions[RID]!.view.runsById.run_child,
+    ).toMatchObject({
       status: "finished",
       outcome: { type: "canceled" },
     });
@@ -1559,5 +1727,5 @@ function abortRejectingEvents(signal: AbortSignal): AsyncIterable<RunEvent> {
 }
 
 beforeEach(() => {
-  installAgentRuntimeGateway(getRuntimeClient);
+  createAgentGatewayFixture(testClient, getRuntimeClient);
 });

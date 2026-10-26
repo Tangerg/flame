@@ -1,3 +1,5 @@
+import { useComposer } from "@/features/composer/public/composer";
+import { useRuntime } from "@/features/connection/public/runtime";
 import { iconGlyph } from "@/ui/icons/index";
 import { IconButton } from "@flame/ui";
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
@@ -16,6 +18,9 @@ import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 function SendButton() {
+  const composerAccess = useComposer();
+  const runtimeAccess = useRuntime();
+
   const t = useT();
   const value = useComposerText();
   const images = useComposerImages();
@@ -32,10 +37,10 @@ function SendButton() {
   const layout = composerActionLayout({ running, hasInput });
   const submit = () =>
     submitComposer({
-      draft: captureComposerSubmission(),
-      restoreFocus: captureComposerFocus(),
+      draft: captureComposerSubmission(composerAccess),
+      restoreFocus: captureComposerFocus(composerAccess),
       sendInput: send,
-      canSend: runtimeCommandsAvailable,
+      canSend: runtimeCommandsAvailable.bind(null, runtimeAccess),
     });
 
   const stopButton = (primary: boolean) => (

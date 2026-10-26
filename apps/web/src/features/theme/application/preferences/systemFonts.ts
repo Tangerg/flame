@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { fontAvailability } from "@/features/theme/application/preferences/ports/fontAvailability";
 const CANDIDATE_UI_FONTS = [
   "SF Pro Text",
   "SF Pro Display",
@@ -27,10 +25,14 @@ const CANDIDATE_CODE_FONTS = [
   "DejaVu Sans Mono",
 ];
 
-export function useSystemFonts(mono: boolean): string[] {
-  return useMemo(() => {
-    const candidates = mono ? CANDIDATE_CODE_FONTS : CANDIDATE_UI_FONTS;
-    const { isAvailable, hasTabularFigures } = fontAvailability();
-    return candidates.filter((family) => isAvailable(family) && hasTabularFigures(family));
-  }, [mono]);
+export interface FontAvailability {
+  isAvailable(family: string): boolean;
+  hasTabularFigures(family: string): boolean;
+}
+
+export function systemFonts(availability: FontAvailability, mono: boolean): string[] {
+  const candidates = mono ? CANDIDATE_CODE_FONTS : CANDIDATE_UI_FONTS;
+  return candidates.filter(
+    (family) => availability.isAvailable(family) && availability.hasTabularFigures(family),
+  );
 }

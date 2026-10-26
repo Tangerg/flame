@@ -1,8 +1,15 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { type Element, type Root } from "hast";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { motionScale, publishMotionScale } from "@/lib/appearance";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { rehypeFadeIn } from "@/features/chat/message/ui/markdown/rehypeFadeIn";
 describe("markdownMessage", () => {
@@ -11,12 +18,14 @@ describe("markdownMessage", () => {
   });
 
   it("renders an empty string without throwing", () => {
-    const { container } = render(<MarkdownRenderer text="" reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text="" reveal="smooth" />);
     expect(container.querySelector(".md")).toBeTruthy();
   });
 
   it("wraps plain words in .fade-in spans while they are streaming", async () => {
-    const { container } = render(<MarkdownRenderer text="Hello world" streaming reveal="smooth" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="Hello world" streaming reveal="smooth" />,
+    );
     await waitFor(() => {
       const spans = container.querySelectorAll("span.fade-in");
       expect(spans.length).toBeGreaterThanOrEqual(2);
@@ -29,7 +38,7 @@ describe("markdownMessage", () => {
   });
 
   it("fades the whole inline code surface with the streaming prose", async () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text="Read `scope.Run` next." streaming reveal="smooth" />,
     );
     await waitFor(() => {
@@ -41,7 +50,7 @@ describe("markdownMessage", () => {
   });
 
   it.each(["", "js"])("keeps the streamed %s fence outside word fades", async (language) => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer
         text={`\`\`\`${language}\nconst x = 1;\n\`\`\``}
         streaming
@@ -90,27 +99,29 @@ describe("markdownMessage", () => {
   });
 
   it("auto-closes an unmatched inline backtick so it renders as code", () => {
-    const { container } = render(<MarkdownRenderer text="use `code" reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text="use `code" reveal="smooth" />);
     expect(container.querySelector("code")).toBeTruthy();
     expect(container.textContent ?? "").toContain("code");
   });
 
   it("auto-closes an unmatched `**` so it renders as strong", () => {
-    const { container } = render(<MarkdownRenderer text="that **really" reveal="smooth" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="that **really" reveal="smooth" />,
+    );
     expect(container.querySelector("strong")).toBeTruthy();
     expect(container.textContent ?? "").toContain("really");
   });
 
   it("renders a complete fenced code block as a Shiki block", () => {
     const src = "before\n```js\nconst x = 1;\n```\nafter";
-    const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
     expect(container.querySelector(".shiki-block")).toBeTruthy();
     expect(container.textContent ?? "").toContain("const x = 1;");
   });
 
   it("keeps a fenced block without a language in the code-block surface", async () => {
     const src = "before\n```\ncommand --flag\n```\nafter";
-    const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
     await act(async () => Promise.resolve());
 
     expect(container.querySelector(".shiki-block")).toBeTruthy();
@@ -120,7 +131,7 @@ describe("markdownMessage", () => {
 
   it("renders a streaming-partial code block (no closer yet)", () => {
     const src = "```js\nconst x";
-    const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
     expect(container.querySelector(".shiki-block")).toBeTruthy();
     expect(container.textContent ?? "").toContain("const x");
   });
@@ -128,7 +139,7 @@ describe("markdownMessage", () => {
   it("renders an SVG fence as an isolated image preview while keeping code copy", async () => {
     const src =
       '```svg\n<svg xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="6" /></svg>\n```';
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
     await act(async () => Promise.resolve());
 
     const image = container.querySelector('img[alt="Image generated by the assistant"]');
@@ -144,7 +155,7 @@ describe("markdownMessage", () => {
   it("keeps HTML fences as inert, copyable source code", async () => {
     const src =
       '```html\n<!doctype html><html><body><script>parent.postMessage("ran", "*")</script></body></html>\n```';
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
     await act(async () => Promise.resolve());
 
     expect(container.querySelector("iframe")).toBeNull();
@@ -154,7 +165,7 @@ describe("markdownMessage", () => {
 
   it("does not fetch remote Markdown images in the restricted desktop surface", () => {
     const src = "![Tracking pixel](https://tracker.example/pixel.png)";
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
 
     expect(container.querySelector('img[src^="https://tracker.example/"]')).toBeNull();
     const unavailable = within(container).queryByRole("img", {
@@ -173,7 +184,7 @@ describe("markdownMessage", () => {
   it("opens safe inline Markdown images through an accessible preview trigger", () => {
     const tinyPng =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text={`![Build graph](${tinyPng})`} reveal="instant" />,
     );
 
@@ -195,7 +206,9 @@ describe("markdownMessage", () => {
       `[![build](${tinyPng}) docs](https://example.test)`,
     ];
     for (const src of linked) {
-      const { container, unmount } = render(<MarkdownRenderer text={src} reveal="instant" />);
+      const { container, unmount } = testClient.render(
+        <MarkdownRenderer text={src} reveal="instant" />,
+      );
       expect(
         container.querySelectorAll("a button, a a, a input").length,
         `${src}: a control nested inside the link`,
@@ -204,7 +217,7 @@ describe("markdownMessage", () => {
       unmount();
     }
 
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text={`![build](${tinyPng})`} reveal="instant" />,
     );
     expect(container.querySelector('button[aria-label="build"]')).toBeTruthy();
@@ -214,7 +227,7 @@ describe("markdownMessage", () => {
     const first =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const second = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer
         text={`![Architecture](${first})\n\n![Before](${first}) ![After](${second})`}
         reveal="instant"
@@ -237,7 +250,9 @@ describe("markdownMessage", () => {
     const first =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const second = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-    render(<MarkdownRenderer text={`![Before](${first}) ![After](${second})`} reveal="instant" />);
+    testClient.render(
+      <MarkdownRenderer text={`![Before](${first}) ![After](${second})`} reveal="instant" />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Before" }));
     const dialog = screen.getByRole("dialog", { name: "Before" });
@@ -258,7 +273,7 @@ describe("markdownMessage", () => {
   it("exposes Codex close and zoom controls in the image preview", () => {
     const image =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-    render(<MarkdownRenderer text={`![Architecture](${image})`} reveal="instant" />);
+    testClient.render(<MarkdownRenderer text={`![Architecture](${image})`} reveal="instant" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Architecture" }));
     const dialog = screen.getByRole("dialog", { name: "Architecture" });
@@ -280,7 +295,7 @@ describe("markdownMessage", () => {
       value: { writeText },
     });
     try {
-      const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+      const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
       const table = container.querySelector("table");
       expect(table).toBeTruthy();
       expect(container.querySelectorAll("td").length).toBe(2);
@@ -300,7 +315,7 @@ describe("markdownMessage", () => {
 
   it("opens a semantic Codex preview for a wide Markdown table", () => {
     const src = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
-    render(<MarkdownRenderer text={src} reveal="instant" />);
+    testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Expand table" }));
 
@@ -311,7 +326,7 @@ describe("markdownMessage", () => {
 
   it("marks directional and numeric table material like Codex", () => {
     const src = "| Name | Count |\n|---|---:|\n| alpha | 12 |";
-    const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
 
     expect(container.querySelector("table")?.getAttribute("dir")).toBe("auto");
     expect(container.querySelector("td.md-table-cell-numeric")?.textContent).toBe("12");
@@ -322,7 +337,7 @@ describe("markdownMessage", () => {
     const prose = ["alpha", "n/a", "2024-01-15", "v1.2.3", "3 of 7", "see 12 rows"];
 
     const cells = (value: string) => {
-      const { container, unmount } = render(
+      const { container, unmount } = testClient.render(
         <MarkdownRenderer
           text={`| Name | Value |\n|---|---:|\n| alpha | ${value} |`}
           reveal="instant"
@@ -345,7 +360,7 @@ describe("markdownMessage", () => {
       "それではつづきをおねがいします。",
       "コンパイルエラーガアリマス。",
     ];
-    const { container, unmount } = render(
+    const { container, unmount } = testClient.render(
       <MarkdownRenderer text={japanese.join("\n\n")} reveal="instant" />,
     );
     expect(
@@ -357,7 +372,9 @@ describe("markdownMessage", () => {
     unmount();
 
     const spaced = ["실행이 완료되었습니다.", "The run finished."];
-    const other = render(<MarkdownRenderer text={spaced.join("\n\n")} reveal="instant" />);
+    const other = testClient.render(
+      <MarkdownRenderer text={spaced.join("\n\n")} reveal="instant" />,
+    );
     expect(
       Array.from(
         other.container.querySelectorAll('.md > p[dir="auto"]'),
@@ -368,7 +385,7 @@ describe("markdownMessage", () => {
 
   it("renders markdown lists", () => {
     const src = "- one\n- two\n- three";
-    const { container } = render(<MarkdownRenderer text={src} reveal="smooth" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="smooth" />);
     expect(container.querySelector("ul")).toBeTruthy();
     expect(container.querySelectorAll("li").length).toBe(3);
   });
@@ -380,7 +397,7 @@ describe("markdownMessage", () => {
       "   Keep the follow-up aligned with the task body.",
       "2. [ ] Verify the projected view",
     ].join("\n");
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
 
     const task = container.querySelector("li.task-list-item");
     expect(task?.firstElementChild).toBe(
@@ -399,7 +416,7 @@ describe("markdownMessage", () => {
       "",
       "  Keep this loose follow-up in the same task.",
     ].join("\n");
-    render(<MarkdownRenderer text={src} reveal="instant" />);
+    testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
 
     const complete = screen.getByRole("checkbox", {
       name: "Preserve the durable fact",
@@ -434,7 +451,7 @@ describe("markdownMessage", () => {
       "",
       "> اقتباس",
     ].join("\n");
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
 
     expect(container.querySelector('h3[dir="auto"][data-prose-level="1"]')).toBeTruthy();
     expect(
@@ -449,7 +466,7 @@ describe("markdownMessage", () => {
   });
 
   it("preserves generated alert titles and their decorative icons", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer
         text={
           "> [!NOTE]\n> Read the evidence.\n\n> [!WARNING]\n> Keep the original result.\n\n> A plain quotation."
@@ -473,7 +490,7 @@ describe("markdownMessage", () => {
   });
 
   it("claims only an authored alert marker and keeps escaped or attached markers literal", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer
         text={
           "> [!NOTE]\n> Keep **bold** and `code`.\n\n> \\[!NOTE]\n> keep literal\n\n> [!NOTE]book stays prose"
@@ -493,7 +510,7 @@ describe("markdownMessage", () => {
   });
 
   it("keeps unmatched numeric brackets as ordinary prose instead of citation chrome", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text="Read values[1] before values[12]." reveal="instant" />,
     );
 
@@ -511,9 +528,9 @@ describe("markdownMessage", () => {
       '[Collapsed guide]: https://example.test/implementation "Implementation guide"',
       '[Shortcut guide]: https://example.test/reading "Reading guide"',
     ].join("\n");
-    const previousScale = motionScale();
-    publishMotionScale(0);
-    const { container, rerender, unmount } = render(
+    const previousScale = testClient.theme.appearance.read().motionScale;
+    testClient.theme.appearance.publishMotionScale(0);
+    const { container, rerender, unmount } = testClient.render(
       <MarkdownRenderer text={body} reveal="smooth" streaming />,
     );
     try {
@@ -547,14 +564,14 @@ describe("markdownMessage", () => {
       }
     } finally {
       unmount();
-      publishMotionScale(previousScale);
+      testClient.theme.appearance.publishMotionScale(previousScale);
     }
   });
 
   it("isolates inline and fenced code as left-to-right inside bidirectional prose", async () => {
     const src =
       "تشغيل `npm run check -- --watch=false`\n\n```sh\nnpm run check -- --watch=false\n```";
-    const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={src} reveal="instant" />);
     await act(async () => Promise.resolve());
 
     expect.soft(container.querySelector("p > code")?.getAttribute("dir")).toBe("ltr");
@@ -562,19 +579,23 @@ describe("markdownMessage", () => {
   });
 
   it("drops them again once the message has settled", () => {
-    const { container } = render(<MarkdownRenderer text="Hello world" reveal="smooth" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="Hello world" reveal="smooth" />,
+    );
     expect(container.querySelectorAll("span.fade-in")).toHaveLength(0);
     expect(container.textContent ?? "").toContain("Hello world");
   });
 
   it("drops fade-in wrappers for the instant reveal mode", () => {
-    const { container } = render(<MarkdownRenderer text="Hello world" reveal="instant" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="Hello world" reveal="instant" />,
+    );
     expect(container.querySelectorAll("span.fade-in").length).toBe(0);
     expect(container.textContent ?? "").toContain("Hello world");
   });
 
   it("uses the typewriter pipeline, which is the one that carries a caret", async () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text="Hello world" reveal="typewriter" streaming />,
     );
     await waitFor(() => {
@@ -587,7 +608,9 @@ describe("markdownMessage", () => {
   });
 
   it("gives the smooth reveal word fades and no caret", async () => {
-    const { container } = render(<MarkdownRenderer text="Hello world" reveal="smooth" streaming />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="Hello world" reveal="smooth" streaming />,
+    );
     await waitFor(() => {
       expect(container.querySelectorAll("span.fade-in").length).toBeGreaterThan(0);
     });
@@ -595,13 +618,15 @@ describe("markdownMessage", () => {
   });
 
   it("renders model placeholders as literal text instead of unknown React elements", () => {
-    const { container } = render(<MarkdownRenderer text="ANGLE=<chosen>" reveal="instant" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text="ANGLE=<chosen>" reveal="instant" />,
+    );
     expect(container.textContent).toContain("ANGLE=<chosen>");
     expect(container.querySelector("chosen")).toBeNull();
   });
 
   it("keeps supported semantic raw HTML while rendering dangerous tags literally", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text={'value<sup>2</sup> <script>alert("x")</script>'} reveal="instant" />,
     );
     expect(container.querySelector("sup")?.textContent).toBe("2");
@@ -611,7 +636,7 @@ describe("markdownMessage", () => {
 
   it("keeps non-Codex raw HTML disclosures inert and literal", () => {
     const source = "<details><summary>More</summary><div>Hidden</div></details>";
-    const { container } = render(<MarkdownRenderer text={source} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={source} reveal="instant" />);
 
     expect(container.querySelector("details")).toBeNull();
     expect(container.querySelector("summary")).toBeNull();
@@ -621,7 +646,7 @@ describe("markdownMessage", () => {
 
   it("does not install attributes from model-authored raw HTML", () => {
     const source = '<strong class="model-tone">Loud</strong>';
-    const { container } = render(<MarkdownRenderer text={source} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={source} reveal="instant" />);
 
     expect(container.querySelector("strong")).toBeNull();
     expect(container.textContent).toContain('<strong class="model-tone">');
@@ -629,7 +654,7 @@ describe("markdownMessage", () => {
 
   it("keeps model-authored style blocks inert instead of installing a stylesheet", async () => {
     const source = '<style>@import url("https://tracker.example/agent.css");</style>Visible';
-    const { container } = render(<MarkdownRenderer text={source} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={source} reveal="instant" />);
     await act(async () => Promise.resolve());
 
     const installedStyles = Array.from(container.querySelectorAll("*")).filter((element) =>
@@ -645,7 +670,7 @@ describe("markdownMessage", () => {
     const source = ["# One", "## Two", "### Three", "#### Four", "##### Five", "###### Six"].join(
       "\n\n",
     );
-    const { container } = render(<MarkdownRenderer text={source} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={source} reveal="instant" />);
 
     const headings = [...container.querySelectorAll<HTMLElement>("[data-prose-level]")];
     expect(headings.map((h) => [h.dataset.proseLevel, h.tagName])).toEqual([

@@ -1,4 +1,10 @@
-import { useSyncExternalStore } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "@flame/ui/typography";
 export type Scheme = "dark" | "light";
 
@@ -27,75 +33,91 @@ export const DEFAULT_MOTION: VisualStyleMotion = {
   pressScale: 0.96,
 };
 
-let scheme: Scheme = "dark";
-
-let scale = 1;
-
-let motion = DEFAULT_MOTION;
-
-let tokenRevision: object = {};
-
-let uiFontSize = UI_FONT_SIZE_DEFAULT_PX;
-
-const listeners = new Set<() => void>();
-
-function announce(): void {
-  for (const listener of listeners) listener();
+export interface AppearanceSnapshot {
+  scheme: Scheme;
+  motionScale: number;
+  motion: VisualStyleMotion;
+  tokenRevision: object;
+  uiFontSize: number;
 }
 
-export function publishScheme(next: Scheme): void {
-  if (next === scheme) return;
-  scheme = next;
-  announce();
+/** The current document paint, observed without owning its preferences. */
+export interface AppearanceProjection {
+  read(): AppearanceSnapshot;
+  subscribe(listener: () => void): () => void;
 }
 
-export function publishTokens(): void {
-  tokenRevision = {};
-  announce();
+export function createAppearanceProjection() {
+  let current: AppearanceSnapshot = {
+    scheme: "dark",
+    motionScale: 1,
+    motion: DEFAULT_MOTION,
+    tokenRevision: {},
+    uiFontSize: UI_FONT_SIZE_DEFAULT_PX,
+  };
+  const listeners = new Set<() => void>();
+  function update(patch: Partial<AppearanceSnapshot>) {
+    current = { ...current, ...patch };
+    for (const listener of listeners) listener();
+  }
+  return {
+    read: () => current,
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    publishScheme(next: Scheme) {
+      if (next !== current.scheme) update({ scheme: next });
+    },
+    publishTokens() {
+      update({ tokenRevision: {} });
+    },
+    publishUiFontSize(value: number | null) {
+      const next = normalizeUiFontSize(value);
+      if (next !== current.uiFontSize) update({ uiFontSize: next });
+    },
+    publishMotionScale(next: number) {
+      if (next !== current.motionScale) update({ motionScale: next });
+    },
+    publishVisualStyleMotion(next: VisualStyleMotion) {
+      if (next !== current.motion) update({ motion: next });
+    },
+  };
 }
 
-export function publishUiFontSize(value: number | null): void {
-  const next = normalizeUiFontSize(value);
-  if (next === uiFontSize) return;
-  uiFontSize = next;
-  announce();
+export type AppearancePublisher = ReturnType<typeof createAppearanceProjection>;
+
+const AppearanceContext = createContext<AppearanceProjection | null>(null);
+
+export function AppearanceProvider({
+  value,
+  children,
+}: {
+  value: AppearanceProjection;
+  children: ReactNode;
+}) {
+  return createElement(AppearanceContext, { value }, children);
 }
 
-export function publishMotionScale(next: number): void {
-  if (scale === next) return;
-  scale = next;
-  announce();
-}
-
-export function publishVisualStyleMotion(next: VisualStyleMotion): void {
-  motion = next;
-}
-
-export function motionScale(): number {
-  return scale;
-}
-
-export function visualStyleMotion(): VisualStyleMotion {
-  return motion;
-}
-
-function subscribe(onChange: () => void): () => void {
-  listeners.add(onChange);
-  return () => listeners.delete(onChange);
-}
-
-function snapshot(): Scheme {
-  return scheme;
+export function useAppearanceProjection(): AppearanceProjection {
+  const value = useContext(AppearanceContext);
+  if (!value) throw new Error("AppearanceProvider is missing");
+  return value;
 }
 
 export function useScheme(): Scheme {
-  return useSyncExternalStore(subscribe, snapshot);
+  const appearance = useAppearanceProjection();
+  return useSyncExternalStore(appearance.subscribe, () => appearance.read().scheme);
 }
 
 export function useTokenRevision(): object {
-  return useSyncExternalStore(subscribe, () => tokenRevision);
+  const appearance = useAppearanceProjection();
+  return useSyncExternalStore(appearance.subscribe, () => appearance.read().tokenRevision);
 }
 
 export function useUiFontSize(): number {
-  return useSyncExternalStore(subscribe, () => uiFontSize);
+  const appearance = useAppearanceProjection();
+  return useSyncExternalStore(appearance.subscribe, () => appearance.read().uiFontSize);
 }

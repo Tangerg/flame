@@ -28,21 +28,24 @@ interface ShellLayoutActions {
   setDockWidthRatio: (ratio: number | null) => void;
 }
 
-export const useShellLayoutStore = create<ShellLayoutState & ShellLayoutActions>()(
-  persist(
-    (set) => ({
-      sidebarCollapsed: false,
-      sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
-      dockWidthRatio: null,
+export function createShellLayoutStore() {
+  return create<ShellLayoutState & ShellLayoutActions>()(
+    persist(
+      (set) => ({
+        sidebarCollapsed: false,
+        sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
+        dockWidthRatio: null,
 
-      toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-      setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
-      setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
-    }),
-    {
-      name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      merge: rehydrateOrDefault(STORAGE_KEY, shellLayoutPersistSchema),
-    },
-  ),
-);
+        toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+        setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
+        setDockWidthRatio: (dockWidthRatio) => set({ dockWidthRatio }),
+      }),
+      {
+        name: STORAGE_KEY,
+        storage: createJSONStorage(() => localStorage),
+        merge: rehydrateOrDefault(STORAGE_KEY, shellLayoutPersistSchema),
+      },
+    ),
+  );
+}
+export type ShellLayoutStore = ReturnType<typeof createShellLayoutStore>;

@@ -1,9 +1,9 @@
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COMMAND } from "@/features/command/public/extensionPoints";
-import { useSessionSearchStore } from "@/features/navigation/session-search/application/sessionSearchState";
+import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
 import { SESSION_SEARCH_COMMAND } from "@/features/navigation/public/search/actions";
-import { SessionSearch } from "@/features/navigation/session-search/ui/SessionSearch";
+import { SessionSearch } from "@/features/navigation/session-search/SessionSearch";
 export default definePlugin({
   name: "flame.builtin.session-search",
   setup(ctx) {

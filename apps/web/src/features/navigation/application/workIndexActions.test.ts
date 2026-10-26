@@ -1,6 +1,14 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { configureWorkingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
 import { useWorkIndexActions } from "@/features/navigation/application/workIndexActions";
 const mocks = vi.hoisted(() => ({
   activeSessionId: "",
@@ -17,7 +25,7 @@ vi.mock("@/features/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/agent/public/session")>()),
   selectAgentSession: vi.fn(),
   getActiveSessionId: () => mocks.activeSessionId,
-  createSession: mocks.create,
+  createSession: (_agentAccess: unknown) => mocks.create(),
   useActiveSessionId: () => mocks.activeSessionId,
   useActiveSessionWorkspace: () => mocks.activeWorkspace,
   useCreateSession: () => mocks.create,
@@ -52,7 +60,7 @@ beforeEach(() => {
   mocks.create.mockReset().mockResolvedValue("session-new");
   mocks.focusComposer.mockReset();
   mocks.notifyError.mockReset();
-  disposePicker = configureWorkingDirectoryPicker({
+  disposePicker = stubInstance(testClient.directory.access, {
     open: mocks.open,
     browse: async () => undefined,
   });
@@ -62,7 +70,7 @@ afterEach(() => disposePicker());
 
 describe("useWorkIndexActions directory selection", () => {
   it("opens workspace selection when creating the first Session", () => {
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
 
     act(() => result.current.createSession());
 
@@ -74,7 +82,7 @@ describe("useWorkIndexActions directory selection", () => {
 
   it("withdraws every Session mutation while Runtime commands are unavailable", () => {
     mocks.runtimeAvailable = false;
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
 
     act(() => {
       result.current.createSession();
@@ -91,7 +99,7 @@ describe("useWorkIndexActions directory selection", () => {
   it("delegates the global new-session action to the active Session workspace owner", async () => {
     mocks.activeSessionId = "session-current";
     mocks.activeWorkspace = { status: "ready", cwd: "/tmp/current-project" };
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
 
     act(() => result.current.createSession());
 
@@ -102,7 +110,7 @@ describe("useWorkIndexActions directory selection", () => {
   it("does not invent a default project while the active Session is resolving", () => {
     mocks.activeSessionId = "session-current";
     mocks.activeWorkspace = { status: "resolving", sessionId: "session-current" };
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
 
     act(() => result.current.createSession());
 
@@ -112,7 +120,7 @@ describe("useWorkIndexActions directory selection", () => {
   });
 
   it("opens the runtime workspace selector for a different directory", () => {
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
     act(() => result.current.chooseSessionFolder());
     expect(mocks.open).toHaveBeenCalledOnce();
     expect(mocks.create).not.toHaveBeenCalled();
@@ -120,7 +128,7 @@ describe("useWorkIndexActions directory selection", () => {
 
   it("keeps focus in the current session when project creation is rejected", async () => {
     mocks.create.mockResolvedValue(null);
-    const { result } = renderHook(() => useWorkIndexActions());
+    const { result } = testClient.renderHook(() => useWorkIndexActions());
 
     act(() => result.current.startSessionInFolder("/tmp/project"));
 

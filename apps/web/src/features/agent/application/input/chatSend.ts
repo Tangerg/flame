@@ -1,8 +1,9 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { useCallback } from "react";
 import { resolveAgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type AgentInput } from "@/features/agent/domain/input";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+
 import {
   getActiveSessionId,
   useActiveSessionId,
@@ -13,15 +14,17 @@ import { steerRunningTurn } from "@/features/agent/application/input/steering";
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 
 export function useChatSend(): (input: AgentInput) => boolean {
-  const send = agentSessionView().useAction("send");
+  const agentAccess = useAgent();
+
+  const send = agentAccess.view.useAction("send");
   return useCallback(
     (input: AgentInput) => {
-      const sessionId = getActiveSessionId();
+      const sessionId = getActiveSessionId(agentAccess);
       const runOptions = resolveAgentRunStartOptions();
-      const root = selectCurrentRootRun(agentSessionView().getCurrentView());
+      const root = selectCurrentRootRun(agentAccess.view.getCurrentView());
       if (root?.status === "running" && sessionId && root.activeSegmentId) {
         if (
-          steerRunningTurn({
+          steerRunningTurn(agentAccess, {
             sessionId,
             runId: root.id,
             segmentId: root.activeSegmentId,
@@ -36,13 +39,15 @@ export function useChatSend(): (input: AgentInput) => boolean {
       }
       return sendFreshTurn({ sessionId, send, input, runOptions });
     },
-    [send],
+    [send, agentAccess],
   );
 }
 
 export function useCanSendToAgent(): boolean {
+  const agentAccess = useAgent();
+
   const sessionId = useActiveSessionId();
-  const send = agentSessionView().useAction("send");
+  const send = agentAccess.view.useAction("send");
   const root = useCurrentRootMaterial();
   return canAcceptChatInput(sessionId, Boolean(send), root.status);
 }

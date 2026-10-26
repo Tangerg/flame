@@ -1,3 +1,5 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
@@ -25,7 +27,11 @@ import {
 } from "@/features/workspace/adapters/workspaceReadObservation";
 import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/features/connection/public/services";
 import { WORKSPACE_MUTATION_LIFECYCLE } from "@/features/workspace/public/services";
-export function createWorkspaceEventsPlugin(runtimeClient: () => FlameClient) {
+export function createWorkspaceEventsPlugin(
+  agentAccess: AgentAccess,
+  runtimeAccess: RuntimeAccess,
+  runtimeClient: () => FlameClient,
+) {
   return definePlugin({
     name: "flame.builtin.workspace-events",
     requires: {
@@ -37,9 +43,9 @@ export function createWorkspaceEventsPlugin(runtimeClient: () => FlameClient) {
     setup(ctx) {
       const loop = createWorkspaceEventLoop({
         subscribe: ({ target, signal }) =>
-          subscribeRuntimeWorkspaceEvents(runtimeClient, target, signal),
-        handleEvent: invalidateWorkspaceEvent,
-        invalidateAll: invalidateWorkspaceEverything,
+          subscribeRuntimeWorkspaceEvents(runtimeAccess, runtimeClient, target, signal),
+        handleEvent: invalidateWorkspaceEvent.bind(null, agentAccess),
+        invalidateAll: invalidateWorkspaceEverything.bind(null, agentAccess),
         reportDisconnect: (connectionGeneration) => {
           ctx.runtime.reportConnectionLoss(connectionGeneration);
         },
@@ -47,15 +53,17 @@ export function createWorkspaceEventsPlugin(runtimeClient: () => FlameClient) {
 
       ctx.cleanup(installProjectIndexRefresh());
       ctx.cleanup(installWorkspaceFocusRefresh());
-      ctx.cleanup(ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope));
+      ctx.cleanup(
+        ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope.bind(null, agentAccess)),
+      );
       ctx.cleanup(
         startWorkspaceEventSubscription({
-          canSubscribe: canSubscribeWorkspaceEvents,
+          canSubscribe: canSubscribeWorkspaceEvents.bind(null, runtimeAccess),
           connectionGeneration: ctx.runtime.connectionGeneration,
           subscribeConnection: ctx.runtime.subscribeConnection,
           retireReadModels: () => {
             ctx.mutationLifecycle.replaceRuntimeGeneration();
-            retireWorkspaceReadModels();
+            retireWorkspaceReadModels(agentAccess);
           },
           resolveWorkspaceCwd: (signal) =>
             resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.sessions, signal),

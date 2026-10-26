@@ -1,3 +1,4 @@
+import { type ThemeAccess } from "@/features/theme/public/theme";
 import { lazy, Suspense, type ReactNode } from "react";
 import { ComponentModules } from "@/features/plugins/adapters/componentModules";
 import {
@@ -32,10 +33,9 @@ import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import {
-  packageOperations,
+  type InstalledPackageState,
   PACKAGES_KEY,
   PROVIDERS_KEY,
-  usePackageRealization,
 } from "@/features/plugins/adapters/packages";
 // A package-scoped id namespaces a contribution or theme by its installation so
 // two packages cannot collide on one extension-point or selection id.
@@ -52,6 +52,7 @@ function createPackageReconciler(
   generation: RuntimeConnectionGeneration,
   moduleScope: ContributionLifetime,
   endpoint: string,
+  themeAccess: ThemeAccess,
 ): (installations: PluginInstallation[]) => Promise<void> {
   const compositions = new ComponentCompositions(
     client,
@@ -64,6 +65,7 @@ function createPackageReconciler(
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
     retainThemeSelection(
+      themeAccess.preference,
       admitted.flatMap((item) =>
         item.selected.themes.map((theme) => packageScopedId(item.id, theme.id)),
       ),
@@ -301,7 +303,7 @@ function createPackageReconciler(
       }
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;
-        contributePaletteTheme(lifetime, {
+        contributePaletteTheme(themeAccess.preference, lifetime, {
           id: packageScopedId(installation.id, theme.id),
           label: `${release.name} · ${theme.title}`,
           scheme: theme.scheme,
@@ -313,14 +315,16 @@ function createPackageReconciler(
 }
 
 export function registerPackageContributions(
+  packages: InstalledPackageState,
   scope: ContributionLifetime,
   client: FlameClient,
   modules: ComponentModules,
   generation: RuntimeConnectionGeneration,
   endpoint: string,
+  themeAccess: ThemeAccess,
 ): void {
   scope.cleanup(
-    packageOperations.configure({
+    packages.publishOperations({
       ...client.plugins,
       signal: scope.signal,
       track: (operation) => trackContributionIO(scope, operation),
@@ -349,8 +353,7 @@ export function registerPackageContributions(
 
   let failure: { reason: string; retry(): void } | null = null;
   const withdrawFailure = () => {
-    if (failure && usePackageRealization.getState().failure === failure)
-      usePackageRealization.setState({ failure: null });
+    if (failure && packages.failure() === failure) packages.setFailure(null);
     failure = null;
   };
   scope.cleanup(withdrawFailure);
@@ -364,6 +367,7 @@ export function registerPackageContributions(
       generation,
       scope,
       endpoint,
+      themeAccess,
     );
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
@@ -412,7 +416,7 @@ export function registerPackageContributions(
           },
         };
         failure = failed;
-        usePackageRealization.setState({ failure });
+        packages.setFailure(failure);
       }
     });
   };

@@ -1,4 +1,12 @@
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Message } from "@/features/agent/public/sessionView";
 import { selectAgentSession } from "@/features/agent/public/session";
@@ -52,8 +60,8 @@ beforeEach(() => {
   model.send.mockReset();
   model.send.mockReturnValue(true);
   vi.mocked(notifyInfo).mockClear();
-  selectAgentSession("ses_1");
-  replaceComposerDraft({ text: "waiting draft" });
+  selectAgentSession(testClient.agent.access, "ses_1");
+  replaceComposerDraft(testClient.composer.access, { text: "waiting draft" });
   const prompt = message({
     id: "user_1",
     role: "user",
@@ -72,7 +80,7 @@ afterEach(() => {
 });
 
 function readDraft() {
-  const { value, images, pastes } = captureComposerSubmission();
+  const { value, images, pastes } = captureComposerSubmission(testClient.composer.access);
   return { value, images, pastes };
 }
 
@@ -95,9 +103,9 @@ describe("message history actions", () => {
       const input = document.createElement("textarea");
       const origin = document.createElement("button");
       document.body.append(input, origin);
-      const unregister = registerComposerFocusTarget(input);
+      const unregister = registerComposerFocusTarget(testClient.composer.access, input);
       model.rollback.mockResolvedValue({ status: "unavailable" });
-      replaceComposerDraft({
+      replaceComposerDraft(testClient.composer.access, {
         text: "keep the current draft",
         images: [{ mime: "image/png", data: "retained-image" }],
       });
@@ -105,11 +113,13 @@ describe("message history actions", () => {
       origin.focus();
       expect(document.activeElement).toBe(origin);
       try {
-        editAndRerunMessage(msg);
-        editAndRerunMessage(msg, { restoreFiles: true });
-        restoreCheckpoint(msg, "history");
-        restoreCheckpoint(msg, "files");
-        restoreCheckpoint(msg, "both");
+        editAndRerunMessage(testClient.agent.access, testClient.composer.access, msg);
+        editAndRerunMessage(testClient.agent.access, testClient.composer.access, msg, {
+          restoreFiles: true,
+        });
+        restoreCheckpoint(testClient.agent.access, msg, "history");
+        restoreCheckpoint(testClient.agent.access, msg, "files");
+        restoreCheckpoint(testClient.agent.access, msg, "both");
         await Promise.resolve();
 
         expect(readDraft()).toEqual(before);
@@ -126,6 +136,7 @@ describe("message history actions", () => {
 
   it("keeps ordinary editing available for a user message without a run", () => {
     editMessageInComposer(
+      testClient.composer.access,
       message({
         role: "user",
         blocks: [
@@ -143,9 +154,9 @@ describe("message history actions", () => {
   it.each(["run_1", "child-run"])("keeps forking available at user run %s", (runId) => {
     const before = readDraft();
 
-    forkFromMessage(message({ id: "fork-target", role: "user", runId }));
+    forkFromMessage(testClient.agent.access, message({ id: "fork-target", role: "user", runId }));
 
-    expect(model.fork).toHaveBeenCalledWith("ses_1", runId);
+    expect(model.fork).toHaveBeenCalledWith(testClient.agent.access, "ses_1", runId);
     expect(model.rollback).not.toHaveBeenCalled();
     expect(readDraft()).toEqual(before);
   });
@@ -160,10 +171,15 @@ describe("message history actions", () => {
       model.rollback.mockResolvedValue({ status: "committed" });
       const before = readDraft();
 
-      restoreCheckpoint(prompt, restoreType);
+      restoreCheckpoint(testClient.agent.access, prompt, restoreType);
       await model.rollback.mock.results[0]!.value;
 
-      expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", restoreType);
+      expect(model.rollback).toHaveBeenCalledWith(
+        testClient.agent.access,
+        "ses_1",
+        "run_1",
+        restoreType,
+      );
       expect(readDraft()).toEqual(before);
       expect(notifyInfo).toHaveBeenCalledWith(`session.restore.${restoreType}`, {
         source: "session",
@@ -182,10 +198,10 @@ describe("message history actions", () => {
       },
     });
 
-    regenerateMessage(model.conversation!.messages[1]!);
+    regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
 
     await vi.waitFor(() =>
-      expect(model.send).toHaveBeenCalledWith("ses_1", {
+      expect(model.send).toHaveBeenCalledWith(testClient.agent.access, "ses_1", {
         parts: [
           { kind: "text", text: "authoritative prompt" },
           { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
@@ -197,7 +213,7 @@ describe("message history actions", () => {
   it("does not run a second follow-up for a joined history rewrite", async () => {
     model.rollback.mockResolvedValue({ status: "inFlight" });
 
-    regenerateMessage(model.conversation!.messages[1]!);
+    regenerateMessage(testClient.agent.access, model.conversation!.messages[1]!);
 
     await vi.waitFor(() => expect(model.rollback).toHaveBeenCalledOnce());
     expect(model.send).not.toHaveBeenCalled();
@@ -215,18 +231,31 @@ describe("message history actions", () => {
       },
     });
 
-    editAndRerunMessage(model.conversation!.messages[0]!);
+    editAndRerunMessage(
+      testClient.agent.access,
+      testClient.composer.access,
+      model.conversation!.messages[0]!,
+    );
 
     await vi.waitFor(() => expect(readDraft().value).toBe("canonical edit"));
     expect(readDraft().images).toMatchObject([{ mime: "image/jpeg", data: "anBlZw==" }]);
-    expect(model.rollback).toHaveBeenCalledWith("ses_1", "run_1", "history");
+    expect(model.rollback).toHaveBeenCalledWith(
+      testClient.agent.access,
+      "ses_1",
+      "run_1",
+      "history",
+    );
     expect(notifyInfo).not.toHaveBeenCalled();
   });
 
   it("uses the message content when a committed rollback has no dropped input", async () => {
     model.rollback.mockResolvedValue({ status: "committed" });
 
-    editAndRerunMessage(model.conversation!.messages[0]!);
+    editAndRerunMessage(
+      testClient.agent.access,
+      testClient.composer.access,
+      model.conversation!.messages[0]!,
+    );
 
     await vi.waitFor(() => expect(readDraft().value).toBe("stale projection"));
   });
@@ -235,7 +264,11 @@ describe("message history actions", () => {
     model.rollback.mockResolvedValue({ status });
     const before = readDraft();
 
-    editAndRerunMessage(model.conversation!.messages[0]!);
+    editAndRerunMessage(
+      testClient.agent.access,
+      testClient.composer.access,
+      model.conversation!.messages[0]!,
+    );
     await model.rollback.mock.results[0]!.value;
 
     expect(readDraft()).toEqual(before);
@@ -246,7 +279,7 @@ describe("message history actions", () => {
     "preserves later %s authoring when rollback finishes",
     async (kind) => {
       const rollback = Promise.withResolvers<{ status: "committed" }>();
-      const { result } = renderHook(() => ({
+      const { result } = testClient.renderHook(() => ({
         addPaste: useAddComposerPaste(),
         addImageFiles: useAddComposerImageFiles(),
       }));
@@ -256,9 +289,13 @@ describe("message history actions", () => {
         name: "later.png",
       });
       model.rollback.mockReturnValue(rollback.promise);
-      editAndRerunMessage(model.conversation!.messages[0]!);
+      editAndRerunMessage(
+        testClient.agent.access,
+        testClient.composer.access,
+        model.conversation!.messages[0]!,
+      );
       await act(async () => {
-        if (kind === "text") appendToComposerDraft("later draft");
+        if (kind === "text") appendToComposerDraft(testClient.composer.access, "later draft");
         else if (kind === "paste") result.current.addPaste("later source text");
         else result.current.addImageFiles([new File([""], "later.png")]);
       });
@@ -280,16 +317,20 @@ describe("message history actions", () => {
     const rollback = Promise.withResolvers<{ status: "committed" }>();
     model.rollback.mockReturnValue(rollback.promise);
     const original = readDraft();
-    editAndRerunMessage(model.conversation!.messages[0]!);
-    selectAgentSession("ses_2");
-    replaceComposerDraft({ text: "keep this second draft" });
+    editAndRerunMessage(
+      testClient.agent.access,
+      testClient.composer.access,
+      model.conversation!.messages[0]!,
+    );
+    selectAgentSession(testClient.agent.access, "ses_2");
+    replaceComposerDraft(testClient.composer.access, { text: "keep this second draft" });
     const current = readDraft();
 
     rollback.resolve({ status: "committed" });
     await rollback.promise;
 
     expect(readDraft()).toEqual(current);
-    selectAgentSession("ses_1");
+    selectAgentSession(testClient.agent.access, "ses_1");
     expect(readDraft()).toEqual(original);
     expect(notifyInfo).toHaveBeenCalledOnce();
   });
@@ -299,9 +340,13 @@ describe("message history actions", () => {
     const reading =
       Promise.withResolvers<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
-    const { result } = renderHook(useAddComposerImageFiles);
+    const { result } = testClient.renderHook(useAddComposerImageFiles);
     model.rollback.mockReturnValue(rollback.promise);
-    editAndRerunMessage(model.conversation!.messages[0]!);
+    editAndRerunMessage(
+      testClient.agent.access,
+      testClient.composer.access,
+      model.conversation!.messages[0]!,
+    );
     act(() => result.current([new File([""], "later.png")]));
     const waiting = readDraft();
 

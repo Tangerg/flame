@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ContentVisibility } from "@flame/ui";
@@ -61,7 +69,7 @@ it.each(["figure", "media", "document"] as const)(
   "retires %s once and stays closed when the content returns",
   async (kind) => {
     const onOpenChange = vi.fn();
-    const view = render(<Harness visible kind={kind} onOpenChange={onOpenChange} />);
+    const view = testClient.render(<Harness visible kind={kind} onOpenChange={onOpenChange} />);
     const { trigger } = await openLightbox();
     expect(onOpenChange).toHaveBeenLastCalledWith(true);
 
@@ -85,7 +93,7 @@ it.each(["figure", "media", "document"] as const)(
 
 it("leaves an unrelated control focused when its content hides", async () => {
   const onOpenChange = vi.fn();
-  const view = render(<Harness visible onOpenChange={onOpenChange} />);
+  const view = testClient.render(<Harness visible onOpenChange={onOpenChange} />);
   const later = screen.getByRole("button", { name: "Later control" });
   await openLightbox();
   act(() => later.focus());
@@ -97,7 +105,7 @@ it("leaves an unrelated control focused when its content hides", async () => {
 });
 
 it("returns an ordinary visible close to its trigger", async () => {
-  render(<Harness visible onOpenChange={() => {}} />);
+  testClient.render(<Harness visible onOpenChange={() => {}} />);
   const { trigger, dialog } = await openLightbox();
 
   fireEvent.keyDown(dialog, { key: "Escape" });
@@ -107,7 +115,7 @@ it("returns an ordinary visible close to its trigger", async () => {
 });
 
 it("keeps a caller that declines final focus away from the trigger", async () => {
-  render(<Harness visible finalFocus={false} onOpenChange={() => {}} />);
+  testClient.render(<Harness visible finalFocus={false} onOpenChange={() => {}} />);
   const { trigger, dialog } = await openLightbox();
 
   fireEvent.keyDown(dialog, { key: "Escape" });

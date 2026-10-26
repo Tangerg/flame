@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { findCycles, readSourceGraph } from "./source-graph.mjs";
+import { findCycles, readSourceGraph } from "../../../tooling/source-graph.mjs";
 import { builtinContext, contextRootsOf } from "./builtin-contexts.mjs";
 
 const { graph } = readSourceGraph();

@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createFlameClient, MutationLookupError } from "@flame/runtime-client";
 import { createMutationPromise } from "@flame/runtime-client";
@@ -69,7 +77,7 @@ async function openMemory() {
     track: (operation) => operation,
     compose: () => null,
   };
-  render(<Memory context={context} />);
+  testClient.render(<Memory context={context} />);
   await screen.findByText(VISUAL_MEMORY_PAGE.Rows[1]!.Content, { exact: true });
   await waitFor(() => expect(screen.queryByText("Reading recorded memory…")).toBeNull());
   return { settle, call };

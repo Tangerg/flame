@@ -1,3 +1,4 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { asRunId, asSegmentId, type FlameClient } from "@flame/runtime-client";
 import { revalidateAgentSessionMaterial } from "@/features/agent/application/session/refreshSessionProjection";
 import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
@@ -6,6 +7,7 @@ import {
   settleRunStreamOpening,
 } from "@/features/agent/adapters/runStreamOpening";
 export async function snapshotRunStream(
+  agentAccess: AgentAccess,
   client: Pick<FlameClient, "runs">,
   sessionId: string,
   runId: string,
@@ -16,6 +18,7 @@ export async function snapshotRunStream(
   let stream: Awaited<ReturnType<FlameClient["runs"]["subscribe"]>> | null = null;
   try {
     const refreshed = await revalidateAgentSessionMaterial(
+      agentAccess,
       sessionId,
       async () => {
         stream = await settleRunStreamOpening(
@@ -28,7 +31,7 @@ export async function snapshotRunStream(
         if (!stream) return null;
         const snapshot = stream.result.snapshot;
         if (!snapshot) throw new Error("agent: snapshot subscription omitted its Session material");
-        return runtimeSessionMaterial(sessionId, snapshot);
+        return runtimeSessionMaterial(agentAccess.sharedMaterial, sessionId, snapshot);
       },
       { signal, canCommit },
     );

@@ -1,3 +1,4 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { t } from "@/lib/i18n/index";
@@ -6,7 +7,7 @@ import { getActiveSessionId } from "@/features/agent/public/session";
 import { runtimeRunsGateway } from "@/features/agent/adapters/runtimeRunsGateway";
 import { rpcAgentSource } from "@/features/agent/adapters/rpcAgentSource";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
-export function createRpcAgentPlugin(runtimeClient: () => FlameClient) {
+export function createRpcAgentPlugin(agentAccess: AgentAccess, runtimeClient: () => FlameClient) {
   return definePlugin({
     name: "flame.builtin.rpc-agent",
     requires: { runtime: RUNTIME_STREAM },
@@ -16,7 +17,7 @@ export function createRpcAgentPlugin(runtimeClient: () => FlameClient) {
       ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       ctx.contribute(
         AGENT_SOURCE,
-        rpcAgentSource(t, getActiveSessionId, () => gateway),
+        rpcAgentSource(t, getActiveSessionId.bind(null, agentAccess), () => gateway),
       );
     },
   });

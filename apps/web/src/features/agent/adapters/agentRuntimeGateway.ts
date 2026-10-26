@@ -1,5 +1,4 @@
 import { cloneJSON } from "@flame/runtime-client";
-import { configureRuntimeOpeningRetries } from "./runtimeOpeningRetries";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
 import { type MCPServerID } from "@flame/runtime-client/wire";
 import { type FlameClient } from "@flame/runtime-client";
@@ -13,24 +12,28 @@ import {
   RpcError,
 } from "@flame/runtime-client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
-import { configureAgentRuntimeGateway } from "@/features/agent/application/ports/runtimeGateway";
 import {
   type AgentRuntimeGateway,
   type AgentOpeningCommand,
   type AgentUnresolvedSteer,
-} from "@/features/agent/application/ports/runtimeGateway";
+} from "@/features/agent/application/runtimeGateway";
 import {
   agentInputToContentBlocks,
   contentBlocksToAgentInput,
 } from "@/features/agent/adapters/wireInput";
-import { runtimeCapability } from "@/features/connection/public/capabilities";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
+import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { runtimeItem } from "@/features/agent/adapters/runtimeAgentFacts";
 import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
-import { AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
-import { AgentSessionUsageOwner } from "@/features/agent/application/session/sessionUsage";
+import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
+import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 class RuntimeAgentGateway implements AgentRuntimeGateway {
-  constructor(private readonly runtimeClient: () => FlameClient) {}
+  constructor(
+    private readonly runtimeClient: () => FlameClient,
+    private readonly runtime: RuntimeAccess,
+    private readonly sharedMaterial: AgentSharedMaterial,
+  ) {}
 
   #sessionMutations = createMutationSettler();
   // Each Runtime generation owns its opening-retry registry. A snapshot read
@@ -92,7 +95,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const client = this.runtimeClient();
     const generation = this.#generation;
     const sid = asSessionId(sessionId);
-    const includeDescendants = runtimeCapability("subagents");
+    const includeDescendants = this.runtime.capabilities.hasCapability("subagents");
     try {
       let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const commands = await client.runs.recoverCommands(signal);
@@ -106,7 +109,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
         )
       )
         snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
-      const material = runtimeSessionMaterial(sessionId, snapshot);
+      const material = runtimeSessionMaterial(this.sharedMaterial, sessionId, snapshot);
       const unresolvedOpenings: AgentOpeningCommand[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
       for (const command of commands) {
@@ -292,29 +295,31 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 }
 
-export function installAgentRuntimeGateway(runtimeClient: () => FlameClient) {
-  let commandOwner = AgentCommandOwner.install();
-  const gateway = new RuntimeAgentGateway(runtimeClient);
-  let usageOwner = AgentSessionUsageOwner.install(gateway);
-  const disposePort = configureAgentRuntimeGateway(gateway);
-  const disposeRetries = configureRuntimeOpeningRetries({
-    retry: (key, signal) => gateway.retryOpening(key, signal),
-  });
+export function createAgentRuntimeGateway(
+  runtimeClient: () => FlameClient,
+  runtime: RuntimeAccess,
+  sharedMaterial: AgentSharedMaterial,
+  commands: AgentCommands,
+  usage: ReturnType<typeof createAgentSessionUsage>,
+) {
+  let commandOwner = commands.replace();
+  const gateway = new RuntimeAgentGateway(runtimeClient, runtime, sharedMaterial);
+  let usageOwner = usage.replace(gateway);
   let disposed = false;
   return {
+    gateway,
+    retries: { retry: (key: string, signal: AbortSignal) => gateway.retryOpening(key, signal) },
     replaceRuntimeGeneration() {
       if (disposed) return;
       gateway.replaceRuntimeGeneration();
-      commandOwner = AgentCommandOwner.install();
-      usageOwner = AgentSessionUsageOwner.install(gateway);
+      commandOwner = commands.replace();
+      usageOwner = usage.replace(gateway);
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       commandOwner.dispose();
       usageOwner.dispose();
-      disposePort();
-      disposeRetries();
       gateway.dispose();
     },
   };

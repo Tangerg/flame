@@ -1,20 +1,23 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { queryClient } from "@/lib/queryClient";
-import {
-  configureAgentRuntimeGateway,
-  type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
-import {
-  configureAgentSessionStatePort,
-  type AgentSessionStatePort,
-} from "@/features/agent/application/ports/sessionState";
+import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
+import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
 import {
   AGENT_SESSIONS_KEY,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 import { useDeleteSession } from "@/features/agent/application/session/deleteSession";
-import { AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
+
 let restoreRuntime: (() => void) | undefined;
 
 let restoreState: (() => void) | undefined;
@@ -50,14 +53,14 @@ describe("useDeleteSession", () => {
         }),
     );
     const localDeletion = vi.fn();
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       deleteSession,
     } as unknown as AgentRuntimeGateway);
-    restoreState = configureAgentSessionStatePort({
+    restoreState = stubInstance(testClient.agent.access.state, {
       deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session("ses_a"), session("ses_b")]);
-    const { result } = renderHook(() => useDeleteSession());
+    const { result } = testClient.renderHook(() => useDeleteSession());
 
     let deleting!: Promise<void>;
     await act(async () => {
@@ -85,19 +88,19 @@ describe("useDeleteSession", () => {
         }),
     );
     const localDeletion = vi.fn();
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       deleteSession,
     } as unknown as AgentRuntimeGateway);
-    restoreState = configureAgentSessionStatePort({
+    restoreState = stubInstance(testClient.agent.access.state, {
       deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
-    const retiredOwner = AgentCommandOwner.install();
-    const { result } = renderHook(() => useDeleteSession());
+    const retiredOwner = testClient.agent.access.commands.replace();
+    const { result } = testClient.renderHook(() => useDeleteSession());
     const deleting = result.current("ses_a");
     await Promise.resolve();
     expect(deleteSession).toHaveBeenCalledOnce();
 
-    const successor = AgentCommandOwner.install();
+    const successor = testClient.agent.access.commands.replace();
     let settled = false;
     void deleting.then(() => {
       settled = true;

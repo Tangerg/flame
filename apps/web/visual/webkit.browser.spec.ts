@@ -73,19 +73,17 @@ for (const theme of ["light", "dark"] as const) {
     await openFixture(page, { fixture: "agent", state: "tool-shells", theme, motion: "full" });
 
     const frames = await page.evaluate(async () => {
-      const storePath = "/src/features/agent/adapters/agentStore.ts";
+      const storePath = "/visual/main.tsx";
       const fixturePath = "/visual/agentSessionSnapshots.ts";
       const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
-      const { useAgentStore } = (await import(
-        storePath
-      )) as typeof import("@/features/agent/adapters/agentStore");
+      const { visualClient } = (await import(storePath)) as typeof import("./main");
       const { RUNTIME_AGENT_SESSION_SNAPSHOTS, projectRuntimeAgentSnapshot, VISUAL_SESSION_ID } =
         (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
       const { projectAgentSessionSnapshot } = (await import(
         projectionPath
       )) as typeof import("@/features/agent/application/session/sessionSnapshot");
       const snapshot = projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]);
-      const store = useAgentStore.getState();
+      const store = visualClient.agent.projection.store.getState();
       const frames: { count: number; opacity: string; transform: string; top: number }[][] = [];
       for (let count = 1; count <= snapshot.items.length; count += 1) {
         const token = store.beginViewRefresh(VISUAL_SESSION_ID, true);

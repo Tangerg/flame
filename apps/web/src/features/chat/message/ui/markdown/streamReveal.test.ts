@@ -1,6 +1,13 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { publishMotionScale } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 import {
   pickRate,
@@ -62,7 +69,7 @@ const FAKE = ["requestAnimationFrame", "cancelAnimationFrame", "performance"] as
 
 function play(text: string, streaming: boolean, mode: "smooth" | "typewriter" | "instant") {
   const seen: string[] = [];
-  const { result, rerender, unmount } = renderHook(
+  const { result, rerender, unmount } = testClient.renderHook(
     ({ value }: { value: string }) => useStreamReveal(value, streaming, mode),
     { initialProps: { value: text } },
   );
@@ -77,10 +84,10 @@ function play(text: string, streaming: boolean, mode: "smooth" | "typewriter" | 
 describe("useStreamReveal — what holds at any rate", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: [...FAKE] });
-    publishMotionScale(1);
+    testClient.theme.appearance.publishMotionScale(1);
   });
   afterEach(() => {
-    publishMotionScale(1);
+    testClient.theme.appearance.publishMotionScale(1);
     vi.useRealTimers();
   });
 
@@ -122,18 +129,18 @@ describe("useStreamReveal — what holds at any rate", () => {
   });
 
   it("reveals the whole text at once when the reader asked for no animation", () => {
-    const { result } = renderHook(() => useStreamReveal(PROSE, true, "instant"));
+    const { result } = testClient.renderHook(() => useStreamReveal(PROSE, true, "instant"));
     expect(result.current).toBe(PROSE);
   });
 
   it("reveals the whole text at once under reduced motion, whatever the mode says", () => {
-    publishMotionScale(0);
-    const { result } = renderHook(() => useStreamReveal(PROSE, true, "smooth"));
+    testClient.theme.appearance.publishMotionScale(0);
+    const { result } = testClient.renderHook(() => useStreamReveal(PROSE, true, "smooth"));
     expect(result.current).toBe(PROSE);
   });
 
   it("starts over from the shorter text when the source is replaced, not from where it was", () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = testClient.renderHook(
       ({ value }: { value: string }) => useStreamReveal(value, true, "smooth"),
       { initialProps: { value: PROSE } },
     );
@@ -171,7 +178,7 @@ describe("useCommitThrottle", () => {
   afterEach(() => vi.useRealTimers());
 
   it("hands back settled text on the same render", () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = testClient.renderHook(
       ({ value }: { value: string }) => useCommitThrottle(value, 0),
       { initialProps: { value: "one" } },
     );
@@ -182,7 +189,7 @@ describe("useCommitThrottle", () => {
   });
 
   it("holds a streaming value back, then catches up to it exactly", () => {
-    const { result, rerender } = renderHook(
+    const { result, rerender } = testClient.renderHook(
       ({ value }: { value: string }) => useCommitThrottle(value, 120),
       { initialProps: { value: "one" } },
     );

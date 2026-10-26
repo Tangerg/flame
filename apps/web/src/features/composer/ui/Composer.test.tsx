@@ -1,6 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type ReactElement, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -9,7 +17,7 @@ import { mountLocaleBundle, setLocale } from "@/lib/i18n/index";
 import { WORKSPACE_LIST_FILES_KEY } from "@/features/workspace/public/queries";
 import { Composer } from "@/features/composer/ui/Composer";
 import { loadPluginsForTest } from "@/test/kernel";
-import { useComposerStore } from "@/features/composer/adapters/composerStore";
+
 import {
   useAddComposerImageFiles,
   useAddComposerPaste,
@@ -36,7 +44,7 @@ function wrap(ui: ReactElement) {
     },
   });
   client.setQueryData([WORKSPACE_LIST_FILES_KEY, undefined], []);
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+  return testClient.render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
 async function withEnterKeymap() {
@@ -313,7 +321,7 @@ function DraftComposer() {
     <Composer
       value={useComposerText()}
       onChange={useSetComposerText()}
-      captureSubmission={captureComposerSubmission}
+      captureSubmission={() => captureComposerSubmission(testClient.composer.access)}
       onSend={() => true}
       images={useComposerImages()}
       onRemoveImage={useRemoveComposerImage()}
@@ -336,11 +344,11 @@ describe("reviewing a pasted text", () => {
   const IMAGE = { mime: "image/png", data: "AAAA", name: "shot.png" };
 
   function draft() {
-    return useComposerStore.getState().composer.draft;
+    return testClient.composer.store.getState().composer.draft;
   }
 
   function stage(...pastes: string[]) {
-    const store = useComposerStore.getState();
+    const store = testClient.composer.store.getState();
     store.clear();
     store.setValue("Typed prefix");
     store.addImages([IMAGE]);
@@ -368,7 +376,7 @@ describe("reviewing a pasted text", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   }
 
-  afterEach(() => useComposerStore.getState().clear());
+  afterEach(() => testClient.composer.store.getState().clear());
 
   it("puts the edited text back and lets typing continue after it", async () => {
     const input = stage(PASTE, "second paste\nkept");
@@ -388,7 +396,7 @@ describe("reviewing a pasted text", () => {
   });
 
   it("returns to the composer when the last attachment is put back", async () => {
-    const store = useComposerStore.getState();
+    const store = testClient.composer.store.getState();
     store.clear();
     store.setValue("Typed prefix");
     store.addPaste(PASTE);
@@ -483,7 +491,7 @@ describe("reviewing a pasted text", () => {
     await review();
     act(() => {
       elsewhere.focus();
-      useComposerStore.getState().loadSession("other");
+      testClient.composer.store.getState().loadSession("other");
     });
     await closed();
     await act(async () => {});

@@ -21,7 +21,7 @@
     "check:circular": "node scripts/check-circular.mjs",
     "check:contexts": "node scripts/check-builtin-contexts.mjs",
     "check:published-boundaries": "node scripts/check-published-boundaries.mjs && node --test scripts/check-agent-wire.test.mjs && node scripts/check-agent-wire.mjs",
-    "check:layers": "node --test scripts/source-graph.test.mjs && node scripts/check-layers.mjs",
+    "check:layers": "node --test scripts/check-layers.test.mjs && node scripts/check-layers.mjs",
     "check:port-surface": "node --test scripts/check-port-surface.test.mjs && node scripts/check-port-surface.mjs",
     "check:api-consumers": "node --test scripts/check-backend-api-consumers.test.mjs && node scripts/check-backend-api-consumers.mjs",
     "check:hmr": "node scripts/check-hmr-disposal.mjs",
@@ -100,8 +100,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@babel/core": "^8.0.7",
-    "@babel/preset-typescript": "^8.0.7",
     "@playwright/test": "^1.64.1",
     "@stylexjs/stylex": "^0.19.1",
     "@stylexjs/unplugin": "^0.19.1",

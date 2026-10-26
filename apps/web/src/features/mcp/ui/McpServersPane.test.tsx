@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, expect, it } from "vitest";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
@@ -29,7 +37,7 @@ async function mount(failure?: Error) {
     });
   });
   owner = MCPServerMutationOwner.install({} as MCPServerGateway);
-  render(
+  testClient.render(
     <QueryClientProvider client={queryClient}>
       <McpServersPane />
     </QueryClientProvider>,

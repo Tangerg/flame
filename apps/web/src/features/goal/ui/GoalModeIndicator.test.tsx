@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
@@ -32,7 +40,7 @@ afterEach(async () => {
 
 describe("GoalModeIndicator", () => {
   it("renders no permanent Goal launcher while composer mode is inactive", () => {
-    render(<GoalModeIndicator />);
+    testClient.render(<GoalModeIndicator />);
 
     expect(screen.queryByText("Goal")).toBeNull();
     expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
@@ -40,7 +48,7 @@ describe("GoalModeIndicator", () => {
 
   it("renders the compact Codex-style mode indicator and clears it in place", () => {
     owner.activate("session-a");
-    render(<GoalModeIndicator />);
+    testClient.render(<GoalModeIndicator />);
 
     const indicator = screen.getByRole("button", { name: "Exit Goal mode" });
     expect(indicator.getAttribute("aria-pressed")).toBe("true");
@@ -55,7 +63,7 @@ describe("GoalModeIndicator", () => {
   it("keeps replacement confirmation separate from the composer draft", () => {
     owner.activate("session-a");
     owner.requestReplacement("session-a", "old objective", vi.fn());
-    render(<GoalModeIndicator />);
+    testClient.render(<GoalModeIndicator />);
 
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(screen.getByText(/old objective/)).toBeTruthy();
@@ -69,7 +77,7 @@ describe("GoalModeIndicator", () => {
   it("keeps the starting owner until its command settles when standing material arrives first", () => {
     owner.activate("session-a");
     owner.begin("session-a");
-    const { rerender } = render(<GoalModeIndicator />);
+    const { rerender } = testClient.render(<GoalModeIndicator />);
 
     model.goal = { status: "active" };
     rerender(<GoalModeIndicator />);

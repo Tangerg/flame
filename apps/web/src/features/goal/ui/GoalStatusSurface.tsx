@@ -1,3 +1,4 @@
+import { useRuntime } from "@/features/connection/public/runtime";
 import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
@@ -113,6 +114,8 @@ export function GoalStatusSurface() {
 }
 
 function GoalRow({ goal }: { goal: GoalReadModel }) {
+  const runtimeAccess = useRuntime();
+
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.objective);
@@ -141,7 +144,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const createdAt = goalCreatedAtMillis(goal.createdAt);
 
   const admitted = (fallback: string) => {
-    if (runtimeCommandsAvailable()) return true;
+    if (runtimeCommandsAvailable(runtimeAccess)) return true;
     notifyError(fallback);
     return false;
   };
@@ -158,7 +161,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
 
   const save = () => {
     if (!canSave) return;
-    if (!runtimeCommandsAvailable()) {
+    if (!runtimeCommandsAvailable(runtimeAccess)) {
       setEditorError(t("goal.error.update"));
       return;
     }

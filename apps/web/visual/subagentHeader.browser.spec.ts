@@ -25,11 +25,9 @@ for (const [fontSize, theme] of [
     expect((await panel.boundingBox())!.width).toBeCloseTo(320, 0);
 
     await page.evaluate(async (label) => {
-      const path = "/src/features/agent/adapters/agentStore.ts";
-      const { useAgentStore } = (await import(
-        path
-      )) as typeof import("@/features/agent/adapters/agentStore");
-      const store = useAgentStore.getState();
+      const path = "/visual/main.tsx";
+      const { visualClient } = (await import(path)) as typeof import("./main");
+      const store = visualClient.agent.projection.store.getState();
       const view = store.sessions.ses_visual!.view;
       const refresh = store.beginViewRefresh("ses_visual", true);
       if (!refresh) throw new Error("Expected a refresh token");

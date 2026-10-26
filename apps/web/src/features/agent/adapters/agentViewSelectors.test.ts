@@ -1,19 +1,20 @@
-import { act, renderHook } from "@testing-library/react";
-import { navigator } from "@/lib/navigation";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
+
 import { afterEach, describe, expect, it } from "vitest";
 import {
   EMPTY_AGENT_SESSION_VIEW,
   type AgentProblem,
   type Message,
 } from "@/features/agent/public/sessionView";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
-import {
-  useAgentProblem,
-  useAgentSharedMaterial,
-  useCurrentRootRun,
-  useCurrentRootRunning,
-  useTranscriptRows,
-} from "@/features/agent/adapters/agentViewSelectors";
+
 function seed(commandError: AgentProblem | null, shared: Record<string, unknown>) {
   return {
     view: { ...EMPTY_AGENT_SESSION_VIEW, shared },
@@ -33,37 +34,39 @@ function seed(commandError: AgentProblem | null, shared: Record<string, unknown>
 }
 
 afterEach(() => {
-  useAgentStore.setState({ sessions: {} });
-  navigator().go({ session: "" });
+  testClient.agent.projection.store.setState({ sessions: {} });
+  testClient.navigation.go({ session: "" });
 });
 
 describe("agent view selectors react to session switch", () => {
-  it("useAgentProblem follows activeSessionId", () => {
-    useAgentStore.setState({
+  it("testClient.selectors.useAgentProblem follows activeSessionId", () => {
+    testClient.agent.projection.store.setState({
       sessions: { a: seed({ message: "A" }, {}), b: seed({ message: "B" }, {}) },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
-    const { result } = renderHook(() => useAgentProblem());
+    const { result } = testClient.renderHook(() => testClient.selectors.useAgentProblem());
     expect(result.current?.message).toBe("A");
 
-    act(() => navigator().go({ session: "b" }));
+    act(() => testClient.navigation.go({ session: "b" }));
     expect(result.current?.message).toBe("B");
   });
 
-  it("useAgentSharedMaterial follows activeSessionId with its exact projection generation", () => {
-    useAgentStore.setState({
+  it("testClient.selectors.useAgentSharedMaterial follows activeSessionId with its exact projection generation", () => {
+    testClient.agent.projection.store.setState({
       sessions: {
         a: seed(null, { k: "A" }),
         b: { ...seed(null, { k: "B" }), viewEpoch: 4n },
       },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
-    const { result } = renderHook(() => useAgentSharedMaterial<string>("k"));
+    const { result } = testClient.renderHook(() =>
+      testClient.selectors.useAgentSharedMaterial<string>("k"),
+    );
     expect(result.current).toEqual({ generation: 0n, value: "A" });
 
-    act(() => navigator().go({ session: "b" }));
+    act(() => testClient.navigation.go({ session: "b" }));
     expect(result.current).toEqual({ generation: 4n, value: "B" });
   });
 
@@ -87,7 +90,7 @@ describe("agent view selectors react to session switch", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: null,
     };
-    useAgentStore.setState({
+    testClient.agent.projection.store.setState({
       sessions: {
         a: {
           ...seed(null, {}),
@@ -95,9 +98,11 @@ describe("agent view selectors react to session switch", () => {
         },
       },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
-    const { result, rerender } = renderHook(() => useCurrentRootRun());
+    const { result, rerender } = testClient.renderHook(() =>
+      testClient.selectors.useCurrentRootRun(),
+    );
     const first = result.current;
     rerender();
 
@@ -126,7 +131,7 @@ describe("agent view selectors react to session switch", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: "2026-01-01T00:00:01.000Z",
     };
-    useAgentStore.setState({
+    testClient.agent.projection.store.setState({
       sessions: {
         a: {
           ...seed(null, {}),
@@ -134,17 +139,17 @@ describe("agent view selectors react to session switch", () => {
         },
       },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
     let renders = 0;
-    const { result } = renderHook(() => {
+    const { result } = testClient.renderHook(() => {
       renders += 1;
-      return useCurrentRootRun();
+      return testClient.selectors.useCurrentRootRun();
     });
     expect(result.current).toBe(finished);
 
     act(() =>
-      useAgentStore.setState((state) => {
+      testClient.agent.projection.store.setState((state) => {
         const current = state.sessions.a!;
         return {
           sessions: {
@@ -183,7 +188,7 @@ describe("agent view selectors react to session switch", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: null,
     };
-    useAgentStore.setState({
+    testClient.agent.projection.store.setState({
       sessions: {
         a: {
           ...seed(null, {}),
@@ -191,18 +196,18 @@ describe("agent view selectors react to session switch", () => {
         },
       },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
     let renders = 0;
-    const { result } = renderHook(() => {
+    const { result } = testClient.renderHook(() => {
       renders += 1;
-      return useCurrentRootRunning();
+      return testClient.selectors.useCurrentRootRunning();
     });
     expect(result.current).toBe(true);
 
     for (const contextTokens of [200, 300, 400]) {
       act(() =>
-        useAgentStore.setState((state) => {
+        testClient.agent.projection.store.setState((state) => {
           const current = state.sessions.a!;
           return {
             sessions: {
@@ -224,7 +229,7 @@ describe("agent view selectors react to session switch", () => {
     expect(renders).toBe(1);
 
     act(() =>
-      useAgentStore.setState((state) => {
+      testClient.agent.projection.store.setState((state) => {
         const current = state.sessions.a!;
         return {
           sessions: {
@@ -253,7 +258,7 @@ describe("agent view selectors react to session switch", () => {
       role: "user",
       blocks: [{ kind: "text", text: "hello", status: "complete" }],
     };
-    useAgentStore.setState({
+    testClient.agent.projection.store.setState({
       sessions: {
         a: {
           ...seed(null, {}),
@@ -261,9 +266,11 @@ describe("agent view selectors react to session switch", () => {
         },
       },
     });
-    navigator().go({ session: "a" });
+    testClient.navigation.go({ session: "a" });
 
-    const { result, rerender } = renderHook(() => useTranscriptRows());
+    const { result, rerender } = testClient.renderHook(() =>
+      testClient.selectors.useTranscriptRows(),
+    );
     const first = result.current;
     rerender();
 
@@ -284,28 +291,28 @@ describe("agent view selectors react to session switch", () => {
       role: "user",
       blocks: [{ kind: "text", text: "from B", status: "complete" }],
     };
-    useAgentStore.setState({
+    testClient.agent.projection.store.setState({
       sessions: {
         a: { ...seed(null, {}), view: { ...EMPTY_AGENT_SESSION_VIEW, messages: [inA] } },
         b: { ...seed(null, {}), view: { ...EMPTY_AGENT_SESSION_VIEW, messages: [inB] } },
       },
     });
 
-    navigator().go({ session: "a" });
-    const { result } = renderHook(() => useTranscriptRows());
+    testClient.navigation.go({ session: "a" });
+    const { result } = testClient.renderHook(() => testClient.selectors.useTranscriptRows());
     expect(result.current.map((row) => row.message.id)).toEqual(["message-a"]);
 
-    act(() => navigator().go({ session: "b" }));
+    act(() => testClient.navigation.go({ session: "b" }));
     expect(result.current.map((row) => row.message.id)).toEqual(["message-b"]);
 
-    act(() => navigator().go({ session: "a" }));
+    act(() => testClient.navigation.go({ session: "a" }));
     expect(result.current.map((row) => row.message.id)).toEqual(["message-a"]);
   });
 
   it("answers an empty transcript for a session the store has never seen", () => {
-    useAgentStore.setState({ sessions: {} });
-    navigator().go({ session: "absent" });
-    const { result } = renderHook(() => useTranscriptRows());
+    testClient.agent.projection.store.setState({ sessions: {} });
+    testClient.navigation.go({ session: "absent" });
+    const { result } = testClient.renderHook(() => testClient.selectors.useTranscriptRows());
     expect(result.current).toEqual([]);
   });
 });

@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COMMAND } from "@/features/command/public/extensionPoints";
@@ -48,7 +56,7 @@ async function withCommands(open = true) {
     }),
   );
   useCommandMenuStore.setState({ open });
-  return render(<CommandMenu />);
+  return testClient.render(<CommandMenu />);
 }
 
 afterEach(async () => {
@@ -104,7 +112,9 @@ describe("command menu", () => {
 
     row.click();
 
-    await waitFor(() => expect(openViewInDock).toHaveBeenCalledWith("terminal"));
+    await waitFor(() =>
+      expect(openViewInDock).toHaveBeenCalledWith(testClient.workspace.access, "terminal"),
+    );
   });
 
   it("opens a view the dock does not carry on the content card", async () => {
@@ -113,13 +123,15 @@ describe("command menu", () => {
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "icon gallery" } });
     screen.getByRole("option").click();
 
-    await waitFor(() => expect(openViewOnCard).toHaveBeenCalledWith("icon-gallery"));
+    await waitFor(() =>
+      expect(openViewOnCard).toHaveBeenCalledWith(testClient.workspace.access, "icon-gallery"),
+    );
     expect(openViewInDock).not.toHaveBeenCalled();
   });
 
   it("lets a selected command take focus after the menu closes", async () => {
     await withCommands(false);
-    render(
+    testClient.render(
       <>
         <button>Source</button>
         <button>Destination</button>

@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AgentDockTabs, type AgentDockTab } from "@/ui/agent/context-dock";
@@ -99,7 +107,9 @@ describe("AgentDockTabs", () => {
   it("brings a newly active overflow tab into the visible strip", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    const view = render(<AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />);
+    const view = testClient.render(
+      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />,
+    );
     scrollIntoView.mockClear();
 
     view.rerender(<AgentDockTabs tabs={tabs("timeline")} ariaLabel="Workspace tabs" />);
@@ -111,7 +121,7 @@ describe("AgentDockTabs", () => {
   it("closes a tab on middle click without selecting it", () => {
     const onClose = vi.fn();
     const onSelect = vi.fn();
-    const view = render(
+    const view = testClient.render(
       <AgentDockTabs
         tabs={[{ id: "diff", title: "diff", active: true, onSelect, onClose, closeLabel: "Close" }]}
         ariaLabel="Workspace tabs"
@@ -129,7 +139,7 @@ describe("AgentDockTabs", () => {
 
   it("reports the drop position when a tab is dragged onto a sibling", () => {
     const onReorder = vi.fn();
-    const view = render(
+    const view = testClient.render(
       <AgentDockTabs
         tabs={tabs("skills")}
         ariaLabel="Workspace tabs"
@@ -152,7 +162,7 @@ describe("AgentDockTabs", () => {
   });
 
   it("leaves a single-tab strip undraggable", () => {
-    const view = render(
+    const view = testClient.render(
       <AgentDockTabs
         tabs={[
           { id: "diff", title: "diff", active: true, onClose: () => {}, closeLabel: "Close diff" },
@@ -166,7 +176,9 @@ describe("AgentDockTabs", () => {
   });
 
   it("exposes which overflow edges still contain hidden tabs", () => {
-    const view = render(<AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />);
+    const view = testClient.render(
+      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />,
+    );
     const strip = view.container.querySelector<HTMLElement>(".agent-dock-tabs")!;
     Object.defineProperties(strip, {
       clientWidth: { configurable: true, value: 300 },
@@ -192,7 +204,7 @@ describe("AgentDockTabs", () => {
 
 describe("AgentDockTabs focus continuity", () => {
   it("middle-closes a background tab without interrupting the composer", () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
     const composer = screen.getByRole("textbox", { name: "Message" });
     composer.focus();
     fireEvent.change(composer, { target: { value: "修复 dock focus 草稿" } });
@@ -213,7 +225,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("leaves a primary press free to focus its tab", () => {
-    render(<DockHarness initial={["files", "diff"]} />);
+    testClient.render(<DockHarness initial={["files", "diff"]} />);
 
     expect(fireEvent.mouseDown(screen.getByRole("tab", { name: "diff" }), { button: 0 })).toBe(
       true,
@@ -221,7 +233,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("settles focus on the surviving active tab when the focused tab closes", () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
     fireEvent.click(screen.getByRole("tab", { name: "diff" }));
     screen.getByRole("tab", { name: "diff" }).focus();
 
@@ -234,7 +246,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("falls back to the header action when the last tab closes", () => {
-    render(<DockHarness initial={["files"]} />);
+    testClient.render(<DockHarness initial={["files"]} />);
     screen.getByRole("button", { name: "Close files" }).focus();
 
     fireEvent.click(screen.getByRole("button", { name: "Close files" }));
@@ -245,7 +257,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("respects focus the user moves elsewhere before a queued close settles", () => {
-    render(<DockHarness initial={["files", "diff"]} />);
+    testClient.render(<DockHarness initial={["files", "diff"]} />);
     screen.getByRole("tab", { name: "files" }).focus();
 
     fireEvent.keyDown(screen.getByRole("tab", { name: "files" }), { key: "Backspace" });
@@ -257,7 +269,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("returns focus from the menu to the surviving active tab after closing others", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
 
     await chooseFromTabMenu("plan", "Close others than plan");
     flushFrames();
@@ -267,7 +279,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("names the menu after the inactive tab it was opened on", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
 
     fireEvent.contextMenu(rowOf("plan"));
 
@@ -276,7 +288,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("keeps the moved tab focused after a menu reorder", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
 
     await chooseFromTabMenu("files", "Move right");
     flushFrames();
@@ -290,7 +302,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("respects focus the user moves elsewhere before a queued move settles", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
 
     await chooseFromTabMenu("files", "Move right");
     screen.getByRole("textbox", { name: "Message" }).focus();
@@ -300,7 +312,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("preserves a different tab selected before a queued move settles", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
 
     await chooseFromTabMenu("files", "Move right");
     const chosen = screen.getByRole("tab", { name: "plan" });
@@ -314,7 +326,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("does not focus a moved tab that was retired before the move settled", async () => {
-    render(<DockHarness initial={["files", "diff", "plan"]} />);
+    testClient.render(<DockHarness initial={["files", "diff", "plan"]} />);
     const moved = screen.getByRole("tab", { name: "files" });
 
     await chooseFromTabMenu("files", "Move right");
@@ -327,7 +339,7 @@ describe("AgentDockTabs focus continuity", () => {
   });
 
   it("ignores Delete and Backspace that an IME or an earlier handler consumed", () => {
-    render(<DockHarness initial={["files", "diff"]} />);
+    testClient.render(<DockHarness initial={["files", "diff"]} />);
     const tab = screen.getByRole("tab", { name: "files" });
     tab.focus();
 

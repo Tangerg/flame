@@ -16,16 +16,18 @@ const _paired: Paired<SystemNotificationsState, z.infer<typeof persistSchema>> =
 
 void _paired;
 
-export const useSystemNotificationsStore = create<SystemNotificationsState>()(
-  persist(
-    (set) => ({
-      systemNotifications: true,
-      setSystemNotifications: (systemNotifications) => set({ systemNotifications }),
-    }),
-    {
-      name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
-    },
-  ),
-);
+export function createSystemNotificationsStore() {
+  return create<SystemNotificationsState>()(
+    persist(
+      (set) => ({
+        systemNotifications: true,
+        setSystemNotifications: (systemNotifications) => set({ systemNotifications }),
+      }),
+      {
+        name: STORAGE_KEY,
+        storage: createJSONStorage(() => localStorage),
+        merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
+      },
+    ),
+  );
+}

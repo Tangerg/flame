@@ -1,3 +1,4 @@
+import { type WireFeature } from "@flame/runtime-client";
 import { cappedExponentialBackoffMs } from "@/lib/backoff";
 export type RuntimeServiceHealth = "ready" | "degraded" | "unhealthy";
 
@@ -182,4 +183,26 @@ export function createRuntimeServiceController<Capabilities>(
       retireInspection();
     },
   };
+}
+
+export interface RuntimeCapabilityPort {
+  useCapability(capability: WireFeature): boolean;
+  hasCapability(capability: WireFeature): boolean;
+  supportsStreamingMethod(method: string): boolean;
+  supportsRuntimeTopic(topic: string): boolean;
+}
+
+export type RuntimeServicePhase =
+  "checking" | "reconnecting" | "ready" | "degraded" | "unhealthy" | "unavailable";
+
+export interface RuntimeServiceSnapshot {
+  phase: RuntimeServicePhase;
+  observation: RuntimeServiceObservation | null;
+  failure: RuntimeServiceFailure | null;
+}
+
+export interface RuntimeServiceStatusPort {
+  useSnapshot(): RuntimeServiceSnapshot;
+  snapshot(): RuntimeServiceSnapshot;
+  refresh(): Promise<void>;
 }

@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ComponentContext, TelemetrySnapshot, ClientTelemetry } from "@flame/component-sdk";
 import { Diagnostics } from "../../../plugins/diagnostics/component/component";
@@ -77,7 +85,7 @@ function openDiagnostics(
       throw Error("Diagnostics must not compose another component");
     },
   };
-  return render(<Diagnostics context={context} />);
+  return testClient.render(<Diagnostics context={context} />);
 }
 
 function signal(name: string) {

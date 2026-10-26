@@ -1,9 +1,16 @@
+import { createInterruptResponseFixture } from "@/test/agentOwners";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { navigator } from "@/lib/navigation";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { waitingTree } from "@/features/agent/application/hitl/hitl.fixtures";
 import { type PendingInterruptGroup } from "@/features/agent/public/sessionView";
-import { installInterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
 import { registerApprovalActions } from "@/features/agent/application/hitl/useApprovalSubmit";
 import { submitPendingApproval } from "@/features/agent/application/hitl/submitPendingApproval";
 const SESSION_ID = "ses_keyboard_barrier";
@@ -13,10 +20,10 @@ const ROOT_RUN_ID = "run_root";
 let disposeCoordinator: () => void = () => undefined;
 
 function seedPending(groups: PendingInterruptGroup[]): void {
-  const store = useAgentStore.getState();
+  const store = testClient.agent.projection.store.getState();
   store.ensureSession(SESSION_ID);
   const token = store.beginViewRefresh(SESSION_ID, false)!;
-  const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
+  const view = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
   store.commitViewRefresh(SESSION_ID, token, {
     ...view,
     runsById: waitingTree(SESSION_ID, ROOT_RUN_ID, groups),
@@ -25,14 +32,14 @@ function seedPending(groups: PendingInterruptGroup[]): void {
 }
 
 beforeEach(() => {
-  useAgentStore.getState().dropSession(SESSION_ID);
-  navigator().go({ session: SESSION_ID });
-  disposeCoordinator = installInterruptResponseCoordinator();
+  testClient.agent.projection.store.getState().dropSession(SESSION_ID);
+  testClient.navigation.go({ session: SESSION_ID });
+  disposeCoordinator = createInterruptResponseFixture(testClient);
 });
 
 afterEach(() => {
   disposeCoordinator();
-  useAgentStore.getState().dropSession(SESSION_ID);
+  testClient.agent.projection.store.getState().dropSession(SESSION_ID);
 });
 
 describe("submitPendingApproval", () => {
@@ -52,11 +59,11 @@ describe("submitPendingApproval", () => {
       accept = onSettled;
       return true;
     });
-    useAgentStore.getState().setResume(SESSION_ID, resume);
+    testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
 
-    expect(submitPendingApproval("approve")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
     expect(resume).not.toHaveBeenCalled();
-    expect(submitPendingApproval("deny")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.access, "deny")).toBe(true);
     expect(resume).toHaveBeenCalledWith(
       ROOT_RUN_ID,
       [
@@ -72,11 +79,13 @@ describe("submitPendingApproval", () => {
       expect.any(Function),
       expect.any(Function),
     );
-    expect(submitPendingApproval("approve")).toBe(true);
+    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
 
     accept?.();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toHaveLength(2);
-    expect(submitPendingApproval("approve")).toBe(true);
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.pendingInterrupts,
+    ).toHaveLength(2);
+    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
     expect(resume).toHaveBeenCalledOnce();
   });
 
@@ -87,12 +96,12 @@ describe("submitPendingApproval", () => {
         interrupts: [{ itemId: "question_a", kind: "question" }],
       },
     ]);
-    useAgentStore.getState().setResume(
+    testClient.agent.projection.store.getState().setResume(
       SESSION_ID,
       vi.fn(() => true),
     );
 
-    expect(submitPendingApproval("approve")).toBe(false);
+    expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(false);
   });
 
   it("does not borrow a mounted approval card from another Session", () => {
@@ -103,7 +112,7 @@ describe("submitPendingApproval", () => {
       },
     ]);
     const resume = vi.fn(() => true);
-    useAgentStore.getState().setResume(SESSION_ID, resume);
+    testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
     const retiredApprove = vi.fn();
     const unregister = registerApprovalActions(
       { sessionId: "ses_retired", rootRunId: ROOT_RUN_ID, itemId: "approval_same" },
@@ -114,7 +123,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -130,7 +139,7 @@ describe("submitPendingApproval", () => {
       },
     ]);
     const resume = vi.fn(() => true);
-    useAgentStore.getState().setResume(SESSION_ID, resume);
+    testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
     const retiredApprove = vi.fn();
     const unregister = registerApprovalActions(
       { sessionId: SESSION_ID, rootRunId: "run_retired", itemId: "approval_same" },
@@ -141,7 +150,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -157,7 +166,7 @@ describe("submitPendingApproval", () => {
       },
     ]);
     const resume = vi.fn(() => true);
-    useAgentStore.getState().setResume(SESSION_ID, resume);
+    testClient.agent.projection.store.getState().setResume(SESSION_ID, resume);
     const approve = vi.fn();
     const unregister = registerApprovalActions(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_exact" },
@@ -168,7 +177,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approve")).toBe(true);
+      expect(submitPendingApproval(testClient.agent.access, "approve")).toBe(true);
       expect(approve).toHaveBeenCalledOnce();
       expect(resume).not.toHaveBeenCalled();
     } finally {

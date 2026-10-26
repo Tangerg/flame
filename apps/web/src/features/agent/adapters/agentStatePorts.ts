@@ -1,47 +1,54 @@
 import { agentInputToContentBlocks } from "@/features/agent/adapters/wireInput";
 import { localUserMessage } from "@/features/agent/adapters/optimisticUserMessage";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-import { navigator } from "@/lib/navigation";
+import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+import { type Navigator } from "@/lib/navigation";
 import {
   closeOpenSession,
   reconcileOpenSessions,
 } from "@/features/agent/application/session/sessionSelectionModel";
-import { configureAgentSessionStatePort } from "@/features/agent/application/ports/sessionState";
-import { type AgentOpenSessions } from "@/features/agent/application/ports/sessionState";
-import { configureAgentSessionViewPort } from "@/features/agent/application/ports/sessionView";
-import {
-  getCurrentSessionView,
-  useAgentAction,
-  useCurrentRootRun,
-  useCurrentRootRunning,
-  useAgentProblem,
-  useAgentPlan,
-  useRootNarrativeMessages,
-  useTranscriptRows,
-  useAgentSharedMaterial,
-  useAgentOpeningCommands,
-} from "@/features/agent/adapters/agentViewSelectors";
-import { AgentViewRefreshOwner, useAgentStore } from "@/features/agent/adapters/agentStore";
-function activeSessionId(): string {
-  return navigator().get().session;
-}
+import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
+import { type AgentOpenSessions } from "@/features/agent/application/session/sessionAccess";
+import { type AgentSessionViewPort } from "@/features/agent/application/session/sessionAccess";
+import { createAgentViewSelectors } from "@/features/agent/adapters/agentViewSelectors";
+import { type AgentStoreOwner } from "@/features/agent/adapters/agentStore";
+export function createAgentState(
+  navigation: Navigator,
+  sessionStore: AgentSessionStore,
+  projection: AgentStoreOwner,
+) {
+  const useAgentSessionStore = sessionStore.store;
+  const useAgentStore = projection.store;
+  const {
+    getCurrentSessionView,
+    useAgentAction,
+    useCurrentRootRun,
+    useCurrentRootRunning,
+    useAgentProblem,
+    useAgentPlan,
+    useRootNarrativeMessages,
+    useTranscriptRows,
+    useAgentSharedMaterial,
+    useAgentOpeningCommands,
+  } = createAgentViewSelectors(useAgentStore, navigation);
+  function activeSessionId(): string {
+    return navigation.get().session;
+  }
 
-function getLifecycleSnapshot(): AgentOpenSessions {
-  return {
-    activeSessionId: activeSessionId(),
-    openSessionIds: useAgentSessionStore.getState().openSessionIds,
-  };
-}
+  function getLifecycleSnapshot(): AgentOpenSessions {
+    return {
+      activeSessionId: activeSessionId(),
+      openSessionIds: useAgentSessionStore.getState().openSessionIds,
+    };
+  }
 
-function goToSession(id: string, options?: { replace?: boolean }): void {
-  const store = useAgentSessionStore.getState();
-  if (id !== "") store.holdOpen(id);
-  store.rememberSession(id);
-  navigator().go({ session: id, view: null }, options);
-}
+  function goToSession(id: string, options?: { replace?: boolean }): void {
+    const store = useAgentSessionStore.getState();
+    if (id !== "") store.holdOpen(id);
+    store.rememberSession(id);
+    navigation.go({ session: id, view: null }, options);
+  }
 
-export function installAgentStatePorts(): () => void {
-  const refreshOwner = AgentViewRefreshOwner.install();
+  const refreshOwner = projection.refresh();
   const deletedSessionListeners = new Set<(id: string) => void>();
   const closeSession = (id: string) => {
     const store = useAgentSessionStore.getState();
@@ -57,12 +64,12 @@ export function installAgentStatePorts(): () => void {
     }
     goToSession(next.activeSessionId);
   };
-  const disposeSessionState = configureAgentSessionStatePort({
-    useActiveSessionId: () => navigator().use((location) => location.session),
+  const state: AgentSessionStatePort = {
+    useActiveSessionId: () => navigation.use((location) => location.session),
     getActiveSessionId: activeSessionId,
     getLifecycleSnapshot,
     subscribeActiveSessionId: (onChange) =>
-      navigator().subscribe((location, previous) => {
+      navigation.subscribe((location, previous) => {
         if (location.session !== previous.session) onChange(location.session);
       }),
     subscribeLifecycle: (onChange) => {
@@ -78,7 +85,7 @@ export function installAgentStatePorts(): () => void {
         last = next;
         onChange(next);
       };
-      const unsubscribeLocation = navigator().subscribe(emit);
+      const unsubscribeLocation = navigation.subscribe(emit);
       const unsubscribeStore = useAgentSessionStore.subscribe(emit);
       return () => {
         unsubscribeLocation();
@@ -118,9 +125,9 @@ export function installAgentStatePorts(): () => void {
       if (lastSessionId === "") return;
       goToSession(lastSessionId);
     },
-  });
+  };
 
-  const disposeViewState = configureAgentSessionViewPort({
+  const view: AgentSessionViewPort = {
     useCurrentRootRun,
     useCurrentRootRunning,
     useRootNarrativeMessages,
@@ -161,11 +168,13 @@ export function installAgentStatePorts(): () => void {
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
     clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
-  });
-  return () => {
-    deletedSessionListeners.clear();
-    refreshOwner.dispose();
-    disposeViewState();
-    disposeSessionState();
+  };
+  return {
+    state,
+    view,
+    dispose() {
+      deletedSessionListeners.clear();
+      refreshOwner.dispose();
+    },
   };
 }

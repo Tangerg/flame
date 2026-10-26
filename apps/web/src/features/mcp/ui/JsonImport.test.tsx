@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { useNotificationStore } from "@/features/notifications/public/notifications";
@@ -56,7 +64,7 @@ function runtimeGateway() {
 async function openImport(gateway: MCPServerGateway) {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], []);
   owner = MCPServerMutationOwner.install(gateway);
-  render(<JsonImport />);
+  testClient.render(<JsonImport />);
   const opener = screen.getByRole("button", { name: "Import from JSON" });
   act(() => opener.focus());
   fireEvent.click(opener);

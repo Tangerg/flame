@@ -1,4 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { activeMention, useFileMentions } from "@/features/composer/application/fileMentions";
 import { draftMentions } from "@/features/composer/application/draftContext";
@@ -49,7 +57,7 @@ describe("activeMention", () => {
 describe("useFileMentions", () => {
   it("keys the highlighted row to the current mention candidates", () => {
     const apply = vi.fn();
-    const { result, rerender } = renderHook(
+    const { result, rerender } = testClient.renderHook(
       ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
       { initialProps: { value: "@", caret: 1 } },
     );
@@ -72,7 +80,7 @@ describe("useFileMentions", () => {
   it("leaves the @ in place, because that token is what the chip row reads back", () => {
     const apply = vi.fn();
     workspaceFiles.current = [{ path: "src/alpha.ts" }];
-    const { result } = renderHook(
+    const { result } = testClient.renderHook(
       ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
       { initialProps: { value: "see @al", caret: 7 } },
     );
@@ -87,7 +95,7 @@ describe("useFileMentions", () => {
   it("closes the token so the picker does not reopen on what was just accepted", () => {
     const apply = vi.fn();
     workspaceFiles.current = [{ path: "src/alpha.ts" }];
-    const { result } = renderHook(
+    const { result } = testClient.renderHook(
       ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
       { initialProps: { value: "@al", caret: 3 } },
     );
@@ -101,7 +109,7 @@ describe("useFileMentions status", () => {
   const apply = () => {};
 
   it("says why there is nothing to pick without a project", () => {
-    const { result } = renderHook(() =>
+    const { result } = testClient.renderHook(() =>
       useFileMentions({ value: "@a", caret: 2, cwd: undefined, apply }),
     );
     expect(result.current.open).toBe(true);
@@ -110,7 +118,7 @@ describe("useFileMentions status", () => {
 
   it("keeps the panel open with an empty result instead of vanishing", () => {
     workspaceFiles.current = [{ path: "src/apple.ts" }];
-    const { result } = renderHook(() =>
+    const { result } = testClient.renderHook(() =>
       useFileMentions({ value: "@zzz", caret: 4, cwd: "/repo", apply }),
     );
     expect(result.current.open).toBe(true);
@@ -119,7 +127,7 @@ describe("useFileMentions status", () => {
 
   it("reports a listing that has not arrived as loading", () => {
     workspaceFiles.current = undefined as unknown as Array<{ path: string }>;
-    const { result } = renderHook(() =>
+    const { result } = testClient.renderHook(() =>
       useFileMentions({ value: "@a", caret: 2, cwd: "/repo", apply }),
     );
     expect(result.current.status).toBe("loading");

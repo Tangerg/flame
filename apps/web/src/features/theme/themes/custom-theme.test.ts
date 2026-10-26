@@ -3,12 +3,14 @@ import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/extensions/selectors/extensions";
 import { subscribeContributions } from "@/extensions/kernel";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
+import { createTheme, type Theme } from "@/features/theme/adapters/theme";
+let owner: Theme;
 import { solidFill } from "@/features/theme/kit/scale";
 import customTheme from "@/features/theme/themes/custom-theme";
 describe("custom theme contribution lifecycle", () => {
   beforeEach(() => {
-    useAppearanceStore.setState({
+    owner = createTheme(document, window);
+    owner.store.setState({
       accent: "#3574f0",
       contrast: 25,
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
@@ -16,7 +18,7 @@ describe("custom theme contribution lifecycle", () => {
   });
 
   it("updates its contribution without withdrawing it when appearance preferences change", async () => {
-    await loadPluginsForTest(customTheme);
+    await loadPluginsForTest(customTheme(owner.access.preference));
 
     expect(lookupExtensionPoint(COLOR_THEME)).toHaveLength(1);
     expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe(
@@ -27,7 +29,7 @@ describe("custom theme contribution lifecycle", () => {
       observed.push(lookupExtensionPoint(COLOR_THEME).map((theme) => theme.id));
     });
 
-    expect(() => useAppearanceStore.getState().setAccent("#7f52ff")).not.toThrow();
+    expect(() => owner.store.getState().setAccent("#7f52ff")).not.toThrow();
     expect(lookupExtensionPoint(COLOR_THEME)).toHaveLength(1);
     expect(lookupExtensionByKey(COLOR_THEME, "custom")?.tokens?.["color-accent"]).toBe(
       solidFill("#7f52ff"),
@@ -36,6 +38,6 @@ describe("custom theme contribution lifecycle", () => {
     unsubscribe();
 
     await resetKernelForTest();
-    expect(() => useAppearanceStore.getState().setAccent("#21a179")).not.toThrow();
+    expect(() => owner.store.getState().setAccent("#21a179")).not.toThrow();
   });
 });

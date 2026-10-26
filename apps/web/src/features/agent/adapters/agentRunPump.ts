@@ -4,7 +4,6 @@ import {
   settleBeforeAbort,
   settleWithinNextTask,
 } from "@/lib/asyncOwnership";
-import { queryClient } from "@/lib/queryClient";
 import { delayUntilAborted } from "@/lib/abortableDelay";
 import {
   RpcConnectionError,
@@ -15,7 +14,6 @@ import {
   type SegmentId,
   type StreamingResult,
 } from "@flame/runtime-client";
-import { AGENT_SESSION_USAGE_KEY } from "@/features/agent/application/session/sessionUsage";
 import { createRunEventBatcher } from "@/features/agent/adapters/runEventBatcher";
 interface RunStreamAck {
   runId: RunId;
@@ -38,6 +36,7 @@ export interface RunStreamPosition {
 
 interface AgentRunPumpOptions {
   sessionId: string;
+  onRunFinished: () => void;
   isCancelled: () => boolean;
   readEpoch: () => bigint;
   applyEvents: (events: RunEvent[]) => boolean;
@@ -60,6 +59,7 @@ interface AgentRunPump {
 
 export function createAgentRunPump({
   sessionId,
+  onRunFinished,
   isCancelled,
   readEpoch,
   applyEvents,
@@ -104,11 +104,7 @@ export function createAgentRunPump({
               projectionAdvanced ||= event.eventId !== position.lastEventId;
               position = { ...position, lastEventId: event.eventId };
             },
-            onRunFinished: () => {
-              void queryClient.invalidateQueries({
-                queryKey: [AGENT_SESSION_USAGE_KEY, sessionId],
-              });
-            },
+            onRunFinished,
           });
           activeBatcher = eventBatcher;
           const drained = await consume(

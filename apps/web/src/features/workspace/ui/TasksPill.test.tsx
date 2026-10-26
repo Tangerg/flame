@@ -1,25 +1,29 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@flame/ui";
 import { startTask, useTasksStore } from "@/extensions/tasksStore";
-import { installTaskReadoutPort } from "@/features/workspace/adapters/taskReadoutStore";
 import { TasksPill } from "./TasksPill";
 
-let release: () => void;
 beforeEach(() => {
   vi.useFakeTimers();
   useTasksStore.setState({ tasks: new Map() });
-  release = installTaskReadoutPort();
 });
 afterEach(() => {
   cleanup();
-  release();
   vi.clearAllTimers();
   vi.useRealTimers();
 });
 
 const renderTasks = () =>
-  render(
+  testClient.render(
     <TooltipProvider>
       <TasksPill />
       <textarea aria-label="Draft" defaultValue="Keep this draft." />

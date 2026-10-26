@@ -1,14 +1,19 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ImageSaveProvider } from "@/features/chat/public/imageSave";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ saveImage: mocks.saveImage });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 import { ImageBlock } from "@/features/chat/message/ui/cards/ImageBlock";
 const mocks = vi.hoisted(() => ({
   saveImage: vi.fn<(source: string) => Promise<boolean>>(),
-}));
-
-vi.mock("@/features/chat/message/application/imageSave", () => ({
-  saveInlineImage: mocks.saveImage,
 }));
 
 const FIRST_PNG =
@@ -36,13 +41,48 @@ async function failLater(save: PromiseWithResolvers<boolean>): Promise<void> {
 }
 
 describe("ImageBlock", () => {
+  it("delivers each mounted gallery's save to its own injected callback", async () => {
+    const first = vi.fn(async () => true);
+    const second = vi.fn(async () => true);
+    testClient.render(
+      <>
+        <ImageSaveProvider saveImage={first}>
+          <div className={MESSAGE_CONTENT_CLASS}>
+            <ImageBlock mime="image/png" data={FIRST_PNG} />
+          </div>
+        </ImageSaveProvider>
+        <ImageSaveProvider saveImage={second}>
+          <div className={MESSAGE_CONTENT_CLASS}>
+            <ImageBlock mime="image/gif" data={SECOND_GIF} />
+          </div>
+        </ImageSaveProvider>
+      </>,
+    );
+    const previews = screen.getAllByRole("button", { name: "View attached image" });
+    await openPreview(previews[0]!);
+    let dialog = screen.getByRole("dialog", { name: "Image preview" });
+    await settle(() =>
+      fireEvent.click(within(dialog).getByRole("button", { name: "Download image" })),
+    );
+    expect(first).toHaveBeenCalledExactlyOnceWith(`data:image/png;base64,${FIRST_PNG}`);
+    expect(second).not.toHaveBeenCalled();
+    await settle(() => fireEvent.click(within(dialog).getByRole("button", { name: /close/i })));
+    await openPreview(previews[1]!);
+    dialog = screen.getByRole("dialog", { name: "Image preview" });
+    await settle(() =>
+      fireEvent.click(within(dialog).getByRole("button", { name: "Download image" })),
+    );
+    expect(second).toHaveBeenCalledExactlyOnceWith(`data:image/gif;base64,${SECOND_GIF}`);
+    expect(first).toHaveBeenCalledOnce();
+  });
+
   beforeEach(() => {
     mocks.saveImage.mockReset();
     mocks.saveImage.mockResolvedValue(true);
   });
 
   it("saves the active gallery image through the packaged desktop owner", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
@@ -60,7 +100,7 @@ describe("ImageBlock", () => {
 
   it("keeps a failed save in the preview and clears it when the retry saves", async () => {
     mocks.saveImage.mockRejectedValueOnce(new Error("disk full"));
-    render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
+    testClient.render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
@@ -83,7 +123,7 @@ describe("ImageBlock", () => {
 
   it("stays quiet when the save chooser is cancelled", async () => {
     mocks.saveImage.mockResolvedValueOnce(false);
-    render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
+    testClient.render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
     const dialog = screen.getByRole("dialog", { name: "Image preview" });
@@ -98,7 +138,7 @@ describe("ImageBlock", () => {
   it("keeps a failure from a closed preview out of the reopened one", async () => {
     const save = Promise.withResolvers<boolean>();
     mocks.saveImage.mockReturnValueOnce(save.promise);
-    render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
+    testClient.render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
 
     await openPreview(screen.getByRole("button", { name: "View attached image" }));
     fireEvent.click(screen.getByRole("button", { name: "Download image" }));
@@ -120,7 +160,7 @@ describe("ImageBlock", () => {
   it("names the image whose save failed after moving to another image", async () => {
     const save = Promise.withResolvers<boolean>();
     mocks.saveImage.mockReturnValueOnce(save.promise);
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <MarkdownRenderer
           text={`![Architecture](data:image/png;base64,${FIRST_PNG})`}
@@ -146,7 +186,7 @@ describe("ImageBlock", () => {
   });
 
   it("navigates protocol images inside one message preview gallery", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
@@ -166,7 +206,7 @@ describe("ImageBlock", () => {
   });
 
   it("keeps protocol and Markdown images in the same message gallery", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
         <MarkdownRenderer
@@ -183,7 +223,7 @@ describe("ImageBlock", () => {
   });
 
   it("uses the current image name when moving from named Markdown to an unnamed attachment", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <MarkdownRenderer
           text={`![Architecture](data:image/png;base64,${FIRST_PNG})`}
@@ -219,7 +259,9 @@ describe("ImageBlock", () => {
   });
 
   it("shows a non-interactive decode failure and restores preview when the source changes", async () => {
-    const { container, rerender } = render(<ImageBlock mime="image/png" data={FIRST_PNG} />);
+    const { container, rerender } = testClient.render(
+      <ImageBlock mime="image/png" data={FIRST_PNG} />,
+    );
     fireEvent.error(container.querySelector("img")!);
 
     const unavailable = screen.getByRole("img", { name: "Image unavailable" });
@@ -238,7 +280,7 @@ describe("ImageBlock", () => {
   });
 
   it("keeps the focused zoom control while arrow keys move through the gallery", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
         <ImageBlock mime="image/gif" data={SECOND_GIF} />
@@ -338,7 +380,7 @@ describe("ImageBlock", () => {
       });
     };
     const renderGallery = () =>
-      render(
+      testClient.render(
         <div className={MESSAGE_CONTENT_CLASS}>
           <MarkdownRenderer
             text={`![Wide](${wideSource}) ![Tall](${tallSource})`}
@@ -462,7 +504,7 @@ describe("ImageBlock", () => {
   });
 
   it("resets viewing state for distinct gallery entries that share a source", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <MarkdownRenderer
           text={`![First](data:image/png;base64,${FIRST_PNG}) ![Second](data:image/png;base64,${FIRST_PNG})`}
@@ -490,7 +532,7 @@ describe("ImageBlock", () => {
   });
 
   it("does not include images from a nested message body", async () => {
-    render(
+    testClient.render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
         <div className={MESSAGE_CONTENT_CLASS}>

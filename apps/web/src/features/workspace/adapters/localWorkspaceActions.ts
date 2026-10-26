@@ -1,14 +1,14 @@
 import { type ClientHost } from "@/platform/host";
-import { configureLocalWorkspace } from "@/features/workspace/application/ports/localWorkspace";
+import { type LocalWorkspace } from "@/features/workspace/application/localWorkspace";
 function absoluteWorkspacePath(cwd: string, path: string): string {
   return path.startsWith("/") ? path : `${cwd.replace(/\/+$/, "")}/${path}`;
 }
 
-export function installLocalWorkspaceActions(
+export function createLocalWorkspaceActions(
   host: Pick<ClientHost, "openPath" | "revealPath">,
   canAccessLocalWorkspace: () => boolean,
-): () => void {
-  return configureLocalWorkspace({
+): LocalWorkspace {
+  return {
     available: canAccessLocalWorkspace,
     open(cwd, path) {
       if (!canAccessLocalWorkspace()) return Promise.resolve(false);
@@ -18,5 +18,5 @@ export function installLocalWorkspaceActions(
       if (!canAccessLocalWorkspace()) return Promise.resolve(false);
       return host.revealPath(absoluteWorkspacePath(cwd, path));
     },
-  });
+  };
 }

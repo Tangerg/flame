@@ -3,26 +3,10 @@ import { type FlameClient } from "@flame/runtime-client";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { PendingRunOpenings } from "@/features/agent/ui/PendingRunOpenings";
-import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
-import { installAgentDefaultSessionPort } from "@/features/agent/adapters/agentDefaultSessionPort";
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
-import { installAgentStatePorts } from "@/features/agent/adapters/agentStatePorts";
-import { installInterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
-import {
-  getActiveSessionId,
-  getAgentSessionLifecycleSnapshot,
-  subscribeActiveSessionId,
-  subscribeAgentSessionLifecycle,
-  subscribeDeletedAgentSession,
-} from "@/features/agent/public/session";
+import { type AgentOwner } from "@/features/agent/adapters/agent";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
-import {
-  RUNTIME_SERVER_SCOPE,
-  RUNTIME_STREAM,
-  followRuntimeGeneration,
-} from "@/features/connection/public/services";
-import { currentRuntimeEndpoint } from "@/features/connection/public/endpoint";
-export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
+import { RUNTIME_STREAM, RUNTIME_SERVER_SCOPE } from "@/features/connection/public/services";
+export function createAgentBootstrapPlugin(agent: AgentOwner, runtimeClient: () => FlameClient) {
   return definePlugin({
     name: "flame.builtin.agent-bootstrap",
     requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
@@ -34,27 +18,15 @@ export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
         component: PendingRunOpenings,
       });
       registerAgentDataProviders(ctx, runtimeClient);
-      ctx.cleanup(installAgentStatePorts());
-      ctx.cleanup(
-        installAgentDefaultSessionPort(runtimeClient, () => {
-          const generation = ctx.runtime.connectionGeneration();
-          if (generation) ctx.runtime.reportConnectionLoss(generation);
-        }),
-      );
-      const runtimeGateway = installAgentRuntimeGateway(runtimeClient);
-      ctx.cleanup(() => runtimeGateway.dispose());
-      ctx.cleanup(
-        followRuntimeGeneration(ctx.runtime, () => runtimeGateway.replaceRuntimeGeneration()),
-      );
-      ctx.cleanup(installInterruptResponseCoordinator());
-      ctx.cleanup(installAgentSessionScope(ctx.scope, currentRuntimeEndpoint));
+      agent.start();
+      ctx.cleanup(agent.dispose);
       return {
         sessions: {
-          getActiveSessionId,
-          getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
-          subscribeActiveSessionId,
-          subscribeLifecycle: subscribeAgentSessionLifecycle,
-          subscribeDeleted: subscribeDeletedAgentSession,
+          getActiveSessionId: agent.access.state.getActiveSessionId,
+          getLifecycleSnapshot: agent.access.state.getLifecycleSnapshot,
+          subscribeActiveSessionId: agent.access.state.subscribeActiveSessionId,
+          subscribeLifecycle: agent.access.state.subscribeLifecycle,
+          subscribeDeleted: agent.access.state.subscribeDeletedSession,
         },
       };
     },

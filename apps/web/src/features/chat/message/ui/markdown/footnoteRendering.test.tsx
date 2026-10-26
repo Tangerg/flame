@@ -1,6 +1,13 @@
-import { render, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { waitFor, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
-import { motionScale, publishMotionScale } from "@/lib/appearance";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { t } from "@/lib/i18n/index";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
@@ -21,7 +28,7 @@ describe("markdown footnote presentation", () => {
   });
 
   it("closes each message's repeated references, descriptions and return links", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <>
         <MarkdownRenderer text={NOTES} reveal="instant" />
         <MarkdownRenderer text={NOTES} reveal="instant" />
@@ -68,7 +75,7 @@ describe("markdown footnote presentation", () => {
   });
 
   it("copies the answer and note text without auxiliary labels or return controls", () => {
-    const { container } = render(<MarkdownRenderer text={NOTES} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={NOTES} reveal="instant" />);
     const root = container.querySelector<HTMLElement>(".md")!;
     const range = document.createRange();
     range.selectNodeContents(root);
@@ -92,7 +99,7 @@ describe("markdown footnote presentation", () => {
   });
 
   it("resolves a footnote whose authored label uses the answer's language", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer
         text={"这是一条带来源的说明。[^来源]\n\n[^来源]: 保留完整的来源内容。"}
         reveal="instant"
@@ -114,7 +121,7 @@ describe("markdown footnote presentation", () => {
       "",
       "[Blocked](javascript:alert%281%29)",
     ].join("\n");
-    const { container } = render(<MarkdownRenderer text={text} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
     const guide = within(container).getByRole("link", { name: "guide" });
     expect(guide.getAttribute("href")).toBe("https://example.test/protocol");
     expect(guide.getAttribute("target")).toBe("_blank");
@@ -130,9 +137,9 @@ describe("markdown footnote presentation", () => {
   });
 
   it("keeps generated identities stable as streaming grows and completes", async () => {
-    const previousScale = motionScale();
-    publishMotionScale(0);
-    const { container, rerender, unmount } = render(
+    const previousScale = testClient.theme.appearance.read().motionScale;
+    testClient.theme.appearance.publishMotionScale(0);
+    const { container, rerender, unmount } = testClient.render(
       <MarkdownRenderer text={NOTES} reveal="smooth" streaming />,
     );
     try {
@@ -154,7 +161,7 @@ describe("markdown footnote presentation", () => {
       expect([...container.querySelectorAll("[id]")].map((element) => element.id)).toEqual(ids);
     } finally {
       unmount();
-      publishMotionScale(previousScale);
+      testClient.theme.appearance.publishMotionScale(previousScale);
     }
   });
 });

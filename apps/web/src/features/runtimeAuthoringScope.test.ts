@@ -1,11 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { configureNavigator, navigator, type Navigator } from "@/lib/navigation";
+import { stubInstance } from "@/test/stubInstance";
+import { type Navigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
+import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
+import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { type RuntimeServerScope } from "@/features/connection/public/services";
+import { createAgent, type AgentOwner } from "@/features/agent/adapters/agent";
+import {
+  createComposer,
+  type ComposerOwner,
+} from "@/features/composer/adapters/composerStatePorts";
+import { createWorkspace, type WorkspaceOwner } from "@/features/workspace/adapters/workspace";
+import { createBrowserHost } from "@/platform/browserHost";
+import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+import { createComposerStore } from "@/features/composer/adapters/composerStore";
+import { createContextDockStore } from "@/features/workspace/adapters/contextDockStore";
 import * as imageInput from "@/features/composer/public/input";
-import { installComposerStatePorts } from "@/features/composer/adapters/composerStatePorts";
-import { useComposerStore } from "@/features/composer/adapters/composerStore";
-import { useContextDockStore } from "@/features/workspace/adapters/contextDockStore";
-import { installWorkspaceNavigationPort } from "@/features/workspace/adapters/navigationStatePort";
 import { bindWorkspaceSessionNavigation } from "@/features/workspace/application/sessionNavigationSync";
 import {
   activateWorkspaceSessionScope,
@@ -13,7 +23,6 @@ import {
   forgetWorkspaceSessionScopes,
   openWorkspaceFile,
 } from "@/features/workspace/public/navigation";
-import { type RuntimeServerScope } from "@/features/connection/public/services";
 import {
   closeActiveAgentSession,
   getActiveSessionId,
@@ -23,28 +32,22 @@ import {
   subscribeAgentSessionLifecycle,
   subscribeDeletedAgentSession,
 } from "@/features/agent/public/session";
-import {
-  configureAgentRuntimeGateway,
-  type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-const sessions = {
-  getActiveSessionId,
-  getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
-  subscribeActiveSessionId,
-  subscribeLifecycle: subscribeAgentSessionLifecycle,
-  subscribeDeleted: subscribeDeletedAgentSession,
+import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
+
+let testClient: {
+  navigation: Navigator;
+  agent: AgentOwner;
+  composer: ComposerOwner;
+  workspace: WorkspaceOwner;
 };
 
 const disposers: (() => void)[] = [];
 
-const composer = () => useComposerStore.getState();
+const composer = () => testClient.composer.store.getState();
 
-const refs = () => useAgentSessionStore.getState();
+const refs = () => testClient.agent.sessions.store.getState();
 
-const dock = () => useContextDockStore.getState();
+const dock = () => testClient.workspace.dock.store.getState();
 
 afterEach(() => {
   for (const dispose of disposers.splice(0).reverse()) dispose();
@@ -62,18 +65,66 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
       return () => callbacks.delete(callback);
     },
   };
+  const projection = createRuntimeConnectionProjection();
+  const runtime = {
+    capabilities: projection.capabilities,
+    status: projection.status,
+    endpoint: createRuntimeEndpoint({
+      read: () => ({ endpoint }),
+      defaultTarget: () => ({ endpoint: targetA }),
+      replace(target) {
+        endpoint = target.endpoint;
+        for (const callback of callbacks) callback();
+      },
+    }),
+  };
+  const client = () => {
+    throw new Error("Authoring test does not perform remote operations");
+  };
+  const stream = {
+    connectionGeneration: () => projection.store.getState().connectionGeneration,
+    subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
+    reportConnectionLoss: () => undefined,
+  };
+  const agent = createAgent(client, navigation, runtime, stream, scope);
+  const sessions = {
+    getActiveSessionId: () => getActiveSessionId(agent.access),
+    getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(agent.access),
+    subscribeActiveSessionId: (listener: (id: string) => void) =>
+      subscribeActiveSessionId(agent.access, listener),
+    subscribeLifecycle: (listener: Parameters<typeof subscribeAgentSessionLifecycle>[1]) =>
+      subscribeAgentSessionLifecycle(agent.access, listener),
+    subscribeDeleted: (listener: (id: string) => void) =>
+      subscribeDeletedAgentSession(agent.access, listener),
+  };
+  const composer = createComposer(sessions, () => endpoint, scope);
+  const workspace = createWorkspace(
+    client,
+    navigation,
+    createBrowserHost(),
+    () => false,
+    agent.access,
+    runtime,
+  );
+  testClient = { navigation, agent, composer, workspace };
+  disposers.push(
+    () => projection.dispose(),
+    () => agent.dispose(),
+    () => composer.dispose(),
+    () => workspace.dispose(),
+  );
   const deleteSession = vi.fn().mockResolvedValue(undefined);
-  disposers.push(configureAgentRuntimeGateway({ deleteSession } as unknown as AgentRuntimeGateway));
-  disposers.push(configureNavigator(navigation));
-  disposers.push(installAgentSessionScope(scope, () => endpoint));
-  disposers.push(installComposerStatePorts(sessions, () => endpoint, scope));
-  disposers.push(installWorkspaceNavigationPort(() => endpoint));
+  disposers.push(
+    stubInstance(agent.access.runtime, { deleteSession } as unknown as AgentRuntimeGateway),
+  );
+  agent.start();
+  composer.start();
   disposers.push(
     bindWorkspaceSessionNavigation({
       ...sessions,
-      adoptSessionScope: adoptWorkspaceSessionScope,
-      activateSessionScope: activateWorkspaceSessionScope,
-      forgetSessionScopes: forgetWorkspaceSessionScopes,
+      adoptSessionScope: (id) => adoptWorkspaceSessionScope(workspace.access, id),
+      activateSessionScope: (id) => activateWorkspaceSessionScope(workspace.access, id),
+      forgetSessionScopes: (ids) => forgetWorkspaceSessionScopes(workspace.access, ids),
     }),
   );
   return {
@@ -90,21 +141,21 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
 describe("Runtime target authoring ownership", () => {
   it("preserves each target's drafts and file context when Session IDs coincide", () => {
     const targets = installTargets("roundtrip");
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("history on A");
     composer().captureSubmission().consume("history on A");
     composer().setValue("draft on A");
     composer().addImages([{ mime: "image/png", data: "image-on-A" }]);
     composer().addPaste("paste on A");
-    openWorkspaceFile("src/only-on-A.ts", 12);
-    navigator().go({ view: "files", subagent: "child-on-A", settings: "connection" });
-    const keyA = useComposerStore.persist.getOptions().name!;
+    openWorkspaceFile(testClient.workspace.access, "src/only-on-A.ts", 12);
+    testClient.navigation.go({ view: "files", subagent: "child-on-A", settings: "connection" });
+    const keyA = testClient.composer.store.persist.getOptions().name!;
     const storedA = localStorage.getItem(keyA);
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
 
-    expect(navigator().get()).toEqual({
+    expect(testClient.navigation.get()).toEqual({
       session: "",
       view: null,
       dock: null,
@@ -117,10 +168,10 @@ describe("Runtime target authoring ownership", () => {
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(localStorage.getItem(keyA)).toBe(storedA);
 
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("draft on B");
-    openWorkspaceFile("src/only-on-B.ts", 24);
-    const keyB = useComposerStore.persist.getOptions().name!;
+    openWorkspaceFile(testClient.workspace.access, "src/only-on-B.ts", 24);
+    const keyB = testClient.composer.store.persist.getOptions().name!;
     expect(keyB).not.toBe(keyA);
     targets.deleteSession.mockClear();
 
@@ -128,7 +179,7 @@ describe("Runtime target authoring ownership", () => {
 
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toEqual(["shared"]);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     expect(composer().composer.draft).toMatchObject({
       value: "draft on A",
       images: [{ mime: "image/png", data: "image-on-A" }],
@@ -139,7 +190,7 @@ describe("Runtime target authoring ownership", () => {
     expect(dock().fileViewer).toEqual({ path: "src/only-on-A.ts", line: 12 });
 
     targets.replace(targets.targetB);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     expect(composer().composer.draft.value).toBe("draft on B");
     expect(composer().composer.draft.images).toEqual([]);
     expect(dock().fileViewer).toEqual({ path: "src/only-on-B.ts", line: 24 });
@@ -147,35 +198,35 @@ describe("Runtime target authoring ownership", () => {
 
   it("keeps authoring and image work for replacement at the same endpoint", async () => {
     const targets = installTargets("same-endpoint");
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("retained during token refresh or process restart");
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     composer().addImageFiles([new File([""], "pending.png")]);
-    const key = useComposerStore.persist.getOptions().name!;
+    const key = testClient.composer.store.persist.getOptions().name!;
 
     targets.replace(targets.targetA);
     reading.resolve({ mime: "image/png", data: "accepted", name: "pending.png" });
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
 
-    expect(getActiveSessionId()).toBe("shared");
+    expect(getActiveSessionId(testClient.agent.access)).toBe("shared");
     expect(composer().composer.draft.value).toBe(
       "retained during token refresh or process restart",
     );
-    expect(useComposerStore.persist.getOptions().name).toBe(key);
+    expect(testClient.composer.store.persist.getOptions().name).toBe(key);
   });
 
   it("retires delayed image results even after switching away and back to the same Session", async () => {
     const targets = installTargets("delayed-image");
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
     composer().addImageFiles([new File([""], "pending.png")]);
 
     targets.replace(targets.targetB);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     targets.replace(targets.targetA);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     reading.resolve({ mime: "image/png", data: "retired", name: "pending.png" });
     await reading.promise;
     await Promise.resolve();
@@ -196,75 +247,79 @@ describe("Runtime target authoring ownership", () => {
       },
     };
     const targets = installTargets("delayed-route", delayed);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
     refs().holdOpen("shared");
     memory.go({ settings: "connection" });
-    expect(getActiveSessionId()).toBe("shared");
+    expect(getActiveSessionId(testClient.agent.access)).toBe("shared");
     for (const navigate of pending.splice(0)) navigate();
 
-    expect(getActiveSessionId()).toBe("");
+    expect(getActiveSessionId(testClient.agent.access)).toBe("");
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("important unsent input");
     composer().addPaste("unsent source text");
     composer().addImages([{ mime: "image/png", data: "unsent-image" }]);
     const draft = composer().composer.draft;
     targets.deleteSession.mockClear();
-    selectAgentSession("another");
+    selectAgentSession(testClient.agent.access, "another");
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toContain("shared");
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     expect(composer().composer.draft).toEqual(draft);
-    expect(closeActiveAgentSession()).toBe(true);
+    expect(closeActiveAgentSession(testClient.agent.access)).toBe(true);
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     expect(composer().composer.draft).toEqual(draft);
-    agentSessionState().deleteSession("shared");
-    selectAgentSession("shared");
+    testClient.agent.access.state.deleteSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(composer().composer.durableDraftTexts().has("shared")).toBe(false);
   });
 
   it("hydrates only the restored endpoint after renderer replacement and discards unscoped state", async () => {
     const targets = installTargets("cold-renderer");
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("cold draft on A");
-    openWorkspaceFile("src/A.ts", 1);
-    const unscopedAgent = localStorage.getItem(useAgentSessionStore.persist.getOptions().name!)!;
-    const unscopedComposer = localStorage.getItem(useComposerStore.persist.getOptions().name!)!;
-    const unscopedDock = localStorage.getItem(useContextDockStore.persist.getOptions().name!)!;
+    openWorkspaceFile(testClient.workspace.access, "src/A.ts", 1);
+    const unscopedAgent = localStorage.getItem(
+      testClient.agent.sessions.store.persist.getOptions().name!,
+    )!;
+    const unscopedComposer = localStorage.getItem(
+      testClient.composer.store.persist.getOptions().name!,
+    )!;
+    const unscopedDock = localStorage.getItem(
+      testClient.workspace.dock.store.persist.getOptions().name!,
+    )!;
     targets.replace(targets.targetB);
-    selectAgentSession("shared");
+    selectAgentSession(testClient.agent.access, "shared");
     composer().setValue("cold draft on B");
-    openWorkspaceFile("src/B.ts", 2);
+    openWorkspaceFile(testClient.workspace.access, "src/B.ts", 2);
     localStorage.setItem("flame.agent-session", unscopedAgent);
     localStorage.setItem("flame.composer", unscopedComposer);
     localStorage.setItem("flame.context-dock", unscopedDock);
 
-    vi.resetModules();
-    const [agent, input, workspace] = await Promise.all([
-      import("@/features/agent/adapters/agentSessionStore"),
-      import("@/features/composer/adapters/composerStore"),
-      import("@/features/workspace/adapters/contextDockStore"),
-    ]);
-    expect(agent.useAgentSessionStore.persist.hasHydrated()).toBe(false);
-    expect(input.useComposerStore.persist.hasHydrated()).toBe(false);
-    expect(workspace.useContextDockStore.persist.hasHydrated()).toBe(false);
-    expect(agent.useAgentSessionStore.getState().openSessionIds).toEqual([]);
-    expect(input.useComposerStore.getState().composer.draft.value).toBe("");
+    const agent = createAgentSessionStore();
+    const input = createComposerStore();
+    const workspace = createContextDockStore();
+    disposers.push(() => input.dispose());
+    expect(agent.store.persist.hasHydrated()).toBe(false);
+    expect(input.store.persist.hasHydrated()).toBe(false);
+    expect(workspace.store.persist.hasHydrated()).toBe(false);
+    expect(agent.store.getState().openSessionIds).toEqual([]);
+    expect(input.store.getState().composer.draft.value).toBe("");
 
-    agent.activateAgentSessionStorage(targets.targetB);
-    input.activateComposerStorage(targets.targetB);
-    workspace.activateContextDockStorage(targets.targetB);
-    input.useComposerStore.getState().loadSession("shared");
-    workspace.useContextDockStore.getState().activateSessionScope("shared");
+    agent.activate(targets.targetB);
+    input.activate(targets.targetB);
+    workspace.activate(targets.targetB);
+    input.store.getState().loadSession("shared");
+    workspace.store.getState().activateSessionScope("shared");
 
-    expect(agent.useAgentSessionStore.getState().openSessionIds).toEqual(["shared"]);
-    expect(input.useComposerStore.getState().composer.draft.value).toBe("cold draft on B");
-    expect(workspace.useContextDockStore.getState().fileViewer).toEqual({
+    expect(agent.store.getState().openSessionIds).toEqual(["shared"]);
+    expect(input.store.getState().composer.draft.value).toBe("cold draft on B");
+    expect(workspace.store.getState().fileViewer).toEqual({
       path: "src/B.ts",
       line: 2,
     });

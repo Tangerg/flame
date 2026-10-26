@@ -32,7 +32,7 @@
 // signal that the interaction model needs a third state, not that this callsite
 // needs its own alpha — add it in globals.css so everything else can reach it.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 

@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
@@ -53,7 +61,7 @@ afterEach(async () => {
 describe("mounted Runtime Workspace-file-changes generation", () => {
   it("aborts the old cwd request when the active Session retargets", async () => {
     const send = vi.spyOn(transport, "send");
-    const hook = renderHook(({ cwd }) => useWorkspaceFileChanges({ cwd }), {
+    const hook = testClient.renderHook(({ cwd }) => useWorkspaceFileChanges({ cwd }), {
       wrapper,
       initialProps: { cwd: "/old" },
     });

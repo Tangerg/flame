@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { ContentVisibility } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,7 +14,6 @@ import { selectAgentSession } from "@/features/agent/public/session";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
 import { openChatSearch } from "@/features/chat/search/application/openChatSearch";
 import { ChatSearchOverlay } from "@/features/chat/search/ui/ChatSearchOverlay";
-import { motionScale, publishMotionScale } from "@/lib/appearance";
 const highlights = vi.hoisted(() => ({ paint: vi.fn(), clear: vi.fn() }));
 
 vi.mock("@/features/chat/search/adapters/searchHighlights", () => ({
@@ -20,7 +27,7 @@ const nativeScrollIntoView = Object.getOwnPropertyDescriptor(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  selectAgentSession("session-a");
+  selectAgentSession(testClient.agent.access, "session-a");
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
@@ -81,7 +88,7 @@ function SearchFixture({
 }
 
 function renderSearch() {
-  return render(<SearchFixture />);
+  return testClient.render(<SearchFixture />);
 }
 
 function openSearch(): HTMLInputElement {
@@ -138,7 +145,7 @@ describe("ChatSearchOverlay", () => {
     expect(openSearch().value).toBe("");
 
     fireEvent.change(searchInput()!, { target: { value: "beta" } });
-    act(() => selectAgentSession("session-b"));
+    act(() => selectAgentSession(testClient.agent.access, "session-b"));
     expect(searchInput()).toBeNull();
     expect(openSearch().value).toBe("");
   });
@@ -431,7 +438,7 @@ describe("ChatSearchOverlay", () => {
   });
 
   it("does not search the document when its conversation boundary is missing", () => {
-    render(
+    testClient.render(
       <>
         <article className={MESSAGE_CONTENT_SELECTOR.slice(1)}>alpha</article>
         <ChatSearchOverlay />
@@ -484,7 +491,7 @@ describe("ChatSearchOverlay", () => {
     { scale: 0, reduced: false, behavior: "instant" },
     { scale: 1, reduced: true, behavior: "instant" },
   ])("honors application and system motion preferences: %j", ({ scale, reduced, behavior }) => {
-    const previousScale = motionScale();
+    const previousScale = testClient.theme.appearance.read().motionScale;
     const media = vi.spyOn(window, "matchMedia").mockReturnValue({
       matches: reduced,
       media: "(prefers-reduced-motion: reduce)",
@@ -496,7 +503,7 @@ describe("ChatSearchOverlay", () => {
       dispatchEvent: vi.fn(() => true),
     });
     try {
-      publishMotionScale(scale);
+      testClient.theme.appearance.publishMotionScale(scale);
       renderSearch();
       const input = searchFor("alpha");
       expect(HTMLElement.prototype.scrollIntoView).toHaveBeenLastCalledWith({
@@ -510,18 +517,18 @@ describe("ChatSearchOverlay", () => {
       });
       expect(document.activeElement).toBe(input);
     } finally {
-      publishMotionScale(previousScale);
+      testClient.theme.appearance.publishMotionScale(previousScale);
       media.mockRestore();
     }
   });
 
   it("reads a later application motion preference at navigation without replacing Find", () => {
-    const previousScale = motionScale();
+    const previousScale = testClient.theme.appearance.read().motionScale;
     try {
-      publishMotionScale(1);
+      testClient.theme.appearance.publishMotionScale(1);
       renderSearch();
       const input = searchFor("alpha");
-      publishMotionScale(0);
+      testClient.theme.appearance.publishMotionScale(0);
       fireEvent.keyDown(input, { key: "Enter" });
       expect(HTMLElement.prototype.scrollIntoView).toHaveBeenLastCalledWith({
         block: "center",
@@ -529,12 +536,12 @@ describe("ChatSearchOverlay", () => {
       });
       expect(searchInput()).toBe(input);
     } finally {
-      publishMotionScale(previousScale);
+      testClient.theme.appearance.publishMotionScale(previousScale);
     }
   });
 
   it("does not open for hidden content", () => {
-    render(<SearchFixture visible={false} />);
+    testClient.render(<SearchFixture visible={false} />);
     const outside = screen.getByRole("button", { name: "Outside" });
     outside.focus();
     act(() => openChatSearch());
@@ -568,7 +575,7 @@ describe("ChatSearchOverlay", () => {
     const outside = screen.getByRole("button", { name: "Outside" });
     outside.focus();
     const clearCount = highlights.clear.mock.calls.length;
-    act(() => selectAgentSession("session-b"));
+    act(() => selectAgentSession(testClient.agent.access, "session-b"));
     expect(searchInput()).toBeNull();
     expect(document.activeElement).toBe(outside);
     expect(highlights.clear.mock.calls.length).toBeGreaterThan(clearCount);

@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type Interrupt,
@@ -8,7 +16,7 @@ import {
   type StreamEvent,
 } from "@flame/runtime-client";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
-import { AgentViewRefreshOwner, useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { selectVisibleProblem } from "@/features/agent/application/view/problemPresentation";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
@@ -54,7 +62,7 @@ const fold = (event: StreamEvent): RunEvent => {
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
 
 const applyCompletedItems = (items: Item[]): void => {
-  useAgentStore.getState().applyRunEvents(
+  testClient.agent.projection.store.getState().applyRunEvents(
     SID,
     items.map((value) => fold(completed(value))),
   );
@@ -89,36 +97,36 @@ const runWaiting = (interrupts: Interrupt[]): StreamEvent => ({
   interrupts,
 });
 
-const view = () => useAgentStore.getState().sessions[SID]!.view;
+const view = () => testClient.agent.projection.store.getState().sessions[SID]!.view;
 
 const materialToken = () => {
-  const entry = useAgentStore.getState().sessions[SID]!;
+  const entry = testClient.agent.projection.store.getState().sessions[SID]!;
   return { viewEpoch: entry.viewEpoch, viewRevision: entry.viewRevision };
 };
 
 beforeEach(async () => {
-  useAgentStore.getState().dropSession(SID);
+  testClient.agent.projection.store.getState().dropSession(SID);
   await loadPluginsForTest();
 });
 
 describe("agentStore projection identity", () => {
   it("does not advance the revision for a batch that folds to the same view", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
     const settled = materialToken();
-    const sessions = useAgentStore.getState().sessions;
+    const sessions = testClient.agent.projection.store.getState().sessions;
 
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
 
     expect(materialToken()).toEqual(settled);
-    expect(useAgentStore.getState().sessions).toBe(sessions);
+    expect(testClient.agent.projection.store.getState().sessions).toBe(sessions);
   });
 });
 
 describe("agentStore.commitCancelResponse", () => {
   it("merges the exact root RunRef committed by the runtime", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(
       SID,
@@ -133,7 +141,7 @@ describe("agentStore.commitCancelResponse", () => {
     expect(selectCurrentRootRun(view())?.status).toBe("running");
 
     const token = materialToken();
-    useAgentStore.getState().commitCancelResponse(SID, token, {
+    testClient.agent.projection.store.getState().commitCancelResponse(SID, token, {
       type: "root",
       run: runRef({
         status: "finished",
@@ -152,7 +160,7 @@ describe("agentStore.commitCancelResponse", () => {
   });
 
   it("closes a canceled parked tree's interrupts without inventing its Items", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(
       SID,
@@ -195,7 +203,7 @@ describe("agentStore.commitCancelResponse", () => {
   });
 
   it("merges a child and its post-cancel root without inventing sibling lifecycle", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [runStarted("run_1", SID), runStarted("run_sibling", SID)].map(fold));
 
@@ -229,7 +237,7 @@ describe("agentStore.commitCancelResponse", () => {
   });
 
   it("rejects a delayed cancel snapshot after a newer terminal projection", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [runStarted("run_1", SID)].map(fold));
     const token = materialToken();
@@ -266,7 +274,7 @@ describe("agentStore.commitCancelResponse", () => {
   });
 
   it("rejects a delayed cancel snapshot after the event generation retires", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [runStarted("run_1", SID)].map(fold));
     const token = materialToken();
@@ -292,7 +300,7 @@ describe("agentStore.commitCancelResponse", () => {
 
 describe("agentStore.applyRunSnapshot", () => {
   it("folds the exact terminal RunRef after the stream tail", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
 
@@ -317,12 +325,12 @@ describe("agentStore.applyRunSnapshot", () => {
 
 describe("agentStore authoritative refresh", () => {
   it("rejects an old writer token after a successor generation takes ownership", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    const retired = AgentViewRefreshOwner.install();
+    const retired = testClient.agent.projection.refresh();
     const retiredToken = retired.begin(SID, false)!;
 
-    const successor = AgentViewRefreshOwner.install();
+    const successor = testClient.agent.projection.refresh();
 
     expect(retired.commit(SID, retiredToken, EMPTY_AGENT_SESSION_VIEW)).toBe(false);
     expect(retired.begin(SID, false)).toBeNull();
@@ -331,10 +339,10 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("does not let a stale disposer retire the successor writer", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    const retired = AgentViewRefreshOwner.install();
-    const successor = AgentViewRefreshOwner.install();
+    const retired = testClient.agent.projection.refresh();
+    const successor = testClient.agent.projection.refresh();
     retired.dispose();
 
     const token = successor.begin(SID, false)!;
@@ -349,7 +357,7 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("keeps the current view visible until a complete snapshot commits", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
     const visible = view();
@@ -362,7 +370,7 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("rejects a snapshot when a live event changed the projection after the read began", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     const token = store.beginViewRefresh(SID, false)!;
     store.applyRunEvents(SID, [fold(runStarted("run_live", SID))]);
@@ -372,7 +380,7 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("lets the newest refresh supersede an older in-flight read", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     const older = store.beginViewRefresh(SID, false)!;
     const newer = store.beginViewRefresh(SID, false)!;
@@ -388,7 +396,7 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("does not let a pre-close snapshot commit into a remounted Session generation", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     const predecessor = store.beginViewRefresh(SID, false)!;
 
@@ -414,22 +422,22 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("revokes snapshot and queued-stream writers at a connection generation boundary", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    const owner = AgentViewRefreshOwner.install();
+    const owner = testClient.agent.projection.refresh();
     const token = owner.begin(SID, false)!;
-    const previous = useAgentStore.getState().sessions[SID]!;
+    const previous = testClient.agent.projection.store.getState().sessions[SID]!;
 
     owner.retireProjectionGeneration([SID]);
 
-    const retired = useAgentStore.getState().sessions[SID]!;
+    const retired = testClient.agent.projection.store.getState().sessions[SID]!;
     expect(retired.viewEpoch).toBe(previous.viewEpoch + 1n);
     expect(owner.commit(SID, token, EMPTY_AGENT_SESSION_VIEW)).toBe(false);
     owner.dispose();
   });
 
   it("empties mounted material when the one configured server scope changes", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_old_server", SID))]);
     const token = store.beginViewRefresh(SID, false)!;
@@ -441,15 +449,15 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("invalidates queued stream events for a history rewrite without clearing the view", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
-    const entry = useAgentStore.getState().sessions[SID]!;
+    const entry = testClient.agent.projection.store.getState().sessions[SID]!;
     const visible = entry.view;
 
     const token = store.beginViewRefresh(SID, true)!;
 
-    const refreshed = useAgentStore.getState().sessions[SID]!;
+    const refreshed = testClient.agent.projection.store.getState().sessions[SID]!;
     expect(refreshed.view).toBe(visible);
     expect(refreshed.viewEpoch).toBe(entry.viewEpoch + 1n);
     expect(token.generation).toBe(refreshed.viewEpoch);
@@ -457,7 +465,7 @@ describe("agentStore authoritative refresh", () => {
   });
 
   it("does not erase a materialized view when the session driver remounts", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
     const visible = view();
@@ -470,21 +478,25 @@ describe("agentStore authoritative refresh", () => {
 
 describe("agentStore never resurrects a dropped session", () => {
   it("advances a remounted projection beyond the number safe-integer boundary", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     const exhaustedNumberIdentity = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
-    useAgentStore.setState({ projectionGenerationSequence: exhaustedNumberIdentity });
+    testClient.agent.projection.store.setState({
+      projectionGenerationSequence: exhaustedNumberIdentity,
+    });
     store.dropSession(SID);
     store.ensureSession(SID);
 
-    expect(useAgentStore.getState().sessions[SID]!.viewEpoch).toBe(exhaustedNumberIdentity + 1n);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.viewEpoch).toBe(
+      exhaustedNumberIdentity + 1n,
+    );
   });
 
   it("advances refresh, material, and authority identities beyond the safe-integer boundary", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.dropSession(SID);
     store.ensureSession(SID);
     const boundary = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
-    useAgentStore.setState((state) => ({
+    testClient.agent.projection.store.setState((state) => ({
       sessions: {
         ...state.sessions,
         [SID]: {
@@ -496,88 +508,97 @@ describe("agentStore never resurrects a dropped session", () => {
       },
     }));
 
-    const token = useAgentStore.getState().beginViewRefresh(SID, false)!;
+    const token = testClient.agent.projection.store.getState().beginViewRefresh(SID, false)!;
     expect(token.requestSequence).toBe(boundary + 1n);
-    expect(useAgentStore.getState().commitViewRefresh(SID, token, EMPTY_AGENT_SESSION_VIEW)).toBe(
-      true,
-    );
-    const committed = useAgentStore.getState().sessions[SID]!;
+    expect(
+      testClient.agent.projection.store
+        .getState()
+        .commitViewRefresh(SID, token, EMPTY_AGENT_SESSION_VIEW),
+    ).toBe(true);
+    const committed = testClient.agent.projection.store.getState().sessions[SID]!;
     expect(committed.viewRevision).toBe(boundary + 1n);
     expect(committed.authoritativeRevision).toBe(boundary + 1n);
   });
 
   it("does not reuse a retired projection generation when the same Session is remounted", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    const predecessorGeneration = useAgentStore.getState().sessions[SID]!.viewEpoch;
+    const predecessorGeneration =
+      testClient.agent.projection.store.getState().sessions[SID]!.viewEpoch;
 
     store.dropSession(SID);
     store.ensureSession(SID);
 
-    expect(useAgentStore.getState().sessions[SID]!.viewEpoch).toBeGreaterThan(
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.viewEpoch).toBeGreaterThan(
       predecessorGeneration,
     );
   });
 
   it("assigns one exact generation to every mounted Session retired by the same boundary", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.ensureSession("ses_peer");
 
     store.retireProjectionGeneration([SID, "ses_peer"]);
 
-    const sessions = useAgentStore.getState().sessions;
+    const sessions = testClient.agent.projection.store.getState().sessions;
     expect(sessions[SID]!.viewEpoch).toBe(sessions.ses_peer!.viewEpoch);
     store.dropSession("ses_peer");
   });
 
   it("applyRunEvents on an absent session is a no-op (no ghost entry)", () => {
-    useAgentStore.getState().dropSession("ses_ghost");
-    const applied = useAgentStore
+    testClient.agent.projection.store.getState().dropSession("ses_ghost");
+    const applied = testClient.agent.projection.store
       .getState()
       .applyRunEvents("ses_ghost", [runStarted("run_x", "ses_ghost")].map(fold));
     expect(applied).toBe(false);
-    expect(useAgentStore.getState().sessions["ses_ghost"]).toBeUndefined();
+    expect(testClient.agent.projection.store.getState().sessions["ses_ghost"]).toBeUndefined();
   });
 
   it("applyRunSnapshot on an absent session is a no-op (no ghost entry)", () => {
-    useAgentStore.getState().dropSession("ses_ghost");
-    useAgentStore.getState().applyRunSnapshot("ses_ghost", runRef({ sessionId: "ses_ghost" }));
-    expect(useAgentStore.getState().sessions["ses_ghost"]).toBeUndefined();
+    testClient.agent.projection.store.getState().dropSession("ses_ghost");
+    testClient.agent.projection.store
+      .getState()
+      .applyRunSnapshot("ses_ghost", runRef({ sessionId: "ses_ghost" }));
+    expect(testClient.agent.projection.store.getState().sessions["ses_ghost"]).toBeUndefined();
   });
 
   it("unmount-cleanup setters don't resurrect a dropped slice", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    expect(useAgentStore.getState().sessions[SID]).toBeDefined();
+    expect(testClient.agent.projection.store.getState().sessions[SID]).toBeDefined();
     store.dropSession(SID);
     store.setSend(SID, null);
     store.setStop(SID, null);
     store.setResume(SID, null);
-    expect(useAgentStore.getState().sessions[SID]).toBeUndefined();
+    expect(testClient.agent.projection.store.getState().sessions[SID]).toBeUndefined();
   });
 });
 
 describe("agentStore.setCommandError", () => {
   it("surfaces a channel-a failure; clearProblem dismisses it", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.setCommandError(SID, {
       message: "session not found",
       code: "session_not_found",
     });
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toMatchObject({
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toMatchObject({
       message: "session not found",
       code: "session_not_found",
     });
-    useAgentStore.getState().clearProblem(SID);
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+    testClient.agent.projection.store.getState().clearProblem(SID);
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toBeNull();
   });
 });
 
 describe("agentStore problem presentation", () => {
   it("keeps a dismissed Run problem dismissed across an authoritative refresh", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.applyRunEvents(
       SID,
@@ -586,7 +607,7 @@ describe("agentStore problem presentation", () => {
         runFinished({ type: "failed", error: { type: "agent_stuck", detail: "boom" } }),
       ].map(fold),
     );
-    const entry = () => useAgentStore.getState().sessions[SID]!;
+    const entry = () => testClient.agent.projection.store.getState().sessions[SID]!;
     expect(selectVisibleProblem(entry().view, entry().problem)).not.toBeNull();
 
     store.clearProblem(SID);
@@ -598,11 +619,13 @@ describe("agentStore problem presentation", () => {
   });
 
   it("lets a started segment supersede a command failure", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     store.setCommandError(SID, { code: "session_busy" });
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toBeNull();
   });
 });
 
@@ -616,22 +639,26 @@ describe("agentStore.reconcileMessageIdentity", () => {
     });
 
   it("renames an optimistic placeholder to the server id", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     applyCompletedItems([userMsg("local-1")]);
     expect(view().messages.map((m) => m.id)).toEqual(["local-1"]);
 
-    useAgentStore.getState().reconcileMessageIdentity(SID, "local-1", "item_real");
+    testClient.agent.projection.store
+      .getState()
+      .reconcileMessageIdentity(SID, "local-1", "item_real");
     expect(view().messages.map((m) => m.id)).toEqual(["item_real"]);
   });
 
   it("collapses the placeholder when the streamed item won the race", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     applyCompletedItems([userMsg("item_real"), userMsg("local-1")]);
     expect(view().messages).toHaveLength(2);
 
-    useAgentStore.getState().reconcileMessageIdentity(SID, "local-1", "item_real");
+    testClient.agent.projection.store
+      .getState()
+      .reconcileMessageIdentity(SID, "local-1", "item_real");
     expect(view().messages.map((m) => m.id)).toEqual(["item_real"]);
   });
 });
@@ -646,30 +673,30 @@ describe("agentStore.dropMessage", () => {
     });
 
   it("removes a single message by id (optimistic steer rollback)", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     applyCompletedItems([userMsg("item_real"), userMsg("local-steer-1")]);
     expect(view().messages.map((m) => m.id)).toEqual(["item_real", "local-steer-1"]);
 
-    useAgentStore.getState().dropMessage(SID, "local-steer-1");
+    testClient.agent.projection.store.getState().dropMessage(SID, "local-steer-1");
     expect(view().messages.map((m) => m.id)).toEqual(["item_real"]);
   });
 
   it("is a no-op for an unknown id", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
     applyCompletedItems([userMsg("item_real")]);
     const before = view().messages;
-    useAgentStore.getState().dropMessage(SID, "nope");
+    testClient.agent.projection.store.getState().dropMessage(SID, "nope");
     expect(view().messages).toBe(before);
   });
 });
 
 describe("authoritative batch admission", () => {
   it("does not commit a partial batch when a later core fact fails", () => {
-    const store = useAgentStore.getState();
+    const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
-    const before = useAgentStore.getState().sessions[SID];
+    const before = testClient.agent.projection.store.getState().sessions[SID];
     expect(() =>
       store.applyRunEvents(SID, [
         fold(runStarted("run_1", SID)),
@@ -677,6 +704,6 @@ describe("authoritative batch admission", () => {
         fold(runFinished({ type: "canceled" })),
       ]),
     ).toThrow("agent.fold.runStatusMismatch");
-    expect(useAgentStore.getState().sessions[SID]).toBe(before);
+    expect(testClient.agent.projection.store.getState().sessions[SID]).toBe(before);
   });
 });

@@ -20,7 +20,7 @@
 // true. Where the key IS closed — a union type — `Record<Union, T>` keeps
 // TypeScript's exhaustiveness check and is left alone.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 

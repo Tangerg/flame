@@ -1,6 +1,6 @@
 import { type SessionSnapshot } from "@flame/runtime-client";
-import { type AgentSessionMaterialRead } from "@/features/agent/application/ports/runtimeGateway";
-import { stageAgentSessionSharedMaterial } from "@/features/agent/application/ports/sessionSharedMaterial";
+import { type AgentSessionMaterialRead } from "@/features/agent/application/runtimeGateway";
+import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import { runtimePlan } from "@/features/agent/adapters/runtimePlan";
 import {
   runtimeItem,
@@ -9,6 +9,7 @@ import {
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { contentBlocksToAgentInput } from "@/features/agent/adapters/wireInput";
 export function runtimeSessionMaterial(
+  sharedMaterial: AgentSharedMaterial,
   sessionId: string,
   snapshot: SessionSnapshot,
 ): AgentSessionMaterialRead {
@@ -26,6 +27,6 @@ export function runtimeSessionMaterial(
       })),
       ...(plan ? { plan } : {}),
     },
-    projectAssociatedSharedMaterial: stageAgentSessionSharedMaterial(sessionId, snapshot),
+    projectAssociatedSharedMaterial: sharedMaterial.stage(sessionId, snapshot),
   };
 }

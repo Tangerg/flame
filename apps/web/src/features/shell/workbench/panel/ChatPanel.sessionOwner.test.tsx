@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { lazy, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
 import { PanelHeader } from "@flame/ui/panel";
@@ -95,7 +103,7 @@ describe("ChatPanel Session-owned workspace view state", () => {
         component: StatefulWorkspaceView,
       },
     ];
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     expect(screen.getByText("workspace-instance:1")).toBeTruthy();
 
     model.sessionId = "ses_second";
@@ -117,7 +125,7 @@ describe("ChatPanel Session-owned workspace view state", () => {
         component: StatefulWorkspaceView,
       },
     ];
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     expect(screen.getByText("workspace-instance:1")).toBeTruthy();
 
     model.sessionId = "ses_second";
@@ -140,7 +148,7 @@ describe("ChatPanel Session-owned workspace view state", () => {
       },
     ];
 
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
 
     expect(screen.queryByText(/workspace-instance:/)).toBeNull();
     expect(view.container.querySelector('[data-dock="open"]')).toBeNull();
@@ -153,7 +161,7 @@ describe("ChatPanel Session-owned workspace view state", () => {
     model.views = [];
     model.isLoading = true;
 
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     expect(view.container.firstChild).toBeNull();
 
     model.isLoading = false;
@@ -187,7 +195,7 @@ it("switches one mounted view between dock and full-width density under host ide
         ),
       },
     ];
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     const windowHeader = () =>
       view.container.querySelector<HTMLElement>('[data-slot="workspace-window-header"]');
     const heading = screen.getByRole("heading", { name: "Density heading" });
@@ -240,7 +248,7 @@ it("keeps measuring dock availability while a promoted main view is presented", 
     model.views = [
       { id: "stateful", title: "stateful", icon: "tool", component: StatefulWorkspaceView },
     ];
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     model.activeMainView = null;
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(
@@ -292,7 +300,7 @@ it("projects the saved ratio onto the observed row width without saving a new ra
     model.views = [
       { id: "stateful", title: "stateful", icon: "tool", component: StatefulWorkspaceView },
     ];
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     const row = view.container.querySelector<HTMLElement>("[data-dock]")!;
     const measure = () => row.style.getPropertyValue("--dock-measure");
     expect(row.dataset.dock).toBe("open");
@@ -352,12 +360,15 @@ describe("ChatPanel full-view window controls", () => {
       },
     ];
     model.isLoading = true;
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
 
     expect(screen.queryByText("Loaded workspace")).toBeNull();
     let controls = expectWindowHeader(view.container, "Suspended workspace");
     fireEvent.click(controls.getByRole("button", { name: "Close" }));
-    expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+    expect(closeWorkspaceView).toHaveBeenLastCalledWith(
+      testClient.workspace.access,
+      "current-view",
+    );
 
     await act(async () => {
       loading.resolve({ default: () => <p>Loaded workspace</p> });
@@ -367,7 +378,10 @@ describe("ChatPanel full-view window controls", () => {
     controls = expectWindowHeader(view.container, "Suspended workspace");
     fireEvent.click(controls.getByRole("button", { name: "Close" }));
     expect(closeWorkspaceView).toHaveBeenCalledTimes(2);
-    expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+    expect(closeWorkspaceView).toHaveBeenLastCalledWith(
+      testClient.workspace.access,
+      "current-view",
+    );
   });
 
   it("keeps window controls outside a failed view and its real boundary retry", () => {
@@ -385,11 +399,14 @@ describe("ChatPanel full-view window controls", () => {
       if (!args.includes(failure)) logError(...args);
     });
     try {
-      const view = render(<ChatPanel onSend={() => true} />);
+      const view = testClient.render(<ChatPanel onSend={() => true} />);
       expect(screen.getByRole("alert").textContent).toContain(failure.message);
       let controls = expectWindowHeader(view.container, "Recoverable workspace");
       fireEvent.click(controls.getByRole("button", { name: "Close" }));
-      expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+      expect(closeWorkspaceView).toHaveBeenLastCalledWith(
+        testClient.workspace.access,
+        "current-view",
+      );
 
       failing = false;
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -399,7 +416,10 @@ describe("ChatPanel full-view window controls", () => {
       controls = expectWindowHeader(view.container, "Recoverable workspace");
       fireEvent.click(controls.getByRole("button", { name: "Close" }));
       expect(closeWorkspaceView).toHaveBeenCalledTimes(2);
-      expect(closeWorkspaceView).toHaveBeenLastCalledWith("current-view");
+      expect(closeWorkspaceView).toHaveBeenLastCalledWith(
+        testClient.workspace.access,
+        "current-view",
+      );
     } finally {
       errorLog.mockRestore();
     }
@@ -407,12 +427,15 @@ describe("ChatPanel full-view window controls", () => {
 
   it("offers Close for an unknown view without offering a context dock target", () => {
     model.activeMainView = "missing-view";
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     const controls = expectWindowHeader(view.container, "View unavailable");
 
     expect(controls.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
     fireEvent.click(controls.getByRole("button", { name: "Close" }));
-    expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith("missing-view");
+    expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith(
+      testClient.workspace.access,
+      "missing-view",
+    );
   });
 
   it.each([undefined, "workspace", "session", "run"] as const)(
@@ -421,7 +444,7 @@ describe("ChatPanel full-view window controls", () => {
       model.views = [
         { id: "current-view", title: "Current workspace", dock, component: StatefulWorkspaceView },
       ];
-      const view = render(<ChatPanel onSend={() => true} />);
+      const view = testClient.render(<ChatPanel onSend={() => true} />);
       let controls = expectWindowHeader(view.container, "Current workspace");
       const openBeside = controls.queryByRole("button", {
         name: "Open in the context dock",
@@ -429,7 +452,7 @@ describe("ChatPanel full-view window controls", () => {
       expect(openBeside !== null).toBe(dock !== undefined);
       if (openBeside) fireEvent.click(openBeside);
       expect(vi.mocked(openWorkspaceViewInDock).mock.calls).toEqual(
-        dock === undefined ? [] : [["current-view", openBeside]],
+        dock === undefined ? [] : [[testClient.workspace.access, "current-view", openBeside]],
       );
 
       model.activeMainView = "replacement-view";
@@ -444,7 +467,10 @@ describe("ChatPanel full-view window controls", () => {
       controls = expectWindowHeader(view.container, "Replacement workspace");
       expect(controls.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
       fireEvent.click(controls.getByRole("button", { name: "Close" }));
-      expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith("replacement-view");
+      expect(closeWorkspaceView).toHaveBeenCalledExactlyOnceWith(
+        testClient.workspace.access,
+        "replacement-view",
+      );
     },
   );
 });

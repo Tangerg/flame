@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { describe, expect, it } from "vitest";
 import {
   type RunEvent,
@@ -80,7 +88,11 @@ describe("Runtime → Agent fact adapter", () => {
     };
     const original = structuredClone(snapshot);
     const read = () => {
-      const material = runtimeSessionMaterial(run.sessionId, snapshot);
+      const material = runtimeSessionMaterial(
+        testClient.agent.access.sharedMaterial,
+        run.sessionId,
+        snapshot,
+      );
       const view = projectAgentSessionSnapshot(material.snapshot);
       return CurrentRootMaterial.from(view.runsById[run.id]!);
     };

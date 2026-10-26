@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { Component, type ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { PluginProvider } from "@/extensions/host/PluginProvider";
@@ -25,7 +33,7 @@ describe("plugin installation failure", () => {
           throw new Error("installation refused");
         },
       });
-      render(
+      testClient.render(
         <FailureBoundary>
           <PluginProvider plugins={[plugin]}>
             <div>ready</div>

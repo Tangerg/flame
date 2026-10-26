@@ -2,14 +2,9 @@ import { useT } from "@/lib/i18n/index";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { useEffect } from "react";
 import { Switch } from "@flame/ui";
-import { useCompletionSoundStore } from "@/features/notifications/public/completionSound";
-import {
-  refreshNotificationAuthorization,
-  requestNotificationAuthorization,
-  useNotificationAuthorization,
-  useSystemNotificationsStore,
-} from "@/features/notifications/public/notifications";
+import { useNotifications } from "@/features/notifications/public/notifier";
 export function CompletionSoundSection() {
+  const { completionSound: useCompletionSoundStore } = useNotifications();
   const t = useT();
   const completionSound = useCompletionSoundStore((state) => state.completionSound);
   const setCompletionSound = useCompletionSoundStore((state) => state.setCompletionSound);
@@ -26,6 +21,12 @@ export function CompletionSoundSection() {
 }
 
 export function SystemNotificationsSection() {
+  const { systemNotifications: useSystemNotificationsStore, notifier } = useNotifications();
+  const {
+    useNotificationAuthorization,
+    refreshNotificationAuthorization,
+    requestNotificationAuthorization,
+  } = notifier;
   const t = useT();
   const systemNotifications = useSystemNotificationsStore((state) => state.systemNotifications);
   const setSystemNotifications = useSystemNotificationsStore(

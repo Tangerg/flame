@@ -1,11 +1,12 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { prettyJSON } from "@/lib/json";
 import * as stylex from "@stylexjs/stylex";
 import { Button, Disclosure } from "@flame/ui";
 import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+
 import { useActiveSessionId } from "@/features/agent/application/session/activeSession";
-import { type AgentOpeningCommand } from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
 const styles = stylex.create({
   card: {
     display: "flex",
@@ -22,9 +23,11 @@ const styles = stylex.create({
 });
 
 export function PendingRunOpenings() {
+  const agentAccess = useAgent();
+
   const t = useT();
   const sessionId = useActiveSessionId();
-  const commands = agentSessionView().useOpeningCommands();
+  const commands = agentAccess.view.useOpeningCommands();
   return commands.map((command) => (
     <section
       key={command.idempotencyKey}
@@ -61,7 +64,7 @@ export function PendingRunOpenings() {
       <Button
         size="sm"
         onClick={() =>
-          agentSessionView().getSession(sessionId)?.retryOpening?.(command.idempotencyKey)
+          agentAccess.view.getSession(sessionId)?.retryOpening?.(command.idempotencyKey)
         }
       >
         {t("agent.command.retry")}

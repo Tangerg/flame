@@ -1,4 +1,12 @@
-import { render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileView } from "@/features/workspace/ui/files/FileView";
@@ -37,7 +45,7 @@ describe("FileView syntax ownership", () => {
   it("highlights a file in the language determined by its path", () => {
     const content = "package main\nfunc main() {}";
 
-    render(
+    testClient.render(
       <FileView
         path="cmd/main.go"
         content={content}
@@ -58,7 +66,7 @@ describe("FileView syntax ownership", () => {
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
     projection.currentHighlighter = null;
     const content = "package main\nfunc main() {}";
-    const view = render(
+    const view = testClient.render(
       <FileView
         path="cmd/main.go"
         content={content}
@@ -87,7 +95,7 @@ describe("FileView syntax ownership", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
 
-    const view = render(
+    const view = testClient.render(
       <FileView
         path="cmd/main.go"
         content={"first\nsecond"}
@@ -106,7 +114,7 @@ describe("FileView syntax ownership", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
     const intent = {};
-    const view = render(
+    const view = testClient.render(
       <FileView path="a.go" content={"one\ntwo"} startLine={1} targetLine={2} intent={intent} />,
     );
     view.rerender(
@@ -126,7 +134,7 @@ describe("FileView syntax ownership", () => {
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
       placed.push(this.getAttribute("data-quote-line"));
     };
-    const view = render(
+    const view = testClient.render(
       <FileView path="a.go" content={"a\nb\nc"} startLine={1} targetLine={3} intent={{}} />,
     );
     expect(placed).toEqual(["3"]);
@@ -171,7 +179,7 @@ describe("FileView syntax ownership", () => {
           projection.currentHighlighter = null;
         }
         const source = createRef<HTMLDivElement>();
-        const view = render(
+        const view = testClient.render(
           <FileView
             ref={source}
             path="src/review.go"
@@ -200,7 +208,7 @@ describe("FileView syntax ownership", () => {
   it("places the line again when the same line is asked for again", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    const view = render(
+    const view = testClient.render(
       <FileView path="a.go" content={"one\ntwo"} startLine={1} targetLine={2} intent={{}} />,
     );
     view.rerender(

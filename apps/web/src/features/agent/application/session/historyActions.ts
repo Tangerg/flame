@@ -1,10 +1,10 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type Message } from "@/features/agent/public/sessionView";
 import { t } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { notifyInfo } from "@/features/notifications/public/notifications";
-import { agentRuntime, type RestoreType } from "@/features/agent/application/ports/runtimeGateway";
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+import { type RestoreType } from "@/features/agent/application/runtimeGateway";
+
 import {
   selectRootNarrativeMessages,
   selectRootRuns,
@@ -12,7 +12,7 @@ import {
 import { forkSessionAt } from "@/features/agent/application/session/forkSession";
 import { rehydrateSessionView } from "@/features/agent/application/session/rehydrateSession";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
-import { agentCommandOwner } from "@/features/agent/application/agentCommandOwner";
+
 export type SessionRollbackResult =
   | { status: "committed"; userInput?: AgentInput }
   | { status: "unavailable" }
@@ -23,28 +23,33 @@ export interface ActiveAgentConversation {
   messages: Message[];
 }
 
-export function activeAgentConversation(): ActiveAgentConversation | null {
-  const sessionId = agentSessionState().getActiveSessionId();
+export function activeAgentConversation(agentAccess: AgentAccess): ActiveAgentConversation | null {
+  const sessionId = agentAccess.state.getActiveSessionId();
   if (!sessionId) return null;
   return {
     sessionId,
-    messages: selectRootNarrativeMessages(agentSessionView().getCurrentView()),
+    messages: selectRootNarrativeMessages(agentAccess.view.getCurrentView()),
   };
 }
 
-export function sendToAgentSession(sessionId: string, input: AgentInput): boolean {
-  return agentSessionView().sendToSession(sessionId, input);
+export function sendToAgentSession(
+  agentAccess: AgentAccess,
+  sessionId: string,
+  input: AgentInput,
+): boolean {
+  return agentAccess.view.sendToSession(sessionId, input);
 }
 
 export async function rollbackSessionToBeforeRun(
+  agentAccess: AgentAccess,
   sessionId: string,
   runId: string,
   restoreType: RestoreType = "history",
 ): Promise<SessionRollbackResult> {
-  const owner = agentCommandOwner();
+  const owner = agentAccess.commands.current();
   const lease = owner.beginSessionRollback(sessionId);
   if (!lease) return { status: "inFlight" };
-  const runtime = agentRuntime();
+  const runtime = agentAccess.runtime;
   try {
     const material = await owner.settle(runtime.loadSessionSnapshot(sessionId));
     owner.assertCurrent();
@@ -69,7 +74,7 @@ export async function rollbackSessionToBeforeRun(
       }),
     );
     owner.assertCurrent();
-    await owner.settle(rehydrateSessionView(sessionId));
+    await owner.settle(rehydrateSessionView(agentAccess, sessionId));
     owner.assertCurrent();
     const userInput = result.droppedRuns.find((dropped) => dropped.runId === runId)?.userInput;
     return {
@@ -84,6 +89,10 @@ export async function rollbackSessionToBeforeRun(
   }
 }
 
-export function forkAgentSessionAtRun(sessionId: string, runId: string): Promise<void> {
-  return forkSessionAt(sessionId, runId);
+export function forkAgentSessionAtRun(
+  agentAccess: AgentAccess,
+  sessionId: string,
+  runId: string,
+): Promise<void> {
+  return forkSessionAt(agentAccess, sessionId, runId);
 }

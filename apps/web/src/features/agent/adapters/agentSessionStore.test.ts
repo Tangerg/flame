@@ -1,9 +1,17 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it } from "vitest";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-const store = () => useAgentSessionStore.getState();
+
+const store = () => testClient.agent.sessions.store.getState();
 
 beforeEach(() => {
-  useAgentSessionStore.setState({
+  testClient.agent.sessions.store.setState({
     openSessionIds: [],
     lastSessionId: "",
   });
@@ -41,11 +49,11 @@ describe("the cold-start seed", () => {
 describe("a stored payload of another shape", () => {
   it("boots on defaults", async () => {
     localStorage.setItem(
-      useAgentSessionStore.persist.getOptions().name!,
+      testClient.agent.sessions.store.persist.getOptions().name!,
       JSON.stringify({ state: { openSessionIds: "stale", lastSessionId: "stale" } }),
     );
 
-    await useAgentSessionStore.persist.rehydrate();
+    await testClient.agent.sessions.store.persist.rehydrate();
 
     expect(store().openSessionIds).toEqual([]);
     expect(store().lastSessionId).toBe("");
@@ -58,19 +66,19 @@ describe("the round trip", () => {
     store().holdOpen("s2");
     store().rememberSession("s2");
 
-    const key = useAgentSessionStore.persist.getOptions().name!;
+    const key = testClient.agent.sessions.store.persist.getOptions().name!;
     const payload = localStorage.getItem(key) ?? "null";
     const written = (JSON.parse(payload) as { state: unknown }).state;
     expect(written).toBeTruthy();
 
-    useAgentSessionStore.setState({
+    testClient.agent.sessions.store.setState({
       openSessionIds: [],
       lastSessionId: "",
     });
     localStorage.setItem(key, payload);
-    await useAgentSessionStore.persist.rehydrate();
+    await testClient.agent.sessions.store.persist.rehydrate();
 
-    const partialize = useAgentSessionStore.persist.getOptions().partialize!;
+    const partialize = testClient.agent.sessions.store.persist.getOptions().partialize!;
     const readBack = JSON.parse(JSON.stringify(partialize(store() as never)));
     expect(readBack).toEqual(written);
   });

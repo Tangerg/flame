@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
@@ -17,7 +25,6 @@ const { synchronizeMountedAgentSessions } = vi.hoisted(() => ({
 
 vi.mock("@/features/agent/public/session", () => ({
   AGENT_SESSIONS_KEY: "agent-sessions",
-  AGENT_SESSION_USAGE_KEY: "agent-session-usage",
   synchronizeMountedAgentSessions,
 }));
 
@@ -70,7 +77,7 @@ describe("workspace Runtime-generation query recovery", () => {
         },
       }),
     );
-    const { result } = renderHook(
+    const { result } = testClient.renderHook(
       () => useGenerationFixture({ sessionId: "ses_goal_generation" }),
       {
         wrapper,
@@ -78,11 +85,11 @@ describe("workspace Runtime-generation query recovery", () => {
     );
     await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
 
-    act(() => retireWorkspaceReadModels());
+    act(() => retireWorkspaceReadModels(testClient.agent.access));
 
     expect(firstSignal?.aborted).toBe(true);
     expect(fetcher).toHaveBeenCalledOnce();
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       ownership: "retire-live",
     });
     retired.resolve({ available: true, goal: goal("retired goal") });
@@ -90,7 +97,7 @@ describe("workspace Runtime-generation query recovery", () => {
     expect(result.current.data).toBeUndefined();
     expect(fetcher).toHaveBeenCalledOnce();
 
-    act(() => invalidateWorkspaceEverything());
+    act(() => invalidateWorkspaceEverything(testClient.agent.access));
 
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.data?.goal?.objective).toBe("successor goal"));
@@ -116,7 +123,7 @@ describe("workspace Runtime-generation query recovery", () => {
         },
       }),
     );
-    const { result } = renderHook(
+    const { result } = testClient.renderHook(
       () => useGenerationFixture({ sessionId: "ses_goal_generation" }),
       {
         wrapper,
@@ -124,12 +131,12 @@ describe("workspace Runtime-generation query recovery", () => {
     );
     await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
 
-    act(() => invalidateWorkspaceEverything());
+    act(() => invalidateWorkspaceEverything(testClient.agent.access));
 
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(result.current.data?.goal?.objective).toBe("successor goal"));
     expect(firstSignal?.aborted).toBe(true);
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       ownership: "replace-live",
     });
 

@@ -1,3 +1,6 @@
+import { useAgent } from "@/features/agent/public/agent";
+import { useComposer } from "@/features/composer/public/composer";
+import { useRuntime } from "@/features/connection/public/runtime";
 import * as stylex from "@stylexjs/stylex";
 import { type Message } from "@/features/agent/public/sessionView";
 import { type ReactElement, type ReactNode, useRef } from "react";
@@ -24,10 +27,14 @@ interface Props {
 }
 
 export function MessageContextMenu({ msg, label, children }: Props) {
+  const agentAccess = useAgent();
+  const composerAccess = useComposer();
+  const runtimeAccess = useRuntime();
+
   const t = useT();
   const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
   const copy = messageCopyPayloads(msg);
-  const canRestoreFiles = runtimeCapability("checkpoints");
+  const canRestoreFiles = runtimeCapability(runtimeAccess, "checkpoints");
   const conversation = useActiveConversationMessages();
   const menu = messageContextMenuModel({ msg, copy, canRestoreFiles, conversation });
 
@@ -75,7 +82,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="edit"
                 onSelect={() => {
-                  selection.current = { edit: () => editMessageInComposer(msg) };
+                  selection.current = { edit: () => editMessageInComposer(composerAccess, msg) };
                 }}
               >
                 {t("msgActions.editInComposer")}
@@ -85,7 +92,9 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="loop"
                 onSelect={() => {
-                  selection.current = { edit: () => editAndRerunMessage(msg) };
+                  selection.current = {
+                    edit: () => editAndRerunMessage(agentAccess, composerAccess, msg),
+                  };
                 }}
               >
                 {t("msgActions.editRerun")}
@@ -96,7 +105,8 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                 icon="history"
                 onSelect={() => {
                   selection.current = {
-                    edit: () => editAndRerunMessage(msg, { restoreFiles: true }),
+                    edit: () =>
+                      editAndRerunMessage(agentAccess, composerAccess, msg, { restoreFiles: true }),
                   };
                 }}
               >
@@ -117,14 +127,14 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                 <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>
                   <ContextMenu.IconItem
                     icon="skip-back"
-                    onSelect={() => restoreCheckpoint(msg, "history")}
+                    onSelect={() => restoreCheckpoint(agentAccess, msg, "history")}
                   >
                     {t("msgActions.restoreConversation")}
                   </ContextMenu.IconItem>
                   {menu.user.restoreFiles && (
                     <ContextMenu.IconItem
                       icon="folder"
-                      onSelect={() => restoreCheckpoint(msg, "files")}
+                      onSelect={() => restoreCheckpoint(agentAccess, msg, "files")}
                     >
                       {t("msgActions.restoreFiles")}
                     </ContextMenu.IconItem>
@@ -132,7 +142,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                   {menu.user.restoreBoth && (
                     <ContextMenu.IconItem
                       icon="history"
-                      onSelect={() => restoreCheckpoint(msg, "both")}
+                      onSelect={() => restoreCheckpoint(agentAccess, msg, "both")}
                     >
                       {t("msgActions.restoreBoth")}
                     </ContextMenu.IconItem>
@@ -141,7 +151,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               </ContextMenu.SubmenuRoot>
             )}
             {menu.user.fork && (
-              <ContextMenu.IconItem icon="fork" onSelect={() => forkFromMessage(msg)}>
+              <ContextMenu.IconItem icon="fork" onSelect={() => forkFromMessage(agentAccess, msg)}>
                 {t("msgActions.fork")}
               </ContextMenu.IconItem>
             )}
@@ -151,14 +161,17 @@ export function MessageContextMenu({ msg, label, children }: Props) {
           <>
             <Separator />
             {menu.assistant.regenerate && (
-              <ContextMenu.IconItem icon="loop" onSelect={() => regenerateMessage(msg)}>
+              <ContextMenu.IconItem
+                icon="loop"
+                onSelect={() => regenerateMessage(agentAccess, msg)}
+              >
                 {t("msgActions.regenerate")}
               </ContextMenu.IconItem>
             )}
             {menu.assistant.regenerateRestore && (
               <ContextMenu.IconItem
                 icon="history"
-                onSelect={() => regenerateMessage(msg, { restoreFiles: true })}
+                onSelect={() => regenerateMessage(agentAccess, msg, { restoreFiles: true })}
               >
                 {t("msgActions.regenerateRestore")}
               </ContextMenu.IconItem>

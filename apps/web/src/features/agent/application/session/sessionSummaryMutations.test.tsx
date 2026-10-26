@@ -1,10 +1,16 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { queryClient } from "@/lib/queryClient";
-import {
-  configureAgentRuntimeGateway,
-  type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
 import { useToggleFavorite } from "@/features/agent/application/session/favoriteSession";
 import { useRenameSession } from "@/features/agent/application/session/renameSession";
 import {
@@ -12,7 +18,6 @@ import {
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 import { type FlameClient, type Session } from "@flame/runtime-client";
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -46,14 +51,14 @@ describe("Session summary mutations", () => {
     {
       name: "rename",
       run: async () => {
-        const { result } = renderHook(() => useRenameSession());
+        const { result } = testClient.renderHook(() => useRenameSession());
         await result.current("ses_deleted", 3, "after");
       },
     },
     {
       name: "favorite",
       run: async () => {
-        const { result } = renderHook(() => useToggleFavorite());
+        const { result } = testClient.renderHook(() => useToggleFavorite());
         await result.current("ses_deleted", 3, true);
       },
     },
@@ -61,7 +66,7 @@ describe("Session summary mutations", () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       updateSession: vi.fn().mockRejectedValue(new Error("deleted concurrently")),
     } as unknown as AgentRuntimeGateway);
 
@@ -79,11 +84,11 @@ describe("Session summary mutations", () => {
       .fn()
       .mockImplementationOnce(() => rename.promise)
       .mockImplementationOnce(() => favorite.promise);
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = renderHook(() => useRenameSession());
-    const favoriteHook = renderHook(() => useToggleFavorite());
+    const renameHook = testClient.renderHook(() => useRenameSession());
+    const favoriteHook = testClient.renderHook(() => useToggleFavorite());
 
     let renaming!: Promise<void>;
     let favoriting!: Promise<void>;
@@ -124,11 +129,11 @@ describe("Session summary mutations", () => {
       .fn()
       .mockResolvedValueOnce(renamed)
       .mockRejectedValueOnce(new Error("remote writer won"));
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       updateSession,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = renderHook(() => useRenameSession());
-    const favoriteHook = renderHook(() => useToggleFavorite());
+    const renameHook = testClient.renderHook(() => useRenameSession());
+    const favoriteHook = testClient.renderHook(() => useToggleFavorite());
 
     const renaming = renameHook.result.current("ses_deleted", 3, "after");
     const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
@@ -144,11 +149,11 @@ describe("Session summary mutations", () => {
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     const retiredUpdate = Promise.withResolvers<AgentSessionSummary>();
     const retiredUpdateCall = vi.fn(() => retiredUpdate.promise);
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       updateSession: retiredUpdateCall,
     } as unknown as AgentRuntimeGateway);
-    const renameHook = renderHook(() => useRenameSession());
-    const favoriteHook = renderHook(() => useToggleFavorite());
+    const renameHook = testClient.renderHook(() => useRenameSession());
+    const favoriteHook = testClient.renderHook(() => useToggleFavorite());
 
     const renaming = renameHook.result.current("ses_deleted", 3, "retired title");
     await vi.waitFor(() => expect(retiredUpdateCall).toHaveBeenCalledTimes(1));
@@ -157,7 +162,9 @@ describe("Session summary mutations", () => {
       .fn()
       .mockResolvedValue(runtimeSession({ favorite: true, revision: 4 }));
     runtimeClient = () => ({ sessions: { update: successorUpdate } }) as unknown as FlameClient;
-    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
+    restoreRuntime();
+    restoreRuntime = undefined;
+    testClient.agent.replaceRuntimeGeneration();
     try {
       const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
       await vi.waitFor(() => expect(successorUpdate).toHaveBeenCalledTimes(1));
@@ -168,7 +175,7 @@ describe("Session summary mutations", () => {
         { ...session(), favorite: true, revision: 4 },
       ]);
     } finally {
-      disposeSuccessor.dispose();
+      testClient.agent.dispose();
     }
   });
 });

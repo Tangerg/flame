@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryObserver } from "@tanstack/react-query";
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +18,6 @@ import {
 } from "@/features/workspace/adapters/workspaceReadObservation";
 vi.mock("@/features/agent/public/session", () => ({
   AGENT_SESSIONS_KEY: "agent-sessions",
-  AGENT_SESSION_USAGE_KEY: "agent-session-usage",
   synchronizeMountedAgentSessions: vi.fn(),
 }));
 
@@ -57,7 +64,7 @@ describe("mounted workspace file refresh", () => {
     const unrelated = observe("list-files", { cwd: "/first", path: "other" });
     await waitFor(() => expect(queryClient.isFetching()).toBe(0));
 
-    invalidateWorkspaceEvent({
+    invalidateWorkspaceEvent(testClient.agent.access, {
       type: "files.changed",
       sequence: 1,
       workspace: { path: "/first" },

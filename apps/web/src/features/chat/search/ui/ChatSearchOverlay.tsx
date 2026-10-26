@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
 import { IconButton, isImeKey, TextField, useContentVisible, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { motionScale } from "@/lib/appearance";
+import { useAppearanceProjection } from "@/lib/appearance";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import {
@@ -50,6 +50,7 @@ const EMPTY_SEARCH: SearchState = {
 };
 
 function SessionChatSearchOverlay() {
+  const appearance = useAppearanceProjection();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState<SearchState>(EMPTY_SEARCH);
   const barRef = useRef<HTMLDivElement>(null);
@@ -133,7 +134,7 @@ function SessionChatSearchOverlay() {
       found.map((match) => match.range),
       0,
     );
-    scrollRangeIntoView(found[0]?.range);
+    scrollRangeIntoView(found[0]?.range, appearance.read().motionScale);
   };
 
   const move = (delta: number) => {
@@ -145,7 +146,7 @@ function SessionChatSearchOverlay() {
       matches.map((match) => match.range),
       nextIndex,
     );
-    scrollRangeIntoView(matches[nextIndex]?.range);
+    scrollRangeIntoView(matches[nextIndex]?.range, appearance.read().motionScale);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -233,10 +234,10 @@ function restoreFocus(target: HTMLElement | null, region: HTMLElement | null): v
   region?.focus({ preventScroll: true });
 }
 
-function scrollRangeIntoView(range: Range | undefined): void {
+function scrollRangeIntoView(range: Range | undefined, motionScale: number): void {
   if (!range) return;
   const reduced =
-    motionScale() === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    motionScale === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   range.startContainer.parentElement?.scrollIntoView({
     block: "center",
     behavior: reduced ? "instant" : "smooth",

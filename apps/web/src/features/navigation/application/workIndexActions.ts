@@ -1,3 +1,11 @@
+import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
+import { type ComposerAccess, useComposer } from "@/features/composer/public/composer";
+import { type RuntimeAccess, useRuntime } from "@/features/connection/public/runtime";
+import {
+  type WorkingDirectoryAccess,
+  useWorkingDirectory,
+} from "@/features/navigation/public/workingDirectory";
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useMemo } from "react";
 import {
   selectAgentSession,
@@ -17,7 +25,7 @@ import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
 } from "@/features/connection/public/serviceStatus";
-import { workingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
+
 export interface WorkIndexActions {
   canCreateSession: boolean;
   canCreateSessionInFolder: boolean;
@@ -32,18 +40,29 @@ export interface WorkIndexActions {
   openSettings: () => void;
 }
 
-export function createNewSession(): void {
-  if (!runtimeCommandsAvailable()) return;
-  if (!getActiveSessionId()) {
-    workingDirectoryPicker().open();
+export function createNewSession(
+  agentAccess: AgentAccess,
+  composerAccess: ComposerAccess,
+  runtimeAccess: RuntimeAccess,
+  directoryAccess: WorkingDirectoryAccess,
+): void {
+  if (!runtimeCommandsAvailable(runtimeAccess)) return;
+  if (!getActiveSessionId(agentAccess)) {
+    directoryAccess.open();
     return;
   }
-  void createSession().then((sessionId) => {
-    if (sessionId) focusComposer();
+  void createSession(agentAccess).then((sessionId) => {
+    if (sessionId) focusComposer(composerAccess);
   });
 }
 
 export function useWorkIndexActions(): WorkIndexActions {
+  const agentAccess = useAgent();
+  const composerAccess = useComposer();
+  const workspaceAccess = useWorkspace();
+  const runtimeAccess = useRuntime();
+  const directoryAccess = useWorkingDirectory();
+
   const create = useCreateSession();
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const activeSessionId = useActiveSessionId();
@@ -64,19 +83,19 @@ export function useWorkIndexActions(): WorkIndexActions {
       canCreateSessionInFolder: runtimeAvailable,
       createSession: () => {
         if (activeSessionId && activeWorkspaceStatus !== "ready") return;
-        createNewSession();
+        createNewSession(agentAccess, composerAccess, runtimeAccess, directoryAccess);
       },
       chooseSessionFolder: () => {
-        if (!runtimeCommandsAvailable()) return;
-        workingDirectoryPicker().open();
+        if (!runtimeCommandsAvailable(runtimeAccess)) return;
+        directoryAccess.open();
       },
       startSessionInFolder: (cwd) => {
-        if (!runtimeCommandsAvailable()) return;
+        if (!runtimeCommandsAvailable(runtimeAccess)) return;
         void create({ cwd }).then((sessionId) => {
-          if (sessionId) focusComposer();
+          if (sessionId) focusComposer(composerAccess);
         });
       },
-      selectSession: selectAgentSession,
+      selectSession: selectAgentSession.bind(null, agentAccess),
       renameSession: (id, expectedRevision, title) => {
         void rename(id, expectedRevision, title);
       },
@@ -90,7 +109,7 @@ export function useWorkIndexActions(): WorkIndexActions {
         void toggleFavorite(id, expectedRevision, favorite);
       },
       openSettings: () => {
-        openSettingsView();
+        openSettingsView(workspaceAccess);
       },
     }),
     [
@@ -103,6 +122,11 @@ export function useWorkIndexActions(): WorkIndexActions {
       rename,
       runtimeAvailable,
       toggleFavorite,
+      agentAccess,
+      composerAccess,
+      workspaceAccess,
+      runtimeAccess,
+      directoryAccess,
     ],
   );
 }

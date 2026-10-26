@@ -1,6 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { selectAgentSession } from "@/features/agent/public/session";
@@ -103,7 +111,7 @@ function mount() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
-  const view = render(<Harness />, {
+  const view = testClient.render(<Harness />, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     ),
@@ -119,8 +127,8 @@ function mount() {
 
 beforeEach(() => {
   material.rows = [userRow()];
-  selectAgentSession("stream-session");
-  replaceComposerDraft({ text: "Keep this authored draft" });
+  selectAgentSession(testClient.agent.access, "stream-session");
+  replaceComposerDraft(testClient.composer.access, { text: "Keep this authored draft" });
 });
 
 afterEach(() => {
@@ -282,9 +290,11 @@ describe("ChatStream composer lifetime", () => {
       "backward",
     ]);
     act(() => screen.getByRole("button", { name: "Later control" }).focus());
-    act(() => focusComposer());
+    act(() => focusComposer(testClient.composer.access));
     expect(document.activeElement).toBe(draft);
-    expect(captureComposerSubmission().value).toBe("Still editing this draft");
+    expect(captureComposerSubmission(testClient.composer.access).value).toBe(
+      "Still editing this draft",
+    );
   });
 
   it("keeps the registered input focused when history return fills the empty conversation", () => {
@@ -292,7 +302,7 @@ describe("ChatStream composer lifetime", () => {
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
     let replace!: ReturnType<typeof beginComposerDraftReplacement>;
     act(() => {
-      replace = beginComposerDraftReplacement();
+      replace = beginComposerDraftReplacement(testClient.composer.access);
     });
 
     view.showRows([]);
@@ -316,7 +326,7 @@ describe("ChatStream composer lifetime", () => {
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
     let replace!: ReturnType<typeof beginComposerDraftReplacement>;
     act(() => {
-      replace = beginComposerDraftReplacement();
+      replace = beginComposerDraftReplacement(testClient.composer.access);
     });
     const outside = screen.getByRole("button", { name: "Later control" });
     act(() => outside.focus());
@@ -398,7 +408,7 @@ describe("ChatStream question focus handoff", () => {
 
     act(() => {
       material.rows = [userRow()];
-      selectAgentSession("other-session");
+      selectAgentSession(testClient.agent.access, "other-session");
     });
 
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBeTruthy();

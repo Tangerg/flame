@@ -1,8 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  useContextDockStore,
-  WorkspaceFileFocus,
-} from "@/features/workspace/adapters/contextDockStore";
+import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
 const EMPTY = {
   activeSessionScopeId: null,
   sessionScopes: new Map(),
@@ -13,11 +18,11 @@ const EMPTY = {
   expandedToolIds: new Set<string>(),
 };
 
-const dock = () => useContextDockStore.getState();
+const dock = () => testClient.workspace.dock.store.getState();
 
 beforeEach(() => {
-  localStorage.removeItem(useContextDockStore.persist.getOptions().name!);
-  useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+  localStorage.removeItem(testClient.workspace.dock.store.persist.getOptions().name!);
+  testClient.workspace.dock.store.setState({ ...EMPTY, sessionScopes: new Map() });
 });
 
 describe("the round trip", () => {
@@ -28,16 +33,16 @@ describe("the round trip", () => {
     dock().setFileViewer({ path: "a/b.ts", line: 12 });
     dock().toggleExpandedTool("tool_1");
 
-    const key = useContextDockStore.persist.getOptions().name!;
+    const key = testClient.workspace.dock.store.persist.getOptions().name!;
     const payload = localStorage.getItem(key) ?? "null";
     const written = (JSON.parse(payload) as { state: unknown }).state;
     expect(written).toBeTruthy();
 
-    useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+    testClient.workspace.dock.store.setState({ ...EMPTY, sessionScopes: new Map() });
     localStorage.setItem(key, payload);
-    await useContextDockStore.persist.rehydrate();
+    await testClient.workspace.dock.store.persist.rehydrate();
 
-    const partialize = useContextDockStore.persist.getOptions().partialize!;
+    const partialize = testClient.workspace.dock.store.persist.getOptions().partialize!;
     expect(JSON.parse(JSON.stringify(partialize(dock() as never)))).toEqual(written);
   });
 });
@@ -121,7 +126,7 @@ describe("the open tab set", () => {
 describe("what a re-open returns to", () => {
   it("adopts an authoritative location into both facts in one update", () => {
     let notifications = 0;
-    const unsubscribe = useContextDockStore.subscribe(() => {
+    const unsubscribe = testClient.workspace.dock.store.subscribe(() => {
       notifications += 1;
     });
 
@@ -219,7 +224,7 @@ describe("per-session scopes", () => {
     });
     await vi.waitFor(() => {
       const persisted = JSON.parse(
-        localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+        localStorage.getItem(testClient.workspace.dock.store.persist.getOptions().name!) ?? "null",
       ) as {
         state: { sessionScopes: [string, unknown][] };
       };
@@ -238,19 +243,21 @@ describe("per-session scopes", () => {
     dock().toggleExpandedTool("call-from-retired-renderer");
 
     await vi.waitFor(() =>
-      expect(localStorage.getItem(useContextDockStore.persist.getOptions().name!)).not.toBeNull(),
+      expect(
+        localStorage.getItem(testClient.workspace.dock.store.persist.getOptions().name!),
+      ).not.toBeNull(),
     );
     const persisted = JSON.parse(
-      localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+      localStorage.getItem(testClient.workspace.dock.store.persist.getOptions().name!) ?? "null",
     ) as {
       state: { sessionScopes: [string, { fileFocus: { revision: string } }][] };
     };
     expect(persisted.state.sessionScopes[0]?.[1].fileFocus.revision).toBe("1");
 
-    vi.resetModules();
     const replacementModule = await import("@/features/workspace/adapters/contextDockStore");
-    replacementModule.activateContextDockStorage("https://runtime.test");
-    const replacement = replacementModule.useContextDockStore;
+    const replacementOwner = replacementModule.createContextDockStore();
+    replacementOwner.activate("https://runtime.test");
+    const replacement = replacementOwner.store;
     const persistedReplacement = replacement as typeof replacement & {
       persist: { rehydrate: () => Promise<void> | void };
     };
@@ -288,15 +295,15 @@ describe("renderer storage validation", () => {
   it("rejects persisted catalog entries masquerading as tabs", async () => {
     dock().activateSessionScope("s1");
     dock().adoptDockLocation("diff");
-    const key = useContextDockStore.persist.getOptions().name!;
+    const key = testClient.workspace.dock.store.persist.getOptions().name!;
     const payload = JSON.parse(localStorage.getItem(key)!) as {
       state: { sessionScopes: [string, { dockViewIds: string[] }][] };
     };
     payload.state.sessionScopes[0]![1].dockViewIds = ["catalog"];
-    useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+    testClient.workspace.dock.store.setState({ ...EMPTY, sessionScopes: new Map() });
     localStorage.setItem(key, JSON.stringify(payload));
 
-    await useContextDockStore.persist.rehydrate();
+    await testClient.workspace.dock.store.persist.rehydrate();
     dock().activateSessionScope("s1");
 
     expect(dock().dockViewIds).toEqual([]);
@@ -304,13 +311,13 @@ describe("renderer storage validation", () => {
 
   it("falls back to empty memory when the current payload is malformed", async () => {
     localStorage.setItem(
-      useContextDockStore.persist.getOptions().name!,
+      testClient.workspace.dock.store.persist.getOptions().name!,
       JSON.stringify({
         state: { sessionScopes: [["s1", { dockViewIds: "not-an-array" }]] },
       }),
     );
 
-    await useContextDockStore.persist.rehydrate();
+    await testClient.workspace.dock.store.persist.rehydrate();
 
     expect(dock().sessionScopes.size).toBe(0);
     expect(dock().dockViewIds).toEqual([]);

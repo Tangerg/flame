@@ -1,9 +1,17 @@
-import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Activity } from "react";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
-import { navigator } from "@/lib/navigation";
+
 import {
   openWorkspaceSubagentRun,
   returnFromWorkspaceInspection,
@@ -38,7 +46,8 @@ vi.mock("@/features/chat/message/ui/MessageTurn", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/chat/message/ui/MessageTurn")>();
   return {
     MessageTurn: (props: Parameters<typeof actual.MessageTurn>[0]) => {
-      if (props.row.message.id === "render-boom") throw new Error("render-boom");
+      if (props.row.message.id === "testClient.render-boom")
+        throw new Error("testClient.render-boom");
       return <actual.MessageTurn {...props} />;
     },
   };
@@ -111,14 +120,14 @@ it("contains a failed child turn without losing the selected identity or healthy
   vi.spyOn(console, "error").mockImplementation(() => {});
   material.rows = rows();
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({
-    id: "render-boom",
+    id: "testClient.render-boom",
     role: "assistant",
     runId: "child",
     blocks: [],
   });
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { container } = render(
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { container } = testClient.render(
     <PluginBoundary plugin="workspace:subagents" label="Subagents">
       <SubagentsPanel />
     </PluginBoundary>,
@@ -130,14 +139,14 @@ it("contains a failed child turn without losing the selected identity or healthy
   expect(screen.getByRole("region", { name: "Sub-agent" })).toBeTruthy();
   expect(screen.getByText("Child streamed output")).toBeTruthy();
   expect(screen.getAllByRole("alert")).toHaveLength(1);
-  expect(screen.queryByText(/failed to render/i)).toBeNull();
+  expect(screen.queryByText(/failed to testClient.render/i)).toBeNull();
 });
 
 it("projects live child material, returns to the list, and never carries it into another session", async () => {
   material.rows = rows();
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { rerender, container } = render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender, container } = testClient.render(<SubagentsPanel />);
   await act(async () => vi.dynamicImportSettled());
   expect(screen.getByText("Child streamed output")).toBeTruthy();
   expect(within(container.querySelector("header")!).getByText("Running")).toBeTruthy();
@@ -152,7 +161,7 @@ it("projects live child material, returns to the list, and never carries it into
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 
   fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
-  expect(navigator().get()).toMatchObject({
+  expect(testClient.navigation.get()).toMatchObject({
     session: "session",
     dock: "subagents",
     subagent: null,
@@ -161,14 +170,14 @@ it("projects live child material, returns to the list, and never carries it into
   expect(screen.queryByText("Child final answer")).toBeNull();
   const list = screen.getByRole("region", { name: "Subagents" });
   fireEvent.click(within(list).getAllByRole("button", { name: /Sub-agent/ })[1]!);
-  expect(navigator().get().subagent).toBe("nested");
+  expect(testClient.navigation.get().subagent).toBe("nested");
   expect(screen.getByText("No narrative material yet")).toBeTruthy();
 
   material.rows = [];
-  act(() => navigator().go({ session: "other" }));
+  act(() => testClient.navigation.go({ session: "other" }));
   rerender(<SubagentsPanel />);
   expect(screen.getByText("No subagents yet")).toBeTruthy();
-  expect(navigator().get().subagent).toBeNull();
+  expect(testClient.navigation.get().subagent).toBeNull();
 });
 
 it("marks a delegated user message as the same speech bubble the transcript draws", async () => {
@@ -180,9 +189,9 @@ it("marks a delegated user message as the same speech bubble the transcript draw
     steer: { runId: "child", delivery: "pending" },
     blocks: [{ kind: "text", text: "Audit axios cancellation", status: "complete" }],
   });
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { container } = render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { container } = testClient.render(<SubagentsPanel />);
   await act(async () => vi.dynamicImportSettled());
 
   const bubbles = container.querySelectorAll("[data-user-message-bubble]");
@@ -199,9 +208,9 @@ it("marks a delegated user message as the same speech bubble the transcript draw
 
 it("keeps list position and returns keyboard focus to the opened task", async () => {
   material.rows = rows();
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun(null);
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, null);
+  testClient.render(<SubagentsPanel />);
   const group = screen.getByRole("group", { name: "Subagents" });
   const scroller = group.parentElement!;
   scroller.scrollTop = 240;
@@ -232,35 +241,35 @@ it("retains only the parent readers on the explicit inspection path", async () =
     kind: "tool",
     toolCallId: "nested",
   });
-  navigator().go({ session: "session" });
+  testClient.navigation.go({ session: "session" });
   const origin = document.createElement("button");
   document.body.append(origin);
-  openWorkspaceSubagentRun("child", origin);
-  const { unmount } = render(
+  openWorkspaceSubagentRun(testClient.workspace.access, "child", origin);
+  const { unmount } = testClient.render(
     <div data-dock-view-id="subagents">
       <SubagentsPanel />
     </div>,
   );
-  const inspection = renderHook(useWorkspaceInspection);
+  const inspection = testClient.renderHook(useWorkspaceInspection);
   await act(async () => vi.dynamicImportSettled());
   const parent = screen.getByText("Child streamed output").closest('[role="region"]')!;
   const viewport = parent.parentElement!;
   viewport.scrollTop = 240;
   const nested = within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ });
   fireEvent.click(nested);
-  expect(navigator().get().subagent).toBe("nested");
+  expect(testClient.navigation.get().subagent).toBe("nested");
   expect(screen.queryByRole("region", { name: "Sub-agent" })).toBeNull();
   expect(parent.isConnected).toBe(true);
   act(() => screen.getByRole("region", { name: "Review request headers" }).focus());
-  act(() => returnFromWorkspaceInspection(inspection.result.current!));
-  expect(navigator().get().subagent).toBe("child");
+  act(() => returnFromWorkspaceInspection(testClient.workspace.access, inspection.result.current!));
+  expect(testClient.navigation.get().subagent).toBe("child");
   expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
   expect(parent.parentElement).toBe(viewport);
   expect(viewport.scrollTop).toBe(240);
   expect(document.activeElement).toBe(document.body);
   fireEvent.click(within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ }));
   fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
-  expect(navigator().get().subagent).toBeNull();
+  expect(testClient.navigation.get().subagent).toBeNull();
   expect(parent.isConnected).toBe(false);
   expect(inspection.result.current?.origin).toBe(origin);
   expect(document.activeElement).toBe(
@@ -287,15 +296,15 @@ it("retains the parent reader through a nested inspection in explicit main", asy
     kind: "tool",
     toolCallId: "nested",
   });
-  navigator().go({ session: "session", view: null, dock: null });
+  testClient.navigation.go({ session: "session", view: null, dock: null });
   const origin = document.createElement("button");
   document.body.append(origin);
-  openWorkspaceSubagentRun("child", origin);
-  const outer = renderHook(useWorkspaceInspection);
+  openWorkspaceSubagentRun(testClient.workspace.access, "child", origin);
+  const outer = testClient.renderHook(useWorkspaceInspection);
   const source = outer.result.current;
-  act(() => navigator().go({ view: "subagents" }));
-  const { unmount } = render(<SubagentsPanel />);
-  const inspection = renderHook(useWorkspaceInspection);
+  act(() => testClient.navigation.go({ view: "subagents" }));
+  const { unmount } = testClient.render(<SubagentsPanel />);
+  const inspection = testClient.renderHook(useWorkspaceInspection);
   await act(async () => vi.dynamicImportSettled());
   const parent = screen.getByText("Child streamed output").closest('[role="region"]')!;
   const viewport = parent.parentElement!;
@@ -303,20 +312,20 @@ it("retains the parent reader through a nested inspection in explicit main", asy
   const nested = within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ });
   act(() => nested.focus());
   fireEvent.click(nested);
-  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+  expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "nested" });
   expect(parent.isConnected).toBe(true);
   expect(inspection.result.current?.origin).toBe(nested);
   expect(inspection.result.current?.returnViewId).toBe("subagents");
   expect(inspection.result.current?.returnSubagentRunId).toBe("child");
   expect(inspection.result.current?.previous).toBe(source);
-  act(() => returnFromWorkspaceInspection(inspection.result.current!));
-  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+  act(() => returnFromWorkspaceInspection(testClient.workspace.access, inspection.result.current!));
+  expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "child" });
   expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
   expect(viewport.scrollTop).toBe(2554);
   expect(inspection.result.current).toBe(source);
   fireEvent.click(within(parent as HTMLElement).getByRole("button", { name: /Sub-agent/ }));
   fireEvent.click(screen.getByRole("button", { name: "All subagents" }));
-  expect(navigator().get()).toMatchObject({ view: "subagents", subagent: null });
+  expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: null });
   expect(parent.isConnected).toBe(false);
   expect(inspection.result.current).toBe(source);
   const row = within(screen.getByRole("group", { name: "Subagents" })).getByRole("button", {
@@ -363,10 +372,10 @@ it("measures a retained reader only while both its host and its selection show i
     kind: "tool",
     toolCallId: "nested",
   });
-  navigator().go({ session: "session" });
+  testClient.navigation.go({ session: "session" });
   const origin = document.createElement("button");
   document.body.append(origin);
-  openWorkspaceSubagentRun("child", origin);
+  openWorkspaceSubagentRun(testClient.workspace.access, "child", origin);
   const view = (visible: boolean) => (
     <div data-dock-view-id="subagents">
       <ContentVisibility visible={visible}>
@@ -374,8 +383,8 @@ it("measures a retained reader only while both its host and its selection show i
       </ContentVisibility>
     </div>
   );
-  const { rerender, unmount } = render(view(true));
-  const inspection = renderHook(useWorkspaceInspection);
+  const { rerender, unmount } = testClient.render(view(true));
+  const inspection = testClient.renderHook(useWorkspaceInspection);
   await act(async () => vi.dynamicImportSettled());
   const parent = screen.getByRole("region", { name: "Sub-agent" });
   expect(measured(parent)).toBe(true);
@@ -398,8 +407,8 @@ it("measures a retained reader only while both its host and its selection show i
   expect(measured(nested)).toBe(true);
 
   act(() => nested.focus());
-  act(() => returnFromWorkspaceInspection(inspection.result.current!));
-  expect(navigator().get().subagent).toBe("child");
+  act(() => returnFromWorkspaceInspection(testClient.workspace.access, inspection.result.current!));
+  expect(testClient.navigation.get().subagent).toBe("child");
   expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(parent);
   expect(measured(parent)).toBe(true);
   unmount();
@@ -408,9 +417,9 @@ it("measures a retained reader only while both its host and its selection show i
 
 it("does not initiate a new focus handoff when the same selected reader resumes", async () => {
   material.rows = rows();
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { rerender } = render(
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender } = testClient.render(
     <Activity mode="visible">
       <SubagentsPanel />
     </Activity>,
@@ -445,9 +454,9 @@ it("folds a long child input with the main message interaction", async () => {
     runId: "child",
     blocks: [{ kind: "text", text: "Inspect the complete module graph", status: "complete" }],
   });
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  testClient.render(<SubagentsPanel />);
   await act(async () => vi.dynamicImportSettled());
   fireEvent.click(screen.getByRole("button", { name: "Show full message" }));
   expect(screen.getByRole("button", { name: "Show less" }).getAttribute("aria-expanded")).toBe(
@@ -463,9 +472,9 @@ it("keeps the selected run cancellation visible when no narrative was produced",
     outcome: { type: "canceled", detail: "The user canceled the review." },
   });
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  testClient.render(<SubagentsPanel />);
   expect(
     within(screen.getByRole("region", { name: "Sub-agent" })).getByText(
       "The user canceled the review.",
@@ -488,9 +497,9 @@ it("explains unconfirmed effects for the selected terminal child without replaci
     },
   });
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { rerender, container } = render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender, container } = testClient.render(<SubagentsPanel />);
   expect(screen.getByText(/This run has ended/)).toBeTruthy();
   expect(within(container.querySelector("header")!).getByText("Canceled")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
@@ -503,7 +512,7 @@ it("explains unconfirmed effects for the selected terminal child without replaci
   expect(evidence.getByText("child-process")).toBeTruthy();
   expect(material.rows[0]!.facts.delegatedRuns.delegate![0]!.run.outcome?.type).toBe("canceled");
 
-  act(() => openWorkspaceSubagentRun("nested"));
+  act(() => openWorkspaceSubagentRun(testClient.workspace.access, "nested"));
   rerender(<SubagentsPanel />);
   expect(screen.queryByText(/This run has ended/)).toBeNull();
   expect(screen.queryByRole("button", { name: /^Unconfirmed operation/ })).toBeNull();
@@ -513,16 +522,22 @@ it("explains unconfirmed effects for the selected terminal child without replaci
 it("cancels the currently selected child and disables mutations while disconnected", () => {
   material.rows = rows();
   material.available = true;
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  const { rerender } = render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  const { rerender } = testClient.render(<SubagentsPanel />);
   fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-  expect(material.cancel).toHaveBeenLastCalledWith({ sessionId: "session", runId: "child" });
+  expect(material.cancel).toHaveBeenLastCalledWith(testClient.agent.access, {
+    sessionId: "session",
+    runId: "child",
+  });
   const nested = material.rows[0]!.facts.delegatedRuns.nested![0]!;
   nested.run = { ...child, id: "nested", parentRunId: "child", spawnedByItemId: "nested" };
-  act(() => openWorkspaceSubagentRun("nested"));
+  act(() => openWorkspaceSubagentRun(testClient.workspace.access, "nested"));
   fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-  expect(material.cancel).toHaveBeenLastCalledWith({ sessionId: "session", runId: "nested" });
+  expect(material.cancel).toHaveBeenLastCalledWith(testClient.agent.access, {
+    sessionId: "session",
+    runId: "nested",
+  });
   material.available = false;
   rerender(<SubagentsPanel />);
   expect(screen.getByRole("button", { name: "Cancel this run" }).hasAttribute("disabled")).toBe(
@@ -549,20 +564,20 @@ it("names delegated tasks from their parent tool call in both list and detail", 
     args: '{"summary":"Review request headers"}',
     status: "ok",
   };
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun(null);
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, null);
+  testClient.render(<SubagentsPanel />);
   expect(screen.getByRole("button", { name: /Review request headers/ })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: /Audit axios cancellation/ }));
   expect(screen.getByRole("region", { name: "Audit axios cancellation" })).toBeTruthy();
-  expect(navigator().get().subagent).toBe("child");
+  expect(testClient.navigation.get().subagent).toBe("child");
 });
 
 it("counts a subagent waiting on the person as active, not running", () => {
   material.rows = rows({ ...child, status: "waiting" });
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun(null);
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, null);
+  testClient.render(<SubagentsPanel />);
   expect(screen.getByText("2 subagents")).toBeTruthy();
   expect(screen.queryByText(/running/)).toBeNull();
   expect(screen.getByText("Active · 1")).toBeTruthy();
@@ -602,9 +617,9 @@ it("preserves reading focus after geometry changes in the selected child transcr
     kind: "tool",
     toolCallId: "nested",
   });
-  navigator().go({ session: "session" });
-  openWorkspaceSubagentRun("child");
-  render(<SubagentsPanel />);
+  testClient.navigation.go({ session: "session" });
+  openWorkspaceSubagentRun(testClient.workspace.access, "child");
+  testClient.render(<SubagentsPanel />);
   await act(async () => vi.dynamicImportSettled());
   const content = screen.getByRole("region", { name: "Sub-agent" });
   const viewport = content.parentElement!;
@@ -646,6 +661,6 @@ it("preserves reading focus after geometry changes in the selected child transcr
   });
   expect(bounds().bottom).toBeLessThanOrEqual(160);
   expect(document.activeElement).toBe(target);
-  expect(navigator().get().subagent).toBe("child");
+  expect(testClient.navigation.get().subagent).toBe("child");
   expect(screen.getByRole("region", { name: "Sub-agent" })).toBe(content);
 });

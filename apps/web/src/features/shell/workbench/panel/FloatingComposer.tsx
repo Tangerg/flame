@@ -1,8 +1,9 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type Ref, type RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useT } from "@/lib/i18n/index";
-import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
+import { useMotion } from "@/lib/motion";
 import { useRuntimeServiceStatus } from "@/features/connection/public/serviceStatus";
 import { CONNECTION_PANE } from "@/features/settings/public/paneIDs";
 import { openWorkspaceSettingsPane } from "@/features/workspace/public/navigation";
@@ -59,6 +60,9 @@ const fc = stylex.create({
 });
 
 function RuntimeConnectionNotice() {
+  const { disclosureExitTransition, disclosureTransition } = useMotion();
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const service = useRuntimeServiceStatus();
   const visible = service.phase === "reconnecting" || service.phase === "unavailable";
@@ -85,7 +89,7 @@ function RuntimeConnectionNotice() {
               unavailable
                 ? {
                     label: t("runtime.connection.settings"),
-                    onClick: () => openWorkspaceSettingsPane(CONNECTION_PANE),
+                    onClick: () => openWorkspaceSettingsPane(workspaceAccess, CONNECTION_PANE),
                   }
                 : undefined
             }

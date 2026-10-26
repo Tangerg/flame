@@ -1,8 +1,15 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import {
   cleanup,
   fireEvent,
   getDefaultNormalizer,
-  render,
   screen,
   waitFor,
   within,
@@ -90,7 +97,7 @@ function mountSchedules(subscribeError?: Error) {
     track: (operation) => operation,
     compose: () => null,
   };
-  render(<Schedules context={context} />);
+  testClient.render(<Schedules context={context} />);
   let taken = 0;
   async function nextRead() {
     await waitFor(() => expect(subscriptionSettled && reads.length > taken).toBe(true));

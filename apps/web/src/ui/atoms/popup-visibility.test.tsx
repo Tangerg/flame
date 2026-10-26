@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { createRef, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentVisibility, ContextMenu, DropdownMenu, Popover } from "@/ui/index";
@@ -24,7 +32,7 @@ function Host({ visible, children }: { visible: boolean; children: ReactNode }) 
 }
 
 function mount(popup: ReactNode) {
-  const view = render(<Host visible>{popup}</Host>);
+  const view = testClient.render(<Host visible>{popup}</Host>);
   return {
     hide: () => view.rerender(<Host visible={false}>{popup}</Host>),
     reveal: () => view.rerender(<Host visible>{popup}</Host>),

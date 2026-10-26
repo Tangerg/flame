@@ -1,15 +1,21 @@
 import { type FlameClient } from "@flame/runtime-client";
 import { pickAgentSource } from "@/features/agent/adapters/runtimeSources";
-import { navigator } from "@/lib/navigation";
-import { configureAgentDefaultSessionPort } from "@/features/agent/application/ports/defaultSession";
-import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
-export function installAgentDefaultSessionPort(
+import { type Navigator } from "@/lib/navigation";
+import { type AgentDefaultSessionPort } from "@/features/agent/application/session/sessionAccess";
+import {
+  useAgentSession,
+  type AgentSessionDependencies,
+} from "@/features/agent/adapters/useAgentSession";
+export function createAgentDefaultSession(
+  navigation: Navigator,
+  dependencies: () => AgentSessionDependencies,
   runtimeClient: () => FlameClient,
   onConnectionLost: () => void,
-): () => void {
+): AgentDefaultSessionPort {
   function useDefaultChatSession() {
-    const activeSessionId = navigator().use((location) => location.session);
+    const activeSessionId = navigation.use((location) => location.session);
     return useAgentSession(
+      dependencies(),
       runtimeClient,
       () => {
         const source = pickAgentSource();
@@ -20,5 +26,5 @@ export function installAgentDefaultSessionPort(
       onConnectionLost,
     );
   }
-  return configureAgentDefaultSessionPort({ useDefaultChatSession });
+  return { useDefaultChatSession };
 }

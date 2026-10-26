@@ -1,18 +1,18 @@
-import {
-  runtimeCapabilities,
-  type RuntimeCapabilityPort,
-} from "@/features/connection/application/ports/capabilities";
-export { negotiatedCapabilities } from "@/features/connection/application/ports/capabilities";
-
-export const useRuntimeCapability: RuntimeCapabilityPort["useCapability"] = (capability) =>
-  runtimeCapabilities().useCapability(capability);
-
-export const runtimeCapability: RuntimeCapabilityPort["hasCapability"] = (capability) =>
-  runtimeCapabilities().hasCapability(capability);
-
-export function runtimeSupportsStreamingMethod(method: string): boolean {
-  return runtimeCapabilities().supportsStreamingMethod(method);
+import { type RuntimeAccess, useRuntime } from "@/features/connection/public/runtime";
+export function useRuntimeCapability(
+  capability: Parameters<RuntimeAccess["capabilities"]["hasCapability"]>[0],
+): boolean {
+  return useRuntime().capabilities.useCapability(capability);
 }
-
-export const runtimeSupportsTopic: RuntimeCapabilityPort["supportsRuntimeTopic"] = (topic) =>
-  runtimeCapabilities().supportsRuntimeTopic(topic);
+export function runtimeCapability(
+  runtime: RuntimeAccess,
+  capability: Parameters<RuntimeAccess["capabilities"]["hasCapability"]>[0],
+): boolean {
+  return runtime.capabilities.hasCapability(capability);
+}
+export function runtimeSupportsStreamingMethod(runtime: RuntimeAccess, method: string): boolean {
+  return runtime.capabilities.supportsStreamingMethod(method);
+}
+export function runtimeSupportsTopic(runtime: RuntimeAccess, topic: string): boolean {
+  return runtime.capabilities.supportsRuntimeTopic(topic);
+}

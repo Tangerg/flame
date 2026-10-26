@@ -1,12 +1,12 @@
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { paletteThemeContribution, type PaletteTheme } from "@/features/theme/kit/palette";
-import { appearancePreferencePort } from "@/features/theme/application/ports/appearancePreference";
+import { type AppearancePreferencePort } from "@/features/theme/application/appearancePreference";
 export function contributePaletteTheme(
+  preference: AppearancePreferencePort,
   owner: Pick<ContributionLifetime, "contribute" | "cleanup">,
   theme: PaletteTheme,
 ): void {
-  const preference = appearancePreferencePort();
   const initial = preference.read();
   const contribution = owner.contribute(
     COLOR_THEME,

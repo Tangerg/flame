@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { useNotificationStore } from "@/features/notifications/public/notifications";
@@ -17,7 +25,7 @@ it("reads and dismisses global notifications without navigating the conversation
     .getState()
     .push({ plugin: "test", level: "error", message: "Could not save" });
   const location = window.location.href;
-  render(<NotificationsBadge />);
+  testClient.render(<NotificationsBadge />);
   fireEvent.click(screen.getByRole("button", { name: /unread notifications/i }));
   await screen.findByText("Could not save");
   const dismiss = screen.getAllByRole("button", { name: "Dismiss" });
@@ -45,7 +53,7 @@ function pushInfo(message: string) {
 }
 
 async function openHistory() {
-  render(<NotificationsBadge />);
+  testClient.render(<NotificationsBadge />);
   const bell = screen.getByRole("button", { name: /unread notification/i });
   fireEvent.click(bell);
   await screen.findByRole("dialog");
@@ -167,7 +175,7 @@ it("keeps Clear all focused on the empty state and returns to the bell on Escape
 
 it("preserves later outside focus when another source dismisses a notification", async () => {
   const entry = pushInfo("Saved");
-  render(
+  testClient.render(
     <>
       <NotificationsBadge />
       <textarea aria-label="Draft" defaultValue="Keep this draft." />

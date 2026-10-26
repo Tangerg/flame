@@ -1,21 +1,15 @@
+import { type VisualClient } from "./client";
 import { type FlameClient } from "@flame/runtime-client";
 import { VISUAL_WORKSPACE_PATH } from "./agentFixtureFacts";
 import { type CommandResult, type ServerCapabilities } from "@flame/runtime-client/wire";
 import { createMutationPromise } from "@flame/runtime-client";
 import { subagentsView } from "@/features/chat/message/subagents";
-import { installAgentStatePorts } from "@/features/agent/adapters/agentStatePorts";
 import { registerApprovalPolicyDataProviders } from "@/features/agent/adapters/runtimeDataProviders";
-import { navigator } from "@/lib/navigation";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
-import { AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
-import { installInterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
 import {
-  configureAgentRuntimeGateway,
   type AgentRuntimeGateway,
   type AgentSteerSubmission,
-} from "@/features/agent/application/ports/runtimeGateway";
+} from "@/features/agent/application/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
@@ -28,7 +22,7 @@ import {
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { APPROVAL_MODE_KEY } from "@/features/agent/public/approvalPolicy";
 import { type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
-import { composerBootstrap } from "@/features/composer/index";
+import { createComposerBootstrap } from "@/features/composer/index";
 import { composerKeymap } from "@/features/composer/index";
 import { composerSend } from "@/features/composer/index";
 import { composerToolbar } from "@/features/composer/index";
@@ -49,15 +43,12 @@ import planProgress from "@/features/chat/plan-progress/index";
 import { workbenchChat } from "@/features/shell/workbench/index";
 import { MODELS_KEY } from "@/features/providers/public/queries";
 import { SelectableModel } from "@/features/providers/public/queries";
-import { installWorkspaceNavigationPort } from "@/features/workspace/adapters/navigationStatePort";
-import { installRuntimeCapabilityPort } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/test/kernel";
-import { toolRenderingPlugins } from "@/app/builtinPlugins";
+import { createToolRenderingPlugins } from "@/app/builtinPlugins";
 import { commitVisualInterruptResponses } from "./interruptResponses";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
-import { useRuntimeConnectionStore } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
 import { visualToolResults } from "./visualToolResults";
 import {
@@ -68,7 +59,6 @@ import {
   WORKSPACE_LIST_FILES_KEY,
   type WorkspaceFileEntry,
 } from "@/features/workspace/application/workspaceQueries";
-import { useComposerStore } from "@/features/composer/adapters/composerStore";
 import {
   projectRuntimeAgentSnapshot,
   type RuntimeAgentSessionSnapshot,
@@ -185,7 +175,7 @@ const fileListProvider = definePlugin({
   },
 });
 
-const visualAgentSessions = (runtimeClient: () => FlameClient) =>
+const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameClient) =>
   definePlugin({
     name: "flame.visual.agent-session-ports",
     provides: { sessions: AGENT_SESSIONS },
@@ -193,29 +183,20 @@ const visualAgentSessions = (runtimeClient: () => FlameClient) =>
       registerApprovalPolicyDataProviders(ctx, runtimeClient);
       return {
         sessions: {
-          getActiveSessionId,
-          getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
-          subscribeActiveSessionId,
-          subscribeLifecycle: subscribeAgentSessionLifecycle,
+          getActiveSessionId: () => getActiveSessionId(visual.agent.access),
+          getLifecycleSnapshot: () => getAgentSessionLifecycleSnapshot(visual.agent.access),
+          subscribeActiveSessionId: (listener) =>
+            subscribeActiveSessionId(visual.agent.access, listener),
+          subscribeLifecycle: (listener) =>
+            subscribeAgentSessionLifecycle(visual.agent.access, listener),
           subscribeDeleted: () => () => undefined,
         },
       };
     },
   });
 
-const visualAgentLifecycle = definePlugin({
-  name: "flame.visual.agent-lifecycle",
-  setup(ctx) {
-    const commands = AgentCommandOwner.install();
-    const disposeInterruptResponses = installInterruptResponseCoordinator();
-    ctx.cleanup(() => {
-      disposeInterruptResponses();
-      commands.dispose();
-    });
-  },
-});
-
 export async function installVisualAgentFixture(
+  visual: VisualClient,
   runtimeClient: () => FlameClient,
   state: VisualAgentState,
   commandOutput: string | undefined,
@@ -242,20 +223,18 @@ export async function installVisualAgentFixture(
   }
   const projectless = state === "empty" || state === "runtime-down";
   queryClient.clear();
-  installRuntimeCapabilityPort();
-  useRuntimeConnectionStore.setState({ capabilities });
-  installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
-  installAgentStatePorts();
-  installWorkspaceNavigationPort(() => "https://visual.flame.test");
-  configureAgentRuntimeGateway(
-    visualAgentRuntimeGateway(snapshot, visualSession(state, snapshot), runtimeClient),
-  );
+  visual.projection.store.setState({ capabilities });
+  installVisualRuntimeServiceStatusPort(visual, state === "runtime-down" ? "unavailable" : "ready");
+  visual.agent.access = {
+    ...visual.agent.access,
+    runtime: visualAgentRuntimeGateway(snapshot, visualSession(state, snapshot), runtimeClient),
+  };
 
-  useAgentSessionStore.setState({
+  visual.agent.sessions.store.setState({
     openSessionIds: projectless ? [] : [VISUAL_SESSION_ID],
     lastSessionId: projectless ? "" : VISUAL_SESSION_ID,
   });
-  navigator().go({ session: projectless ? "" : VISUAL_SESSION_ID });
+  visual.navigation.go({ session: projectless ? "" : VISUAL_SESSION_ID });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([MODELS_KEY], { staleTime: Infinity });
@@ -281,17 +260,16 @@ export async function installVisualAgentFixture(
     await runtimeClient().approval.getMode(),
   );
   await loadPluginsForTest(
-    flameLight,
+    flameLight(visual.theme.access.preference),
     defaultAccents,
-    flameDark,
-    customTheme,
+    flameDark(visual.theme.access.preference),
+    customTheme(visual.theme.access.preference),
     ...builtinVisualStyles,
-    visualAgentSessions(runtimeClient),
-    visualRuntimeStream,
-    visualNavigationBootstrap,
-    visualAgentLifecycle,
-    composerBootstrap,
-    composerKeymap,
+    visualAgentSessions(visual, runtimeClient),
+    visualRuntimeStream(visual),
+    visualNavigationBootstrap(visual),
+    createComposerBootstrap(visual.composer),
+    composerKeymap(visual.agent.access, visual.composer.access, visual.runtime),
     composerToolbar,
     contextUsage,
     composerSend,
@@ -301,15 +279,15 @@ export async function installVisualAgentFixture(
     messageEdit,
     messageRegenerate,
     createMessageFeedbackPlugin(runtimeClient),
-    createGoalPlugin(runtimeClient),
+    createGoalPlugin(visual.agent.access, visual.composer.access, visual.runtime, runtimeClient),
     planProgress,
     subagentsView,
-    ...toolRenderingPlugins,
+    ...createToolRenderingPlugins(visual.workspace.access),
     visualToolResults(runtimeClient),
     fileListProvider,
   );
 
-  useComposerStore.setState((current) => ({
+  visual.composer.store.setState((current) => ({
     composer: current.composer.edit((draft) =>
       draft.withValue(state === "steer" ? "Tighten the error copy and continue." : ""),
     ),
@@ -338,7 +316,7 @@ export async function installVisualAgentFixture(
     },
   };
 
-  const store = useAgentStore.getState();
+  const store = visual.agent.projection.store.getState();
   store.ensureSession(VISUAL_SESSION_ID);
   const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
   if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, view)) {

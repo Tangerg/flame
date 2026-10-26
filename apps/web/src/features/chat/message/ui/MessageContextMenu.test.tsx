@@ -1,6 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type Message } from "@/features/agent/public/sessionView";
 import { useEffect, useRef } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   captureComposerSubmission,
@@ -57,7 +65,7 @@ function DraftInput() {
   const input = useRef<HTMLTextAreaElement>(null);
   const value = useComposerText();
   const setValue = useSetComposerText();
-  useEffect(() => registerComposerFocusTarget(input.current), []);
+  useEffect(() => registerComposerFocusTarget(testClient.composer.access, input.current), []);
   return (
     <textarea
       ref={input}
@@ -70,7 +78,7 @@ function DraftInput() {
 
 function mountFocusMenu(msg = buildMessage({ runId: "run-1" }), conversation: Message[] = [msg]) {
   material.messages = conversation;
-  render(
+  testClient.render(
     <>
       <button>Copy message</button>
       <MessageContextMenu msg={msg} label="You">
@@ -106,8 +114,8 @@ describe("messageContextMenu", () => {
       userInput: { parts: [{ kind: "text", text: "history edit" }] },
     });
     vi.mocked(writeToClipboard).mockClear();
-    selectAgentSession("menu-session");
-    replaceComposerDraft({ text: "waiting draft" });
+    selectAgentSession(testClient.agent.access, "menu-session");
+    replaceComposerDraft(testClient.composer.access, { text: "waiting draft" });
   });
   afterEach(async () => {
     cleanup();
@@ -115,7 +123,7 @@ describe("messageContextMenu", () => {
   });
 
   it("shows Edit in composer + copy items for a user message", () => {
-    render(
+    testClient.render(
       <MessageContextMenu msg={buildMessage({ role: "user" })} label="You">
         <div>user message</div>
       </MessageContextMenu>,
@@ -129,7 +137,7 @@ describe("messageContextMenu", () => {
   it("shows Regenerate + copy items for an assistant message", () => {
     const assistant = buildMessage({ role: "assistant" });
     material.messages = [assistant];
-    render(
+    testClient.render(
       <MessageContextMenu msg={assistant} label="Assistant">
         <div>assistant message</div>
       </MessageContextMenu>,
@@ -141,7 +149,7 @@ describe("messageContextMenu", () => {
   });
 
   it("names the menu after the displayed message author", async () => {
-    render(
+    testClient.render(
       <MessageContextMenu msg={buildMessage({ role: "user" })} label="You">
         <div>user message</div>
       </MessageContextMenu>,
@@ -151,7 +159,7 @@ describe("messageContextMenu", () => {
   });
 
   it("does not show copy items when the message body is empty", () => {
-    render(
+    testClient.render(
       <MessageContextMenu
         msg={buildMessage({
           role: "user",
@@ -169,7 +177,7 @@ describe("messageContextMenu", () => {
   });
 
   it("shows Edit in composer for image-only user messages", () => {
-    render(
+    testClient.render(
       <MessageContextMenu
         msg={buildMessage({
           role: "user",
@@ -186,8 +194,8 @@ describe("messageContextMenu", () => {
   });
 
   it("Edit in composer loads the message text into composerStore", async () => {
-    replaceComposerDraft({ text: "", images: [] });
-    render(
+    replaceComposerDraft(testClient.composer.access, { text: "", images: [] });
+    testClient.render(
       <MessageContextMenu
         msg={buildMessage({
           role: "user",
@@ -201,7 +209,7 @@ describe("messageContextMenu", () => {
     openMenu("user msg");
     fireEvent.click(screen.getByText("Edit in composer"));
     await settleMenu();
-    expect(captureComposerSubmission().value).toBe("draft me again");
+    expect(captureComposerSubmission(testClient.composer.access).value).toBe("draft me again");
   });
 
   it("keeps child copy, edit, and fork actions without offering root history changes", async () => {
@@ -235,7 +243,11 @@ describe("messageContextMenu", () => {
     await openFocusMenu();
     fireEvent.click(screen.getByRole("menuitem", { name: "Fork up to here" }));
     await settleMenu();
-    expect(material.fork).toHaveBeenCalledWith("menu-session", "child-run");
+    expect(material.fork).toHaveBeenCalledWith(
+      testClient.agent.access,
+      "menu-session",
+      "child-run",
+    );
     expect(material.rollback).not.toHaveBeenCalled();
   });
 
@@ -261,7 +273,9 @@ describe("messageContextMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
     expect(draft.value).toBe(action.text);
     expect(document.activeElement).toBe(draft);
-    expect(material.rollback.mock.calls).toEqual(action.rollback);
+    expect(material.rollback.mock.calls).toEqual(
+      action.rollback.map((args) => [testClient.agent.access, ...args]),
+    );
   });
 
   it.each(["Escape", "Copy plain text"])(

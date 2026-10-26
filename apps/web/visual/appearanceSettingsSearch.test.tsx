@@ -1,23 +1,25 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { installAppearancePreferencePort } from "@/features/theme/adapters/appearancePreferenceBinding";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
 import appearanceSettings from "@/features/settings/appearance";
 import { SettingsPage } from "@/features/settings/public/SettingsPage";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
 import { definePlugin } from "@/extensions/definePlugin";
 import { loadPluginsForTest } from "@/test/kernel";
-import { navigator } from "@/lib/navigation";
 
-let uninstall: () => void;
 beforeEach(() => {
-  useAppearanceStore.setState(useAppearanceStore.getInitialState());
-  uninstall = installAppearancePreferencePort();
+  testClient.theme.store.setState(testClient.theme.store.getInitialState());
 });
 afterEach(() => {
   cleanup();
-  uninstall();
-  useAppearanceStore.setState(useAppearanceStore.getInitialState());
+  testClient.theme.store.setState(testClient.theme.store.getInitialState());
 });
 
 it("finds appearance by field and section names without leaving the current pane", async () => {
@@ -35,8 +37,8 @@ it("finds appearance by field and section names without leaving the current pane
       },
     }),
   );
-  navigator().go({ settings: "other" });
-  render(<SettingsPage />);
+  testClient.navigation.go({ settings: "other" });
+  testClient.render(<SettingsPage />);
   const search = screen.getByRole("searchbox");
   for (const value of [
     "Paper texture",

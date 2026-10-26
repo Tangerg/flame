@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Panel, Segmented, Slider } from "@flame/ui";
 import { SettingRow } from "@/ui/settings/SettingRow";
@@ -15,7 +23,7 @@ it.each([
   ["segmented", "pointer"],
 ] as const)("%s preserves reading context on %s activation", (kind, cause) => {
   const viewport = new DOMRect(0, 238, 561, 287);
-  const view = render(
+  const view = testClient.render(
     <div data-testid="viewport" style={{ height: 287, overflowY: "auto" }}>
       <Panel label="Appearance">
         <div data-testid="row-host">

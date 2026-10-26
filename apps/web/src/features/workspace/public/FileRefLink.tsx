@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { createContext, Fragment, use, type RefObject } from "react";
 import { formatFileRef } from "@/features/agent/public/fileRefs";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
@@ -20,6 +21,8 @@ export function FileRefLink({
   line: number;
   column?: number;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const presentation = use(FileReferencePresentationContext);
   const label = formatFileRef({ path, line, column });
   return (
@@ -37,7 +40,12 @@ export function FileRefLink({
           selection.containsNode(event.currentTarget, true)
         )
           return;
-        openWorkspaceFile(path, line, presentation?.origin.current ?? event.currentTarget);
+        openWorkspaceFile(
+          workspaceAccess,
+          path,
+          line,
+          presentation?.origin.current ?? event.currentTarget,
+        );
         presentation?.onOpen();
       }}
     >

@@ -1,13 +1,17 @@
+import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
 import { useCallback } from "react";
 import { invalidateAgentSessions } from "@/features/agent/application/session/sessionQueries";
-import { agentRuntime } from "@/features/agent/application/ports/runtimeGateway";
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
+
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
-import { agentCommandOwner } from "@/features/agent/application/agentCommandOwner";
-export function forkSessionAt(id: string, fromRunId?: string): Promise<void> {
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
-  const state = agentSessionState();
+
+export function forkSessionAt(
+  agentAccess: AgentAccess,
+  id: string,
+  fromRunId?: string,
+): Promise<void> {
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
+  const state = agentAccess.state;
   const key = fromRunId ? `${id}:${fromRunId}` : id;
   return owner
     .runSessionFork(key, async () => {
@@ -22,5 +26,7 @@ export function forkSessionAt(id: string, fromRunId?: string): Promise<void> {
 }
 
 export function useForkSession(): (id: string) => Promise<void> {
-  return useCallback((id) => forkSessionAt(id), []);
+  const agentAccess = useAgent();
+
+  return useCallback((id) => forkSessionAt(agentAccess, id), [agentAccess]);
 }

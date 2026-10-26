@@ -1,8 +1,6 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
-import {
-  agentSessionView,
-  type AgentSessionViewEntry,
-} from "@/features/agent/application/ports/sessionView";
+import { type AgentSessionViewEntry } from "@/features/agent/application/session/sessionAccess";
 import { type AgentRootAttention } from "@/features/agent/application/view/runTree";
 import {
   selectCurrentRootAttention,
@@ -39,10 +37,13 @@ export function terminalSettlementStatus(
   }
 }
 
-export function subscribeAnySessionRunning(onChange: (running: boolean) => void): () => void {
-  let lastRunning = anySessionRunning(agentSessionView().getSessions());
+export function subscribeAnySessionRunning(
+  agentAccess: AgentAccess,
+  onChange: (running: boolean) => void,
+): () => void {
+  let lastRunning = anySessionRunning(agentAccess.view.getSessions());
   onChange(lastRunning);
-  return agentSessionView().subscribeSessions((sessions) => {
+  return agentAccess.view.subscribeSessions((sessions) => {
     const running = anySessionRunning(sessions);
     if (running === lastRunning) return;
     lastRunning = running;
@@ -51,13 +52,14 @@ export function subscribeAnySessionRunning(onChange: (running: boolean) => void)
 }
 
 export function subscribeRootRunSettlements(
+  agentAccess: AgentAccess,
   onSettled: (settlement: RootRunSettlement) => void,
 ): () => void {
   const previousBySession = new Map<string, AgentRootAttention>();
-  for (const [sessionId, entry] of Object.entries(agentSessionView().getSessions())) {
+  for (const [sessionId, entry] of Object.entries(agentAccess.view.getSessions())) {
     previousBySession.set(sessionId, selectCurrentRootAttention(entry.view));
   }
-  return agentSessionView().subscribeSessions((sessions) => {
+  return agentAccess.view.subscribeSessions((sessions) => {
     for (const sessionId in sessions) {
       const view = sessions[sessionId]!.view;
       const current = selectCurrentRootAttention(view);

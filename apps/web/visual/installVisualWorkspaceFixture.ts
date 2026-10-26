@@ -1,3 +1,4 @@
+import { type VisualClient } from "./client";
 import { notifyFrom } from "@/features/notifications/public/notifications";
 import { InstalledComponent } from "@/features/plugins/ui/InstalledComponent";
 import { Schedules } from "../../../plugins/schedules/component/component";
@@ -12,7 +13,6 @@ import { Memory } from "../../../plugins/memory/component/component";
 import { Trajectory } from "../../../plugins/trajectory/component/component";
 import { createElement } from "react";
 import { createBrowserHost } from "@/platform/browserHost";
-import { installLocalWorkspaceActions } from "@/features/workspace/adapters/localWorkspaceActions";
 import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/features/command/shortcuts/index";
@@ -26,8 +26,6 @@ import { createHooksPlugin } from "@/features/hooks/index";
 import { createMCPServersPlugin } from "@/features/mcp/index";
 import personalizationSettings from "@/features/settings/personalization/index";
 import { createPluginsPlugin } from "@/features/plugins/index";
-import { installWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
-import { installNotificationCentre } from "@/features/notifications/adapters/systemNotifier";
 import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -48,13 +46,7 @@ import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type AnyPlugin } from "dougong";
 import { type FlameClient } from "@flame/runtime-client";
-import {
-  useContextDockStore,
-  WorkspaceFileFocus,
-} from "@/features/workspace/adapters/contextDockStore";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
-import { useShellLayoutStore } from "@/features/workspace/adapters/shellLayoutStore";
-import { navigator } from "@/lib/navigation";
+import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,
   CALLOUT_MARKDOWN,
@@ -153,7 +145,6 @@ function workspaceDataPlugin(
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
-      ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
       const diagnosticsLifetime = ctx.lifetime("visual-diagnostics");
       const diagnosticsSources = visualComponentProps(
         runtimeClient(),
@@ -429,22 +420,27 @@ export function visualWorkspaceRuntime(
 }
 
 export async function installVisualWorkspaceFixture(
+  visual: VisualClient,
   runtimeClient: () => FlameClient,
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
   { agentState, snapshot, capabilities, readDiff }: ReturnType<typeof visualWorkspaceRuntime>,
   { pane = "appearance", fullViewId = FULL_VIEW_ID }: VisualWorkspaceConfig = {},
 ): Promise<void> {
-  await installVisualAgentFixture(runtimeClient, agentState, undefined, snapshot, capabilities);
-
-  installWorkspaceErrorClassifier();
-  installNotificationCentre(createBrowserHost());
+  await installVisualAgentFixture(
+    visual,
+    runtimeClient,
+    agentState,
+    undefined,
+    snapshot,
+    capabilities,
+  );
 
   const dockViewId =
     state === "dock-catalog"
       ? WORKSPACE_DOCK_CATALOG
       : (DOCK_VIEW_BY_STATE[state] ?? "package:visual:diff");
-  useContextDockStore.setState({
+  visual.workspace.dock.store.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
     dockViewIds:
@@ -464,14 +460,14 @@ export async function installVisualWorkspaceFixture(
         : { path: ACTIVE_DIFF_FILE, line: 6 },
     expandedToolIds: new Set(),
   });
-  navigator().go({
+  visual.navigation.go({
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
     view: state === "settings" ? "settings" : state === "full-view" ? fullViewId : null,
     settings: state === "settings" ? pane : null,
   });
-  useAppearanceStore.setState({ theme, visualStyle: "flame" });
-  useShellLayoutStore.setState({
+  visual.theme.store.setState({ theme, visualStyle: "flame" });
+  visual.workspace.layout.setState({
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
     dockWidthRatio:
@@ -484,17 +480,17 @@ export async function installVisualWorkspaceFixture(
 
   await loadVisualPlugins([
     fileView,
-    workbenchSettings,
+    workbenchSettings(visual.workspace.access),
     appearanceSettings,
     createBrandPlugin(createBrowserHost().saveImage),
     createProvidersPlugin(runtimeClient),
-    shortcutsSettings,
+    shortcutsSettings(visual.workspace.access),
     approvalsSettings,
     connectionSettings,
     createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     personalizationSettings,
-    createPluginsPlugin(runtimeClient, () => "http://visual.test"),
+    createPluginsPlugin(visual.installedPlugins),
     visualNotifier,
     visualShortcuts,
     workspaceDataPlugin(readDiff, runtimeClient),
@@ -504,7 +500,7 @@ export async function installVisualWorkspaceFixture(
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
 
-  useShellLayoutStore.subscribe((next, previous) => {
+  visual.workspace.layout.subscribe((next, previous) => {
     if (next.dockWidthRatio === previous.dockWidthRatio) return;
     root.dataset.visualDockWidthCommits = String(
       Number(root.dataset.visualDockWidthCommits ?? "0") + 1,

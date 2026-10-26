@@ -13,25 +13,25 @@ current ownership and dependency structure.
 
 ## Directory map
 
-| Location                                    | Responsibility                                                                                                                            |
-| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.tsx`, `src/App.tsx`               | Construct the client environment, mount React, and supply the selected plugins                                                            |
-| `src/router.tsx`, `src/pages/`              | TanStack route wiring and the page shells it mounts                                                                                       |
-| `src/app/`                                  | Composition, product plugin selection, renderer startup and shutdown, protocol client identity                                            |
-| `src/platform/`                             | Browser/Wails bootstrap and actual native capabilities                                                                                    |
-| `src/extensions/host/`                      | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries                              |
-| `src/extensions/`                           | Generic point registration, contribution lifetimes, host contracts and selectors                                                          |
-| `src/features/`                             | Product feature owners and their plugin contributions                                                                                     |
-| `../../packages/ui/`                        | Shared UI package: first-batch controls, token declarations, document rules and appearance projection                                     |
-| `src/ui/primitives/`                        | Remaining product interaction primitives backed by Base UI                                                                                |
-| `src/ui/atoms/`                             | Product presentation composites consuming `@flame/ui`                                                                                     |
-| `src/ui/agent/`                             | Presentation composites for the workbench and conversation                                                                                |
-| `src/lib/`                                  | Shared technical mechanisms, including query caching, navigation ports, publication identity, task lifetimes, highlighting, and telemetry |
-| `src/foundation/`                           | Consumer-neutral scalar contracts, including exact sequence values                                                                        |
-| `src/styles/`                               | Product stylesheets and application palette defaults                                                                                      |
-| `src/test/`, `visual/`                      | Test setup and explicit visual-fixture composition                                                                                        |
-| `../../packages/runtime-client/typescript/` | Generated wire contract and reusable HTTP/SSE client                                                                                      |
-| `../../packages/icons/`                     | Original icon geometry, optical masters, SVG exports, and React components                                                                |
+| Location                         | Responsibility                                                                                                                                |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.tsx`, `src/App.tsx`    | Construct the client environment, mount React, and supply the selected plugins                                                                |
+| `src/router.tsx`, `src/pages/`   | TanStack route wiring and the page shells it mounts                                                                                           |
+| `src/app/`                       | Composition, product plugin selection, renderer startup and shutdown, protocol client identity                                                |
+| `src/platform/`                  | Browser/Wails bootstrap and actual native capabilities                                                                                        |
+| `src/extensions/host/`           | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries                                  |
+| `src/extensions/`                | Generic point registration, contribution lifetimes, host contracts and selectors                                                              |
+| `src/features/`                  | Product feature owners and their plugin contributions                                                                                         |
+| `../../packages/ui/`             | Shared UI package: first-batch controls, token declarations, document rules and appearance projection                                         |
+| `src/ui/primitives/`             | Remaining product interaction primitives backed by Base UI                                                                                    |
+| `src/ui/atoms/`                  | Product presentation composites consuming `@flame/ui`                                                                                         |
+| `src/ui/agent/`                  | Presentation composites for the workbench and conversation                                                                                    |
+| `src/lib/`                       | Shared technical mechanisms, including query caching, navigation contracts, publication identity, task lifetimes, highlighting, and telemetry |
+| `src/foundation/`                | Consumer-neutral scalar contracts, including exact sequence values                                                                            |
+| `src/styles/`                    | Product stylesheets and application palette defaults                                                                                          |
+| `src/test/`, `visual/`           | Test setup and explicit visual-fixture composition                                                                                            |
+| `../../packages/runtime-client/` | Generated wire contract and reusable HTTP/SSE client                                                                                          |
+| `../../packages/icons/`          | Original icon geometry, optical masters, SVG exports, and React components                                                                    |
 
 There is no graphical-client copy of the protocol implementation and no global
 client locator. `app/` constructs dependencies and passes them outward through
@@ -60,7 +60,7 @@ without overriding the meaning of a global size token.
 | `composer/`                 | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent                                             |
 | Other `chat/` features      | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions                       |
 | `providers/`                | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations                         |
-| `connection/`               | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage installation          |
+| `connection/`               | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage                       |
 | `navigation/`               | Work Index projections and working-directory selection                                                                                  |
 | `workspace/`                | Workspace materials, view navigation, file and review reads, conversation export, and subscription invalidation                         |
 | `settings/` features        | Their own settings policies and presentation contributions                                                                              |
@@ -117,6 +117,12 @@ Runtime release. It consumes public Session/evidence operations and captured tar
 context. Workspace owns navigation and export commands; the generic loader owns
 module/resources and lifetime rather than trajectory business data.
 
+Small features keep cohesive files directly under their feature directory:
+`chat/context-usage`, `chat/plan-progress`, `chat/narrative-rails`,
+`navigation/session-search`, `composer/quote-selection`, and `composer/slash-hints`.
+`workspace/toolViewOpener.ts` is a single contribution; it needs no wrapper folder.
+Layer checks apply to these flat features as well as larger layered ones.
+
 These UI groups share the existing Workspace owner. They do not each introduce a
 new application, domain, adapter, or navigation stack. Memory's published client consumes its generated feature contract and public
 Runtime client. Workspace adapters translate that client into their application
@@ -169,19 +175,25 @@ bag nor a parallel service locator is a substitute for explicit construction.
 
 ## Composition and connection lifetime
 
-`main.tsx` chooses a `ClientHost`, constructs `createRuntimeConnection(host, runtimeRequestMeta)`, and
-passes that connection and host to `createBuiltinPlugins`. `App` supplies the
-resulting list to `PluginProvider`. The Host knows how to install the supplied
-plugins; it does not choose Flame's built-ins.
+`main.tsx` chooses a `ClientHost` and constructs the mutation-journal storage before
+`createRuntimeConnection(host, runtimeRequestMeta, storage)`. It creates the navigation,
+Agent, Composer, Workspace, working-directory, Notifications, Theme, and InstalledPlugins
+instances with their explicit collaborators. `createBuiltinPlugins` binds those same
+instances into plugin commands; `App` supplies the resulting list to `PluginProvider`.
+The Host installs the supplied contributions and starts their owners; it does not
+choose Flame's built-ins or construct a second copy of their state.
 
 `ClientRenderer` owns host initialization, initial window chrome, the window
 watcher, the React root, and final connection disposal. Closing the window or
 retiring the module during HMR uses that same teardown path. A renderer retired
 while bootstrap is pending cannot later mount or publish its bootstrap result.
+The startup-failure root follows this same lifetime: a late rejection cannot
+replace a successor renderer, and the failure page is unmounted on teardown.
 
 The concrete Runtime connection owns a cached client for the exact normalized
-endpoint, token, and mutation-journal storage identity. Replacing any of these
-retires the previous client before successor work is issued. Final disposal joins
+endpoint and token. Its mutation-journal storage is required at construction and
+remains owned by that connection. Changing the target retires the previous client
+before successor work is issued. Final disposal joins
 all outstanding retirements and reports their failures. A disposed connection
 cannot create new clients.
 
@@ -196,12 +208,36 @@ successor gateway. The old generation is retired with its original gateway;
 late replies cannot publish into the successor's projection. Merely replacing a
 task queue while retaining its old gateway is insufficient.
 
-Application ports use `lib/ports/singletonPort.ts` where a React or command
-consumer requires a published binding. Each installation returns its disposer.
-The owning plugin registers that disposer with `ctx.cleanup`. Publication and
-withdrawal compare exact owner identity, so a predecessor's late cleanup cannot
-remove a successor. This publication mechanism carries the installed value;
-concrete owners retain task, error, cache, and mutation state.
+React consumes the corresponding feature Provider; ordinary commands capture the
+required access object at construction or receive it as an argument. There is no
+module-global port installation, default feature instance, or application service
+locator. Each owner creates its stores, persistence scope, task cohorts, subscriptions,
+and generation publication together. Providers expose that instance rather than
+creating another store. Settings panes only consume these dependencies.
+
+The Agent owns session/view state, command and usage generations, shared material,
+opening retries, and interruption coordination. Composer owns draft persistence,
+image staging, and focus/presentation leases. Workspace owns Dock persistence,
+layout state, local effects, and conversation archive generations. Connection owns
+negotiated capability/status projections, bootstrap leases, and retiring clients.
+Notifications owns authorization requests, completion subscriptions, and notification
+preferences. InstalledPlugins owns package operations, realization failure, component
+modules, and its joined retirement queue.
+
+`createTheme(document, window)` owns preferences, system appearance, font detection,
+and a read-only appearance projection. Its plugin starts the document painter and
+registers release; renderer shutdown disposes the actual Theme instance. Motion,
+icons, and highlighting consume the same projection through Theme's Provider.
+
+Image saving uses one narrow, stateless callback Context because attachment,
+Markdown-image, and SVG renderers share a deep gallery consumer. The callback is
+constructed at the application boundary; the Context only passes it through and
+has no installation protocol, mutable service slot, or independent state. Error
+classification and Task readout remain pure functions.
+
+Publication identity remains private to owners that need generation retirement.
+A predecessor's late reply or cleanup cannot publish into, or withdraw, its successor.
+Plugin cleanup and renderer teardown converge on the same idempotent disposers.
 
 `PluginProvider` tracks each installation generation independently of the plugin
 array identity. Removing and later reinstalling the same list must wait for the
@@ -259,6 +295,10 @@ feature that understands the data:
 Each feature registers once and removes its contribution with its own plugin
 installation. Defaults has no business-data registry or cross-feature mapper.
 Components consume query hooks and read models rather than RPC envelopes.
+
+Agent usage query keys include the owning instance. Replacing a gateway or
+retiring its Workspace observation only invalidates that instance's usage
+queries, even when another renderer reads the same Session ID.
 
 Each data provider owns its read generation. Adding another provider to the same Host
 preserves unchanged providers and their pending reads. Replacement or removal retires
@@ -429,12 +469,17 @@ Only a connection matching the Runtime bootstrapped by Wails may use native
 workspace Open, Reveal, or folder selection. These actions recheck current
 locality when invoked. A connection replacement fences late picker results.
 The relevant features consume narrow local-action, notification, window, and
-image-save ports rather than a host bag.
+image-save dependencies rather than a host bag.
 
-The Go package under `desktop/` remains a small Wails host. Its files name actual
-host responsibilities. Runtime execution, domain packages, and persistence are
-not copied into it. Native method names are a cross-language contract guarded by
-`binding_names_test.go` and the validated TypeScript host bridge.
+The Go module under `apps/desktop` remains a small Wails host. Its actual
+`DesktopHost` receiver methods own the method list; `internal/bridge` owns the pure
+wire DTOs and their existing refinements. `cmd/bridgegen` reads the actual method AST,
+uses the public SDK schema/TypeScript renderer, and generates
+`platform/desktop.generated.ts` plus `foundation/notificationAuthorization.ts`.
+The host adapter validates those generated wire contracts. Native
+`bridge_contract_test.go` compares the actual binding surface; pure generator drift
+checks run on Linux without compiling Wails. Runtime execution and persistence
+remain with Runtime.
 
 ## Design system and observability
 
@@ -464,7 +509,9 @@ repository's Go toolchain and no live provider credentials.
 It runs in a separate Vitest project after the frontend checks so native process
 and local server deadlines do not compete with the DOM worker pool.
 
-Layer, context, and cycle checks share one compiler-resolved dependency graph.
+Layer, context, and cycle checks share the compiler-resolved dependency graph in
+`tooling/source-graph.mjs`. Generic graph tests belong to tooling; Web policy tests
+belong to `scripts/check-layers.test.mjs`.
 Every TypeScript source must be loaded, every local import must resolve, and
 runtime cycles use the frontend's TypeScript erasure rather than matching
 filenames or guessing from import text. Flat features receive the same boundary
@@ -477,7 +524,10 @@ extensions, type-only erasure, real cycles, private feature dependencies, and
 port consumers. Product tests cover failure ordering, installation replacement,
 connection retirement, command identity, and surviving feature behavior.
 
-Visual fixtures compose their own plugins and memory-transport clients. Their
+`test/renderClient.tsx` constructs independent feature instances for each test.
+Visual fixtures use `visual/client.tsx` and pass the fixture explicitly to their
+setup functions; browser checks read that fixture rather than private production
+singletons. Visual fixtures compose their own plugins and memory-transport clients. Their
 resources belong to fixture cleanup; they do not discover a default production
 connection. Native package verification follows the supported Wails target in
 [`../Taskfile.yml`](../desktop/Taskfile.yml); a successful Web bundle does not establish a

@@ -1,8 +1,9 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type FlameClient } from "@flame/runtime-client";
 import { asRunId, asSegmentId } from "@flame/runtime-client";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
 import { refreshAgentSessionProjection } from "@/features/agent/application/session/refreshSessionProjection";
-import { agentRuntime } from "@/features/agent/application/ports/runtimeGateway";
+
 import { type RunStream } from "@/features/agent/adapters/agentRunPump";
 import { retireRunStream } from "@/features/agent/adapters/runStreamOpening";
 import { snapshotRunStream } from "@/features/agent/adapters/snapshotRunStream";
@@ -19,9 +20,10 @@ interface AgentSessionRecoveryOptions {
 }
 
 export function startAgentSessionRecovery(
+  agentAccess: AgentAccess,
   options: AgentSessionRecoveryOptions,
 ): Promise<AgentSessionView | null> {
-  return recover(options).catch((error: unknown) => {
+  return recover(agentAccess, options).catch((error: unknown) => {
     if (!options.signal.aborted && !options.isCancelled()) options.onSynchronizationFailed(error);
     return null;
   });
@@ -31,8 +33,11 @@ function stale(options: AgentSessionRecoveryOptions): boolean {
   return options.signal.aborted || options.isCancelled() || options.hasInteracted();
 }
 
-async function recover(options: AgentSessionRecoveryOptions): Promise<AgentSessionView | null> {
-  const view = await refreshAgentSessionProjection(options.sessionId, {
+async function recover(
+  agentAccess: AgentAccess,
+  options: AgentSessionRecoveryOptions,
+): Promise<AgentSessionView | null> {
+  const view = await refreshAgentSessionProjection(agentAccess, options.sessionId, {
     canCommit: () => !stale(options),
     signal: options.signal,
   });
@@ -48,12 +53,13 @@ async function recover(options: AgentSessionRecoveryOptions): Promise<AgentSessi
   }
   const root = runningRoots[0];
   if (root) {
-    void attachRootRun(options, root).catch(ignorePumpReportedFailure);
+    void attachRootRun(agentAccess, options, root).catch(ignorePumpReportedFailure);
   }
   return view;
 }
 
 async function attachRootRun(
+  agentAccess: AgentAccess,
   options: AgentSessionRecoveryOptions,
   run: AgentRunView,
 ): Promise<void> {
@@ -69,6 +75,7 @@ async function attachRootRun(
     let stream: Awaited<ReturnType<typeof options.client.runs.subscribe>>;
     try {
       const opened = await snapshotRunStream(
+        agentAccess,
         options.client,
         options.sessionId,
         run.id,
@@ -80,8 +87,8 @@ async function attachRootRun(
       stream = opened;
     } catch (error) {
       if (options.isCancelled() || controller.signal.aborted) return;
-      if (agentRuntime().isRunGone(error)) {
-        await refreshAgentSessionProjection(options.sessionId, {
+      if (agentAccess.runtime.isRunGone(error)) {
+        await refreshAgentSessionProjection(agentAccess, options.sessionId, {
           canCommit: () => !stale(options),
           signal: options.signal,
         }).catch((readError: unknown) => {

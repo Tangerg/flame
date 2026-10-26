@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "./test";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
 import { VISUAL_CONTEXT_TOKENS, VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW } from "./agentFixtureFacts";
-import { contextUsageReadout } from "@/features/chat/context-usage/application/contextUsageReadout";
+import { contextUsageReadout } from "@/features/chat/context-usage/contextUsageReadout";
 import { fmtTokens } from "@/lib/format";
 const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   empty: "idle",
@@ -263,15 +263,13 @@ test("the subagent transcript follows new output and respects reading above the 
   const scroller = transcript.locator("..");
   const append = async (count: number) => {
     await page.evaluate(async (count) => {
-      const storePath = "/src/features/agent/adapters/agentStore.ts";
+      const storePath = "/visual/main.tsx";
       const fixturePath = "/visual/agentSessionSnapshots.ts";
-      const { useAgentStore } = (await import(
-        storePath
-      )) as typeof import("@/features/agent/adapters/agentStore");
+      const { visualClient } = (await import(storePath)) as typeof import("./main");
       const { VISUAL_SESSION_ID } = (await import(
         fixturePath
       )) as typeof import("./agentSessionSnapshots");
-      const store = useAgentStore.getState();
+      const store = visualClient.agent.projection.store.getState();
       const view = store.sessions[VISUAL_SESSION_ID]!.view;
       const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
       if (!refresh) throw new Error("Expected a refresh token");
@@ -434,15 +432,13 @@ for (const [theme, input] of [
     await expect(reader).toBeVisible();
 
     await page.evaluate(async () => {
-      const storePath = "/src/features/agent/adapters/agentStore.ts";
+      const storePath = "/visual/main.tsx";
       const fixturePath = "/visual/agentSessionSnapshots.ts";
-      const { useAgentStore } = (await import(
-        storePath
-      )) as typeof import("@/features/agent/adapters/agentStore");
+      const { visualClient } = (await import(storePath)) as typeof import("./main");
       const { VISUAL_SESSION_ID } = (await import(
         fixturePath
       )) as typeof import("./agentSessionSnapshots");
-      const store = useAgentStore.getState();
+      const store = visualClient.agent.projection.store.getState();
       const view = store.sessions[VISUAL_SESSION_ID]!.view;
       const run = Object.values(view.runsById).find(
         (entry) => entry.parentRunId === null && entry.status === "running",

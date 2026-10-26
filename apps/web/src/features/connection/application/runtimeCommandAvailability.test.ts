@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type RuntimeServiceSnapshot } from "@/features/connection/application/ports/serviceStatus";
+import { type RuntimeServiceSnapshot } from "@/features/connection/application/runtimeService";
 import { runtimeServiceAcceptsCommands } from "@/features/connection/application/runtimeCommandAvailability";
 const observation = {
   server: { name: "flame", version: "test" },

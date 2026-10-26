@@ -1,9 +1,17 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+
 import { FilePath } from "@/ui/atoms/file-path";
 describe("FilePath", () => {
   it("pins the filename and lets the directory take the squeeze", () => {
-    const { container } = render(<FilePath path="src/features/chat/Composer.tsx" />);
+    const { container } = testClient.render(<FilePath path="src/features/chat/Composer.tsx" />);
     const parts = [...(container.firstElementChild?.children ?? [])];
 
     expect(parts.map((p) => p.textContent)).toEqual(["src/features/chat", "/", "Composer.tsx"]);
@@ -15,7 +23,7 @@ describe("FilePath", () => {
   });
 
   it("isolates the directory's own text direction inside the rtl clip", () => {
-    const { container } = render(<FilePath path="/Users/me/app/tools/preview.ts" />);
+    const { container } = testClient.render(<FilePath path="/Users/me/app/tools/preview.ts" />);
     const clip = container.querySelector("[dir=rtl]");
     expect(clip?.children).toHaveLength(1);
     expect(clip?.firstElementChild?.getAttribute("dir")).toBe("ltr");
@@ -23,23 +31,23 @@ describe("FilePath", () => {
   });
 
   it("renders a bare filename as just the filename", () => {
-    const { container } = render(<FilePath path="go.mod" />);
+    const { container } = testClient.render(<FilePath path="go.mod" />);
     expect(container.textContent).toBe("go.mod");
     expect(container.querySelector("[dir=rtl]")).toBeNull();
   });
 
   it("keeps an absolute path's leading slash out of the filename", () => {
-    const { container } = render(<FilePath path="/etc/hosts" />);
+    const { container } = testClient.render(<FilePath path="/etc/hosts" />);
     expect(container.textContent).toBe("/etc/hosts");
   });
 
   it("keeps the slash of a root-level path, which has no directory to hold it", () => {
-    const { container } = render(<FilePath path="/LICENSE" />);
+    const { container } = testClient.render(<FilePath path="/LICENSE" />);
     expect(container.textContent).toBe("/LICENSE");
   });
 
   it("carries the whole path as the title, since part of it may be clipped", () => {
-    const { container } = render(<FilePath path="a/b/c.ts" />);
+    const { container } = testClient.render(<FilePath path="a/b/c.ts" />);
     expect(container.firstElementChild?.getAttribute("title")).toBe("a/b/c.ts");
   });
 });

@@ -1,11 +1,13 @@
+import { useSyncExternalStore } from "react";
 import { type AppearanceEdit, type AppearancePreference } from "@/features/theme/kit/appearance";
-import { appearancePreferencePort } from "@/features/theme/application/ports/appearancePreference";
+import { useTheme } from "@/features/theme/public/theme";
 export function useAppearance<T>(select: (preference: AppearancePreference) => T): T {
-  return appearancePreferencePort().use(select);
+  const { preference } = useTheme();
+  return useSyncExternalStore(preference.subscribe, () => select(preference.read()));
 }
 
-export function editAppearance(): AppearanceEdit {
-  return appearancePreferencePort().edit();
+export function useAppearanceEdit(): AppearanceEdit {
+  return useTheme().preference.edit();
 }
 export {
   DEFAULT_ACCENT,

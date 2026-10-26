@@ -1,5 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 import {
   invalidateWorkspaceEvent,
   invalidateWorkspaceEverything,
@@ -25,7 +34,6 @@ vi.mock("@/lib/queryClient", async (importOriginal) => {
 
 vi.mock("@/features/agent/public/session", () => ({
   AGENT_SESSIONS_KEY: "agent-sessions",
-  AGENT_SESSION_USAGE_KEY: "agent-session-usage",
   synchronizeMountedAgentSessions,
 }));
 
@@ -48,17 +56,28 @@ beforeEach(() => {
   synchronizeMountedAgentSessions.mockReset();
 });
 
+function expectWorkspaceReadScope(options: {
+  predicate: (query: { queryKey: readonly unknown[] }) => boolean;
+}) {
+  const anotherOwner = createAgentSessionUsage();
+  expect(
+    options.predicate({ queryKey: testClient.agent.access.usage.queryKey("ses_shared") }),
+  ).toBe(true);
+  expect(options.predicate({ queryKey: anotherOwner.queryKey("ses_shared") })).toBe(false);
+  expect(options.predicate({ queryKey: ["shared-workspace-read"] })).toBe(true);
+}
+
 describe("workspace session projection invalidation", () => {
   it.each(["runs.changed", "interrupts.changed", "plan.changed", "goals.changed"] as const)(
     "targets the mounted sessions named by %s",
     (type) => {
-      invalidateWorkspaceEvent({
+      invalidateWorkspaceEvent(testClient.agent.access, {
         type,
         sequence: 1,
         sessionIds: ["ses_a", "ses_b"],
       });
 
-      expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+      expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
         sessionIds: ["ses_a", "ses_b"],
         ownership: "after-live",
       });
@@ -66,51 +85,53 @@ describe("workspace session projection invalidation", () => {
   );
 
   it("refreshes every usage projection after a Run moves", () => {
-    invalidateWorkspaceEvent({
+    invalidateWorkspaceEvent(testClient.agent.access, {
       type: "runs.changed",
       sequence: 1,
       sessionIds: ["ses_a"],
     });
 
-    expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey[0])).toEqual([
-      "agent-session-usage",
+    expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey)).toEqual([
+      testClient.agent.access.usage.queryKey(),
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
   });
 
   it("synchronizes every mounted session after a lossy resync", () => {
-    invalidateWorkspaceEverything();
+    invalidateWorkspaceEverything(testClient.agent.access);
 
     expect(cancelQueries).toHaveBeenCalledOnce();
-    expect(invalidateQueries.mock.calls.map(([options]) => options)).toEqual([undefined]);
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledOnce();
+    expectWorkspaceReadScope(invalidateQueries.mock.calls[0]![0]);
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       ownership: "replace-live",
     });
   });
 
   it("retires prior Runtime writers without starting successor reads", () => {
-    retireWorkspaceReadModels();
+    retireWorkspaceReadModels(testClient.agent.access);
 
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       ownership: "retire-live",
     });
     expect(cancelQueries).toHaveBeenCalledOnce();
-    expect(cancelQueries).toHaveBeenCalledWith();
+    expectWorkspaceReadScope(cancelQueries.mock.calls[0]![0]);
     expect(invalidateQueries).not.toHaveBeenCalled();
   });
 
   it("replaces mounted projections and cached reads after the server scope commits", () => {
-    replaceWorkspaceServerScope();
+    replaceWorkspaceServerScope(testClient.agent.access);
 
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       ownership: "replace-server",
     });
     expect(resetQueries).toHaveBeenCalledOnce();
+    expectWorkspaceReadScope(resetQueries.mock.calls[0]![0]);
   });
 
   it("refreshes every read affected by external settings mutations", () => {
     for (const type of ["models.changed", "approvals.changed", "plugins.dataChanged"] as const) {
-      invalidateWorkspaceEvent({ type, sequence: 1 });
+      invalidateWorkspaceEvent(testClient.agent.access, { type, sequence: 1 });
     }
 
     expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey[0])).toEqual([
@@ -125,7 +146,7 @@ describe("workspace session projection invalidation", () => {
   });
 
   it("keeps a scoped resync inside the reads named by its topics", () => {
-    invalidateWorkspaceEvent({
+    invalidateWorkspaceEvent(testClient.agent.access, {
       type: "resync",
       sequence: 1,
       topics: ["files.changed"],
@@ -142,13 +163,13 @@ describe("workspace session projection invalidation", () => {
   });
 
   it("rebuilds Goal through the exact mounted Session material named by the event", () => {
-    invalidateWorkspaceEvent({
+    invalidateWorkspaceEvent(testClient.agent.access, {
       type: "goals.changed",
       sequence: 1,
       sessionIds: ["ses_a", "ses_b"],
     });
 
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       sessionIds: ["ses_a", "ses_b"],
       ownership: "after-live",
     });
@@ -157,14 +178,14 @@ describe("workspace session projection invalidation", () => {
   });
 
   it("uses one Session writer when a scoped resync names Goal with other material", () => {
-    invalidateWorkspaceEvent({
+    invalidateWorkspaceEvent(testClient.agent.access, {
       type: "resync",
       sequence: 1,
       topics: ["runs.changed", "goals.changed"],
       sessionIds: ["ses_mounted", "ses_unmounted"],
     });
 
-    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
+    expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith(testClient.agent.access, {
       sessionIds: ["ses_mounted", "ses_unmounted"],
       ownership: "after-live",
     });
@@ -192,10 +213,10 @@ describe("workspace session projection invalidation", () => {
         })();
       },
       handleEvent(event) {
-        invalidateWorkspaceEvent(event);
+        invalidateWorkspaceEvent(testClient.agent.access, event);
         if (event.sequence === 4) receivedLatest();
       },
-      invalidateAll: invalidateWorkspaceEverything,
+      invalidateAll: () => invalidateWorkspaceEverything(testClient.agent.access),
       reportDisconnect: vi.fn(),
     });
 
@@ -208,15 +229,15 @@ describe("workspace session projection invalidation", () => {
     await run;
 
     expect(synchronizeMountedAgentSessions.mock.calls).toEqual([
-      [{ ownership: "replace-live" }],
-      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
-      [{ ownership: "replace-live" }],
-      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
-      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
+      [testClient.agent.access, { ownership: "replace-live" }],
+      [testClient.agent.access, { sessionIds: ["ses_a"], ownership: "after-live" }],
+      [testClient.agent.access, { ownership: "replace-live" }],
+      [testClient.agent.access, { sessionIds: ["ses_a"], ownership: "after-live" }],
+      [testClient.agent.access, { sessionIds: ["ses_a"], ownership: "after-live" }],
     ]);
-    expect(invalidateQueries.mock.calls.filter(([options]) => options === undefined)).toHaveLength(
-      2,
-    );
+    const fullRefreshes = invalidateQueries.mock.calls.filter(([options]) => !options.queryKey);
+    expect(fullRefreshes).toHaveLength(2);
+    for (const [options] of fullRefreshes) expectWorkspaceReadScope(options);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
     expect(
       invalidateQueries.mock.calls.some(([options]) => options?.queryKey?.[0] === "pending-work"),

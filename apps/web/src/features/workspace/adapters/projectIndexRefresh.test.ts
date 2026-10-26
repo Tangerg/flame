@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
@@ -87,7 +95,7 @@ describe("workspaceProjectRevision", () => {
       ctx.contribute(DATA_PROVIDER, { key: WORKSPACE_PROJECTS_KEY, fetcher });
     });
     disposeRefresh = installProjectIndexRefresh();
-    const hook = renderHook(() => useWorkspaceProjects(), { wrapper });
+    const hook = testClient.renderHook(() => useWorkspaceProjects(), { wrapper });
     unmountHook = hook.unmount;
     await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
 

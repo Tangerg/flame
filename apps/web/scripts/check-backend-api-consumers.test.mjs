@@ -107,7 +107,7 @@ test("fails a manifest sidecar with no product callsite", () => {
 });
 
 const sidecarImplementation = readFileSync(
-  new URL("../../../packages/runtime-client/typescript/src/sidecar.ts", import.meta.url),
+  new URL("../../../packages/runtime-client/src/sidecar.ts", import.meta.url),
   "utf8",
 );
 

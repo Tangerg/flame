@@ -1,3 +1,6 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
+import { type ComposerAccess } from "@/features/composer/public/composer";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { toolFamilyNames } from "@/lib/toolFamilies";
 import { type FlameClient } from "@flame/runtime-client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
@@ -28,7 +31,12 @@ const GOAL_SLASH_COMMAND: SlashCommandSpec = {
   description: "slash.goal",
 };
 
-export function createGoalPlugin(runtimeClient: () => FlameClient) {
+export function createGoalPlugin(
+  agentAccess: AgentAccess,
+  composerAccess: ComposerAccess,
+  runtimeAccess: RuntimeAccess,
+  runtimeClient: () => FlameClient,
+) {
   return definePlugin({
     name: "flame.builtin.goal",
     requires: { runtime: RUNTIME_STREAM },
@@ -36,6 +44,8 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
       const composerMode = GoalComposerModeOwner.install();
       ctx.cleanup(() => composerMode.dispose());
       const runtimeAdapter = installGoalRuntimeAdapter(
+        agentAccess,
+        runtimeAccess,
         runtimeClient,
         ctx.runtime.connectionGeneration() !== null,
       );
@@ -62,12 +72,13 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
       ctx.contribute(
         COMPOSER_SUBMIT_MODE,
         createGoalComposerSubmitMode(composerMode, {
-          getActiveSessionId,
-          goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
-          runtimeAvailable: runtimeCommandsAvailable,
+          getActiveSessionId: getActiveSessionId.bind(null, agentAccess),
+          goalState: (sessionId) =>
+            getAgentSessionSharedMaterial<GoalState>(agentAccess, sessionId, "goal"),
+          runtimeAvailable: runtimeCommandsAvailable.bind(null, runtimeAccess),
           runOptions: resolveAgentRunStartOptions,
           start: startGoal,
-          focusComposer,
+          focusComposer: focusComposer.bind(null, composerAccess),
           reportUnavailable: () => notifyError(t("goal.error.unavailable")),
           reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),
           reportStartError: (error) => notifyError(rpcErrorText(error) ?? t("goal.error.start")),

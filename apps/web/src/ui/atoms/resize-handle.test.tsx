@@ -1,4 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { type CSSProperties } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ResizeHandle } from "@/ui/atoms/resize-handle";
@@ -62,7 +70,7 @@ function paneWidth(): string {
 
 describe("ResizeHandle", () => {
   it("owns accessible separator semantics", () => {
-    render(<Harness onCommit={() => {}} />);
+    testClient.render(<Harness onCommit={() => {}} />);
 
     const handle = screen.getByRole("separator", { name: "Resize panel" });
     expect(handle.getAttribute("aria-orientation")).toBe("vertical");
@@ -73,7 +81,7 @@ describe("ResizeHandle", () => {
   });
 
   it("reports the committed width while its surface is still transitioning", () => {
-    render(
+    testClient.render(
       <div>
         <ResizeHandle
           aria-label="Resize panel"
@@ -94,7 +102,7 @@ describe("ResizeHandle", () => {
 
   it("writes the width straight onto the container during a drag and commits on release", () => {
     const onCommit = vi.fn();
-    render(<Harness onCommit={onCommit} />);
+    testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
@@ -112,7 +120,7 @@ describe("ResizeHandle", () => {
 
   it("does not commit a press that never moved", () => {
     const onCommit = vi.fn();
-    render(<Harness onCommit={onCommit} />);
+    testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
@@ -125,14 +133,14 @@ describe("ResizeHandle", () => {
 
   it("grows toward the pane, whichever edge it sits on", () => {
     const onCommit = vi.fn();
-    const { unmount } = render(<Harness edge="end" onCommit={onCommit} />);
+    const { unmount } = testClient.render(<Harness edge="end" onCommit={onCommit} />);
     fireEvent.keyDown(screen.getByRole("separator", { name: "Resize panel" }), {
       key: "ArrowRight",
     });
     expect(onCommit).toHaveBeenLastCalledWith(328, expect.any(Number));
     unmount();
 
-    render(<Harness edge="start" onCommit={onCommit} />);
+    testClient.render(<Harness edge="start" onCommit={onCommit} />);
     fireEvent.keyDown(screen.getByRole("separator", { name: "Resize panel" }), {
       key: "ArrowRight",
     });
@@ -141,7 +149,7 @@ describe("ResizeHandle", () => {
 
   it("takes a coarse step with Shift and jumps to the range ends", () => {
     const onCommit = vi.fn();
-    render(<Harness onCommit={onCommit} />);
+    testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.keyDown(handle, { key: "ArrowRight", shiftKey: true });
@@ -153,7 +161,7 @@ describe("ResizeHandle", () => {
   });
 
   it("holds the resizing mark across key repeats and releases it on blur", () => {
-    render(<Harness onCommit={() => {}} />);
+    testClient.render(<Harness onCommit={() => {}} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
     const container = screen.getByTestId("container");
 
@@ -167,7 +175,7 @@ describe("ResizeHandle", () => {
 
   it("leaves nothing attached when unmounted mid-drag", () => {
     const onCommit = vi.fn();
-    const { unmount } = render(<Harness onCommit={onCommit} />);
+    const { unmount } = testClient.render(<Harness onCommit={onCommit} />);
     const container = screen.getByTestId("container");
 
     fireEvent.pointerDown(screen.getByRole("separator", { name: "Resize panel" }), {
@@ -188,7 +196,7 @@ describe("ResizeHandle gesture settlement", () => {
     "rolls back %s without committing the preference",
     (reason) => {
       const onCommit = vi.fn();
-      render(<Harness onCommit={onCommit} />);
+      testClient.render(<Harness onCommit={onCommit} />);
       const handle = screen.getByRole("separator", { name: "Resize panel" });
       const pane = screen.getByTestId("container");
       pane.style.setProperty(PROPERTY, "320px", "important");
@@ -215,7 +223,7 @@ describe("ResizeHandle gesture settlement", () => {
 
   it("ignores a second pointer throughout the gesture", () => {
     const onCommit = vi.fn();
-    render(<Harness onCommit={onCommit} />);
+    testClient.render(<Harness onCommit={onCommit} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });
     fireEvent.pointerDown(handle, { button: 0, pointerId: 7, clientX: 320 });
     fireEvent.pointerMove(window, { pointerId: 8, clientX: 800 });
@@ -229,7 +237,7 @@ describe("ResizeHandle gesture settlement", () => {
 
   it("restores the starting property when unmounted after a preview", () => {
     const onCommit = vi.fn();
-    const { unmount } = render(<Harness onCommit={onCommit} />);
+    const { unmount } = testClient.render(<Harness onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
     fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
@@ -241,7 +249,7 @@ describe("ResizeHandle gesture settlement", () => {
 
   it("retires a drag when an external width replaces it", () => {
     const onCommit = vi.fn();
-    const view = render(<Harness onCommit={onCommit} />);
+    const view = testClient.render(<Harness onCommit={onCommit} />);
     fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
     view.rerender(<Harness value={500} onCommit={onCommit} />);
@@ -253,7 +261,7 @@ describe("ResizeHandle gesture settlement", () => {
 
   it("keeps a controlled parent's committed width over the retired preview", () => {
     const onCommit = vi.fn();
-    const view = render(<ControlledHarness value={320} onCommit={onCommit} />);
+    const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
     const pane = screen.getByTestId("container");
     fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
     fireEvent.pointerMove(window, { clientX: 450 });
@@ -277,7 +285,7 @@ describe("ResizeHandle gesture settlement", () => {
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockImplementation(() => containerWidth);
     try {
-      const view = render(<ControlledHarness value={320} onCommit={onCommit} />);
+      const view = testClient.render(<ControlledHarness value={320} onCommit={onCommit} />);
       fireEvent.pointerDown(screen.getByRole("separator"), { button: 0, clientX: 320 });
       fireEvent.pointerMove(window, { clientX: 450 });
       expect(paneWidth()).toBe("450px");

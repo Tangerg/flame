@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { API } from "typescript/unstable/sync";

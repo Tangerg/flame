@@ -1,10 +1,18 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AgentActivityDisclosure } from "@/ui/agent/activity-disclosure";
 describe("AgentActivityDisclosure", () => {
   it("owns one accessible summary and detail region", () => {
     const onToggle = vi.fn();
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <AgentActivityDisclosure
         icon="search"
         shell="card"
@@ -53,7 +61,7 @@ describe("AgentActivityDisclosure", () => {
         Copy
       </button>
     );
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <AgentActivityDisclosure
         icon="search"
         shell="line"
@@ -92,7 +100,7 @@ describe("AgentActivityDisclosure", () => {
   it("keeps row actions outside the disclosure trigger", () => {
     const onToggle = vi.fn();
     const onAction = vi.fn();
-    render(
+    testClient.render(
       <AgentActivityDisclosure
         leading={<span>•</span>}
         shell="card"
@@ -116,7 +124,7 @@ describe("AgentActivityDisclosure", () => {
 
   it("gives each shell its own material", () => {
     const shells = (["line", "card"] as const).map((shell) => {
-      const { unmount } = render(
+      const { unmount } = testClient.render(
         <AgentActivityDisclosure
           icon="search"
           shell={shell}
@@ -137,7 +145,7 @@ describe("AgentActivityDisclosure", () => {
   });
 
   it("frames its own glyph on a card, and never a caller's mark", () => {
-    const { unmount } = render(
+    const { unmount } = testClient.render(
       <AgentActivityDisclosure
         icon="search"
         shell="card"
@@ -154,7 +162,7 @@ describe("AgentActivityDisclosure", () => {
     expect(framed?.getAttribute("data-framed")).toBe("");
     unmount();
 
-    render(
+    testClient.render(
       <AgentActivityDisclosure
         leading={<span>•</span>}
         shell="card"
@@ -170,7 +178,7 @@ describe("AgentActivityDisclosure", () => {
   });
 
   it("keeps a line shell's identity glyph visible without card chrome", () => {
-    render(
+    testClient.render(
       <AgentActivityDisclosure
         icon="search"
         shell="line"
@@ -191,7 +199,7 @@ describe("AgentActivityDisclosure", () => {
   });
 
   it("puts the identity first and a quiet disclosure after the summary", () => {
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <AgentActivityDisclosure
         icon="search"
         shell="line"

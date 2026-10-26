@@ -1,10 +1,16 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it } from "vitest";
-import { navigator } from "@/lib/navigation";
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+
 beforeEach(() => {
-  navigator().go({ session: "", view: null, dock: null, settings: null });
-  useAgentSessionStore.setState({
+  testClient.navigation.go({ session: "", view: null, dock: null, settings: null });
+  testClient.agent.sessions.store.setState({
     openSessionIds: [],
     lastSessionId: "",
   });
@@ -12,81 +18,81 @@ beforeEach(() => {
 
 describe("Agent session state adapter continuity", () => {
   it("remembers the adjacent survivor after the active Session closes", () => {
-    navigator().go({ session: "ses_a", view: "diff", dock: "terminal" });
-    useAgentSessionStore.setState({
+    testClient.navigation.go({ session: "ses_a", view: "diff", dock: "terminal" });
+    testClient.agent.sessions.store.setState({
       openSessionIds: ["ses_a", "ses_b"],
       lastSessionId: "ses_a",
     });
 
-    agentSessionState().closeSession("ses_a");
+    testClient.agent.access.state.closeSession("ses_a");
 
-    expect(navigator().get().session).toBe("ses_b");
-    expect(navigator().get().view).toBeNull();
-    expect(navigator().get().dock).toBe("terminal");
-    expect(useAgentSessionStore.getState().lastSessionId).toBe("ses_b");
+    expect(testClient.navigation.get().session).toBe("ses_b");
+    expect(testClient.navigation.get().view).toBeNull();
+    expect(testClient.navigation.get().dock).toBe("terminal");
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("ses_b");
   });
 
   it("retires a deleted deep-link's promoted view with the authoritative Session", () => {
-    navigator().go({ session: "ses_gone", view: "timeline", dock: "diff" });
-    useAgentSessionStore.setState({
+    testClient.navigation.go({ session: "ses_gone", view: "timeline", dock: "diff" });
+    testClient.agent.sessions.store.setState({
       openSessionIds: ["ses_live", "ses_gone"],
       lastSessionId: "ses_gone",
     });
 
-    agentSessionState().reconcileSessions(["ses_live"]);
+    testClient.agent.access.state.reconcileSessions(["ses_live"]);
 
-    expect(navigator().get()).toMatchObject({
+    expect(testClient.navigation.get()).toMatchObject({
       session: "ses_live",
       view: null,
       dock: "diff",
     });
-    expect(useAgentSessionStore.getState().lastSessionId).toBe("ses_live");
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("ses_live");
   });
 
   it("keeps the active Session's promoted view when a background Session closes", () => {
-    navigator().go({ session: "ses_a", view: "diff", dock: "terminal" });
-    useAgentSessionStore.setState({
+    testClient.navigation.go({ session: "ses_a", view: "diff", dock: "terminal" });
+    testClient.agent.sessions.store.setState({
       openSessionIds: ["ses_a", "ses_b"],
       lastSessionId: "ses_a",
     });
 
-    agentSessionState().closeSession("ses_b");
+    testClient.agent.access.state.closeSession("ses_b");
 
-    expect(navigator().get()).toMatchObject({
+    expect(testClient.navigation.get()).toMatchObject({
       session: "ses_a",
       view: "diff",
       dock: "terminal",
     });
-    expect(useAgentSessionStore.getState().lastSessionId).toBe("ses_a");
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("ses_a");
   });
 
   it("keeps the active Session's promoted view when reconciliation only trims its peers", () => {
-    navigator().go({ session: "ses_a", view: "timeline", dock: "diff" });
-    useAgentSessionStore.setState({
+    testClient.navigation.go({ session: "ses_a", view: "timeline", dock: "diff" });
+    testClient.agent.sessions.store.setState({
       openSessionIds: ["ses_a", "ses_gone"],
       lastSessionId: "ses_a",
     });
 
-    agentSessionState().reconcileSessions(["ses_a"]);
+    testClient.agent.access.state.reconcileSessions(["ses_a"]);
 
-    expect(navigator().get()).toMatchObject({
+    expect(testClient.navigation.get()).toMatchObject({
       session: "ses_a",
       view: "timeline",
       dock: "diff",
     });
-    expect(useAgentSessionStore.getState().lastSessionId).toBe("ses_a");
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("ses_a");
   });
 
   it("forgets a missing last Session when authoritative reconciliation leaves none", () => {
-    navigator().go({ session: "ses_gone" });
-    useAgentSessionStore.setState({
+    testClient.navigation.go({ session: "ses_gone" });
+    testClient.agent.sessions.store.setState({
       openSessionIds: ["ses_gone"],
       lastSessionId: "ses_gone",
     });
 
-    agentSessionState().reconcileSessions([]);
+    testClient.agent.access.state.reconcileSessions([]);
 
-    expect(navigator().get().session).toBe("");
-    expect(useAgentSessionStore.getState().lastSessionId).toBe("");
+    expect(testClient.navigation.get().session).toBe("");
+    expect(testClient.agent.sessions.store.getState().lastSessionId).toBe("");
   });
 });

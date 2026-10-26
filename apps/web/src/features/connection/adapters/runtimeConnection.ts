@@ -1,11 +1,17 @@
 import { type RequestMeta } from "@flame/runtime-client";
-import { negotiatedCapabilities } from "@/features/connection/public/capabilities";
-import { configuredRuntimeTarget } from "@/features/connection/public/endpoint";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
-import { installedRuntimeMutationJournalStorage } from "@/features/connection/public/mutationJournal";
 import { tupleKey } from "@/lib/tupleKey";
 import { type FlameClient, type SidecarClient } from "@flame/runtime-client";
-import { type RuntimeMutationJournalStorage } from "@/features/connection/public/mutationJournal";
+import { type RuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import {
+  createRuntimeEndpoint,
+  type RuntimeEndpointConfiguration,
+} from "@/features/connection/application/runtimeEndpoint";
+import { bindRuntimeEndpointConfiguration } from "@/features/connection/adapters/runtimeEndpointConfiguration";
+import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
+
 import {
   createHttpTransport,
   createFlameClient,
@@ -15,10 +21,26 @@ import {
 export function createRuntimeConnection(
   host: ClientHost,
   requestMeta: (surface: "desktop" | "web") => RequestMeta,
+  storage: RuntimeMutationJournalStorage,
 ) {
+  const projection = createRuntimeConnectionProjection();
+  let configuration: RuntimeEndpointConfiguration | null = null;
+  const endpoint = createRuntimeEndpoint({
+    read: () => configuration?.read() ?? bootstrap().runtime,
+    defaultTarget: () => configuration?.defaultTarget() ?? bootstrap().runtime,
+    replace: (target) => {
+      assertOpen();
+      if (!configuration) throw new Error("Runtime endpoint is not ready");
+      configuration.replace(target);
+    },
+  });
+  const access: RuntimeAccess = {
+    capabilities: projection.capabilities,
+    status: projection.status,
+    endpoint,
+  };
   let shared: {
     signature: string;
-    storage: RuntimeMutationJournalStorage | null;
     client: FlameClient;
   } | null = null;
   let sidecar: { endpoint: string; client: SidecarClient } | null = null;
@@ -46,43 +68,64 @@ export function createRuntimeConnection(
     if (!hostBootstrap) throw new Error("client host has not completed bootstrap");
     return hostBootstrap;
   };
-  const target = () => configuredRuntimeTarget() ?? bootstrap().runtime;
+  const target = () => configuration?.read() ?? bootstrap().runtime;
+  const client = () => {
+    assertOpen();
+    const { endpoint: baseUrl, localToken } = target();
+    const signature = tupleKey(baseUrl, localToken ?? "");
+    if (shared?.signature === signature) return shared.client;
+    if (shared) retire(shared.client);
+    const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
+      requestMeta: () => requestMeta(hostBootstrap?.kind ?? host.kind),
+      capabilities: projection.capabilities.negotiated,
+      mutationJournal: createMutationJournal({
+        storage,
+        scope: () => {
+          const idempotency = projection.capabilities.negotiated()?.limits.idempotency;
+          return idempotency
+            ? {
+                namespace: idempotency.namespace,
+                retentionSeconds: idempotency.retentionSeconds,
+              }
+            : null;
+        },
+      }),
+    });
+    shared = { signature, client };
+    return client;
+  };
+  const sidecarClient = () => {
+    assertOpen();
+    const { endpoint } = target();
+    if (sidecar?.endpoint === endpoint) return sidecar.client;
+    const client = createSidecarClient({ baseUrl: endpoint });
+    sidecar = { endpoint, client };
+    return client;
+  };
   return {
-    client: () => {
+    client,
+    sidecar: sidecarClient,
+    access,
+    stream: projection.stream,
+    scope: projection.scope,
+    bind(ctx: Parameters<typeof bindRuntimeEndpointConfiguration>[0]) {
       assertOpen();
-      const { endpoint: baseUrl, localToken } = target();
-      const signature = tupleKey(baseUrl, localToken ?? "");
-      const storage = installedRuntimeMutationJournalStorage();
-      if (shared?.signature === signature && shared.storage === storage) return shared.client;
-      if (shared) retire(shared.client);
-      const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
-        requestMeta: () => requestMeta(hostBootstrap?.kind ?? host.kind),
-        capabilities: negotiatedCapabilities,
-        mutationJournal: storage
-          ? createMutationJournal({
-              storage,
-              scope: () => {
-                const idempotency = negotiatedCapabilities()?.limits.idempotency;
-                return idempotency
-                  ? {
-                      namespace: idempotency.namespace,
-                      retentionSeconds: idempotency.retentionSeconds,
-                    }
-                  : null;
-              },
-            })
-          : undefined,
-      });
-      shared = { signature, storage, client };
-      return client;
-    },
-    sidecar: () => {
-      assertOpen();
-      const { endpoint } = target();
-      if (sidecar?.endpoint === endpoint) return sidecar.client;
-      const client = createSidecarClient({ baseUrl: endpoint });
-      sidecar = { endpoint, client };
-      return client;
+      const binding = bindRuntimeEndpointConfiguration(
+        ctx,
+        (commit) => {
+          void owner.replaceEndpoint(commit);
+        },
+        bootstrap().runtime,
+      );
+      configuration = binding;
+      const owner = projection.start(runtimeServiceInspector(client, sidecarClient));
+      return {
+        owner,
+        dispose() {
+          owner.dispose();
+          if (configuration === binding) configuration = null;
+        },
+      };
     },
     endpoint: () => {
       assertOpen();
@@ -104,6 +147,8 @@ export function createRuntimeConnection(
     dispose() {
       if (disposal) return disposal;
       closed = true;
+      projection.dispose();
+      configuration = null;
       bootstrapLease = {};
       hostBootstrap = null;
       if (shared) retire(shared.client);

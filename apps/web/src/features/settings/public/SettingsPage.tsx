@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type Ref } from "react";
 import { Suspense, useRef, useState } from "react";
@@ -39,6 +40,8 @@ const GROUPS: { id: string; labelKey: string }[] = [
 const FALLBACK_GROUP = "advanced";
 
 export function SettingsPage() {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const panes = useSettingsPanes();
   const targetPane = useWorkspaceSettingsPaneTarget();
@@ -89,7 +92,7 @@ export function SettingsPage() {
       groups={grouped}
       value={activeId}
       onValueChange={(pane) => {
-        if (pane) openWorkspaceSettingsPane(pane);
+        if (pane) openWorkspaceSettingsPane(workspaceAccess, pane);
       }}
       railFilter={matches}
       railEmpty={
@@ -112,7 +115,7 @@ export function SettingsPage() {
           query={query}
           onQueryChange={setQuery}
           onSubmit={() => {
-            if (firstMatch) openWorkspaceSettingsPane(firstMatch);
+            if (firstMatch) openWorkspaceSettingsPane(workspaceAccess, firstMatch);
           }}
           searchPlaceholder={t("settings.searchPlaceholder")}
         />

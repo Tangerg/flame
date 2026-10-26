@@ -1,3 +1,4 @@
+import { useComposer } from "@/features/composer/public/composer";
 import { memo } from "react";
 import { type AgentInput } from "@/features/agent/public/input";
 import { Composer } from "@/features/composer/public/ui";
@@ -22,6 +23,8 @@ export const ComposerSurface = memo(function ComposerSurface({
 }: {
   onSend: (input: AgentInput) => boolean;
 }) {
+  const composerAccess = useComposer();
+
   const value = useComposerText();
   const setValue = useSetComposerText();
   const images = useComposerImages();
@@ -38,7 +41,7 @@ export const ComposerSurface = memo(function ComposerSurface({
     <Composer
       value={value}
       onChange={setValue}
-      captureSubmission={captureComposerSubmission}
+      captureSubmission={captureComposerSubmission.bind(null, composerAccess)}
       onSend={onSend}
       images={images}
       onRemoveImage={removeImage}

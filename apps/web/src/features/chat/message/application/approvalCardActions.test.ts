@@ -1,4 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   approvalSubmitOptions,
@@ -60,7 +68,7 @@ describe("canRegisterApprovalActions", () => {
 describe("useApprovalCardActions", () => {
   it("attaches a remembered scope only to the explicitly scoped approval", () => {
     const argsEditor = { commit: vi.fn(() => ({ path: "/safe" })) };
-    const { result } = renderHook(() =>
+    const { result } = testClient.renderHook(() =>
       useApprovalCardActions({
         sessionId: "ses-1",
         resumeRunId: "run",
@@ -82,7 +90,7 @@ describe("useApprovalCardActions", () => {
 
   it("stays disabled once a decision is submitted, even after pending clears", () => {
     hitl.submitted = true;
-    const { result } = renderHook(() =>
+    const { result } = testClient.renderHook(() =>
       useApprovalCardActions({
         sessionId: "ses-1",
         resumeRunId: "run",
@@ -94,7 +102,7 @@ describe("useApprovalCardActions", () => {
   });
 
   it("keeps the registered keyboard approval one-shot", () => {
-    renderHook(() =>
+    testClient.renderHook(() =>
       useApprovalCardActions({
         sessionId: "ses-1",
         resumeRunId: "run",

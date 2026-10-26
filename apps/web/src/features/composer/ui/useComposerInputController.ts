@@ -1,3 +1,5 @@
+import { useComposer } from "@/features/composer/public/composer";
+import { useRuntime } from "@/features/connection/public/runtime";
 import {
   type ChangeEvent,
   type ClipboardEvent,
@@ -33,7 +35,7 @@ import {
 } from "@/features/composer/application/composerInputEvents";
 import { useCompositionCommitGuard } from "@/features/composer/ui/useCompositionCommitGuard";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { type ComposerSubmission } from "@/features/composer/application/ports/state";
+import { type ComposerSubmission } from "@/features/composer/application/state";
 
 interface Args {
   value: string;
@@ -58,11 +60,14 @@ export function useComposerInputController({
   onAddPaste,
   acceptsImages,
 }: Args) {
+  const composerAccess = useComposer();
+  const runtimeAccess = useRuntime();
+
   const t = useT();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
-    return registerComposerFocusTarget(inputRef.current);
-  }, []);
+    return registerComposerFocusTarget(composerAccess, inputRef.current);
+  }, [composerAccess]);
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
   const [caret, setCaret] = useState(0);
@@ -91,11 +96,11 @@ export function useComposerInputController({
     () =>
       submitComposer({
         draft: captureSubmission(),
-        restoreFocus: captureComposerFocus(),
+        restoreFocus: captureComposerFocus(composerAccess),
         sendInput: onSend,
-        canSend: runtimeCommandsAvailable,
+        canSend: runtimeCommandsAvailable.bind(null, runtimeAccess),
       }),
-    [captureSubmission, onSend],
+    [captureSubmission, onSend, composerAccess, runtimeAccess],
   );
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {

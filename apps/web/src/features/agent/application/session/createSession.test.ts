@@ -1,14 +1,20 @@
+import { createAgentGatewayFixture } from "@/test/agentOwners";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { navigator } from "@/lib/navigation";
-import { renderHook } from "@testing-library/react";
+
 import { createElement, type ReactNode } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient, type Methods } from "@flame/runtime-client";
 import { asSessionId } from "@flame/runtime-client";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+
 import {
   createSession,
   type CreateSessionOptions,
@@ -35,8 +41,8 @@ function stubCreate(create: Methods["sessions"]["create"]) {
 
 afterEach(() => {
   queryClient.clear();
-  navigator().go({ session: "" });
-  useAgentSessionStore.setState({
+  testClient.navigation.go({ session: "" });
+  testClient.agent.sessions.store.setState({
     openSessionIds: [],
     lastSessionId: "",
   });
@@ -72,7 +78,7 @@ describe("useCreateSession", () => {
     const create = vi.fn().mockResolvedValue(fakeSession("new-cwd"));
     stubCreate(create);
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [summary("existing", "/tmp/proj")]);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
 
     const id = await result.current({ cwd: "/tmp/proj" });
 
@@ -81,8 +87,8 @@ describe("useCreateSession", () => {
       { workspace: { path: "/tmp/proj" } },
       expect.any(AbortSignal),
     );
-    expect(navigator().get().session).toBe("new-cwd");
-    expect(useAgentSessionStore.getState().openSessionIds).toContain("new-cwd");
+    expect(testClient.navigation.get().session).toBe("new-cwd");
+    expect(testClient.agent.sessions.store.getState().openSessionIds).toContain("new-cwd");
     expect(
       queryClient
         .getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])
@@ -93,12 +99,12 @@ describe("useCreateSession", () => {
   it("never delegates an empty working directory to the Runtime default", async () => {
     const create = vi.fn().mockResolvedValue(fakeSession("implicit-home"));
     stubCreate(create);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
 
     await expect(result.current({ cwd: "" })).resolves.toBeNull();
 
     expect(create).not.toHaveBeenCalled();
-    expect(navigator().get().session).toBe("");
+    expect(testClient.navigation.get().session).toBe("");
   });
 
   it("reuses the active Session only while its loaded view holds no messages", async () => {
@@ -108,7 +114,7 @@ describe("useCreateSession", () => {
       .mockResolvedValueOnce(fakeSession("new-2"))
       .mockResolvedValueOnce(fakeSession("new-3"));
     stubCreate(create);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
     const destination = {
       cwd: "/tmp/current-project",
       reuseEmptySession: true,
@@ -116,7 +122,7 @@ describe("useCreateSession", () => {
 
     const first = await result.current(destination);
     const unloaded = await result.current(destination);
-    useAgentStore.getState().ensureSession(unloaded!);
+    testClient.agent.projection.store.getState().ensureSession(unloaded!);
     const reused = await result.current(destination);
     const explicit = await result.current({ cwd: "/tmp/other" });
 
@@ -136,7 +142,7 @@ describe("useCreateSession", () => {
       )
       .mockResolvedValue(fakeSession("second"));
     stubCreate(create as unknown as Methods["sessions"]["create"]);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
 
     const first = result.current({ cwd: "/tmp/a" });
     const joined = result.current({ cwd: "/tmp/a" });
@@ -152,10 +158,10 @@ describe("useCreateSession", () => {
   it("returns null without moving selection when create fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     stubCreate(vi.fn().mockRejectedValue(new Error("boom")));
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
 
     await expect(result.current({ cwd: "/tmp/project" })).resolves.toBeNull();
-    expect(navigator().get().session).toBe("");
+    expect(testClient.navigation.get().session).toBe("");
   });
 
   it("does not join or publish a create owned by a replaced Plugin Host", async () => {
@@ -167,12 +173,12 @@ describe("useCreateSession", () => {
         }),
     );
     stubCreate(retiredCreate as unknown as Methods["sessions"]["create"]);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const { result } = testClient.renderHook(() => useCreateSession(), { wrapper });
     const retired = result.current({ cwd: "/tmp/retired" });
 
     const successorCreate = vi.fn().mockResolvedValue(fakeSession("successor"));
     stubCreate(successorCreate);
-    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
+    const disposeSuccessor = createAgentGatewayFixture(testClient, getRuntimeClient);
     const successor = result.current({ cwd: "/tmp/successor" });
 
     await Promise.resolve();
@@ -189,7 +195,7 @@ describe("useCreateSession", () => {
       await expect(successor).resolves.toBe("successor");
       expect(successorStartedBeforeRetiredSettlement).toBe(1);
       expect(retiredSettledBeforeOldRPC).toBe(true);
-      expect(navigator().get().session).toBe("successor");
+      expect(testClient.navigation.get().session).toBe("successor");
     } finally {
       disposeSuccessor.dispose();
     }
@@ -200,10 +206,10 @@ describe("imperative New", () => {
   it("inherits the exact active Session cwd", async () => {
     const create = vi.fn().mockResolvedValue(fakeSession("next"));
     stubCreate(create);
-    navigator().go({ session: "current" });
+    testClient.navigation.go({ session: "current" });
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [summary("current", "/tmp/current")]);
 
-    await expect(createSession()).resolves.toBe("next");
+    await expect(createSession(testClient.agent.access)).resolves.toBe("next");
 
     expect(create).toHaveBeenCalledWith(
       { workspace: { path: "/tmp/current" } },
@@ -215,9 +221,9 @@ describe("imperative New", () => {
     const create = vi.fn().mockResolvedValue(fakeSession("implicit-home"));
     stubCreate(create);
 
-    await expect(createSession()).resolves.toBeNull();
-    navigator().go({ session: "unresolved" });
-    await expect(createSession()).resolves.toBeNull();
+    await expect(createSession(testClient.agent.access)).resolves.toBeNull();
+    testClient.navigation.go({ session: "unresolved" });
+    await expect(createSession(testClient.agent.access)).resolves.toBeNull();
 
     expect(create).not.toHaveBeenCalled();
   });
@@ -228,5 +234,5 @@ async function flushMicrotasks(): Promise<void> {
 }
 
 beforeEach(() => {
-  installAgentRuntimeGateway(getRuntimeClient);
+  createAgentGatewayFixture(testClient, getRuntimeClient);
 });

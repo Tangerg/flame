@@ -79,6 +79,7 @@ function pumpWith(
   const positions: RunStreamPosition[] = [];
   const pump = createAgentRunPump({
     sessionId: "ses_1",
+    onRunFinished: vi.fn(),
     isCancelled: () => false,
     readEpoch: () => 0n,
     applyEvents: vi.fn(() => true),
@@ -99,6 +100,7 @@ describe("agent run pump reattach", () => {
     const applyEvents = vi.fn(() => true);
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents,
@@ -222,6 +224,7 @@ describe("agent run pump reattach", () => {
     const applyEvents = vi.fn();
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => epoch,
       applyEvents,
@@ -275,6 +278,7 @@ describe("agent run pump reattach", () => {
     const readRunSnapshot = vi.fn(() => Promise.reject(new RpcConnectionError("fetch failed")));
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -313,6 +317,7 @@ describe("agent run pump reattach", () => {
     const order: string[] = [];
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: (events) => {
@@ -348,6 +353,7 @@ describe("agent run pump reattach", () => {
     const readRunSnapshot = vi.fn(() => exactRead.promise);
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -379,6 +385,7 @@ describe("agent run pump reattach", () => {
     const readRunSnapshot = vi.fn(() => exactRead.promise);
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -469,6 +476,7 @@ describe("agent run pump reattach", () => {
     const onIdle = vi.fn();
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -506,6 +514,7 @@ describe("agent run pump reattach", () => {
     const reattach = vi.fn(() => Promise.resolve(null));
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -539,6 +548,7 @@ describe("agent run pump reattach", () => {
   it("does not let an older pump clear a newer segment for the same run", async () => {
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: vi.fn(() => true),
@@ -631,6 +641,7 @@ describe("failed projection recovery", () => {
       };
       const pump = createAgentRunPump({
         sessionId: "ses_1",
+        onRunFinished: vi.fn(),
         isCancelled: () => false,
         readEpoch: () => 0n,
         applyEvents,
@@ -656,6 +667,7 @@ describe("failed projection recovery", () => {
     }));
     const pump = createAgentRunPump({
       sessionId: "ses_1",
+      onRunFinished: vi.fn(),
       isCancelled: () => false,
       readEpoch: () => 0n,
       applyEvents: () => {

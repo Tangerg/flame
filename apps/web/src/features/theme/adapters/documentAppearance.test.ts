@@ -1,20 +1,18 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { createElement, type ReactNode } from "react";
+import { createTheme, type Theme } from "@/features/theme/adapters/theme";
+import { ThemeProvider } from "@/features/theme/public/theme";
+import { beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import { act, render } from "@testing-library/react";
-import { createElement } from "react";
 import { Icon } from "@/ui/icons/index";
 import { COLOR_THEME, VISUAL_STYLE } from "@/features/theme/public/extensionPoints";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
-import { installDocumentAppearance } from "@/features/theme/adapters/documentAppearance";
-import { installSystemAppearance } from "@/features/theme/adapters/systemAppearance";
 import { toggleThemeScheme } from "@/features/theme/application/themeScheme";
-import { installAppearancePreferencePort } from "@/features/theme/adapters/appearancePreferenceBinding";
 import { type PluginContext } from "@/extensions/definePlugin";
 import { contributeForTest, loadPluginsForTest } from "@/test/kernel";
 import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
 import customTheme from "@/features/theme/themes/custom-theme";
 import { contrastRatio, WCAG_AA_NON_TEXT } from "@/features/theme/kit/legibility";
-let uninstall: () => void = () => {};
+let owner: Theme;
 
 const TEST_MOTION = {
   instantMs: 80,
@@ -31,9 +29,11 @@ const TEST_MOTION = {
 } as const;
 
 beforeEach(() => {
+  owner = createTheme(document, window);
+  onTestFinished(() => owner.dispose());
   document.documentElement.removeAttribute("style");
   document.documentElement.className = "";
-  useAppearanceStore.setState({
+  owner.store.setState({
     theme: "dark",
     visualStyle: "synara",
     accent: "#1ed760",
@@ -48,10 +48,7 @@ beforeEach(() => {
     paperTexture: "off",
     paperTextureStrength: 3,
   });
-  uninstall();
-  installAppearancePreferencePort();
-  installSystemAppearance();
-  uninstall = installDocumentAppearance(useAppearanceStore);
+  owner.start();
 });
 
 async function registerSchemePair(): Promise<void> {
@@ -67,66 +64,72 @@ describe("paper texture on the reading planes", () => {
   it("starts plain and keeps the chosen strength when paper is turned off", () => {
     expect(texture()).toBe("none");
     expect(document.documentElement.hasAttribute("data-paper-texture")).toBe(false);
-    useAppearanceStore.getState().setPaperTexture("xuan");
+    owner.store.getState().setPaperTexture("xuan");
     expect(document.documentElement.dataset.paperTexture).toBe("xuan");
     const first = texture();
     expect(first).toContain("data:image/svg+xml,");
-    useAppearanceStore.getState().setPaperTextureStrength(5);
+    owner.store.getState().setPaperTextureStrength(5);
     expect(texture()).not.toBe(first);
-    useAppearanceStore.getState().setPaperTexture("off");
+    owner.store.getState().setPaperTexture("off");
     expect(texture()).toBe("none");
     expect(document.documentElement.hasAttribute("data-paper-texture")).toBe(false);
-    expect(useAppearanceStore.getState().paperTextureStrength).toBe(5);
+    expect(owner.store.getState().paperTextureStrength).toBe(5);
   });
 
   it("changes paper and ink with the theme without tinting its neutral planes", async () => {
-    await loadPluginsForTest(flameLight, flameDark);
-    useAppearanceStore.setState({ theme: "light" });
+    await loadPluginsForTest(
+      flameLight(owner.access.preference),
+      flameDark(owner.access.preference),
+    );
+    owner.store.setState({ theme: "light" });
     const planes = ["color-bg", "color-drawer", "color-surface", "color-elevated"];
     const readPlanes = () =>
       planes.map((name) => document.documentElement.style.getPropertyValue(`--${name}`));
     const plain = readPlanes();
     const images: string[] = [];
     for (const paperTexture of ["xuan", "cotton", "grain"] as const) {
-      useAppearanceStore.setState({ paperTexture });
+      owner.store.setState({ paperTexture });
       images.push(texture());
       expect(readPlanes()).toEqual(plain);
     }
     expect(new Set(images).size).toBe(3);
-    useAppearanceStore.getState().setTheme("dark");
+    owner.store.getState().setTheme("dark");
     expect(texture()).not.toBe(images[2]);
-    useAppearanceStore.getState().setTheme("light");
+    owner.store.getState().setTheme("light");
     expect(texture()).toBe(images[2]);
     expect(readPlanes()).toEqual(plain);
   });
 
   it("updates paper ink when editing a custom theme changes its scheme", async () => {
-    await loadPluginsForTest(customTheme);
-    useAppearanceStore.setState({
+    await loadPluginsForTest(customTheme(owner.access.preference));
+    owner.store.setState({
       theme: "custom",
       customTheme: { bg: "#eee7db", fg: "#232323" },
       paperTexture: "xuan",
     });
     const light = texture();
     expect(document.documentElement.classList.contains("theme-light")).toBe(true);
-    useAppearanceStore.getState().setCustomTheme({ bg: "#161616", fg: "#eeeeee" });
+    owner.store.getState().setCustomTheme({ bg: "#161616", fg: "#eeeeee" });
     expect(document.documentElement.classList.contains("theme-dark")).toBe(true);
     expect(texture()).not.toBe(light);
-    useAppearanceStore.getState().setCustomTheme({ bg: "#eee7db", fg: "#232323" });
+    owner.store.getState().setCustomTheme({ bg: "#eee7db", fg: "#232323" });
     expect(texture()).toBe(light);
   });
 
   it("repaints built-in reading ink as paper strength changes and restores it on Off", async () => {
-    await loadPluginsForTest(flameLight, flameDark);
-    useAppearanceStore.setState({ theme: "light", contrast: 25 });
+    await loadPluginsForTest(
+      flameLight(owner.access.preference),
+      flameDark(owner.access.preference),
+    );
+    owner.store.setState({ theme: "light", contrast: 25 });
     const faint = () => document.documentElement.style.getPropertyValue("--color-text-faint");
     const plain = faint();
-    useAppearanceStore.getState().setPaperTexture("xuan");
+    owner.store.getState().setPaperTexture("xuan");
     const medium = faint();
     expect(medium).not.toBe(plain);
-    useAppearanceStore.getState().setPaperTextureStrength(5);
+    owner.store.getState().setPaperTextureStrength(5);
     expect(faint()).not.toBe(medium);
-    useAppearanceStore.getState().setPaperTexture("off");
+    owner.store.getState().setPaperTexture("off");
     expect(faint()).toBe(plain);
   });
 });
@@ -153,8 +156,11 @@ describe("a theme's own neutrals are what paints", () => {
   ] as const)(
     "publishes readable %s controls through contrast and accent changes",
     async (theme, accent) => {
-      await loadPluginsForTest(flameLight, flameDark);
-      useAppearanceStore.setState({ theme, accent });
+      await loadPluginsForTest(
+        flameLight(owner.access.preference),
+        flameDark(owner.access.preference),
+      );
+      owner.store.setState({ theme, accent });
       const reads = () => {
         for (const name of ["color-control-edge", "color-focus-ring"])
           for (const plane of [
@@ -169,10 +175,10 @@ describe("a theme's own neutrals are what paints", () => {
             );
       };
       for (const contrast of [0, 25, 100]) {
-        useAppearanceStore.getState().setContrast(contrast);
+        owner.store.getState().setContrast(contrast);
         reads();
       }
-      useAppearanceStore.getState().setAccent("#7f52ff");
+      owner.store.getState().setAccent("#7f52ff");
       reads();
     },
   );
@@ -181,7 +187,7 @@ describe("a theme's own neutrals are what paints", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
+    owner.store.setState({ theme: "tinted", accent: "#3574f0" });
 
     expect(painted("color-surface")).toBe("#2a2d32");
     expect(painted("color-sunken")).toBe("#14181f");
@@ -191,11 +197,11 @@ describe("a theme's own neutrals are what paints", () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
-    useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
+    owner.store.setState({ theme: "tinted", accent: "#3574f0" });
     const declared = painted("color-sunken");
 
     for (const accent of ["#e8590c", "#000000", "#7f52ff"]) {
-      useAppearanceStore.setState({ accent });
+      owner.store.setState({ accent });
       expect(
         painted("color-sunken"),
         "a surface is the theme's to state, not the accent's to move",
@@ -212,7 +218,7 @@ describe("a theme's own neutrals are what paints", () => {
         tokens: { "color-accent": "#268bd2", "color-surface": "#eee8d5" },
       });
     });
-    useAppearanceStore.setState({ theme: "palette", accent: "#7f52ff" });
+    owner.store.setState({ theme: "palette", accent: "#7f52ff" });
 
     expect(painted("color-surface")).toBe("#eee8d5");
   });
@@ -223,8 +229,11 @@ describe("a theme's own neutrals are what paints", () => {
   ] as const)(
     "keeps the built-in %s planes still while the accent moves",
     async (theme, canvas) => {
-      await loadPluginsForTest(flameLight, flameDark);
-      useAppearanceStore.setState({ theme, accent: "#fb6e30" });
+      await loadPluginsForTest(
+        flameLight(owner.access.preference),
+        flameDark(owner.access.preference),
+      );
+      owner.store.setState({ theme, accent: "#fb6e30" });
       const planes = [
         "color-bg",
         "color-drawer",
@@ -242,7 +251,7 @@ describe("a theme's own neutrals are what paints", () => {
 
       let accent = painted("color-accent");
       for (const next of ["#0485f7", "#7f52ff", "#21a179"]) {
-        useAppearanceStore.getState().setAccent(next);
+        owner.store.getState().setAccent(next);
         expect(painted("color-accent")).not.toBe(accent);
         expect(paint(), "the accent tints its own roles, never the scheme's planes").toEqual(
           declared,
@@ -266,9 +275,9 @@ describe("accent ownership", () => {
       });
     });
 
-    useAppearanceStore.setState({ theme: "declared", accent: "#1ed760" });
+    owner.store.setState({ theme: "declared", accent: "#1ed760" });
     expect(painted()).toBe("#b4004e");
-    useAppearanceStore.setState({ accent: "#7f52ff" });
+    owner.store.setState({ accent: "#7f52ff" });
     expect(painted()).toBe("#b4004e");
   });
 });
@@ -302,7 +311,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useAppearanceStore.getState().setTheme("palette-light");
+    owner.store.getState().setTheme("palette-light");
 
     const root = document.documentElement;
     expect(root.classList.contains("theme-light")).toBe(true);
@@ -326,13 +335,13 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useAppearanceStore.getState().setTheme("light");
+    owner.store.getState().setTheme("light");
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#fafafa");
     expect(root.style.getPropertyValue("--color-text")).toBe("#171717");
 
-    useAppearanceStore.getState().setTheme("dark");
+    owner.store.getState().setTheme("dark");
     expect(root.style.getPropertyValue("--color-bg")).toBe("#010102");
     expect(root.style.getPropertyValue("--color-text")).toBe("#f7f8f8");
   });
@@ -353,7 +362,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useAppearanceStore.getState().setTheme("light");
+    owner.store.getState().setTheme("light");
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#fafafa");
@@ -378,12 +387,12 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    useAppearanceStore.setState({ theme: "dark" });
-    toggleThemeScheme();
-    expect(useAppearanceStore.getState().theme).toBe("palette-light");
+    owner.store.setState({ theme: "dark" });
+    toggleThemeScheme(owner.access);
+    expect(owner.store.getState().theme).toBe("palette-light");
 
-    toggleThemeScheme();
-    expect(useAppearanceStore.getState().theme).toBe("dark");
+    toggleThemeScheme(owner.access);
+    expect(owner.store.getState().theme).toBe("dark");
   });
 });
 
@@ -397,7 +406,7 @@ describe("visual-style contract", () => {
       });
     });
 
-    useAppearanceStore.getState().setVisualStyle("test-style");
+    owner.store.getState().setVisualStyle("test-style");
 
     const root = document.documentElement;
     expect(root.dataset.visualStyle).toBe("test-style");
@@ -422,8 +431,8 @@ describe("visual-style contract", () => {
       });
     });
 
-    useAppearanceStore.getState().setVisualStyle("first");
-    useAppearanceStore.getState().setVisualStyle("second");
+    owner.store.getState().setVisualStyle("first");
+    owner.store.getState().setVisualStyle("second");
 
     expect(document.documentElement.style.getPropertyValue("--shadow-surface-card")).toBe("");
   });
@@ -431,8 +440,11 @@ describe("visual-style contract", () => {
 
 describe("UI preference DOM synchronization", () => {
   it("publishes the same font-derived size to SVGs and CSS layout tokens", () => {
-    const { container, unmount } = render(createElement(Icon, { name: "bell", size: "lg" }));
-    act(() => useAppearanceStore.getState().setFontSize(16));
+    const { container, unmount } = render(createElement(Icon, { name: "bell", size: "lg" }), {
+      wrapper: (props: { children: ReactNode }) =>
+        createElement(ThemeProvider, { value: owner.access, ...props }),
+    });
+    act(() => owner.store.getState().setFontSize(16));
     const svg = container.querySelector("svg")!;
     expect(document.documentElement.style.getPropertyValue("--icon-lg")).toBe("22px");
     expect(svg.style.width).toBe("22px");
@@ -441,7 +453,7 @@ describe("UI preference DOM synchronization", () => {
   });
 
   it("applies and clears font preferences", async () => {
-    const state = useAppearanceStore.getState();
+    const state = owner.store.getState();
     state.setUiFont("Inter");
     state.setCodeFont("JetBrains Mono");
     state.setFontSize(17);
@@ -455,9 +467,9 @@ describe("UI preference DOM synchronization", () => {
     expect(style.getPropertyValue("--fs-prose")).toBe("19px");
     expect(style.getPropertyValue("--fs-ui-sm")).toBe("16px");
 
-    useAppearanceStore.getState().setUiFont("");
-    useAppearanceStore.getState().setCodeFont("");
-    useAppearanceStore.getState().setFontSize(null);
+    owner.store.getState().setUiFont("");
+    owner.store.getState().setCodeFont("");
+    owner.store.getState().setFontSize(null);
 
     expect(style.getPropertyValue("--font-sans")).toBe("");
     expect(style.getPropertyValue("--font-mono")).toBe("");
@@ -466,10 +478,10 @@ describe("UI preference DOM synchronization", () => {
 
   it("applies contrast, radius, and reduced-motion preferences", async () => {
     await registerSchemePair();
-    useAppearanceStore.getState().setTheme("light");
-    useAppearanceStore.getState().setContrast(100);
-    useAppearanceStore.getState().setRadiusScale(1.25);
-    useAppearanceStore.getState().setMotionScale(0);
+    owner.store.getState().setTheme("light");
+    owner.store.getState().setContrast(100);
+    owner.store.getState().setRadiusScale(1.25);
+    owner.store.getState().setMotionScale(0);
 
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--depth-step")).toBe("10%");
@@ -477,16 +489,16 @@ describe("UI preference DOM synchronization", () => {
     expect(root.style.getPropertyValue("--motion-scale")).toBe("0");
     expect(root.dataset.motion).toBe("off");
 
-    useAppearanceStore.getState().setMotionScale(0.5);
+    owner.store.getState().setMotionScale(0.5);
     expect(root.dataset.motion).toBeUndefined();
   });
 
   it("doubles the ladder step on dark so both schemes separate equally", async () => {
     await registerSchemePair();
-    useAppearanceStore.getState().setContrast(25);
-    useAppearanceStore.getState().setTheme("light");
+    owner.store.getState().setContrast(25);
+    owner.store.getState().setTheme("light");
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("4%");
-    useAppearanceStore.getState().setTheme("dark");
+    owner.store.getState().setTheme("dark");
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("8%");
   });
 });
@@ -494,15 +506,15 @@ describe("UI preference DOM synchronization", () => {
 describe("code size", () => {
   it("moves code alone, leaving the interface ladder where the UI size put it", () => {
     const read = (name: string) => document.documentElement.style.getPropertyValue(name);
-    useAppearanceStore.setState({ fontSize: 14, codeFontSize: null });
+    owner.store.setState({ fontSize: 14, codeFontSize: null });
     const interfaceSize = read("--fs-ui-md");
     const followed = read("--fs-code");
 
-    useAppearanceStore.setState({ codeFontSize: 16 });
+    owner.store.setState({ codeFontSize: 16 });
     expect(read("--fs-code")).toBe("16px");
     expect(read("--fs-ui-md")).toBe(interfaceSize);
 
-    useAppearanceStore.setState({ codeFontSize: null });
+    owner.store.setState({ codeFontSize: null });
     expect(read("--fs-code")).toBe(followed);
   });
 });
@@ -519,11 +531,11 @@ describe("the first-paint record mirrors what renders", () => {
       });
       unregister = () => theme.dispose();
     }, "test.package-theme");
-    useAppearanceStore.setState({ theme: "package:a:sea" });
+    owner.store.setState({ theme: "package:a:sea" });
     expect(localStorage.getItem("flame.theme-paint")).toContain("package:a:sea");
 
     unregister?.();
-    useAppearanceStore.setState({ theme: "package:a:sea", accent: "#123456" });
+    owner.store.setState({ theme: "package:a:sea", accent: "#123456" });
     expect(localStorage.getItem("flame.theme-paint")).toBeNull();
   });
 });

@@ -1,3 +1,5 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
+import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
 import {
   Activity,
@@ -103,6 +105,8 @@ function AddDockViewPicker({
   openViewIds: ReadonlySet<string>;
   activeViewId: string;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const pickerGroups = useDockCatalogGroups(groups, openViewIds);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -125,7 +129,9 @@ function AddDockViewPicker({
           className={stylex.props(sh.toEnd).className}
         />
       }
-      onSelect={(item) => openWorkspaceViewInDock(item.id, triggerRef.current ?? undefined)}
+      onSelect={(item) =>
+        openWorkspaceViewInDock(workspaceAccess, item.id, triggerRef.current ?? undefined)
+      }
     />
   );
 }
@@ -139,6 +145,8 @@ function DockCatalogPage({
   openViewIds: ReadonlySet<string>;
   titleHidden: boolean;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   return (
     <AgentDockCatalog
@@ -148,7 +156,7 @@ function DockCatalogPage({
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
       clearLabel={t("common.clearSearch")}
-      onSelect={openWorkspaceViewInDock}
+      onSelect={openWorkspaceViewInDock.bind(null, workspaceAccess)}
     />
   );
 }
@@ -164,6 +172,8 @@ function DockHeader({
   openViewIds: ReadonlySet<string>;
   returnAction?: { label: string; onReturn: () => void };
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   return (
     <AgentSurfaceHeader divider={false}>
@@ -172,7 +182,7 @@ function DockHeader({
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}
         reorder={{
-          onMove: reorderWorkspaceDockView,
+          onMove: reorderWorkspaceDockView.bind(null, workspaceAccess),
           moveLeftLabel: t("dock.tabs.moveLeft"),
           moveRightLabel: t("dock.tabs.moveRight"),
         }}
@@ -187,6 +197,9 @@ function DockHeader({
 }
 
 export function ChatPanel({ onSend, ref }: Props) {
+  const composerAccess = useComposer();
+  const workspaceAccess = useWorkspace();
+
   const activeMainView = useActiveWorkspaceViewId();
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
@@ -236,8 +249,8 @@ export function ChatPanel({ onSend, ref }: Props) {
     dockVisible,
   });
   useLayoutEffect(
-    () => registerComposerFocusPresentation(requestComposerFocus),
-    [requestComposerFocus],
+    () => registerComposerFocusPresentation(composerAccess, requestComposerFocus),
+    [requestComposerFocus, composerAccess],
   );
   useImperativeHandle(ref, () => ({ focusComposer: requestComposerFocus }));
 
@@ -295,12 +308,12 @@ export function ChatPanel({ onSend, ref }: Props) {
       icon: knownIconName(view?.icon),
       badge: Badge ? <Badge /> : undefined,
       active: id === dock.activeViewId,
-      onSelect: () => selectWorkspaceDockView(id),
-      onClose: () => closeWorkspaceDockView(id),
+      onSelect: () => selectWorkspaceDockView(workspaceAccess, id),
+      onClose: () => closeWorkspaceDockView(workspaceAccess, id),
       closeLabel: `${t("common.close")} ${title}`,
-      onCloseOthers: () => closeOtherWorkspaceDockViews(id),
+      onCloseOthers: () => closeOtherWorkspaceDockViews(workspaceAccess, id),
       closeOthersLabel: t("dock.tabs.closeOthers"),
-      onCloseAll: closeAllWorkspaceDockViews,
+      onCloseAll: closeAllWorkspaceDockViews.bind(null, workspaceAccess),
       closeAllLabel: t("dock.tabs.closeAll"),
     };
   });
@@ -327,10 +340,15 @@ export function ChatPanel({ onSend, ref }: Props) {
           exit={
             inspectedFullPane && returnAction
               ? { kind: "return", ...returnAction }
-              : { kind: "close", onClose: () => closeWorkspaceView(fullPaneViewId) }
+              : {
+                  kind: "close",
+                  onClose: () => closeWorkspaceView(workspaceAccess, fullPaneViewId),
+                }
           }
           onOpenInDock={
-            dockAvailable ? (origin) => openWorkspaceViewInDock(fullPaneViewId, origin) : undefined
+            dockAvailable
+              ? (origin) => openWorkspaceViewInDock(workspaceAccess, fullPaneViewId, origin)
+              : undefined
           }
           onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
         />
@@ -436,10 +454,10 @@ export function ChatPanel({ onSend, ref }: Props) {
             open={dockVisible}
             onToggle={
               !dockAvailable
-                ? () => showWorkspaceDock("main")
+                ? () => showWorkspaceDock(workspaceAccess, "main")
                 : dockOpen
-                  ? collapseWorkspaceDock
-                  : showWorkspaceDock
+                  ? collapseWorkspaceDock.bind(null, workspaceAccess)
+                  : showWorkspaceDock.bind(null, workspaceAccess)
             }
             showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
             hideLabel={t("dock.action.hide")}

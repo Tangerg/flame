@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { ContentVisibility } from "@flame/ui";
 import { afterEach, expect, it } from "vitest";
 import chatSearch from "@/features/chat/search/index";
@@ -27,7 +35,7 @@ it("contributes Find to its visible Conversation lifetime without a global overl
       </>
     );
   }
-  const { rerender } = render(<Workspace />);
+  const { rerender } = testClient.render(<Workspace />);
   const region = screen.getByRole("region", { name: "Conversation" });
   expect(region.children).toHaveLength(1);
   act(() => openChatSearch());

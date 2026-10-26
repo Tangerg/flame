@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcError } from "@flame/runtime-client";
 import { drainBrowserTasks } from "@/test/browserTasks";
@@ -64,14 +72,14 @@ describe("Goal status surface", () => {
   });
 
   it("pauses an active goal from the standing surface", async () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Pause goal" }));
     await vi.waitFor(() => expect(model.stopGoal).toHaveBeenCalledWith("session-a"));
     expect(model.resumeGoal).not.toHaveBeenCalled();
   });
 
   it("offers Flame Goal management actions in clear, lifecycle, edit order", () => {
-    const { container } = render(<GoalStatusSurface />);
+    const { container } = testClient.render(<GoalStatusSurface />);
 
     expect(
       Array.from(container.querySelectorAll('[data-slot="goal-actions"] button')).map((button) =>
@@ -81,7 +89,7 @@ describe("Goal status surface", () => {
   });
 
   it("opens the same objective editor from the Goal summary", () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
 
@@ -89,7 +97,7 @@ describe("Goal status surface", () => {
   });
 
   it("clears the current goal through the Goal command owner", async () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     fireEvent.click(screen.getByRole("button", { name: "Clear goal" }));
 
@@ -97,7 +105,7 @@ describe("Goal status surface", () => {
   });
 
   it("edits only the objective in a Codex-style Goal dialog", async () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     const objective = screen.getByRole("textbox", { name: "Goal" });
@@ -115,7 +123,7 @@ describe("Goal status surface", () => {
   });
 
   it("keeps an open editor aligned with the current Goal lifecycle", async () => {
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Goal" }), {
       target: { value: "Ship beta" },
@@ -154,7 +162,7 @@ describe("Goal status surface", () => {
 
   it("keeps a rejected objective edit in its editor and saves it on retry", async () => {
     model.updateGoal.mockRejectedValueOnce(rejected());
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     const objective = screen.getByRole("textbox", { name: "Goal" }) as HTMLTextAreaElement;
     fireEvent.change(objective, { target: { value: "Ship beta" } });
@@ -179,7 +187,7 @@ describe("Goal status surface", () => {
 
   it("clears an editor failure when the draft changes or the editor reopens", async () => {
     model.updateGoal.mockRejectedValueOnce(rejected()).mockRejectedValueOnce(rejected());
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     const objective = screen.getByRole("textbox", { name: "Goal" });
     fireEvent.change(objective, { target: { value: "Ship beta" } });
@@ -203,7 +211,7 @@ describe("Goal status surface", () => {
 
   it("keeps an offline objective save in the editor without invoking the command", async () => {
     model.runtimeAvailable = false;
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }));
     const objective = screen.getByRole("textbox", { name: "Goal" });
     fireEvent.change(objective, { target: { value: "Ship beta" } });
@@ -226,7 +234,7 @@ describe("Goal status surface", () => {
   });
 
   it("refuses to save an objective that is only whitespace", () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Goal" }), { target: { value: "   " } });
@@ -238,7 +246,7 @@ describe("Goal status surface", () => {
   });
 
   it("does not submit the Goal editor while an IME composition is active", () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     const objective = screen.getByRole("textbox", { name: "Goal" });
@@ -255,7 +263,7 @@ describe("Goal status surface", () => {
 
   it("resumes a paused goal from the standing surface", async () => {
     model.goal = { ...model.goal, status: "paused" };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Resume goal" }));
     await vi.waitFor(() => expect(model.resumeGoal).toHaveBeenCalledWith("session-a"));
     expect(model.stopGoal).not.toHaveBeenCalled();
@@ -263,7 +271,7 @@ describe("Goal status surface", () => {
 
   it("keeps lifecycle commands visible but inert while Runtime is offline", () => {
     model.runtimeAvailable = false;
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     const pause = screen.getByRole("button", { name: "Pause goal" });
     expect(pause.hasAttribute("disabled")).toBe(true);
@@ -273,7 +281,7 @@ describe("Goal status surface", () => {
 
   it("keeps a completing goal visible without exposing a lifecycle command", () => {
     model.goal = { ...model.goal, status: "completing" };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     expect(screen.getByText("Finishing goal")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Stop goal" })).toBeNull();
@@ -287,7 +295,7 @@ describe("Goal status surface", () => {
       ...model.goal,
       status: "paused",
     };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     expect(screen.getByRole("button", { name: "Resume goal" })).toBeTruthy();
     expect(screen.getByText("Paused goal")).toBeTruthy();
@@ -302,7 +310,7 @@ describe("Goal status surface", () => {
         detail: "Provide the release target.\nThen I can continue.",
       },
     };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     const explanation = screen.getByRole("button", {
       name: "The agent reported that it cannot continue.",
@@ -320,7 +328,7 @@ describe("Goal status surface", () => {
 
   it("replaces the explanation from current material and removes it when the owner resumes", () => {
     model.goal = { ...model.goal, status: "paused", reason: { code: "runtimeRestarted" } };
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     expect(screen.getByText("Paused after the execution service restarted.")).toBeTruthy();
 
     model.goal = { ...model.goal, reason: { code: "awaitingInput" } };
@@ -343,7 +351,7 @@ describe("Goal status surface", () => {
       status: "blocked",
       reason: { code: "blockedByModel", detail },
     };
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     fireEvent.click(
       screen.getByRole("button", { name: "The agent reported that it cannot continue." }),
     );
@@ -384,7 +392,7 @@ describe("Goal status surface", () => {
       status: "paused",
       reason: { code: "runNotCompleted", detail: "canceled" },
     };
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     expect(screen.getByText("The previous run did not finish successfully.")).toBeTruthy();
     model.goal = {
       sessionId: "session-b",
@@ -399,7 +407,7 @@ describe("Goal status surface", () => {
   });
 
   it("presents Goal identity and creation age without usage counters", () => {
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     expect(screen.getByText("Pursuing goal")).toBeTruthy();
     expect(screen.getByText("Ship alpha")).toBeTruthy();
@@ -408,7 +416,7 @@ describe("Goal status surface", () => {
   });
 
   it("uses the top-tray surface and the shared target icon", () => {
-    const { container } = render(<GoalStatusSurface />);
+    const { container } = testClient.render(<GoalStatusSurface />);
 
     const surface = container.querySelector<HTMLElement>('[data-slot="composer-top-tray-surface"]');
     expect(surface).not.toBeNull();
@@ -425,7 +433,7 @@ describe("Goal status surface", () => {
 
   it("reads creation age as time advances without changing the Goal", () => {
     controlClock();
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     expect(screen.getByText("Time since goal creation: 18s")).toBeTruthy();
 
     act(() => vi.advanceTimersByTime(2_000));
@@ -440,7 +448,7 @@ describe("Goal status surface", () => {
 
   it("keeps counting creation age after the Runtime pauses the Goal", () => {
     controlClock();
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     model.goal = { ...model.goal, status: "paused" };
     rerender(<GoalStatusSurface />);
 
@@ -453,7 +461,7 @@ describe("Goal status surface", () => {
 
   it("leaves the current objective draft and focus alone while time advances", async () => {
     controlClock();
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     const opener = screen.getByRole("button", { name: "Edit goal" });
     act(() => opener.focus());
     fireEvent.click(opener);
@@ -478,7 +486,7 @@ describe("Goal status surface", () => {
 
   it("reads a replacement Goal's own creation time and retires the former editor", () => {
     controlClock();
-    const { rerender } = render(<GoalStatusSurface />);
+    const { rerender } = testClient.render(<GoalStatusSurface />);
     fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
     model.goal = {
       ...model.goal,
@@ -498,7 +506,7 @@ describe("Goal status surface", () => {
   it("omits an unreadable creation time", () => {
     controlClock();
     model.goal = { ...model.goal, createdAt: "invalid" };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
 
     expect(screen.queryByText(/^Time since goal creation:/)).toBeNull();
     expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" })).toBeTruthy();
@@ -507,7 +515,7 @@ describe("Goal status surface", () => {
   it("clamps a future creation timestamp to zero until the clock reaches it", () => {
     controlClock();
     model.goal = { ...model.goal, createdAt: new Date(Date.now() + 2_000).toISOString() };
-    render(<GoalStatusSurface />);
+    testClient.render(<GoalStatusSurface />);
     expect(screen.getByText("Time since goal creation: 0s")).toBeTruthy();
 
     act(() => vi.advanceTimersByTime(3_000));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/index";
-import { type TaskEntry } from "@/features/workspace/application/ports/taskReadoutPort";
+import { type TaskEntry } from "@/extensions/tasksStore";
 import { taskProgressPercent, taskReadout } from "@/features/workspace/application/taskReadout";
 const task = (id: string, patch: Partial<TaskEntry>): TaskEntry => ({
   id,

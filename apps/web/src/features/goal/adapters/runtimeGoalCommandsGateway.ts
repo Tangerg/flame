@@ -1,3 +1,5 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import {
   asSessionId,
   createMutationSettler,
@@ -103,17 +105,20 @@ export interface GoalRuntimeAdapterInstallation {
 }
 
 export function installGoalRuntimeAdapter(
+  agentAccess: AgentAccess,
+  runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
   hasRuntimeGeneration: boolean,
 ): GoalRuntimeAdapterInstallation {
   let gateway = hasRuntimeGeneration ? new RuntimeGoalCommandsGateway(runtimeClient()) : null;
   const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
-    synchronizeMountedAgentSession(sessionId, "replace-live"),
+    synchronizeMountedAgentSession(agentAccess, sessionId, "replace-live"),
   );
   const disposeSharedMaterial = registerAgentSessionSharedMaterial<SessionSnapshot>(
+    agentAccess,
     "goal",
     (_sessionId, snapshot) => {
-      return runtimeGoalMaterial(snapshot.goal, runtimeCapability("goals"));
+      return runtimeGoalMaterial(snapshot.goal, runtimeCapability(runtimeAccess, "goals"));
     },
   );
   return {

@@ -21,7 +21,6 @@ export {
   useAgentSessions,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
-export { AGENT_SESSION_USAGE_KEY } from "@/features/agent/application/session/sessionUsage";
 export {
   createSession,
   useCreateSession,
@@ -35,7 +34,7 @@ export {
   rollbackSessionToBeforeRun,
   sendToAgentSession,
 } from "@/features/agent/application/session/historyActions";
-export type { RestoreType } from "@/features/agent/application/ports/runtimeGateway";
+export type { RestoreType } from "@/features/agent/application/runtimeGateway";
 export { rehydrateSessionView } from "@/features/agent/application/session/rehydrateSession";
 export {
   synchronizeMountedAgentSession,

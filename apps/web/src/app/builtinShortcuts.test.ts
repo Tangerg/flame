@@ -1,3 +1,9 @@
+import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import { createStorage } from "@/extensions/storage";
+import { onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBuiltinPlugins } from "@/app/builtinPlugins";
@@ -20,9 +26,27 @@ const host = createBrowserHost();
 let builtinPlugins: ReturnType<typeof createBuiltinPlugins>;
 
 beforeEach(async () => {
-  connection = createRuntimeConnection(host, runtimeRequestMeta);
+  connection = createRuntimeConnection(
+    host,
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("flame.builtin.runtime")),
+  );
   await connection.initialize();
-  builtinPlugins = createBuiltinPlugins(connection, host);
+  const owned = createTestClient({ connection, host, start: false });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+  builtinPlugins = createBuiltinPlugins(
+    connection,
+    host,
+    testClient.navigation,
+    testClient.agent,
+    testClient.composer,
+    testClient.workspace,
+    testClient.directory,
+    testClient.notifications,
+    testClient.installedPlugins,
+    testClient.theme,
+  );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
     "EventSource",

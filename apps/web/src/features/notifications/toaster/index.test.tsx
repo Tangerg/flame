@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { AppToaster } from "@/features/notifications/toaster/index";
@@ -18,7 +26,7 @@ async function settle(milliseconds = 50) {
 }
 
 it("keeps every live message readable in one bounded normal-flow list", async () => {
-  render(<AppToaster />);
+  testClient.render(<AppToaster />);
   act(() => {
     for (let index = 0; index < 6; index++) {
       toast(`Long feedback ${index}`, {
@@ -45,7 +53,7 @@ it("keeps every live message readable in one bounded normal-flow list", async ()
 
 it("retains the original input and notification timer through layout changes", async () => {
   const autoClose = vi.fn();
-  const view = render(
+  const view = testClient.render(
     <div>
       <textarea aria-label="Draft" defaultValue="Keep this draft." />
       <AppToaster />
@@ -81,7 +89,7 @@ it("retains the original input and notification timer through layout changes", a
 it("keeps Sonner action and explicit dismissal outcomes", async () => {
   const action = vi.fn();
   const dismissed = vi.fn();
-  render(<AppToaster />);
+  testClient.render(<AppToaster />);
   act(() => {
     toast("Read the result", {
       duration: Infinity,
@@ -109,7 +117,7 @@ it("keeps Sonner action and explicit dismissal outcomes", async () => {
 });
 
 it("reveals new feedback while idle and preserves a focused reader's scroll", async () => {
-  render(<AppToaster />);
+  testClient.render(<AppToaster />);
   act(() => toast("First message", { duration: Infinity }));
   await settle();
   const list = screen.getByRole("list");
@@ -128,7 +136,7 @@ it("reveals new feedback while idle and preserves a focused reader's scroll", as
 });
 
 it("keeps updated actions tabbable without replacing their message or custom focus choices", async () => {
-  render(<AppToaster />);
+  testClient.render(<AppToaster />);
   act(() => toast.loading("Working", { id: "updating-result" }));
   await settle();
   const message = screen.getByRole("listitem");

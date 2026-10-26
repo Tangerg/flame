@@ -1,7 +1,7 @@
+import { useWorkspace, type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { lookupExtensionPoint } from "@/extensions/selectors/extensions";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import {
-  workspaceNavigation,
   type WorkspaceChatPresentation,
   type WorkspaceColumnWidth,
   type WorkspaceDrawer,
@@ -12,7 +12,7 @@ import {
   type WorkspaceInspection,
   type WorkspaceViewPresentation,
   type WorkspaceViewMemory,
-} from "@/features/workspace/application/ports/navigationState";
+} from "@/features/workspace/application/navigationState";
 export const WORKSPACE_DOCK_CATALOG = "catalog";
 
 export const WORKSPACE_SETTINGS_VIEW = "settings";
@@ -30,180 +30,248 @@ export function resolveInspectionReturnDock(
 }
 
 export function useActiveWorkspaceViewId(): string | null {
-  return workspaceNavigation().useActiveViewId();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useActiveViewId();
 }
 
 export function useWorkspaceDock(): WorkspaceDockSnapshot {
-  return workspaceNavigation().useDock();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useDock();
 }
 
 export function useWorkspaceInspection(): WorkspaceInspection | null {
-  return workspaceNavigation().useInspection();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useInspection();
 }
 
 export function returnFromWorkspaceInspection(
+  workspaceAccess: WorkspaceAccess,
   inspection: WorkspaceInspection,
   presentation?: WorkspaceViewPresentation,
 ): boolean {
-  return workspaceNavigation().returnFromInspection(inspection, presentation);
+  return workspaceAccess.navigation.returnFromInspection(inspection, presentation);
 }
 
 export function useWorkspaceFileFocus(): WorkspaceFileFocusSnapshot {
-  return workspaceNavigation().useFileFocus();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useFileFocus();
 }
 
 export function useWorkspaceViewMemory(): WorkspaceViewMemory {
-  return workspaceNavigation().useViewMemory();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useViewMemory();
 }
 
-export function rememberWorkspaceView(change: Partial<WorkspaceViewMemory>): void {
-  workspaceNavigation().remember(change);
+export function rememberWorkspaceView(
+  workspaceAccess: WorkspaceAccess,
+  change: Partial<WorkspaceViewMemory>,
+): void {
+  workspaceAccess.navigation.remember(change);
 }
 
 export function useWorkspaceFileViewer(): WorkspaceFileViewer | null {
-  return workspaceNavigation().useFileViewer();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useFileViewer();
 }
 
 export function useWorkspaceSettingsPaneTarget(): string | null {
-  return workspaceNavigation().useSettingsPaneTarget();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useSettingsPaneTarget();
 }
 
 export function useExpandedWorkspaceToolIds(): Set<string> {
-  return workspaceNavigation().useExpandedToolIds();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useExpandedToolIds();
 }
 
 export function useToggleWorkspaceTool(): (id: string) => void {
-  return workspaceNavigation().useToggleTool();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useToggleTool();
 }
 
 export function useSidebarDrawer(): WorkspaceDrawer {
-  return workspaceNavigation().useSidebarDrawer();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useSidebarDrawer();
 }
 
 export function useSidebarWidth(): WorkspaceColumnWidth {
-  return workspaceNavigation().useSidebarWidth();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useSidebarWidth();
 }
 
 export function useDockWidth(): WorkspaceOptionalColumnWidth {
-  return workspaceNavigation().useDockWidth();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useDockWidth();
 }
 
-export function toggleWorkspaceSidebar(): void {
-  workspaceNavigation().toggleSidebar();
+export function toggleWorkspaceSidebar(workspaceAccess: WorkspaceAccess): void {
+  workspaceAccess.navigation.toggleSidebar();
 }
 
-export function selectWorkspaceChat(presentation?: WorkspaceChatPresentation): void {
-  workspaceNavigation().selectChat(presentation);
+export function selectWorkspaceChat(
+  workspaceAccess: WorkspaceAccess,
+  presentation?: WorkspaceChatPresentation,
+): void {
+  workspaceAccess.navigation.selectChat(presentation);
 }
 
-export function openWorkspaceView(id: string): void {
-  workspaceNavigation().openView(id);
+export function openWorkspaceView(workspaceAccess: WorkspaceAccess, id: string): void {
+  workspaceAccess.navigation.openView(id);
 }
 
-export function openWorkspaceViewInDock(id: string, origin?: HTMLElement): void {
-  workspaceNavigation().openViewInDock(id, origin);
+export function openWorkspaceViewInDock(
+  workspaceAccess: WorkspaceAccess,
+  id: string,
+  origin?: HTMLElement,
+): void {
+  workspaceAccess.navigation.openViewInDock(id, origin);
 }
 
-export function selectWorkspaceDockView(id: string): void {
-  workspaceNavigation().selectDockView(id);
+export function selectWorkspaceDockView(workspaceAccess: WorkspaceAccess, id: string): void {
+  workspaceAccess.navigation.selectDockView(id);
 }
 
-export function closeWorkspaceDockView(id: string): void {
-  workspaceNavigation().closeDockView(id);
+export function closeWorkspaceDockView(workspaceAccess: WorkspaceAccess, id: string): void {
+  workspaceAccess.navigation.closeDockView(id);
 }
 
-export function closeOtherWorkspaceDockViews(id: string): void {
-  workspaceNavigation().closeOtherDockViews(id);
+export function closeOtherWorkspaceDockViews(workspaceAccess: WorkspaceAccess, id: string): void {
+  workspaceAccess.navigation.closeOtherDockViews(id);
 }
 
-export function closeAllWorkspaceDockViews(): void {
-  workspaceNavigation().closeAllDockViews();
+export function closeAllWorkspaceDockViews(workspaceAccess: WorkspaceAccess): void {
+  workspaceAccess.navigation.closeAllDockViews();
 }
 
-export function reorderWorkspaceDockView(id: string, toIndex: number): void {
-  workspaceNavigation().reorderDockView(id, toIndex);
+export function reorderWorkspaceDockView(
+  workspaceAccess: WorkspaceAccess,
+  id: string,
+  toIndex: number,
+): void {
+  workspaceAccess.navigation.reorderDockView(id, toIndex);
 }
 
-export function closeActiveWorkspaceDockView(): boolean {
-  const activeViewId = workspaceNavigation().dock().activeViewId;
+export function closeActiveWorkspaceDockView(workspaceAccess: WorkspaceAccess): boolean {
+  const activeViewId = workspaceAccess.navigation.dock().activeViewId;
   if (!activeViewId) return false;
-  if (activeViewId === WORKSPACE_DOCK_CATALOG) workspaceNavigation().collapseDock();
-  else workspaceNavigation().closeDockView(activeViewId);
+  if (activeViewId === WORKSPACE_DOCK_CATALOG) workspaceAccess.navigation.collapseDock();
+  else workspaceAccess.navigation.closeDockView(activeViewId);
   return true;
 }
 
-export function collapseWorkspaceDock(): void {
-  workspaceNavigation().collapseDock();
+export function collapseWorkspaceDock(workspaceAccess: WorkspaceAccess): void {
+  workspaceAccess.navigation.collapseDock();
 }
 
-export function showWorkspaceDock(presentation?: WorkspaceViewPresentation): void {
-  workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG, presentation);
+export function showWorkspaceDock(
+  workspaceAccess: WorkspaceAccess,
+  presentation?: WorkspaceViewPresentation,
+): void {
+  workspaceAccess.navigation.showDock(WORKSPACE_DOCK_CATALOG, presentation);
 }
 
-export function toggleWorkspaceDock(): void {
-  if (workspaceNavigation().dock().open) {
-    workspaceNavigation().collapseDock();
+export function toggleWorkspaceDock(workspaceAccess: WorkspaceAccess): void {
+  if (workspaceAccess.navigation.dock().open) {
+    workspaceAccess.navigation.collapseDock();
   } else {
-    workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG);
+    workspaceAccess.navigation.showDock(WORKSPACE_DOCK_CATALOG);
   }
 }
 
-export function closeWorkspaceView(id: string): void {
-  workspaceNavigation().closeView(id);
+export function closeWorkspaceView(workspaceAccess: WorkspaceAccess, id: string): void {
+  workspaceAccess.navigation.closeView(id);
 }
 
-export function closeActiveWorkspaceView(): boolean {
-  const activeViewId = workspaceNavigation().activeViewId();
+export function closeActiveWorkspaceView(workspaceAccess: WorkspaceAccess): boolean {
+  const activeViewId = workspaceAccess.navigation.activeViewId();
   if (!activeViewId) return false;
-  workspaceNavigation().closeView(activeViewId);
+  workspaceAccess.navigation.closeView(activeViewId);
   return true;
 }
 
-export function openWorkspaceSettingsPane(pane: string): void {
-  workspaceNavigation().setSettingsPane(pane);
-  workspaceNavigation().openView(WORKSPACE_SETTINGS_VIEW);
+export function openWorkspaceSettingsPane(workspaceAccess: WorkspaceAccess, pane: string): void {
+  workspaceAccess.navigation.setSettingsPane(pane);
+  workspaceAccess.navigation.openView(WORKSPACE_SETTINGS_VIEW);
 }
 
-export function openWorkspaceDiffForFile(path: string, origin?: HTMLElement): void {
-  workspaceNavigation().focusFile(path);
+export function openWorkspaceDiffForFile(
+  workspaceAccess: WorkspaceAccess,
+  path: string,
+  origin?: HTMLElement,
+): void {
+  workspaceAccess.navigation.focusFile(path);
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter((view) => view.material === "diff");
-  workspaceNavigation().openViewInDock(
+  workspaceAccess.navigation.openViewInDock(
     views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG,
     origin,
   );
 }
 
-export function openWorkspaceFile(path: string, line?: number, origin?: HTMLElement): void {
-  workspaceNavigation().openFile(path, line, origin);
+export function openWorkspaceFile(
+  workspaceAccess: WorkspaceAccess,
+  path: string,
+  line?: number,
+  origin?: HTMLElement,
+): void {
+  workspaceAccess.navigation.openFile(path, line, origin);
 }
 
-export function closeWorkspaceFile(): void {
-  workspaceNavigation().closeFile();
+export function closeWorkspaceFile(workspaceAccess: WorkspaceAccess): void {
+  workspaceAccess.navigation.closeFile();
 }
 
-export function adoptWorkspaceSessionScope(sessionId: string): void {
-  workspaceNavigation().adoptSessionScope(sessionId);
+export function adoptWorkspaceSessionScope(
+  workspaceAccess: WorkspaceAccess,
+  sessionId: string,
+): void {
+  workspaceAccess.navigation.adoptSessionScope(sessionId);
 }
 
-export function activateWorkspaceSessionScope(sessionId: string): void {
-  workspaceNavigation().activateSessionScope(sessionId);
+export function activateWorkspaceSessionScope(
+  workspaceAccess: WorkspaceAccess,
+  sessionId: string,
+): void {
+  workspaceAccess.navigation.activateSessionScope(sessionId);
 }
 
-export function forgetWorkspaceSessionScopes(openSessionIds: string[]): void {
-  workspaceNavigation().forgetSessionScopes(openSessionIds);
+export function forgetWorkspaceSessionScopes(
+  workspaceAccess: WorkspaceAccess,
+  openSessionIds: string[],
+): void {
+  workspaceAccess.navigation.forgetSessionScopes(openSessionIds);
 }
 
 export function useWorkspaceSubagentRunId(): string | null {
-  return workspaceNavigation().useSubagentRunId();
+  const workspaceAccess = useWorkspace();
+
+  return workspaceAccess.navigation.useSubagentRunId();
 }
 
-export function openWorkspaceSubagentRun(runId: string | null, origin?: HTMLElement): void {
-  workspaceNavigation().openSubagentRun(runId, origin);
+export function openWorkspaceSubagentRun(
+  workspaceAccess: WorkspaceAccess,
+  runId: string | null,
+  origin?: HTMLElement,
+): void {
+  workspaceAccess.navigation.openSubagentRun(runId, origin);
 }
 
-export function openWorkspaceClientDiagnostics(): void {
+export function openWorkspaceClientDiagnostics(workspaceAccess: WorkspaceAccess): void {
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter(
     (view) => view.material === "diagnostics",
   );
-  workspaceNavigation().openViewInDock(views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG);
+  workspaceAccess.navigation.openViewInDock(
+    views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG,
+  );
 }

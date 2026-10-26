@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import type React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "@/lib/i18n/index";
 import { usePluginErrorStore } from "@/extensions/errors";
@@ -26,7 +34,7 @@ describe("workspaceViewBody", () => {
       return <p>diff reader</p>;
     }
     installed.views = [{ id: "diff", title: "Diff", component: DiffView }];
-    render(<WorkspaceViewBody viewId="diff" />);
+    testClient.render(<WorkspaceViewBody viewId="diff" />);
 
     const region = screen.getByRole("region", { name: "Diff" });
     const alert = within(region).getByRole("alert");
@@ -44,7 +52,7 @@ describe("workspaceViewBody", () => {
   });
 
   it("keeps the generic region for a view that is not installed", () => {
-    render(<WorkspaceViewBody viewId="missing" />);
+    testClient.render(<WorkspaceViewBody viewId="missing" />);
 
     const region = screen.getByRole("region", { name: t("plugins.mainView") });
     expect(within(region).getByText(t("workspace.view.unavailable.title"))).toBeTruthy();

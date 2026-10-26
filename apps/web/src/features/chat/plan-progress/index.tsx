@@ -2,7 +2,7 @@ import { toolFamilyNames } from "@/lib/toolFamilies";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
-import { ActivePlan } from "@/features/chat/plan-progress/ui/ActivePlan";
+import { ActivePlan } from "@/features/chat/plan-progress/ActivePlan";
 const PLAN_SURFACE = "composer.overlay.top:plan";
 
 export default definePlugin({

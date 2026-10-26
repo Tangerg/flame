@@ -6,7 +6,7 @@ import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/application/navigat
 import {
   type WorkspaceInspection,
   type WorkspaceViewMemory,
-} from "@/features/workspace/application/ports/navigationState";
+} from "@/features/workspace/application/navigationState";
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -115,172 +115,178 @@ function emptyDockState(): ContextDockState {
   };
 }
 
-const persistence = new ScopedPersistence<ContextDockState>(CONTEXT_DOCK_STORAGE_KEY);
+export function createContextDockStore() {
+  const persistence = new ScopedPersistence<ContextDockState>(CONTEXT_DOCK_STORAGE_KEY);
 
-function cloneSessionScope(scope: ContextDockSessionScope): ContextDockSessionScope {
-  return {
-    fileFocus: scope.fileFocus,
-    fileViewer: scope.fileViewer ? { ...scope.fileViewer } : null,
-    expandedToolIds: new Set(scope.expandedToolIds),
-    dockViewIds: [...scope.dockViewIds],
-    lastViewId: scope.lastViewId,
-    memory: scope.memory,
-  };
-}
-
-function saveCurrentSessionScope(state: ContextDockState) {
-  const scopes = new Map(state.sessionScopes);
-  if (state.activeSessionScopeId) scopes.set(state.activeSessionScopeId, cloneSessionScope(state));
-  return scopes;
-}
-
-function persistedSessionScopes(state: ContextDockState): [string, PersistedDockScope][] {
-  return [...saveCurrentSessionScope(state)].map(([sessionId, scope]) => [
-    sessionId,
-    {
-      dockViewIds: scope.dockViewIds,
+  function cloneSessionScope(scope: ContextDockSessionScope): ContextDockSessionScope {
+    return {
+      fileFocus: scope.fileFocus,
+      fileViewer: scope.fileViewer ? { ...scope.fileViewer } : null,
+      expandedToolIds: new Set(scope.expandedToolIds),
+      dockViewIds: [...scope.dockViewIds],
       lastViewId: scope.lastViewId,
-      fileFocus: { path: scope.fileFocus.path, revision: scope.fileFocus.revision.toString() },
+      memory: scope.memory,
+    };
+  }
+
+  function saveCurrentSessionScope(state: ContextDockState) {
+    const scopes = new Map(state.sessionScopes);
+    if (state.activeSessionScopeId)
+      scopes.set(state.activeSessionScopeId, cloneSessionScope(state));
+    return scopes;
+  }
+
+  function persistedSessionScopes(state: ContextDockState): [string, PersistedDockScope][] {
+    return [...saveCurrentSessionScope(state)].map(([sessionId, scope]) => [
+      sessionId,
+      {
+        dockViewIds: scope.dockViewIds,
+        lastViewId: scope.lastViewId,
+        fileFocus: { path: scope.fileFocus.path, revision: scope.fileFocus.revision.toString() },
+        fileViewer: scope.fileViewer,
+        memory: {
+          ...scope.memory,
+          expandedDirs: [...scope.memory.expandedDirs],
+        },
+      },
+    ]);
+  }
+
+  function restorePersistedScope(scope: PersistedDockScope): ContextDockSessionScope {
+    return {
+      ...emptySessionScope(),
+      dockViewIds: [...new Set(scope.dockViewIds)],
+      lastViewId: scope.lastViewId,
+      fileFocus: WorkspaceFileFocus.restore(scope.fileFocus.path, BigInt(scope.fileFocus.revision)),
       fileViewer: scope.fileViewer,
-      memory: {
-        ...scope.memory,
-        expandedDirs: [...scope.memory.expandedDirs],
-      },
-    },
-  ]);
-}
+      memory: scope.memory ?? EMPTY_MEMORY,
+    };
+  }
 
-function restorePersistedScope(scope: PersistedDockScope): ContextDockSessionScope {
-  return {
-    ...emptySessionScope(),
-    dockViewIds: [...new Set(scope.dockViewIds)],
-    lastViewId: scope.lastViewId,
-    fileFocus: WorkspaceFileFocus.restore(scope.fileFocus.path, BigInt(scope.fileFocus.revision)),
-    fileViewer: scope.fileViewer,
-    memory: scope.memory ?? EMPTY_MEMORY,
-  };
-}
+  const useContextDockStore = create<ContextDockState & ContextDockActions>()(
+    persist(
+      (set, get) => ({
+        ...emptyDockState(),
 
-export const useContextDockStore = create<ContextDockState & ContextDockActions>()(
-  persist(
-    (set, get) => ({
-      ...emptyDockState(),
-
-      adoptDockLocation: (id) =>
-        set((state) => ({
-          dockViewIds:
-            id === WORKSPACE_DOCK_CATALOG || state.dockViewIds.includes(id)
-              ? state.dockViewIds
-              : [...state.dockViewIds, id],
-          lastViewId: id,
-        })),
-      closeDockTab: (id) => {
-        const { dockViewIds, lastViewId } = get();
-        const index = dockViewIds.indexOf(id);
-        if (index < 0) return null;
-        const remaining = dockViewIds.filter((viewId) => viewId !== id);
-        const next = remaining[index] ?? remaining[index - 1] ?? null;
-        set({ dockViewIds: remaining, lastViewId: lastViewId === id ? next : lastViewId });
-        return next;
-      },
-      closeOtherDockTabs: (id) =>
-        set((state) =>
-          state.dockViewIds.includes(id) ? { dockViewIds: [id], lastViewId: id } : {},
-        ),
-      closeAllDockTabs: () => set({ dockViewIds: [], lastViewId: null }),
-      reorderDockTab: (id, toIndex) =>
-        set((state) => {
-          const from = state.dockViewIds.indexOf(id);
-          if (from < 0) return {};
-          const to = Math.max(0, Math.min(state.dockViewIds.length - 1, toIndex));
-          if (from === to) return {};
-          const dockViewIds = [...state.dockViewIds];
-          dockViewIds.splice(from, 1);
-          dockViewIds.splice(to, 0, id);
-          return { dockViewIds };
-        }),
-      dockTabToShow: (defaultViewId) => {
-        const { dockViewIds, lastViewId } = get();
-        if (dockViewIds.length === 0) return defaultViewId;
-        return lastViewId !== null && dockViewIds.includes(lastViewId)
-          ? lastViewId
-          : (dockViewIds[0] ?? defaultViewId);
-      },
-      focusFile: (path) =>
-        set((state) => ({
-          fileFocus: state.fileFocus.moveTo(path),
-        })),
-      setFileViewer: (fileViewer) =>
-        set((state) =>
-          fileViewer
-            ? {
-                fileViewer,
-                memory: {
-                  ...state.memory,
-                  lastFilePath: fileViewer.path,
-                  expandedDirs: [
-                    ...new Set([...state.memory.expandedDirs, ...ancestorsOf(fileViewer.path)]),
-                  ],
-                },
-              }
-            : { fileViewer },
-        ),
-      remember: (change) => set((state) => ({ memory: { ...state.memory, ...change } })),
-      toggleExpandedTool: (id) => {
-        const next = new Set(get().expandedToolIds);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        set({ expandedToolIds: next });
-      },
-      activateSessionScope: (sessionId) => {
-        const state = get();
-        if (state.activeSessionScopeId === sessionId) return state.lastViewId;
-        const sessionScopes = saveCurrentSessionScope(state);
-        const nextScope = sessionId ? sessionScopes.get(sessionId) : undefined;
-        const scope = nextScope ? cloneSessionScope(nextScope) : emptySessionScope();
-        set({ inspection: null, activeSessionScopeId: sessionId, sessionScopes, ...scope });
-        return scope.lastViewId;
-      },
-      forgetSessionScopes: (openSessionIds) =>
-        set((state) => {
-          const open = new Set(openSessionIds);
-          const sessionScopes = new Map<string, ContextDockSessionScope>();
-          for (const [sessionId, scope] of state.sessionScopes) {
-            if (open.has(sessionId)) sessionScopes.set(sessionId, scope);
-          }
-          if (state.activeSessionScopeId && open.has(state.activeSessionScopeId)) {
-            return { sessionScopes };
-          }
-          return {
-            inspection: null,
-            activeSessionScopeId: null,
-            sessionScopes,
-            ...emptySessionScope(),
-          };
-        }),
-    }),
-    {
-      name: CONTEXT_DOCK_STORAGE_KEY,
-      version: 1,
-      storage: createJSONStorage(() => persistence.storage),
-      skipHydration: true,
-      partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
-      onRehydrateStorage: () => (_state, error) => {
-        if (error) useContextDockStore.setState(emptyDockState());
-      },
-      merge: (persisted, current) =>
-        rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
-          sessionScopes: new Map<string, ContextDockSessionScope>(
-            data.sessionScopes.map(([sessionId, scope]) => [
-              sessionId,
-              restorePersistedScope(scope),
-            ]),
+        adoptDockLocation: (id) =>
+          set((state) => ({
+            dockViewIds:
+              id === WORKSPACE_DOCK_CATALOG || state.dockViewIds.includes(id)
+                ? state.dockViewIds
+                : [...state.dockViewIds, id],
+            lastViewId: id,
+          })),
+        closeDockTab: (id) => {
+          const { dockViewIds, lastViewId } = get();
+          const index = dockViewIds.indexOf(id);
+          if (index < 0) return null;
+          const remaining = dockViewIds.filter((viewId) => viewId !== id);
+          const next = remaining[index] ?? remaining[index - 1] ?? null;
+          set({ dockViewIds: remaining, lastViewId: lastViewId === id ? next : lastViewId });
+          return next;
+        },
+        closeOtherDockTabs: (id) =>
+          set((state) =>
+            state.dockViewIds.includes(id) ? { dockViewIds: [id], lastViewId: id } : {},
           ),
-        }))(persisted, { ...current, ...emptyDockState() }),
-    },
-  ),
-);
+        closeAllDockTabs: () => set({ dockViewIds: [], lastViewId: null }),
+        reorderDockTab: (id, toIndex) =>
+          set((state) => {
+            const from = state.dockViewIds.indexOf(id);
+            if (from < 0) return {};
+            const to = Math.max(0, Math.min(state.dockViewIds.length - 1, toIndex));
+            if (from === to) return {};
+            const dockViewIds = [...state.dockViewIds];
+            dockViewIds.splice(from, 1);
+            dockViewIds.splice(to, 0, id);
+            return { dockViewIds };
+          }),
+        dockTabToShow: (defaultViewId) => {
+          const { dockViewIds, lastViewId } = get();
+          if (dockViewIds.length === 0) return defaultViewId;
+          return lastViewId !== null && dockViewIds.includes(lastViewId)
+            ? lastViewId
+            : (dockViewIds[0] ?? defaultViewId);
+        },
+        focusFile: (path) =>
+          set((state) => ({
+            fileFocus: state.fileFocus.moveTo(path),
+          })),
+        setFileViewer: (fileViewer) =>
+          set((state) =>
+            fileViewer
+              ? {
+                  fileViewer,
+                  memory: {
+                    ...state.memory,
+                    lastFilePath: fileViewer.path,
+                    expandedDirs: [
+                      ...new Set([...state.memory.expandedDirs, ...ancestorsOf(fileViewer.path)]),
+                    ],
+                  },
+                }
+              : { fileViewer },
+          ),
+        remember: (change) => set((state) => ({ memory: { ...state.memory, ...change } })),
+        toggleExpandedTool: (id) => {
+          const next = new Set(get().expandedToolIds);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          set({ expandedToolIds: next });
+        },
+        activateSessionScope: (sessionId) => {
+          const state = get();
+          if (state.activeSessionScopeId === sessionId) return state.lastViewId;
+          const sessionScopes = saveCurrentSessionScope(state);
+          const nextScope = sessionId ? sessionScopes.get(sessionId) : undefined;
+          const scope = nextScope ? cloneSessionScope(nextScope) : emptySessionScope();
+          set({ inspection: null, activeSessionScopeId: sessionId, sessionScopes, ...scope });
+          return scope.lastViewId;
+        },
+        forgetSessionScopes: (openSessionIds) =>
+          set((state) => {
+            const open = new Set(openSessionIds);
+            const sessionScopes = new Map<string, ContextDockSessionScope>();
+            for (const [sessionId, scope] of state.sessionScopes) {
+              if (open.has(sessionId)) sessionScopes.set(sessionId, scope);
+            }
+            if (state.activeSessionScopeId && open.has(state.activeSessionScopeId)) {
+              return { sessionScopes };
+            }
+            return {
+              inspection: null,
+              activeSessionScopeId: null,
+              sessionScopes,
+              ...emptySessionScope(),
+            };
+          }),
+      }),
+      {
+        name: CONTEXT_DOCK_STORAGE_KEY,
+        version: 1,
+        storage: createJSONStorage(() => persistence.storage),
+        skipHydration: true,
+        partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
+        onRehydrateStorage: () => (_state, error) => {
+          if (error) useContextDockStore.setState(emptyDockState());
+        },
+        merge: (persisted, current) =>
+          rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
+            sessionScopes: new Map<string, ContextDockSessionScope>(
+              data.sessionScopes.map(([sessionId, scope]) => [
+                sessionId,
+                restorePersistedScope(scope),
+              ]),
+            ),
+          }))(persisted, { ...current, ...emptyDockState() }),
+      },
+    ),
+  );
 
-export function activateContextDockStorage(endpoint: string): boolean {
-  return persistence.activate(endpoint, useContextDockStore);
+  function activateContextDockStorage(endpoint: string): boolean {
+    return persistence.activate(endpoint, useContextDockStore);
+  }
+
+  return { store: useContextDockStore, activate: activateContextDockStorage };
 }
+export type ContextDockStore = ReturnType<typeof createContextDockStore>;

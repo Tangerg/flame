@@ -1,6 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import type React from "react";
 import { useLayoutEffect, useRef } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { usePluginErrorStore } from "@/extensions/errors";
@@ -10,7 +18,7 @@ function Boom(): React.ReactNode {
 
 describe("pluginBoundary", () => {
   it("renders children when nothing throws", () => {
-    render(
+    testClient.render(
       <PluginBoundary plugin="ok.plugin">
         <span>hello</span>
       </PluginBoundary>,
@@ -20,7 +28,7 @@ describe("pluginBoundary", () => {
 
   it("catches a child render error and shows the default fallback", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    render(
+    testClient.render(
       <PluginBoundary plugin="bad.plugin" label="Bad Plugin">
         <Boom />
       </PluginBoundary>,
@@ -33,7 +41,7 @@ describe("pluginBoundary", () => {
 
   it("reports the error through the plugin error store with source=render", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    render(
+    testClient.render(
       <PluginBoundary plugin="bad.plugin">
         <Boom />
       </PluginBoundary>,
@@ -53,7 +61,7 @@ describe("pluginBoundary", () => {
       if (fail) throw new Error("pane exploded");
       return <p>pane body</p>;
     }
-    render(
+    testClient.render(
       <>
         <PluginBoundary plugin="settings:flaky">
           <Flaky />
@@ -88,7 +96,7 @@ describe("pluginBoundary", () => {
     it("hands a focused Retry to its focusable host when the view recovers", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       fail = true;
-      render(
+      testClient.render(
         <div role="region" aria-label="Diff" tabIndex={-1}>
           <PluginBoundary plugin="workspace:diff" label="Diff">
             <Flaky />
@@ -108,7 +116,7 @@ describe("pluginBoundary", () => {
     it("keeps the host focused and the failure usable when retry fails again", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       fail = true;
-      render(
+      testClient.render(
         <div role="region" aria-label="Diff" tabIndex={-1}>
           <PluginBoundary plugin="workspace:diff" label="Diff">
             <Flaky />
@@ -132,7 +140,7 @@ describe("pluginBoundary", () => {
     it("chooses the nearest focusable host rather than an outer scope", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       fail = true;
-      render(
+      testClient.render(
         <div role="region" aria-label="Workbench" tabIndex={-1}>
           <div role="region" aria-label="Diff" tabIndex={-1}>
             <PluginBoundary plugin="workspace:diff" label="Diff">
@@ -153,7 +161,7 @@ describe("pluginBoundary", () => {
     it("leaves focus that is already outside the failure untouched", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       fail = true;
-      render(
+      testClient.render(
         <>
           <div role="region" aria-label="Diff" tabIndex={-1}>
             <PluginBoundary plugin="workspace:diff" label="Diff">
@@ -187,7 +195,7 @@ describe("pluginBoundary", () => {
           </button>
         );
       }
-      render(
+      testClient.render(
         <div role="region" aria-label="Diff" tabIndex={-1}>
           <PluginBoundary plugin="workspace:diff" label="Diff">
             <SelfFocusing />
@@ -206,7 +214,7 @@ describe("pluginBoundary", () => {
     it("still retries without inventing a destination when no focusable host exists", () => {
       const spy = vi.spyOn(console, "error").mockImplementation(() => {});
       fail = true;
-      const { container } = render(
+      const { container } = testClient.render(
         <PluginBoundary plugin="workspace:diff" label="Diff">
           <Flaky />
         </PluginBoundary>,

@@ -36,4 +36,4 @@ export {
   useWorkspaceSettingsPaneTarget,
   resolveInspectionReturnDock,
 } from "@/features/workspace/application/navigation";
-export type { WorkspaceInspection } from "@/features/workspace/application/ports/navigationState";
+export type { WorkspaceInspection } from "@/features/workspace/application/navigationState";

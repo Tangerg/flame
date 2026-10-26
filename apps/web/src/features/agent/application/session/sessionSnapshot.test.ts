@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { type AgentSessionSnapshot } from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/test/kernel";

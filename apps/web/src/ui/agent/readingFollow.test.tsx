@@ -1,6 +1,14 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { createPortal } from "react-dom";
 import { type ReactNode } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type StickToBottomInstance } from "use-stick-to-bottom";
 import { Disclosure } from "@flame/ui";
@@ -30,7 +38,7 @@ function followModel() {
 
 function mountReading(children: ReactNode) {
   const follow = followModel();
-  const { container } = render(
+  const { container } = testClient.render(
     <div ref={follow.scrollRef}>
       {/* Native button activations bubble here; this observer is not another control. */}
       {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}

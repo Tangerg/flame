@@ -1,7 +1,7 @@
 import { UI_DENSITY_MODES, type UiDensity } from "@/features/theme/public/appearance";
 import { Segmented, type SegmentedOption } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 const DENSITY_OPTIONS: SegmentedOption<UiDensity>[] = UI_DENSITY_MODES.map((mode) => ({
   value: mode,
@@ -26,7 +26,7 @@ export function ShapeMotionSection() {
   const density = useAppearance((s) => s.density);
   const radiusScale = useAppearance((s) => s.radiusScale);
   const motionScale = useAppearance((s) => s.motionScale);
-  const { setDensity, setRadiusScale, setMotionScale } = editAppearance();
+  const { setDensity, setRadiusScale, setMotionScale } = useAppearanceEdit();
 
   return (
     <>

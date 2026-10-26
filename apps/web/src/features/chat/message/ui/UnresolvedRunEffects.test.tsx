@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { type AgentUnresolvedEffect } from "@/features/agent/public/sessionView";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
@@ -42,13 +50,13 @@ describe("UnresolvedRunEffects", () => {
   it.each([{ value: undefined }, { value: [] }])(
     "renders nothing without unresolved effects ($value)",
     ({ value }) => {
-      const { container } = render(<UnresolvedRunEffects effects={value} />);
+      const { container } = testClient.render(<UnresolvedRunEffects effects={value} />);
       expect(container.firstChild).toBeNull();
     },
   );
 
   it("names every operation in the overview without mounting any evidence", () => {
-    render(<UnresolvedRunEffects effects={effects()} />);
+    testClient.render(<UnresolvedRunEffects effects={effects()} />);
     expect(
       screen.getByText(
         "This run has ended. The outcomes of these external operations are still unconfirmed.",
@@ -67,7 +75,7 @@ describe("UnresolvedRunEffects", () => {
   });
 
   it("opens only the chosen operation's original evidence", () => {
-    render(<UnresolvedRunEffects effects={effects()} />);
+    testClient.render(<UnresolvedRunEffects effects={effects()} />);
     const second = operation(2, "send-invoice");
     fireEvent.click(second);
 
@@ -90,7 +98,7 @@ describe("UnresolvedRunEffects", () => {
   });
 
   it("opens and closes operations independently while focus stays on the used trigger", () => {
-    render(<UnresolvedRunEffects effects={effects()} />);
+    testClient.render(<UnresolvedRunEffects effects={effects()} />);
     const first = operation(1, "write-ledger");
     const third = operation(3, "notify-webhook");
 
@@ -116,7 +124,7 @@ describe("UnresolvedRunEffects", () => {
 
   it("keeps each operation's identity and reading state when the effects reorder", () => {
     const original = effects();
-    const { rerender } = render(<UnresolvedRunEffects effects={original} />);
+    const { rerender } = testClient.render(<UnresolvedRunEffects effects={original} />);
     const ledger = operation(1, "write-ledger");
     act(() => ledger.focus());
     fireEvent.click(ledger);
@@ -145,7 +153,7 @@ describe("UnresolvedRunEffects", () => {
       },
     ];
     const snapshot = structuredClone(source);
-    const { container } = render(<UnresolvedRunEffects effects={source} />);
+    const { container } = testClient.render(<UnresolvedRunEffects effects={source} />);
     const trigger = operation(1, "effect-9007199254740993");
     fireEvent.click(trigger);
 

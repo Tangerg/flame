@@ -1,6 +1,7 @@
+import { useTheme } from "@/features/theme/public/theme";
 import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
-import { glyphSwapTransition } from "@/lib/motion";
+import { useMotion } from "@/lib/motion";
 import { AgentRow } from "@/ui/agent/index";
 import { AgentWorkIndexFooter } from "@/ui/agent/index";
 import { Icon } from "@/ui/index";
@@ -19,14 +20,16 @@ const sf = stylex.create({
 });
 
 function ThemeToggle() {
+  const { glyphSwapTransition } = useMotion();
   const t = useT();
+  const themeAccess = useTheme();
   const theme = useAppearance((s) => s.theme);
-  const isLight = isLightTheme(theme);
+  const isLight = isLightTheme(themeAccess, theme);
   return (
     <Button
       variant="ghost"
       size="icon-sm"
-      onClick={() => toggleThemeScheme()}
+      onClick={() => toggleThemeScheme(themeAccess)}
       data-chrome-focus=""
       title={t(isLight ? "theme.switchToDark" : "theme.switchToLight")}
     >

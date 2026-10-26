@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -80,7 +88,7 @@ it("distinguishes identical names and waits for the accepted provider/model pair
     state.utility = saved;
     return saved;
   });
-  render(
+  testClient.render(
     <QueryClientProvider client={queryClient}>
       <UtilityModelSection />
     </QueryClientProvider>,
@@ -121,7 +129,7 @@ it("distinguishes identical names and waits for the accepted provider/model pair
 it("keeps a custom embedding role distinct from its provider default after a rejected selection", async () => {
   const { gateway } = await installRoles();
   gateway.setEmbeddingRole.mockRejectedValue(new Error("The role update was rejected."));
-  render(
+  testClient.render(
     <QueryClientProvider client={queryClient}>
       <EmbeddingModelSection />
     </QueryClientProvider>,

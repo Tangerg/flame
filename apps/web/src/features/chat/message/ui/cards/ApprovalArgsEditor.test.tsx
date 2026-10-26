@@ -1,4 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { useApprovalArgsEditor } from "@/features/chat/message/application/approvalArgsEditor";
 import { ApprovalArgsEditor } from "@/features/chat/message/ui/cards/ApprovalArgsEditor";
@@ -21,7 +29,7 @@ function argumentsField() {
 }
 
 it("moves focus from Edit into the arguments and retains it while typing", () => {
-  render(<EditableArguments />);
+  testClient.render(<EditableArguments />);
   const edit = screen.getByRole("button", { name: /^Edit$/ });
   edit.focus();
   fireEvent.click(edit);
@@ -38,7 +46,7 @@ it("moves focus from Edit into the arguments and retains it while typing", () =>
 });
 
 it("keeps a blocked Edit focusable while refusing to open the arguments", () => {
-  render(<EditableArguments disabled />);
+  testClient.render(<EditableArguments disabled />);
   const edit = screen.getByRole<HTMLButtonElement>("button", { name: /^Edit$/ });
   expect(edit.getAttribute("aria-disabled")).toBe("true");
   expect(edit.disabled).toBe(false);
@@ -55,7 +63,7 @@ it("keeps a blocked Edit focusable while refusing to open the arguments", () => 
 });
 
 it("makes an open field read-only but focusable while blocked and restores the same draft", () => {
-  const { rerender } = render(<EditableArguments />);
+  const { rerender } = testClient.render(<EditableArguments />);
   fireEvent.click(screen.getByRole("button", { name: /^Edit$/ }));
   fireEvent.change(argumentsField(), { target: { value: '{"command":"ls"}' } });
 

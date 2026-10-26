@@ -1,3 +1,4 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/application/session/sessionQueries";
 import { queryClient } from "@/lib/queryClient";
@@ -19,8 +20,9 @@ export function stepAgentSession(
   return sessions[next]?.id;
 }
 
-export function stepActiveAgentSession(step: SessionStep): void {
+export function stepActiveAgentSession(agentAccess: AgentAccess, step: SessionStep): void {
   const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]) ?? [];
-  const next = stepAgentSession(sessions, getActiveSessionId(), step);
-  if (next !== undefined && next !== getActiveSessionId()) selectAgentSession(next);
+  const next = stepAgentSession(sessions, getActiveSessionId(agentAccess), step);
+  if (next !== undefined && next !== getActiveSessionId(agentAccess))
+    selectAgentSession(agentAccess, next);
 }

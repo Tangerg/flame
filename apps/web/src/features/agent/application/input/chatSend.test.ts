@@ -1,8 +1,15 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+
 import { type RunRef } from "@flame/runtime-client";
-import { navigator } from "@/lib/navigation";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { canAcceptChatInput, useChatSend } from "@/features/agent/application/input/chatSend";
 import { agentTextInput } from "@/features/agent/domain/input";
 describe("chat input admission", () => {
@@ -37,8 +44,8 @@ function waitingRoot(): RunRef {
 
 function seedSession(root?: RunRef) {
   const send = vi.fn(() => true);
-  navigator().go({ session: SID });
-  const store = useAgentStore.getState();
+  testClient.navigation.go({ session: SID });
+  const store = testClient.agent.projection.store.getState();
   store.ensureSession(SID);
   store.setSend(SID, send);
   if (root) store.applyRunSnapshot(SID, root);
@@ -46,21 +53,21 @@ function seedSession(root?: RunRef) {
 }
 
 afterEach(() => {
-  useAgentStore.getState().dropSession(SID);
+  testClient.agent.projection.store.getState().dropSession(SID);
   vi.restoreAllMocks();
 });
 
 describe("useChatSend admission", () => {
   it("refuses a fresh turn while the root run is waiting", () => {
     const send = seedSession(waitingRoot());
-    const { result } = renderHook(() => useChatSend());
+    const { result } = testClient.renderHook(() => useChatSend());
     expect(result.current(agentTextInput("hi"))).toBe(false);
     expect(send).not.toHaveBeenCalled();
   });
 
   it("sends a fresh turn when no run is parked", () => {
     const send = seedSession();
-    const { result } = renderHook(() => useChatSend());
+    const { result } = testClient.renderHook(() => useChatSend());
     expect(result.current(agentTextInput("hi"))).toBe(true);
     expect(send).toHaveBeenCalledOnce();
   });

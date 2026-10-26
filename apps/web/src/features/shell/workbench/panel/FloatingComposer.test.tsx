@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { createRef, type ComponentProps, type ReactNode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type RuntimeServiceSnapshot } from "@/features/connection/public/serviceStatus";
 import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingComposer";
@@ -54,7 +62,7 @@ describe.each([true, false])("Composer Runtime connection material (floating=%s)
   });
 
   it("explains withdrawn command rights while the exact connection recovers", () => {
-    render(
+    testClient.render(
       <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
@@ -66,7 +74,7 @@ describe.each([true, false])("Composer Runtime connection material (floating=%s)
   it("does not flash a loss notice during cold-start inspection", () => {
     runtime.snapshot.phase = "checking";
 
-    render(
+    testClient.render(
       <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
@@ -80,7 +88,7 @@ describe.each([true, false])("Composer Runtime connection material (floating=%s)
     runtime.snapshot.phase = "unavailable";
     runtime.snapshot.failure = { reason: "failed", detail: "connection refused" };
 
-    render(
+    testClient.render(
       <FloatingComposer overlayRef={createRef<HTMLDivElement>()} floating={floating}>
         <div>Composer</div>
       </FloatingComposer>,
@@ -88,13 +96,13 @@ describe.each([true, false])("Composer Runtime connection material (floating=%s)
 
     expect(screen.getByText("Runtime is unavailable. Flame will keep trying.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Connection settings" }));
-    expect(navigation.openSettings).toHaveBeenCalledWith("connection");
+    expect(navigation.openSettings).toHaveBeenCalledWith(testClient.workspace.access, "connection");
   });
 });
 
 it("shows the jump control only while floating without replacing its content", () => {
   const overlay = createRef<HTMLDivElement>();
-  const view = render(
+  const view = testClient.render(
     <FloatingComposer overlayRef={overlay} floating>
       <input aria-label="Authoring input" defaultValue="Keep this input" />
     </FloatingComposer>,

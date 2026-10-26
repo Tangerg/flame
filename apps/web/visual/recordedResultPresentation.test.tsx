@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type CapturedToolResult, type ComponentContext } from "@flame/component-sdk";
 import { RecordedResult } from "../../../plugins/tool-results/component/component";
@@ -65,7 +73,9 @@ it("keeps web titles, URLs and excerpts distinct, complete and inert while filte
       snippet: "The title is already the URL.",
     },
   ];
-  render(<RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />);
+  testClient.render(
+    <RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />,
+  );
   const result = screen.getByRole("region", { name: "Result" });
   expect(within(result).getByText(title, { exact: true })).toBeTruthy();
   expect(within(result).getByText(snippet, { exact: true }).tagName).toBe("P");
@@ -90,7 +100,9 @@ it("distinguishes an absent excerpt from a recorded empty paragraph", () => {
     { title: "Without a body", url: "https://example.test/absent" },
     { title: "Recorded blank", url: "https://example.test/empty", snippet: "" },
   ];
-  render(<RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />);
+  testClient.render(
+    <RecordedResult context={capturedContext("web_search", JSON.stringify({ results }))} />,
+  );
   const result = screen.getByRole("region", { name: "Result" });
   expect(within(result).getByText("Without a body", { exact: true })).toBeTruthy();
   expect(within(result).getByText("Recorded blank", { exact: true })).toBeTruthy();
@@ -113,7 +125,7 @@ it("preserves complete literal JSON prose despite keys that resemble other resul
     2,
   );
   for (const name of ["ask_user", "load_skill", "search_memory"]) {
-    const rendered = render(<RecordedResult context={capturedContext(name, source)} />);
+    const rendered = testClient.render(<RecordedResult context={capturedContext(name, source)} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent)).toEqual([
       source,
@@ -141,7 +153,7 @@ it("keeps known raw results as exact numbered source lines even when JSON contai
     "propose_skill",
     "delegate_task",
   ]) {
-    const rendered = render(
+    const rendered = testClient.render(
       <RecordedResult
         context={capturedContext(
           name,
@@ -167,7 +179,7 @@ it("keeps known raw results as exact numbered source lines even when JSON contai
 
 it("finds visible literal control sequences in captured instructions", () => {
   const source = "Keep \u001b[31m as literal instruction text.";
-  render(<RecordedResult context={capturedContext("load_skill", source)} />);
+  testClient.render(<RecordedResult context={capturedContext("load_skill", source)} />);
   fireEvent.click(screen.getByRole("button", { name: "Find" }));
   fireEvent.change(screen.getByRole("searchbox", { name: "Filter result" }), {
     target: { value: "[31m" },
@@ -179,7 +191,7 @@ it("finds visible literal control sequences in captured instructions", () => {
 it.each(["searchbox", "clear"] as const)(
   "closes bounded Find over a query on Escape from its %s and leaves IME cancellation alone",
   (control) => {
-    render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
+    testClient.render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
     const result = screen.getByRole("region", { name: "Result" });
     fireEvent.click(screen.getByRole("button", { name: "Find" }));
     const field = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter result" });
@@ -200,7 +212,7 @@ it("cycles output matches with Enter and leaves an IME Enter to the composition"
   document.documentElement.style.setProperty("--leading-relaxed", "20px");
   vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
   const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
-  render(<RecordedResult context={capturedContext("shell", output)} />);
+  testClient.render(<RecordedResult context={capturedContext("shell", output)} />);
   fireEvent.click(screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" }));
   fireEvent.click(screen.getByRole("button", { name: "Find" }));
   const field = screen.getByRole("searchbox", { name: "Find in output" });
@@ -228,7 +240,7 @@ it("decodes skill summary entities once, keeps descriptions inert and reports tr
     "  <truncated>true</truncated>",
     "</available_skills>",
   ].join("\n");
-  render(<RecordedResult context={capturedContext("list_skills", source)} />);
+  testClient.render(<RecordedResult context={capturedContext("list_skills", source)} />);
   const result = screen.getByRole("region", { name: "Result" });
   expect(within(result).getByText("review & <trace>", { exact: true })).toBeTruthy();
   const description = "Keep &amp; and <img src=x onerror=alert(1)> > intact.";
@@ -248,7 +260,9 @@ it("presents the current Skill list page as complete summaries with its recorded
     ],
     next_cursor: { offset: 2, snapshot: "a".repeat(64) },
   };
-  render(<RecordedResult context={capturedContext("list_skills", JSON.stringify(page))} />);
+  testClient.render(
+    <RecordedResult context={capturedContext("list_skills", JSON.stringify(page))} />,
+  );
   const result = screen.getByRole("region", { name: "Result" });
   for (const skill of page.skills) {
     expect(within(result).getByText(skill.name, { exact: true })).toBeTruthy();
@@ -277,7 +291,7 @@ it("presents the current Skill list page as complete summaries with its recorded
 });
 
 it("keeps a complete empty Skill page distinct from locally hidden summaries", () => {
-  render(<RecordedResult context={capturedContext("list_skills", '{"skills":[]}')} />);
+  testClient.render(<RecordedResult context={capturedContext("list_skills", '{"skills":[]}')} />);
   const result = screen.getByRole("region", { name: "Result" });
   expect(result.textContent).toBe("No skills were returned.");
   expect(screen.queryByText("More pages", { exact: true })).toBeNull();
@@ -295,7 +309,7 @@ it.each(["load_skill", "read_skill_resource"])(
   (name) => {
     const content = "Keep <script>markup</script> literal.\n\n\tRead the next paragraph.\n";
     const page = { content, next_cursor: { offset: 81, snapshot: "b".repeat(64) } };
-    render(<RecordedResult context={capturedContext(name, JSON.stringify(page))} />);
+    testClient.render(<RecordedResult context={capturedContext(name, JSON.stringify(page))} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent)).toEqual(
       name === "load_skill" ? [content, "next_cursor"] : ["next_cursor"],
@@ -314,7 +328,7 @@ it.each(["load_skill", "read_skill_resource"])(
   "%s leaves complete content and empty content literal without a continuation marker",
   (name) => {
     for (const content of ["First line.\n\nLast line.\n", ""]) {
-      const rendered = render(
+      const rendered = testClient.render(
         <RecordedResult context={capturedContext(name, JSON.stringify({ content }))} />,
       );
       const result = screen.getByRole("region", { name: "Result" });
@@ -343,7 +357,7 @@ it.each(["list_skills", "load_skill", "read_skill_resource"])(
     const writeText = vi.fn(async () => {});
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     try {
-      render(<RecordedResult context={capturedContext(name, source)} />);
+      testClient.render(<RecordedResult context={capturedContext(name, source)} />);
       fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
       await act(async () => {});
       expect(writeText).toHaveBeenCalledExactlyOnceWith(source);
@@ -372,7 +386,9 @@ it.each(["list_skills", "load_skill", "read_skill_resource"])(
     ];
     for (const value of values) {
       const source = JSON.stringify(value, null, 2);
-      const rendered = render(<RecordedResult context={capturedContext(name, source)} />);
+      const rendered = testClient.render(
+        <RecordedResult context={capturedContext(name, source)} />,
+      );
       const result = screen.getByRole("region", { name: "Result" });
       expect(
         Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent),
@@ -396,7 +412,9 @@ it("distinguishes an empty skill list from a result where no summary fit", () =>
     ["<available_skills>\n</available_skills>", "No skills were returned."],
   ] as const;
   for (const [source, notice] of results) {
-    const rendered = render(<RecordedResult context={capturedContext("list_skills", source)} />);
+    const rendered = testClient.render(
+      <RecordedResult context={capturedContext("list_skills", source)} />,
+    );
     const result = screen.getByRole("region", { name: "Result" });
     expect(within(result).getByText(notice, { exact: true })).toBeTruthy();
     expect(result.textContent).not.toContain("<available_skills>");
@@ -415,7 +433,7 @@ it.each([
     const writeText = vi.fn(async () => {});
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     try {
-      render(<RecordedResult context={capturedContext(name, result)} />);
+      testClient.render(<RecordedResult context={capturedContext(name, result)} />);
       const reader = screen.getByRole("region", { name: "Result" });
       const expectReturnedNothing = () => {
         expect(reader.textContent).toBe("No results were returned.");
@@ -452,7 +470,7 @@ it("recovers every recorded hit after a filter that matched none is cleared or c
     { path: "src/a.go", lineNumber: 3, snippet: "alpha" },
     { path: "src/b.go", lineNumber: 9, snippet: "beta" },
   ];
-  render(<RecordedResult context={capturedContext("grep", JSON.stringify({ hits }))} />);
+  testClient.render(<RecordedResult context={capturedContext("grep", JSON.stringify({ hits }))} />);
   const reader = screen.getByRole("region", { name: "Result" });
   const expectAllHits = () => {
     expect(within(reader).getByText("alpha", { exact: true })).toBeTruthy();
@@ -477,7 +495,7 @@ it("recovers every recorded hit after a filter that matched none is cleared or c
 
 it("keeps a recorded blank source line as a numbered row rather than an empty result", () => {
   for (const name of ["read", "search_tools"]) {
-    const rendered = render(<RecordedResult context={capturedContext(name, "")} />);
+    const rendered = testClient.render(<RecordedResult context={capturedContext(name, "")} />);
     const reader = screen.getByRole("region", { name: "Result" });
     expect(Array.from(reader.querySelectorAll("pre"), (line) => line.textContent)).toEqual([" "]);
     expect(within(reader).getByText("Line", { exact: true }).parentElement?.textContent).toBe(
@@ -489,7 +507,7 @@ it("keeps a recorded blank source line as a numbered row rather than an empty re
 });
 
 it("states an empty applied-change receipt instead of an empty table", () => {
-  const empty = render(
+  const empty = testClient.render(
     <RecordedResult context={capturedContext("apply_patch", JSON.stringify({ changes: [] }))} />,
   );
   expect(screen.getByText("No changes were recorded.", { exact: true })).toBeTruthy();
@@ -501,7 +519,9 @@ it("states an empty applied-change receipt instead of an empty table", () => {
     { path: "src/new.ts", status: "added" },
     { path: "src/moved.ts", status: "moved", from: "src/old.ts" },
   ];
-  render(<RecordedResult context={capturedContext("apply_patch", JSON.stringify({ changes }))} />);
+  testClient.render(
+    <RecordedResult context={capturedContext("apply_patch", JSON.stringify({ changes }))} />,
+  );
   const table = screen.getByRole("table", { name: "Applied changes" });
   expect(within(table).getAllByRole("row")).toHaveLength(2);
   expect(within(table).getByText("Created", { exact: true })).toBeTruthy();
@@ -516,7 +536,9 @@ it("preserves the complete literal result for malformed or unknown skills XML", 
     "<available_skills>\n<skill><name>Known</name><description>Keep this too.</description><unknown>Never discard me.</unknown></skill>\n</available_skills>",
   ];
   for (const source of sources) {
-    const rendered = render(<RecordedResult context={capturedContext("list_skills", source)} />);
+    const rendered = testClient.render(
+      <RecordedResult context={capturedContext("list_skills", source)} />,
+    );
     const result = screen.getByRole("region", { name: "Result" });
     expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent).join("\n")).toBe(
       source,
@@ -532,7 +554,7 @@ it("leads each recognised result with its caption actions and copies the recorde
   try {
     const lines = Array.from({ length: 12 }, (_, i) => `line ${i}`).join("\n");
     const output = `\u001b[32mok\u001b[0m\n${lines}`;
-    const shell = render(<RecordedResult context={capturedContext("shell", output)} />);
+    const shell = testClient.render(<RecordedResult context={capturedContext("shell", output)} />);
     const preview = screen.getByRole("region", { name: "Tool output preview" });
     const buttons = screen.getAllByRole("button");
     expect(
@@ -547,7 +569,7 @@ it("leads each recognised result with its caption actions and copies the recorde
     shell.unmount();
 
     const page = JSON.stringify({ format: "markdown", content: "# Title\n\nBody" });
-    render(<RecordedResult context={capturedContext("web_fetch", page)} />);
+    testClient.render(<RecordedResult context={capturedContext("web_fetch", page)} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(
       screen.getByText("markdown", { exact: true }).closest("[data-slot='code-caption']"),
@@ -570,7 +592,7 @@ it("keeps one output toggle and returns keyboard focus to it on collapse", () =>
     return frames.length;
   });
   const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
-  render(<RecordedResult context={capturedContext("shell", output)} />);
+  testClient.render(<RecordedResult context={capturedContext("shell", output)} />);
   const toggle = screen.getByRole("button", { name: "Show 3 earlier lines · 12 total" });
   const preview = screen.getByRole("region", { name: "Tool output preview" });
   preview.focus();
@@ -596,7 +618,7 @@ it("does not reclaim output focus after a later user choice", () => {
     return frames.length;
   });
   const output = Array.from({ length: 12 }, (_, index) => `line ${index}`).join("\n");
-  render(
+  testClient.render(
     <>
       <RecordedResult context={capturedContext("shell", output)} />
       <button>Continue working</button>
@@ -613,7 +635,7 @@ it("does not reclaim output focus after a later user choice", () => {
 
 it("continues paged result reading at the first newly revealed row through the final page", () => {
   const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
-  render(<RecordedResult context={capturedContext("read", source)} />);
+  testClient.render(<RecordedResult context={capturedContext("read", source)} />);
   const reader = screen.getByRole("region", { name: "Result" });
   const more = screen.getByRole("button", { name: "Show 40 more matching rows" });
   more.focus();
@@ -650,7 +672,7 @@ function copyFrom(target: HTMLElement) {
 function expandOutput(output: string) {
   document.documentElement.style.setProperty("--leading-relaxed", "20px");
   vi.spyOn(globalThis, "requestAnimationFrame").mockReturnValue(0);
-  render(
+  testClient.render(
     <>
       <p>Surrounding narrative</p>
       <RecordedResult context={capturedContext("shell", output)} />
@@ -758,7 +780,7 @@ it("keeps a manual output scroll until an explicit Find action", () => {
 
 it("scopes Select All to the presented result rows, outside find and caption controls", () => {
   const source = Array.from({ length: 82 }, (_, index) => `captured ${index}`).join("\n");
-  render(
+  testClient.render(
     <>
       <p>Surrounding narrative</p>
       <RecordedResult context={capturedContext("read", source)} />
@@ -790,7 +812,7 @@ it("scopes Select All to the presented result rows, outside find and caption con
 it.each([{ altKey: true }, { shiftKey: true }, { isComposing: true }, { keyCode: 229 }])(
   "leaves Select All with %o to the platform",
   (modifier) => {
-    render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
+    testClient.render(<RecordedResult context={capturedContext("read", "alpha\nbeta")} />);
     const reader = screen.getByRole("region", { name: "Result" });
     document.getSelection()?.removeAllRanges();
     reader.focus();
@@ -804,7 +826,7 @@ it("selects only the preview excerpt and copies its presented lines", () => {
   const output = plain
     .map((line, index) => (index === 8 ? `\u001b[32m${line}\u001b[0m` : line))
     .join("\n");
-  render(
+  testClient.render(
     <>
       <p>Surrounding narrative</p>
       <RecordedResult context={capturedContext("shell", output)} />
@@ -837,7 +859,7 @@ it("copies the current numbered, filtered and paged result rows without reader f
   const source = plain
     .map((line, index) => (index === 4 ? `\u001b[31m${line}\u001b[0m` : line))
     .join("\n");
-  render(<RecordedResult context={capturedContext("read", source)} />);
+  testClient.render(<RecordedResult context={capturedContext("read", source)} />);
   const reader = screen.getByRole("region", { name: "Result" });
   const copyAll = () => {
     expect(selectAll(reader)).toBe(false);
@@ -917,7 +939,7 @@ it.each([
     copied: "First line.\n\nLast line.\n",
   },
 ])("copies whole $name result rows as their recorded text", ({ name, result, copied }) => {
-  render(<RecordedResult context={capturedContext(name, result)} />);
+  testClient.render(<RecordedResult context={capturedContext(name, result)} />);
   const reader = screen.getByRole("region", { name: "Result" });
   expect(selectAll(reader)).toBe(false);
   const { proceeded, setData } = copyFrom(reader);
@@ -1020,7 +1042,7 @@ it("copies the complete captured output when Select All precedes a virtual-windo
 
 it("copies the presented result rows when Select All precedes a filter or page change", () => {
   const plain = Array.from({ length: 82 }, (_, index) => `captured ${index}`);
-  render(<RecordedResult context={capturedContext("read", plain.join("\n"))} />);
+  testClient.render(<RecordedResult context={capturedContext("read", plain.join("\n"))} />);
   const reader = screen.getByRole("region", { name: "Result" });
   const copyWhole = (expected: string) => {
     const copied = copyFrom(reader);

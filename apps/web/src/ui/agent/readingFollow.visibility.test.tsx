@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { useReadingFocusVisibility } from "./readingFollow";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StickToBottomInstance } from "use-stick-to-bottom";
 
@@ -53,7 +61,7 @@ function scenario() {
       </>
     );
   }
-  const view = render(<Harness />);
+  const view = testClient.render(<Harness />);
   const viewport = follow.scrollRef.current!;
   const content = follow.contentRef.current!;
   const target = screen.getByRole("button", { name: "Read original evidence" });

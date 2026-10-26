@@ -1,3 +1,4 @@
+import { useComposer } from "@/features/composer/public/composer";
 import * as stylex from "@stylexjs/stylex";
 import { brandAssets } from "@/lib/brand";
 import { tupleKey } from "@/lib/tupleKey";
@@ -114,6 +115,8 @@ const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string
 });
 
 export function ChatStream({ onSend }: Props) {
+  const composerAccess = useComposer();
+
   const sessionId = useActiveSessionId();
   const rows = useActiveConversationRows();
 
@@ -237,8 +240,8 @@ export function ChatStream({ onSend }: Props) {
     if (handoff.element.isConnected || document.activeElement !== document.body) {
       return;
     }
-    focusComposer();
-  }, [questionPending, sessionId, visible]);
+    focusComposer(composerAccess);
+  }, [questionPending, sessionId, visible, composerAccess]);
 
   return (
     <div

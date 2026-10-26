@@ -1,3 +1,5 @@
+import { useComposer } from "@/features/composer/public/composer";
+import { useAgent } from "@/features/agent/public/agent";
 import { iconGlyph } from "@/ui/icons/index";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -29,6 +31,8 @@ import { focusComposer } from "@/features/composer/public/focus";
 import { ModelPicker } from "@/features/composer/ui/ModelPicker";
 import { ReasoningEffortPill } from "@/features/composer/ui/ReasoningEffortPill";
 function ContextMenuButton() {
+  const composerAccess = useComposer();
+
   const t = useT();
   const addImageFiles = useAddComposerImageFiles();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +41,7 @@ function ContextMenuButton() {
   const setValue = useSetComposerText();
   const insert = (next: string) => {
     setValue(next);
-    requestAnimationFrame(() => focusComposer(next.length));
+    requestAnimationFrame(() => focusComposer(composerAccess, next.length));
   };
 
   return (
@@ -115,6 +119,8 @@ const MODE_ICON: Record<ApprovalMode, IconName> = {
 };
 
 function ApprovalModePill() {
+  const agentAccess = useAgent();
+
   const t = useT();
   const { data: approval, isError } = useApprovalMode();
   if (isError || approval === undefined) return null;
@@ -123,7 +129,7 @@ function ApprovalModePill() {
   const onSelect = async (next: ApprovalMode) => {
     if (next === mode) return;
     try {
-      await setApprovalMode(next);
+      await setApprovalMode(agentAccess, next);
     } catch (err) {
       notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
     }

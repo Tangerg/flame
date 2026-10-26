@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { iconGlyph } from "@/ui/icons/index";
 import {
   type ApprovalRuleSummary,
@@ -80,6 +81,8 @@ const r = stylex.create({
 });
 
 export function RulesRow() {
+  const agentAccess = useAgent();
+
   const t = useT();
   const sessionId = useActiveSessionId();
   const { data, isLoading, error, refetch } = useApprovalRuleConfigs(sessionId);
@@ -106,7 +109,10 @@ export function RulesRow() {
         {(rows) => (
           <div {...stylex.props(r.list)}>
             <div {...stylex.props(ss.end)}>
-              <TextButton pending={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
+              <TextButton
+                pending={busy}
+                onClick={() => run(() => forgetApprovalRules(agentAccess, rows))}
+              >
                 {t("approvals.clearAll")}
               </TextButton>
             </div>
@@ -148,7 +154,7 @@ export function RulesRow() {
                     aria-describedby={descriptionId}
                     aria-busy={busy}
                     pending={busy}
-                    onClick={() => run(() => forgetApprovalRule(rule.id))}
+                    onClick={() => run(() => forgetApprovalRule(agentAccess, rule.id))}
                   />
                 </div>
               );

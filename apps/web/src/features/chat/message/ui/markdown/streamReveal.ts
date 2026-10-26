@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { motionScale } from "@/lib/appearance";
+import { useAppearanceProjection } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 import { type StreamReveal } from "@/features/chat/message/streamReveal";
 export type MarkdownReveal = StreamReveal | "instant";
@@ -36,8 +36,8 @@ function isHighSurrogate(code: number): boolean {
   return code >= HIGH_SURROGATE_FIRST && code <= HIGH_SURROGATE_LAST;
 }
 
-function prefersReducedMotion(): boolean {
-  if (motionScale() === 0) return true;
+function prefersReducedMotion(motionScale: number): boolean {
+  if (motionScale === 0) return true;
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
@@ -59,7 +59,8 @@ export function useStreamReveal(
   streaming: boolean,
   reveal: MarkdownReveal,
 ): string {
-  const whole = reveal === "instant" || prefersReducedMotion();
+  const appearance = useAppearanceProjection();
+  const whole = reveal === "instant" || prefersReducedMotion(appearance.read().motionScale);
   const active = streaming && !whole;
 
   const initialLen = active ? 0 : rawText.length;

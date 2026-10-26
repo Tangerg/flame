@@ -1,18 +1,23 @@
-import { composerState } from "@/features/composer/application/ports/state";
-export function focusComposer(selectionEnd?: number): void {
-  composerState().focus(selectionEnd);
+import { type ComposerAccess } from "@/features/composer/public/composer";
+
+export function focusComposer(composerAccess: ComposerAccess, selectionEnd?: number): void {
+  composerAccess.focus(selectionEnd);
 }
 
-export function captureComposerFocus(): () => void {
-  return composerState().captureFocus();
+export function captureComposerFocus(composerAccess: ComposerAccess): () => void {
+  return composerAccess.captureFocus();
 }
 
-export function registerComposerFocusTarget(element: HTMLTextAreaElement | null): () => void {
-  return composerState().registerFocusTarget(element);
+export function registerComposerFocusTarget(
+  composerAccess: ComposerAccess,
+  element: HTMLTextAreaElement | null,
+): () => void {
+  return composerAccess.registerFocusTarget(element);
 }
 
 export function registerComposerFocusPresentation(
+  composerAccess: ComposerAccess,
   present: (focus: () => void) => void,
 ): () => void {
-  return composerState().registerFocusPresentation(present);
+  return composerAccess.registerFocusPresentation(present);
 }

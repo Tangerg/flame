@@ -16,7 +16,7 @@ import { useT } from "@/lib/i18n/index";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { LightboxDialog, SystemMessage } from "@/ui/index";
 import { IconButton, ScrollRegion, vocab } from "@flame/ui";
-import { saveInlineImage } from "@/features/chat/message/application/imageSave";
+import { useImageSave } from "@/features/chat/public/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/message/ui/messageContent";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 const ig = stylex.create({
@@ -451,6 +451,7 @@ function ImageInspector({ item, label }: { item: GalleryItem; label: string }) {
 }
 
 export function ImagePreviewGallery({ item, trigger }: Props) {
+  const saveInlineImage = useImageSave();
   const t = useT();
   const [gallery, setGallery] = useState<GalleryState | null>(null);
   const failureId = useId();

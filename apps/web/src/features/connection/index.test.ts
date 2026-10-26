@@ -1,5 +1,12 @@
+import { runtimeRequestMeta } from "@/app/runtimeProtocol";
+import { createBrowserHost } from "@/platform/browserHost";
+import { createStorage } from "@/extensions/storage";
+import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import { createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
+let connection: ReturnType<typeof createRuntimeConnection>;
 import { shellServices } from "@/app/shellServices";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import * as runtimeSdk from "@flame/runtime-client";
 import {
   HTTP_ENDPOINTS,
   PROTOCOL_VERSION,
@@ -9,10 +16,7 @@ import {
   type ReadinessStatus,
   type SidecarClient,
 } from "@flame/runtime-client";
-import {
-  resetRuntimeConnectionForTest,
-  useRuntimeConnectionStore,
-} from "@/features/connection/adapters/runtimeConnectionProjection";
+
 import { createRuntimePlugin } from "@/features/connection/index";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
@@ -27,6 +31,14 @@ let runtimeSidecar: () => SidecarClient = () => {
 };
 
 const getRuntimeSidecar = () => runtimeSidecar();
+const createFlameClient = runtimeSdk.createFlameClient;
+let readClientCapabilities:
+  NonNullable<Parameters<typeof createFlameClient>[1]>["capabilities"] | undefined;
+
+function negotiatedCapabilities() {
+  if (!readClientCapabilities) throw new Error("Runtime client capabilities are not configured");
+  return readClientCapabilities();
+}
 
 const discovery: DiscoverResponse = {
   protocolVersion: PROTOCOL_VERSION,
@@ -43,7 +55,7 @@ const discovery: DiscoverResponse = {
     runtimeTopics: [],
     streamingMethods: [],
     limits: {
-      idempotency: { namespace: "idp_test", retentionSeconds: 86_400 },
+      idempotency: { namespace: "idp_00000000000000000000000000000001", retentionSeconds: 86_400 },
       runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2048, maxBytes: 16_777_216 },
       mcpAuthorizationAttempts: { retentionSeconds: 600 },
       runtimeSubscription: {
@@ -88,10 +100,46 @@ function stubRuntime(
   });
 }
 
+beforeEach(async () => {
+  readClientCapabilities = undefined;
+  vi.spyOn(runtimeSdk, "createFlameClient").mockImplementation((transport, options) => {
+    readClientCapabilities = options?.capabilities;
+    return createFlameClient(transport, options);
+  });
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = new URL(
+      typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+    );
+    let value: unknown;
+    if (url.pathname === HTTP_ENDPOINTS.rpc.path) {
+      const request = JSON.parse(String(init?.body)) as { id: unknown; method: string };
+      if (request.method !== "runtime.discover")
+        throw new Error(`Unexpected test method ${request.method}`);
+      value = {
+        jsonrpc: "2.0",
+        id: request.id,
+        result: await getRuntimeClient().runtime.discover(),
+      };
+    } else if (url.pathname === HTTP_ENDPOINTS.info.path) value = await getRuntimeSidecar().info();
+    else if (url.pathname === HTTP_ENDPOINTS.liveness.path)
+      value = await getRuntimeSidecar().liveness();
+    else if (url.pathname === HTTP_ENDPOINTS.readiness.path)
+      value = await getRuntimeSidecar().readiness();
+    else throw new Error(`Unexpected test endpoint ${url.pathname}`);
+    return new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
+  });
+  connection = createRuntimeConnection(
+    createBrowserHost(),
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+  );
+  await connection.initialize();
+});
+
 afterEach(async () => {
   await resetKernelForTest();
 
-  resetRuntimeConnectionForTest();
+  await connection.dispose();
   vi.restoreAllMocks();
 });
 
@@ -100,14 +148,10 @@ describe("runtime plugin", () => {
     const discover = vi.fn().mockResolvedValue(discovery);
     stubRuntime(discover);
 
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    );
+    await loadPluginsForTest(createRuntimePlugin(connection));
 
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().capabilities).not.toBeNull();
+      expect(negotiatedCapabilities()).not.toBeNull();
     });
     expect(discover).toHaveBeenCalledOnce();
   });
@@ -116,14 +160,10 @@ describe("runtime plugin", () => {
     const sidecar = healthySidecar();
     stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    );
+    await loadPluginsForTest(createRuntimePlugin(connection));
 
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+      expect(connection.access.status.snapshot().phase).toBe("ready");
     });
     expect(sidecar.info).toHaveBeenCalledOnce();
     expect(sidecar.liveness).toHaveBeenCalledOnce();
@@ -135,37 +175,34 @@ describe("runtime plugin", () => {
     sidecar.readiness = vi.fn().mockRejectedValue(new Error("connection refused"));
     stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    );
+    await loadPluginsForTest(createRuntimePlugin(connection));
 
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().service).toMatchObject({
+      expect(connection.access.status.snapshot()).toMatchObject({
         phase: "unavailable",
-        failure: { reason: "failed", detail: "connection refused" },
+        failure: {
+          reason: "failed",
+          detail: `sidecar ${HTTP_ENDPOINTS.readiness.path}: connection refused`,
+        },
       });
     });
   });
 
   it("degrades without publishing stale capabilities when discovery fails", async () => {
-    useRuntimeConnectionStore.setState({ capabilities: discovery.capabilities });
-    stubRuntime(vi.fn().mockRejectedValue(new Error("method not found")));
-
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
+    stubRuntime(
+      vi.fn().mockResolvedValueOnce(discovery).mockRejectedValue(new Error("method not found")),
     );
 
+    await loadPluginsForTest(createRuntimePlugin(connection));
+    await vi.waitFor(() => expect(negotiatedCapabilities()).not.toBeNull());
+    await connection.access.status.refresh();
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().service).toMatchObject({
+      expect(connection.access.status.snapshot()).toMatchObject({
         phase: "unavailable",
-        failure: { reason: "failed", detail: "method not found" },
+        failure: { reason: "failed", detail: "fetch failed: method not found" },
       });
     });
-    expect(useRuntimeConnectionStore.getState().capabilities).toBeNull();
+    expect(negotiatedCapabilities()).toBeNull();
   });
 
   it("does not publish a discovery result after the plugin is unloaded", async () => {
@@ -178,11 +215,7 @@ describe("runtime plugin", () => {
     );
     stubRuntime(discover);
 
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    );
+    await loadPluginsForTest(createRuntimePlugin(connection));
     await vi.waitFor(() => expect(discover).toHaveBeenCalledOnce());
     await resetKernelForTest();
 
@@ -190,7 +223,7 @@ describe("runtime plugin", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(useRuntimeConnectionStore.getState().capabilities).toBeNull();
+    expect(negotiatedCapabilities()).toBeNull();
   });
 
   it("automatically rediscovers and republishes capabilities after a cold-start outage", async () => {
@@ -202,19 +235,15 @@ describe("runtime plugin", () => {
         .mockResolvedValue(discovery);
       stubRuntime(discover);
 
-      await loadPluginsForTest(
-        createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-          endpoint: window.location.origin,
-        })),
-      );
+      await loadPluginsForTest(createRuntimePlugin(connection));
       await vi.advanceTimersByTimeAsync(0);
-      expect(useRuntimeConnectionStore.getState().capabilities).toBeNull();
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("unavailable");
+      expect(negotiatedCapabilities()).toBeNull();
+      expect(connection.access.status.snapshot().phase).toBe("unavailable");
 
       await vi.advanceTimersByTimeAsync(1_000);
       expect(discover).toHaveBeenCalledTimes(2);
-      expect(useRuntimeConnectionStore.getState().capabilities).toEqual(discovery.capabilities);
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+      expect(negotiatedCapabilities()).toEqual(discovery.capabilities);
+      expect(connection.access.status.snapshot().phase).toBe("ready");
     } finally {
       vi.useRealTimers();
     }
@@ -231,11 +260,7 @@ describe("runtime plugin", () => {
     );
     stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    );
+    await loadPluginsForTest(createRuntimePlugin(connection));
     await vi.waitFor(() => expect(sidecar.readiness).toHaveBeenCalledOnce());
     await resetKernelForTest();
 
@@ -243,7 +268,7 @@ describe("runtime plugin", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(useRuntimeConnectionStore.getState().service).toEqual({
+    expect(connection.access.status.snapshot()).toEqual({
       phase: "checking",
       observation: null,
       failure: null,
@@ -252,34 +277,24 @@ describe("runtime plugin", () => {
 
   it("does not let a retired Runtime installation clear its successor projection", async () => {
     stubRuntime(vi.fn().mockResolvedValue(discovery));
-    const retired = await startKernel([
-      shellServices,
-      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-        endpoint: window.location.origin,
-      })),
-    ]);
+    const retired = await startKernel([shellServices, createRuntimePlugin(connection)]);
     let successor: Awaited<ReturnType<typeof startKernel>> | undefined;
     try {
       await vi.waitFor(() => {
-        expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+        expect(connection.access.status.snapshot().phase).toBe("ready");
       });
 
       stubRuntime(vi.fn().mockResolvedValue(discovery));
-      successor = await startKernel([
-        shellServices,
-        createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
-          endpoint: window.location.origin,
-        })),
-      ]);
+      successor = await startKernel([shellServices, createRuntimePlugin(connection)]);
       await vi.waitFor(() => {
-        expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
-        expect(useRuntimeConnectionStore.getState().capabilities).toEqual(discovery.capabilities);
+        expect(connection.access.status.snapshot().phase).toBe("ready");
+        expect(negotiatedCapabilities()).toEqual(discovery.capabilities);
       });
 
       await stopKernel(retired);
 
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
-      expect(useRuntimeConnectionStore.getState().capabilities).toEqual(discovery.capabilities);
+      expect(connection.access.status.snapshot().phase).toBe("ready");
+      expect(negotiatedCapabilities()).toEqual(discovery.capabilities);
     } finally {
       if (successor) await stopKernel(successor);
       else await stopKernel(retired);

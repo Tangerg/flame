@@ -1,11 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ColorPickerInput } from "@/ui/atoms/color-picker-input";
 import { TextLink } from "@/ui/atoms/text-link";
 import { HiddenFileInput } from "@/ui/atoms/hidden-file-input";
 describe("native design-system boundaries", () => {
   it("owns browser-native input types inside atoms", () => {
-    render(
+    testClient.render(
       <>
         <HiddenFileInput aria-label="Attach" accept="image/*" />
         <ColorPickerInput aria-label="Accent" />
@@ -17,7 +25,7 @@ describe("native design-system boundaries", () => {
   });
 
   it("owns safe external-link policy", () => {
-    render(<TextLink href="https://example.com">Source</TextLink>);
+    testClient.render(<TextLink href="https://example.com">Source</TextLink>);
 
     const link = screen.getByRole("link", { name: "Source" });
     expect(link.getAttribute("target")).toBe("_blank");
@@ -25,7 +33,7 @@ describe("native design-system boundaries", () => {
   });
 
   it("keeps a document reference and its reading relation in the current document", () => {
-    render(
+    testClient.render(
       <TextLink href="#note" id="reference" aria-describedby="notes">
         1
       </TextLink>,

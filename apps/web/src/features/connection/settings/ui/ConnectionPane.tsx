@@ -3,18 +3,8 @@ import { useRef, useState } from "react";
 import { StatusDot } from "@/ui/index";
 import { Button, FormActions, FormField, isImeKey, TextField, vocab } from "@flame/ui";
 import { useT, type Translate } from "@/lib/i18n/index";
-import {
-  applyRuntimeEndpoint,
-  currentRuntimeEndpoint,
-  resetRuntimeEndpoint,
-  defaultRuntimeEndpoint,
-  hasRuntimeAccessToken,
-  type RuntimeEndpointRejection,
-} from "@/features/connection/public/endpoint";
-import {
-  refreshRuntimeServiceStatus,
-  useRuntimeServiceStatus,
-} from "@/features/connection/public/serviceStatus";
+import { useRuntime, type RuntimeEndpointRejection } from "@/features/connection/public/endpoint";
+import { useRuntimeServiceStatus } from "@/features/connection/public/serviceStatus";
 import { type RuntimeServicePhase } from "@/features/connection/public/serviceStatus";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
@@ -84,6 +74,14 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
 }
 
 export function ConnectionPane() {
+  const runtime = useRuntime();
+  const {
+    applyRuntimeEndpoint,
+    currentRuntimeEndpoint,
+    resetRuntimeEndpoint,
+    defaultRuntimeEndpoint,
+    hasRuntimeAccessToken,
+  } = runtime.endpoint;
   const t = useT();
   const initial = currentRuntimeEndpoint();
   const defaultEndpoint = defaultRuntimeEndpoint();
@@ -140,7 +138,7 @@ export function ConnectionPane() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await refreshRuntimeServiceStatus();
+      await runtime.status.refresh();
     } finally {
       setRefreshing(false);
     }

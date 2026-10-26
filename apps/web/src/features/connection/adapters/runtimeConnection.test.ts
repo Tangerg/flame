@@ -1,3 +1,5 @@
+import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import { createStorage } from "@/extensions/storage";
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
@@ -19,7 +21,11 @@ function desktop(bootstrap: ClientHost["bootstrap"]): ClientHost {
 let connection: ReturnType<typeof createRuntimeConnection>;
 
 beforeEach(async () => {
-  connection = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta);
+  connection = createRuntimeConnection(
+    createBrowserHost(),
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+  );
   await connection.initialize();
 });
 
@@ -36,7 +42,11 @@ describe("Runtime connection ownership", () => {
   });
 
   it("requires each owner to finish its own bootstrap", async () => {
-    const successor = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta);
+    const successor = createRuntimeConnection(
+      createBrowserHost(),
+      runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    );
     expect(() => successor.client()).toThrow("client host has not completed bootstrap");
     expect(() => successor.endpoint()).toThrow("client host has not completed bootstrap");
     await successor.initialize();
@@ -63,7 +73,11 @@ describe("Runtime connection ownership", () => {
   });
 
   it("never closes another renderer's connection", async () => {
-    const successor = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta);
+    const successor = createRuntimeConnection(
+      createBrowserHost(),
+      runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    );
     await successor.initialize();
     const close = vi.spyOn(successor.client(), "close");
     await connection.dispose();
@@ -78,6 +92,7 @@ describe("Runtime connection ownership", () => {
     connection = createRuntimeConnection(
       desktop(async () => localBootstrap(token)),
       runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
     );
     await connection.initialize();
     const first = connection.client();
@@ -98,7 +113,11 @@ describe("Runtime connection ownership", () => {
       .mockReturnValueOnce(retired.promise)
       .mockResolvedValue(localBootstrap("successor-token"));
     await connection.dispose();
-    connection = createRuntimeConnection(desktop(bootstrap), runtimeRequestMeta);
+    connection = createRuntimeConnection(
+      desktop(bootstrap),
+      runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+    );
     const pending = connection.initialize();
     await connection.initialize();
     retired.resolve(localBootstrap("retired-token"));
@@ -111,6 +130,7 @@ describe("Runtime connection ownership", () => {
     const predecessor = createRuntimeConnection(
       desktop(() => retired.promise),
       runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.runtime")),
     );
     const pending = predecessor.initialize();
     await predecessor.dispose();
@@ -126,6 +146,7 @@ it("joins retired clients and preserves their cleanup failures through final dis
   const owner = createRuntimeConnection(
     desktop(async () => localBootstrap(token)),
     runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );
   await owner.initialize();
   const failure = new Error("transport cleanup failed");

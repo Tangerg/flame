@@ -46,7 +46,7 @@ export const REVIEW_DIFF: Diff = {
       ],
     },
     {
-      path: "runtime/protocol/session.go",
+      path: "packages/go-sdk/protocol/session.go",
       status: "modified",
       added: 7,
       removed: 3,

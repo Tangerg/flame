@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type ApprovalRuleSummary } from "@/features/agent/public/approvalPolicy";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { forgetApprovalRules } from "@/features/approvals/application/approvalConfig";
@@ -19,10 +27,12 @@ describe("approval configuration", () => {
   it("delegates clear-all as one owner-scoped batch", async () => {
     forgetRules.mockResolvedValue(undefined);
 
-    await expect(forgetApprovalRules([rule("rule-1"), rule("rule-2")])).resolves.toBeUndefined();
+    await expect(
+      forgetApprovalRules(testClient.agent.access, [rule("rule-1"), rule("rule-2")]),
+    ).resolves.toBeUndefined();
 
     expect(forgetRules).toHaveBeenCalledOnce();
-    expect(forgetRules).toHaveBeenCalledWith(["rule-1", "rule-2"]);
+    expect(forgetRules).toHaveBeenCalledWith(testClient.agent.access, ["rule-1", "rule-2"]);
   });
 });
 

@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ACCENT } from "@/features/theme/kit/appearance";
 import { DEFAULT_ACCENTS } from "@/features/theme/defaultAccents";
@@ -107,7 +115,18 @@ describe("defaultStaticCommands", () => {
   });
 
   it("leaves the global Composer focus command to the installed workbench conversation", async () => {
-    await loadPluginsForTest(defaultCommands, workbenchChat);
+    await loadPluginsForTest(
+      defaultCommands(
+        testClient.agent.access,
+        testClient.composer.access,
+        testClient.workspace.access,
+        testClient.runtime,
+        testClient.directory.access,
+        testClient.navigation,
+        testClient.theme.access,
+      ),
+      workbenchChat,
+    );
 
     expect(
       lookupExtensionPoint(COMMAND)

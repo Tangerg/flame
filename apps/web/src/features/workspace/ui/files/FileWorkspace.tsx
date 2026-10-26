@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
@@ -38,9 +39,9 @@ import {
   vocab,
 } from "@flame/ui";
 import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
-import { localWorkspace } from "@/features/workspace/application/ports/localWorkspace";
+
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
-import { workspaceErrorClassifier } from "@/features/workspace/application/ports/workspaceErrorClassifier";
+
 import { useT } from "@/lib/i18n/index";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
@@ -58,7 +59,7 @@ import {
   openWorkspaceFile,
   useWorkspaceFileViewer,
 } from "@/features/workspace/public/navigation";
-import { type WorkspaceFileViewer } from "@/features/workspace/application/ports/navigationState";
+import { type WorkspaceFileViewer } from "@/features/workspace/application/navigationState";
 import { FileTree } from "@/features/workspace/ui/files/FileTree";
 import { selectFileRenderer } from "@/features/workspace/application/fileRenderer";
 import { type ViewHeaderProps } from "@/features/workspace/ui/ViewHeader";
@@ -115,6 +116,8 @@ function initialWindow(line: number): LineWindow {
 }
 
 export function FileWorkspace() {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const { feedback, run, reset } = useAsyncFeedback();
   const viewer = useWorkspaceFileViewer();
@@ -124,10 +127,10 @@ export function FileWorkspace() {
   const returnFocus = useRef(false);
   const fileActions: LocalFileActions = {
     open(cwd, path) {
-      void run(() => openLocalFile(cwd, path), t("file.openFailed", { path }));
+      void run(() => openLocalFile(workspaceAccess, cwd, path), t("file.openFailed", { path }));
     },
     reveal(cwd, path) {
-      void run(() => revealLocalFile(cwd, path), t("file.revealFailed", { path }));
+      void run(() => revealLocalFile(workspaceAccess, cwd, path), t("file.revealFailed", { path }));
     },
     feedback(focusTarget) {
       if (feedback.state !== "error") return undefined;
@@ -246,6 +249,8 @@ function FileBrowser({
   restoreFocus: (item: HTMLElement) => void;
   fileActions: LocalFileActions;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = resolvedWorkspaceCwd(workspace);
@@ -300,7 +305,7 @@ function FileBrowser({
             ref={treeRef}
             entries={entries}
             cwd={cwd}
-            onSelectFile={openWorkspaceFile}
+            onSelectFile={openWorkspaceFile.bind(null, workspaceAccess)}
             onReveal={(path) => {
               if (cwd) fileActions.reveal(cwd, path);
             }}
@@ -320,6 +325,8 @@ function FilePreview({
   backRef: Ref<HTMLButtonElement>;
   fileActions: LocalFileActions;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const { copied, copy } = useCopyFeedback(viewer.path);
   const workspace = useActiveSessionWorkspace();
@@ -408,7 +415,7 @@ function FilePreview({
     if (source.current && data) copyWholeReader(event, data.content, source.current);
   };
 
-  const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
+  const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
@@ -462,7 +469,7 @@ function FilePreview({
           size="sm"
           aria-label={t("file.backToFiles")}
           data-chrome-focus=""
-          onClick={closeWorkspaceFile}
+          onClick={closeWorkspaceFile.bind(null, workspaceAccess)}
         />
       }
       identity={
@@ -487,14 +494,16 @@ function FilePreview({
       }
       actions={
         <>
-          {!unsupported && <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />}
+          {!unsupported && (
+            <GoToLine onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)} />
+          )}
           <IconButton
             icon={iconGlyph(copied ? "check" : "copy")}
             size="sm"
             aria-label={t(copied ? "file.pathCopied" : "file.copyPath")}
             onClick={() => void copy()}
           />
-          {cwd && localWorkspace().available() && (
+          {cwd && workspaceAccess.local.available() && (
             <IconButton
               icon={iconGlyph("folder-open")}
               size="sm"
@@ -519,7 +528,7 @@ function FilePreview({
           sub={t("file.unsupported.sub")}
           action={
             cwd &&
-            localWorkspace().available() && (
+            workspaceAccess.local.available() && (
               <Button size="sm" onClick={() => fileActions.open(cwd, viewer.path)}>
                 {t("file.open")}
               </Button>

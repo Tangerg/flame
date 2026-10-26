@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
@@ -32,6 +33,8 @@ const cmd = stylex.create({
 });
 
 export function CommandMenu() {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const open = useCommandMenuStore((state) => state.open);
   const setOpen = useCommandMenuStore((state) => state.setOpen);
@@ -46,7 +49,10 @@ export function CommandMenu() {
     key: `view:${id}`,
     label: t("commandMenu.view", { title: t(title) }),
     icon,
-    run: () => (docked.has(id) ? openWorkspaceViewInDock(id) : openWorkspaceView(id)),
+    run: () =>
+      docked.has(id)
+        ? openWorkspaceViewInDock(workspaceAccess, id)
+        : openWorkspaceView(workspaceAccess, id),
   });
 
   const choices: CommandChoice[] = [

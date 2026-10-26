@@ -1,11 +1,19 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MermaidViewer } from "@/features/chat/message/ui/markdown/MermaidViewer";
 const SVG = '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"></svg>';
 
 describe("MermaidViewer", () => {
   it("opens fitted, then reads at true size and zooms from there", () => {
-    const { container } = render(<MermaidViewer svg={SVG} onClose={vi.fn()} />);
+    const { container } = testClient.render(<MermaidViewer svg={SVG} onClose={vi.fn()} />);
     expect(container.querySelector("[data-mermaid-fit]")).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "100%" }));
@@ -21,7 +29,7 @@ describe("MermaidViewer", () => {
 
   it("provides a named keyboard reading region and an explicit close action", () => {
     const onClose = vi.fn();
-    render(<MermaidViewer svg={SVG} onClose={onClose} />);
+    testClient.render(<MermaidViewer svg={SVG} onClose={onClose} />);
 
     expect(screen.getByText("Diagram")).toBeTruthy();
     const viewport = screen.getByRole("region", { name: "Diagram" });

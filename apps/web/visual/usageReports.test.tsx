@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   createFlameClient,
@@ -117,7 +125,7 @@ function mount(
     track: (operation) => operation,
     compose: () => null,
   };
-  render(<UsageReports context={context} />);
+  testClient.render(<UsageReports context={context} />);
   const calls = (method: string) =>
     call.mock.calls.filter(([request]) => request.method === `flame.usage-reports/${method}.v1`);
   return { calls };
@@ -200,7 +208,7 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     track: (operation) => operation,
     compose: () => null,
   };
-  render(<UsageReports context={context} />);
+  testClient.render(<UsageReports context={context} />);
   await screen.findByText("No saved reports");
   fireEvent.click(screen.getByRole("button", { name: "Save report" }));
   await screen.findByText(/Confirmation is unknown/);

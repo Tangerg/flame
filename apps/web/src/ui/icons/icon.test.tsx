@@ -1,21 +1,28 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { createRef } from "react";
 import { BellOff } from "@flame/icons/react";
-import { publishUiFontSize } from "@/lib/appearance";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@flame/ui/typography";
 import { Icon, ICON_NAMES, knownIconName } from "@/ui/icons/icon";
 import { productIconSizePx } from "@/lib/productIconScale";
 afterEach(() => {
   cleanup();
-  publishUiFontSize(null);
+  testClient.theme.appearance.publishUiFontSize(null);
 });
 
 describe("Flame icon integration", () => {
   it("renders every application name with the authored optical geometry", () => {
     for (const name of ICON_NAMES) {
       expect(knownIconName(name)).toBe(name);
-      const { container, unmount } = render(<Icon name={name} size="md" />);
+      const { container, unmount } = testClient.render(<Icon name={name} size="md" />);
       const svg = container.querySelector("svg")!;
       expect(svg.getAttribute("viewBox")).toBe("0 0 16 16");
       expect(svg.getAttribute("stroke-width")).toBe("1.25");
@@ -26,21 +33,21 @@ describe("Flame icon integration", () => {
   });
 
   it("changes the actual size and optical master together when UI fonts change", () => {
-    const { container } = render(<Icon name="bell-off" size="lg" />);
+    const { container } = testClient.render(<Icon name="bell-off" size="lg" />);
     const svg = () => container.querySelector("svg")!;
     expect(svg().style.width).toBe("20px");
     expect(svg().getAttribute("viewBox")).toBe("0 0 16 16");
-    act(() => publishUiFontSize(16));
+    act(() => testClient.theme.appearance.publishUiFontSize(16));
     expect(svg().style.width).toBe("22px");
     expect(svg().getAttribute("viewBox")).toBe("0 0 24 24");
-    act(() => publishUiFontSize(15));
+    act(() => testClient.theme.appearance.publishUiFontSize(15));
     expect(svg().style.width).toBe("21px");
     expect(svg().getAttribute("viewBox")).toBe("0 0 16 16");
   });
 
   it("keeps the explicit composer size independent of the UI font", () => {
-    const { container } = render(<Icon name="brain" size="composer" />);
-    act(() => publishUiFontSize(18));
+    const { container } = testClient.render(<Icon name="brain" size="composer" />);
+    act(() => testClient.theme.appearance.publishUiFontSize(18));
     const svg = container.querySelector("svg")!;
     expect(svg.style.width).toBe("16px");
     expect(svg.getAttribute("viewBox")).toBe("0 0 16 16");
@@ -48,9 +55,9 @@ describe("Flame icon integration", () => {
 
   it("selects the right master for every application name, font and size token", () => {
     const names = [...ICON_NAMES];
-    const { container, rerender } = render(<Icon name="plus" />);
+    const { container, rerender } = testClient.render(<Icon name="plus" />);
     for (let font = UI_FONT_SIZE_MIN_PX; font <= UI_FONT_SIZE_MAX_PX; font++) {
-      act(() => publishUiFontSize(font));
+      act(() => testClient.theme.appearance.publishUiFontSize(font));
       for (const size of ["xs", "sm", "md", "lg", "xl", "composer"] as const) {
         rerender(
           <>
@@ -76,7 +83,7 @@ describe("Flame icon integration", () => {
 
   it("passes an SVG ref through the public React API", () => {
     const ref = createRef<SVGSVGElement>();
-    const { container } = render(<BellOff size={16} ref={ref} />);
+    const { container } = testClient.render(<BellOff size={16} ref={ref} />);
     expect(ref.current).toBe(container.querySelector("svg"));
   });
 });

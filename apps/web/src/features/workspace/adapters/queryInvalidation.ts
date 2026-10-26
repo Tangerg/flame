@@ -1,6 +1,6 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
-import { AGENT_SESSION_USAGE_KEY } from "@/features/agent/public/session";
 import { synchronizeMountedAgentSessions } from "@/features/agent/public/session";
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
 import { HOOKS_KEY } from "@/features/hooks/public/queries";
@@ -27,7 +27,7 @@ import {
   type WorkspaceInvalidationTarget,
 } from "@/features/workspace/domain/eventInvalidation";
 const QUERY_KEYS: Record<
-  Exclude<WorkspaceInvalidationTarget, "all" | "agentSessionProjection">,
+  Exclude<WorkspaceInvalidationTarget, "all" | "agentSessionProjection" | "sessionUsage">,
   string
 > = {
   approvalMode: APPROVAL_MODE_KEY,
@@ -42,25 +42,32 @@ const QUERY_KEYS: Record<
   mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
   sessions: AGENT_SESSIONS_KEY,
-  sessionUsage: AGENT_SESSION_USAGE_KEY,
   utilityRole: UTILITY_ROLE_KEY,
   embeddingRole: EMBEDDING_ROLE_KEY,
 };
 
 function invalidateWorkspaceTargets(
+  agentAccess: AgentAccess,
   targets: WorkspaceInvalidationTarget[],
   event: WorkspaceEventLike,
 ): void {
   if (targets.includes("all")) {
-    replaceWorkspaceReadModels();
+    replaceWorkspaceReadModels(agentAccess);
     return;
   }
   if (targets.includes("agentSessionProjection")) {
-    synchronizeMountedAgentSessions({ sessionIds: event.sessionIds, ownership: "after-live" });
+    synchronizeMountedAgentSessions(agentAccess, {
+      sessionIds: event.sessionIds,
+      ownership: "after-live",
+    });
   }
   for (const target of targets) {
     if (target === "all") continue;
     if (target === "agentSessionProjection") {
+      continue;
+    }
+    if (target === "sessionUsage") {
+      void replaceCachedRead({ queryKey: agentAccess.usage.queryKey() });
       continue;
     }
     const predicate = (query: { queryKey: readonly unknown[] }) =>
@@ -73,25 +80,30 @@ function invalidateWorkspaceTargets(
   }
 }
 
-export function invalidateWorkspaceEvent(ev: WorkspaceEventLike): void {
-  invalidateWorkspaceTargets(workspaceInvalidations(ev), ev);
+export function invalidateWorkspaceEvent(agentAccess: AgentAccess, ev: WorkspaceEventLike): void {
+  invalidateWorkspaceTargets(agentAccess, workspaceInvalidations(ev), ev);
 }
 
-export function invalidateWorkspaceEverything(): void {
-  replaceWorkspaceReadModels();
+export function invalidateWorkspaceEverything(agentAccess: AgentAccess): void {
+  replaceWorkspaceReadModels(agentAccess);
 }
 
-export function retireWorkspaceReadModels(): void {
-  synchronizeMountedAgentSessions({ ownership: "retire-live" });
-  void queryClient.cancelQueries();
+export function retireWorkspaceReadModels(agentAccess: AgentAccess): void {
+  synchronizeMountedAgentSessions(agentAccess, { ownership: "retire-live" });
+  void queryClient.cancelQueries({ predicate: workspaceReadModels(agentAccess) });
 }
 
-export function replaceWorkspaceServerScope(): void {
-  synchronizeMountedAgentSessions({ ownership: "replace-server" });
-  void queryClient.resetQueries();
+export function replaceWorkspaceServerScope(agentAccess: AgentAccess): void {
+  synchronizeMountedAgentSessions(agentAccess, { ownership: "replace-server" });
+  void queryClient.resetQueries({ predicate: workspaceReadModels(agentAccess) });
 }
 
-function replaceWorkspaceReadModels(): void {
-  synchronizeMountedAgentSessions({ ownership: "replace-live" });
-  void replaceCachedRead();
+function replaceWorkspaceReadModels(agentAccess: AgentAccess): void {
+  synchronizeMountedAgentSessions(agentAccess, { ownership: "replace-live" });
+  void replaceCachedRead({ predicate: workspaceReadModels(agentAccess) });
+}
+
+function workspaceReadModels(agentAccess: AgentAccess) {
+  return (query: { queryKey: readonly unknown[] }) =>
+    query.queryKey[0] !== agentAccess.usage.queryKey()[0] || agentAccess.usage.ownsQuery(query);
 }

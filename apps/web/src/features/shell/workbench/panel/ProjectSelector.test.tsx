@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ComposerProjectTray,
@@ -46,7 +54,7 @@ beforeEach(() => {
 
 describe("ComposerProjectTray", () => {
   it("owns a full-width attached tray instead of a composer-footer utility", () => {
-    const { container } = render(<ComposerProjectTray />);
+    const { container } = testClient.render(<ComposerProjectTray />);
 
     const tray = container.querySelector<HTMLElement>('[data-slot="project-selector-tray"]');
     const surface = tray?.closest<HTMLElement>('[data-slot="composer-top-tray-surface"]');
@@ -57,7 +65,7 @@ describe("ComposerProjectTray", () => {
   });
 
   it("offers real Work Index projects and the native new-project action before a Session exists", async () => {
-    render(<ComposerProjectTray />);
+    testClient.render(<ComposerProjectTray />);
 
     fireEvent.click(screen.getByRole("button", { name: "Choose project" }));
     fireEvent.click(await screen.findByText("other"));
@@ -66,7 +74,7 @@ describe("ComposerProjectTray", () => {
   });
 
   it("routes New project to the native folder owner", async () => {
-    render(<ComposerProjectTray />);
+    testClient.render(<ComposerProjectTray />);
 
     fireEvent.click(screen.getByRole("button", { name: "Choose project" }));
     fireEvent.click(await screen.findByText("New project"));
@@ -77,7 +85,7 @@ describe("ComposerProjectTray", () => {
   it("withdraws the utility-row picker once a Session owns the workspace", () => {
     mocks.workIndex.activeSessionId = "session-current";
 
-    const { container } = render(<ComposerProjectTray />);
+    const { container } = testClient.render(<ComposerProjectTray />);
 
     expect(container.innerHTML).toBe("");
   });
@@ -85,7 +93,7 @@ describe("ComposerProjectTray", () => {
 
 describe("EmptyChatHeading", () => {
   it("renders the projectless Codex invitation without inventing a project", () => {
-    render(<EmptyChatHeading />);
+    testClient.render(<EmptyChatHeading />);
 
     expect(screen.getByText("What should we build?")).not.toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
@@ -94,7 +102,7 @@ describe("EmptyChatHeading", () => {
   it("makes the active Session project the exact-cwd picker", async () => {
     mocks.workIndex.activeSessionId = "session-current";
     mocks.workIndex.activeCwd = "/repo/scope";
-    render(<EmptyChatHeading />);
+    testClient.render(<EmptyChatHeading />);
 
     fireEvent.click(screen.getByRole("button", { name: "Change project: scope" }));
     fireEvent.click(await screen.findByText("other"));

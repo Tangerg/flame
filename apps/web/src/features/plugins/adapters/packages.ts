@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { createDataQuery } from "@/extensions/dataQuery";
-import { createSingletonPort } from "@/lib/ports/singletonPort";
 import { type Methods } from "@flame/runtime-client";
 import { type PluginProviderSelection, type PluginInstallation } from "@flame/runtime-client/wire";
 export const PACKAGES_KEY = "runtime-packages";
@@ -16,15 +15,31 @@ export type PackageOperations = Methods["plugins"] & {
   track<P extends Promise<unknown>>(operation: P): P;
 };
 
-export const packageOperations = createSingletonPort<PackageOperations>(
-  "Package operations are not installed",
-);
-
-interface PackageRealizationFailure {
+export interface PackageRealizationFailure {
   readonly reason: string;
   retry(): void;
 }
 
-export const usePackageRealization = create<{ failure: PackageRealizationFailure | null }>(() => ({
-  failure: null,
-}));
+export function createInstalledPackageState() {
+  const useState = create<{
+    operations: PackageOperations | null;
+    failure: PackageRealizationFailure | null;
+  }>(() => ({ operations: null, failure: null }));
+  return {
+    useOperations: () => useState((state) => state.operations),
+    useFailure: () => useState((state) => state.failure),
+    captureOperations: () => useState.getState().operations,
+    publishOperations(operations: PackageOperations) {
+      useState.setState({ operations });
+      return () => {
+        if (useState.getState().operations === operations) useState.setState({ operations: null });
+      };
+    },
+    failure: () => useState.getState().failure,
+    setFailure: (failure: PackageRealizationFailure | null) => useState.setState({ failure }),
+    clear() {
+      useState.setState({ operations: null, failure: null });
+    },
+  };
+}
+export type InstalledPackageState = ReturnType<typeof createInstalledPackageState>;

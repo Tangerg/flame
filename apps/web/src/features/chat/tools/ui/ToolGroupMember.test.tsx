@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { ToolGroupMember } from "@/features/chat/tools/ui/ToolGroupMember";
 const opened = vi.hoisted(() => vi.fn());
@@ -41,7 +49,9 @@ function call(tool: Partial<ToolCall>): ToolCall {
 }
 
 function member(tool: Partial<ToolCall>) {
-  return render(<ToolGroupMember tool={call(tool)} expanded={false} onToggleExpand={() => {}} />);
+  return testClient.render(
+    <ToolGroupMember tool={call(tool)} expanded={false} onToggleExpand={() => {}} />,
+  );
 }
 
 function describedAction(name: string, summary: string) {
@@ -69,7 +79,7 @@ describe("ToolGroupMember", () => {
       fnKind: "path",
       status: "err",
     });
-    render(
+    testClient.render(
       <>
         <ToolGroupMember tool={notes} expanded onToggleExpand={() => {}} />
         <ToolGroupMember tool={broken} expanded={false} onToggleExpand={() => {}} />

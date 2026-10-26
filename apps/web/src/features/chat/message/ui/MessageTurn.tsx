@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { type ComponentProps } from "react";
 import { space } from "@flame/ui/tokens.stylex";
 import { cn } from "@/lib/classNames";
-import { enterUp } from "@/lib/motion";
+import { useMotion } from "@/lib/motion";
 import { type Message } from "@/features/agent/public/sessionView";
 import { MessageBlock } from "@/features/chat/message/ui/MessageBlock";
 import { finalAnswerFollows } from "@/features/chat/message/application/messageBlockModel";
@@ -23,6 +23,7 @@ export function MessageTurn({
   next?: Message;
   className?: string;
 }) {
+  const { enterUp } = useMotion();
   const { message } = props.row;
   const continuation =
     previous &&

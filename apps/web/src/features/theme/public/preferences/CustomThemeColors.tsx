@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { ColorPickerInput } from "@/ui/index";
 import { vocab } from "@flame/ui";
@@ -52,7 +52,7 @@ export function CustomThemeColors() {
   const t = useT();
   const theme = useAppearance((s) => s.theme);
   const customTheme = useAppearance((s) => s.customTheme);
-  const { setCustomTheme } = editAppearance();
+  const { setCustomTheme } = useAppearanceEdit();
 
   if (theme !== "custom") return null;
 

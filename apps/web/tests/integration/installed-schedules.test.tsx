@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type CallPluginRequest, type Model, type Page } from "@flame/runtime-client/wire";
 import { createFlameClient, stringifyJSON } from "@flame/runtime-client";
@@ -54,7 +62,7 @@ afterEach(async () => {
 });
 
 async function loadSchedules(rows: unknown[] = []) {
-  render(<Schedules context={context} />);
+  testClient.render(<Schedules context={context} />);
   const read = await waitForRequest(transport, "plugins.call");
   await act(async () =>
     respondSuccess(transport, read.id, { output: stringifyJSON({ Rows: rows, NextCursor: "" }) }),
@@ -232,7 +240,7 @@ it("ignores a retired context's late catalog after replacement", async () => {
       models: { ...client.models, list: modelList },
     },
   };
-  const view = render(<Schedules context={captured} />);
+  const view = testClient.render(<Schedules context={captured} />);
   const first = await waitForRequest(transport, "plugins.call");
   await act(async () =>
     respondSuccess(transport, first.id, { output: stringifyJSON({ Rows: [], NextCursor: "" }) }),

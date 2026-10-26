@@ -1,4 +1,12 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RunAnnouncer } from "@/features/shell/workbench/panel/RunAnnouncer";
 const material = vi.hoisted(() => ({
@@ -19,7 +27,7 @@ const region = () => screen.getByRole("status") as HTMLElement;
 describe("run announcer", () => {
   it("is present and silent while nothing is running", () => {
     material.current = { status: "idle", outcome: null };
-    render(<RunAnnouncer />);
+    testClient.render(<RunAnnouncer />);
 
     expect(region().textContent).toBe("");
     expect(region().getAttribute("aria-live")).toBe("polite");
@@ -27,14 +35,14 @@ describe("run announcer", () => {
 
   it("says nothing about the state it was mounted in", () => {
     material.current = { status: "finished", outcome: null };
-    render(<RunAnnouncer />);
+    testClient.render(<RunAnnouncer />);
 
     expect(region().textContent).toBe("");
   });
 
   it("says the state, and only the state", () => {
     material.current = { status: "running", outcome: null };
-    const view = render(<RunAnnouncer />);
+    const view = testClient.render(<RunAnnouncer />);
     expect(region().textContent).toBe("");
 
     material.current = { status: "finished", outcome: null };

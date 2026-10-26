@@ -1,4 +1,12 @@
-import { fireEvent, render, renderHook, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, within } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { useWorkspaceFileViewer } from "@/features/workspace/public/navigation";
@@ -24,7 +32,9 @@ describe("rehypeFileRefs", () => {
     let controls = 0;
 
     for (const [name, markdown, linked] of CASES) {
-      const { container, unmount } = render(<MarkdownRenderer text={markdown} reveal="instant" />);
+      const { container, unmount } = testClient.render(
+        <MarkdownRenderer text={markdown} reveal="instant" />,
+      );
 
       const own = within(container).queryAllByRole("button").length;
       controls += own;
@@ -45,9 +55,9 @@ describe("rehypeFileRefs", () => {
   });
 
   it("keeps the visible and copied column while opening the existing line target", () => {
-    const viewer = renderHook(useWorkspaceFileViewer);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
     const text = "在 src/main.ts:12:3 中检查这一处边界。";
-    const { container } = render(<MarkdownRenderer text={text} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
     const reference = within(container).getByRole("button", { name: "src/main.ts:12:3" });
     const paragraph = container.querySelector("p")!;
     expect(paragraph.textContent).toBe(text);
@@ -68,9 +78,9 @@ describe("rehypeFileRefs", () => {
   });
 
   it("opens sentence-ending paths without consuming their punctuation", () => {
-    const viewer = renderHook(useWorkspaceFileViewer);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
     const text = "Inspect apps/web/src/main.ts. Then review src/main.ts.";
-    const { container } = render(<MarkdownRenderer text={text} reveal="instant" />);
+    const { container } = testClient.render(<MarkdownRenderer text={text} reveal="instant" />);
     const references = within(container).getAllByRole("button");
     expect(references.map((reference) => reference.textContent)).toEqual([
       "apps/web/src/main.ts",

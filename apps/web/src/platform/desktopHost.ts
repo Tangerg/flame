@@ -1,68 +1,30 @@
-import { z } from "zod";
 import { type NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
 import { errorMessage, RpcTransportError } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
-const NOTIFICATION_OPENED_EVENT = "desktop:notification-opened";
-
-const HOST_METHOD = {
-  bootstrap: "main.DesktopHost.Bootstrap",
-  notificationAuthorization: "main.DesktopHost.NotificationAuthorization",
-  requestNotificationAuthorization: "main.DesktopHost.RequestNotificationAuthorization",
-  sendNotification: "main.DesktopHost.SendNotification",
-  chooseWorkingDirectory: "main.DesktopHost.ChooseWorkingDirectory",
-  openPath: "main.DesktopHost.OpenPath",
-  revealPath: "main.DesktopHost.RevealPath",
-  revealWindow: "main.DesktopHost.RevealWindow",
-  saveImage: "main.DesktopHost.SaveImage",
-  saveTextFile: "main.DesktopHost.SaveTextFile",
-  windowChrome: "main.DesktopHost.WindowChrome",
-} as const;
+import {
+  callDesktop,
+  DesktopMethods,
+  NotificationOpenedEvent,
+  NotificationTargetSchema,
+} from "@/platform/desktop.generated";
 
 export interface DesktopHostBinding {
   call(method: string, ...args: unknown[]): Promise<unknown>;
   on(event: string, listener: (data: unknown) => void): Promise<() => void>;
 }
 
-const WindowChromeSchema = z.object({
-  controlsCentreY: z.number().nonnegative(),
-  controlsInlineEnd: z.number().nonnegative(),
-  measured: z.boolean(),
-});
-
-const WorkingDirectorySchema = z.string();
-
-const NotificationAuthorizationSchema = z.enum(["unsupported", "default", "granted", "denied"]);
-
-const NotificationTargetSchema = z.string().min(1);
-
-const SaveImageSchema = z.boolean();
-
-const SaveTextFileSchema = z.boolean();
-
-const DesktopBootstrapSchema = z.object({
-  localRuntime: z.object({
-    endpoint: z.url().transform((value, ctx) => {
-      const endpoint = normalizeRuntimeEndpoint(value);
-      if (endpoint) return endpoint;
-      ctx.addIssue({ code: "custom", message: "invalid Runtime endpoint" });
-      return z.NEVER;
-    }),
-    localToken: z.string().min(1).optional(),
-  }),
-});
-
 async function readAuthorization(
   host: DesktopHostBinding,
-  method: string,
+  method: "NotificationAuthorization" | "RequestNotificationAuthorization",
 ): Promise<NotificationAuthorization> {
   let value: unknown;
   try {
-    value = await host.call(method);
+    value = await callDesktop(host, method);
   } catch (error) {
     throw new RpcTransportError(`desktop host notification check failed: ${errorMessage(error)}`);
   }
-  const parsed = NotificationAuthorizationSchema.safeParse(value);
+  const parsed = DesktopMethods[method].result.safeParse(value);
   if (!parsed.success) {
     throw new RpcTransportError(
       `desktop host notification check returned an invalid shape: ${parsed.error.message}`,
@@ -80,19 +42,25 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         const host = binding;
         let value: unknown;
         try {
-          value = await host.call(HOST_METHOD.bootstrap);
+          value = await callDesktop(host, "Bootstrap");
         } catch (error) {
           throw new RpcTransportError(`desktop host bootstrap failed: ${errorMessage(error)}`);
         }
-        const parsed = DesktopBootstrapSchema.safeParse(value);
+        const parsed = DesktopMethods.Bootstrap.result.safeParse(value);
         if (!parsed.success) {
           throw new RpcTransportError(
             `desktop host bootstrap returned an invalid shape: ${parsed.error.message}`,
           );
         }
+        const endpoint = normalizeRuntimeEndpoint(parsed.data.localRuntime.endpoint);
+        if (!endpoint) {
+          throw new RpcTransportError(
+            "desktop host bootstrap returned an invalid Runtime endpoint",
+          );
+        }
         return {
-          runtime: parsed.data.localRuntime,
-          localFilesystemEndpoint: parsed.data.localRuntime.endpoint,
+          runtime: { ...parsed.data.localRuntime, endpoint },
+          localFilesystemEndpoint: endpoint,
         };
       })();
       return pending;
@@ -101,13 +69,13 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       const host = binding;
       let value: unknown;
       try {
-        value = await host.call(HOST_METHOD.chooseWorkingDirectory);
+        value = await callDesktop(host, "ChooseWorkingDirectory");
       } catch (error) {
         throw new RpcTransportError(
           `desktop host directory selection failed: ${errorMessage(error)}`,
         );
       }
-      const parsed = WorkingDirectorySchema.safeParse(value);
+      const parsed = DesktopMethods.ChooseWorkingDirectory.result.safeParse(value);
       if (!parsed.success) {
         throw new RpcTransportError(
           `desktop host directory selection returned an invalid shape: ${parsed.error.message}`,
@@ -119,11 +87,11 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       const host = binding;
       let value: unknown;
       try {
-        value = await host.call(HOST_METHOD.saveImage, source);
+        value = await callDesktop(host, "SaveImage", source);
       } catch (error) {
         throw new RpcTransportError(`desktop host image save failed: ${errorMessage(error)}`);
       }
-      const parsed = SaveImageSchema.safeParse(value);
+      const parsed = DesktopMethods.SaveImage.result.safeParse(value);
       if (!parsed.success) {
         throw new RpcTransportError(
           `desktop host image save returned an invalid shape: ${parsed.error.message}`,
@@ -136,11 +104,11 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       const host = binding;
       let value: unknown;
       try {
-        value = await host.call(HOST_METHOD.saveTextFile, filename, content);
+        value = await callDesktop(host, "SaveTextFile", filename, content);
       } catch (error) {
         throw new RpcTransportError(`desktop host text file save failed: ${errorMessage(error)}`);
       }
-      const parsed = SaveTextFileSchema.safeParse(value);
+      const parsed = DesktopMethods.SaveTextFile.result.safeParse(value);
       if (!parsed.success) {
         throw new RpcTransportError(
           `desktop host text file save returned an invalid shape: ${parsed.error.message}`,
@@ -151,7 +119,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     async revealPath(path) {
       const host = binding;
       try {
-        await host.call(HOST_METHOD.revealPath, path);
+        await callDesktop(host, "RevealPath", path);
         return true;
       } catch (error) {
         throw new RpcTransportError(`desktop host path reveal failed: ${errorMessage(error)}`);
@@ -160,7 +128,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     async openPath(path) {
       const host = binding;
       try {
-        await host.call(HOST_METHOD.openPath, path);
+        await callDesktop(host, "OpenPath", path);
         return true;
       } catch (error) {
         throw new RpcTransportError(`desktop host path open failed: ${errorMessage(error)}`);
@@ -168,16 +136,16 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     },
     async notificationAuthorization() {
       const host = binding;
-      return readAuthorization(host, HOST_METHOD.notificationAuthorization);
+      return readAuthorization(host, "NotificationAuthorization");
     },
     async requestNotificationAuthorization() {
       const host = binding;
-      return readAuthorization(host, HOST_METHOD.requestNotificationAuthorization);
+      return readAuthorization(host, "RequestNotificationAuthorization");
     },
     async sendNotification(notification) {
       const host = binding;
       try {
-        await host.call(HOST_METHOD.sendNotification, notification);
+        await callDesktop(host, "SendNotification", notification);
         return true;
       } catch (error) {
         throw new RpcTransportError(`desktop host notification failed: ${errorMessage(error)}`);
@@ -185,7 +153,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     },
     async onNotificationOpened(listener) {
       const host = binding;
-      return host.on(NOTIFICATION_OPENED_EVENT, (data) => {
+      return host.on(NotificationOpenedEvent, (data) => {
         const target = NotificationTargetSchema.safeParse(data);
         if (target.success) listener(target.data);
         else console.error("[desktop] notification opened without a target:", data);
@@ -194,7 +162,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     async revealWindow() {
       const host = binding;
       try {
-        await host.call(HOST_METHOD.revealWindow);
+        await callDesktop(host, "RevealWindow");
       } catch (error) {
         throw new RpcTransportError(`desktop host window reveal failed: ${errorMessage(error)}`);
       }
@@ -202,7 +170,9 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
     async windowChrome() {
       const host = binding;
       try {
-        const parsed = WindowChromeSchema.safeParse(await host.call(HOST_METHOD.windowChrome));
+        const parsed = DesktopMethods.WindowChrome.result.safeParse(
+          await callDesktop(host, "WindowChrome"),
+        );
         if (!parsed.success || !parsed.data.measured) return null;
         return {
           controlsCentreY: parsed.data.controlsCentreY,

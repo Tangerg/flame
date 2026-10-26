@@ -7,6 +7,7 @@ export interface ClientRendererDependencies {
   prepareWindowChrome(): Promise<void>;
   watchWindowChrome(): () => void;
   mount(): MountedRenderer;
+  mountStartupFailure(error: unknown): MountedRenderer;
   closeConnection(): Promise<void>;
   reportFailure(scope: "React root teardown" | "window chrome teardown", error: unknown): void;
 }
@@ -27,8 +28,19 @@ export class ClientRenderer {
     if (this.#startup) return this.#startup;
     if (!this.#active) return Promise.resolve();
     const startup = this.#startOwned().catch(async (error: unknown) => {
-      await this.dispose();
-      throw error;
+      this.#retireMounted();
+      let failure = error;
+      try {
+        await this.#closeConnection();
+      } catch (closeError) {
+        failure = new AggregateError([error, closeError], "Client startup and cleanup failed");
+      }
+      if (this.#active) {
+        const mounted = this.#dependencies.mountStartupFailure(failure);
+        if (this.#active) this.#mounted = mounted;
+        else mounted.unmount();
+      }
+      throw failure;
     });
     this.#startup = startup;
     return startup;
@@ -57,9 +69,12 @@ export class ClientRenderer {
   }
 
   dispose(): Promise<void> {
-    if (this.#closing) return this.#closing;
     this.#active = false;
+    this.#retireMounted();
+    return this.#closeConnection();
+  }
 
+  #retireMounted(): void {
     const mounted = this.#mounted;
     this.#mounted = undefined;
     try {
@@ -75,7 +90,10 @@ export class ClientRenderer {
     } catch (error) {
       this.#dependencies.reportFailure("window chrome teardown", error);
     }
+  }
 
+  #closeConnection(): Promise<void> {
+    if (this.#closing) return this.#closing;
     try {
       this.#closing = this.#dependencies.closeConnection();
     } catch (error) {

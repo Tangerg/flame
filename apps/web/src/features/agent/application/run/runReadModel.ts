@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { useMemo } from "react";
 import {
   type AgentProblem,
@@ -5,7 +6,7 @@ import {
   type AgentRunOutcome,
   type AgentRunView,
 } from "@/features/agent/public/sessionView";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
 import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
 export class CurrentRootMaterial {
@@ -54,16 +55,22 @@ export class CurrentRootMaterial {
 }
 
 export function useCurrentRootMaterial(): CurrentRootMaterial {
-  const run = agentSessionView().useCurrentRootRun();
+  const agentAccess = useAgent();
+
+  const run = agentAccess.view.useCurrentRootRun();
   return useMemo(() => CurrentRootMaterial.from(run), [run]);
 }
 
 export function useIsCurrentRootRunning(): boolean {
-  return agentSessionView().useCurrentRootRunning();
+  const agentAccess = useAgent();
+
+  return agentAccess.view.useCurrentRootRunning();
 }
 
 export function useActiveSessionProblem(): AgentProblem | null {
-  return agentSessionView().useProblem();
+  const agentAccess = useAgent();
+
+  return agentAccess.view.useProblem();
 }
 
 function epochMillis(iso: string | undefined): number | null {

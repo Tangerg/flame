@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FlameClient } from "@flame/runtime-client";
 import { parseJSON } from "@flame/runtime-client/json";
-import {
-  exportConversationJson,
-  exportConversationMarkdown,
-  exportSessionTrajectory,
-} from "@/features/workspace/application/conversationExport";
-import { installConversationArchiveGateway } from "@/features/workspace/adapters/runtimeConversationArchiveGateway";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+
+import { createConversationArchiveGateway } from "@/features/workspace/adapters/runtimeConversationArchiveGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
 import { createDesktopHostClient } from "@/platform/desktopHost";
@@ -38,15 +36,17 @@ vi.mock("@/features/notifications/public/notifications", async (importOriginal) 
 
 const files: FileTransferPort = { saveText: mocks.download, pickText: vi.fn() };
 
-const installations: Array<ReturnType<typeof installConversationArchiveGateway>> = [];
+const installations: Array<ReturnType<typeof createConversationArchiveGateway>> = [];
 
 beforeEach(() => {
+  testClient = createTestClient({ start: false });
   mocks.download.mockReset().mockResolvedValue(undefined);
   vi.mocked(notifyError).mockReset();
 });
 
 afterEach(async () => {
   for (const installation of installations.splice(0).reverse()) installation.dispose();
+  await testClient.dispose();
   vi.restoreAllMocks();
 });
 
@@ -57,9 +57,11 @@ describe("runtimeConversationArchiveGateway", () => {
     );
     const exportConversation = vi.fn().mockResolvedValue({ format: "json", artifact });
     const client = { sessions: { export: exportConversation } } as unknown as FlameClient;
-    installations.push(installConversationArchiveGateway(() => client, files));
+    installations.push(
+      createConversationArchiveGateway(testClient.workspace.access.archive, () => client, files),
+    );
 
-    await exportConversationJson();
+    await testClient.workspace.access.archive.exportConversationJson();
 
     expect(exportConversation).toHaveBeenCalledExactlyOnceWith("session-current", "json");
     expect(mocks.download).toHaveBeenCalledWith(
@@ -81,9 +83,11 @@ describe("runtimeConversationArchiveGateway", () => {
     };
     const exportTrajectory = vi.fn().mockResolvedValue({ trajectory });
     const client = { sessions: { exportTrajectory } } as unknown as FlameClient;
-    installations.push(installConversationArchiveGateway(() => client, files));
+    installations.push(
+      createConversationArchiveGateway(testClient.workspace.access.archive, () => client, files),
+    );
 
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
 
     expect(exportTrajectory).toHaveBeenCalledExactlyOnceWith({ sessionId: "session-current" });
     expect(mocks.download).toHaveBeenCalledWith(
@@ -97,10 +101,16 @@ describe("runtimeConversationArchiveGateway", () => {
     const retiredExport = vi.fn().mockResolvedValue({ format: "md", markdown: "retired" });
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "successor" });
     let runtimeClient = () => clientWithExport(retiredExport);
-    installations.push(installConversationArchiveGateway(() => runtimeClient(), files));
+    installations.push(
+      createConversationArchiveGateway(
+        testClient.workspace.access.archive,
+        () => runtimeClient(),
+        files,
+      ),
+    );
 
     runtimeClient = () => clientWithExport(successorExport);
-    await exportConversationMarkdown();
+    await testClient.workspace.access.archive.exportConversationMarkdown();
 
     expect(retiredExport).toHaveBeenCalledWith("session-current", "md");
     expect(successorExport).not.toHaveBeenCalled();
@@ -116,10 +126,14 @@ describe("runtimeConversationArchiveGateway", () => {
     const exportConversation = vi.fn(() => response.promise);
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "current" });
     let runtimeClient = () => clientWithExport(exportConversation);
-    const installation = installConversationArchiveGateway(() => runtimeClient(), files);
+    const installation = createConversationArchiveGateway(
+      testClient.workspace.access.archive,
+      () => runtimeClient(),
+      files,
+    );
     installations.push(installation);
 
-    const retired = exportConversationMarkdown();
+    const retired = testClient.workspace.access.archive.exportConversationMarkdown();
     const hasSettled = observedSettlement(retired);
     await vi.waitFor(() => expect(exportConversation).toHaveBeenCalledOnce());
     runtimeClient = () => clientWithExport(successorExport);
@@ -132,7 +146,7 @@ describe("runtimeConversationArchiveGateway", () => {
     expect(settledAtReplacement).toBe(true);
     expect(mocks.download).not.toHaveBeenCalled();
 
-    await exportConversationMarkdown();
+    await testClient.workspace.access.archive.exportConversationMarkdown();
     expect(successorExport).toHaveBeenCalledExactlyOnceWith("session-current", "md");
     expect(exportConversation).toHaveBeenCalledOnce();
     expect(mocks.download).toHaveBeenCalledWith(
@@ -147,13 +161,14 @@ describe("runtimeConversationArchiveGateway", () => {
     const host = createDesktopHostClient({ call, on: async () => () => {} });
     const exportConversation = vi.fn().mockResolvedValue({ format: "md", markdown: "# Résumé" });
     installations.push(
-      installConversationArchiveGateway(
+      createConversationArchiveGateway(
+        testClient.workspace.access.archive,
         () => clientWithExport(exportConversation),
         createFileTransfer(host),
       ),
     );
 
-    await exportConversationMarkdown();
+    await testClient.workspace.access.archive.exportConversationMarkdown();
 
     expect(call).toHaveBeenCalledExactlyOnceWith(
       "main.DesktopHost.SaveTextFile",
@@ -170,13 +185,16 @@ describe("runtimeConversationArchiveGateway", () => {
     const host = createDesktopHostClient({ call, on: async () => () => {} });
     const exportConversation = vi.fn().mockResolvedValue({ format: "md", markdown: "# Title" });
     installations.push(
-      installConversationArchiveGateway(
+      createConversationArchiveGateway(
+        testClient.workspace.access.archive,
         () => clientWithExport(exportConversation),
         createFileTransfer(host),
       ),
     );
 
-    await expect(exportConversationMarkdown()).resolves.toBeUndefined();
+    await expect(
+      testClient.workspace.access.archive.exportConversationMarkdown(),
+    ).resolves.toBeUndefined();
 
     expect(notifyError).toHaveBeenCalledExactlyOnceWith(
       expect.stringContaining("permission denied"),

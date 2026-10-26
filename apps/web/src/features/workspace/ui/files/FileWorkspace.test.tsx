@@ -1,33 +1,28 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  renderHook,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import {
-  configureLocalWorkspace,
-  localWorkspace,
-} from "@/features/workspace/application/ports/localWorkspace";
 import * as notifications from "@/features/notifications/public/notifications";
-import { navigator } from "@/lib/navigation";
+
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
   rememberWorkspaceView,
 } from "@/features/workspace/application/navigation";
 import { useWorkspaceFileViewer } from "@/features/workspace/public/navigation";
-import { useContextDockStore } from "@/features/workspace/adapters/contextDockStore";
-import { installWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
+
 import {
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
@@ -67,8 +62,6 @@ const directory: WorkspaceFileEntry = { name: "src", path: "src", type: "dir" };
 
 const file: WorkspaceFileEntry = { name: "main.go", path: "src/main.go", type: "file" };
 
-let uninstallClassifier: () => void;
-
 let uninstallLocalWorkspace: () => void;
 
 let isLocal = false;
@@ -76,14 +69,14 @@ let isLocal = false;
 beforeEach(async () => {
   changes.clear();
   isLocal = false;
-  uninstallLocalWorkspace = configureLocalWorkspace({
+  uninstallLocalWorkspace = stubInstance(testClient.workspace.access.local, {
     available: () => isLocal,
     open: vi.fn(),
     reveal: vi.fn(),
   });
-  uninstallClassifier = installWorkspaceErrorClassifier();
+
   selection.current = { status: "ready" };
-  useContextDockStore.setState({
+  testClient.workspace.dock.store.setState({
     fileViewer: null,
     memory: {
       expandedDirs: [],
@@ -124,7 +117,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  uninstallClassifier();
+
   uninstallLocalWorkspace();
   cleanup();
   client.clear();
@@ -152,7 +145,7 @@ function ownedGroup(item: HTMLElement): HTMLElement | null {
 }
 
 function mount(children: React.ReactNode) {
-  return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
+  return testClient.render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
 }
 
 const ROW = 20;
@@ -186,7 +179,7 @@ function mountRetained() {
       </div>
     </QueryClientProvider>
   );
-  const view = render(workspace(true));
+  const view = testClient.render(workspace(true));
   return {
     hide: () => view.rerender(workspace(false)),
     reveal: () => view.rerender(workspace(true)),
@@ -209,7 +202,7 @@ describe("workspace files panel", () => {
     expect(screen.getByText("Renamed from old/main.go", { selector: "span[hidden]" })).toBeTruthy();
   });
   it("reads a file in the Runtime default workspace", async () => {
-    openWorkspaceFile("src/main.go");
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
     mount(<FileWorkspace />);
 
     await screen.findByText("package main");
@@ -218,7 +211,7 @@ describe("workspace files panel", () => {
 
   it("keeps the file shown while a wider line window loads", async () => {
     readFile.mockResolvedValue({ content: "middle chunk", startLine: 1300, totalLines: 3000 });
-    openWorkspaceFile("src/big.go");
+    openWorkspaceFile(testClient.workspace.access, "src/big.go");
     mount(<FileWorkspace />);
     await screen.findByText("middle chunk");
 
@@ -241,14 +234,14 @@ describe("workspace files panel", () => {
       placed.push(this.getAttribute("data-quote-line"));
     });
     readFile.mockResolvedValueOnce(lineWindow(250, 650, 1000));
-    openWorkspaceFile("src/big.go", 450);
+    openWorkspaceFile(testClient.workspace.access, "src/big.go", 450);
     mount(<FileWorkspace />);
     await vi.waitFor(() => expect(row(450)).toBeTruthy());
     expect(placed).toEqual(["450"]);
 
     const pending = Promise.withResolvers<WorkspaceFileContent>();
     readFile.mockReturnValueOnce(pending.promise);
-    act(() => openWorkspaceFile("src/big.go", 300));
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/big.go", 300));
     expect(row(450)).toBeTruthy();
     expect(placed).toEqual(["450"]);
 
@@ -268,7 +261,7 @@ describe("workspace files panel", () => {
           .spyOn(HTMLElement.prototype, "scrollIntoView")
           .mockImplementation(() => {});
         readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
-        openWorkspaceFile("src/big.go", 300);
+        openWorkspaceFile(testClient.workspace.access, "src/big.go", 300);
         mount(<FileWorkspace />);
         await waitFor(() => expect(row(500)).toBeTruthy());
         const host = controlGeometry(screen.getByRole("region", { name: "src/big.go" }));
@@ -304,7 +297,7 @@ describe("workspace files panel", () => {
 
     it("hands focus to the reader even when more lines remain beyond either range control", async () => {
       readFile.mockResolvedValueOnce(lineWindow(400, 402, 1000));
-      openWorkspaceFile("src/big.go");
+      openWorkspaceFile(testClient.workspace.access, "src/big.go");
       mount(<FileWorkspace />);
       await waitFor(() => expect(row(402)).toBeTruthy());
       const host = screen.getByRole("region", { name: "src/big.go" });
@@ -329,7 +322,7 @@ describe("workspace files panel", () => {
 
     it("leaves focus alone when the activated range control does not own it", async () => {
       readFile.mockResolvedValueOnce(lineWindow(400, 402, 1000));
-      openWorkspaceFile("src/big.go");
+      openWorkspaceFile(testClient.workspace.access, "src/big.go");
       mount(
         <>
           <textarea aria-label="Message" defaultValue="Retained message draft" />
@@ -362,7 +355,7 @@ describe("workspace files panel", () => {
 
     it("preserves a message draft and its focus when typing resumes while a range loads", async () => {
       readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
-      openWorkspaceFile("src/big.go");
+      openWorkspaceFile(testClient.workspace.access, "src/big.go");
       mount(
         <>
           <textarea aria-label="Message" defaultValue="Retained message draft" />
@@ -389,7 +382,7 @@ describe("workspace files panel", () => {
 
     it("preserves navigation focus when an old range finishes loading", async () => {
       readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
-      openWorkspaceFile("src/big.go");
+      openWorkspaceFile(testClient.workspace.access, "src/big.go");
       mount(<FileWorkspace />);
       await waitFor(() => expect(row(500)).toBeTruthy());
       const host = screen.getByRole("region", { name: "src/big.go" });
@@ -401,7 +394,7 @@ describe("workspace files panel", () => {
       expect(document.activeElement).toBe(host);
 
       readFile.mockResolvedValueOnce({ content: "package main", startLine: 1, totalLines: 1 });
-      act(() => openWorkspaceFile("src/main.go"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go"));
       await screen.findByText("package main");
       const back = screen.getByRole("button", { name: "Back to files" });
       expect(document.activeElement).toBe(back);
@@ -420,7 +413,7 @@ describe("workspace files panel", () => {
     async function openMiddle() {
       vi.spyOn(HTMLElement.prototype, "scrollIntoView").mockImplementation(() => {});
       readFile.mockResolvedValueOnce(lineWindow(1300, 1302, 3000));
-      openWorkspaceFile("src/big.go");
+      openWorkspaceFile(testClient.workspace.access, "src/big.go");
       mount(<FileWorkspace />);
       await vi.waitFor(() => expect(row(1300)).toBeTruthy());
       const host = controlGeometry(screen.getByRole("region", { name: "src/big.go" }));
@@ -442,7 +435,7 @@ describe("workspace files panel", () => {
       const { host, earlier } = await openMiddle();
       const navigation = Promise.withResolvers<WorkspaceFileContent>();
       readFile.mockReturnValueOnce(navigation.promise);
-      act(() => openWorkspaceFile("src/big.go", 2000));
+      act(() => openWorkspaceFile(testClient.workspace.access, "src/big.go", 2000));
       await act(async () => earlier.resolve(lineWindow(1100, 1302, 3000)));
       await act(async () => navigation.resolve(lineWindow(1800, 2200, 3000)));
       await vi.waitFor(() => expect(row(2200)).toBeTruthy());
@@ -466,12 +459,12 @@ describe("workspace files panel", () => {
       readFile.mockImplementation(async ({ path }) =>
         path === "src/main.ts" ? lineWindow(1, 39, 39) : lineWindow(1, 155, 155),
       );
-      openWorkspaceFile("src/main.ts");
+      openWorkspaceFile(testClient.workspace.access, "src/main.ts");
       const retained = mountRetained();
       await vi.waitFor(() => expect(row(39)).toBeTruthy());
       const host = controlGeometry(screen.getByRole("region", { name: "src/main.ts" }));
 
-      act(() => openWorkspaceFile("package.json"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "package.json"));
       await vi.waitFor(() => expect(row(155)).toBeTruthy());
       expect(screen.getByRole("region", { name: "package.json" })).toBe(host);
       host.scrollTop = 2214;
@@ -481,7 +474,7 @@ describe("workspace files panel", () => {
       expect(host.scrollTop).toBe(2214);
 
       const reads = readFile.mock.calls.length;
-      act(() => openWorkspaceFile("src/main.ts"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "src/main.ts"));
       expect(row(39)).toBeTruthy();
       expect(readFile).toHaveBeenCalledTimes(reads);
       expect(host.scrollTop).toBe(0);
@@ -492,7 +485,7 @@ describe("workspace files panel", () => {
       readFile.mockImplementation(async ({ startLine, endLine }) =>
         lineWindow(startLine ?? 1, endLine ?? 400, 1000),
       );
-      openWorkspaceFile("src/main.ts", 450);
+      openWorkspaceFile(testClient.workspace.access, "src/main.ts", 450);
       mount(<FileWorkspace />);
       await vi.waitFor(() => expect(row(450)).toBeTruthy());
       const host = controlGeometry(screen.getByRole("region", { name: "src/main.ts" }));
@@ -502,7 +495,7 @@ describe("workspace files panel", () => {
       await vi.waitFor(() => expect(row(850)).toBeTruthy());
       expect(host.scrollTop).toBe(3482);
 
-      act(() => openWorkspaceFile("src/main.ts"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "src/main.ts"));
       await vi.waitFor(() => expect(row(450)).toBeNull());
       expect(row(1)).toBeTruthy();
       expect(host.scrollTop).toBe(0);
@@ -510,13 +503,13 @@ describe("workspace files panel", () => {
 
     it("reopens a rendered file at its top in its preferred mode", async () => {
       readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
-      openWorkspaceFile("docs/reading-guide.md");
+      openWorkspaceFile(testClient.workspace.access, "docs/reading-guide.md");
       mount(<FileWorkspace />);
       await screen.findByTestId("rendered-markdown");
       const host = controlGeometry(screen.getByRole("region", { name: "docs/reading-guide.md" }));
       host.scrollTop = 753;
 
-      act(() => openWorkspaceFile("docs/reading-guide.md"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "docs/reading-guide.md"));
       await screen.findByTestId("rendered-markdown");
       expect(host.scrollTop).toBe(0);
 
@@ -525,7 +518,7 @@ describe("workspace files panel", () => {
       expect(screen.queryByTestId("rendered-markdown")).toBeNull();
       expect(host.scrollTop).toBe(753);
 
-      act(() => openWorkspaceFile("docs/reading-guide.md"));
+      act(() => openWorkspaceFile(testClient.workspace.access, "docs/reading-guide.md"));
       await screen.findByTestId("rendered-markdown");
       expect(host.scrollTop).toBe(0);
     });
@@ -533,7 +526,7 @@ describe("workspace files panel", () => {
 
   it("renders a whole file through the renderer registered for its extension", async () => {
     readFile.mockResolvedValue({ content: "# Title", startLine: 1, totalLines: 1 });
-    openWorkspaceFile("docs/README.md");
+    openWorkspaceFile(testClient.workspace.access, "docs/README.md");
     mount(
       <>
         <button>Open file</button>
@@ -564,7 +557,7 @@ describe("workspace files panel", () => {
       totalLines: 1,
       truncated: true,
     });
-    openWorkspaceFile("docs/README.md");
+    openWorkspaceFile(testClient.workspace.access, "docs/README.md");
     mount(<FileWorkspace />);
     await screen.findByText("# Truncated");
     expect(screen.queryByTestId("rendered-markdown")).toBeNull();
@@ -572,7 +565,7 @@ describe("workspace files panel", () => {
 
   it("follows a line reference in source even when the whole file is available", async () => {
     readFile.mockResolvedValue({ content: "# First\nSecond", startLine: 1, totalLines: 2 });
-    openWorkspaceFile("docs/README.md", 2);
+    openWorkspaceFile(testClient.workspace.access, "docs/README.md", 2);
     mount(<FileWorkspace />);
     await screen.findByText("Second");
     expect(screen.queryByTestId("rendered-markdown")).toBeNull();
@@ -580,7 +573,7 @@ describe("workspace files panel", () => {
 
   it("retires the file renderer without losing the captured source", async () => {
     readFile.mockResolvedValue({ content: "# Captured", startLine: 1, totalLines: 1 });
-    openWorkspaceFile("docs/README.md");
+    openWorkspaceFile(testClient.workspace.access, "docs/README.md");
     mount(<FileWorkspace />);
     await screen.findByTestId("rendered-markdown");
     await resetKernelForTest();
@@ -590,7 +583,7 @@ describe("workspace files panel", () => {
 
   it("waits for an unresolved Session workspace before following a line reference", async () => {
     selection.current = { status: "resolving", sessionId: "session-loading" };
-    openWorkspaceFile("src/main.go", 450);
+    openWorkspaceFile(testClient.workspace.access, "src/main.go", 450);
     const view = mount(<FileWorkspace />);
     selection.current = { status: "ready", cwd: "/work/project" };
     view.rerender(
@@ -618,8 +611,8 @@ describe("workspace files panel", () => {
     act(() => fileRow.focus());
     fireEvent.keyDown(fileRow, { key: "Enter" });
     await screen.findByText("package main");
-    expect(navigator().get().dock).toBe("file");
-    expect(useContextDockStore.getState().dockViewIds).toEqual(["file"]);
+    expect(testClient.navigation.get().dock).toBe("file");
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual(["file"]);
 
     const back = screen.getByRole("button", { name: "Back to files" });
     expect(document.activeElement).toBe(back);
@@ -628,7 +621,7 @@ describe("workspace files panel", () => {
     expect(returned.tabIndex).toBe(0);
     expect(document.activeElement).toBe(returned);
     expect(screen.queryByText("package main")).toBeNull();
-    expect(useContextDockStore.getState().dockViewIds).toEqual(["file"]);
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual(["file"]);
     fireEvent.keyDown(returned, { key: "ArrowUp" });
     expect(document.activeElement).toBe(screen.getByRole("treeitem", { name: "src" }));
   });
@@ -648,10 +641,10 @@ describe("workspace files panel", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Back to files" }));
     const other = screen.getByRole("button", { name: "Another control" });
     act(() => other.focus());
-    act(() => closeWorkspaceFile());
+    act(() => closeWorkspaceFile(testClient.workspace.access));
     await screen.findByRole("treeitem", { name: "main.go" });
     expect(document.activeElement).toBe(other);
-    act(() => openWorkspaceFile("src/main.go"));
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go"));
     await screen.findByText("package main");
     expect(document.activeElement).toBe(other);
   });
@@ -741,7 +734,7 @@ describe("workspace files panel", () => {
 
   it("keeps a retried file read's focus in the reader through failure and recovery", async () => {
     readFile.mockRejectedValueOnce(new Error("file unavailable"));
-    openWorkspaceFile("src/main.go");
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
     mount(
       <>
         <textarea aria-label="Message" defaultValue="Retained message draft" />
@@ -791,7 +784,7 @@ describe("workspace files panel", () => {
   it("finds the file it last opened in the tree, with its folders open", async () => {
     const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
     listFiles.mockImplementation(async (query) => (query.path ? [file] : listing.promise));
-    openWorkspaceFile("src/main.go");
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
     mount(<FileWorkspace />);
     await screen.findByText("package main");
 
@@ -810,7 +803,7 @@ describe("workspace files panel", () => {
   it("keeps focus where the user moved it while the returning file tree loads", async () => {
     const listing = Promise.withResolvers<WorkspaceFileEntry[]>();
     listFiles.mockImplementation(async (query) => (query.path ? [file] : listing.promise));
-    openWorkspaceFile("src/main.go");
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
     mount(
       <>
         <button>Another control</button>
@@ -838,7 +831,7 @@ describe("workspace files panel", () => {
       readFile.mockRejectedValue(
         new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
       );
-      openWorkspaceFile("assets/logo.png");
+      openWorkspaceFile(testClient.workspace.access, "assets/logo.png");
       mount(<FileWorkspace />);
 
       expect(await screen.findByText("No image preview here yet")).toBeTruthy();
@@ -868,7 +861,7 @@ describe("file preview path identity", () => {
   }
 
   it("keeps the header to the filename and shows the complete path ahead of the source", async () => {
-    openWorkspaceFile(longPath);
+    openWorkspaceFile(testClient.workspace.access, longPath);
     mount(<FileWorkspace />);
     await screen.findByText("package main");
 
@@ -888,13 +881,13 @@ describe("file preview path identity", () => {
 
   it("follows the opened file's path in the same reader", async () => {
     readFile.mockResolvedValueOnce({ content: "package first", startLine: 1, totalLines: 1 });
-    openWorkspaceFile(longPath);
+    openWorkspaceFile(testClient.workspace.access, longPath);
     mount(<FileWorkspace />);
     await screen.findByText("package first");
     const { region } = shownPath(longPath);
 
     readFile.mockResolvedValueOnce({ content: "package next", startLine: 1, totalLines: 1 });
-    act(() => openWorkspaceFile("cmd/flame/main.go"));
+    act(() => openWorkspaceFile(testClient.workspace.access, "cmd/flame/main.go"));
     await screen.findByText("package next");
     expect(shownPath("cmd/flame/main.go").region).toBe(region);
     expect(within(region).queryByText(longPath)).toBeNull();
@@ -904,7 +897,7 @@ describe("file preview path identity", () => {
   it("shows the complete path ahead of both rendered and source presentations", async () => {
     const path = "docs/guides/runtime/reading-guide.md";
     readFile.mockResolvedValue({ content: "# Guide", startLine: 1, totalLines: 1 });
-    openWorkspaceFile(path);
+    openWorkspaceFile(testClient.workspace.access, path);
     mount(<FileWorkspace />);
 
     const rendered = await screen.findByTestId("rendered-markdown");
@@ -919,7 +912,7 @@ describe("file preview path identity", () => {
   it("shows the complete path while a read is pending and after it fails", async () => {
     const read = Promise.withResolvers<WorkspaceFileContent>();
     readFile.mockReturnValueOnce(read.promise);
-    openWorkspaceFile(longPath);
+    openWorkspaceFile(testClient.workspace.access, longPath);
     mount(<FileWorkspace />);
     shownPath(longPath);
 
@@ -935,7 +928,7 @@ describe("file preview path identity", () => {
     readFile.mockRejectedValue(
       new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
     );
-    openWorkspaceFile(path);
+    openWorkspaceFile(testClient.workspace.access, path);
     mount(<FileWorkspace />);
 
     expect(await screen.findByText("No image preview here yet")).toBeTruthy();
@@ -1183,7 +1176,9 @@ describe("expanded directory refresh continuity", () => {
 
   it("keeps the directory's accepted children, cursor and focus through failed refreshes and retries", async () => {
     listFiles.mockImplementation(async (query) => (query.path ? [file] : [directory, readme]));
-    useContextDockStore.setState({ memory: { expandedDirs: [], lastFilePath: file.path } });
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: [], lastFilePath: file.path },
+    });
     mount(
       <>
         <textarea aria-label="Message" defaultValue="Retained message draft" />
@@ -1383,7 +1378,7 @@ describe("expanded directory refresh continuity", () => {
         <FileTree onReveal={() => {}} entries={[directory]} cwd={cwd} onSelectFile={() => {}} />
       </QueryClientProvider>
     );
-    const view = render(tree("/work/one"));
+    const view = testClient.render(tree("/work/one"));
     const { folder } = await expandWithCursorInChild();
     listFiles.mockRejectedValueOnce(unavailable());
     await act(() => client.refetchQueries(directoryQuery("/work/one")));
@@ -1434,7 +1429,7 @@ describe("file source selection", () => {
     "selects only the presented source with %s and copies its literal content",
     async (modifier) => {
       readFile.mockResolvedValue(captured());
-      openWorkspaceFile(path);
+      openWorkspaceFile(testClient.workspace.access, path);
       mount(
         <>
           <textarea aria-label="Message" defaultValue="Retained draft" />
@@ -1461,7 +1456,7 @@ describe("file source selection", () => {
 
   it("leaves rendered Markdown native and scopes its selected or fallback source", async () => {
     readFile.mockResolvedValue(captured("# Guide\n\nA  paragraph\n"));
-    openWorkspaceFile("docs/guide.md");
+    openWorkspaceFile(testClient.workspace.access, "docs/guide.md");
     mount(<FileWorkspace />);
     const rendered = await screen.findByTestId("rendered-markdown");
     const host = screen.getByRole("region", { name: "docs/guide.md" });
@@ -1490,7 +1485,7 @@ describe("file source selection", () => {
 
   it("copies accepted content through pending expansion, new rows and a shorter refresh", async () => {
     readFile.mockResolvedValueOnce(captured(content, 30));
-    openWorkspaceFile(path);
+    openWorkspaceFile(testClient.workspace.access, path);
     mount(<FileWorkspace />);
     await waitFor(() => expect(row(10)).toBeTruthy());
     const host = screen.getByRole("region", { name: path });
@@ -1538,7 +1533,7 @@ describe("file read refresh continuity", () => {
       startLine: 1,
       totalLines: 2,
     });
-    openWorkspaceFile(guide);
+    openWorkspaceFile(testClient.workspace.access, guide);
     mount(
       <>
         <textarea aria-label="Message" defaultValue="Retained message draft" />
@@ -1641,7 +1636,7 @@ describe("file read refresh continuity", () => {
     "keeps $label mounted through a failed refresh until updated content arrives",
     async ({ path, content, updated, mode, shown }) => {
       readFile.mockResolvedValueOnce({ content, startLine: 1, totalLines: 1 });
-      openWorkspaceFile(path);
+      openWorkspaceFile(testClient.workspace.access, path);
       mount(<FileWorkspace />);
       const node = await waitFor(shown);
       const host = screen.getByRole("region", { name: path });
@@ -1667,7 +1662,7 @@ describe("file read refresh continuity", () => {
   );
 
   it("explains an unsupported refresh beside the accepted source without a retry", async () => {
-    openWorkspaceFile("src/main.go");
+    openWorkspaceFile(testClient.workspace.access, "src/main.go");
     mount(<FileWorkspace />);
     await screen.findByText("package main");
     const host = screen.getByRole("region", { name: "src/main.go" });
@@ -1696,7 +1691,7 @@ describe("file read refresh continuity", () => {
       isLocal = true;
       selection.current = { status: "ready", cwd: "/work/project" };
       readFile.mockResolvedValueOnce({ content: "cached pixels", startLine: 1, totalLines: 1 });
-      openWorkspaceFile(path);
+      openWorkspaceFile(testClient.workspace.access, path);
       mount(<FileWorkspace />);
       await screen.findByText("cached pixels");
       expect(screen.getByText("1 line")).toBeTruthy();
@@ -1725,7 +1720,7 @@ describe("file read refresh continuity", () => {
     "drops the previous read's content when $label opens under refresh feedback",
     async ({ change, next }) => {
       selection.current = { status: "ready", cwd: "/work/one" };
-      openWorkspaceFile("src/main.go");
+      openWorkspaceFile(testClient.workspace.access, "src/main.go");
       const view = mount(<FileWorkspace />);
       await screen.findByText("package main");
       readFile.mockRejectedValueOnce(unavailable());
@@ -1736,7 +1731,7 @@ describe("file read refresh continuity", () => {
       readFile.mockReturnValueOnce(read.promise);
       selection.current = { status: "ready", cwd: next.cwd };
       if (change === "path") {
-        act(() => openWorkspaceFile(next.path));
+        act(() => openWorkspaceFile(testClient.workspace.access, next.path));
       } else {
         view.rerender(
           <QueryClientProvider client={client}>
@@ -1756,7 +1751,7 @@ describe("file read refresh continuity", () => {
 
   it("keeps the ordinary read failure for a new line window without accepted data", async () => {
     readFile.mockResolvedValueOnce(lineWindow(100, 500, 600));
-    openWorkspaceFile("src/big.go");
+    openWorkspaceFile(testClient.workspace.access, "src/big.go");
     mount(<FileWorkspace />);
     await waitFor(() => expect(row(500)).toBeTruthy());
     readFile.mockRejectedValueOnce(unavailable());
@@ -1873,13 +1868,13 @@ describe("workspace file tree keyboard model", () => {
     const control = screen.getByRole("button", { name: "Another control" });
     act(() => control.focus());
 
-    act(() => rememberWorkspaceView({ expandedDirs: [] }));
+    act(() => rememberWorkspaceView(testClient.workspace.access, { expandedDirs: [] }));
     expect(screen.queryByRole("treeitem", { name: "main.go" })).toBeNull();
     expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(0);
     expect(screen.getByRole("treeitem", { name: "README.md" }).tabIndex).toBe(-1);
     expect(document.activeElement).toBe(control);
 
-    act(() => rememberWorkspaceView({ expandedDirs: ["src"] }));
+    act(() => rememberWorkspaceView(testClient.workspace.access, { expandedDirs: ["src"] }));
     expect((await screen.findByRole("treeitem", { name: "main.go" })).tabIndex).toBe(0);
     expect(screen.getByRole("treeitem", { name: "src" }).tabIndex).toBe(-1);
     expect(document.activeElement).toBe(control);
@@ -1891,7 +1886,9 @@ describe("workspace file tree keyboard model", () => {
     listFiles.mockImplementation(async (query) =>
       query.path === directory.path ? [nested, file] : query.path ? [deep] : [directory],
     );
-    useContextDockStore.setState({ memory: { expandedDirs: [], lastFilePath: file.path } });
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: [], lastFilePath: file.path },
+    });
     const onSelectFile = vi.fn();
     mount(
       <FileTree onReveal={() => {}} entries={[directory, readme]} onSelectFile={onSelectFile} />,
@@ -1934,13 +1931,15 @@ describe("workspace file tree keyboard model", () => {
     expect(screen.queryByRole("treeitem", { name: "nested" })).toBeNull();
     expect(ownedGroup(src)).toBeNull();
     expect(onSelectFile).not.toHaveBeenCalled();
-    expect(useContextDockStore.getState().memory.lastFilePath).toBe(file.path);
+    expect(testClient.workspace.dock.store.getState().memory.lastFilePath).toBe(file.path);
     fireEvent.click(readmeRow);
     expect(onSelectFile).toHaveBeenCalledExactlyOnceWith("README.md");
   });
 
   it("keeps each tree's branch owning only its own group for the same paths", async () => {
-    useContextDockStore.setState({ memory: { expandedDirs: ["src"], lastFilePath: null } });
+    testClient.workspace.dock.store.setState({
+      memory: { expandedDirs: ["src"], lastFilePath: null },
+    });
     mount(
       <>
         <FileTree
@@ -1981,8 +1980,8 @@ describe("Go to line target validation", () => {
       startLine: 1,
       totalLines: 5,
     });
-    const viewer = renderHook(useWorkspaceFileViewer);
-    act(() => openWorkspaceFile("src/main.go", 2));
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go", 2));
     mount(<FileWorkspace />);
     await screen.findByText("three");
     const trigger = screen.getByRole("button", { name: "Go to line" });
@@ -2051,7 +2050,7 @@ describe("Go to line target validation", () => {
     if (method === "Enter") fireEvent.keyDown(field, { key: "Enter" });
     else fireEvent.click(within(dialog).getByRole("button", { name: "Go" }));
 
-    expect(navigate).toHaveBeenCalledExactlyOnceWith("src/main.go", 4);
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(testClient.workspace.access, "src/main.go", 4);
     expect(viewer.result.current).toEqual({ path: "src/main.go", line: 4 });
     await waitFor(() => expect(dialog.isConnected).toBe(false));
     await waitFor(() => expect(document.activeElement).toBe(trigger));
@@ -2079,7 +2078,11 @@ describe("Go to line target validation", () => {
       expect(document.activeElement).toBe(field);
 
       fireEvent.keyDown(field, { key: "Enter" });
-      expect(navigate).toHaveBeenCalledExactlyOnceWith("src/main.go", 4);
+      expect(navigate).toHaveBeenCalledExactlyOnceWith(
+        testClient.workspace.access,
+        "src/main.go",
+        4,
+      );
     },
   );
 
@@ -2106,20 +2109,20 @@ describe("local file action feedback", () => {
   function prepareLocalActions() {
     isLocal = true;
     selection.current = { status: "ready", cwd: "/work/project" };
-    vi.mocked(localWorkspace().open).mockResolvedValue(false);
-    vi.mocked(localWorkspace().reveal).mockResolvedValue(false);
+    vi.mocked(testClient.workspace.access.local.open).mockResolvedValue(false);
+    vi.mocked(testClient.workspace.access.local.reveal).mockResolvedValue(false);
     return vi.spyOn(notifications.useNotificationStore.getState(), "push");
   }
 
   it("reports a refused header reveal without replacing the reader or moving focus", async () => {
     const record = prepareLocalActions();
-    openWorkspaceFile(file.path);
+    openWorkspaceFile(testClient.workspace.access, file.path);
     mount(<FileWorkspace />);
     const reader = await screen.findByRole("region", { name: file.path });
     await screen.findByText("package main");
     const reveal = screen.getByRole("button", { name: "Show in Finder" });
     act(() => reveal.focus());
-    const before = useContextDockStore.getState().fileViewer;
+    const before = testClient.workspace.dock.store.getState().fileViewer;
 
     fireEvent.click(reveal);
 
@@ -2128,9 +2131,12 @@ describe("local file action feedback", () => {
     expect(feedback.textContent).toContain("Finder");
     expect(record).toHaveBeenCalledOnce();
     expect(record.mock.calls[0]![0].message).toContain(file.path);
-    expect(localWorkspace().reveal).toHaveBeenCalledExactlyOnceWith("/work/project", file.path);
+    expect(testClient.workspace.access.local.reveal).toHaveBeenCalledExactlyOnceWith(
+      "/work/project",
+      file.path,
+    );
     expect(screen.getByRole("region", { name: file.path })).toBe(reader);
-    expect(useContextDockStore.getState().fileViewer).toBe(before);
+    expect(testClient.workspace.dock.store.getState().fileViewer).toBe(before);
     expect(document.activeElement).toBe(reveal);
   });
 
@@ -2148,7 +2154,10 @@ describe("local file action feedback", () => {
     const feedback = await screen.findByRole("alert");
     expect(feedback.textContent).toContain(file.path);
     expect(record).toHaveBeenCalledOnce();
-    expect(localWorkspace().reveal).toHaveBeenCalledExactlyOnceWith("/work/project", file.path);
+    expect(testClient.workspace.access.local.reveal).toHaveBeenCalledExactlyOnceWith(
+      "/work/project",
+      file.path,
+    );
     await waitFor(() => expect(menu.isConnected).toBe(false));
     await waitFor(() => expect(document.activeElement).toBe(item));
     expect(screen.getByRole("treeitem", { name: file.name })).toBe(item);
@@ -2160,7 +2169,7 @@ describe("local file action feedback", () => {
     readFile.mockRejectedValue(
       new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
     );
-    openWorkspaceFile(path);
+    openWorkspaceFile(testClient.workspace.access, path);
     mount(
       <>
         <FileWorkspace />
@@ -2177,17 +2186,20 @@ describe("local file action feedback", () => {
   it("reports a refused external open while retaining the unsupported file and its action", async () => {
     const record = prepareLocalActions();
     const { path, open } = await unsupportedFile();
-    const before = useContextDockStore.getState().fileViewer;
+    const before = testClient.workspace.dock.store.getState().fileViewer;
     act(() => open.focus());
 
     fireEvent.click(open);
 
     expect((await screen.findByRole("alert")).textContent).toContain(path);
     expect(record).toHaveBeenCalledOnce();
-    expect(localWorkspace().open).toHaveBeenCalledExactlyOnceWith("/work/project", path);
+    expect(testClient.workspace.access.local.open).toHaveBeenCalledExactlyOnceWith(
+      "/work/project",
+      path,
+    );
     expect(screen.getByRole("button", { name: "Open" })).toBe(open);
     expect(screen.getByText("No image preview here yet")).toBeTruthy();
-    expect(useContextDockStore.getState().fileViewer).toBe(before);
+    expect(testClient.workspace.dock.store.getState().fileViewer).toBe(before);
     expect(document.activeElement).toBe(open);
   });
 
@@ -2200,7 +2212,7 @@ describe("local file action feedback", () => {
     async ({ laterFocus, wasVisible, reveals }) => {
       prepareLocalActions();
       const pending = Promise.withResolvers<boolean>();
-      vi.mocked(localWorkspace().open).mockReturnValue(pending.promise);
+      vi.mocked(testClient.workspace.access.local.open).mockReturnValue(pending.promise);
       const { open, reader } = await unsupportedFile();
       vi.spyOn(reader, "getBoundingClientRect").mockImplementation(
         () => new DOMRect(0, 0, 200, screen.queryByRole("alert") || !wasVisible ? 100 : 400),
@@ -2242,8 +2254,8 @@ describe("local file action feedback", () => {
   it("keeps late feedback tied to its original path without reclaiming later focus", async () => {
     prepareLocalActions();
     const pending = Promise.withResolvers<boolean>();
-    vi.mocked(localWorkspace().reveal).mockReturnValue(pending.promise);
-    openWorkspaceFile(file.path);
+    vi.mocked(testClient.workspace.access.local.reveal).mockReturnValue(pending.promise);
+    openWorkspaceFile(testClient.workspace.access, file.path);
     mount(
       <>
         <FileWorkspace />
@@ -2252,7 +2264,7 @@ describe("local file action feedback", () => {
     );
     await screen.findByText("package main");
     fireEvent.click(screen.getByRole("button", { name: "Show in Finder" }));
-    act(() => openWorkspaceFile("src/other.go"));
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/other.go"));
     await screen.findByRole("region", { name: "src/other.go" });
     const outside = screen.getByRole("button", { name: "Elsewhere" });
     act(() => outside.focus());
@@ -2262,7 +2274,7 @@ describe("local file action feedback", () => {
     const feedback = await screen.findByRole("alert");
     expect(feedback.textContent).toContain(file.path);
     expect(feedback.textContent).not.toContain("src/other.go");
-    expect(useContextDockStore.getState().fileViewer?.path).toBe("src/other.go");
+    expect(testClient.workspace.dock.store.getState().fileViewer?.path).toBe("src/other.go");
     expect(document.activeElement).toBe(outside);
   });
 });
@@ -2274,8 +2286,8 @@ describe("retained file workspace popups", () => {
       startLine: 1,
       totalLines: 5,
     });
-    const viewer = renderHook(useWorkspaceFileViewer);
-    act(() => openWorkspaceFile("src/main.go"));
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/main.go"));
     const host = mountRetained();
     await screen.findByText("four");
     const opened = viewer.result.current;
@@ -2308,7 +2320,7 @@ describe("retained file workspace popups", () => {
   });
 
   it("retires a file row's context menu when hidden and keeps the tree state", async () => {
-    useContextDockStore.setState({
+    testClient.workspace.dock.store.setState({
       memory: { expandedDirs: ["src"], lastFilePath: "src/main.go" },
     });
     const host = mountRetained();

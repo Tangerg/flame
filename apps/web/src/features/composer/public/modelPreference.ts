@@ -1,17 +1,21 @@
-import {
-  composerState,
-  type ComposerModelPreference,
-} from "@/features/composer/application/ports/state";
-export type { ComposerModelPreference } from "@/features/composer/application/ports/state";
+import { type ComposerAccess, useComposer } from "@/features/composer/public/composer";
+import { type ComposerModelPreference } from "@/features/composer/application/state";
+export type { ComposerModelPreference } from "@/features/composer/application/state";
 
-export function selectedComposerModelPreference(): ComposerModelPreference {
-  return composerState().getModelPreference();
+export function selectedComposerModelPreference(
+  composerAccess: ComposerAccess,
+): ComposerModelPreference {
+  return composerAccess.getModelPreference();
 }
 
 export function useComposerModelPreference(): ComposerModelPreference {
-  return composerState().useModelPreference();
+  const composerAccess = useComposer();
+
+  return composerAccess.useModelPreference();
 }
 
 export function useSetComposerModelPreference(): (preference: ComposerModelPreference) => void {
-  return composerState().useSetModelPreference();
+  const composerAccess = useComposer();
+
+  return composerAccess.useSetModelPreference();
 }

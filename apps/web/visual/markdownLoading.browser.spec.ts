@@ -60,7 +60,7 @@ for (const [width, fontSize, theme] of [
     );
     await expect(
       answer.getByRole("link", { name: "the protocol guide", exact: true }),
-    ).toHaveAttribute("href", "https://example.test/runtime/protocol");
+    ).toHaveAttribute("href", "https://example.test/packages/go-sdk/protocol");
     await expect(answer.getByRole("button", { name: "Copy message", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });

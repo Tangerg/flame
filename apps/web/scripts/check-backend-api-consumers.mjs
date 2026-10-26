@@ -6,12 +6,9 @@ import { API, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
 const ROOT = process.cwd();
-const METHODS_PATH = resolve(ROOT, "../../packages/runtime-client/typescript/src/methods.ts");
-const SIDECAR_PATH = resolve(ROOT, "../../packages/runtime-client/typescript/src/sidecar.ts");
-const WIRE_PATH = resolve(
-  ROOT,
-  "../../packages/runtime-client/typescript/src/generated/wire.generated.ts",
-);
+const METHODS_PATH = resolve(ROOT, "../../packages/runtime-client/src/methods.ts");
+const SIDECAR_PATH = resolve(ROOT, "../../packages/runtime-client/src/sidecar.ts");
+const WIRE_PATH = resolve(ROOT, "../../packages/runtime-client/src/generated/wire.generated.ts");
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(ROOT, "src/features/workspace/domain/eventInvalidation.ts");
 const EVENT_ADAPTER_PATH = resolve(
@@ -210,11 +207,23 @@ const materializedOperations = creditMaterializedOperationConsumers(
 // are insufficient evidence. Catalog names and Connection ports are parsed from Go
 // source rather than listed as operation exemptions.
 const headlessCalls = JSON.parse(
-  execFileSync("go", ["run", "./runtime/cmd/apiconsumers", "."], {
-    cwd: resolve(ROOT, "../.."),
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024,
-  }),
+  execFileSync(
+    "go",
+    [
+      "run",
+      "./tooling/goapi",
+      "consumers",
+      "--repository",
+      ".",
+      "--manifest",
+      "runtime/contract/manifest.json",
+    ],
+    {
+      cwd: resolve(ROOT, "../.."),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024,
+    },
+  ),
 );
 const headlessOperations = new Set();
 for (const [operation, locations] of Object.entries(headlessCalls)) {

@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { TrajectoryReport } from "../../../plugins/trajectory/component/component";
 import { Markdown } from "../../../plugins/file-renderers/component/component";
@@ -35,7 +43,7 @@ function renderCapturedMarkdown(content: string) {
       throw new Error("Captured Markdown must not compose another component");
     },
   };
-  return render(<Markdown context={context} />);
+  return testClient.render(<Markdown context={context} />);
 }
 
 it("keeps captured links complete, non-repeating and inert", () => {
@@ -207,7 +215,7 @@ it("shows tool execution status independently of its approval decision", () => {
   if (row?.type !== "item" || row.item.type !== "toolCall") {
     throw new Error("waiting snapshot must contain a tool call");
   }
-  render(
+  testClient.render(
     <TrajectoryReport
       pageNumber={1}
       onClearFilters={vi.fn()}
@@ -287,7 +295,7 @@ it("keeps timed-out Runs and refused or canceled tools in attention without rewr
       outcome: { type: "completed" },
     },
   };
-  const { container } = render(
+  const { container } = testClient.render(
     <TrajectoryReport
       pageNumber={1}
       onClearFilters={vi.fn()}
@@ -343,7 +351,7 @@ it("reads settled neutral states as quiet metadata and keeps attention states be
           : { type: outcome },
     },
   });
-  render(
+  testClient.render(
     <TrajectoryReport
       pageNumber={1}
       onClearFilters={vi.fn()}
@@ -382,7 +390,7 @@ it("distinguishes same-time Runs before expansion and keeps one Run identity fac
       spawnedByItemId: "item_delegate",
     },
   };
-  render(
+  testClient.render(
     <TrajectoryReport
       pageNumber={1}
       onClearFilters={vi.fn()}
@@ -465,7 +473,7 @@ it("reads recorded text and images in order while keeping full evidence and reas
     },
   ];
   const entries: TrajectoryEntry[] = cases.map(({ item }) => ({ type: "item", occurredAt, item }));
-  const { container } = render(
+  const { container } = testClient.render(
     <TrajectoryReport
       pageNumber={1}
       onClearFilters={vi.fn()}
@@ -584,7 +592,7 @@ it("searches recorded tool data and message metadata without image bytes or reda
       search={search}
     />
   );
-  const { container, rerender } = render(report(""));
+  const { container, rerender } = testClient.render(report(""));
   const matches = (search: string, kind?: string) => {
     rerender(report(search, kind));
     return Array.from(container.querySelectorAll("[data-trajectory-record]"), (record) =>

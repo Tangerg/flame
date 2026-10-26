@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { userMCPServer } from "@/features/mcp/application/mcpServerQueries";
 import { ToolControls } from "@/features/mcp/ui/ToolControls";
@@ -71,7 +79,7 @@ beforeEach(() => {
 
 it("keeps exposure usable when approval rules fail, even with stale rule data", async () => {
   model.rules.error = new Error("rules unavailable");
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   const [exposure, approval] = screen.getAllByRole("switch");
   expect(exposure!.getAttribute("aria-disabled")).toBeNull();
   expect(approval!.getAttribute("aria-disabled")).toBe("true");
@@ -83,17 +91,19 @@ it("keeps exposure usable when approval rules fail, even with stale rule data", 
 
 it("keeps approval usable when exposure fails", async () => {
   model.exposure.error = new Error("exposure unavailable");
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   const [exposure, approval] = screen.getAllByRole("switch");
   expect(exposure!.getAttribute("aria-disabled")).toBe("true");
   expect(approval!.getAttribute("aria-disabled")).toBeNull();
   fireEvent.click(approval!);
-  await waitFor(() => expect(model.allow).toHaveBeenCalledWith(docs, "read"));
+  await waitFor(() =>
+    expect(model.allow).toHaveBeenCalledWith(testClient.agent.access, docs, "read"),
+  );
 });
 
 it("shows why a connected tool is excluded from model manifests", () => {
   model.tools.data[0]!.nameConflicts = ["mcp/docs.read/query"];
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   expect(
     screen.getByText("Hidden because docs_read conflicts with mcp/docs.read/query."),
   ).toBeTruthy();
@@ -115,11 +125,11 @@ it("reads standing approval only from the same server origin", () => {
       name: "docs",
     }),
   ];
-  const { unmount } = render(<ToolControls server={docs} />);
+  const { unmount } = testClient.render(<ToolControls server={docs} />);
   expect(screen.getAllByRole("switch")[1]!.getAttribute("aria-checked")).toBe("false");
   unmount();
   model.rules.data = [rule(docs)];
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   expect(screen.getAllByRole("switch")[1]!.getAttribute("aria-checked")).toBe("true");
 });
 
@@ -127,7 +137,7 @@ it("names each failed auxiliary read and retries only its own owner", () => {
   model.tools.data[0]!.description = "Reads documentation pages.";
   model.exposure.error = new Error("exposure unavailable");
   model.rules.error = new Error("rules unavailable");
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   expect(screen.getByText("Couldn't load tool visibility")).toBeTruthy();
   expect(screen.getByText("Couldn't load auto-approve rules")).toBeTruthy();
   expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(2);
@@ -148,7 +158,7 @@ it("names each failed auxiliary read and retries only its own owner", () => {
 
 it("names a failed tools read and retries only the tools list", () => {
   model.tools.error = new Error("tools unavailable");
-  render(<ToolControls server={docs} />);
+  testClient.render(<ToolControls server={docs} />);
   expect(screen.queryByText("Couldn't load tool visibility")).toBeNull();
   expect(screen.queryByText("Couldn't load auto-approve rules")).toBeNull();
   expect(screen.queryAllByRole("switch")).toHaveLength(0);
@@ -163,7 +173,7 @@ it("names a failed tools read and retries only the tools list", () => {
 it("retires only the visibility failure once visibility is accepted", () => {
   model.exposure.error = new Error("exposure unavailable");
   model.rules.error = new Error("rules unavailable");
-  const { rerender } = render(<ToolControls server={docs} />);
+  const { rerender } = testClient.render(<ToolControls server={docs} />);
   expect(screen.getByText("Couldn't load tool visibility")).toBeTruthy();
 
   model.exposure.error = null;

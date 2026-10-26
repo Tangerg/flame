@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Goal, type FlameClient, type MutationPromise } from "@flame/runtime-client";
@@ -56,7 +64,15 @@ describe("Goal plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, createGoalPlugin(getRuntimeClient));
+    await loadPluginsForTest(
+      runtime,
+      createGoalPlugin(
+        testClient.agent.access,
+        testClient.composer.access,
+        testClient.runtime,
+        getRuntimeClient,
+      ),
+    );
     const predecessor = rejected(stopGoal("ses_goal"));
     await vi.waitFor(() => expect(retiredStop).toHaveBeenCalledOnce());
 
@@ -101,7 +117,15 @@ describe("Goal plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, createGoalPlugin(getRuntimeClient));
+    await loadPluginsForTest(
+      runtime,
+      createGoalPlugin(
+        testClient.agent.access,
+        testClient.composer.access,
+        testClient.runtime,
+        getRuntimeClient,
+      ),
+    );
 
     runtimeClient = () => {
       throw new Error("Desktop container is closed");

@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createFlameClient,
@@ -90,7 +98,7 @@ describe("installed Reviews contextual actions", () => {
     transport = createMemoryTransport();
     client = openClient();
     context = { ...context, runtime: client };
-    const view = render(<Board context={context} />);
+    const view = testClient.render(<Board context={context} />);
     await readReview("open");
     const point = await waitForRequest(transport, "plugins.resolvePoint");
     await act(async () => respondSuccess(transport, point.id, { data: [] }));
@@ -118,7 +126,7 @@ describe("installed Reviews contextual actions", () => {
     client = openClient();
     owner = new AbortController();
     context = { ...context, runtime: client, signal: owner.signal };
-    render(<Board context={context} />);
+    testClient.render(<Board context={context} />);
     await readReview("resolved", 2);
     const replacementPoint = await waitForRequest(transport, "plugins.resolvePoint");
     await act(async () => respondSuccess(transport, replacementPoint.id, { data: [] }));
@@ -167,7 +175,7 @@ describe("installed Reviews contextual actions", () => {
     { status: "open" as const, contributors: false },
     { status: "resolved" as const, contributors: false },
   ])("uses admitted point metadata for $status / contributors=$contributors", async (scenario) => {
-    render(<Board context={context} />);
+    testClient.render(<Board context={context} />);
     await readReview(scenario.status);
     const request = await waitForRequest(transport, "plugins.resolvePoint");
     const params = request.params as ResolvePluginPointRequest;
@@ -203,7 +211,7 @@ describe("installed Reviews contextual actions", () => {
   });
 
   it("keeps the accepted review and explicitly reports failed action resolution", async () => {
-    render(<Board context={context} />);
+    testClient.render(<Board context={context} />);
     await readReview("open");
     const request = await waitForRequest(transport, "plugins.resolvePoint");
     await act(async () => {
@@ -221,7 +229,7 @@ describe("installed Reviews contextual actions", () => {
   });
 
   it("does not expose the previous context's actions during a replacement read", async () => {
-    const view = render(<Board context={context} />);
+    const view = testClient.render(<Board context={context} />);
     await readReview("open");
     const original = await waitForRequest(transport, "plugins.resolvePoint");
     await act(async () => {

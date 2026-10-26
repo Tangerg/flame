@@ -1,5 +1,13 @@
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
-import { renderHook, waitFor } from "@testing-library/react";
+import { createAgentGatewayFixture } from "@/test/agentOwners";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
 import {
@@ -8,12 +16,11 @@ import {
   type RunRef,
   type ServerCapabilities,
 } from "@flame/runtime-client";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+
 import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { loadPluginsForTest } from "@/test/kernel";
-import { useRuntimeConnectionStore } from "@/features/connection/adapters/runtimeConnectionProjection";
+
 import { synchronizeMountedAgentSession } from "@/features/agent/public/session";
 import { getAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 import { type GoalState } from "@/features/goal/application/goalReadModel";
@@ -42,12 +49,12 @@ const run: RunRef = {
 
 beforeEach(async () => {
   await loadPluginsForTest();
-  installAgentRuntimeGateway(getRuntimeClient);
+  createAgentGatewayFixture(testClient, getRuntimeClient);
 });
 
 afterEach(async () => {
-  useAgentStore.getState().dropSession(SID);
-  useAgentSessionStore.setState({ openSessionIds: [], lastSessionId: "" });
+  testClient.agent.projection.store.getState().dropSession(SID);
+  testClient.agent.sessions.store.setState({ openSessionIds: [], lastSessionId: "" });
 });
 
 describe("Goal and mounted Session integration", () => {
@@ -55,7 +62,7 @@ describe("Goal and mounted Session integration", () => {
     const { installGoalRuntimeAdapter } =
       await import("@/features/goal/adapters/runtimeGoalCommandsGateway");
     const capabilities = discovery.capabilities as ServerCapabilities;
-    useRuntimeConnectionStore.setState({
+    testClient.projection.store.setState({
       capabilities: {
         ...capabilities,
         features: {
@@ -82,22 +89,36 @@ describe("Goal and mounted Session integration", () => {
         sessions: { snapshot },
         runs: { recoverCommands: async () => [] },
       }) as unknown as FlameClient;
-    const adapter = installGoalRuntimeAdapter(getRuntimeClient, true);
+    const adapter = installGoalRuntimeAdapter(
+      testClient.agent.access,
+      testClient.runtime,
+      getRuntimeClient,
+      true,
+    );
     const driver = { start, resume } as unknown as RuntimeAgentDriver;
     const mount = () =>
-      renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
-    const read = () => getAgentSessionSharedMaterial<GoalState>(SID, "goal");
+      testClient.renderHook(() =>
+        useAgentSession(
+          testClient.sessionDependencies,
+          getRuntimeClient,
+          () => driver,
+          SID,
+          vi.fn(),
+        ),
+      );
+    const read = () =>
+      getAgentSessionSharedMaterial<GoalState>(testClient.agent.access, SID, "goal");
     let mounted = mount();
     try {
       await waitFor(() => expect(read()?.goal?.reason).toEqual(goal.reason));
       mounted.unmount();
-      useAgentStore.getState().dropSession(SID);
+      testClient.agent.projection.store.getState().dropSession(SID);
       mounted = mount();
       await waitFor(() => expect(read()?.goal?.reason).toEqual(goal.reason));
       expect(snapshot).toHaveBeenCalledTimes(2);
 
       snapshot.mockRejectedValueOnce(new Error("Goal snapshot unavailable"));
-      await synchronizeMountedAgentSession(SID, "replace-live");
+      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
       expect(read()?.goal?.reason).toEqual(goal.reason);
       expect(
         useNotificationStore
@@ -106,12 +127,12 @@ describe("Goal and mounted Session integration", () => {
       ).toBe(true);
 
       snapshot.mockResolvedValue({ ...base, goal: { ...goal, reason: { code: "awaitingInput" } } });
-      await synchronizeMountedAgentSession(SID, "replace-live");
+      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
       expect(read()?.goal?.reason).toEqual({ code: "awaitingInput" });
 
       const { reason: _reason, ...active } = goal;
       snapshot.mockResolvedValue({ ...base, goal: { ...active, status: "active" } });
-      await synchronizeMountedAgentSession(SID, "replace-live");
+      await synchronizeMountedAgentSession(testClient.agent.access, SID, "replace-live");
       expect(read()?.goal?.status).toBe("active");
       expect(read()?.goal).not.toHaveProperty("reason");
       expect(start).not.toHaveBeenCalled();
@@ -151,9 +172,16 @@ describe("Goal and mounted Session integration", () => {
         runs: { recoverCommands: async () => [], subscribe },
         goals: { update, stop },
       }) as unknown as FlameClient;
-    const adapter = installGoalRuntimeAdapter(getRuntimeClient, true);
+    const adapter = installGoalRuntimeAdapter(
+      testClient.agent.access,
+      testClient.runtime,
+      getRuntimeClient,
+      true,
+    );
     const driver = { start: vi.fn(), resume: vi.fn() } as unknown as RuntimeAgentDriver;
-    const mounted = renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+    const mounted = testClient.renderHook(() =>
+      useAgentSession(testClient.sessionDependencies, getRuntimeClient, () => driver, SID, vi.fn()),
+    );
     try {
       await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
       let edited = false;
@@ -168,9 +196,10 @@ describe("Goal and mounted Session integration", () => {
       await editing;
       expect(closeStream).toHaveBeenCalledOnce();
       await waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
-      expect(selectCurrentRootRun(useAgentStore.getState().sessions[SID]!.view)?.status).toBe(
-        "running",
-      );
+      expect(
+        selectCurrentRootRun(testClient.agent.projection.store.getState().sessions[SID]!.view)
+          ?.status,
+      ).toBe("running");
       await stopGoal(SID);
       expect(stop).toHaveBeenCalledOnce();
       expect(snapshot).toHaveBeenCalledTimes(3);

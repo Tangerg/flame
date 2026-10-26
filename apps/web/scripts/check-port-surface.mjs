@@ -3,25 +3,27 @@ import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { SymbolFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
-import { visit, withSourceProject } from "./source-graph.mjs";
+import { visit, withSourceProject } from "../../../tooling/source-graph.mjs";
 
 const isTest = (path) =>
   /\.(test|spec)\.(?:[cm]?ts|tsx)$/.test(path) ||
   path.startsWith("test/") ||
   path.includes("testkit");
 
-function isValueReference(node) {
+const retiredAPIs = new Set(["SingletonPort", "createSingletonPort"]);
+
+function moduleSpecifier(node) {
+  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return node.moduleSpecifier;
+  if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
+    return node.argument.literal;
   if (
-    node.parent?.name === node &&
-    !ts.isPropertyAccessExpression(node.parent) &&
-    !ts.isShorthandPropertyAssignment(node.parent)
+    ts.isCallExpression(node) &&
+    (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+      (ts.isIdentifier(node.expression) && node.expression.text === "require"))
   )
-    return false;
-  for (let parent = node.parent; parent; parent = parent.parent) {
-    if (ts.isTypeNode(parent) || ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent))
-      return false;
-  }
-  return true;
+    return node.arguments[0];
+  if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference))
+    return node.moduleReference.expression;
 }
 
 export function inspectPortSurface(root = process.cwd()) {
@@ -32,9 +34,8 @@ export function inspectPortSurface(root = process.cwd()) {
       .filter((path) => !isTest(relative(src, path)))
       .map((path) => program.getSourceFile(path));
     const clauses = new Map();
-    const accessors = new Map();
     const used = new Set();
-    const called = new Set();
+    const retired = new Set();
     const key = (node) => `${node.getSourceFile().fileName}:${node.getStart()}`;
     const declarations = (symbol) => {
       if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
@@ -47,6 +48,17 @@ export function inspectPortSurface(root = process.cwd()) {
     for (const source of sources) {
       const path = relative(src, source.fileName);
       visit(source, (node) => {
+        if (ts.isIdentifier(node) && retiredAPIs.has(node.text)) {
+          retired.add(`${path}  ${node.text}`);
+        }
+        const specifier = moduleSpecifier(node);
+        if (
+          specifier &&
+          ts.isStringLiteralLikeNode(specifier) &&
+          /(?:^|\/)singletonPort(?:\.[cm]?[jt]s)?$/.test(specifier.text)
+        ) {
+          retired.add(`${path}  ${specifier.text}`);
+        }
         if (ts.isInterfaceDeclaration(node) && node.name.text.endsWith("Port")) {
           for (const member of node.members) {
             if (
@@ -56,26 +68,6 @@ export function inspectPortSurface(root = process.cwd()) {
                 ts.isFunctionTypeNode(member.type))
             ) {
               clauses.set(key(member), `${path}  ${node.name.text}.${member.name.getText()}()`);
-            }
-          }
-        }
-        if (
-          ts.isVariableStatement(node) &&
-          node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
-        ) {
-          for (const declaration of node.declarationList.declarations) {
-            const initial = declaration.initializer;
-            if (
-              initial &&
-              ts.isPropertyAccessExpression(initial) &&
-              initial.name.text === "get" &&
-              declarations(checker.getSymbolAtLocation(initial.name)).some(
-                (method) =>
-                  ts.isInterfaceDeclaration(method.parent) &&
-                  method.parent.name.text === "SingletonPort",
-              )
-            ) {
-              accessors.set(key(declaration), `${path}  ${declaration.name.getText()}()`);
             }
           }
         }
@@ -101,32 +93,26 @@ export function inspectPortSurface(root = process.cwd()) {
             );
           }
         }
-        if (ts.isCallExpression(node)) {
-          record(checker.getSymbolAtLocation(node.expression), called);
-        } else if (ts.isShorthandPropertyAssignment(node)) {
-          record(checker.getShorthandAssignmentValueSymbol(node), called);
-        } else if (ts.isIdentifier(node) && isValueReference(node)) {
-          record(checker.getSymbolAtLocation(node), called);
-        }
       });
     }
     return {
       files: paths.length,
       dead: [...clauses].filter(([id]) => !used.has(id)).map(([, label]) => label),
-      bypasses: [...accessors].filter(([id]) => !called.has(id)).map(([, label]) => label),
+      retired: [...retired],
     };
   });
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { files, dead, bypasses } = inspectPortSurface();
-  if (dead.length || bypasses.length) {
-    console.error("check-port-surface: contracts without a production consumer:");
+  const { files, dead, retired } = inspectPortSurface();
+  if (dead.length || retired.length) {
+    console.error("check-port-surface: invalid application contracts:");
     for (const entry of dead) console.error(`  port clause: ${entry}`);
-    for (const entry of bypasses) console.error(`  singleton accessor: ${entry}`);
+    for (const entry of retired)
+      console.error(`  retired singleton API: ${entry}; capture an explicit feature instance`);
     process.exit(1);
   }
   console.log(
-    `check-port-surface: ${files} sources covered; every port clause and accessor has a production consumer`,
+    `check-port-surface: ${files} sources covered; every port clause has a production consumer; no retired singleton APIs`,
   );
 }

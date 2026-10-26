@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { CurrentRootMaterial } from "@/features/agent/public/run";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
@@ -46,7 +54,7 @@ describe("RootRunOutcome", () => {
           ? { type, error: { code: "run_lost" }, unresolvedEffects }
           : { type, unresolvedEffects };
       const material = CurrentRootMaterial.from(run);
-      const { rerender } = render(<RootRunOutcome material={material} />);
+      const { rerender } = testClient.render(<RootRunOutcome material={material} />);
       expect(
         screen.getByText(
           "This run has ended. The outcomes of these external operations are still unconfirmed.",
@@ -92,7 +100,7 @@ describe("RootRunOutcome", () => {
     };
     const original = structuredClone(run);
     for (let mount = 0; mount < 2; mount += 1) {
-      const { container, unmount } = render(
+      const { container, unmount } = testClient.render(
         <RootRunOutcome material={CurrentRootMaterial.from(run)} />,
       );
       expect(screen.getByText("Canceled")).toBeTruthy();
@@ -116,7 +124,7 @@ describe("RootRunOutcome", () => {
   });
 
   it("does not append a completion-and-accounting footer after an ordinary turn", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <RootRunOutcome material={CurrentRootMaterial.from(completedRun())} />,
     );
 

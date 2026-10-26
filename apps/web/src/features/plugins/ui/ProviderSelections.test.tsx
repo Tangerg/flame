@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type Host } from "dougong";
@@ -69,7 +77,7 @@ async function mountSelections(
       },
     }),
   ]);
-  return render(
+  return testClient.render(
     <QueryClientProvider client={queryClient}>
       <ProviderSelections installations={installations} operations={operations} />
       <textarea aria-label="Later draft" defaultValue="Keep this draft." />

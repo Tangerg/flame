@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
@@ -8,7 +16,7 @@ import {
   RUNTIME_STREAM,
   RUNTIME_SERVER_SCOPE,
 } from "@/features/connection/public/services";
-import * as runtimeEndpoint from "@/features/connection/public/endpoint";
+
 import { forgetRules } from "@/features/agent/application/approvalPolicy";
 import { APPROVAL_RULES_KEY } from "@/features/agent/application/approvalPolicyQueries";
 import { createAgentBootstrapPlugin } from "@/features/agent/bootstrap/index";
@@ -32,34 +40,27 @@ describe("Agent bootstrap Runtime generation wiring", () => {
     const forgetRule = vi.fn(() => retired.promise);
     runtimeClient = () => ({ approval: { forgetRule } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
-    const subscribers = new Set<() => void>();
+    testClient.projection.store.setState({ connectionGeneration: generation });
     const runtime = definePlugin({
       name: "test.runtime-generation",
       provides: { stream: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
       setup() {
-        vi.spyOn(runtimeEndpoint, "currentRuntimeEndpoint").mockReturnValue(
-          "https://bootstrap-agent.test",
-        );
         return {
-          scope: { subscribeReplacement: () => () => undefined },
-          stream: {
-            connectionGeneration: () => generation,
-            subscribeConnection(onChange: () => void) {
-              subscribers.add(onChange);
-              return () => subscribers.delete(onChange);
-            },
-            reportConnectionLoss: vi.fn(),
-          },
+          scope: testClient.scope,
+          stream: testClient.stream,
         };
       },
     });
-    await loadPluginsForTest(runtime, createAgentBootstrapPlugin(getRuntimeClient));
+    await loadPluginsForTest(
+      runtime,
+      createAgentBootstrapPlugin(testClient.agent, getRuntimeClient),
+    );
 
-    const command = rejected(forgetRules(["rule-1"]));
+    const command = rejected(forgetRules(testClient.agent.access, ["rule-1"]));
     await vi.waitFor(() => expect(forgetRule).toHaveBeenCalledOnce());
 
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
-    for (const subscriber of subscribers) subscriber();
+    testClient.projection.store.setState({ connectionGeneration: generation });
     await expect(command).resolves.toMatchObject({ message: "agent_command_owner_retired" });
 
     retired.resolve();

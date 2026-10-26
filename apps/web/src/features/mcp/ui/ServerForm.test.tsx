@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -79,7 +87,7 @@ async function mount(gateway: Partial<MCPServerGateway>, server?: MCPServerSetti
   }
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], server ? [server] : []);
   owner = MCPServerMutationOwner.install(gateway as MCPServerGateway);
-  render(
+  testClient.render(
     <QueryClientProvider client={queryClient}>
       <Harness server={server} />
     </QueryClientProvider>,
@@ -92,7 +100,7 @@ async function mount(gateway: Partial<MCPServerGateway>, server?: MCPServerSetti
 
 function openDraft(test: MCPServerGateway["test"]) {
   owner = MCPServerMutationOwner.install({ test } as MCPServerGateway);
-  render(<Harness />);
+  testClient.render(<Harness />);
   const opener = screen.getByRole("button", { name: "Configure MCP server" });
   fireEvent.click(opener);
   const status = screen.getByRole("status");

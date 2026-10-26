@@ -1,10 +1,18 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ChoiceList, ChoiceOption } from "@/ui/atoms/choice-list";
 import { TextArea, TextField } from "@flame/ui/text-field";
 describe("field pending", () => {
   it("keeps a text field focusable and unwritable while its action is in flight", () => {
-    render(<TextField aria-label="Path" defaultValue="/repo" pending />);
+    testClient.render(<TextField aria-label="Path" defaultValue="/repo" pending />);
     const field = screen.getByRole("textbox", { name: "Path" }) as HTMLInputElement;
 
     expect(field.disabled).toBe(false);
@@ -16,7 +24,7 @@ describe("field pending", () => {
   });
 
   it("keeps a textarea focusable and unwritable while its action is in flight", () => {
-    render(<TextArea aria-label="Note" defaultValue="hello" pending />);
+    testClient.render(<TextArea aria-label="Note" defaultValue="hello" pending />);
     const area = screen.getByRole("textbox", { name: "Note" }) as HTMLTextAreaElement;
 
     expect(area.disabled).toBe(false);
@@ -25,7 +33,7 @@ describe("field pending", () => {
   });
 
   it("writes normally when it is not pending", () => {
-    render(<TextField aria-label="Path" />);
+    testClient.render(<TextField aria-label="Path" />);
     const field = screen.getByRole("textbox", { name: "Path" }) as HTMLInputElement;
     expect(field.readOnly).toBe(false);
     expect(field.getAttribute("aria-disabled")).toBeNull();
@@ -35,7 +43,7 @@ describe("field pending", () => {
     "keeps a pending choice list immutable with initial $value",
     ({ value }) => {
       const onValueChange = vi.fn();
-      render(
+      testClient.render(
         <ChoiceList
           multiple={false}
           value={value}

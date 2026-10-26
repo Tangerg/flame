@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { ToolInspector } from "@/features/chat/tools/ui/ToolInspector";
@@ -37,7 +45,7 @@ afterEach(() => {
 describe("ToolInspector", () => {
   it("leads with the result and keeps complete formatted arguments in secondary details", async () => {
     const call = tool({ result: '{"reviewed":true,"files":["state.go","commit.go"]}' });
-    const { container } = render(<ToolInspector tool={call} />);
+    const { container } = testClient.render(<ToolInspector tool={call} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(result.textContent).toBe(JSON.stringify(JSON.parse(call.result!), null, 2));
     const details = screen.getByRole("button", { name: "Arguments" });
@@ -54,7 +62,7 @@ describe("ToolInspector", () => {
   it("keeps arguments immediately readable when no result exists, with an empty-result notice only after success", () => {
     for (const status of ["running", "err", "ok"] as const) {
       const call = tool({ status });
-      const { unmount } = render(<ToolInspector tool={call} />);
+      const { unmount } = testClient.render(<ToolInspector tool={call} />);
       expect(screen.getByRole("region", { name: "Arguments" }).textContent).toBe(
         JSON.stringify(JSON.parse(call.args), null, 2),
       );
@@ -74,7 +82,7 @@ describe("ToolInspector", () => {
       result:
         "<script>globalThis.inspectorExecuted = true</script>\nhttps://example.invalid/source",
     });
-    const { container } = render(<ToolInspector tool={call} />);
+    const { container } = testClient.render(<ToolInspector tool={call} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(result.textContent).toBe(call.result);
     fireEvent.click(screen.getByRole("button", { name: "Arguments" }));
@@ -96,7 +104,7 @@ describe("ToolInspector", () => {
   "label": "caf\u00e9 \"{x}\"",
   "id": 18446744073709551615
 }`;
-    render(<ToolInspector tool={call} />);
+    testClient.render(<ToolInspector tool={call} />);
 
     expect(screen.getByRole("region", { name: "Result" }).textContent).toBe(presentedResult);
     fireEvent.click(screen.getByRole("button", { name: "Arguments" }));

@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
@@ -23,6 +24,8 @@ const m = stylex.create({
 });
 
 export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined }) {
+  const agentAccess = useAgent();
+
   const t = useT();
   const mode = approval?.mode;
   const labelId = useId();
@@ -36,7 +39,7 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
   const onChange = (next: ApprovalMode) => {
     if (pending !== null || next === mode) return;
     setPending(next);
-    modeAction.run(() => setApprovalMode(next).finally(() => setPending(null)));
+    modeAction.run(() => setApprovalMode(agentAccess, next).finally(() => setPending(null)));
   };
   return (
     <SettingRow

@@ -1,4 +1,13 @@
-import { runtimeOpeningRetries } from "./runtimeOpeningRetries";
+import { type AgentAccess } from "@/features/agent/application/agentAccess";
+import { type AgentStoreOwner } from "@/features/agent/adapters/agentStore";
+import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+import { type createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+export interface AgentSessionDependencies {
+  agentAccess: AgentAccess;
+  projection: AgentStoreOwner;
+  sessions: AgentSessionStore;
+  retries: ReturnType<typeof createAgentRuntimeGateway>["retries"];
+}
 import { type FlameClient } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
 import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
@@ -13,17 +22,14 @@ import {
 import { useEffect, useEffectEvent } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { type AgentInput } from "@/features/agent/domain/input";
-import { type AgentSession } from "@/features/agent/application/ports/defaultSession";
+import { type AgentSession } from "@/features/agent/application/session/sessionAccess";
 import { type InterruptResumeInput } from "@/features/agent/domain/hitl";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
-import { AGENT_SESSION_USAGE_KEY } from "@/features/agent/application/session/sessionUsage";
 import { agentInputToContentBlocks } from "@/features/agent/adapters/wireInput";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentRunPump } from "@/features/agent/adapters/agentRunPump";
 import { createRunStreamReattach } from "@/features/agent/adapters/runStreamReattach";
 import { refreshAgentSessionProjection } from "@/features/agent/application/session/refreshSessionProjection";
 import { startAgentSessionRecovery } from "@/features/agent/adapters/agentSessionRecovery";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { createOptimisticUserMessage } from "@/features/agent/adapters/optimisticUserMessage";
 import { createRunOpeningController } from "@/features/agent/adapters/runOpeningController";
 import { agentProblemFromRpcFailure } from "@/features/agent/adapters/rpcProblem";
@@ -33,11 +39,15 @@ import { revalidateRunTermination } from "@/features/agent/application/run/reval
 import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 import { type RunOpeningResult, type RunId, type SegmentId } from "@flame/runtime-client";
 export function useAgentSession(
+  dependencies: AgentSessionDependencies,
   client: () => FlameClient,
   makeDriver: () => RuntimeAgentDriver,
   sessionId: string,
   onConnectionLost: () => void,
 ): AgentSession {
+  const { agentAccess, retries } = dependencies;
+  const useAgentStore = dependencies.projection.store;
+  const useAgentSessionStore = dependencies.sessions.store;
   const createDriver = useEffectEvent(makeDriver);
   const reportConnectionLoss = useEffectEvent(onConnectionLost);
 
@@ -66,18 +76,21 @@ export function useAgentSession(
 
     const runPump = createAgentRunPump({
       sessionId,
+      onRunFinished: () => {
+        void queryClient.invalidateQueries({ queryKey: agentAccess.usage.queryKey(sessionId) });
+      },
       isCancelled: () => cancelled,
       readEpoch: () => store().sessions[sessionId]?.viewEpoch ?? 0n,
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
       applyRunSnapshot: (run) => store().applyRunSnapshot(sessionId, run),
-      reattach: createRunStreamReattach({
+      reattach: createRunStreamReattach(agentAccess, {
         sessionId,
         client,
         isCancelled: () => cancelled,
         onConnectionLost: reportConnectionLoss,
         recoverProjection: (signal) =>
-          refreshAgentSessionProjection(sessionId, {
+          refreshAgentSessionProjection(agentAccess, sessionId, {
             canCommit: () => !cancelled && !signal.aborted,
             signal,
           }).then(() => undefined),
@@ -92,7 +105,7 @@ export function useAgentSession(
       synchronize: (signal) => {
         const guardInteraction = guardInitialInteraction;
         guardInitialInteraction = false;
-        return startAgentSessionRecovery({
+        return startAgentSessionRecovery(agentAccess, {
           client: client(),
           sessionId,
           signal,
@@ -143,7 +156,7 @@ export function useAgentSession(
         }
         if (observation.type === "retired") {
           notifyInfo(t("agent.acceptedRunRetired"), { source: "session" });
-          const view = await refreshAgentSessionProjection(sessionId, {
+          const view = await refreshAgentSessionProjection(agentAccess, sessionId, {
             signal,
             canCommit: () => !cancelled && !signal.aborted,
           });
@@ -151,7 +164,7 @@ export function useAgentSession(
           return;
         }
         if (observation.type === "stream") await disposeAsyncIterable(observation.events);
-        const view = await startAgentSessionRecovery({
+        const view = await startAgentSessionRecovery(agentAccess, {
           client: client(),
           sessionId,
           signal,
@@ -249,12 +262,12 @@ export function useAgentSession(
             { viewEpoch: target.viewEpoch, viewRevision: target.viewRevision },
             response,
           ),
-        revalidateTerminal: (runId) => revalidateRunTermination(sessionId, runId),
+        revalidateTerminal: (runId) => revalidateRunTermination(agentAccess, sessionId, runId),
         onSettled: () => {
           abort?.abort();
           projectionSynchronization?.request();
           void queryClient.invalidateQueries({
-            queryKey: [AGENT_SESSION_USAGE_KEY, sessionId],
+            queryKey: agentAccess.usage.queryKey(sessionId),
           });
         },
         onSynchronizationFailed: reportSynchronizationFailure,
@@ -286,7 +299,7 @@ export function useAgentSession(
         (pending) => pending.idempotencyKey === key,
       );
       if (!command) return false;
-      runOpening.begin((signal) => runtimeOpeningRetries().retry(key, signal), {
+      runOpening.begin((signal) => retries.retry(key, signal), {
         onResult: () => store().projectOpeningAccepted(sessionId, key),
         observe: recoverOpeningObservation,
       });
@@ -326,7 +339,7 @@ export function useAgentSession(
       store().setSynchronize(sessionId, null);
       store().setCancelRun(sessionId, null);
     };
-  }, [client, sessionId]);
+  }, [client, sessionId, agentAccess, useAgentStore, useAgentSessionStore, retries]);
 
   return {
     send: (input: AgentInput, options?: AgentRunStartOptions) =>

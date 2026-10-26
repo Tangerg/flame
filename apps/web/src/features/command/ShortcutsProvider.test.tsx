@@ -1,4 +1,12 @@
-import { render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { useShortcutOverrides } from "@/features/command/public/shortcutOverrides";
@@ -21,7 +29,7 @@ describe("shortcuts provider", () => {
         },
       }),
     );
-    render(<ShortcutsProvider />);
+    testClient.render(<ShortcutsProvider />);
 
     press();
 
@@ -50,7 +58,7 @@ describe("shortcuts provider", () => {
         },
       }),
     );
-    render(<ShortcutsProvider />);
+    testClient.render(<ShortcutsProvider />);
 
     press();
 
@@ -70,7 +78,7 @@ describe("shortcuts provider", () => {
         },
       }),
     );
-    const view = render(<ShortcutsProvider />);
+    const view = testClient.render(<ShortcutsProvider />);
     const input = document.createElement("input");
     document.body.appendChild(input);
 
@@ -100,7 +108,7 @@ describe("shortcuts provider", () => {
         },
       }),
     );
-    const view = render(<ShortcutsProvider />);
+    const view = testClient.render(<ShortcutsProvider />);
 
     press();
     expect(run).not.toHaveBeenCalled();

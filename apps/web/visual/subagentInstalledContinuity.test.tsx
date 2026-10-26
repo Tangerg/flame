@@ -1,4 +1,12 @@
-import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { useState, type ComponentProps } from "react";
 import {
@@ -14,7 +22,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
-import { navigator } from "@/lib/navigation";
+
 import {
   openWorkspaceSubagentRun,
   returnFromWorkspaceInspection,
@@ -177,14 +185,14 @@ it("keeps an installed result in the retained parent reader alive until the read
     }),
   );
   try {
-    navigator().go({ session: "session" });
-    openWorkspaceSubagentRun("child");
-    const { container } = render(
+    testClient.navigation.go({ session: "session" });
+    openWorkspaceSubagentRun(testClient.workspace.access, "child");
+    const { container } = testClient.render(
       <div data-dock-view-id="subagents">
         <SubagentsPanel />
       </div>,
     );
-    const inspection = renderHook(useWorkspaceInspection);
+    const inspection = testClient.renderHook(useWorkspaceInspection);
     await act(async () => vi.dynamicImportSettled());
     fireEvent.click(container.querySelector('[data-tool="grep"] button')!);
     const filter = screen.getByRole<HTMLInputElement>("textbox", { name: "Filter result" });
@@ -193,12 +201,14 @@ it("keeps an installed result in the retained parent reader alive until the read
     const parent = screen.getByRole("region", { name: "Sub-agent" });
 
     fireEvent.click(within(parent).getByRole("button", { name: /Sub-agent/ }));
-    expect(navigator().get().subagent).toBe("nested");
+    expect(testClient.navigation.get().subagent).toBe("nested");
     expect(screen.queryByRole("textbox", { name: "Filter result" })).toBeNull();
     expect(context.signal.aborted).toBe(false);
     expect(filter.isConnected).toBe(true);
 
-    act(() => returnFromWorkspaceInspection(inspection.result.current!));
+    act(() =>
+      returnFromWorkspaceInspection(testClient.workspace.access, inspection.result.current!),
+    );
     expect(screen.getByRole("textbox", { name: "Filter result" })).toBe(filter);
     expect(filter.value).toBe("needle");
     expect(contexts.at(-1)).toBe(context);

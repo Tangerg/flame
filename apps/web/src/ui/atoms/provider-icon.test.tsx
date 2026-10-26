@@ -1,4 +1,12 @@
-import { cleanup, render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ProviderIcon, providerDisplayName } from "@/ui/atoms/provider-icon";
 const RUNTIME_PROVIDER_IDS = [
@@ -25,7 +33,7 @@ const RUNTIME_PROVIDER_IDS = [
 afterEach(cleanup);
 
 function hasBrandMark(provider: string): boolean {
-  const { container } = render(<ProviderIcon provider={provider} />);
+  const { container } = testClient.render(<ProviderIcon provider={provider} />);
   return container.querySelector('[data-slot="provider-mark"]') !== null;
 }
 
@@ -44,7 +52,7 @@ describe("ProviderIcon", () => {
   it("falls back for a provider it does not know, without dropping the name", () => {
     expect(providerDisplayName("acme")).toBe("Acme");
     expect(hasBrandMark("acme")).toBe(false);
-    const { container } = render(<ProviderIcon provider="acme" />);
+    const { container } = testClient.render(<ProviderIcon provider="acme" />);
     expect(container.querySelector("svg")?.getAttribute("data-icon-name")).toBe("server");
   });
 });

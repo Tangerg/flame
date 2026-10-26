@@ -1,6 +1,7 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { useMemo } from "react";
 import { type AgentPlan, type PlanStep } from "@/features/agent/public/sessionView";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+
 import { useActiveSessionId } from "@/features/agent/application/session/activeSession";
 import { tupleKey } from "@/lib/tupleKey";
 export type { PlanStep } from "@/features/agent/public/sessionView";
@@ -46,8 +47,10 @@ export class SessionPlan {
 }
 
 export function useSessionPlan(): SessionPlan {
+  const agentAccess = useAgent();
+
   const sessionId = useActiveSessionId();
-  const material = agentSessionView().usePlan();
+  const material = agentAccess.view.usePlan();
   return useMemo(
     () => SessionPlan.fromSnapshot(sessionId, material.generation, material.value),
     [material, sessionId],

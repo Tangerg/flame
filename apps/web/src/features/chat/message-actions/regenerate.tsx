@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { useT } from "@/lib/i18n/index";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -7,6 +8,8 @@ import { regenerateMessage } from "@/features/chat/message-actions/public/messag
 import { MessageActionButton } from "@/features/chat/message-actions/MessageActionButton";
 import { useActiveConversationMessages } from "@/features/agent/public/conversation";
 function RegenerateButton() {
+  const agentAccess = useAgent();
+
   const t = useT();
   const msg = useCurrentMessage();
   const messages = useActiveConversationMessages();
@@ -17,7 +20,7 @@ function RegenerateButton() {
       icon="loop"
       aria-label={t("msgActions.regenerate")}
       role={msg.role}
-      onClick={() => regenerateMessage(msg)}
+      onClick={() => regenerateMessage(agentAccess, msg)}
     />
   );
 }

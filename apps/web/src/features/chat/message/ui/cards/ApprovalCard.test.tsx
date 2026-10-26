@@ -1,4 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { en } from "@/lib/i18n/locales/en";
 import { TOOL_FAMILIES, toolFamilyId } from "@/lib/toolFamilies";
@@ -75,7 +83,7 @@ describe("ApprovalCard actions", () => {
     "does not turn a locally submitted %s into a settled Runtime fact",
     (decision) => {
       submission.pending = decision;
-      render(
+      testClient.render(
         <ApprovalCard
           sessionId="ses-1"
           resumeRunId="run-1"
@@ -92,7 +100,7 @@ describe("ApprovalCard actions", () => {
   );
 
   it("submits exactly the edited arguments once", () => {
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
     openEditedArguments();
     fireEvent.click(button("Allow once"));
 
@@ -103,7 +111,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("submits edited arguments with a remembered approval scope", () => {
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
     openEditedArguments();
     fireEvent.click(button("Approval options"));
     fireEvent.click(screen.getByRole("menuitem", { name: "Allow for this session" }));
@@ -115,7 +123,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("keeps an invalid draft editable until a valid decision is admitted", () => {
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
     fireEvent.click(button("Edit"));
     fireEvent.change(argumentsField(), { target: { value: "{" } });
     fireEvent.click(button("Allow once"));
@@ -135,7 +143,7 @@ describe("ApprovalCard actions", () => {
 
   it("allows local argument drafting while Runtime commands are unavailable", () => {
     service.available = false;
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
     const edit = button("Edit");
 
     fireEvent.click(edit);
@@ -154,7 +162,7 @@ describe("ApprovalCard actions", () => {
   ])("refuses to enter editing after decision admission: %j", ({ pending, submitted }) => {
     submission.pending = pending;
     submission.submitted = submitted;
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
     const edit = button("Edit");
     expectFocusableBlocked(edit);
     fireEvent.click(edit);
@@ -165,7 +173,7 @@ describe("ApprovalCard actions", () => {
   it.each(["approve", "deny"] as const)(
     "keeps the open arguments read-only but focusable while %s is pending",
     (decision) => {
-      const { rerender } = render(<EditableApproval />);
+      const { rerender } = testClient.render(<EditableApproval />);
       openEditedArguments();
 
       submission.pending = decision;
@@ -184,7 +192,7 @@ describe("ApprovalCard actions", () => {
   );
 
   it("keeps the arguments read-only once the submission is staged after pending clears", () => {
-    const { rerender } = render(<EditableApproval />);
+    const { rerender } = testClient.render(<EditableApproval />);
     openEditedArguments();
 
     submission.pending = "approve";
@@ -199,7 +207,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("preserves an open offline draft when Runtime commands return", () => {
-    const { rerender } = render(<EditableApproval />);
+    const { rerender } = testClient.render(<EditableApproval />);
     openEditedArguments();
 
     service.available = false;
@@ -226,7 +234,7 @@ describe("ApprovalCard actions", () => {
 
   it("keeps blocked decisions focusable while refusing repeated activation and the scope menu", () => {
     submission.pending = "approve";
-    render(<EditableApproval />);
+    testClient.render(<EditableApproval />);
 
     for (const name of ["Deny", "Allow once", "Approval options"]) {
       const control = button(name);
@@ -246,7 +254,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("orders the deny action before the primary approval action", () => {
-    render(
+    testClient.render(
       <ApprovalCard
         sessionId="ses-1"
         resumeRunId="run-1"
@@ -264,7 +272,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("uses the Codex request hierarchy without local danger chrome", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <ApprovalCard
         sessionId="ses-1"
         resumeRunId="run-1"
@@ -287,7 +295,7 @@ describe("ApprovalCard actions", () => {
   });
 
   it("keeps remembered approval scopes behind the primary split action", () => {
-    render(
+    testClient.render(
       <ApprovalCard
         sessionId="ses-1"
         resumeRunId="run-1"
@@ -307,7 +315,7 @@ describe("ApprovalCard actions", () => {
   it.each(TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => tool.name)))(
     "names a family rather than the wire name when approving %s",
     (name) => {
-      render(
+      testClient.render(
         <ApprovalCard
           sessionId="ses-1"
           resumeRunId="run-1"

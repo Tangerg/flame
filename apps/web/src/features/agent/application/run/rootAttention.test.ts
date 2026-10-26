@@ -1,3 +1,12 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   EMPTY_AGENT_SESSION_VIEW,
@@ -5,10 +14,9 @@ import {
   type AgentSessionView,
 } from "@/features/agent/public/sessionView";
 import {
-  configureAgentSessionViewPort,
   type AgentSessionViewEntry,
   type AgentSessionViewPort,
-} from "@/features/agent/application/ports/sessionView";
+} from "@/features/agent/application/session/sessionAccess";
 import {
   subscribeAnySessionRunning,
   subscribeRootRunSettlements,
@@ -68,7 +76,7 @@ function entry(value: AgentSessionView): AgentSessionViewEntry {
 function wire(initial: AgentSessionView) {
   let sessions: Record<string, AgentSessionViewEntry> = { "session-1": entry(initial) };
   let listener: ((next: Record<string, AgentSessionViewEntry>) => void) | undefined;
-  disposePort = configureAgentSessionViewPort({
+  disposePort = stubInstance(testClient.agent.access.view, {
     getSessions: () => sessions,
     subscribeSessions: (next: (sessions: Record<string, AgentSessionViewEntry>) => void) => {
       listener = next;
@@ -98,7 +106,7 @@ describe("root Run attention", () => {
   it("publishes the current any-running state immediately and only on change", () => {
     const publish = wire(view(root("running")));
     const onChange = vi.fn();
-    subscribeAnySessionRunning(onChange);
+    subscribeAnySessionRunning(testClient.agent.access, onChange);
 
     expect(onChange).toHaveBeenCalledWith(true);
     publish(view(root("running")));
@@ -110,7 +118,7 @@ describe("root Run attention", () => {
   it("reports waiting and terminal transitions for the same root without treating resume as settle", () => {
     const publish = wire(view(root("running")));
     const onSettled = vi.fn();
-    subscribeRootRunSettlements(onSettled);
+    subscribeRootRunSettlements(testClient.agent.access, onSettled);
 
     publish(view(root("waiting")));
     expect(onSettled).toHaveBeenLastCalledWith({
@@ -134,7 +142,7 @@ describe("root Run attention", () => {
   it.each(terminalCases)("maps $outcome.type to the $status settlement", ({ outcome, status }) => {
     const publish = wire(view(root("running")));
     const onSettled = vi.fn();
-    subscribeRootRunSettlements(onSettled);
+    subscribeRootRunSettlements(testClient.agent.access, onSettled);
 
     publish(view(root("finished", outcome)));
 

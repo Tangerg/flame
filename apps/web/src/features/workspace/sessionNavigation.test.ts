@@ -1,6 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useContextDockStore } from "@/features/workspace/adapters/contextDockStore";
-import { navigator } from "@/lib/navigation";
+
 import { workspaceSessionNavigation as sessionNavigation } from "@/features/workspace/sessionNavigation";
 import { definePlugin } from "@/extensions/definePlugin";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
@@ -16,7 +23,7 @@ const agentSession = vi.hoisted(() => {
   let openSessionIds = ["s1", "s2"];
   return {
     goTo(sessionId: string) {
-      navigator().go({ session: sessionId });
+      testClient.navigation.go({ session: sessionId });
       listener?.(sessionId);
     },
     setOpen(ids: string[]) {
@@ -41,9 +48,9 @@ const ports = definePlugin({
   provides: { sessions: AGENT_SESSIONS, scopes: WORKSPACE_SCOPE },
   setup: () => ({
     sessions: {
-      getActiveSessionId: () => navigator().get().session,
+      getActiveSessionId: () => testClient.navigation.get().session,
       getLifecycleSnapshot: () => ({
-        activeSessionId: navigator().get().session,
+        activeSessionId: testClient.navigation.get().session,
         openSessionIds: agentSession.getOpen(),
       }),
       subscribeActiveSessionId: (fn: (sessionId: string) => void) => agentSession.subscribe(fn),
@@ -51,30 +58,33 @@ const ports = definePlugin({
       subscribeDeleted: () => () => {},
     },
     scopes: {
-      adoptSessionScope: adoptWorkspaceSessionScope,
-      activateSessionScope: activateWorkspaceSessionScope,
-      forgetSessionScopes: forgetWorkspaceSessionScopes,
+      adoptSessionScope: adoptWorkspaceSessionScope.bind(null, testClient.workspace.access),
+      activateSessionScope: activateWorkspaceSessionScope.bind(null, testClient.workspace.access),
+      forgetSessionScopes: forgetWorkspaceSessionScopes.bind(null, testClient.workspace.access),
     },
   }),
 });
 
 beforeEach(() => {
   agentSession.reset();
-  navigator().go({ session: "s1" });
+  testClient.navigation.go({ session: "s1" });
 });
 
 describe("workspace session navigation", () => {
   it("adopts the session the app is already in when it loads", async () => {
-    useContextDockStore.setState({ activeSessionScopeId: null, sessionScopes: new Map() });
+    testClient.workspace.dock.store.setState({
+      activeSessionScopeId: null,
+      sessionScopes: new Map(),
+    });
 
     await loadPluginsForTest(ports, sessionNavigation);
 
-    expect(useContextDockStore.getState().activeSessionScopeId).toBe("s1");
+    expect(testClient.workspace.dock.store.getState().activeSessionScopeId).toBe("s1");
   });
 
   it("adopts the dock location that survived a renderer replacement", async () => {
-    navigator().go({ session: "s1", dock: "diff" });
-    useContextDockStore.setState({
+    testClient.navigation.go({ session: "s1", dock: "diff" });
+    testClient.workspace.dock.store.setState({
       activeSessionScopeId: null,
       sessionScopes: new Map(),
       dockViewIds: [],
@@ -83,8 +93,8 @@ describe("workspace session navigation", () => {
 
     await loadPluginsForTest(ports, sessionNavigation);
 
-    expect(navigator().get().dock).toBe("diff");
-    expect(useContextDockStore.getState()).toMatchObject({
+    expect(testClient.navigation.get().dock).toBe("diff");
+    expect(testClient.workspace.dock.store.getState()).toMatchObject({
       activeSessionScopeId: "s1",
       dockViewIds: ["diff"],
       lastViewId: "diff",
@@ -93,8 +103,8 @@ describe("workspace session navigation", () => {
 
   it("opens a subagent deep link before the open-session list has hydrated", async () => {
     agentSession.setOpen([]);
-    navigator().go({ session: "s1", dock: "subagents", subagent: "child" });
-    useContextDockStore.setState({
+    testClient.navigation.go({ session: "s1", dock: "subagents", subagent: "child" });
+    testClient.workspace.dock.store.setState({
       activeSessionScopeId: null,
       sessionScopes: new Map(),
       dockViewIds: [],
@@ -103,24 +113,24 @@ describe("workspace session navigation", () => {
 
     await loadPluginsForTest(ports, sessionNavigation);
 
-    expect(navigator().get()).toMatchObject({
+    expect(testClient.navigation.get()).toMatchObject({
       session: "s1",
       dock: "subagents",
       subagent: "child",
     });
-    expect(useContextDockStore.getState().dockViewIds).toEqual(["subagents"]);
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual(["subagents"]);
   });
 
   it("restores the dock destination the session it moves to remembers", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
-    useContextDockStore.getState().adoptDockLocation("diff");
+    testClient.workspace.dock.store.getState().adoptDockLocation("diff");
 
     agentSession.goTo("s2");
-    expect(navigator().get().dock).toBeNull();
+    expect(testClient.navigation.get().dock).toBeNull();
 
     agentSession.goTo("s1");
-    expect(useContextDockStore.getState().activeSessionScopeId).toBe("s1");
-    expect(navigator().get().dock).toBe("diff");
+    expect(testClient.workspace.dock.store.getState().activeSessionScopeId).toBe("s1");
+    expect(testClient.navigation.get().dock).toBe("diff");
   });
 
   // A session-list reconciliation drops the active scope pointer while the app
@@ -130,27 +140,27 @@ describe("workspace session navigation", () => {
   // happened to be reconciled first.
   it("does not carry the dock into the session it moves to after a reconciliation", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
-    useContextDockStore.getState().adoptDockLocation("diff");
-    navigator().go({ dock: "diff" });
+    testClient.workspace.dock.store.getState().adoptDockLocation("diff");
+    testClient.navigation.go({ dock: "diff" });
 
-    forgetWorkspaceSessionScopes([]);
-    expect(useContextDockStore.getState().activeSessionScopeId).toBeNull();
+    forgetWorkspaceSessionScopes(testClient.workspace.access, []);
+    expect(testClient.workspace.dock.store.getState().activeSessionScopeId).toBeNull();
 
     agentSession.goTo("s2");
 
-    expect(navigator().get().dock).toBeNull();
-    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
+    expect(testClient.navigation.get().dock).toBeNull();
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual([]);
   });
 
   it("keeps each session's own tabs", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
-    useContextDockStore.getState().adoptDockLocation("diff");
+    testClient.workspace.dock.store.getState().adoptDockLocation("diff");
 
     agentSession.goTo("s2");
-    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual([]);
 
     agentSession.goTo("s1");
-    expect(useContextDockStore.getState().dockViewIds).toEqual(["diff"]);
+    expect(testClient.workspace.dock.store.getState().dockViewIds).toEqual(["diff"]);
   });
 
   it("stops following once unloaded", async () => {
@@ -159,6 +169,6 @@ describe("workspace session navigation", () => {
 
     agentSession.goTo("s2");
 
-    expect(useContextDockStore.getState().activeSessionScopeId).toBe("s1");
+    expect(testClient.workspace.dock.store.getState().activeSessionScopeId).toBe("s1");
   });
 });

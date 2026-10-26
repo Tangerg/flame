@@ -1,4 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyError } from "@/features/notifications/public/notifications";
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
@@ -59,7 +67,7 @@ vi.mock("@/extensions/selectors/extensions", async (importOriginal) => {
 type Controller = ReturnType<typeof useComposerInputController>;
 
 function mount(options: Partial<Parameters<typeof useComposerInputController>[0]> = {}) {
-  return renderHook(() =>
+  return testClient.renderHook(() =>
     useComposerInputController({
       value: "你好",
       onChange: () => {},

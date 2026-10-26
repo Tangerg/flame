@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { type ToolCall } from "@/features/agent/public/sessionView";
@@ -44,7 +52,7 @@ function Turn({ tools, superseded }: { tools: ToolCall[]; superseded?: boolean }
 }
 
 function renderTurn() {
-  const view = render(<Turn tools={[read, searching]} />);
+  const view = testClient.render(<Turn tools={[read, searching]} />);
   const settle = () => view.rerender(<Turn tools={[read, searched]} />);
   return { ...view, settle };
 }
@@ -155,7 +163,7 @@ describe("ToolGroup", () => {
     const group = () => (
       <ToolGroup tools={calls} expandedIds={new Set()} onToggleExpand={vi.fn()} />
     );
-    const { rerender } = render(group());
+    const { rerender } = testClient.render(group());
     const summary = screen.getByRole("button", { name: /1 running.*2 calls/ });
     expect(summary.getAttribute("aria-expanded")).toBe("true");
 

@@ -13,12 +13,12 @@ import {
   type LifetimeOperations,
 } from "dougong";
 import {
-  applyRuntimeEndpoint,
-  currentRuntimeEndpoint,
-  configuredRuntimeTarget,
-  defaultRuntimeEndpoint,
-  resetRuntimeEndpoint,
+  createRuntimeEndpoint,
+  type RuntimeEndpoint,
+  type RuntimeEndpointConfiguration,
 } from "@/features/connection/application/runtimeEndpoint";
+import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import { createStorage } from "@/extensions/storage";
 import { bindRuntimeEndpointConfiguration } from "@/features/connection/adapters/runtimeEndpointConfiguration";
 const DEFAULT_RUNTIME_ENDPOINT = "https://flame.example";
 
@@ -61,6 +61,8 @@ function connectionHost(initial?: unknown): {
 }
 
 let runtimeConnection: ReturnType<typeof createRuntimeConnection>;
+let endpoint: RuntimeEndpoint;
+let configuration: RuntimeEndpointConfiguration;
 
 beforeEach(async () => {
   endpointHost = createHost({ name: "runtime-endpoint-test" });
@@ -73,7 +75,18 @@ beforeEach(async () => {
     }),
   );
   await endpointHost.start();
-  runtimeConnection = createRuntimeConnection(createBrowserHost(), runtimeRequestMeta);
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Runtime test discovery unavailable"));
+  runtimeConnection = createRuntimeConnection(
+    {
+      ...createBrowserHost(),
+      bootstrap: async () => ({
+        runtime: { endpoint: DEFAULT_RUNTIME_ENDPOINT },
+        localFilesystemEndpoint: null,
+      }),
+    },
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
+  );
   await runtimeConnection.initialize();
   useConfigStore.setState({ values: new Map(), subscribers: new Map() });
 });
@@ -89,56 +102,71 @@ function installConnection(
   replaceConnection: (commit: () => void) => void = (commit) => commit(),
 ) {
   const connection = connectionHost(initial);
-  bindRuntimeEndpointConfiguration(connection.host, replaceConnection, {
+  configuration = bindRuntimeEndpointConfiguration(connection.host, replaceConnection, {
     endpoint: DEFAULT_RUNTIME_ENDPOINT,
   });
+  endpoint = createRuntimeEndpoint(configuration);
   return connection;
 }
 
+function bindConnection(initial?: unknown) {
+  const connection = connectionHost(initial);
+  const binding = runtimeConnection.bind(connection.host);
+  connection.host.cleanup(binding.dispose);
+  endpoint = runtimeConnection.access.endpoint;
+  return { ...connection, binding };
+}
+
 describe("runtime endpoint", () => {
-  it("requires the environment bootstrap before exposing a Runtime endpoint", () => {
-    expect(() => currentRuntimeEndpoint()).toThrow(
-      "Runtime endpoint configuration is not installed",
+  it("requires the environment bootstrap before exposing a Runtime endpoint", async () => {
+    const owner = createRuntimeConnection(
+      createBrowserHost(),
+      runtimeRequestMeta,
+      createRuntimeMutationJournalStorage(createStorage("test.uninitialized")),
     );
-    expect(() => applyRuntimeEndpoint("http://127.0.0.1:27171")).toThrow(
-      "Runtime endpoint configuration is not installed",
+    expect(() => owner.access.endpoint.currentRuntimeEndpoint()).toThrow(
+      "client host has not completed bootstrap",
     );
+    expect(() => owner.access.endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171")).toThrow(
+      "client host has not completed bootstrap",
+    );
+    await owner.dispose();
   });
 
   it("restores the persisted endpoint before Runtime discovery starts", () => {
     installConnection("http://127.0.0.1:27171");
 
-    expect(currentRuntimeEndpoint()).toBe("http://127.0.0.1:27171");
+    expect(endpoint.currentRuntimeEndpoint()).toBe("http://127.0.0.1:27171");
   });
 
   it("ignores a persisted endpoint with the wrong runtime type", () => {
     installConnection(27171);
 
-    expect(currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
+    expect(endpoint.currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
   });
 
   it("validates, normalizes, and publishes a changed endpoint", () => {
     installConnection();
 
-    const result = applyRuntimeEndpoint("  http://127.0.0.1:27171  ");
+    const result = endpoint.applyRuntimeEndpoint("  http://127.0.0.1:27171  ");
 
     expect(result).toEqual({
       kind: "applied",
       endpoint: "http://127.0.0.1:27171",
       changed: true,
     });
-    expect(currentRuntimeEndpoint()).toBe("http://127.0.0.1:27171");
+    expect(endpoint.currentRuntimeEndpoint()).toBe("http://127.0.0.1:27171");
   });
 
   it("commits a changed endpoint inside the Runtime connection replacement", () => {
     const order: string[] = [];
     installConnection(undefined, (commit) => {
-      order.push(`before:${currentRuntimeEndpoint()}`);
+      order.push(`before:${endpoint.currentRuntimeEndpoint()}`);
       commit();
-      order.push(`after:${currentRuntimeEndpoint()}`);
+      order.push(`after:${endpoint.currentRuntimeEndpoint()}`);
     });
 
-    applyRuntimeEndpoint("http://127.0.0.1:27171");
+    endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
 
     expect(order).toEqual([`before:${DEFAULT_RUNTIME_ENDPOINT}`, "after:http://127.0.0.1:27171"]);
   });
@@ -146,20 +174,20 @@ describe("runtime endpoint", () => {
   it("rejects invalid input without changing the active endpoint", () => {
     installConnection();
 
-    const result = applyRuntimeEndpoint("file:///tmp/runtime.sock");
+    const result = endpoint.applyRuntimeEndpoint("file:///tmp/runtime.sock");
 
     expect(result).toEqual({
       kind: "rejected",
       input: "file:///tmp/runtime.sock",
       reason: "unsupported_scheme",
     });
-    expect(currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
+    expect(endpoint.currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
   });
 
   it("distinguishes malformed URLs from unsupported schemes", () => {
     installConnection();
 
-    expect(applyRuntimeEndpoint("not a URL")).toEqual({
+    expect(endpoint.applyRuntimeEndpoint("not a URL")).toEqual({
       kind: "rejected",
       input: "not a URL",
       reason: "invalid_url",
@@ -169,62 +197,64 @@ describe("runtime endpoint", () => {
   it("persists published changes through the Runtime-owned adapter", () => {
     const { stored } = installConnection();
 
-    applyRuntimeEndpoint("http://127.0.0.1:27171");
+    endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
 
     expect(stored.get("endpoint")).toBe("http://127.0.0.1:27171");
   });
 
   it("retires the storage mirror with the Runtime endpoint owner", async () => {
     const connection = connectionHost();
-    bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
+    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
       endpoint: DEFAULT_RUNTIME_ENDPOINT,
     });
+    endpoint = createRuntimeEndpoint(configuration);
 
-    applyRuntimeEndpoint("http://127.0.0.1:27171");
+    endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
     await connection.dispose();
     setConfig("runtime.endpoint", "http://127.0.0.1:28181");
 
     expect(connection.stored.get("endpoint")).toBe("http://127.0.0.1:27171");
   });
 
-  it("owns the published endpoint even if installing the configuration subscription fails", async () => {
+  it("cannot return an endpoint owner when installing its configuration subscription fails", async () => {
     const connection = connectionHost();
     connection.host.config.onChange = () => {
       throw new Error("configuration subscription failed");
     };
-
+    let configured: RuntimeEndpointConfiguration | undefined;
     expect(() => {
-      bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
+      configured = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
         endpoint: DEFAULT_RUNTIME_ENDPOINT,
       });
     }).toThrow("configuration subscription failed");
     await connection.dispose();
-
-    expect(() => currentRuntimeEndpoint()).toThrow("not installed");
+    expect(configured).toBeUndefined();
   });
 
-  it("withdraws the endpoint when its configuration subscription cleanup fails", async () => {
+  it("clears credentials even when its configuration subscription cleanup fails", async () => {
     const connection = connectionHost();
     connection.host.config.onChange = () => ({
       dispose() {
         throw new Error("configuration unsubscribe failed");
       },
     });
-    bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
+    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
       endpoint: DEFAULT_RUNTIME_ENDPOINT,
     });
+    endpoint = createRuntimeEndpoint(configuration);
 
+    endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "retired-secret");
+    expect(configuration.read().localToken).toBe("retired-secret");
     await expect(connection.dispose()).rejects.toThrow("configuration unsubscribe failed");
-
-    expect(() => currentRuntimeEndpoint()).toThrow("not installed");
+    expect(configuration.read().localToken).toBeUndefined();
   });
 
   it("resets to the default endpoint with honest change metadata", () => {
     installConnection();
-    expect(defaultRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
-    applyRuntimeEndpoint("http://127.0.0.1:27171");
+    expect(endpoint.defaultRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
+    endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
 
-    expect(resetRuntimeEndpoint()).toEqual({
+    expect(endpoint.resetRuntimeEndpoint()).toEqual({
       kind: "applied",
       endpoint: DEFAULT_RUNTIME_ENDPOINT,
       changed: true,
@@ -232,10 +262,10 @@ describe("runtime endpoint", () => {
   });
 
   it("rebuilds the shared Runtime client after an endpoint change", () => {
-    installConnection();
+    bindConnection();
     const first = runtimeConnection.client();
 
-    applyRuntimeEndpoint("http://127.0.0.1:27171");
+    endpoint.applyRuntimeEndpoint("http://127.0.0.1:27171");
     const second = runtimeConnection.client();
 
     expect(second).not.toBe(first);
@@ -245,41 +275,39 @@ describe("runtime endpoint", () => {
 
 describe("Runtime target credentials", () => {
   it("replaces the connection on token changes and never persists the token", () => {
-    let replacements = 0;
-    const { stored } = installConnection(DEFAULT_RUNTIME_ENDPOINT, (commit) => {
-      replacements++;
-      commit();
-    });
+    const { stored, binding } = bindConnection(DEFAULT_RUNTIME_ENDPOINT);
+    const replacements = vi.spyOn(binding.owner, "replaceEndpoint");
     const first = runtimeConnection.client();
-    expect(applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
+    expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
       kind: "applied",
       changed: true,
     });
-    expect(replacements).toBe(1);
+    expect(replacements).toHaveBeenCalledOnce();
     expect(runtimeConnection.client()).not.toBe(first);
     expect([...stored.values()]).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
     expect([...useConfigStore.getState().values.values()]).not.toContain("window-secret");
-    expect(applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
+    expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
       kind: "applied",
       changed: false,
     });
-    expect(replacements).toBe(1);
+    expect(replacements).toHaveBeenCalledOnce();
   });
 
   it("clears credentials when changing addresses and starts fresh after reinstall", async () => {
     const connection = connectionHost();
-    bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
+    configuration = bindRuntimeEndpointConfiguration(connection.host, (commit) => commit(), {
       endpoint: DEFAULT_RUNTIME_ENDPOINT,
     });
-    applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret");
-    applyRuntimeEndpoint("https://another.example");
-    expect(configuredRuntimeTarget()).toEqual({
+    endpoint = createRuntimeEndpoint(configuration);
+    endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret");
+    endpoint.applyRuntimeEndpoint("https://another.example");
+    expect(configuration.read()).toEqual({
       endpoint: "https://another.example",
       localToken: undefined,
     });
     await connection.dispose();
     installConnection("https://another.example");
-    expect(configuredRuntimeTarget()).toEqual({
+    expect(configuration.read()).toEqual({
       endpoint: "https://another.example",
       localToken: undefined,
     });
@@ -289,10 +317,10 @@ describe("Runtime target credentials", () => {
     "https://user:secret@flame.example",
     "https://flame.example?token=secret",
     "https://flame.example#secret",
-  ])("rejects credential-bearing endpoint %s", (endpoint) => {
+  ])("rejects credential-bearing endpoint %s", (input) => {
     installConnection();
-    expect(applyRuntimeEndpoint(endpoint).kind).toBe("rejected");
-    expect(currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
+    expect(endpoint.applyRuntimeEndpoint(input).kind).toBe("rejected");
+    expect(endpoint.currentRuntimeEndpoint()).toBe(DEFAULT_RUNTIME_ENDPOINT);
   });
 });
 
@@ -302,54 +330,71 @@ it("rejects malformed credentials before replacing the connection", () => {
     replacements++;
     commit();
   });
-  expect(applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "bad\r\ntoken")).toMatchObject({
+  expect(endpoint.applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "bad\r\ntoken")).toMatchObject({
     kind: "rejected",
     reason: "invalid_token",
   });
-  expect(configuredRuntimeTarget()?.localToken).toBeUndefined();
+  expect(configuration.read()?.localToken).toBeUndefined();
   expect(replacements).toBe(0);
 });
 
 it("binds the local token and filesystem capability only to the bootstrapped Runtime", async () => {
-  const endpoint = "http://127.0.0.1:17172";
+  const localEndpoint = "http://127.0.0.1:17172";
   await runtimeConnection.dispose();
   runtimeConnection = createRuntimeConnection(
     {
       ...createBrowserHost(),
       kind: "desktop",
       bootstrap: async () => ({
-        runtime: { endpoint, localToken: "native-token" },
-        localFilesystemEndpoint: endpoint,
+        runtime: { endpoint: localEndpoint, localToken: "native-token" },
+        localFilesystemEndpoint: localEndpoint,
       }),
     },
     runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("test.runtime")),
   );
   await runtimeConnection.initialize();
   const connection = connectionHost();
-  bindRuntimeEndpointConfiguration(
-    connection.host,
-    (commit) => commit(),
-    runtimeConnection.bootstrap().runtime,
-  );
-  const request = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("captured request"));
+  const binding = runtimeConnection.bind(connection.host);
+  connection.host.cleanup(binding.dispose);
+  endpoint = runtimeConnection.access.endpoint;
+  const request = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("captured request"))
+    .mockClear();
   expect(runtimeConnection.localWorkspaceAvailable()).toBe(true);
   await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
-  expect(new Headers(request.mock.calls[0]?.[1]?.headers).get("Authorization")).toBe(
-    "Bearer native-token",
-  );
-  applyRuntimeEndpoint("http://127.0.0.1:17171");
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer native-token");
+  endpoint.applyRuntimeEndpoint("http://127.0.0.1:17171");
   expect(runtimeConnection.localWorkspaceAvailable()).toBe(false);
   await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
-  expect(new Headers(request.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
-  applyRuntimeEndpoint("https://remote.example");
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBeNull();
+  endpoint.applyRuntimeEndpoint("https://remote.example");
   expect(runtimeConnection.localWorkspaceAvailable()).toBe(false);
   await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
-  expect(new Headers(request.mock.calls[2]?.[1]?.headers).get("Authorization")).toBeNull();
-  resetRuntimeEndpoint();
-  expect(configuredRuntimeTarget()).toEqual({ endpoint, localToken: "native-token" });
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBeNull();
+  endpoint.resetRuntimeEndpoint();
+  expect(runtimeConnection.bootstrap().runtime).toEqual({
+    endpoint: localEndpoint,
+    localToken: "native-token",
+  });
   expect(runtimeConnection.localWorkspaceAvailable()).toBe(true);
   await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
-  expect(new Headers(request.mock.calls[3]?.[1]?.headers).get("Authorization")).toBe(
-    "Bearer native-token",
-  );
+  expect(
+    new Headers(
+      request.mock.calls.findLast(([, init]) => init?.method === "POST")?.[1]?.headers,
+    ).get("Authorization"),
+  ).toBe("Bearer native-token");
 });

@@ -1,4 +1,12 @@
-import { act, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type AgentMessagePhase } from "@/features/agent/public/sessionView";
@@ -60,14 +68,14 @@ describe("MessageBlock turn identity", () => {
       runId: null,
       steer: { runId: "run_1", delivery: "unknown" },
     };
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock row={uncertain} ctx={CTX} sessionId="session-steer" isLast isRunning />,
     );
     expect(screen.getByText("Acceptance not confirmed")).toBeTruthy();
     expect(screen.queryByText("Accepted · waiting for model context")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry original submission" }));
     expect(retry).toHaveBeenCalledOnce();
-    expect(retry).toHaveBeenCalledWith(uncertain.message.id);
+    expect(retry).toHaveBeenCalledWith(testClient.agent.access, uncertain.message.id);
     rerender(
       <MessageBlock
         row={{
@@ -87,7 +95,7 @@ describe("MessageBlock turn identity", () => {
   it("keeps terminal evidence visible when the selected narrative row has no rendered blocks", () => {
     const empty = row("complete", "", "assistant", "commentary");
     empty.message.blocks = [];
-    render(
+    testClient.render(
       <MessageBlock
         row={empty}
         ctx={CTX}
@@ -108,7 +116,7 @@ describe("MessageBlock turn identity", () => {
       runId: null,
       steer: { runId: "run_1", receipt: "accepted" },
     };
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock row={accepted} ctx={CTX} sessionId="session-steer" isLast isRunning />,
     );
     expect(screen.getByText("Accepted · waiting for model context")).toBeTruthy();
@@ -128,7 +136,7 @@ describe("MessageBlock turn identity", () => {
   });
 
   it("keeps role identity semantic without adding visible chrome to every turn", () => {
-    const { container, rerender } = render(
+    const { container, rerender } = testClient.render(
       <MessageBlock
         row={row("complete", "Question", "user")}
         ctx={CTX}
@@ -158,7 +166,7 @@ describe("MessageBlock turn identity", () => {
   });
 
   it("marks only the human turn as the user-message bubble", async () => {
-    const { container, rerender } = render(
+    const { container, rerender } = testClient.render(
       <MessageBlock
         row={row("complete", "中文与 English 混排", "user")}
         ctx={CTX}
@@ -199,7 +207,7 @@ afterEach(() => {
 describe("MessageBlock action materialization", () => {
   it("keeps work commentary free of terminal message actions", async () => {
     document.documentElement.setAttribute("data-motion", "off");
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock
         row={row("complete", "Inspecting the project.", "assistant", "commentary")}
         ctx={CTX}
@@ -228,7 +236,7 @@ describe("MessageBlock action materialization", () => {
 
   it("revokes terminal actions before a late accepted text generation enters layout", async () => {
     document.documentElement.setAttribute("data-motion", "off");
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock
         row={row("complete", "Settled answer.")}
         ctx={CTX}
@@ -261,7 +269,7 @@ describe("MessageBlock action materialization", () => {
       runOwner: { kind: "owned", runId: "run-visible-material", status: "running" },
     } as TranscriptRow;
 
-    render(
+    testClient.render(
       <MessageBlock
         row={exactRunStillStreaming}
         ctx={CTX}
@@ -275,7 +283,7 @@ describe("MessageBlock action materialization", () => {
   });
 
   it("keeps terminal actions absent until the visible text generation has drained", () => {
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock
         row={row("running")}
         ctx={CTX}
@@ -301,7 +309,7 @@ describe("MessageBlock action materialization", () => {
   });
 
   it("publishes terminal actions once the visible generation catches up", async () => {
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageBlock
         row={row("running")}
         ctx={CTX}

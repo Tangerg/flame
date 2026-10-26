@@ -1,0 +1,75 @@
+import * as stylex from "@stylexjs/stylex";
+import { Gauge } from "@/ui/index";
+import { Pressable } from "@/ui/index";
+import { gap, RichTooltip, vocab } from "@flame/ui";
+import { fmtTokens } from "@/lib/format";
+import { useT } from "@/lib/i18n/index";
+import { useCurrentRootMaterial } from "@/features/agent/public/run";
+import { useActiveSessionId } from "@/features/agent/public/session";
+import { useAgentSessions } from "@/features/agent/public/session";
+import { useModels } from "@/features/providers/public/queries";
+import { contextUsageReadout } from "@/features/chat/context-usage/contextUsageReadout";
+import { color, motion, radius, space, surface } from "@flame/ui/tokens.stylex";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
+const cu = stylex.create({
+  trigger: {
+    display: "inline-flex",
+    flexShrink: 0,
+    height: space.s7,
+    width: space.s7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    color: { default: color.fgMuted, ":hover": color.fg },
+    transitionProperty: "background-color, color",
+    transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
+  },
+  panel: { width: "calc(var(--spacing) * 38)" },
+});
+
+export function ContextUsageGauge() {
+  const t = useT();
+  const currentRun = useCurrentRootMaterial();
+  const activeSessionId = useActiveSessionId();
+  const { data: sessions } = useAgentSessions();
+  const { data: models = [] } = useModels();
+  const servedSelection =
+    currentRun.modelSelection ?? sessions?.find((session) => session.id === activeSessionId);
+  const servedModel = models.find(
+    (model) => model.provider === servedSelection?.provider && model.id === servedSelection?.model,
+  );
+  const readout = contextUsageReadout(
+    currentRun.contextTokens ?? undefined,
+    servedModel?.tokenLimits?.contextWindow,
+  );
+  if (!readout) return null;
+
+  const label = t("context.usage.aria", { percent: readout.percent });
+  const trigger = (
+    <Pressable aria-label={label} className={stylex.props(cu.trigger).className}>
+      <Gauge value={readout.ratio} label={t("context.usage.aria", { percent: readout.percent })} />
+    </Pressable>
+  );
+
+  return (
+    <RichTooltip trigger={trigger} side="top" sideOffset={4} styles={cu.panel}>
+      <div {...stylex.props(vocab.column, gap.s0_5, ct.centre)}>
+        <span {...stylex.props(vocab.muted)}>{t("context.usage.label")}</span>
+        <span {...stylex.props(readout.pastHalfway && vocab.muted)}>
+          {t(readout.pastHalfway ? "context.usage.statusFull" : "context.usage.statusLeft", {
+            percent: readout.percent,
+            remaining: readout.remainingPercent,
+          })}
+        </span>
+        <span>
+          {t("context.usage.tooltip", {
+            used: fmtTokens(readout.usedTokens),
+            window: fmtTokens(readout.windowTokens),
+          })}
+        </span>
+      </div>
+    </RichTooltip>
+  );
+}

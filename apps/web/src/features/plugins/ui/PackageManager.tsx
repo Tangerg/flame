@@ -1,3 +1,4 @@
+import { useInstalledPlugins } from "@/features/plugins/context";
 import { pluginContract } from "@flame/runtime-client";
 import { parseJSON } from "@flame/runtime-client";
 import { checkRequest } from "@flame/runtime-client";
@@ -32,11 +33,7 @@ import {
 } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
-import {
-  packageOperations,
-  usePackageRealization,
-  usePackages,
-} from "@/features/plugins/adapters/packages";
+import { type PackageOperations, usePackages } from "@/features/plugins/adapters/packages";
 import { ProviderSelections } from "@/features/plugins/ui/ProviderSelections";
 import { ContributionRequirements } from "@/features/plugins/ui/ContributionRequirements";
 import { PointInspection } from "@/features/plugins/ui/PointInspection";
@@ -77,12 +74,13 @@ const EDIT_SAVE: Record<PackageEdit["type"], string> = {
 };
 
 export function PackageManager() {
+  const packages = useInstalledPlugins();
   const t = useT();
   const catalog = usePackages();
-  const realization = usePackageRealization((state) => state.failure);
+  const realization = packages.useFailure();
   const [source, setSource] = useState("");
   const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
-  const operations = packageOperations.peek();
+  const operations = packages.useOperations();
   const { feedback, run } = useAsyncFeedback(operations?.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
@@ -167,7 +165,7 @@ function PackageRow({
   refresh,
 }: {
   installation: PluginInstallation;
-  operations: ReturnType<typeof packageOperations.get>;
+  operations: PackageOperations;
   refresh: () => Promise<unknown>;
 }) {
   const t = useT();

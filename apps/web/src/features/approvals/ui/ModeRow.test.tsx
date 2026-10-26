@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ApprovalMode, type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
 import { ModeRow } from "@/features/approvals/ui/ModeRow";
@@ -19,7 +27,7 @@ describe("ModeRow", () => {
   it("owns the visible selection and duplicate admission only while a save is pending", async () => {
     const saving = Promise.withResolvers<ApprovalModeResult>();
     model.setApprovalMode.mockReturnValue(saving.promise);
-    const view = render(<ModeRow approval={approval("balanced")} />);
+    const view = testClient.render(<ModeRow approval={approval("balanced")} />);
 
     const safe = screen.getByRole("radio", { name: "Safe" });
     const balanced = screen.getByRole("radio", { name: "Balanced" });
@@ -59,7 +67,7 @@ describe("ModeRow", () => {
     model.setApprovalMode
       .mockReturnValueOnce(rejected.promise)
       .mockResolvedValueOnce(approval("safe"));
-    render(<ModeRow approval={approval("balanced")} />);
+    testClient.render(<ModeRow approval={approval("balanced")} />);
 
     const safe = screen.getByRole("radio", { name: "Safe" });
     const balanced = screen.getByRole("radio", { name: "Balanced" });
@@ -74,11 +82,11 @@ describe("ModeRow", () => {
     expect(balanced.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(safe);
 
-    expect(model.setApprovalMode.mock.calls.map(([mode]) => mode)).toEqual(["yolo", "safe"]);
+    expect(model.setApprovalMode.mock.calls.map(([, mode]) => mode)).toEqual(["yolo", "safe"]);
   });
 
   it("describes each mode with the gates the Runtime published", () => {
-    render(<ModeRow approval={approval("balanced")} />);
+    testClient.render(<ModeRow approval={approval("balanced")} />);
 
     expect(screen.getByRole("radio", { name: "Balanced" }).textContent).toContain(
       "Edits: allowed · Commands: asks first · Network: asks first",

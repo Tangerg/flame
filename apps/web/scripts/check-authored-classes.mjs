@@ -12,7 +12,7 @@
 // closed, and ours. Anything else is either a utility from a framework that is gone or a
 // typo, and both render nothing.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { extname, join, relative } from "node:path";

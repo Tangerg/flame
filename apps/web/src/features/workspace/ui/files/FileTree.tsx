@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type Ref, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@flame/ui";
@@ -19,7 +20,7 @@ import {
   useWorkspaceListFiles,
 } from "@/features/workspace/application/workspaceQueries";
 import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
-import { localWorkspace } from "@/features/workspace/application/ports/localWorkspace";
+
 import { color, corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
   add: "A",
@@ -85,6 +86,8 @@ function TreeNode({
   pos: number;
   size: number;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const memory = useWorkspaceViewMemory();
   const isDir = entry.type === "dir";
@@ -132,7 +135,7 @@ function TreeNode({
 
   const activate = () =>
     isDir
-      ? rememberWorkspaceView({
+      ? rememberWorkspaceView(workspaceAccess, {
           expandedDirs: expanded
             ? memory.expandedDirs.filter((dir) => dir !== entry.path)
             : [...memory.expandedDirs, entry.path],
@@ -202,7 +205,7 @@ function TreeNode({
           <ContextMenu.IconItem icon="copy" onSelect={() => void copyText(entry.path)}>
             {t("file.copyPath")}
           </ContextMenu.IconItem>
-          {tree.cwd && localWorkspace().available() && (
+          {tree.cwd && workspaceAccess.local.available() && (
             <ContextMenu.IconItem icon="folder-open" onSelect={() => tree.onReveal(entry.path)}>
               {t("file.reveal")}
             </ContextMenu.IconItem>

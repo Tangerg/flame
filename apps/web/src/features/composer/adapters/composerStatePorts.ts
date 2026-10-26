@@ -1,20 +1,19 @@
-import { disposeOnHmr } from "@/lib/hmr";
 import { type AgentSessions } from "@/features/agent/public/services";
 import { type RuntimeServerScope } from "@/features/connection/public/services";
-import { configureComposerStatePort } from "@/features/composer/application/ports/state";
-import {
-  activateComposerStorage,
-  useComposerStore,
-} from "@/features/composer/adapters/composerStore";
+import { type ComposerStatePort } from "@/features/composer/application/state";
+import { createComposerStore } from "@/features/composer/adapters/composerStore";
 import { joinDraftParts } from "@/features/composer/domain/draft";
-let stopSessionSync: (() => void) | null = null;
-
-export function installComposerStatePorts(
+export function createComposer(
   sessions: AgentSessions,
   endpoint: () => string,
   scope: RuntimeServerScope,
-): () => void {
-  activateComposerStorage(endpoint());
+) {
+  const owner = createComposerStore();
+  const useComposerStore = owner.store;
+  const activateComposerStorage = owner.activate;
+  let stopSessionSync: (() => void) | null = null;
+  let disposed = false;
+
   let focusTarget: { element: HTMLTextAreaElement | null } | null = null;
   let focusPresentation: { present: (focus: () => void) => void } | null = null;
   const focus = (selectionEnd?: number) => {
@@ -31,7 +30,7 @@ export function installComposerStatePorts(
     if (focusPresentation) focusPresentation.present(focusOriginalTarget);
     else focusOriginalTarget();
   };
-  const disposePort = configureComposerStatePort({
+  const access: ComposerStatePort = {
     focus,
     captureFocus: () => {
       const origin = document.activeElement;
@@ -98,48 +97,57 @@ export function installComposerStatePorts(
     },
     useModelPreference: () => useComposerStore((state) => state.modelPreference),
     useSetModelPreference: () => useComposerStore((state) => state.setModel),
-  });
-  const disposeSessionSync = installComposerSessionSync(sessions, endpoint, scope);
-  return () => {
+  };
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
     focusTarget = null;
     focusPresentation = null;
-    disposeSessionSync();
-    disposePort();
+    stopSessionSync?.();
+    stopSessionSync = null;
+    owner.dispose();
+  }
+
+  function installComposerSessionSync(
+    sessions: AgentSessions,
+    endpoint: () => string,
+    scope: RuntimeServerScope,
+  ): () => void {
+    stopSessionSync?.();
+    const sync = ({ activeSessionId }: ReturnType<AgentSessions["getLifecycleSnapshot"]>) => {
+      activateComposerStorage(endpoint());
+      const composer = useComposerStore.getState();
+      composer.loadSession(activeSessionId);
+    };
+    const stopLifecycle = sessions.subscribeLifecycle(sync);
+    const stopDeletion = sessions.subscribeDeleted((sessionId) => {
+      activateComposerStorage(endpoint());
+      useComposerStore.getState().discardSession(sessionId);
+    });
+    const stopScope = scope.subscribeReplacement(() => sync(sessions.getLifecycleSnapshot()));
+    const stop = () => {
+      stopLifecycle();
+      stopDeletion();
+      stopScope();
+    };
+    stopSessionSync = stop;
+
+    sync(sessions.getLifecycleSnapshot());
+    return () => {
+      stop();
+      if (stopSessionSync === stop) stopSessionSync = null;
+    };
+  }
+
+  return {
+    access,
+    store: useComposerStore,
+    activate: activateComposerStorage,
+    start() {
+      if (disposed) throw new Error("Composer is disposed");
+      if (!stopSessionSync) installComposerSessionSync(sessions, endpoint, scope);
+    },
+    dispose,
   };
 }
-
-function installComposerSessionSync(
-  sessions: AgentSessions,
-  endpoint: () => string,
-  scope: RuntimeServerScope,
-): () => void {
-  stopSessionSync?.();
-  const sync = ({ activeSessionId }: ReturnType<AgentSessions["getLifecycleSnapshot"]>) => {
-    activateComposerStorage(endpoint());
-    const composer = useComposerStore.getState();
-    composer.loadSession(activeSessionId);
-  };
-  const stopLifecycle = sessions.subscribeLifecycle(sync);
-  const stopDeletion = sessions.subscribeDeleted((sessionId) => {
-    activateComposerStorage(endpoint());
-    useComposerStore.getState().discardSession(sessionId);
-  });
-  const stopScope = scope.subscribeReplacement(() => sync(sessions.getLifecycleSnapshot()));
-  const stop = () => {
-    stopLifecycle();
-    stopDeletion();
-    stopScope();
-  };
-  stopSessionSync = stop;
-
-  sync(sessions.getLifecycleSnapshot());
-  return () => {
-    stop();
-    if (stopSessionSync === stop) stopSessionSync = null;
-  };
-}
-
-disposeOnHmr(() => {
-  stopSessionSync?.();
-  stopSessionSync = null;
-});
+export type ComposerOwner = ReturnType<typeof createComposer>;

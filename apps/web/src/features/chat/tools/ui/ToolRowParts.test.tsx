@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { ToolCard } from "@/features/chat/tools/ui/ToolCard";
 import { ToolGroupMember } from "@/features/chat/tools/ui/ToolGroupMember";
@@ -109,7 +117,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
         const err = new Error("disk gone");
         control.callback.mockImplementation(failWith(err));
         const tool = call();
-        render(row(Row, tool));
+        testClient.render(row(Row, tool));
         const button = screen.getByRole("button", { name: control.label });
 
         expect(() => fireEvent.click(button)).not.toThrow();
@@ -139,7 +147,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
     it("attributes a delayed failure to the owner captured at activation", async () => {
       const pending = deferred();
       control.callback.mockReturnValue(pending.promise);
-      const { rerender } = render(row(Row, call()));
+      const { rerender } = testClient.render(row(Row, call()));
       fireEvent.click(screen.getByRole("button", { name: control.label }));
 
       await act(async () => {
@@ -175,7 +183,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
       control.callback.mockImplementationOnce(() => {
         throw new Error("busy");
       });
-      render(row(Row, call({ status: "err", error: "exit 1" })));
+      testClient.render(row(Row, call({ status: "err", error: "exit 1" })));
       const button = screen.getByRole("button", { name: control.label });
       button.focus();
 
@@ -195,7 +203,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
     point.run.mockImplementation(() => {
       throw new Error("nope");
     });
-    const { rerender } = render(row(Row, call()));
+    const { rerender } = testClient.render(row(Row, call()));
     fireEvent.click(screen.getByRole("button", { name: "Copy arguments" }));
     await screen.findByRole("alert");
 
@@ -212,7 +220,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
   ] as const)("drops an older delayed failure once %s, still reporting it", async (_case, how) => {
     const pending = deferred();
     point.run.mockReturnValueOnce(pending.promise);
-    const { rerender } = render(row(Row, call()));
+    const { rerender } = testClient.render(row(Row, call()));
     fireEvent.click(screen.getByRole("button", { name: "Copy arguments" }));
 
     if (how === "replace") rerender(row(Row, call({ runId: "r2" })));
@@ -226,7 +234,9 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
 
   it("reports failures from a denied, static row", async () => {
     point.open.mockRejectedValue(new Error("no view"));
-    const { container } = render(row(Row, call({ status: "denied", fn: "src/denied.ts" })));
+    const { container } = testClient.render(
+      row(Row, call({ status: "denied", fn: "src/denied.ts" })),
+    );
     expect(container.querySelector("[aria-expanded]")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
@@ -241,7 +251,7 @@ describe.each(consumers)("%s contributed controls", (_name, Row) => {
     });
     const tool = call({ result: "captured output" });
     const toggle = vi.fn();
-    const { container } = render(<Row tool={tool} expanded onToggleExpand={toggle} />);
+    const { container } = testClient.render(<Row tool={tool} expanded onToggleExpand={toggle} />);
     const result = await screen.findByRole("region", { name: "Result" });
     const disclosure = container.querySelector("button[aria-expanded]");
     fireEvent.click(screen.getByRole("button", { name: "Copy arguments" }));

@@ -1,3 +1,16 @@
+import {
+  createInstalledPlugins,
+  type InstalledPluginsOwner,
+} from "@/features/plugins/adapters/installedPlugins";
+import { type ThemeAccess } from "@/features/theme/public/theme";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { TOOL_RESULT_RENDERER } from "@/features/chat/public/tools/types";
 import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { cleanup } from "@testing-library/react";
@@ -13,21 +26,27 @@ import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import { RuntimeConnectionGeneration, RUNTIME_STREAM } from "@/features/connection/public/services";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
-import {
-  packageOperations,
-  PACKAGES_KEY,
-  usePackageRealization,
-} from "@/features/plugins/adapters/packages";
+import { PACKAGES_KEY } from "@/features/plugins/adapters/packages";
 import { createPluginsPlugin } from "@/features/plugins/index";
 import { contributePaletteTheme } from "@/features/theme/public/appearance";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
-const pluginsPane = (client: () => FlameClient) =>
-  createPluginsPlugin(client, () => "http://runtime.test");
+let installed: InstalledPluginsOwner;
+const pluginsPane = (client: () => FlameClient) => {
+  const owned = createInstalledPlugins(
+    client,
+    () => "http://runtime.test",
+    testClient.theme.access,
+  );
+  installed = owned;
+  onTestFinished(() => owned.dispose());
+  return createPluginsPlugin(owned);
+};
 
 vi.mock("@/features/theme/public/appearance", () => ({
   retainThemeSelection: vi.fn(),
   contributePaletteTheme: vi.fn(
     (
+      _preference: ThemeAccess["preference"],
       owner: Pick<ContributionLifetime, "contribute">,
       theme: { id: string; label: string; scheme: "dark" | "light" },
     ) => owner.contribute(COLOR_THEME, { id: theme.id, label: theme.label, scheme: theme.scheme }),
@@ -39,7 +58,6 @@ afterEach(async () => {
   vi.mocked(retainThemeSelection).mockClear();
   await resetKernelForTest();
   queryClient.removeQueries({ queryKey: [PACKAGES_KEY] });
-  usePackageRealization.setState({ failure: null });
 });
 
 function connectionEvents(signal: AbortSignal): AsyncIterable<never> {
@@ -146,7 +164,7 @@ it("keeps package realization owned by its generation when the query cache is ca
     ]),
   );
   expect(queryClient.getQueryData([PACKAGES_KEY])).toEqual([row]);
-  expect(usePackageRealization.getState().failure).toBeNull();
+  expect(installed.access.failure()).toBeNull();
 });
 
 it("joins the retired Runtime before publishing the latest package generation", async () => {
@@ -177,7 +195,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
     pluginsPane(() => selected),
   );
   await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
-  const retired = packageOperations.get();
+  const retired = installed.access.captureOperations()!;
   generation = RuntimeConnectionGeneration.forProcess("intermediate");
   for (const listener of subscribers) listener();
   expect(retired.signal.aborted).toBe(true);
@@ -194,9 +212,9 @@ it("joins the retired Runtime before publishing the latest package generation", 
   expect(queryClient.getQueryData([PACKAGES_KEY])).toEqual([
     installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "latest"),
   ]);
-  expect(packageOperations.get().signal.aborted).toBe(false);
+  expect(installed.access.captureOperations()!.signal.aborted).toBe(false);
   await resetKernelForTest();
-  expect(packageOperations.peek()).toBeNull();
+  expect(installed.access.captureOperations()).toBeNull();
   expect(subscribers.size).toBe(0);
   expect(contributionsTo(COLOR_THEME)).toEqual([]);
 });
@@ -215,15 +233,13 @@ it("keeps a failed realization local to this client and retries it on request", 
     runtimePlugin(),
     pluginsPane(() => client(list, subscribe)),
   );
-  await vi.waitFor(() =>
-    expect(usePackageRealization.getState().failure?.reason).toBe("event stream refused"),
-  );
+  await vi.waitFor(() => expect(installed.access.failure()?.reason).toBe("event stream refused"));
   expect(contributionsTo(COLOR_THEME)).toEqual([]);
   expect(list).not.toHaveBeenCalled();
 
-  usePackageRealization.getState().failure!.retry();
+  installed.access.failure()!.retry();
 
-  expect(usePackageRealization.getState().failure).toBeNull();
+  expect(installed.access.failure()).toBeNull();
   await vi.waitFor(() =>
     expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([
       "package · package",
@@ -238,9 +254,9 @@ it("withdraws its realization failure when the owning generation retires", async
     runtimePlugin(),
     pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
-  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
+  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
   await resetKernelForTest();
-  expect(usePackageRealization.getState().failure).toBeNull();
+  expect(installed.access.failure()).toBeNull();
 });
 
 it("consumes a realization retry once and refuses it after retirement", async () => {
@@ -254,8 +270,8 @@ it("consumes a realization retry once and refuses it after retirement", async ()
     runtimePlugin(),
     pluginsPane(() => client(async () => ({ data: [] }), subscribe)),
   );
-  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
-  const failed = usePackageRealization.getState().failure!;
+  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
+  const failed = installed.access.failure()!;
   failed.retry();
   failed.retry();
   await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
@@ -268,8 +284,8 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   const contribute = vi.mocked(contributePaletteTheme);
   const original = contribute.getMockImplementation()!;
   const disposed: string[] = [];
-  contribute.mockImplementation((owner, theme) => {
-    original(owner, theme);
+  contribute.mockImplementation((preference, owner, theme) => {
+    original(preference, owner, theme);
     owner.cleanup(() => {
       disposed.push(theme.label);
       if (theme.label.startsWith("first")) throw new Error("page close failed");
@@ -312,8 +328,8 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
   failure.resolve();
   await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toEqual([]));
   expect(disposed.sort()).toEqual(["first · first", "second · second"]);
-  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
-  const reason = usePackageRealization.getState().failure!.reason;
+  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
+  const reason = installed.access.failure()!.reason;
   expect(reason).toContain("event stream failed");
   expect(reason).toContain("page close failed");
 });
@@ -342,8 +358,8 @@ it("preserves a snapshot failure when closing its subscription also fails", asyn
       }, subscribe),
     ),
   );
-  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
-  const reason = usePackageRealization.getState().failure!.reason;
+  await vi.waitFor(() => expect(installed.access.failure()).not.toBeNull());
+  const reason = installed.access.failure()!.reason;
   expect(reason).toContain("snapshot refused");
   expect(reason).toContain("stream close failed");
   expect(close).toHaveBeenCalledOnce();
@@ -395,7 +411,7 @@ it.each(["resolve", "reject"] as const)(
     if (outcome === "reject") stopping.reject(new Error("late stream close failed"));
     else stopping.resolve();
     await retirement;
-    expect(usePackageRealization.getState().failure).toBeNull();
+    expect(installed.access.failure()).toBeNull();
     expect(
       usePluginErrorStore
         .getState()
@@ -449,14 +465,12 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
       pluginsPane(() => client(list, subscribe)),
     );
     ready.resolve();
-    await vi.waitFor(() =>
-      expect(usePackageRealization.getState().failure?.reason).toBe(failure.message),
-    );
+    await vi.waitFor(() => expect(installed.access.failure()?.reason).toBe(failure.message));
     expect(active.size).toBe(0);
     expect(contributionsTo(COLOR_THEME)).toEqual([]);
 
     failing = false;
-    usePackageRealization.getState().failure!.retry();
+    installed.access.failure()!.retry();
 
     await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     await vi.waitFor(() =>
@@ -566,6 +580,7 @@ it("presents and retains only the contributions Runtime admits", async () => {
     "admitted · Search",
   ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
+    testClient.theme.access.preference,
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],
     "package:",
   );

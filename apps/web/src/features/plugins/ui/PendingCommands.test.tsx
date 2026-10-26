@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createFlameClient, createMutationJournal, stringifyJSON } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
@@ -79,7 +87,7 @@ async function recoverOriginal() {
 }
 
 it("retires never-dispatched work using only its original identity", async () => {
-  render(<PendingCommands operations={operations} />);
+  testClient.render(<PendingCommands operations={operations} />);
   fireEvent.click(screen.getByRole("button", { name: "Retire if never dispatched" }));
   const request = await waitForRequest(transport, "plugins.retireCommand");
   expect(request.params).toEqual({ namespace: "idp_" + "1".repeat(32), key });
@@ -90,7 +98,7 @@ it("retires never-dispatched work using only its original identity", async () =>
 });
 
 it("keeps dispatched uncertainty after Runtime refuses retirement", async () => {
-  render(<PendingCommands operations={operations} />);
+  testClient.render(<PendingCommands operations={operations} />);
   fireEvent.click(screen.getByRole("button", { name: "Retire if never dispatched" }));
   const request = await waitForRequest(transport, "plugins.retireCommand");
   await act(async () =>
@@ -106,7 +114,7 @@ it("keeps dispatched uncertainty after Runtime refuses retirement", async () => 
 });
 
 it("recovers an original command without a catalog row, component or current provider", async () => {
-  render(<PendingCommands operations={operations} />);
+  testClient.render(<PendingCommands operations={operations} />);
   expect(screen.getByText(key)).toBeTruthy();
   const request = await recoverOriginal();
   await act(async () =>
@@ -125,7 +133,7 @@ it("recovers an original command without a catalog row, component or current pro
 });
 
 it("retains an unavailable owner's identity without dispatching to another provider", async () => {
-  render(<PendingCommands operations={operations} />);
+  testClient.render(<PendingCommands operations={operations} />);
   const request = await recoverOriginal();
   await act(async () =>
     transport.inject({
@@ -145,7 +153,7 @@ it("retains an unavailable owner's identity without dispatching to another provi
 });
 
 it("reports a known refusal separately from an unknown outcome", async () => {
-  render(<PendingCommands operations={operations} />);
+  testClient.render(<PendingCommands operations={operations} />);
   const request = await recoverOriginal();
   await act(async () =>
     respondSuccess(transport, request.id, {
@@ -159,7 +167,7 @@ it("reports a known refusal separately from an unknown outcome", async () => {
 });
 
 it("reports unreadable journal evidence without claiming the list is empty", () => {
-  render(
+  testClient.render(
     <PendingCommands
       operations={{
         ...operations,

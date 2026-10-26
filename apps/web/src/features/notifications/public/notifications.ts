@@ -95,9 +95,3 @@ export function notifyFrom(plugin: string, message: string, level: NotificationL
   useNotificationStore.getState().push({ plugin, level, message });
   TOAST_BY_LEVEL[level](message);
 }
-export { useSystemNotificationsStore } from "@/features/notifications/systemNotifications";
-export {
-  refreshNotificationAuthorization,
-  requestNotificationAuthorization,
-  useNotificationAuthorization,
-} from "@/features/notifications/systemNotifier";

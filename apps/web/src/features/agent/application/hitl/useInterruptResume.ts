@@ -1,20 +1,21 @@
+import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
 import { useCallback, useState } from "react";
 import { type InterruptResumePayload } from "@/features/agent/domain/hitl";
-import {
-  interruptResponseIsStaged,
-  stageInterruptResponse,
-} from "@/features/agent/application/hitl/interruptResponseCoordinator";
+
 export function resumeInterrupt(
+  agentAccess: AgentAccess,
   sessionId: string,
   runId: string,
   itemId: string,
   response: InterruptResumePayload,
   hooks?: { onSettled?: () => void; onError?: () => void },
 ): boolean {
-  return stageInterruptResponse({ sessionId, rootRunId: runId, itemId }, response, hooks);
+  return agentAccess.interrupts.stage({ sessionId, rootRunId: runId, itemId }, response, hooks);
 }
 
 export function useInterruptResume<P>(sessionId: string, runId?: string, itemId?: string) {
+  const agentAccess = useAgent();
+
   const [pending, setPending] = useState<P | null>(null);
 
   const resume = useCallback(
@@ -23,11 +24,14 @@ export function useInterruptResume<P>(sessionId: string, runId?: string, itemId?
       setPending(marker);
       const clear = () => setPending(null);
       if (
-        !resumeInterrupt(sessionId, runId, itemId, response, { onSettled: clear, onError: clear })
+        !resumeInterrupt(agentAccess, sessionId, runId, itemId, response, {
+          onSettled: clear,
+          onError: clear,
+        })
       )
         clear();
     },
-    [sessionId, runId, itemId, pending],
+    [sessionId, runId, itemId, pending, agentAccess],
   );
 
   // The coordinator is the sole owner of whether this interrupt already carries a
@@ -35,7 +39,7 @@ export function useInterruptResume<P>(sessionId: string, runId?: string, itemId?
   // its own copy, so a remount can never resurrect a settled submission.
   const submitted =
     runId !== undefined && itemId !== undefined
-      ? interruptResponseIsStaged({ sessionId, rootRunId: runId, itemId })
+      ? agentAccess.interrupts.isStaged({ sessionId, rootRunId: runId, itemId })
       : false;
 
   return { pending, submitted, resume };

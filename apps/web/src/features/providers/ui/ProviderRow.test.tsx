@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import {
@@ -50,7 +58,7 @@ describe("ProviderRow", () => {
       credential: { masked: "p4****ey", source: "stored" },
     });
     hooks.update.mockResolvedValue(saved);
-    const view = render(<ProviderRow p={provider()} />);
+    const view = testClient.render(<ProviderRow p={provider()} />);
 
     fireEvent.change(screen.getByLabelText(/openai-compatible API/i), {
       target: { value: "p49-dummy-key" },
@@ -81,7 +89,7 @@ describe("ProviderRow", () => {
   it("retires old Runtime feedback without discarding the user's credential draft", async () => {
     hooks.test.mockResolvedValue({ ok: true });
     const configured = provider({ credential: { masked: "sk-****", source: "stored" } });
-    const view = render(<ProviderRow p={configured} />);
+    const view = testClient.render(<ProviderRow p={configured} />);
 
     fireEvent.click(screen.getByRole("button", { name: /^test$/i }));
     await screen.findByText(/connection ok/i);
@@ -101,7 +109,7 @@ describe("ProviderRow", () => {
     let resolve!: (value: ProviderConfiguration) => void;
     hooks.update.mockReturnValue(new Promise<ProviderConfiguration>((r) => (resolve = r)));
     const configured = provider({ credential: { masked: "sk-****", source: "stored" } });
-    render(<ProviderRow p={configured} />);
+    testClient.render(<ProviderRow p={configured} />);
     const url = screen.getByLabelText(/openai-compatible Base URL/i) as HTMLInputElement;
     const key = screen.getByLabelText(/openai-compatible API/i) as HTMLInputElement;
 
@@ -120,7 +128,7 @@ describe("ProviderRow", () => {
     const configured = provider({ credential: { masked: "sk-****", source: "stored" } });
     hooks.update.mockResolvedValue(configured);
     hooks.test.mockResolvedValue({ ok: true });
-    render(<ProviderRow p={configured} />);
+    testClient.render(<ProviderRow p={configured} />);
 
     fireEvent.change(screen.getByLabelText(/openai-compatible Base URL/i), {
       target: { value: "https://draft.example.test/v1" },
@@ -133,7 +141,9 @@ describe("ProviderRow", () => {
 
   it("does not test after a save that failed", async () => {
     hooks.update.mockRejectedValue(new Error("endpoint rejected"));
-    render(<ProviderRow p={provider({ credential: { masked: "sk-****", source: "stored" } })} />);
+    testClient.render(
+      <ProviderRow p={provider({ credential: { masked: "sk-****", source: "stored" } })} />,
+    );
 
     fireEvent.change(screen.getByLabelText(/openai-compatible Base URL/i), {
       target: { value: "https://bad.example.test/v1" },
@@ -145,7 +155,7 @@ describe("ProviderRow", () => {
   });
 
   it("presents an optional-key provider as ready without fabricating a credential", () => {
-    render(
+    testClient.render(
       <ProviderRow
         p={provider({
           id: "test-endpoint",
@@ -166,13 +176,13 @@ describe("ProviderRow", () => {
 
   it("keeps an unsaved draft when the pane is left and reopened", () => {
     const configured = provider({ credential: { masked: "sk-****", source: "stored" } });
-    const first = render(<ProviderRow p={configured} />);
+    const first = testClient.render(<ProviderRow p={configured} />);
     fireEvent.change(screen.getByLabelText(/openai-compatible Base URL/i), {
       target: { value: "https://half-typed.example.test" },
     });
     first.unmount();
 
-    render(<ProviderRow p={configured} />);
+    testClient.render(<ProviderRow p={configured} />);
     expect((screen.getByLabelText(/openai-compatible Base URL/i) as HTMLInputElement).value).toBe(
       "https://half-typed.example.test",
     );
@@ -203,7 +213,7 @@ describe("ProviderRow", () => {
       hooks.update.mockReturnValue(saveAck.promise);
       hooks.test.mockReturnValue(testAck.promise);
       const original = configured();
-      render(<ProviderRow p={original} />);
+      testClient.render(<ProviderRow p={original} />);
       const { url, key } = fields();
 
       fireEvent.change(url, { target: { value: "https://a.example.test/v1" } });
@@ -234,7 +244,7 @@ describe("ProviderRow", () => {
     it("retires a save failure when the draft changed before the save settled", async () => {
       const saveAck = Promise.withResolvers<ProviderConfiguration>();
       hooks.update.mockReturnValue(saveAck.promise);
-      render(<ProviderRow p={configured()} />);
+      testClient.render(<ProviderRow p={configured()} />);
       const { url } = fields();
 
       fireEvent.change(url, { target: { value: "https://a.example.test/v1" } });
@@ -253,7 +263,7 @@ describe("ProviderRow", () => {
       const original = configured();
       hooks.update.mockResolvedValue(original);
       hooks.test.mockResolvedValue({ ok: false, error: "key rejected" });
-      render(<ProviderRow p={original} />);
+      testClient.render(<ProviderRow p={original} />);
 
       fireEvent.change(fields().url, { target: { value: "https://draft.example.test/v1" } });
       fireEvent.click(saveAndTest());
@@ -267,7 +277,7 @@ describe("ProviderRow", () => {
       const testAck = Promise.withResolvers<TestResult>();
       hooks.update.mockResolvedValue(original);
       hooks.test.mockReturnValue(testAck.promise);
-      render(<ProviderRow p={original} />);
+      testClient.render(<ProviderRow p={original} />);
       const { url } = fields();
 
       fireEvent.change(url, { target: { value: "https://a.example.test/v1" } });
@@ -284,7 +294,7 @@ describe("ProviderRow", () => {
 
     it("returns to idle when a Runtime generation retires the save", async () => {
       hooks.update.mockRejectedValue(new GenerationRetiredError("provider_mutation"));
-      render(<ProviderRow p={configured()} />);
+      testClient.render(<ProviderRow p={configured()} />);
 
       fireEvent.change(fields().url, { target: { value: "https://a.example.test/v1" } });
       fireEvent.click(saveAndTest());
@@ -300,7 +310,7 @@ describe("ProviderRow", () => {
       const saveAck = Promise.withResolvers<ProviderConfiguration>();
       hooks.update.mockReturnValue(saveAck.promise);
       hooks.test.mockResolvedValue({ ok: true });
-      render(<ProviderRow p={original} />);
+      testClient.render(<ProviderRow p={original} />);
 
       fireEvent.change(fields().url, { target: { value: "https://a.example.test/v1" } });
       const save = screen.getByRole("button", { name: /^save$/i });
@@ -326,7 +336,7 @@ describe("ProviderRow", () => {
       const saveAck = Promise.withResolvers<ProviderConfiguration>();
       hooks.update.mockReturnValue(saveAck.promise);
       hooks.test.mockResolvedValue({ ok: true });
-      render(<ProviderRow p={original} />);
+      testClient.render(<ProviderRow p={original} />);
 
       fireEvent.change(fields().url, { target: { value: "https://a.example.test/v1" } });
       const combined = saveAndTest();

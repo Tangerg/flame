@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ApprovalRuleSummary } from "@/features/agent/public/approvalPolicy";
 import { forgetApprovalRule } from "@/features/approvals/application/approvalConfig";
@@ -79,7 +87,7 @@ function forgetButton(ruleId: string) {
 
 it("describes each identically named forget action by its own visible rule", async () => {
   model.rules = rules;
-  const { rerender } = render(<RulesRow />);
+  const { rerender } = testClient.render(<RulesRow />);
   for (const rule of rules) expect(forgetButton(rule.id)).toBeTruthy();
 
   model.rules = [...rules].reverse();
@@ -92,12 +100,12 @@ it("describes each identically named forget action by its own visible rule", asy
     fireEvent.click(target);
   });
   expect(forgetApprovalRule).toHaveBeenCalledTimes(1);
-  expect(forgetApprovalRule).toHaveBeenCalledWith("rule/project:2");
+  expect(forgetApprovalRule).toHaveBeenCalledWith(testClient.agent.access, "rule/project:2");
 });
 
 it("keeps the rule description while the forget tooltip is open", async () => {
   model.rules = rules;
-  render(<RulesRow />);
+  testClient.render(<RulesRow />);
   const button = forgetButton("rule/session:3");
   act(() => button.focus());
   expect(await screen.findByRole("tooltip")).toBeTruthy();
@@ -119,7 +127,7 @@ it("distinguishes a literal wildcard from a pattern and a whole-tool grant", () 
     subject,
     decision: "allow",
   }));
-  render(<RulesRow />);
+  testClient.render(<RulesRow />);
   expect(screen.getByText("All arguments")).toBeTruthy();
   expect(screen.getByText("Exact: echo *")).toBeTruthy();
   expect(screen.getByText("Glob: echo *")).toBeTruthy();

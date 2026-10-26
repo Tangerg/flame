@@ -6,14 +6,13 @@ import {
   type SendAgentInputAction,
   type StopCurrentRootRunAction,
   type SynchronizeSessionAction,
-} from "@/features/agent/application/ports/sessionView";
+} from "@/features/agent/application/session/sessionAccess";
 import {
   type AgentProblem,
   type AgentSessionView,
   type Message,
 } from "@/features/agent/public/sessionView";
 import { create } from "zustand";
-import { disposeOnHmr } from "@/lib/hmr";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { reduceAgentEvent } from "@/features/agent/application/fold/reducer";
 import { foldCancelRunResponse } from "@/features/agent/application/fold/cancelResponse";
@@ -31,13 +30,13 @@ import {
   type ProblemPresentation,
   withCommandError,
 } from "@/features/agent/application/view/problemPresentation";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
+import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import {
   runtimeAgentEvent,
   runtimeCancelResult,
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
-import { type AgentOpeningCommand } from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
 interface SessionEntry {
   view: AgentSessionView;
   // problem is presentation the user and local commands own; an authoritative
@@ -169,296 +168,308 @@ function patchSessionState(
   return sessions === state.sessions ? state : { sessions };
 }
 
-export const useAgentStore = create<AgentStore>((set) => ({
-  sessions: {},
-  projectionGenerationSequence: initialProjectionCounter,
-  applyRunEvents: (sessionId, events) => {
-    let applied = false;
-    set((state) => {
-      if (events.length === 0) return state;
-      const prev = state.sessions[sessionId];
-      if (!prev) return state;
-      let view = prev.view;
-      let problem = prev.problem;
-      for (const event of events) {
-        const agentEvent = runtimeAgentEvent(event);
-        view = reduceAgentEvent(view, agentEvent);
-        // A started segment supersedes the command failure that preceded it.
-        if (agentEvent.event.type === "segment.started") problem = withCommandError(problem, null);
-      }
-      applied = true;
-      if (view === prev.view && problem === prev.problem) return state;
-      return {
-        sessions: patchSession(state.sessions, sessionId, {
+export function createAgentStore(sessionStore: AgentSessionStore) {
+  const useAgentSessionStore = sessionStore.store;
+  const useAgentStore = create<AgentStore>((set) => ({
+    sessions: {},
+    projectionGenerationSequence: initialProjectionCounter,
+    applyRunEvents: (sessionId, events) => {
+      let applied = false;
+      set((state) => {
+        if (events.length === 0) return state;
+        const prev = state.sessions[sessionId];
+        if (!prev) return state;
+        let view = prev.view;
+        let problem = prev.problem;
+        for (const event of events) {
+          const agentEvent = runtimeAgentEvent(event);
+          view = reduceAgentEvent(view, agentEvent);
+          // A started segment supersedes the command failure that preceded it.
+          if (agentEvent.event.type === "segment.started")
+            problem = withCommandError(problem, null);
+        }
+        applied = true;
+        if (view === prev.view && problem === prev.problem) return state;
+        return {
+          sessions: patchSession(state.sessions, sessionId, {
+            view,
+            problem,
+            viewRevision:
+              view === prev.view ? prev.viewRevision : advanceProjectionCounter(prev.viewRevision),
+          }),
+        };
+      });
+      return applied;
+    },
+    applyRunSnapshot: (sessionId, run) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          foldRunSnapshot(view, runtimeRunFact(run)),
+        );
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    commitCancelResponse: (sessionId, expected, response) => {
+      let committed = false;
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (
+          !entry ||
+          entry.viewEpoch !== expected.viewEpoch ||
+          entry.viewRevision !== expected.viewRevision
+        ) {
+          return state;
+        }
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          foldCancelRunResponse(view, runtimeCancelResult(response)),
+        );
+        committed = true;
+        return sessions === state.sessions ? state : { sessions };
+      });
+      return committed;
+    },
+    appendLocalMessage: (sessionId, message) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          view.messages.some((existing) => existing.id === message.id)
+            ? view
+            : { ...view, messages: [...view.messages, message] },
+        );
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    ensureSession: (sessionId) =>
+      set((state) => {
+        if (state.sessions[sessionId]) return state;
+        const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
+        return {
+          sessions: { ...state.sessions, [sessionId]: emptyEntry(viewEpoch) },
+          projectionGenerationSequence: viewEpoch,
+        };
+      }),
+    beginViewRefresh: (sessionId, invalidateQueuedRunEvents) => {
+      let token: AgentViewRefreshToken | null = null;
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (!entry) return state;
+        const requestSequence = advanceProjectionCounter(entry.refreshSequence);
+        const viewEpoch = invalidateQueuedRunEvents
+          ? advanceProjectionCounter(state.projectionGenerationSequence)
+          : entry.viewEpoch;
+        token = {
+          generation: viewEpoch,
+          requestSequence,
+          viewRevision: entry.viewRevision,
+        };
+        const sessions = patchSession(state.sessions, sessionId, {
+          refreshSequence: requestSequence,
+          viewEpoch,
+        });
+        return {
+          sessions,
+          ...(invalidateQueuedRunEvents ? { projectionGenerationSequence: viewEpoch } : {}),
+        };
+      });
+      return token;
+    },
+    commitViewRefresh: (sessionId, token, view, openingCommands) => {
+      let committed = false;
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (
+          !entry ||
+          entry.viewEpoch !== token.generation ||
+          entry.refreshSequence !== token.requestSequence ||
+          entry.viewRevision !== token.viewRevision
+        ) {
+          return state;
+        }
+        committed = true;
+        return patchSessionState(state, sessionId, {
           view,
-          problem,
-          viewRevision:
-            view === prev.view ? prev.viewRevision : advanceProjectionCounter(prev.viewRevision),
-        }),
-      };
-    });
-    return applied;
-  },
-  applyRunSnapshot: (sessionId, run) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        foldRunSnapshot(view, runtimeRunFact(run)),
-      );
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  commitCancelResponse: (sessionId, expected, response) => {
-    let committed = false;
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (
-        !entry ||
-        entry.viewEpoch !== expected.viewEpoch ||
-        entry.viewRevision !== expected.viewRevision
-      ) {
-        return state;
-      }
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        foldCancelRunResponse(view, runtimeCancelResult(response)),
-      );
-      committed = true;
-      return sessions === state.sessions ? state : { sessions };
-    });
-    return committed;
-  },
-  appendLocalMessage: (sessionId, message) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        view.messages.some((existing) => existing.id === message.id)
-          ? view
-          : { ...view, messages: [...view.messages, message] },
-      );
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  ensureSession: (sessionId) =>
-    set((state) => {
-      if (state.sessions[sessionId]) return state;
-      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
-      return {
-        sessions: { ...state.sessions, [sessionId]: emptyEntry(viewEpoch) },
-        projectionGenerationSequence: viewEpoch,
-      };
-    }),
-  beginViewRefresh: (sessionId, invalidateQueuedRunEvents) => {
-    let token: AgentViewRefreshToken | null = null;
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (!entry) return state;
-      const requestSequence = advanceProjectionCounter(entry.refreshSequence);
-      const viewEpoch = invalidateQueuedRunEvents
-        ? advanceProjectionCounter(state.projectionGenerationSequence)
-        : entry.viewEpoch;
-      token = {
-        generation: viewEpoch,
-        requestSequence,
-        viewRevision: entry.viewRevision,
-      };
-      const sessions = patchSession(state.sessions, sessionId, {
-        refreshSequence: requestSequence,
-        viewEpoch,
-      });
-      return {
-        sessions,
-        ...(invalidateQueuedRunEvents ? { projectionGenerationSequence: viewEpoch } : {}),
-      };
-    });
-    return token;
-  },
-  commitViewRefresh: (sessionId, token, view, openingCommands) => {
-    let committed = false;
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (
-        !entry ||
-        entry.viewEpoch !== token.generation ||
-        entry.refreshSequence !== token.requestSequence ||
-        entry.viewRevision !== token.viewRevision
-      ) {
-        return state;
-      }
-      committed = true;
-      return patchSessionState(state, sessionId, {
-        view,
-        ...(openingCommands ? { openingCommands } : {}),
-        viewRevision: advanceProjectionCounter(entry.viewRevision),
-        authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
-      });
-    });
-    return committed;
-  },
-  retireProjectionGeneration: (sessionIds) =>
-    set((state) => {
-      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
-      let sessions = state.sessions;
-      for (const sessionId of new Set(sessionIds)) {
-        const entry = sessions[sessionId];
-        if (!entry) continue;
-        sessions = patchSession(sessions, sessionId, {
-          refreshSequence: advanceProjectionCounter(entry.refreshSequence),
-          viewEpoch,
-          openingCommands: [],
-        });
-      }
-      return sessions === state.sessions
-        ? state
-        : { sessions, projectionGenerationSequence: viewEpoch };
-    }),
-  replaceServerScope: (sessionIds) =>
-    set((state) => {
-      const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
-      let sessions = state.sessions;
-      for (const sessionId of new Set(sessionIds)) {
-        const entry = sessions[sessionId];
-        if (!entry) continue;
-        sessions = patchSession(sessions, sessionId, {
-          view: EMPTY_AGENT_SESSION_VIEW,
-          openingCommands: [],
-          problem: EMPTY_PROBLEM_PRESENTATION,
-          viewEpoch,
+          ...(openingCommands ? { openingCommands } : {}),
           viewRevision: advanceProjectionCounter(entry.viewRevision),
-          authoritativeRevision: initialProjectionCounter,
-          refreshSequence: advanceProjectionCounter(entry.refreshSequence),
+          authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
         });
-      }
-      return sessions === state.sessions
-        ? state
-        : { sessions, projectionGenerationSequence: viewEpoch };
-    }),
-  reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        reconcileMessageIdentity(view, fromId, toId, steer),
-      );
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  dropMessage: (sessionId, id) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) => dropMessage(view, id));
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  projectSteerReceipt: (sessionId, messageId, steer) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        projectSteerReceipt(view, messageId, steer),
-      );
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  projectSteerDelivery: (sessionId, messageId, command) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        projectSteerDelivery(view, messageId, command),
-      );
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  dropSession: (sessionId) =>
-    set((state) => {
-      if (!(sessionId in state.sessions)) return state;
-      const next = { ...state.sessions };
-      delete next[sessionId];
-      return { sessions: next };
-    }),
-  setStop: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { stop: action })),
-  setSend: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { send: action })),
-  setResume: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { resume: action })),
-  setRetryOpening: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { retryOpening: action })),
-  projectOpeningAccepted: (sessionId, idempotencyKey) =>
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (!entry) return state;
-      return patchSessionState(state, sessionId, {
-        openingCommands: entry.openingCommands.filter(
-          (command) => command.idempotencyKey !== idempotencyKey,
-        ),
-        problem: withCommandError(entry.problem, null),
-        viewRevision: advanceProjectionCounter(entry.viewRevision),
       });
-    }),
-  setSynchronize: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { synchronize: action })),
-  setCancelRun: (sessionId, action) =>
-    set((state) => patchSessionState(state, sessionId, { cancelRun: action })),
-  clearProblem: (sessionId) =>
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (!entry) return state;
-      return patchSessionState(state, sessionId, {
-        problem: dismissVisibleProblem(entry.view, entry.problem),
-      });
-    }),
-  setCommandError: (sessionId, error) =>
-    set((state) => {
-      const entry = state.sessions[sessionId];
-      if (!entry) return state;
-      return patchSessionState(state, sessionId, {
-        problem: withCommandError(entry.problem, error),
-      });
-    }),
-}));
+      return committed;
+    },
+    retireProjectionGeneration: (sessionIds) =>
+      set((state) => {
+        const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
+        let sessions = state.sessions;
+        for (const sessionId of new Set(sessionIds)) {
+          const entry = sessions[sessionId];
+          if (!entry) continue;
+          sessions = patchSession(sessions, sessionId, {
+            refreshSequence: advanceProjectionCounter(entry.refreshSequence),
+            viewEpoch,
+            openingCommands: [],
+          });
+        }
+        return sessions === state.sessions
+          ? state
+          : { sessions, projectionGenerationSequence: viewEpoch };
+      }),
+    replaceServerScope: (sessionIds) =>
+      set((state) => {
+        const viewEpoch = advanceProjectionCounter(state.projectionGenerationSequence);
+        let sessions = state.sessions;
+        for (const sessionId of new Set(sessionIds)) {
+          const entry = sessions[sessionId];
+          if (!entry) continue;
+          sessions = patchSession(sessions, sessionId, {
+            view: EMPTY_AGENT_SESSION_VIEW,
+            openingCommands: [],
+            problem: EMPTY_PROBLEM_PRESENTATION,
+            viewEpoch,
+            viewRevision: advanceProjectionCounter(entry.viewRevision),
+            authoritativeRevision: initialProjectionCounter,
+            refreshSequence: advanceProjectionCounter(entry.refreshSequence),
+          });
+        }
+        return sessions === state.sessions
+          ? state
+          : { sessions, projectionGenerationSequence: viewEpoch };
+      }),
+    reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          reconcileMessageIdentity(view, fromId, toId, steer),
+        );
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    dropMessage: (sessionId, id) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) => dropMessage(view, id));
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    projectSteerReceipt: (sessionId, messageId, steer) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          projectSteerReceipt(view, messageId, steer),
+        );
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    projectSteerDelivery: (sessionId, messageId, command) =>
+      set((state) => {
+        const sessions = patchView(state.sessions, sessionId, (view) =>
+          projectSteerDelivery(view, messageId, command),
+        );
+        return sessions === state.sessions ? state : { sessions };
+      }),
+    dropSession: (sessionId) =>
+      set((state) => {
+        if (!(sessionId in state.sessions)) return state;
+        const next = { ...state.sessions };
+        delete next[sessionId];
+        return { sessions: next };
+      }),
+    setStop: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { stop: action })),
+    setSend: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { send: action })),
+    setResume: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { resume: action })),
+    setRetryOpening: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { retryOpening: action })),
+    projectOpeningAccepted: (sessionId, idempotencyKey) =>
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (!entry) return state;
+        return patchSessionState(state, sessionId, {
+          openingCommands: entry.openingCommands.filter(
+            (command) => command.idempotencyKey !== idempotencyKey,
+          ),
+          problem: withCommandError(entry.problem, null),
+          viewRevision: advanceProjectionCounter(entry.viewRevision),
+        });
+      }),
+    setSynchronize: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { synchronize: action })),
+    setCancelRun: (sessionId, action) =>
+      set((state) => patchSessionState(state, sessionId, { cancelRun: action })),
+    clearProblem: (sessionId) =>
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (!entry) return state;
+        return patchSessionState(state, sessionId, {
+          problem: dismissVisibleProblem(entry.view, entry.problem),
+        });
+      }),
+    setCommandError: (sessionId, error) =>
+      set((state) => {
+        const entry = state.sessions[sessionId];
+        if (!entry) return state;
+        return patchSessionState(state, sessionId, {
+          problem: withCommandError(entry.problem, error),
+        });
+      }),
+  }));
 
-export class AgentViewRefreshOwner {
-  #disposed = false;
+  class AgentViewRefreshOwner {
+    #disposed = false;
 
-  private constructor() {}
+    private constructor() {}
 
-  static install(): AgentViewRefreshOwner {
-    const owner = new AgentViewRefreshOwner();
-    agentViewRefreshPublication.publish(owner, (predecessor) => predecessor.dispose());
-    return owner;
+    static install(): AgentViewRefreshOwner {
+      const owner = new AgentViewRefreshOwner();
+      agentViewRefreshPublication.publish(owner, (predecessor) => predecessor.dispose());
+      return owner;
+    }
+
+    begin(sessionId: string, invalidateQueuedRunEvents: boolean): AgentViewRefreshToken | null {
+      if (!this.#ownsGeneration()) return null;
+      return useAgentStore.getState().beginViewRefresh(sessionId, invalidateQueuedRunEvents);
+    }
+
+    commit(
+      sessionId: string,
+      token: AgentViewRefreshToken,
+      view: AgentSessionView,
+      openingCommands?: readonly AgentOpeningCommand[],
+    ): boolean {
+      if (!this.#ownsGeneration()) return false;
+      return useAgentStore.getState().commitViewRefresh(sessionId, token, view, openingCommands);
+    }
+
+    retireProjectionGeneration(sessionIds: readonly string[]): void {
+      if (!this.#ownsGeneration()) return;
+      useAgentStore.getState().retireProjectionGeneration(sessionIds);
+    }
+
+    replaceServerScope(sessionIds: readonly string[]): void {
+      if (!this.#ownsGeneration()) return;
+      useAgentStore.getState().replaceServerScope(sessionIds);
+    }
+
+    dispose(): void {
+      if (this.#disposed) return;
+      this.#disposed = true;
+      agentViewRefreshPublication.withdraw(this);
+    }
+
+    #ownsGeneration(): boolean {
+      return !this.#disposed && agentViewRefreshPublication.owns(this);
+    }
   }
 
-  begin(sessionId: string, invalidateQueuedRunEvents: boolean): AgentViewRefreshToken | null {
-    if (!this.#ownsGeneration()) return null;
-    return useAgentStore.getState().beginViewRefresh(sessionId, invalidateQueuedRunEvents);
-  }
+  const agentViewRefreshPublication = createPublicationSlot<AgentViewRefreshOwner>();
 
-  commit(
-    sessionId: string,
-    token: AgentViewRefreshToken,
-    view: AgentSessionView,
-    openingCommands?: readonly AgentOpeningCommand[],
-  ): boolean {
-    if (!this.#ownsGeneration()) return false;
-    return useAgentStore.getState().commitViewRefresh(sessionId, token, view, openingCommands);
-  }
+  const unsubPruneSessions = useAgentSessionStore.subscribe((state, prev) => {
+    if (state.openSessionIds === prev.openSessionIds) return;
+    const live = new Set(state.openSessionIds);
+    const sessions = useAgentStore.getState().sessions;
+    for (const id of Object.keys(sessions)) {
+      if (!live.has(id)) useAgentStore.getState().dropSession(id);
+    }
+  });
 
-  retireProjectionGeneration(sessionIds: readonly string[]): void {
-    if (!this.#ownsGeneration()) return;
-    useAgentStore.getState().retireProjectionGeneration(sessionIds);
-  }
-
-  replaceServerScope(sessionIds: readonly string[]): void {
-    if (!this.#ownsGeneration()) return;
-    useAgentStore.getState().replaceServerScope(sessionIds);
-  }
-
-  dispose(): void {
-    if (this.#disposed) return;
-    this.#disposed = true;
-    agentViewRefreshPublication.withdraw(this);
-  }
-
-  #ownsGeneration(): boolean {
-    return !this.#disposed && agentViewRefreshPublication.owns(this);
-  }
+  return {
+    store: useAgentStore,
+    refresh: AgentViewRefreshOwner.install,
+    dispose() {
+      unsubPruneSessions();
+      agentViewRefreshPublication.current()?.dispose();
+    },
+  };
 }
-
-const agentViewRefreshPublication = createPublicationSlot<AgentViewRefreshOwner>();
-
-const unsubPruneSessions = useAgentSessionStore.subscribe((state, prev) => {
-  if (state.openSessionIds === prev.openSessionIds) return;
-  const live = new Set(state.openSessionIds);
-  const sessions = useAgentStore.getState().sessions;
-  for (const id of Object.keys(sessions)) {
-    if (!live.has(id)) useAgentStore.getState().dropSession(id);
-  }
-});
-
-disposeOnHmr(unsubPruneSessions);
+export type AgentStoreOwner = ReturnType<typeof createAgentStore>;

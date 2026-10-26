@@ -1,11 +1,19 @@
-import { fireEvent, render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 it("distinguishes referenced file types and still removes the selected reference", () => {
   const paths = ["src/Button.tsx", "assets/logo.png", "README.md", "package.json", "plan.pdf"];
   const value = paths.map((path) => `@${path}`).join(" ");
   const onChange = vi.fn();
-  const view = render(
+  const view = testClient.render(
     <ComposerAttachments
       images={[]}
       pastes={[]}

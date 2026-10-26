@@ -1,8 +1,7 @@
-import {
-  configureRuntimeServiceStatusPort,
-  type RuntimeServiceSnapshot,
-} from "@/features/connection/application/ports/serviceStatus";
+import { type VisualClient } from "./client";
+import { type RuntimeServiceSnapshot } from "@/features/connection/application/runtimeService";
 export function installVisualRuntimeServiceStatusPort(
+  visual: VisualClient,
   phase: RuntimeServiceSnapshot["phase"] = "ready",
 ): void {
   const snapshot = {
@@ -16,9 +15,5 @@ export function installVisualRuntimeServiceStatusPort(
     failure: null,
   } satisfies RuntimeServiceSnapshot;
 
-  configureRuntimeServiceStatusPort({
-    useSnapshot: () => snapshot,
-    snapshot: () => snapshot,
-    refresh: () => Promise.resolve(),
-  });
+  visual.projection.store.setState({ service: snapshot });
 }

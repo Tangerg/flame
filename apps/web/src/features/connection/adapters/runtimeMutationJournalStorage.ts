@@ -1,6 +1,11 @@
 import { stringifyJSON } from "@flame/runtime-client";
 import { type KeyValueStore } from "@/extensions/storage";
-import { configureRuntimeMutationJournalStorage } from "@/features/connection/application/ports/mutationJournal";
+export interface RuntimeMutationJournalStorage {
+  get(key: string): unknown;
+  set(key: string, value: unknown): void;
+  remove(key: string): void;
+  keys(): string[];
+}
 const STORAGE_PREFIX = "mutation-journal.";
 
 const PROBE_STORAGE_PREFIX = `${STORAGE_PREFIX}probe:`;
@@ -14,33 +19,35 @@ function storedValuesEqual(left: unknown, right: unknown): boolean {
   return stringifyJSON(left) === stringifyJSON(right);
 }
 
-export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueStore }): () => void {
-  return configureRuntimeMutationJournalStorage({
-    get: (key) => ctx.storage.get(storageKey(key)),
+export function createRuntimeMutationJournalStorage(
+  storage: KeyValueStore,
+): RuntimeMutationJournalStorage {
+  return {
+    get: (key) => storage.get(storageKey(key)),
     set: (key, value) => {
       if (value === undefined) {
         throw new Error(`Runtime mutation journal cannot persist undefined: ${key}`);
       }
       const target = storageKey(key);
-      ctx.storage.set(target, value);
-      if (!storedValuesEqual(ctx.storage.get(target), value)) {
+      storage.set(target, value);
+      if (!storedValuesEqual(storage.get(target), value)) {
         throw new Error(`Runtime mutation journal write was not persisted: ${key}`);
       }
     },
     remove: (key) => {
       const target = storageKey(key);
-      ctx.storage.remove(target);
-      if (ctx.storage.get(target) !== undefined) {
+      storage.remove(target);
+      if (storage.get(target) !== undefined) {
         throw new Error(`Runtime mutation journal removal was not persisted: ${key}`);
       }
     },
     keys: () => {
       const probeStorageKey = `${PROBE_STORAGE_PREFIX}${crypto.randomUUID()}`;
       const probe = crypto.randomUUID();
-      ctx.storage.set(probeStorageKey, probe);
-      if (ctx.storage.get(probeStorageKey) !== probe) {
-        ctx.storage.remove(probeStorageKey);
-        if (ctx.storage.get(probeStorageKey) !== undefined) {
+      storage.set(probeStorageKey, probe);
+      if (storage.get(probeStorageKey) !== probe) {
+        storage.remove(probeStorageKey);
+        if (storage.get(probeStorageKey) !== undefined) {
           throw new Error("Runtime mutation journal failed probe was not removed");
         }
         throw new Error("Runtime mutation journal storage is not writable");
@@ -48,15 +55,15 @@ export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueSto
       let keys: string[] = [];
       let enumerationError: unknown;
       try {
-        keys = ctx.storage.keys();
+        keys = storage.keys();
         if (!keys.includes(probeStorageKey)) {
           throw new Error("Runtime mutation journal storage enumeration is incomplete");
         }
       } catch (error) {
         enumerationError = error;
       }
-      ctx.storage.remove(probeStorageKey);
-      if (ctx.storage.get(probeStorageKey) !== undefined) {
+      storage.remove(probeStorageKey);
+      if (storage.get(probeStorageKey) !== undefined) {
         throw new Error("Runtime mutation journal storage probe was not removed");
       }
       if (enumerationError !== undefined) throw enumerationError;
@@ -64,5 +71,5 @@ export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueSto
         .filter((key) => key.startsWith(STORAGE_PREFIX) && !key.startsWith(PROBE_STORAGE_PREFIX))
         .map((key) => key.slice(STORAGE_PREFIX.length));
     },
-  });
+  };
 }

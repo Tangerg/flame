@@ -1,4 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
@@ -44,7 +52,7 @@ function run(overrides: Partial<AgentRunView> = {}): AgentRunView {
 
 describe("DelegatedRunLink", () => {
   it("opens the exact child in the dock and keeps waiting status visible", () => {
-    render(
+    testClient.render(
       <DelegatedRunLink
         run={run({ status: "waiting", activeSegmentId: null })}
         ordinal={1}
@@ -53,14 +61,19 @@ describe("DelegatedRunLink", () => {
     );
     const opener = screen.getByRole("button", { name: /Sub-agent/ });
     fireEvent.click(opener);
-    expect(actions.open).toHaveBeenLastCalledWith("child-run", opener);
+    expect(actions.open).toHaveBeenLastCalledWith(testClient.workspace.access, "child-run", opener);
     expect(screen.getByText("Needs input")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
-    expect(actions.cancel).toHaveBeenCalledWith({ sessionId: "session-1", runId: "child-run" });
+    expect(actions.cancel).toHaveBeenCalledWith(testClient.agent.access, {
+      sessionId: "session-1",
+      runId: "child-run",
+    });
   });
 
   it("reflects authoritative completion without retaining a cancel action", () => {
-    const { rerender } = render(<DelegatedRunLink run={run()} ordinal={1} siblingCount={1} />);
+    const { rerender } = testClient.render(
+      <DelegatedRunLink run={run()} ordinal={1} siblingCount={1} />,
+    );
     expect(screen.getByRole("button", { name: /Sub-agent/ }).hasAttribute("aria-current")).toBe(
       false,
     );
@@ -77,7 +90,7 @@ describe("DelegatedRunLink", () => {
     const opener = screen.getByRole("button", { name: /Sub-agent/ });
     expect(opener.getAttribute("aria-current")).toBe("true");
     fireEvent.click(opener);
-    expect(actions.open).toHaveBeenLastCalledWith("child-run", opener);
+    expect(actions.open).toHaveBeenLastCalledWith(testClient.workspace.access, "child-run", opener);
     actions.selected = null;
   });
 });

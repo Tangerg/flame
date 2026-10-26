@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Slider } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
@@ -9,7 +9,7 @@ import { settingStyles as ss } from "@/ui/settings/settingStyles";
 export function ContrastSection() {
   const t = useT();
   const contrast = useAppearance((s) => s.contrast);
-  const { setContrast } = editAppearance();
+  const { setContrast } = useAppearanceEdit();
 
   return (
     <SettingRow label={t("settings.contrast")}>

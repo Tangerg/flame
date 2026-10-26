@@ -1,4 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen } from "@testing-library/react";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TurnErrorBoundary } from "@/features/chat/message/ui/TurnErrorBoundary";
@@ -25,7 +33,7 @@ describe("turn retry focus", () => {
       if (fail) throw new Error("turn failed");
       return <p>Recovered message</p>;
     }
-    render(
+    testClient.render(
       <div role="region" aria-label="Workbench" tabIndex={-1}>
         <div role="region" aria-label="Conversation" tabIndex={-1}>
           <TurnErrorBoundary resetKey="message">
@@ -52,7 +60,7 @@ describe("turn retry focus", () => {
     function Turn(): ReactNode {
       throw new Error("turn failed");
     }
-    render(
+    testClient.render(
       <div role="region" aria-label="Child task" tabIndex={-1}>
         <TurnErrorBoundary resetKey="message">
           <Turn />
@@ -73,7 +81,7 @@ describe("turn retry focus", () => {
       if (fail) throw new Error("turn failed");
       return <p>Recovered message</p>;
     }
-    render(
+    testClient.render(
       <>
         <div role="region" aria-label="Conversation" tabIndex={-1}>
           <TurnErrorBoundary resetKey="message">
@@ -106,7 +114,7 @@ describe("turn retry focus", () => {
         </button>
       );
     }
-    render(
+    testClient.render(
       <div role="region" aria-label="Conversation" tabIndex={-1}>
         <TurnErrorBoundary resetKey="message">
           <Turn />
@@ -132,7 +140,7 @@ it("keeps a failure until the message identity changes", () => {
       <Turn fail={fail} />
     </TurnErrorBoundary>
   );
-  const { rerender } = render(view("failed-message", true));
+  const { rerender } = testClient.render(view("failed-message", true));
 
   rerender(view("failed-message", false));
   expect(screen.getByRole("alert")).toBeTruthy();

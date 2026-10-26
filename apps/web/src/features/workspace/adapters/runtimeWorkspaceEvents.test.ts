@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type FlameClient } from "@flame/runtime-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { subscribeRuntimeWorkspaceEvents } from "@/features/workspace/adapters/runtimeWorkspaceEvents";
@@ -11,7 +19,7 @@ const { fileWatch, resolveWorkspace, subscribe, supportedTopics } = vi.hoisted((
 vi.mock("@/features/connection/public/capabilities", () => ({
   runtimeCapability: fileWatch,
   runtimeSupportsStreamingMethod: vi.fn(() => true),
-  runtimeSupportsTopic: (topic: string) => supportedTopics.has(topic),
+  runtimeSupportsTopic: (_runtime: unknown, topic: string) => supportedTopics.has(topic),
 }));
 
 const runtimeClient = () =>
@@ -57,6 +65,7 @@ describe("runtime workspace event subscription", () => {
       events: { [Symbol.asyncIterator]: () => ({ next: vi.fn(), return: release }) },
     });
     const observed = await subscribeRuntimeWorkspaceEvents(
+      testClient.runtime,
       runtimeClient,
       { type: "workspace", cwd: "/repo" },
       new AbortController().signal,
@@ -80,6 +89,7 @@ describe("runtime workspace event subscription", () => {
       })(),
     });
     const result = await subscribeRuntimeWorkspaceEvents(
+      testClient.runtime,
       runtimeClient,
       {
         type: "workspace",
@@ -115,6 +125,7 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     const observed = await subscribeRuntimeWorkspaceEvents(
+      testClient.runtime,
       runtimeClient,
       { type: "workspace", cwd: "/linked/repo" },
       signal,
@@ -141,7 +152,7 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     await expect(
-      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "none" }, signal),
+      subscribeRuntimeWorkspaceEvents(testClient.runtime, runtimeClient, { type: "none" }, signal),
     ).resolves.toBe(events);
 
     expect(subscribe).toHaveBeenCalledWith(
@@ -165,6 +176,7 @@ describe("runtime workspace event subscription", () => {
     );
 
     const opening = subscribeRuntimeWorkspaceEvents(
+      testClient.runtime,
       runtimeClient,
       { type: "workspace", cwd: "/repo" },
       controller.signal,
@@ -185,6 +197,7 @@ describe("runtime workspace event subscription", () => {
 
     await expect(
       subscribeRuntimeWorkspaceEvents(
+        testClient.runtime,
         runtimeClient,
         { type: "workspace", cwd: "/missing/repo" },
         signal,
@@ -202,7 +215,12 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     await expect(
-      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "workspace" }, signal),
+      subscribeRuntimeWorkspaceEvents(
+        testClient.runtime,
+        runtimeClient,
+        { type: "workspace" },
+        signal,
+      ),
     ).resolves.toBe(events);
 
     expect(resolveWorkspace).not.toHaveBeenCalled();
@@ -216,7 +234,7 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     await expect(
-      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "none" }, signal),
+      subscribeRuntimeWorkspaceEvents(testClient.runtime, runtimeClient, { type: "none" }, signal),
     ).resolves.toBe(events);
 
     expect(resolveWorkspace).not.toHaveBeenCalled();

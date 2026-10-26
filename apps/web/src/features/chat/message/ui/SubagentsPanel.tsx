@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { Activity, useLayoutEffect, useMemo, useRef } from "react";
@@ -83,6 +84,8 @@ const styles = stylex.create({
 });
 
 export function SubagentsPanel() {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const rows = useActiveConversationRows();
   const entries = useMemo(() => subagentEntries(rows), [rows]);
@@ -157,7 +160,7 @@ export function SubagentsPanel() {
             size="sm"
             aria-label={t("subagents.all")}
             data-chrome-focus=""
-            onClick={() => openWorkspaceSubagentRun(null)}
+            onClick={() => openWorkspaceSubagentRun(workspaceAccess, null)}
           />
         )}
         {summary ? (
@@ -231,6 +234,8 @@ export function SubagentsPanel() {
 }
 
 function SubagentGroup({ title, entries }: { title: string; entries: SubagentEntry[] }) {
+  const workspaceAccess = useWorkspace();
+
   if (entries.length === 0) return null;
   return (
     <div {...stylex.props(styles.group)}>
@@ -244,7 +249,7 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
           taskLabel={taskLabel}
           ordinal={ordinal}
           siblingCount={siblingCount}
-          onOpen={() => openWorkspaceSubagentRun(narrative.run.id)}
+          onOpen={() => openWorkspaceSubagentRun(workspaceAccess, narrative.run.id)}
         />
       ))}
     </div>

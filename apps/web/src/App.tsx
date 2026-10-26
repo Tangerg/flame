@@ -6,8 +6,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import { queryClient } from "@/lib/queryClient";
 import { PluginProvider } from "@/extensions/host/PluginProvider";
-import { AppRouter } from "@/router";
-function App({ plugins }: { plugins: AnyPlugin[] }) {
+import { AppRouter, type AppNavigation } from "@/router";
+function App({ plugins, navigation }: { plugins: AnyPlugin[]; navigation: AppNavigation }) {
   const fontSize = useUiFontSize();
   return (
     <QueryClientProvider client={queryClient}>
@@ -15,7 +15,7 @@ function App({ plugins }: { plugins: AnyPlugin[] }) {
         <PluginProvider plugins={plugins}>
           <FontScaleProvider fontSize={fontSize}>
             <CodeHighlightProvider component={HighlightedCodeSource}>
-              <AppRouter />
+              <AppRouter navigation={navigation} />
             </CodeHighlightProvider>
           </FontScaleProvider>
         </PluginProvider>

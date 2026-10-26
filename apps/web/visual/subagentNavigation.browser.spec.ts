@@ -43,15 +43,15 @@ test("subagent navigation keeps keyboard focus with its selected task and restor
   await nestedTask.press("Enter");
 
   await page.evaluate(async () => {
-    const path = "/src/lib/navigation.ts";
-    const { navigator } = (await import(path)) as typeof import("@/lib/navigation");
-    navigator().back();
+    const path = "/visual/main.tsx";
+    const { visualClient } = (await import(path)) as typeof import("./main");
+    visualClient.navigation.back();
   });
   await expect(nestedTask).toBeFocused();
   await page.evaluate(async () => {
-    const path = "/src/lib/navigation.ts";
-    const { navigator } = (await import(path)) as typeof import("@/lib/navigation");
-    navigator().forward();
+    const path = "/visual/main.tsx";
+    const { visualClient } = (await import(path)) as typeof import("./main");
+    visualClient.navigation.forward();
   });
   await expect(back).toBeFocused();
   const accessibility = await new AxeBuilder({ page })
@@ -66,7 +66,9 @@ test("subagent navigation keeps keyboard focus with its selected task and restor
     const { openWorkspaceSubagentRun } = (await import(
       path
     )) as typeof import("@/features/workspace/public/navigation");
-    openWorkspaceSubagentRun("run_child");
+    const fixturePath = "/visual/main.tsx";
+    const { visualClient } = (await import(fixturePath)) as typeof import("./main");
+    openWorkspaceSubagentRun(visualClient.workspace.access, "run_child");
   });
   await expect(
     panel.getByRole("region", { name: "Audit Agent Framework ownership", exact: true }),
@@ -77,7 +79,9 @@ test("subagent navigation keeps keyboard focus with its selected task and restor
     const { openWorkspaceSubagentRun } = (await import(
       path
     )) as typeof import("@/features/workspace/public/navigation");
-    openWorkspaceSubagentRun(null);
+    const fixturePath = "/visual/main.tsx";
+    const { visualClient } = (await import(fixturePath)) as typeof import("./main");
+    openWorkspaceSubagentRun(visualClient.workspace.access, null);
   });
   await expect(task).toBeVisible();
   await expect(composer).toBeFocused();

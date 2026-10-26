@@ -1,9 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { OptionRow } from "@/ui/atoms/option-row";
 describe("OptionRow", () => {
   it("becomes an option, with its state, when a listbox drives selection by hand", () => {
-    render(
+    testClient.render(
       <>
         <OptionRow selected>picked</OptionRow>
         <OptionRow selected={false}>other</OptionRow>
@@ -19,7 +27,7 @@ describe("OptionRow", () => {
   });
 
   it("claims neither role nor selection state when it is not told", () => {
-    render(<OptionRow>plain</OptionRow>);
+    testClient.render(<OptionRow>plain</OptionRow>);
 
     const row = screen.getByText("plain");
     expect(row.hasAttribute("role")).toBe(false);

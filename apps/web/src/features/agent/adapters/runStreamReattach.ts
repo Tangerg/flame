@@ -1,6 +1,7 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type FlameClient } from "@flame/runtime-client";
 import { asRunId, asSegmentId, RpcConnectionError, RpcProtocolError } from "@flame/runtime-client";
-import { agentRuntime } from "@/features/agent/application/ports/runtimeGateway";
+
 import {
   type RunStreamReattachment,
   type RunStreamPosition,
@@ -18,13 +19,10 @@ interface RunStreamReattachOptions {
   onConnectionLost: () => void;
 }
 
-export function createRunStreamReattach({
-  sessionId,
-  client,
-  isCancelled,
-  recoverProjection,
-  onConnectionLost,
-}: RunStreamReattachOptions) {
+export function createRunStreamReattach(
+  agentAccess: AgentAccess,
+  { sessionId, client, isCancelled, recoverProjection, onConnectionLost }: RunStreamReattachOptions,
+) {
   return async function reattach(
     position: RunStreamPosition,
     signal: AbortSignal,
@@ -38,6 +36,7 @@ export function createRunStreamReattach({
       if (isCancelled() || signal.aborted) return null;
       try {
         const tail = await snapshotRunStream(
+          agentAccess,
           client(),
           sessionId,
           target.runId,
@@ -56,7 +55,7 @@ export function createRunStreamReattach({
           cursor: tail.result.headEventId ?? null,
         };
       } catch (tailErr) {
-        if (!isCancelled() && !signal.aborted && agentRuntime().isRunGone(tailErr)) {
+        if (!isCancelled() && !signal.aborted && agentAccess.runtime.isRunGone(tailErr)) {
           await recoverProjection(signal);
           return null;
         }
@@ -89,7 +88,7 @@ export function createRunStreamReattach({
       };
     } catch (err) {
       if (isCancelled() || signal.aborted) return null;
-      if (agentRuntime().isRunGone(err)) {
+      if (agentAccess.runtime.isRunGone(err)) {
         await recoverProjection(signal);
         return null;
       }
@@ -98,7 +97,7 @@ export function createRunStreamReattach({
         return null;
       }
       if (err instanceof RpcProtocolError) throw err;
-      if (!agentRuntime().isReplayLost(err)) throw err;
+      if (!agentAccess.runtime.isReplayLost(err)) throw err;
       return recoverAndTail();
     }
   };

@@ -47,41 +47,67 @@ test("tracks destructuring, generics and literal property access by their owner"
   assert.deepEqual(result.dead, []);
 });
 
-test("singleton accessors require an actual product call rather than import or test wiring", () => {
+test("rejects a restored singleton service API even when every accessor has a consumer", () => {
+  const result = inspect(`
+    interface SingletonPort<T> { get(): T; configure(next: T): () => void }
+    declare function createSingletonPort<T>(): SingletonPort<T>;
+    const slot = createSingletonPort<string>();
+    export const current = slot.get;
+    export const configure = slot.configure;
+    configure('live')();
+    [1].map(current);
+  `);
+  assert.deepEqual(result.dead, []);
+  assert.match(result.retired.join("\n"), /SingletonPort/);
+  assert.match(result.retired.join("\n"), /createSingletonPort/);
+});
+
+test("rejects renamed imports and re-exports of retired service publication", () => {
+  const result = inspect(`
+    import { createSingletonPort as createService } from './services';
+    export { SingletonPort as ServiceSlot } from './services';
+    import * as slots from './lib/ports/singletonPort';
+    export * from '@/lib/ports/singletonPort';
+    export const service = createService();
+    export const publication = slots;
+  `);
+  assert.match(result.retired.join("\n"), /createSingletonPort/);
+  assert.match(result.retired.join("\n"), /SingletonPort/);
+  assert.match(result.retired.join("\n"), /\.\/lib\/ports\/singletonPort/);
+  assert.match(result.retired.join("\n"), /@\/lib\/ports\/singletonPort/);
+});
+
+test("rejects retired module references in type, dynamic and require imports", () => {
+  const result = inspect(`
+    export type Port = import('./types/singletonPort').Port;
+    export const load = () => import('./dynamic/singletonPort.js');
+    const publication = require('./commonjs/singletonPort.cjs');
+    import legacy = require('./legacy/singletonPort');
+  `);
+  assert.match(result.retired.join("\n"), /types\/singletonPort/);
+  assert.match(result.retired.join("\n"), /dynamic\/singletonPort\.js/);
+  assert.match(result.retired.join("\n"), /commonjs\/singletonPort\.cjs/);
+  assert.match(result.retired.join("\n"), /legacy\/singletonPort/);
+});
+
+test("accepts captured instance ports and lifecycle publication without ambient services", () => {
   const result = inspect(
     `
-    interface SingletonPort<T> { get(): T }
-    declare const port: SingletonPort<string>;
-    export const live = port.get;
-    export const unused = port.get;
-    live();
-  `,
-    `import { unused } from './consumer'; unused();`,
-  );
-  assert.equal(result.bypasses.length, 1);
-  assert.match(result.bypasses[0], /unused/);
-});
-
-test("ordinary get methods are not singleton accessors and callbacks are real consumers", () => {
-  const result = inspect(`
-    interface SingletonPort<T> { get(): T }
-    declare const slot: SingletonPort<string>;
-    export const live = slot.get;
-    [1].map(live);
+    interface ConsumerPort { read(): string }
+    declare function createPublicationSlot<T>(): { publish(value: T): void; current(): T | null };
+    export function createFeature(port: ConsumerPort) {
+      const publication = createPublicationSlot<ConsumerPort>();
+      publication.publish(port);
+      const read = port.read;
+      return { read, current: publication.current };
+    }
     declare const map: { get(key: string): string };
     export const lookup = map.get;
-  `);
-  assert.deepEqual(result.bypasses, []);
-});
-
-test("object shorthand consumes the accessor value rather than its property symbol", () => {
-  const result = inspect(`
-    interface SingletonPort<T> { get(): T }
-    declare const slot: SingletonPort<string>;
-    export const live = slot.get;
-    export const unused = slot.get;
-    export const dependencies = { live };
-  `);
-  assert.equal(result.bypasses.length, 1);
-  assert.match(result.bypasses[0], /unused/);
+    // SingletonPort and createSingletonPort describe the retired implementation.
+    export const message = 'do not import ./lib/ports/singletonPort';
+  `,
+    `declare function createSingletonPort(): void; createSingletonPort();`,
+  );
+  assert.deepEqual(result.dead, []);
+  assert.deepEqual(result.retired, []);
 });

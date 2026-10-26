@@ -130,10 +130,10 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
       if (!location.pathname.startsWith("/visual/"))
         throw new Error("An isolated fixture is required");
       const fixturePath = "/visual/agentSessionSnapshots.ts";
-      const storePath = "/src/features/agent/adapters/agentStore.ts";
+      const storePath = "/visual/main.tsx";
       const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
       const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
-      const { useAgentStore } = await import(storePath);
+      const { visualClient } = await import(storePath);
       const { projectAgentSessionSnapshot } = await import(projectionPath);
       const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS.idle);
       const prompt = snapshot.items.find((item) => item.type === "userMessage");
@@ -151,7 +151,7 @@ test("protocol portraits keep their frame fitted and decode failures preserve su
           ],
         },
       ];
-      const store = useAgentStore.getState();
+      const store = visualClient.agent.projection.store.getState();
       const refresh = store.beginViewRefresh("ses_visual", true);
       if (
         !refresh ||

@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SignatureKind, SymbolFlags } from "typescript/unstable/sync";
-import { withSourceProject } from "./source-graph.mjs";
+import { withSourceProject } from "../../../tooling/source-graph.mjs";
 
 const sdk = dirname(
   dirname(realpathSync(fileURLToPath(import.meta.resolve("@flame/runtime-client")))),

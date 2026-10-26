@@ -1,4 +1,12 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";
 import { PROBLEM_RECOVERY, RUN_PROBLEM_RECOVERY } from "@flame/runtime-client/wire";
@@ -67,7 +75,7 @@ describe("run error banner", () => {
     "withholds retry for %s, as the Runtime's recovery says",
     (_, problem) => {
       state.problem = problem;
-      render(<RunErrorBanner />);
+      testClient.render(<RunErrorBanner />);
 
       expect(retryButton()).toBeNull();
       expect(screen.getByRole("alert").textContent).toContain(problem.code!);
@@ -76,14 +84,14 @@ describe("run error banner", () => {
 
   it("opens the contributed context catalog to inspect the failure", () => {
     state.problem = { code: "internal_error", recovery: RUN_PROBLEM_RECOVERY.internal_error };
-    render(<RunErrorBanner />);
+    testClient.render(<RunErrorBanner />);
     screen.getByRole("button", { name: "Inspect context" }).click();
     expect(state.showWorkspaceDock).toHaveBeenCalledOnce();
   });
 
   it("offers retry for a Run an internal error ended", () => {
     state.problem = { code: "internal_error", recovery: RUN_PROBLEM_RECOVERY.internal_error };
-    render(<RunErrorBanner />);
+    testClient.render(<RunErrorBanner />);
 
     expect(retryButton()).not.toBeNull();
     expect(retryButton()!.hasAttribute("disabled")).toBe(false);
@@ -95,7 +103,7 @@ describe("run error banner", () => {
 
     it("counts down and only then opens the action", () => {
       state.problem = { code: "rate_limited", retryAfterSeconds: 3 } as AgentProblem;
-      render(<RunErrorBanner />);
+      testClient.render(<RunErrorBanner />);
 
       expect(retryButton()!.textContent).toContain("3");
       expect(retryButton()!.hasAttribute("disabled")).toBe(true);
@@ -111,7 +119,7 @@ describe("run error banner", () => {
 
     it("sends nothing while the countdown is still running", () => {
       state.problem = { code: "rate_limited", retryAfterSeconds: 5 } as AgentProblem;
-      render(<RunErrorBanner />);
+      testClient.render(<RunErrorBanner />);
 
       retryButton()!.click();
       expect(state.sent).toEqual([]);

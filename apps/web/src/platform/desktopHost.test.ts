@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcTransportError } from "@flame/runtime-client";
 import { createClientHost } from "@/platform/clientHost";
 import { createDesktopHostClient, type DesktopHostBinding } from "@/platform/desktopHost";
+import { DesktopMethods, NotificationOpenedEvent } from "@/platform/desktop.generated";
 const wailsCall = vi.hoisted(() => vi.fn());
 
 vi.mock("@wailsio/runtime", () => ({
@@ -9,19 +10,19 @@ vi.mock("@wailsio/runtime", () => ({
   Events: { On: () => () => {} },
 }));
 
-const BOOTSTRAP = "main.DesktopHost.Bootstrap";
+const BOOTSTRAP = DesktopMethods.Bootstrap.name;
 
-const CHOOSE_WORKING_DIRECTORY = "main.DesktopHost.ChooseWorkingDirectory";
+const CHOOSE_WORKING_DIRECTORY = DesktopMethods.ChooseWorkingDirectory.name;
 
-const SAVE_IMAGE = "main.DesktopHost.SaveImage";
+const SAVE_IMAGE = DesktopMethods.SaveImage.name;
 
-const SAVE_TEXT_FILE = "main.DesktopHost.SaveTextFile";
+const SAVE_TEXT_FILE = DesktopMethods.SaveTextFile.name;
 
-const WINDOW_CHROME = "main.DesktopHost.WindowChrome";
+const WINDOW_CHROME = DesktopMethods.WindowChrome.name;
 
-const NOTIFICATION_AUTHORIZATION = "main.DesktopHost.NotificationAuthorization";
+const NOTIFICATION_AUTHORIZATION = DesktopMethods.NotificationAuthorization.name;
 
-const SEND_NOTIFICATION = "main.DesktopHost.SendNotification";
+const SEND_NOTIFICATION = DesktopMethods.SendNotification.name;
 
 function hostBinding(
   answers: Partial<Record<string, () => Promise<unknown>>> = {},
@@ -82,6 +83,42 @@ describe("DesktopHostClient", () => {
       hostBinding({ [BOOTSTRAP]: async () => ({ localRuntime: {} }) }),
     );
     await expect(client.bootstrap()).rejects.toBeInstanceOf(RpcTransportError);
+  });
+
+  it("preserves bootstrap wire refinements and endpoint adaptation", async () => {
+    for (const localRuntime of [
+      { endpoint: "not a URL" },
+      { endpoint: "http://127.0.0.1:17171", localToken: "" },
+      { endpoint: "file:///tmp/runtime" },
+    ]) {
+      const client = createDesktopHostClient(
+        hostBinding({ [BOOTSTRAP]: async () => ({ localRuntime }) }),
+      );
+      await expect(client.bootstrap()).rejects.toBeInstanceOf(RpcTransportError);
+    }
+    const client = createDesktopHostClient(
+      hostBinding({
+        [BOOTSTRAP]: async () => ({ localRuntime: { endpoint: "http://127.0.0.1:17171/" } }),
+      }),
+    );
+    await expect(client.bootstrap()).resolves.toMatchObject({
+      runtime: { endpoint: "http://127.0.0.1:17171" },
+      localFilesystemEndpoint: "http://127.0.0.1:17171",
+    });
+  });
+
+  it("keeps empty notification targets legal when sending", async () => {
+    for (const message of [
+      { id: "run:1", title: "Done" },
+      { id: "run:1", title: "Done", target: "" },
+    ]) {
+      expect(DesktopMethods.SendNotification.args.safeParse([message]).success).toBe(true);
+      const binding = hostBinding({ [SEND_NOTIFICATION]: async () => null });
+      await expect(createDesktopHostClient(binding).sendNotification(message)).resolves.toBe(true);
+    }
+    expect(
+      DesktopMethods.SendNotification.args.safeParse([{ id: "", title: "Done" }]).success,
+    ).toBe(false);
   });
 
   it("returns the directory selected by the packaged host", async () => {
@@ -177,6 +214,11 @@ describe("DesktopHostClient", () => {
     });
     await expect(createDesktopHostClient(unmeasured).windowChrome()).resolves.toBeNull();
 
+    const negative = hostBinding({
+      [WINDOW_CHROME]: async () => ({ controlsCentreY: -1, controlsInlineEnd: 72, measured: true }),
+    });
+    await expect(createDesktopHostClient(negative).windowChrome()).resolves.toBeNull();
+
     const malformed = hostBinding({
       [WINDOW_CHROME]: async () => ({ controlsCentreY: 20 }),
     });
@@ -226,10 +268,10 @@ describe("DesktopHostClient", () => {
 
     const opened = vi.fn();
     const stop = await client.onNotificationOpened(opened);
-    binding.emit("desktop:notification-opened", "session-1");
-    binding.emit("desktop:notification-opened", "");
+    binding.emit(NotificationOpenedEvent, "session-1");
+    binding.emit(NotificationOpenedEvent, "");
     stop();
-    binding.emit("desktop:notification-opened", "session-2");
+    binding.emit(NotificationOpenedEvent, "session-2");
     expect(opened.mock.calls).toEqual([["session-1"]]);
   });
 

@@ -1,70 +1,72 @@
-import { useShellLayoutStore } from "@/features/workspace/adapters/shellLayoutStore";
+import { type ShellLayoutStore } from "@/features/workspace/adapters/shellLayoutStore";
 import {
   resolveInspectionReturnDock,
   WORKSPACE_DOCK_CATALOG,
 } from "@/features/workspace/application/navigation";
+import { type ContextDockStore } from "@/features/workspace/adapters/contextDockStore";
+import { type Navigator } from "@/lib/navigation";
 import {
-  activateContextDockStorage,
-  useContextDockStore,
-} from "@/features/workspace/adapters/contextDockStore";
-import { navigator } from "@/lib/navigation";
-import {
-  configureWorkspaceNavigationPort,
+  type WorkspaceNavigationPort,
   type WorkspaceChatPresentation,
-} from "@/features/workspace/application/ports/navigationState";
-function selectChat(presentation: WorkspaceChatPresentation = "preserve-dock"): void {
-  navigator().go(presentation === "hide-dock" ? { view: null, dock: null } : { view: null });
-}
+} from "@/features/workspace/application/navigationState";
+export function createWorkspaceNavigation(
+  navigation: Navigator,
+  dockStore: ContextDockStore,
+  useShellLayoutStore: ShellLayoutStore,
+  endpoint: () => string,
+): WorkspaceNavigationPort {
+  const useContextDockStore = dockStore.store;
+  const activateContextDockStorage = dockStore.activate;
+  function selectChat(presentation: WorkspaceChatPresentation = "preserve-dock"): void {
+    navigation.go(presentation === "hide-dock" ? { view: null, dock: null } : { view: null });
+  }
 
-function dockSnapshot() {
+  function dockSnapshot() {
+    return {
+      open: navigation.get().dock !== null,
+      viewIds: useContextDockStore.getState().dockViewIds,
+      activeViewId: navigation.get().dock,
+    };
+  }
+
+  type DockArrival = "alone" | "beside";
+
+  function inspectFrom(id: string, origin?: HTMLElement): void {
+    if (!origin) return;
+    const location = navigation.get();
+    const state = useContextDockStore.getState();
+    const returnDockId =
+      origin.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
+    const sourceViewId = location.view ?? (returnDockId === location.dock ? returnDockId : null);
+    useContextDockStore.setState({
+      inspection: {
+        viewId: id,
+        origin,
+        activeElement: origin.ownerDocument.activeElement,
+        returnViewId: location.view,
+        returnDockId,
+        returnSubagentRunId: location.subagent,
+        returnFileViewer: state.fileViewer,
+        previous:
+          sourceViewId !== null && state.inspection?.viewId === sourceViewId
+            ? state.inspection
+            : null,
+      },
+    });
+  }
+
+  function showDockView(id: string, arrival: DockArrival, origin?: HTMLElement): void {
+    inspectFrom(id, origin);
+    useContextDockStore.getState().adoptDockLocation(id);
+    navigation.go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
+  }
+
   return {
-    open: navigator().get().dock !== null,
-    viewIds: useContextDockStore.getState().dockViewIds,
-    activeViewId: navigator().get().dock,
-  };
-}
-
-type DockArrival = "alone" | "beside";
-
-function inspectFrom(id: string, origin?: HTMLElement): void {
-  if (!origin) return;
-  const location = navigator().get();
-  const state = useContextDockStore.getState();
-  const returnDockId =
-    origin.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
-  const sourceViewId = location.view ?? (returnDockId === location.dock ? returnDockId : null);
-  useContextDockStore.setState({
-    inspection: {
-      viewId: id,
-      origin,
-      activeElement: origin.ownerDocument.activeElement,
-      returnViewId: location.view,
-      returnDockId,
-      returnSubagentRunId: location.subagent,
-      returnFileViewer: state.fileViewer,
-      previous:
-        sourceViewId !== null && state.inspection?.viewId === sourceViewId
-          ? state.inspection
-          : null,
-    },
-  });
-}
-
-function showDockView(id: string, arrival: DockArrival, origin?: HTMLElement): void {
-  inspectFrom(id, origin);
-  useContextDockStore.getState().adoptDockLocation(id);
-  navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
-}
-
-export function installWorkspaceNavigationPort(endpoint: () => string): () => void {
-  activateContextDockStorage(endpoint());
-  useContextDockStore.setState({ inspection: null });
-  return configureWorkspaceNavigationPort({
-    useActiveViewId: () => navigator().use((location) => location.view),
+    useActiveViewId: () => navigation.use((location) => location.view),
     useDock: () => ({
-      open: navigator().use((location) => location.dock !== null),
+      open: navigation.use((location) => location.dock !== null),
       viewIds: useContextDockStore((state) => state.dockViewIds),
-      activeViewId: navigator().use((location) => location.dock),
+      activeViewId: navigation.use((location) => location.dock),
     }),
     useInspection: () => useContextDockStore((state) => state.inspection),
     returnFromInspection: (inspection, presentation = "dock") => {
@@ -76,7 +78,7 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
         state.setFileViewer(inspection.returnFileViewer);
       }
       if (returnDockId) state.adoptDockLocation(returnDockId);
-      navigator().go({
+      navigation.go({
         view: returnDockId && presentation === "main" ? returnDockId : inspection.returnViewId,
         ...(returnDockId ? { dock: returnDockId } : {}),
         ...(inspection.returnViewId === "subagents" || inspection.returnDockId === "subagents"
@@ -85,7 +87,7 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       });
       return true;
     },
-    useSubagentRunId: () => navigator().use((location) => location.subagent),
+    useSubagentRunId: () => navigation.use((location) => location.subagent),
     openSubagentRun: (runId, origin) => {
       if (origin) {
         inspectFrom("subagents", origin);
@@ -99,18 +101,18 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
         }
         useContextDockStore.setState({ inspection });
       }
-      if (navigator().get().view === "subagents") {
-        navigator().go({ subagent: runId });
+      if (navigation.get().view === "subagents") {
+        navigation.go({ subagent: runId });
         return;
       }
       useContextDockStore.getState().adoptDockLocation("subagents");
-      navigator().go({ view: null, dock: "subagents", subagent: runId });
+      navigation.go({ view: null, dock: "subagents", subagent: runId });
     },
     useFileFocus: () => useContextDockStore((state) => state.fileFocus),
     useFileViewer: () => useContextDockStore((state) => state.fileViewer),
     useViewMemory: () => useContextDockStore((state) => state.memory),
     remember: (change) => useContextDockStore.getState().remember(change),
-    useSettingsPaneTarget: () => navigator().use((location) => location.settings),
+    useSettingsPaneTarget: () => navigation.use((location) => location.settings),
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
     useToggleTool: () => useContextDockStore((state) => state.toggleExpandedTool),
     useSidebarDrawer: () => ({
@@ -130,14 +132,14 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
     },
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
-    openView: (id) => navigator().go({ view: id }),
+    openView: (id) => navigation.go({ view: id }),
     openViewInDock: (id, origin) => showDockView(id, "alone", origin),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
     },
     closeDockView: (id) => {
       const next = useContextDockStore.getState().closeDockTab(id);
-      if (navigator().get().dock !== id) return;
+      if (navigation.get().dock !== id) return;
       showDockView(next ?? WORKSPACE_DOCK_CATALOG, "beside");
     },
     closeOtherDockViews: (id) => {
@@ -151,50 +153,50 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       showDockView(WORKSPACE_DOCK_CATALOG, "beside");
     },
     reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
-    collapseDock: () => navigator().go({ dock: null }),
+    collapseDock: () => navigation.go({ dock: null }),
     showDock: (defaultViewId, presentation = "dock") => {
       const target =
-        (presentation === "main" ? navigator().get().dock : null) ??
+        (presentation === "main" ? navigation.get().dock : null) ??
         useContextDockStore.getState().dockTabToShow(defaultViewId);
-      if (presentation === "main") navigator().go({ view: target });
+      if (presentation === "main") navigation.go({ view: target });
       else showDockView(target, "alone");
     },
     closeView: (id) => {
-      if (navigator().get().view === id) selectChat();
+      if (navigation.get().view === id) selectChat();
     },
-    activeViewId: () => navigator().get().view,
+    activeViewId: () => navigation.get().view,
     dock: dockSnapshot,
-    setSettingsPane: (pane) => navigator().go({ settings: pane }),
+    setSettingsPane: (pane) => navigation.go({ settings: pane }),
     focusFile: (path) => useContextDockStore.getState().focusFile(path),
     openFile: (path, line, origin) => {
       inspectFrom("file", origin);
       useContextDockStore.getState().setFileViewer({ path, line: line ?? 0 });
-      if (origin || navigator().get().view !== "file") showDockView("file", "alone");
+      if (origin || navigation.get().view !== "file") showDockView("file", "alone");
     },
     closeFile: () => useContextDockStore.getState().setFileViewer(null),
     adoptSessionScope: (sessionId) => {
       activateContextDockStorage(endpoint());
       const state = useContextDockStore.getState();
       state.activateSessionScope(sessionId);
-      const located = navigator().get().dock;
+      const located = navigation.get().dock;
       if (located !== null) state.adoptDockLocation(located);
     },
     activateSessionScope: (sessionId) => {
       activateContextDockStorage(endpoint());
       const state = useContextDockStore.getState();
       if (state.activeSessionScopeId === sessionId) {
-        const located = navigator().get().dock;
+        const located = navigation.get().dock;
         if (located !== null) state.adoptDockLocation(located);
         return;
       }
       const remembered = state.activateSessionScope(sessionId);
-      if (navigator().get().dock !== remembered) {
-        navigator().go({ dock: remembered }, { replace: true });
+      if (navigation.get().dock !== remembered) {
+        navigation.go({ dock: remembered }, { replace: true });
       }
     },
     forgetSessionScopes: (openSessionIds) => {
       activateContextDockStorage(endpoint());
       useContextDockStore.getState().forgetSessionScopes(openSessionIds);
     },
-  });
+  };
 }

@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
@@ -69,7 +77,7 @@ afterEach(async () => {
 describe("mounted Runtime Session-list generation", () => {
   it("aborts every retired page before the replacement read commits", async () => {
     const send = vi.spyOn(transport, "send");
-    const hook = renderHook(() => useAgentSessions(), { wrapper });
+    const hook = testClient.renderHook(() => useAgentSessions(), { wrapper });
     unmountHook = hook.unmount;
 
     const retiredFirst = await waitForSessionRequest(0);

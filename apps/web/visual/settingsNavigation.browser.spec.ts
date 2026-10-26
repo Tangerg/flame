@@ -185,7 +185,9 @@ test("opening Settings without a pane keeps its default content until a result i
     const moduleUrl = "/src/features/workspace/public/deeplinks.ts";
     const { openSettingsView }: typeof import("@/features/workspace/public/deeplinks") =
       await import(moduleUrl);
-    openSettingsView();
+    const fixturePath = "/visual/main.tsx";
+    const { visualClient } = (await import(fixturePath)) as typeof import("./main");
+    openSettingsView(visualClient.workspace.access);
   });
   const search = page.getByRole("searchbox", {
     name: en["settings.searchPlaceholder"]!,

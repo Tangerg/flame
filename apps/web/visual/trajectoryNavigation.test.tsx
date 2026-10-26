@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
@@ -125,7 +133,7 @@ async function mountTrajectory() {
     owner.abort();
     await runtime.close();
   });
-  const view = render(
+  const view = testClient.render(
     <>
       <button>Outside action</button>
       <Trajectory context={context} />

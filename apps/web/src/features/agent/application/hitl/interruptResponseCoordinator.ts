@@ -1,11 +1,9 @@
-import { createPublicationSlot } from "@/lib/publicationSlot";
 import { tupleKey } from "@/lib/tupleKey";
 import { type InterruptRef, type InterruptResumeInput } from "@/features/agent/domain/hitl";
 import {
   type AgentSessionViewEntry,
   type AgentSessionViewPort,
-} from "@/features/agent/application/ports/sessionView";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+} from "@/features/agent/application/session/sessionAccess";
 import { selectAwaitingGroups } from "@/features/agent/application/view/awaitingInterrupts";
 interface StagedResponse {
   input: InterruptResumeInput;
@@ -73,7 +71,7 @@ function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): strin
     .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId));
 }
 
-class InterruptResponseCoordinator {
+export class InterruptResponseCoordinator {
   readonly #view: AgentSessionViewPort;
   readonly #batches = new Map<string, InterruptResponseBatch>();
   readonly #unsubscribe: () => void;
@@ -174,35 +172,4 @@ class InterruptResponseCoordinator {
       }
     }
   }
-}
-
-const interruptResponsePublication = createPublicationSlot<InterruptResponseCoordinator>();
-
-function coordinator(): InterruptResponseCoordinator {
-  const current = interruptResponsePublication.current();
-  if (!current) throw new Error("Interrupt response coordinator is not installed");
-  return current;
-}
-
-export function stageInterruptResponse(
-  ref: InterruptRef,
-  response: InterruptResumeInput["response"],
-  hooks?: { onSettled?: () => void; onError?: () => void },
-): boolean {
-  return coordinator().stage(ref, response, hooks);
-}
-
-export function interruptResponseIsStaged(ref: InterruptRef): boolean {
-  // A read with no coordinator installed means nothing is staged; only the mutation
-  // path requires the owner to exist.
-  return interruptResponsePublication.current()?.isStaged(ref) ?? false;
-}
-
-export function installInterruptResponseCoordinator(): () => void {
-  const next = new InterruptResponseCoordinator(agentSessionView());
-  interruptResponsePublication.publish(next, (predecessor) => predecessor.retire());
-  return () => {
-    interruptResponsePublication.withdraw(next);
-    next.retire();
-  };
 }

@@ -1,51 +1,66 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { t } from "@/lib/i18n/index";
 import { describeRpcError } from "@/lib/rpcErrors";
 import { notifyError, notifyInfo } from "@/features/notifications/public/notifications";
 import { type AgentInput } from "@/features/agent/domain/input";
-import { agentCommandOwner } from "@/features/agent/application/agentCommandOwner";
+
 import {
-  agentRuntime,
   type AgentSteerSubmission,
   type AgentUnresolvedSteer,
-} from "@/features/agent/application/ports/runtimeGateway";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+} from "@/features/agent/application/runtimeGateway";
+
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
 import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "@/features/agent/application/view/optimisticMessageIdentity";
-export function steerRunningTurn({
-  sessionId,
-  runId,
-  segmentId,
-  input,
-}: {
-  sessionId: string;
-  runId: string;
-  segmentId: string;
-  input: AgentInput;
-}): boolean {
+export function steerRunningTurn(
+  agentAccess: AgentAccess,
+  {
+    sessionId,
+    runId,
+    segmentId,
+    input,
+  }: {
+    sessionId: string;
+    runId: string;
+    segmentId: string;
+    input: AgentInput;
+  },
+): boolean {
   if (input.parts.length === 0) return false;
   const prepared = structuredClone(input);
   let submission: AgentSteerSubmission;
   try {
-    submission = agentRuntime().steerRun(runId, segmentId, prepared);
+    submission = agentAccess.runtime.steerRun(runId, segmentId, prepared);
   } catch (error) {
     notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
     return false;
   }
-  observeSteer(sessionId, runId, prepared, submission.idempotencyKey, () => submission);
+  observeSteer(
+    agentAccess,
+    sessionId,
+    runId,
+    prepared,
+    submission.idempotencyKey,
+    () => submission,
+  );
   return true;
 }
 
-export function restoreUnresolvedSteers(sessionId: string, commands: AgentUnresolvedSteer[]): void {
+export function restoreUnresolvedSteers(
+  agentAccess: AgentAccess,
+  sessionId: string,
+  commands: AgentUnresolvedSteer[],
+): void {
   for (const command of commands) {
     const localId =
       command.userItemId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${command.idempotencyKey}`;
     if (
-      agentSessionView()
+      agentAccess.view
         .getSession(sessionId)
         ?.view.messages.some((message) => message.id === localId)
     )
       continue;
     observeSteer(
+      agentAccess,
       sessionId,
       command.runId,
       command.input,
@@ -58,6 +73,7 @@ export function restoreUnresolvedSteers(sessionId: string, commands: AgentUnreso
 }
 
 function observeSteer(
+  agentAccess: AgentAccess,
   sessionId: string,
   runId: string,
   input: AgentInput,
@@ -66,9 +82,9 @@ function observeSteer(
   restored = false,
   nominatedId: string | null = null,
 ): void {
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
-  const view = agentSessionView();
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
+  const view = agentAccess.view;
   const prepared = structuredClone(input);
   let localId = nominatedId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${key}`;
   if (!view.getSession(sessionId)?.view.messages.some((message) => message.id === localId))
@@ -166,6 +182,6 @@ function observeSteer(
   } else attempt(open);
 }
 
-export function retrySteerInput(messageId: string): boolean {
-  return agentCommandOwner().retrySteer(messageId);
+export function retrySteerInput(agentAccess: AgentAccess, messageId: string): boolean {
+  return agentAccess.commands.current().retrySteer(messageId);
 }

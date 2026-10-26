@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   asItemId,
@@ -55,7 +63,10 @@ describe("RPC Agent Runtime generation wiring", () => {
     runtimeClient = () => ({ runs: { start: predecessorStart } }) as unknown as FlameClient;
 
     const runtime = new RuntimeGenerationFixture("test.rpc-agent-runtime-generation");
-    await loadPluginsForTest(runtime.plugin, createRpcAgentPlugin(getRuntimeClient));
+    await loadPluginsForTest(
+      runtime.plugin,
+      createRpcAgentPlugin(testClient.agent.access, getRuntimeClient),
+    );
     const source = pickAgentSource();
     expect(source?.id).toBe("rpc");
     const driver = source!.factory();
@@ -105,7 +116,10 @@ describe("RPC Agent Runtime generation wiring", () => {
     runtimeClient = () => ({ runs: { start } }) as unknown as FlameClient;
 
     const runtime = new RuntimeGenerationFixture("test.rpc-agent-accepted-stream-generation");
-    await loadPluginsForTest(runtime.plugin, createRpcAgentPlugin(getRuntimeClient));
+    await loadPluginsForTest(
+      runtime.plugin,
+      createRpcAgentPlugin(testClient.agent.access, getRuntimeClient),
+    );
     await pickAgentSource()!
       .factory()
       .start([{ type: "text", text: "accepted" }], {});

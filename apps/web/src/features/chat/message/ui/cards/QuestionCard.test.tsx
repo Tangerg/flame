@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionCard } from "@/features/chat/message/ui/cards/QuestionCard";
 import { type QuestionItem } from "@/features/agent/public/contentBlock";
@@ -50,7 +58,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("exposes single-choice answers as a labeled radio group", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -79,7 +87,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("exposes multi-choice answers as checkboxes", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -112,7 +120,7 @@ describe("QuestionCard choice semantics", () => {
       "Run all release checks for the selected workspace and include concurrency diagnostics",
       "Run all release checks for the selected workspace and include accessibility diagnostics",
     ];
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -143,7 +151,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("keeps arrow and numbered selection inside the active question", async () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -187,7 +195,7 @@ describe("QuestionCard choice semantics", () => {
     { shiftKey: true },
     { isComposing: true, keyCode: 229 },
   ])("leaves a modified or composing number key to its owner: %j", (modifiers) => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -208,7 +216,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("confirms a custom answer only when the focused field has content", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -228,7 +236,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("clears the radio selection when a skipped question is answered with custom text", async () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -261,7 +269,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("uses the question as the only request heading and keeps option detail with its choice", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -307,7 +315,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("gives a freeform question a multiline answer surface", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -331,7 +339,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("folds settled answers into Codex's compact question disclosure", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -368,7 +376,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("confirms each question explicitly and keeps drafts while paging", async () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -441,7 +449,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("skips only the active answer", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -465,7 +473,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("returns to the selected radio while keeping the other question's draft", async () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -497,7 +505,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("leaves later outside focus alone while the previous question registers", async () => {
-    render(
+    testClient.render(
       <>
         <button>Outside question</button>
         <QuestionCard
@@ -525,7 +533,7 @@ describe("QuestionCard choice semantics", () => {
 
   it("disables skip and confirmation when the answer cannot be sent", () => {
     serviceState.available = false;
-    const { unmount } = render(
+    const { unmount } = testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -541,7 +549,7 @@ describe("QuestionCard choice semantics", () => {
 
     serviceState.available = true;
     answerState.submitted = true;
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -565,7 +573,7 @@ describe("QuestionCard choice semantics", () => {
 
   it("keeps pending answers immutable and both completion actions disabled", () => {
     answerState.pending = true;
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"
@@ -587,7 +595,7 @@ describe("QuestionCard choice semantics", () => {
   });
 
   it("keeps an unmarked Chinese-IME commit Enter inside the freeform answer", () => {
-    render(
+    testClient.render(
       <QuestionCard
         sessionId="ses-1"
         status="complete"

@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { type Host } from "dougong";
 import { StrictMode, useEffect, useState, type ComponentProps, type ComponentType } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -168,7 +176,9 @@ const views: WorkspaceViewSpec[] = [
 const send = () => true;
 
 function mount(strict: boolean) {
-  const view = render(<ChatPanel onSend={send} />, { wrapper: strict ? StrictMode : undefined });
+  const view = testClient.render(<ChatPanel onSend={send} />, {
+    wrapper: strict ? StrictMode : undefined,
+  });
   return (change: () => void) =>
     act(() => {
       change();

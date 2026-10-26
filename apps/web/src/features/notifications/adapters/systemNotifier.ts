@@ -1,9 +1,6 @@
 import { type ClientHost } from "@/platform/host";
-import {
-  configureNotificationCentre,
-  type NotificationCentre,
-} from "@/features/notifications/application/ports/notificationCentre";
-export function installNotificationCentre(
+import { type NotificationCentre } from "@/features/notifications/application/notificationCentre";
+export function createNotificationCentre(
   host: Pick<
     ClientHost,
     | "notificationAuthorization"
@@ -11,7 +8,7 @@ export function installNotificationCentre(
     | "sendNotification"
     | "onNotificationOpened"
   >,
-): () => void {
+): NotificationCentre {
   const centre: NotificationCentre = {
     authorization: () => host.notificationAuthorization(),
     requestAuthorization: () => host.requestNotificationAuthorization(),
@@ -29,5 +26,5 @@ export function installNotificationCentre(
       };
     },
   };
-  return configureNotificationCentre(centre);
+  return centre;
 }

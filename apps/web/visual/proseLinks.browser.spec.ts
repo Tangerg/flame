@@ -28,7 +28,7 @@ for (const [fontSize, theme, width] of [
     await view.getByRole("tab", { name: "Source", exact: true }).click();
     const source = view.locator('[data-quote-source="file"]');
     await expect(source).toContainText(
-      '[protocol]: https://example.test/runtime/protocol "Accepted protocol contract"',
+      '[protocol]: https://example.test/packages/go-sdk/protocol "Accepted protocol contract"',
     );
     await expect(source).toContainText(
       "[implementation notes]: https://example.test/runtime/implementation",
@@ -44,7 +44,7 @@ for (const [fontSize, theme, width] of [
     await page.locator("html[data-visual-ready]").waitFor();
     const reading = page.locator(".md").filter({ hasText: "Quoted evidence" });
     const protocol = reading.getByRole("link", { name: "the protocol guide", exact: true });
-    await expect(protocol).toHaveAttribute("href", "https://example.test/runtime/protocol");
+    await expect(protocol).toHaveAttribute("href", "https://example.test/packages/go-sdk/protocol");
     await expect(protocol).toHaveAttribute("title", "Accepted protocol contract");
     await expect(protocol).toHaveAttribute("target", "_blank");
     await expect(

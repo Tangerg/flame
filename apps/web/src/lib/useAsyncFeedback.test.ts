@@ -1,11 +1,19 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { RpcError } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 describe("useAsyncFeedback", () => {
   it("run -> ok reflects success", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     await act(async () => {
       await result.current.run(async () => ({ ok: true }), "fallback");
     });
@@ -13,7 +21,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("run -> not-ok surfaces the result error, falling back when absent", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     await act(async () => {
       await result.current.run(async () => ({ ok: false, error: "bad key" }), "fallback");
     });
@@ -25,7 +33,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("run -> thrown Error surfaces its message", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     await act(async () => {
       await result.current.run(async () => {
         throw new Error("network down");
@@ -35,7 +43,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("run -> thrown Runtime problem surfaces its product copy, not the problem symbol", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     await act(async () => {
       await result.current.run(async () => {
         throw new RpcError({
@@ -53,7 +61,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("returns an ignored lifecycle settlement to idle", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     const retired = new Error("generation retired");
     await act(async () => {
       await result.current.run(
@@ -68,7 +76,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("drops a superseded run's result", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
     let firstDone!: Promise<void>;
     act(() => {
@@ -87,7 +95,7 @@ describe("useAsyncFeedback", () => {
   });
 
   it("reset invalidates an in-flight run and returns to idle", async () => {
-    const { result } = renderHook(() => useAsyncFeedback());
+    const { result } = testClient.renderHook(() => useAsyncFeedback());
     const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
     let done!: Promise<void>;
     act(() => {
@@ -104,9 +112,12 @@ describe("useAsyncFeedback", () => {
 
   it("retires completed and in-flight feedback when its material generation changes", async () => {
     const slow = Promise.withResolvers<{ ok: boolean; error?: string }>();
-    const { result, rerender } = renderHook(({ generation }) => useAsyncFeedback(generation), {
-      initialProps: { generation: 1 },
-    });
+    const { result, rerender } = testClient.renderHook(
+      ({ generation }) => useAsyncFeedback(generation),
+      {
+        initialProps: { generation: 1 },
+      },
+    );
 
     await act(async () => {
       await result.current.run(async () => ({ ok: true }), "fallback");

@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { type ReactNode } from "react";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
@@ -18,7 +26,7 @@ vi.mock("@/ui/index", async (original) => ({
 function edit(title = "Original") {
   const onRename = vi.fn();
   const onSelect = vi.fn();
-  render(
+  testClient.render(
     <SessionRow
       session={{
         id: "s",
@@ -87,7 +95,7 @@ describe("session row pin state", () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(now);
     try {
       const onSelect = vi.fn();
-      render(
+      testClient.render(
         <SessionRow
           session={session({ attention: "running", favorite: true })}
           active
@@ -122,7 +130,7 @@ describe("session row pin state", () => {
       );
       const unpinned = "Refine Runtime protocol — 5 minutes ago";
       const pinned = "Refine Runtime protocol — Pinned — 5 minutes ago";
-      const { rerender } = render(view({}));
+      const { rerender } = testClient.render(view({}));
       const row = screen.getByRole("button", { name: unpinned });
 
       fireEvent.click(screen.getByRole("button", { name: "Pin to top" }));

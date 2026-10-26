@@ -1,12 +1,14 @@
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+
 export function useStopCurrentRootRun(): (() => boolean) | null {
-  return agentSessionView().useAction("stop");
+  const agentAccess = useAgent();
+
+  return agentAccess.view.useAction("stop");
 }
 
-export function stopCurrentRootRun(): boolean {
-  const sessionId = agentSessionState().getActiveSessionId();
-  const stop = agentSessionView().getSession(sessionId)?.stop;
+export function stopCurrentRootRun(agentAccess: AgentAccess): boolean {
+  const sessionId = agentAccess.state.getActiveSessionId();
+  const stop = agentAccess.view.getSession(sessionId)?.stop;
   if (!stop) return false;
   return stop();
 }
@@ -16,8 +18,11 @@ interface RunCommandTarget {
   readonly runId: string;
 }
 
-export function cancelSessionRun({ sessionId, runId }: RunCommandTarget): boolean {
-  const entry = agentSessionView().getSession(sessionId);
+export function cancelSessionRun(
+  agentAccess: AgentAccess,
+  { sessionId, runId }: RunCommandTarget,
+): boolean {
+  const entry = agentAccess.view.getSession(sessionId);
   const run = entry?.view.runsById[runId];
   if (!entry?.cancelRun || !run || run.sessionId !== sessionId || run.status === "finished") {
     return false;
@@ -26,7 +31,7 @@ export function cancelSessionRun({ sessionId, runId }: RunCommandTarget): boolea
   return true;
 }
 
-export function dismissActiveSessionProblem(): void {
-  const sessionId = agentSessionState().getActiveSessionId();
-  agentSessionView().clearProblem(sessionId);
+export function dismissActiveSessionProblem(agentAccess: AgentAccess): void {
+  const sessionId = agentAccess.state.getActiveSessionId();
+  agentAccess.view.clearProblem(sessionId);
 }

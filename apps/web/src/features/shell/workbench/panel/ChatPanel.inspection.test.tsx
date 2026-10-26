@@ -1,19 +1,19 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  renderHook,
-  screen,
-  within,
-} from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { createRef, useEffect, useRef, useState } from "react";
 import { ActionMenu, ModalDialog, SearchField, Select } from "@flame/ui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { type Message } from "@/features/agent/public/sessionView";
 import { selectAgentSession } from "@/features/agent/public/session";
-import { navigator } from "@/lib/navigation";
+
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
 import { MessageTranscript } from "@/features/chat/public/message/rendering";
 import {
@@ -63,7 +63,7 @@ function DraftInput() {
   const input = useRef<HTMLTextAreaElement>(null);
   const value = useComposerText();
   const setValue = useSetComposerText();
-  useEffect(() => registerComposerFocusTarget(input.current), []);
+  useEffect(() => registerComposerFocusTarget(testClient.composer.access, input.current), []);
   return (
     <textarea
       ref={input}
@@ -181,7 +181,11 @@ vi.mock("@/features/shell/workbench/panel/ChatStream", async () => {
         <FileRefLink path="src/main.ts" line={4} />
         <PromptTurn message={rootPrompt} />
         <AnswerTurn text={"| Path |\n|---|\n| src/stream.ts:2 |\n| docs/selected.md:9 |"} />
-        <button onClick={(event) => openWorkspaceSubagentRun("child", event.currentTarget)}>
+        <button
+          onClick={(event) =>
+            openWorkspaceSubagentRun(testClient.workspace.access, "child", event.currentTarget)
+          }
+        >
           Inspect task
         </button>
         <button>Other control</button>
@@ -200,7 +204,11 @@ function ChildReader() {
       <span>Selected task: {runId}</span>
       <button key={runId}>Read {runId}</button>
       <PromptTurn message={childPrompt} />
-      <button onClick={(event) => openWorkspaceSubagentRun("nested", event.currentTarget)}>
+      <button
+        onClick={(event) =>
+          openWorkspaceSubagentRun(testClient.workspace.access, "nested", event.currentTarget)
+        }
+      >
         Inspect nested task
       </button>
       <FileRefLink path="src/child.ts" line={8} />
@@ -272,9 +280,9 @@ beforeEach(() => {
     userInput: { parts: [{ kind: "text", text: "Canonical root input" }] },
   });
   vi.mocked(writeToClipboard).mockClear();
-  selectAgentSession(model.sessionId);
-  replaceComposerDraft({ text: INITIAL_DRAFT });
-  activateWorkspaceSessionScope(model.sessionId);
+  selectAgentSession(testClient.agent.access, model.sessionId);
+  replaceComposerDraft(testClient.composer.access, { text: INITIAL_DRAFT });
+  activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
   model.views = [
     {
       id: "file",
@@ -295,8 +303,8 @@ afterEach(async () => {
 
 it("hands focus from a removed full-width trigger to the material and back to the conversation", () => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
-  openWorkspaceViewInDock("file");
-  render(<ChatPanel onSend={() => true} />);
+  openWorkspaceViewInDock(testClient.workspace.access, "file");
+  testClient.render(<ChatPanel onSend={() => true} />);
   const trigger = screen.getByRole("button", { name: /Open material full width/ });
   act(() => trigger.focus());
   fireEvent.click(trigger);
@@ -309,9 +317,9 @@ it("hands focus from a removed full-width trigger to the material and back to th
 });
 
 it("returns focus from a removed main header to the visible Dock", () => {
-  openWorkspaceViewInDock("file");
-  openWorkspaceView("file");
-  render(<ChatPanel onSend={() => true} />);
+  openWorkspaceViewInDock(testClient.workspace.access, "file");
+  openWorkspaceView(testClient.workspace.access, "file");
+  testClient.render(<ChatPanel onSend={() => true} />);
   const close = screen.getByRole("button", { name: "Close" });
   act(() => close.focus());
   fireEvent.click(close);
@@ -319,7 +327,7 @@ it("returns focus from a removed main header to the visible Dock", () => {
 });
 
 it("preserves outside focus when a main view is presented", () => {
-  render(
+  testClient.render(
     <>
       <button>Outside control</button>
       <ChatPanel onSend={() => true} />
@@ -327,7 +335,7 @@ it("preserves outside focus when a main view is presented", () => {
   );
   const outside = screen.getByRole("button", { name: "Outside control" });
   act(() => outside.focus());
-  act(() => openWorkspaceView("file"));
+  act(() => openWorkspaceView(testClient.workspace.access, "file"));
   expect(document.activeElement).toBe(outside);
 });
 
@@ -342,7 +350,7 @@ describe("explicit Composer focus", () => {
 
   function mount() {
     const panel = createRef<ChatPanelHandle>();
-    const view = render(
+    const view = testClient.render(
       <>
         <button>Later control</button>
         <ChatPanel ref={panel} onSend={() => true} />
@@ -353,8 +361,8 @@ describe("explicit Composer focus", () => {
   }
 
   function settings() {
-    openWorkspaceViewInDock("file");
-    openWorkspaceView("settings");
+    openWorkspaceViewInDock(testClient.workspace.access, "file");
+    openWorkspaceView(testClient.workspace.access, "settings");
     const result = mount();
     act(() => screen.getByRole("button", { name: "Settings controls" }).focus());
     return result;
@@ -362,7 +370,7 @@ describe("explicit Composer focus", () => {
 
   it("reveals the existing draft and preserves the wide Dock and one-step history", () => {
     const { panel, draft } = settings();
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
     draft.setSelectionRange(5, 5);
 
     act(() => panel.current!.focusComposer());
@@ -372,22 +380,22 @@ describe("explicit Composer focus", () => {
     expect(document.activeElement).toBe(draft);
     expect(draft.value).toBe("Keep this draft — 保留");
     expect(draft.selectionEnd).toBe(5);
-    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
-    act(() => navigator().back());
-    expect(navigator().get()).toEqual(previous);
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: "file" });
+    act(() => testClient.navigation.back());
+    expect(testClient.navigation.get()).toEqual(previous);
     expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
   });
 
   it("focuses a visible draft without navigating or hiding the Dock", () => {
-    openWorkspaceViewInDock("file");
+    openWorkspaceViewInDock(testClient.workspace.access, "file");
     const { panel, draft } = mount();
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
     act(() => screen.getByRole("button", { name: "Other control" }).focus());
 
     act(() => panel.current!.focusComposer());
 
     expect(document.activeElement).toBe(draft);
-    expect(navigator().get()).toBe(previous);
+    expect(testClient.navigation.get()).toBe(previous);
     expect(screen.getByRole("complementary", { name: "Files" })).toBeTruthy();
   });
 
@@ -398,17 +406,17 @@ describe("explicit Composer focus", () => {
     act(() => origin.focus());
     fireEvent.click(origin);
     const controls = screen.getByRole("button", { name: "File controls" });
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
     act(() => controls.focus());
 
     act(() => panel.current!.focusComposer());
 
-    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: null });
     expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
     expect(document.activeElement).toBe(draft);
     expect(controls.isConnected).toBe(true);
-    act(() => navigator().back());
-    expect(navigator().get()).toEqual(previous);
+    act(() => testClient.navigation.back());
+    expect(testClient.navigation.get()).toEqual(previous);
     expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
     expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
     expect(draft.value).toBe("Keep this draft — 保留");
@@ -416,7 +424,7 @@ describe("explicit Composer focus", () => {
 
   it("manually reopens the inspected material after focusing a narrow conversation", () => {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
-    openWorkspaceViewInDock("subagents");
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
     const { panel, draft } = mount();
     const origin = screen.getByRole("button", { name: "src/main.ts:4" });
     act(() => origin.focus());
@@ -444,7 +452,7 @@ describe("explicit Composer focus", () => {
       later.focus();
     });
 
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
     expect(document.activeElement).toBe(later);
   });
 
@@ -473,10 +481,10 @@ describe("explicit Composer focus", () => {
 
       act(() => {
         panel.current!.focusComposer();
-        openWorkspaceView(viewId);
+        openWorkspaceView(testClient.workspace.access, viewId);
       });
 
-      expect(navigator().get().view).toBe(viewId);
+      expect(testClient.navigation.get().view).toBe(viewId);
       const close = within(windowHeader()!).getByRole("button", { name: "Close" });
       act(() => close.focus());
       fireEvent.click(close);
@@ -487,19 +495,19 @@ describe("explicit Composer focus", () => {
 
   it("keeps an open modal's focus and underlying presentation", () => {
     const { panel } = settings();
-    render(
+    testClient.render(
       <div role="dialog" aria-label="Editing task">
         <button>Modal control</button>
       </div>,
     );
     const control = screen.getByRole("button", { name: "Modal control" });
     act(() => control.focus());
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
 
     act(() => panel.current!.focusComposer());
 
     expect(document.activeElement).toBe(control);
-    expect(navigator().get()).toBe(previous);
+    expect(testClient.navigation.get()).toBe(previous);
   });
 });
 
@@ -512,7 +520,7 @@ describe("draft intents in workspace presentations", () => {
         <ChatPanel onSend={() => true} />
       </>
     );
-    const view = render(content);
+    const view = testClient.render(content);
     const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Composer draft" });
     return { view, draft };
   }
@@ -553,7 +561,7 @@ describe("draft intents in workspace presentations", () => {
   async function editChild(width: number) {
     const { draft } = mount(width);
     const evidence = inspectChild();
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
     await openMessageMenu(CHILD_TEXT);
 
     await chooseMessageAction("Edit in composer");
@@ -563,7 +571,9 @@ describe("draft intents in workspace presentations", () => {
     expect(evidence.isConnected).toBe(true);
     expect(model.rollback).not.toHaveBeenCalled();
     fireEvent.change(draft, { target: { value: `${CHILD_TEXT} Continue here.` } });
-    expect(captureComposerSubmission().value).toBe(`${CHILD_TEXT} Continue here.`);
+    expect(captureComposerSubmission(testClient.composer.access).value).toBe(
+      `${CHILD_TEXT} Continue here.`,
+    );
     expect(document.activeElement).toBe(draft);
     return { draft, evidence, previous };
   }
@@ -571,9 +581,9 @@ describe("draft intents in workspace presentations", () => {
   it("edits a child through the shared menu into the narrow Composer and retains its material history", async () => {
     const { draft, evidence, previous } = await editChild(700);
 
-    expect(navigator().get()).toMatchObject({ view: null, dock: null });
-    act(() => navigator().back());
-    expect(navigator().get()).toEqual(previous);
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: null });
+    act(() => testClient.navigation.back());
+    expect(testClient.navigation.get()).toEqual(previous);
     expect(screen.getByRole("region", { name: "Subagents" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(evidence);
     expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
@@ -583,7 +593,7 @@ describe("draft intents in workspace presentations", () => {
   it("edits a child through the shared menu into the wide Composer without hiding its Dock", async () => {
     const { draft, evidence, previous } = await editChild(1200);
 
-    expect(navigator().get()).toBe(previous);
+    expect(testClient.navigation.get()).toBe(previous);
     expect(screen.getByRole("complementary", { name: "Subagents" }).contains(evidence)).toBe(true);
     expect(draft.value).toBe(`${CHILD_TEXT} Continue here.`);
   });
@@ -593,7 +603,7 @@ describe("draft intents in workspace presentations", () => {
     async (action) => {
       const { draft } = mount();
       const evidence = inspectChild();
-      const previous = navigator().get();
+      const previous = testClient.navigation.get();
       const menu = await openMessageMenu(CHILD_TEXT);
 
       if (action === "Escape") {
@@ -603,7 +613,7 @@ describe("draft intents in workspace presentations", () => {
         await chooseMessageAction(action);
       }
 
-      expect(navigator().get()).toBe(previous);
+      expect(testClient.navigation.get()).toBe(previous);
       expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
       expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
       expect(draft.value).toBe(INITIAL_DRAFT);
@@ -617,11 +627,13 @@ describe("draft intents in workspace presentations", () => {
     const { draft } = mount();
     const evidence = inspectChild();
 
-    act(() => appendToComposerDraft("> Evidence selected from the child task."));
+    act(() =>
+      appendToComposerDraft(testClient.composer.access, "> Evidence selected from the child task."),
+    );
 
     visibleDraft(draft, `${INITIAL_DRAFT}\n\n> Evidence selected from the child task.`);
     expect(evidence.isConnected).toBe(true);
-    expect(navigator().get()).toMatchObject({ view: null, dock: null });
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: null });
   });
 
   it("delivers the accepted input's caret when a history edit completes before reveal", () => {
@@ -630,7 +642,7 @@ describe("draft intents in workspace presentations", () => {
     let accepted = false;
 
     act(() => {
-      const replace = beginComposerDraftReplacement();
+      const replace = beginComposerDraftReplacement(testClient.composer.access);
       accepted = replace({ text: "Canonical input committed before presentation" });
     });
 
@@ -653,7 +665,7 @@ describe("draft intents in workspace presentations", () => {
     fireEvent.click(file);
     const control = screen.getByRole("button", { name: "File controls" });
     act(() => control.focus());
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
 
     await act(async () => {
       rollback.resolve({
@@ -663,13 +675,15 @@ describe("draft intents in workspace presentations", () => {
       await rollback.promise;
     });
 
-    expect(navigator().get()).toBe(previous);
+    expect(testClient.navigation.get()).toBe(previous);
     expect(screen.getByRole("region", { name: "Files" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
     expect(draft.value).toBe("Delayed canonical input");
     expect(document.activeElement).toBe(control);
-    expect(model.rollback.mock.calls).toEqual([["ses_first", "root-run", "history"]]);
+    expect(model.rollback.mock.calls).toEqual([
+      [testClient.agent.access, "ses_first", "root-run", "history"],
+    ]);
   });
 
   it("keeps focus moved after a draft intent but before its reveal", () => {
@@ -678,7 +692,7 @@ describe("draft intents in workspace presentations", () => {
     const later = screen.getByRole("button", { name: "Later draft control" });
 
     act(() => {
-      replaceComposerDraft({ text: "Edited child task" });
+      replaceComposerDraft(testClient.composer.access, { text: "Edited child task" });
       later.focus();
     });
 
@@ -690,18 +704,20 @@ describe("draft intents in workspace presentations", () => {
   it("keeps modal focus and presentation when a draft intent reaches the reveal owner", () => {
     const { draft } = mount();
     inspectChild();
-    render(
+    testClient.render(
       <div role="dialog" aria-label="Editing task">
         <button>Modal draft control</button>
       </div>,
     );
     const control = screen.getByRole("button", { name: "Modal draft control" });
     act(() => control.focus());
-    const previous = navigator().get();
+    const previous = testClient.navigation.get();
 
-    act(() => replaceComposerDraft({ text: "Edited draft beneath the modal" }));
+    act(() =>
+      replaceComposerDraft(testClient.composer.access, { text: "Edited draft beneath the modal" }),
+    );
 
-    expect(navigator().get()).toBe(previous);
+    expect(testClient.navigation.get()).toBe(previous);
     expect(screen.queryByRole("textbox", { name: "Composer draft" })).toBeNull();
     expect(draft.value).toBe("Edited draft beneath the modal");
     expect(document.activeElement).toBe(control);
@@ -712,9 +728,9 @@ describe("draft intents in workspace presentations", () => {
     inspectChild();
 
     act(() => {
-      replaceComposerDraft({ text: "Edited first Session" });
+      replaceComposerDraft(testClient.composer.access, { text: "Edited first Session" });
       model.sessionId = "ses_second";
-      selectAgentSession(model.sessionId);
+      selectAgentSession(testClient.agent.access, model.sessionId);
       view.rerender(
         <>
           <button>Later draft control</button>
@@ -725,7 +741,9 @@ describe("draft intents in workspace presentations", () => {
 
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
     expect(document.activeElement).not.toBe(draft);
-    expect(captureComposerSubmission().value).not.toBe("Edited first Session");
+    expect(captureComposerSubmission(testClient.composer.access).value).not.toBe(
+      "Edited first Session",
+    );
   });
 
   it("retires draft focus when later navigation supersedes reveal", () => {
@@ -733,8 +751,8 @@ describe("draft intents in workspace presentations", () => {
     inspectChild();
 
     act(() => {
-      replaceComposerDraft({ text: "Edited child task" });
-      openWorkspaceView("file");
+      replaceComposerDraft(testClient.composer.access, { text: "Edited child task" });
+      openWorkspaceView(testClient.workspace.access, "file");
     });
 
     expect(screen.getByRole("region", { name: "Files" })).toBeTruthy();
@@ -758,9 +776,9 @@ describe("main presentation focus handoff", () => {
 
   function materialHistory(width: number) {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-    openWorkspaceViewInDock("file");
-    openWorkspaceView("file");
-    render(
+    openWorkspaceViewInDock(testClient.workspace.access, "file");
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(
       <>
         <button>Later navigation focus</button>
         <ChatPanel onSend={() => true} />
@@ -770,7 +788,7 @@ describe("main presentation focus handoff", () => {
     const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
     act(() => draft.focus());
     draft.setSelectionRange(4, 4);
-    act(() => navigator().back());
+    act(() => testClient.navigation.back());
     const material = screen.getByRole("region", { name: "Files" });
     expect(document.activeElement).toBe(material);
     return { draft, material, control: screen.getByRole("button", { name: "File controls" }) };
@@ -782,9 +800,9 @@ describe("main presentation focus handoff", () => {
       const { draft, material, control } = materialHistory(700);
       if (origin === "child") act(() => control.focus());
 
-      act(() => navigator().forward());
+      act(() => testClient.navigation.forward());
 
-      expect(navigator().get().view).toBeNull();
+      expect(testClient.navigation.get().view).toBeNull();
       expect(material.isConnected).toBe(true);
       expect(control.isConnected).toBe(true);
       expect(document.activeElement).toBe(screen.getByRole("region", { name: "Conversation" }));
@@ -798,7 +816,7 @@ describe("main presentation focus handoff", () => {
     const { control } = materialHistory(1200);
     act(() => control.focus());
 
-    act(() => navigator().forward());
+    act(() => testClient.navigation.forward());
 
     expect(screen.getByRole("complementary", { name: "Files" }).contains(control)).toBe(true);
     expect(document.activeElement).toBe(control);
@@ -809,7 +827,7 @@ describe("main presentation focus handoff", () => {
     const later = screen.getByRole("button", { name: "Later navigation focus" });
 
     act(() => {
-      navigator().forward();
+      testClient.navigation.forward();
       later.focus();
     });
 
@@ -818,10 +836,10 @@ describe("main presentation focus handoff", () => {
   });
 
   it("enters a main view when focus belonged to the conversation it hides", () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const control = screen.getByRole("button", { name: "Other control" });
     act(() => control.focus());
-    act(() => openWorkspaceView("settings"));
+    act(() => openWorkspaceView(testClient.workspace.access, "settings"));
 
     expect(screen.queryByRole("region", { name: "Conversation" })).toBeNull();
     expect(control.isConnected).toBe(true);
@@ -829,12 +847,12 @@ describe("main presentation focus handoff", () => {
   });
 
   it("enters a different main view from a retained Dock child", () => {
-    openWorkspaceViewInDock("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     const child = screen.getByRole("button", { name: "Evidence 0" });
     fireEvent.click(child);
     act(() => child.focus());
-    act(() => openWorkspaceView("settings"));
+    act(() => openWorkspaceView(testClient.workspace.access, "settings"));
 
     expect(child.isConnected).toBe(true);
     expect(screen.queryByRole("button", { name: "Evidence 1" })).toBeNull();
@@ -845,12 +863,12 @@ describe("main presentation focus handoff", () => {
   });
 
   it("enters a main view from the retained panel catalog without losing its query", () => {
-    showWorkspaceDock();
-    render(<ChatPanel onSend={() => true} />);
+    showWorkspaceDock(testClient.workspace.access);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
     fireEvent.change(search, { target: { value: "Files" } });
     act(() => search.focus());
-    act(() => openWorkspaceView("settings"));
+    act(() => openWorkspaceView(testClient.workspace.access, "settings"));
 
     expect(search.isConnected).toBe(true);
     expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
@@ -862,20 +880,20 @@ describe("main presentation focus handoff", () => {
   });
 
   it("keeps a child that stays visible while its material moves into the Dock", () => {
-    openWorkspaceView("file");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
     const controls = screen.getByRole("button", { name: "File controls" });
     act(() => controls.focus());
-    act(() => openWorkspaceViewInDock("file"));
+    act(() => openWorkspaceViewInDock(testClient.workspace.access, "file"));
 
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
     expect(screen.getByRole("complementary", { name: "Files" }).contains(controls)).toBe(true);
     expect(document.activeElement).toBe(controls);
   });
 
   it("does not replay the handoff while the same main view updates", () => {
-    openWorkspaceView("settings");
-    const view = render(<ChatPanel onSend={() => true} />);
+    openWorkspaceView(testClient.workspace.access, "settings");
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     const controls = screen.getByRole("button", { name: "Settings controls" });
     act(() => controls.focus());
     view.rerender(<ChatPanel onSend={() => true} />);
@@ -886,22 +904,22 @@ describe("main presentation focus handoff", () => {
 
 describe("Dock collapse focus handoff", () => {
   it("keeps inactive workspace scrollports laid out but inert until their tab returns", () => {
-    openWorkspaceViewInDock("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
     const viewport = screen.getByRole("region", { name: "Subagents" });
     const retained = viewport.closest<HTMLElement>("[data-dock-view-id]")!;
     viewport.scrollTop = 241;
     fireEvent.scroll(viewport);
 
-    act(() => openWorkspaceViewInDock("file"));
+    act(() => openWorkspaceViewInDock(testClient.workspace.access, "file"));
     expect(viewport.isConnected).toBe(true);
     expect(retained.hidden).toBe(false);
     expect(retained.hasAttribute("inert")).toBe(true);
     expect(screen.queryByRole("region", { name: "Subagents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Evidence 1" })).toBeNull();
 
-    act(() => openWorkspaceViewInDock("subagents"));
+    act(() => openWorkspaceViewInDock(testClient.workspace.access, "subagents"));
     expect(screen.getByRole("region", { name: "Subagents" })).toBe(viewport);
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
     expect(retained.hasAttribute("inert")).toBe(false);
@@ -909,8 +927,8 @@ describe("Dock collapse focus handoff", () => {
   });
 
   function retainedDock() {
-    openWorkspaceViewInDock("subagents");
-    render(
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(
       <>
         <button>Later control</button>
         <ChatPanel onSend={() => true} />
@@ -940,14 +958,14 @@ describe("Dock collapse focus handoff", () => {
       const { dock, child, draft } = retainedDock();
       act(() => (origin === "region" ? dock : child).focus());
 
-      act(() => toggleWorkspaceDock());
+      act(() => toggleWorkspaceDock(testClient.workspace.access));
 
       const conversation = screen.getByRole("region", { name: "Conversation" });
       expect(document.activeElement).toBe(conversation);
       expect(dock.isConnected).toBe(true);
       expect(child.isConnected).toBe(true);
 
-      act(() => toggleWorkspaceDock());
+      act(() => toggleWorkspaceDock(testClient.workspace.access));
 
       expectRetainedDock(dock, child, draft);
       expect(document.activeElement).toBe(conversation);
@@ -958,10 +976,10 @@ describe("Dock collapse focus handoff", () => {
     const { dock, child, draft } = retainedDock();
     act(() => draft.focus());
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     expect(document.activeElement).toBe(draft);
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     expect(document.activeElement).toBe(draft);
     expectRetainedDock(dock, child, draft);
   });
@@ -987,7 +1005,7 @@ describe("Dock collapse focus handoff", () => {
     act(() => child.focus());
 
     act(() => {
-      toggleWorkspaceDock();
+      toggleWorkspaceDock(testClient.workspace.access);
       later.focus();
     });
 
@@ -1020,7 +1038,7 @@ describe("Dock collapse focus handoff", () => {
 
     await resize(700);
 
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
     expect(windowHeader()).toBeNull();
     const conversation = screen.getByRole("region", { name: "Conversation" });
     expect(document.activeElement).toBe(conversation);
@@ -1050,7 +1068,7 @@ describe("Dock collapse focus handoff", () => {
     const { dock, child, draft } = retainedDock();
     const search = await openPanelPicker();
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     await settleCleanup();
 
     expect(search.isConnected).toBe(false);
@@ -1059,7 +1077,7 @@ describe("Dock collapse focus handoff", () => {
     fireEvent.keyDown(conversation, { key: "Escape" });
     expect(document.activeElement).toBe(conversation);
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     await settleCleanup();
 
     expect(screen.queryByRole("combobox", { name: "Find a panel…" })).toBeNull();
@@ -1075,7 +1093,7 @@ describe("Dock collapse focus handoff", () => {
     const menu = await screen.findByRole("menu");
     await vi.waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     await settleCleanup();
 
     expect(menu.isConnected).toBe(false);
@@ -1085,7 +1103,7 @@ describe("Dock collapse focus handoff", () => {
     fireEvent.keyDown(conversation, { key: "Escape" });
     expect(document.activeElement).toBe(conversation);
 
-    act(() => toggleWorkspaceDock());
+    act(() => toggleWorkspaceDock(testClient.workspace.access));
     await settleCleanup();
 
     expect(screen.queryByRole("menu")).toBeNull();
@@ -1098,7 +1116,7 @@ describe("Dock collapse focus handoff", () => {
     const search = await openPanelPicker();
 
     act(() => {
-      toggleWorkspaceDock();
+      toggleWorkspaceDock(testClient.workspace.access);
       later.focus();
     });
     await settleCleanup();
@@ -1116,7 +1134,7 @@ describe("Dock collapse focus handoff", () => {
     await settleCleanup();
 
     expect(search.isConnected).toBe(false);
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
     expect(windowHeader()).toBeNull();
     const conversation = screen.getByRole("region", { name: "Conversation" });
     expect(document.activeElement).toBe(conversation);
@@ -1182,14 +1200,14 @@ describe("Dock collapse focus handoff", () => {
         const { dock, child, draft } = retainedPopupDock(popup);
         const opened = await openMaterialPopup(popup);
 
-        act(() => toggleWorkspaceDock());
+        act(() => toggleWorkspaceDock(testClient.workspace.access));
         await settleCleanup();
 
         expect(opened.isConnected).toBe(false);
         const conversation = screen.getByRole("region", { name: "Conversation" });
         expect(document.activeElement).toBe(conversation);
 
-        act(() => toggleWorkspaceDock());
+        act(() => toggleWorkspaceDock(testClient.workspace.access));
         await settleCleanup();
 
         expect(screen.queryByRole(popup === "popover" ? "dialog" : "menu")).toBeNull();
@@ -1236,21 +1254,21 @@ it("retains a main-only source while inspecting a file and restores the same sou
     );
   }
   model.views.push({ id: "main-source", title: "Source material", component: SourceMaterial });
-  openWorkspaceView("main-source");
-  render(<ChatPanel onSend={() => true} />);
+  openWorkspaceView(testClient.workspace.access, "main-source");
+  testClient.render(<ChatPanel onSend={() => true} />);
   const query = screen.getByRole<HTMLInputElement>("searchbox", { name: "Main material query" });
   fireEvent.change(query, { target: { value: "retained source" } });
   const origin = screen.getByRole("button", { name: "src/full-source.ts:8" });
   act(() => origin.focus());
   fireEvent.click(origin);
-  expect(navigator().get().view).toBeNull();
+  expect(testClient.navigation.get().view).toBeNull();
   expect(query.isConnected).toBe(true);
   expect(screen.queryByRole("searchbox", { name: "Main material query" })).toBeNull();
 
   const file = screen.getByRole("button", { name: "File controls" });
   act(() => file.focus());
   fireEvent.keyDown(file, { key: "Escape" });
-  expect(navigator().get().view).toBe("main-source");
+  expect(testClient.navigation.get().view).toBe("main-source");
   expect(screen.getByRole("searchbox", { name: "Main material query" })).toBe(query);
   expect(query.value).toBe("retained source");
   expect(document.activeElement).toBe(origin);
@@ -1263,11 +1281,11 @@ it("retires a moved main view when its Dock tab is closed", () => {
     dock: "workspace",
     component: () => <input aria-label="Moved material draft" defaultValue="draft" />,
   });
-  openWorkspaceView("moved-source");
-  render(<ChatPanel onSend={() => true} />);
+  openWorkspaceView(testClient.workspace.access, "moved-source");
+  testClient.render(<ChatPanel onSend={() => true} />);
   const draft = screen.getByRole("textbox", { name: "Moved material draft" });
   fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
-  expect(navigator().get().view).toBeNull();
+  expect(testClient.navigation.get().view).toBeNull();
   expect(draft.isConnected).toBe(true);
   fireEvent.keyDown(screen.getByRole("tab", { name: "Moved material" }), { key: "Delete" });
   expect(draft.isConnected).toBe(false);
@@ -1276,7 +1294,7 @@ it("retires a moved main view when its Dock tab is closed", () => {
 describe("material inspection focus", () => {
   it("clears the local search before returning an inspected material to its source", () => {
     model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "src/main.ts:4" });
     act(() => source.focus());
     fireEvent.click(source);
@@ -1295,7 +1313,7 @@ describe("material inspection focus", () => {
     "preserves the active search and inspection during IME cancellation %o",
     (composition) => {
       model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
-      render(<ChatPanel onSend={() => true} />);
+      testClient.render(<ChatPanel onSend={() => true} />);
       fireEvent.click(screen.getByRole("button", { name: "src/main.ts:4" }));
       const filter = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter material" });
       act(() => filter.focus());
@@ -1307,39 +1325,39 @@ describe("material inspection focus", () => {
   );
 
   it("returns through nested task and file inspections to the original conversation control", () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "Inspect task" });
     act(() => source.focus());
     fireEvent.click(source);
-    expect(navigator().get().subagent).toBe("child");
+    expect(testClient.navigation.get().subagent).toBe("child");
     expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
     const nested = screen.getByRole("button", { name: "Inspect nested task" });
     act(() => nested.focus());
     fireEvent.click(nested);
-    expect(navigator().get().subagent).toBe("nested");
+    expect(testClient.navigation.get().subagent).toBe("nested");
     const file = screen.getByRole("button", { name: "src/child.ts:8" });
     act(() => file.focus());
     fireEvent.click(file);
     fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
-    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "nested" });
+    expect(testClient.navigation.get()).toMatchObject({ dock: "subagents", subagent: "nested" });
     expect(document.activeElement).toBe(file);
     act(() => screen.getByRole("button", { name: "Read nested" }).focus());
     fireEvent.keyDown(screen.getByRole("complementary", { name: "Subagents" }), {
       key: "Escape",
     });
-    expect(navigator().get().subagent).toBe("child");
+    expect(testClient.navigation.get().subagent).toBe("child");
     expect(document.activeElement).toBe(nested);
     fireEvent.keyDown(screen.getByRole("complementary", { name: "Subagents" }), {
       key: "Escape",
     });
     expect(document.activeElement).toBe(source);
-    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child" });
+    expect(testClient.navigation.get()).toMatchObject({ dock: "subagents", subagent: "child" });
     expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
   });
 
   it("retains a filtered catalog and returns to its search control after inspection", () => {
-    showWorkspaceDock();
-    render(<ChatPanel onSend={() => true} />);
+    showWorkspaceDock(testClient.workspace.access);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const search = screen.getByRole("combobox", { name: "Find a panel…" });
     act(() => search.focus());
     fireEvent.change(search, { target: { value: "Files" } });
@@ -1348,7 +1366,7 @@ describe("material inspection focus", () => {
     expect(document.activeElement).toBe(dock);
     fireEvent.click(screen.getByRole("button", { name: "Back to panel list" }));
 
-    expect(navigator().get().dock).toBe("catalog");
+    expect(testClient.navigation.get().dock).toBe("catalog");
     expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
     expect((search as HTMLInputElement).value).toBe("Files");
     expect(document.activeElement).toBe(search);
@@ -1356,13 +1374,13 @@ describe("material inspection focus", () => {
     fireEvent.keyDown(search, { key: "Escape" });
     expect((search as HTMLInputElement).value).toBe("");
     expect(document.activeElement).toBe(search);
-    expect(navigator().get().dock).toBe("catalog");
+    expect(testClient.navigation.get().dock).toBe("catalog");
     expect(screen.getByRole("option", { name: "Subagents" })).toBeTruthy();
   });
 
   it("enters a picker selection after its popup retires and returns to the previous panel", async () => {
-    openWorkspaceViewInDock("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
     const browse = screen.getByRole("button", { name: "Browse panels" });
     fireEvent.click(browse);
@@ -1374,26 +1392,26 @@ describe("material inspection focus", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
 
-    expect(navigator().get().dock).toBe("subagents");
+    expect(testClient.navigation.get().dock).toBe("subagents");
     expect(document.activeElement).toBe(browse);
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
   });
 
   it("moves a full view beside the conversation and restores its named reader on return", () => {
-    openWorkspaceView("file");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
     const dock = screen.getByRole("complementary", { name: "Files" });
     expect(document.activeElement).toBe(dock);
     fireEvent.click(screen.getByRole("button", { name: "Back to Files" }));
 
-    expect(navigator().get().view).toBe("file");
+    expect(testClient.navigation.get().view).toBe("file");
     expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
   });
 
   it("enters explicitly opened material and returns to its source without closing the Dock", () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "src/main.ts:4" });
     act(() => source.focus());
     fireEvent.click(source);
@@ -1403,48 +1421,48 @@ describe("material inspection focus", () => {
 
     fireEvent.keyDown(dock, { key: "Escape" });
     expect(document.activeElement).toBe(source);
-    expect(navigator().get().dock).toBe("file");
+    expect(testClient.navigation.get().dock).toBe("file");
     expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
   });
 
   it("returns to the original child reader with its component state intact", () => {
-    openWorkspaceViewInDock("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
     const source = screen.getByRole("button", { name: "src/child.ts:8" });
     act(() => source.focus());
     fireEvent.click(source);
-    expect(navigator().get().dock).toBe("file");
+    expect(testClient.navigation.get().dock).toBe("file");
     expect(document.activeElement).not.toBe(source);
     fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
 
-    expect(navigator().get().dock).toBe("subagents");
+    expect(testClient.navigation.get().dock).toBe("subagents");
     expect(document.activeElement).toBe(source);
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
   });
 
   it("keeps focus where the user moved it before entry and during a background update", () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "src/main.ts:4" });
     const other = screen.getByRole("button", { name: "Other control" });
     act(() => {
       source.focus();
-      openWorkspaceFile("src/main.ts", 4, source);
+      openWorkspaceFile(testClient.workspace.access, "src/main.ts", 4, source);
       other.focus();
     });
     expect(document.activeElement).toBe(other);
-    act(() => openWorkspaceFile("src/updated.ts"));
+    act(() => openWorkspaceFile(testClient.workspace.access, "src/updated.ts"));
     expect(document.activeElement).toBe(other);
   });
 
   it("retires the source element when the Session changes", () => {
-    const view = render(<ChatPanel onSend={() => true} />);
+    const view = testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "src/main.ts:4" }));
     const dock = screen.getByRole("complementary", { name: "Files" });
     expect(within(dock).getByRole("button", { name: "Back to conversation" })).toBeTruthy();
     act(() => {
       model.sessionId = "ses_second";
-      activateWorkspaceSessionScope(model.sessionId);
+      activateWorkspaceSessionScope(testClient.workspace.access, model.sessionId);
     });
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
@@ -1457,8 +1475,8 @@ describe("table preview file references", () => {
   }
 
   it("ends the preview, opens the exact line in the Dock and returns to the source table", async () => {
-    const viewer = renderHook(useWorkspaceFileViewer);
-    render(<ChatPanel onSend={() => true} />);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const { expand, dialog } = await openPreview(conversation());
     const reference = within(dialog).getByRole("button", { name: "src/stream.ts:2" });
     act(() => reference.focus());
@@ -1467,7 +1485,7 @@ describe("table preview file references", () => {
 
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(viewer.result.current).toEqual({ path: "src/stream.ts", line: 2 });
-    expect(navigator().get().dock).toBe("file");
+    expect(testClient.navigation.get().dock).toBe("file");
     const dock = screen.getByRole("complementary", { name: "Files" });
     expect(document.activeElement).toBe(dock);
 
@@ -1476,8 +1494,8 @@ describe("table preview file references", () => {
   });
 
   it("returns through a task table preview to the same task and then the conversation", async () => {
-    const viewer = renderHook(useWorkspaceFileViewer);
-    render(<ChatPanel onSend={() => true} />);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "Inspect task" });
     act(() => source.focus());
     fireEvent.click(source);
@@ -1494,7 +1512,7 @@ describe("table preview file references", () => {
     expect(document.activeElement).toBe(screen.getByRole("complementary", { name: "Files" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
-    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child" });
+    expect(testClient.navigation.get()).toMatchObject({ dock: "subagents", subagent: "child" });
     expect(document.activeElement).toBe(expand);
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
 
@@ -1510,36 +1528,36 @@ describe("table preview file references", () => {
       title: "Table material",
       component: () => <AnswerTurn text={TABLE} />,
     });
-    openWorkspaceView("main-table");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceView(testClient.workspace.access, "main-table");
+    testClient.render(<ChatPanel onSend={() => true} />);
     const { expand, dialog } = await openPreview(
       screen.getByRole("region", { name: "Table material" }),
     );
     fireEvent.click(within(dialog).getByRole("button", { name: "app/ui/resizer.ts:6" }));
     await settle();
-    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: "file" });
 
     fireEvent.keyDown(screen.getByRole("complementary", { name: "Files" }), { key: "Escape" });
-    expect(navigator().get().view).toBe("main-table");
+    expect(testClient.navigation.get().view).toBe("main-table");
     expect(document.activeElement).toBe(expand);
   });
 
   it("keeps the inline table reference as its own origin", async () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const reference = await within(conversation()).findByRole("button", {
       name: "src/stream.ts:2",
     });
     act(() => reference.focus());
     fireEvent.click(reference, { detail: 1 });
-    expect(navigator().get().dock).toBe("file");
+    expect(testClient.navigation.get().dock).toBe("file");
 
     fireEvent.keyDown(screen.getByRole("complementary", { name: "Files" }), { key: "Escape" });
     expect(document.activeElement).toBe(reference);
   });
 
   it("keeps a selected reference inert without blocking keyboard activation", async () => {
-    const viewer = renderHook(useWorkspaceFileViewer);
-    render(<ChatPanel onSend={() => true} />);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const { dialog } = await openPreview(conversation());
     const reference = within(dialog).getByRole("button", { name: "docs/selected.md:9" });
     const range = document.createRange();
@@ -1551,7 +1569,7 @@ describe("table preview file references", () => {
       fireEvent.click(reference, { detail: 1 });
       expect(screen.getByRole("dialog", { name: "Table preview" })).toBe(dialog);
       expect(viewer.result.current?.path).not.toBe("docs/selected.md");
-      expect(navigator().get().dock).toBeNull();
+      expect(testClient.navigation.get().dock).toBeNull();
 
       act(() => reference.focus());
       fireEvent.keyDown(reference, { key: "Enter" });
@@ -1562,12 +1580,12 @@ describe("table preview file references", () => {
   });
 
   it("returns an ordinary close to Expand before and after a navigated preview", async () => {
-    render(<ChatPanel onSend={() => true} />);
+    testClient.render(<ChatPanel onSend={() => true} />);
     let { expand, dialog } = await openPreview(conversation());
     fireEvent.keyDown(dialog, { key: "Escape" });
     await settle();
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
-    expect(navigator().get().dock).toBeNull();
+    expect(testClient.navigation.get().dock).toBeNull();
     expect(document.activeElement).toBe(expand);
 
     ({ dialog } = await openPreview(conversation()));
@@ -1587,10 +1605,10 @@ describe("table preview file references", () => {
 describe("material inspection without room for the Dock", () => {
   it("presents an inspected file full width at its line and keeps it across resizes", async () => {
     const resize = observeRowWidth(700);
-    const viewer = renderHook(useWorkspaceFileViewer);
-    const ratio = renderHook(useDockWidth);
-    openWorkspaceViewInDock("file");
-    render(<ChatPanel onSend={() => true} />);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    const ratio = testClient.renderHook(useDockWidth);
+    openWorkspaceViewInDock(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
     expect(screen.getByRole("region", { name: "Conversation" })).toBeTruthy();
     expect(windowHeader()).toBeNull();
 
@@ -1605,7 +1623,7 @@ describe("material inspection without room for the Dock", () => {
     expect(header.queryByRole("button", { name: "Close" })).toBeNull();
     expect(header.queryByRole("button", { name: "Open in the context dock" })).toBeNull();
 
-    const location = navigator().get();
+    const location = testClient.navigation.get();
     const savedRatio = ratio.result.current.width;
     const controls = screen.getByRole("button", { name: "File controls" });
     await resize(1200);
@@ -1620,19 +1638,19 @@ describe("material inspection without room for the Dock", () => {
       within(windowHeader()!).getByRole("button", { name: "Back to conversation" }),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "File controls" })).toBe(controls);
-    expect(navigator().get()).toEqual(location);
+    expect(testClient.navigation.get()).toEqual(location);
     expect(ratio.result.current.width).toBe(savedRatio);
 
     fireEvent.keyDown(controls, { key: "Escape" });
     expect(document.activeElement).toBe(source);
     expect(windowHeader()).toBeNull();
-    expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+    expect(testClient.navigation.get()).toMatchObject({ view: null, dock: "file" });
   });
 
   it("returns through a full-width task, table preview and file to the conversation", async () => {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
-    const viewer = renderHook(useWorkspaceFileViewer);
-    render(<ChatPanel onSend={() => true} />);
+    const viewer = testClient.renderHook(useWorkspaceFileViewer);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "Inspect task" });
     act(() => source.focus());
     fireEvent.click(source);
@@ -1643,7 +1661,7 @@ describe("material inspection without room for the Dock", () => {
     const nested = screen.getByRole("button", { name: "Inspect nested task" });
     act(() => nested.focus());
     fireEvent.click(nested);
-    expect(navigator().get().subagent).toBe("nested");
+    expect(testClient.navigation.get().subagent).toBe("nested");
 
     const { expand, dialog } = await openPreview(screen.getByRole("region", { name: "Subagents" }));
     const reference = within(dialog).getByRole("button", { name: "README.md:4" });
@@ -1654,12 +1672,16 @@ describe("material inspection without room for the Dock", () => {
     expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
 
     fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to task" }));
-    expect(navigator().get()).toMatchObject({ view: null, dock: "subagents", subagent: "nested" });
+    expect(testClient.navigation.get()).toMatchObject({
+      view: null,
+      dock: "subagents",
+      subagent: "nested",
+    });
     expect(document.activeElement).toBe(expand);
     fireEvent.keyDown(within(windowHeader()!).getByRole("button", { name: "Back to task" }), {
       key: "Escape",
     });
-    expect(navigator().get()).toMatchObject({ view: null, subagent: "child" });
+    expect(testClient.navigation.get()).toMatchObject({ view: null, subagent: "child" });
     expect(document.activeElement).toBe(nested);
     fireEvent.keyDown(screen.getByRole("button", { name: "Read child" }), { key: "Escape" });
     expect(document.activeElement).toBe(source);
@@ -1673,12 +1695,12 @@ describe("material inspection without room for the Dock", () => {
     "returns an inspected task presented as main through a file to the conversation at $width",
     ({ width, exit }) => {
       vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-      render(<ChatPanel onSend={() => true} />);
+      testClient.render(<ChatPanel onSend={() => true} />);
       const source = screen.getByRole("button", { name: "Inspect task" });
       act(() => source.focus());
       fireEvent.click(source);
-      act(() => openWorkspaceView("subagents"));
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      act(() => openWorkspaceView(testClient.workspace.access, "subagents"));
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "child" });
       let header = within(windowHeader()!);
       expect(header.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
       expect(header.queryByRole("button", { name: "Close" })).toBeNull();
@@ -1687,10 +1709,10 @@ describe("material inspection without room for the Dock", () => {
       const file = screen.getByRole("button", { name: "src/child.ts:8" });
       act(() => file.focus());
       fireEvent.click(file);
-      expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+      expect(testClient.navigation.get()).toMatchObject({ view: null, dock: "file" });
       fireEvent.click(screen.getByRole("button", { name: "Back to task" }));
 
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "child" });
       expect(document.activeElement).toBe(file);
       expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
       header = within(windowHeader()!);
@@ -1702,7 +1724,7 @@ describe("material inspection without room for the Dock", () => {
         { key: "Escape" },
       );
       expect(document.activeElement).toBe(source);
-      expect(navigator().get().view).toBeNull();
+      expect(testClient.navigation.get().view).toBeNull();
       expect(windowHeader()).toBeNull();
       expect(screen.queryByRole("button", { name: "Back to conversation" })).toBeNull();
     },
@@ -1712,19 +1734,19 @@ describe("material inspection without room for the Dock", () => {
     "returns a nested task opened in explicit main through a file using %s",
     (exit) => {
       vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
-      openWorkspaceViewInDock("subagents");
-      openWorkspaceSubagentRun("child");
-      render(<ChatPanel onSend={() => true} />);
+      openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+      openWorkspaceSubagentRun(testClient.workspace.access, "child");
+      testClient.render(<ChatPanel onSend={() => true} />);
       const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
       fireEvent.click(screen.getByRole("button", { name: /Open material full width/ }));
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "child" });
       expect(within(windowHeader()!).getByRole("button", { name: "Close" })).toBeTruthy();
       fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
 
       const nested = screen.getByRole("button", { name: "Inspect nested task" });
       act(() => nested.focus());
       fireEvent.click(nested);
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "nested" });
       expect(screen.getByText("Selected task: nested")).toBeTruthy();
       expect(within(windowHeader()!).getByRole("button", { name: "Back to task" })).toBeTruthy();
       expect(within(windowHeader()!).queryByRole("button", { name: "Close" })).toBeNull();
@@ -1732,9 +1754,9 @@ describe("material inspection without room for the Dock", () => {
       const file = screen.getByRole("button", { name: "src/child.ts:8" });
       act(() => file.focus());
       fireEvent.click(file);
-      expect(navigator().get()).toMatchObject({ view: null, dock: "file" });
+      expect(testClient.navigation.get()).toMatchObject({ view: null, dock: "file" });
       fireEvent.click(within(windowHeader()!).getByRole("button", { name: "Back to task" }));
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "nested" });
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "nested" });
       expect(document.activeElement).toBe(file);
 
       const returnControl =
@@ -1744,7 +1766,7 @@ describe("material inspection without room for the Dock", () => {
       act(() => returnControl.focus());
       if (exit === "header") fireEvent.click(returnControl);
       else fireEvent.keyDown(returnControl, { key: "Escape" });
-      expect(navigator().get()).toMatchObject({ view: "subagents", subagent: "child" });
+      expect(testClient.navigation.get()).toMatchObject({ view: "subagents", subagent: "child" });
       expect(document.activeElement).toBe(nested);
       expect(screen.getByText("Selected task: child")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
@@ -1758,7 +1780,9 @@ describe("material inspection without room for the Dock", () => {
       expect(within(conversation).getByLabelText("Composer draft")).toBe(draft);
       act(() => draft.focus());
       fireEvent.change(draft, { target: { value: `${INITIAL_DRAFT} Continued.` } });
-      expect(captureComposerSubmission().value).toBe(`${INITIAL_DRAFT} Continued.`);
+      expect(captureComposerSubmission(testClient.composer.access).value).toBe(
+        `${INITIAL_DRAFT} Continued.`,
+      );
       expect(document.activeElement).toBe(draft);
     },
   );
@@ -1766,7 +1790,7 @@ describe("material inspection without room for the Dock", () => {
   it("leaves outside, composing and local Escape to their owners before returning", () => {
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(700);
     model.views[0] = { ...model.views[0]!, component: FilteredMaterial };
-    render(
+    testClient.render(
       <>
         <button>Outside control</button>
         <ChatPanel onSend={() => true} />
@@ -1776,7 +1800,7 @@ describe("material inspection without room for the Dock", () => {
     const source = screen.getByRole("button", { name: "src/main.ts:4" });
     act(() => {
       source.focus();
-      openWorkspaceFile("src/main.ts", 4, source);
+      openWorkspaceFile(testClient.workspace.access, "src/main.ts", 4, source);
       outside.focus();
     });
     expect(document.activeElement).toBe(outside);
@@ -1797,8 +1821,8 @@ describe("material inspection without room for the Dock", () => {
 
   it("restores an ordinary Dock source full width when the row narrowed during inspection", async () => {
     const resize = observeRowWidth(1200);
-    openWorkspaceViewInDock("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
     const source = screen.getByRole("button", { name: "src/child.ts:8" });
     act(() => source.focus());
@@ -1816,8 +1840,8 @@ describe("material inspection without room for the Dock", () => {
 
   it("restores a filtered catalog source full width with its search control", async () => {
     const resize = observeRowWidth(1200);
-    showWorkspaceDock();
-    render(<ChatPanel onSend={() => true} />);
+    showWorkspaceDock(testClient.workspace.access);
+    testClient.render(<ChatPanel onSend={() => true} />);
     const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
     act(() => search.focus());
     fireEvent.change(search, { target: { value: "Files" } });
@@ -1840,8 +1864,8 @@ describe("material inspection without room for the Dock", () => {
 
 describe("preview history lifetime", () => {
   it("preserves later outside focus while retiring a conversation preview", async () => {
-    openWorkspaceView("file");
-    render(
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(
       <>
         <button>Later navigation</button>
         <ChatPanel onSend={() => true} />
@@ -1855,33 +1879,33 @@ describe("preview history lifetime", () => {
     await settle();
 
     act(() => {
-      navigator().back();
+      testClient.navigation.back();
       later.focus();
     });
     await settle();
 
-    expect(navigator().get().view).toBe("file");
+    expect(testClient.navigation.get().view).toBe("file");
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(document.activeElement).toBe(later);
   });
 
   it("retires a retained main task preview when history presents another material", async () => {
-    openWorkspaceViewInDock("subagents");
-    openWorkspaceView("file");
-    openWorkspaceView("subagents");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    openWorkspaceView(testClient.workspace.access, "file");
+    openWorkspaceView(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
     const source = screen.getByRole("button", { name: "Evidence 0" });
     const trigger = screen.getByRole("button", { name: "Expand table" });
     act(() => trigger.focus());
     fireEvent.click(trigger);
     await settle();
 
-    act(() => navigator().back());
+    act(() => testClient.navigation.back());
     await settle();
 
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
-    act(() => navigator().forward());
+    act(() => testClient.navigation.forward());
     await settle();
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(screen.getByRole("button", { name: "Evidence 0" })).toBe(source);
@@ -1891,8 +1915,8 @@ describe("preview history lifetime", () => {
   });
 
   it("retires a table preview when history hides its conversation", async () => {
-    openWorkspaceView("file");
-    render(<ChatPanel onSend={() => true} />);
+    openWorkspaceView(testClient.workspace.access, "file");
+    testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
     const trigger = screen.getByRole("button", { name: "Expand table" });
@@ -1900,12 +1924,12 @@ describe("preview history lifetime", () => {
     fireEvent.click(trigger);
     await settle();
     expect(screen.getByRole("dialog", { name: "Table preview" })).toBeTruthy();
-    act(() => navigator().back());
+    act(() => testClient.navigation.back());
     await settle();
-    expect(navigator().get().view).toBe("file");
+    expect(testClient.navigation.get().view).toBe("file");
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
-    act(() => navigator().forward());
+    act(() => testClient.navigation.forward());
     await settle();
     expect(screen.queryByRole("dialog", { name: "Table preview" })).toBeNull();
     expect(screen.getByLabelText("Composer draft")).toBe(draft);
@@ -1952,8 +1976,8 @@ describe("shared material popup visibility", () => {
         );
       }
       model.views[1] = { ...model.views[1]!, component: SharedMaterial };
-      openWorkspaceViewInDock("subagents");
-      render(<ChatPanel onSend={() => true} />);
+      openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+      testClient.render(<ChatPanel onSend={() => true} />);
       fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
       const child = screen.getByRole("button", { name: "Evidence 1" });
       const draft = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
@@ -1968,7 +1992,7 @@ describe("shared material popup visibility", () => {
       });
       act(() => item.focus());
 
-      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      if (transition === "collapse") act(() => toggleWorkspaceDock(testClient.workspace.access));
       else await resize(700);
 
       await vi.waitFor(() => {
@@ -1979,7 +2003,7 @@ describe("shared material popup visibility", () => {
       expect(select).not.toHaveBeenCalled();
       expect(command).not.toHaveBeenCalled();
 
-      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      if (transition === "collapse") act(() => toggleWorkspaceDock(testClient.workspace.access));
       else await resize(1200);
       await settle();
 
@@ -2051,8 +2075,8 @@ describe("bounded material tasks", () => {
         );
       }
       model.views[1] = { ...model.views[1]!, component: MaterialTask };
-      openWorkspaceViewInDock("subagents");
-      render(<ChatPanel onSend={() => true} />);
+      openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+      testClient.render(<ChatPanel onSend={() => true} />);
       fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
       const reader = screen.getByRole("button", { name: "Evidence 1" });
       const composer = screen.getByLabelText<HTMLTextAreaElement>("Composer draft");
@@ -2073,7 +2097,7 @@ describe("bounded material tasks", () => {
       });
       act(() => item.focus());
 
-      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      if (transition === "collapse") act(() => toggleWorkspaceDock(testClient.workspace.access));
       else await resize(700);
       await settle();
 
@@ -2102,7 +2126,7 @@ describe("bounded material tasks", () => {
         ),
       );
 
-      if (transition === "collapse") act(() => toggleWorkspaceDock());
+      if (transition === "collapse") act(() => toggleWorkspaceDock(testClient.workspace.access));
       else await resize(1200);
       expect(screen.getByRole("button", { name: "Edit material task" })).toBe(opener);
       expect(screen.getByRole("button", { name: "Evidence 1" })).toBe(reader);

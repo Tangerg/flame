@@ -1,4 +1,12 @@
-import { act, render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
@@ -35,7 +43,7 @@ describe("rehypeStreamCaret", () => {
 
     const trailing: string[] = [];
     for (const [name, markdown] of CASES) {
-      const { container, unmount } = render(
+      const { container, unmount } = testClient.render(
         <MarkdownRenderer text={markdown} streaming reveal="typewriter" />,
       );
       for (let frame = 0; frame < FRAMES; frame += 1) {

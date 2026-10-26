@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { forgetRules, allowMCPTool } from "@/features/agent/public/approvalPolicy";
 import { useApprovalRules } from "@/features/agent/public/approvalPolicy";
 import { setMCPToolExposure } from "@/features/mcp/application/mcpServerConfig";
@@ -41,6 +42,8 @@ const tc = stylex.create({
 });
 
 export function ToolControls({ server }: Props) {
+  const agentAccess = useAgent();
+
   const t = useT();
   const tools = useMCPTools({ server });
   const exposure = useMCPToolExposure({ server });
@@ -68,7 +71,12 @@ export function ToolControls({ server }: Props) {
     );
   const setAutoApprove = (name: string, on: boolean) =>
     approvalAction.run(() =>
-      on ? allowMCPTool(server, name) : forgetRules(allowRules(name).map((rule) => rule.id)),
+      on
+        ? allowMCPTool(agentAccess, server, name)
+        : forgetRules(
+            agentAccess,
+            allowRules(name).map((rule) => rule.id),
+          ),
     );
   return (
     <div {...stylex.props(tc.panel)}>

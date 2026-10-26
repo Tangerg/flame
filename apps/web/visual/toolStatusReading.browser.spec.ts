@@ -9,10 +9,10 @@ test("a failed process keeps its exit code when secondary tool metadata folds aw
     if (!location.pathname.startsWith("/visual/"))
       throw new Error("An isolated fixture is required");
     const fixturePath = "/visual/agentSessionSnapshots.ts";
-    const storePath = "/src/features/agent/adapters/agentStore.ts";
+    const storePath = "/visual/main.tsx";
     const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
     const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
-    const { useAgentStore } = await import(storePath);
+    const { visualClient } = await import(storePath);
     const { projectAgentSessionSnapshot } = await import(projectionPath);
     const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]);
     snapshot.items = snapshot.items.filter(
@@ -21,7 +21,7 @@ test("a failed process keeps its exit code when secondary tool metadata folds aw
         item.type === "agentMessage" ||
         item.id === "item_shells_command",
     );
-    const store = useAgentStore.getState();
+    const store = visualClient.agent.projection.store.getState();
     const refresh = store.beginViewRefresh("ses_visual", true);
     if (
       !refresh ||
@@ -55,10 +55,10 @@ test("search results omit absent snippets while preserving recorded empty lines"
     if (!location.pathname.startsWith("/visual/"))
       throw new Error("An isolated fixture is required");
     const fixturePath = "/visual/agentSessionSnapshots.ts";
-    const storePath = "/src/features/agent/adapters/agentStore.ts";
+    const storePath = "/visual/main.tsx";
     const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
     const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
-    const { useAgentStore } = await import(storePath);
+    const { visualClient } = await import(storePath);
     const { projectAgentSessionSnapshot } = await import(projectionPath);
     const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-search"]);
     const glob = snapshot.items.find(
@@ -104,7 +104,7 @@ test("search results omit absent snippets while preserving recorded empty lines"
       web,
       ...snapshot.items.filter((item) => item.type === "agentMessage"),
     ];
-    const store = useAgentStore.getState();
+    const store = visualClient.agent.projection.store.getState();
     const refresh = store.beginViewRefresh("ses_visual", true);
     if (
       !refresh ||
@@ -277,10 +277,10 @@ for (const theme of ["light", "dark"] as const) {
     await page.evaluate(
       async (output) => {
         const fixturePath = "/visual/agentSessionSnapshots.ts";
-        const storePath = "/src/features/agent/adapters/agentStore.ts";
+        const storePath = "/visual/main.tsx";
         const projectionPath = "/src/features/agent/application/session/sessionSnapshot.ts";
         const fixture = (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
-        const { useAgentStore } = await import(storePath);
+        const { visualClient } = await import(storePath);
         const { projectAgentSessionSnapshot } = await import(projectionPath);
         const snapshot = structuredClone(fixture.RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]);
         snapshot.items = snapshot.items
@@ -295,7 +295,7 @@ for (const theme of ["light", "dark"] as const) {
               ? { ...item, tool: { ...item.tool, result: { exitCode: 1, output } } }
               : item,
           );
-        const store = useAgentStore.getState();
+        const store = visualClient.agent.projection.store.getState();
         const refresh = store.beginViewRefresh("ses_visual", true);
         if (
           !refresh ||

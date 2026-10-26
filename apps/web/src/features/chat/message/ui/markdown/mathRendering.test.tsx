@@ -1,4 +1,12 @@
-import { render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { afterEach, describe, expect, it } from "vitest";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
 // The app pins one KaTeX (0.19.0) for both the stylesheet and every renderer
@@ -8,7 +16,7 @@ import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRe
 // pollution gadget that bypassed `trust: false` before 0.18.2) must stay closed.
 describe("markdown math rendering", () => {
   it("renders inline math through the pinned KaTeX", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text="Energy is $E = mc^2$." reveal="instant" />,
     );
     const katex = container.querySelector(".katex");
@@ -20,7 +28,7 @@ describe("markdown math rendering", () => {
   });
 
   it("renders display math as a centered KaTeX block", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text={"$$\n\\frac{a}{b}\n$$"} reveal="instant" />,
     );
     expect(container.querySelector(".katex-display")).toBeTruthy();
@@ -35,7 +43,9 @@ describe("markdown math rendering", () => {
   });
 
   it("surfaces malformed math as a KaTeX error rather than throwing", () => {
-    const { container } = render(<MarkdownRenderer text={"$\\frac{a}{$"} reveal="instant" />);
+    const { container } = testClient.render(
+      <MarkdownRenderer text={"$\\frac{a}{$"} reveal="instant" />,
+    );
     expect(container.querySelector(".katex-error")).toBeTruthy();
   });
 });
@@ -55,7 +65,7 @@ describe("markdown math trust boundary (GHSA-238p-pmpm-9mq7)", () => {
       enumerable: false,
       writable: true,
     });
-    const { container } = render(
+    const { container } = testClient.render(
       <MarkdownRenderer text={"$\\href{javascript:alert(1)}{click}$"} reveal="instant" />,
     );
     // No element may carry an executable javascript: URL. The raw TeX survives

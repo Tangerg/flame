@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SelectableModel } from "@/features/providers/public/queries";
 import { ReasoningEffortPill } from "@/features/composer/ui/ReasoningEffortPill";
@@ -35,7 +43,7 @@ describe("ReasoningEffortPill", () => {
 
   it("offers exactly the levels the model publishes and sets one without re-choosing it", async () => {
     state.selection = { model: model(["low", "high", "max"]), reasoningEffort: "high" };
-    render(<ReasoningEffortPill />);
+    testClient.render(<ReasoningEffortPill />);
     const pill = screen.getByRole("button", { name: "Switch reasoning effort" });
     expect(pill.textContent).toContain("High");
 
@@ -53,7 +61,7 @@ describe("ReasoningEffortPill", () => {
 
   it("shows the authored effort even when the catalog no longer offers it", () => {
     state.selection = { model: model(["low", "high", "max"]), reasoningEffort: "medium" };
-    render(<ReasoningEffortPill />);
+    testClient.render(<ReasoningEffortPill />);
     expect(screen.getByRole("button", { name: "Switch reasoning effort" }).textContent).toContain(
       "Medium",
     );
@@ -61,7 +69,7 @@ describe("ReasoningEffortPill", () => {
 
   it("is absent for a model that thinks but publishes no levels", () => {
     state.selection = { model: model([]), reasoningEffort: undefined };
-    render(<ReasoningEffortPill />);
+    testClient.render(<ReasoningEffortPill />);
     expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
   });
 });

@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
@@ -47,7 +55,7 @@ async function sentOptions(preference: ComposerModelPreference) {
     [AGENT_SESSIONS_KEY],
     [{ id: "session-1", provider: "openai", model: "gpt-5" }],
   );
-  await loadPluginsForTest(composerRunOptions);
+  await loadPluginsForTest(composerRunOptions(testClient.composer.access));
   return resolveAgentRunStartOptions();
 }
 

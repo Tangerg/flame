@@ -1,35 +1,25 @@
 import { create } from "zustand";
-import { currentRuntimeEndpoint } from "@/features/connection/public/endpoint";
-import { configureWorkingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
-interface DirectorySelection {
-  readonly owner: object;
-  readonly endpoint: string;
-  readonly canBrowse: boolean;
-  readonly path: string;
-  readonly busy: boolean;
-  readonly error: string | null;
-}
-
-export const useWorkingDirectorySelection = create<{ selection: DirectorySelection | null }>(
-  () => ({
-    selection: null,
-  }),
-);
-
-export function updateWorkingDirectorySelection(
-  expected: DirectorySelection,
-  update: { path?: string; busy?: boolean; error?: string | null } | null,
-): boolean {
-  const current = useWorkingDirectorySelection.getState().selection;
-  if (current?.owner !== expected.owner) return false;
-  useWorkingDirectorySelection.setState({ selection: update ? { ...current, ...update } : null });
-  return true;
-}
-
-export function installWorkingDirectoryPicker(
+import { type WorkingDirectoryAccess } from "@/features/navigation/application/workingDirectoryPicker";
+import { type DirectorySelection } from "@/features/navigation/application/workingDirectoryPicker";
+export function createWorkingDirectoryPicker(
   chooseDirectory: () => Promise<string | null>,
   canBrowse: () => boolean,
-): { dispose(): void; cancel(): void } {
+  currentRuntimeEndpoint: () => string,
+) {
+  const useWorkingDirectorySelection = create<{ selection: DirectorySelection | null }>(() => ({
+    selection: null,
+  }));
+
+  function updateWorkingDirectorySelection(
+    expected: DirectorySelection,
+    update: { path?: string; busy?: boolean; error?: string | null } | null,
+  ): boolean {
+    const current = useWorkingDirectorySelection.getState().selection;
+    if (current?.owner !== expected.owner) return false;
+    useWorkingDirectorySelection.setState({ selection: update ? { ...current, ...update } : null });
+    return true;
+  }
+
   let currentOwner: object | undefined;
   const cancel = () => {
     const selection = useWorkingDirectorySelection.getState().selection;
@@ -37,7 +27,10 @@ export function installWorkingDirectoryPicker(
       useWorkingDirectorySelection.setState({ selection: null });
     currentOwner = undefined;
   };
-  const disconnect = configureWorkingDirectoryPicker({
+  const access: WorkingDirectoryAccess = {
+    useSelection: () => useWorkingDirectorySelection((state) => state.selection),
+    selection: () => useWorkingDirectorySelection.getState().selection,
+    update: updateWorkingDirectorySelection,
     async browse(expectedOwner) {
       const current = useWorkingDirectorySelection.getState().selection;
       if (
@@ -66,12 +59,13 @@ export function installWorkingDirectoryPicker(
         },
       });
     },
-  });
+  };
   return {
+    access,
+    store: useWorkingDirectorySelection,
     cancel,
     dispose() {
       cancel();
-      disconnect();
     },
   };
 }

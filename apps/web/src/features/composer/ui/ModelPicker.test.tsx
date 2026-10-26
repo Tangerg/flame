@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelPicker } from "@/features/composer/ui/ModelPicker";
 import { useRecentModelsStore } from "@/features/composer/adapters/recentModels";
@@ -115,7 +123,7 @@ describe("ModelPicker", () => {
       model: undefined,
       reasoningEffort: "authored-effort",
     };
-    const { rerender } = render(<ModelPicker />);
+    const { rerender } = testClient.render(<ModelPicker />);
     const selected = screen.getByRole("button", { name: "Switch model" });
     expect(selected.textContent).toContain("authored-model");
     expect(selected.title).toContain("Unavailable in the current catalog");
@@ -128,7 +136,7 @@ describe("ModelPicker", () => {
   });
 
   it("opens on the provider in force and lists only its models", async () => {
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
 
     await screen.findByPlaceholderText("Search models…");
@@ -142,7 +150,7 @@ describe("ModelPicker", () => {
   });
 
   it("moves to another provider's models by tab", async () => {
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
 
@@ -154,7 +162,7 @@ describe("ModelPicker", () => {
   });
 
   it("searches every provider, because a typed name is no longer a tab", async () => {
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByPlaceholderText("Search models…");
 
@@ -166,7 +174,7 @@ describe("ModelPicker", () => {
   });
 
   it("gives the query back before it gives up the surface", async () => {
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByPlaceholderText("Search models…");
 
@@ -181,7 +189,7 @@ describe("ModelPicker", () => {
   });
 
   it("shelves what was chosen, so the next pick is one tab away", async () => {
-    const { unmount } = render(<ModelPicker />);
+    const { unmount } = testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByPlaceholderText("Search models…");
 
@@ -195,14 +203,14 @@ describe("ModelPicker", () => {
     });
 
     unmount();
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
     expectRail(["Recent", "Mistral", "DeepSeek"]);
   });
 
   it("carries the reasoning effort the selection was already holding", async () => {
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByPlaceholderText("Search models…");
 
@@ -224,7 +232,7 @@ describe("ModelPicker", () => {
       model: state.models[2]!,
       reasoningEffort: "high",
     };
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     const label = screen
       .getByRole("button", { name: "Switch model" })
       .querySelector('[data-slot="composer-chip-label"]');
@@ -238,7 +246,7 @@ describe("ModelPicker", () => {
       model: state.models[2]!,
       reasoningEffort: "high",
     };
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
     const current = options().getByRole("option", { name: /DeepSeek Reasoner/ });
@@ -253,7 +261,7 @@ describe("ModelPicker", () => {
       model: undefined,
       reasoningEffort: "authored-effort",
     };
-    render(<ModelPicker />);
+    testClient.render(<ModelPicker />);
     const trigger = screen.getByRole("button", { name: "Switch model" });
     expect(trigger.textContent).toContain("authored-model");
     expect(trigger.title).toContain("Unavailable in the current catalog");
@@ -279,7 +287,7 @@ describe("ModelPicker", () => {
     });
 
     it("stays a picker that names its action instead of a model", () => {
-      render(<ModelPicker />);
+      testClient.render(<ModelPicker />);
       const trigger = screen.getByRole("button", { name: "Switch model" });
       expect(trigger.hasAttribute("disabled")).toBe(false);
       expect(trigger.querySelector('[data-slot="composer-chip-label"]')?.textContent).toBe(
@@ -288,7 +296,7 @@ describe("ModelPicker", () => {
     });
 
     it("browses and searches the catalog without marking a current model", async () => {
-      render(<ModelPicker />);
+      testClient.render(<ModelPicker />);
       fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
       const search = await screen.findByPlaceholderText("Search models…");
 
@@ -309,7 +317,7 @@ describe("ModelPicker", () => {
     });
 
     it("leaves the preference and recents untouched when dismissed", async () => {
-      render(<ModelPicker />);
+      testClient.render(<ModelPicker />);
       const trigger = screen.getByRole("button", { name: "Switch model" });
       fireEvent.click(trigger);
       const search = await screen.findByPlaceholderText("Search models…");
@@ -322,7 +330,7 @@ describe("ModelPicker", () => {
     });
 
     it("selects the exact model explicitly with that model's default effort", async () => {
-      render(<ModelPicker />);
+      testClient.render(<ModelPicker />);
       fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
       const search = await screen.findByPlaceholderText("Search models…");
 
@@ -345,7 +353,7 @@ describe("ModelPicker", () => {
 
   it("keeps an open search available when its current selection disappears", async () => {
     const current = state.models[1]!;
-    const { rerender } = render(<ModelPicker />);
+    const { rerender } = testClient.render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByRole("combobox", { name: "Search models…" });
     fireEvent.change(search, { target: { value: "reasoner" } });
@@ -376,7 +384,7 @@ describe("ModelPicker", () => {
 
   it("stays usable while the catalog drops and later restores the current model", async () => {
     const current = state.models[1]!;
-    const { rerender } = render(<ModelPicker />);
+    const { rerender } = testClient.render(<ModelPicker />);
     const label = () =>
       screen
         .getByRole("button", { name: "Switch model" })

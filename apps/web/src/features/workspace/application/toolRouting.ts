@@ -1,3 +1,4 @@
+import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import {
   openWorkspaceDiffForFile,
@@ -24,13 +25,17 @@ export function workspaceViewLabelForTool(tool: ToolCall): string {
   return destination ? DESTINATION_LABEL[destination] : "workspace.view.openBeside";
 }
 
-export function openWorkspaceViewForTool(tool: ToolCall, origin?: HTMLElement): void {
+export function openWorkspaceViewForTool(
+  workspaceAccess: WorkspaceAccess,
+  tool: ToolCall,
+  origin?: HTMLElement,
+): void {
   switch (toolDestination(tool)) {
     case "diff":
-      openWorkspaceDiffForFile(tool.fnKind === "path" ? tool.fn : "", origin);
+      openWorkspaceDiffForFile(workspaceAccess, tool.fnKind === "path" ? tool.fn : "", origin);
       break;
     case "file":
-      openWorkspaceFile(tool.fn, tool.range?.start, origin);
+      openWorkspaceFile(workspaceAccess, tool.fn, tool.range?.start, origin);
       break;
   }
 }

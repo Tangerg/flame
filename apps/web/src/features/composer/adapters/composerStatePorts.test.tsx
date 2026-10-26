@@ -1,7 +1,15 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { useEffect, useRef } from "react";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useComposerStore } from "@/features/composer/adapters/composerStore";
+
 import {
   beginComposerDraftReplacement,
   replaceComposerDraft,
@@ -19,7 +27,7 @@ function ComposerField() {
   const value = useComposerText();
   const setValue = useSetComposerText();
   const field = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => registerComposerFocusTarget(field.current), []);
+  useEffect(() => registerComposerFocusTarget(testClient.composer.access, field.current), []);
   return (
     <textarea
       ref={field}
@@ -42,14 +50,14 @@ function Harness({ fieldKey = "original" }: { fieldKey?: string }) {
 function beginReplacement() {
   let replace!: ReturnType<typeof beginComposerDraftReplacement>;
   act(() => {
-    replace = beginComposerDraftReplacement();
+    replace = beginComposerDraftReplacement(testClient.composer.access);
   });
   return replace;
 }
 
 beforeEach(() => {
-  useComposerStore.getState().loadSession("focus-draft");
-  useComposerStore.getState().replaceDraft({ text: "old" });
+  testClient.composer.store.getState().loadSession("focus-draft");
+  testClient.composer.store.getState().replaceDraft({ text: "old" });
 });
 
 afterEach(() => {
@@ -59,7 +67,7 @@ afterEach(() => {
 
 describe("draft replacement focus", () => {
   it("enters the Composer on intent and places the completed input's caret at the end", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const replace = beginReplacement();
     expect(document.activeElement).toBe(field);
@@ -78,7 +86,7 @@ describe("draft replacement focus", () => {
   });
 
   it("keeps another control's later focus when the unchanged draft is replaced", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const replace = beginReplacement();
     const other = screen.getByRole("button", { name: "Other task" });
@@ -95,7 +103,7 @@ describe("draft replacement focus", () => {
   });
 
   it("does not move the selection of a newly registered focus target", () => {
-    const { rerender } = render(<Harness />);
+    const { rerender } = testClient.render(<Harness />);
     const replace = beginReplacement();
     rerender(<Harness fieldKey="successor" />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
@@ -112,7 +120,7 @@ describe("draft replacement focus", () => {
   });
 
   it("preserves a later draft and its caret when replacement is refused", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const replace = beginReplacement();
     fireEvent.change(field, { target: { value: "later authored input" } });
@@ -133,12 +141,12 @@ describe("draft replacement focus", () => {
   });
 
   it("retains the synchronous replacement's immediate focus behavior", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     act(() => screen.getByRole("button", { name: "Other task" }).focus());
 
     act(() => {
-      replaceComposerDraft({ text: "synchronous edit" });
+      replaceComposerDraft(testClient.composer.access, { text: "synchronous edit" });
     });
 
     expect(field.value).toBe("synchronous edit");
@@ -150,29 +158,39 @@ describe("draft replacement focus", () => {
 
 describe("draft focus presentation", () => {
   it("does not unregister a newer presentation when an older owner cleans up", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const previous = vi.fn();
     const current = vi.fn();
-    const unregisterPrevious = registerComposerFocusPresentation(previous);
-    const unregisterCurrent = registerComposerFocusPresentation(current);
+    const unregisterPrevious = registerComposerFocusPresentation(
+      testClient.composer.access,
+      previous,
+    );
+    const unregisterCurrent = registerComposerFocusPresentation(
+      testClient.composer.access,
+      current,
+    );
     unregisterPrevious();
     act(() => screen.getByRole("button", { name: "Other task" }).focus());
 
-    act(() => replaceComposerDraft({ text: "Current presentation's draft" }));
+    act(() =>
+      replaceComposerDraft(testClient.composer.access, { text: "Current presentation's draft" }),
+    );
 
     expect(previous).not.toHaveBeenCalled();
     expect(current).toHaveBeenCalledTimes(1);
     expect(document.activeElement).not.toBe(field);
     unregisterCurrent();
-    act(() => replaceComposerDraft({ text: "Locally presented draft" }));
+    act(() =>
+      replaceComposerDraft(testClient.composer.access, { text: "Locally presented draft" }),
+    );
     expect(current).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(field);
     expect(field.selectionEnd).toBe(field.value.length);
   });
 
   it("delivers the captured target and caret after presentation", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const other = screen.getByRole("button", { name: "Other task" });
     act(() => other.focus());
@@ -180,9 +198,13 @@ describe("draft focus presentation", () => {
     const present = vi.fn((focus: () => void) => {
       deliver = focus;
     });
-    const unregister = registerComposerFocusPresentation(present);
+    const unregister = registerComposerFocusPresentation(testClient.composer.access, present);
 
-    act(() => replaceComposerDraft({ text: "Edited input awaiting presentation" }));
+    act(() =>
+      replaceComposerDraft(testClient.composer.access, {
+        text: "Edited input awaiting presentation",
+      }),
+    );
 
     expect(present).toHaveBeenCalledTimes(1);
     expect(field.value).toBe("Edited input awaiting presentation");
@@ -197,14 +219,17 @@ describe("draft focus presentation", () => {
   it.each(["remounted", "unregistered"])(
     "retires the captured delivery when its input is %s",
     (retirement) => {
-      const view = render(<Harness />);
+      const view = testClient.render(<Harness />);
       const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
-      const unregisterTarget = registerComposerFocusTarget(field);
+      const unregisterTarget = registerComposerFocusTarget(testClient.composer.access, field);
       let deliver!: () => void;
-      const unregisterPresentation = registerComposerFocusPresentation((focus) => {
-        deliver = focus;
-      });
-      act(() => replaceComposerDraft({ text: "Edited input" }));
+      const unregisterPresentation = registerComposerFocusPresentation(
+        testClient.composer.access,
+        (focus) => {
+          deliver = focus;
+        },
+      );
+      act(() => replaceComposerDraft(testClient.composer.access, { text: "Edited input" }));
 
       if (retirement === "remounted") view.rerender(<Harness fieldKey="successor" />);
       else unregisterTarget();
@@ -223,19 +248,19 @@ describe("draft focus presentation", () => {
   );
 
   it("keeps low-level and captured focus local when presentation is registered", () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const field = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message" });
     const other = screen.getByRole("button", { name: "Other task" });
     const present = vi.fn();
-    const unregister = registerComposerFocusPresentation(present);
+    const unregister = registerComposerFocusPresentation(testClient.composer.access, present);
     act(() => other.focus());
 
-    act(() => focusComposer(1));
+    act(() => focusComposer(testClient.composer.access, 1));
 
     expect(document.activeElement).toBe(field);
     expect(field.selectionEnd).toBe(1);
     act(() => other.focus());
-    const restore = captureComposerFocus();
+    const restore = captureComposerFocus(testClient.composer.access);
     act(() => restore());
     expect(document.activeElement).toBe(field);
     expect(field.selectionEnd).toBe(1);

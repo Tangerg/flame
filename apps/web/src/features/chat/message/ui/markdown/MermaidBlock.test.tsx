@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
@@ -43,14 +51,14 @@ describe("MermaidBlock", () => {
   });
 
   it("announces the rendering placeholder", () => {
-    render(<MermaidBlock code="graph TD; A-->B" />);
+    testClient.render(<MermaidBlock code="graph TD; A-->B" />);
 
     expect(screen.getByRole("status", { name: "Loading Mermaid diagram" })).toBeTruthy();
   });
 
   it("renders a semantic diagram and copies its fenced source", async () => {
     const code = "graph TD; A-->B";
-    render(<MermaidBlock code={code} />);
+    testClient.render(<MermaidBlock code={code} />);
 
     expect(await screen.findByRole("img", { name: "Diagram" })).toBeTruthy();
     const copy = await screen.findByRole("button", { name: "Copy Mermaid" });
@@ -63,7 +71,7 @@ describe("MermaidBlock", () => {
     renderMermaidSVG.mockImplementationOnce(() => {
       throw new Error("invalid diagram");
     });
-    const { container } = render(<MermaidBlock code="not a graph" />);
+    const { container } = testClient.render(<MermaidBlock code="not a graph" />);
 
     await waitFor(() => expect(container.querySelector(".shiki-block")).toBeTruthy());
     expect(screen.getByRole("button", { name: "Copy code" })).toBeTruthy();

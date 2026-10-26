@@ -10,7 +10,7 @@ import { FileMentionPopup } from "@/features/composer/ui/FileMentionPopup";
 import { SlashSuggestions } from "@/features/composer/ui/SlashSuggestions";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 import { useT } from "@/lib/i18n/index";
-import { type ComposerSubmission } from "@/features/composer/application/ports/state";
+import { type ComposerSubmission } from "@/features/composer/application/state";
 import { Slot } from "@/extensions/host/Slot";
 import { ComposerAttachments } from "@/features/composer/ui/ComposerAttachments";
 import { ComposerDropCue, useComposerImageDrop } from "@/features/composer/ui/ComposerImageDrop";

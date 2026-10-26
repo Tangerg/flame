@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
 function stubHeights(scrollHeight: number, clientHeight: number) {
@@ -36,7 +44,7 @@ function stubResizeObserver() {
 }
 
 function renderRetainedMessage() {
-  return render(
+  return testClient.render(
     <div role="region" aria-label="Conversation" tabIndex={-1}>
       <div role="group" aria-label="User message" tabIndex={-1}>
         <UserMessageFold>
@@ -57,13 +65,13 @@ afterEach(() => {
 describe("UserMessageFold", () => {
   it("leaves a message that fits exactly as it was", () => {
     stubHeights(100, 100);
-    render(<UserMessageFold>short ask</UserMessageFold>);
+    testClient.render(<UserMessageFold>short ask</UserMessageFold>);
     expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("folds a message taller than its budget and opens it on request", () => {
     stubHeights(900, 160);
-    const { container } = render(<UserMessageFold>a very long paste</UserMessageFold>);
+    const { container } = testClient.render(<UserMessageFold>a very long paste</UserMessageFold>);
     const toggle = screen.getByRole("button", { name: /show full message/i });
     expect(container.querySelector("[data-folded]")).not.toBeNull();
 
@@ -76,7 +84,7 @@ describe("UserMessageFold", () => {
 
   it("reveals focused content without replacing it and folds back to the beginning", () => {
     stubHeights(900, 160);
-    const { container } = render(
+    const { container } = testClient.render(
       <UserMessageFold>
         <p>A very long paste</p>
         <a href="https://example.com/guide">Read the guide</a>

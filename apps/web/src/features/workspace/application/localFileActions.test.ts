@@ -1,5 +1,13 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { configureLocalWorkspace } from "@/features/workspace/application/ports/localWorkspace";
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
 const { record } = vi.hoisted(() => ({ record: vi.fn() }));
 
@@ -15,7 +23,11 @@ beforeEach(() => {
   record.mockReset();
   open.mockReset().mockResolvedValue(true);
   reveal.mockReset().mockResolvedValue(true);
-  dispose = configureLocalWorkspace({ available: () => true, open, reveal });
+  dispose = stubInstance(testClient.workspace.access.local, {
+    available: () => true,
+    open,
+    reveal,
+  });
 });
 
 afterEach(() => dispose());
@@ -25,7 +37,9 @@ describe.each([
   { name: "reveal", run: revealLocalFile, host: reveal, other: open },
 ])("local file $name", ({ run, host, other }) => {
   it("delivers the original target once and stays quiet on success", async () => {
-    await expect(run("/work/project/", "/work/project/文件/logo.png")).resolves.toEqual({
+    await expect(
+      run(testClient.workspace.access, "/work/project/", "/work/project/文件/logo.png"),
+    ).resolves.toEqual({
       ok: true,
     });
 
@@ -37,7 +51,7 @@ describe.each([
   it("explains unavailable local access instead of treating false as success", async () => {
     host.mockResolvedValueOnce(false);
 
-    const result = await run("/work/project", "assets/logo.png");
+    const result = await run(testClient.workspace.access, "/work/project", "assets/logo.png");
 
     expect(record).toHaveBeenCalledOnce();
     expect(record.mock.calls[0]![0].message).toContain("assets/logo.png");
@@ -51,7 +65,9 @@ describe.each([
   it("handles a rejected native action and retains its actual cause", async () => {
     host.mockRejectedValueOnce(new Error("Permission denied"));
 
-    await expect(run("/work/project", "assets/logo.png")).resolves.toMatchObject({ ok: false });
+    await expect(
+      run(testClient.workspace.access, "/work/project", "assets/logo.png"),
+    ).resolves.toMatchObject({ ok: false });
 
     expect(record).toHaveBeenCalledOnce();
     expect(record.mock.calls[0]![0].message).toContain("assets/logo.png");
@@ -62,10 +78,14 @@ describe.each([
 it("keeps the original target when another host and action replace the current context", async () => {
   const first = Promise.withResolvers<boolean>();
   reveal.mockReturnValueOnce(first.promise);
-  const operation = revealLocalFile("/work/old", "src/first.go");
-  const next = configureLocalWorkspace({ available: () => true, open, reveal });
+  const operation = revealLocalFile(testClient.workspace.access, "/work/old", "src/first.go");
+  const next = stubInstance(testClient.workspace.access.local, {
+    available: () => true,
+    open,
+    reveal,
+  });
   try {
-    await openLocalFile("/work/new", "src/second.go");
+    await openLocalFile(testClient.workspace.access, "/work/new", "src/second.go");
     first.reject(new Error("Original target no longer exists"));
     await operation;
 
@@ -81,7 +101,9 @@ it("keeps the original target when another host and action replace the current c
 it("still names the failed action and recovery when a rejection has no diagnostic text", async () => {
   open.mockRejectedValueOnce(null);
 
-  await expect(openLocalFile("/work/project", "report.pdf")).resolves.toMatchObject({ ok: false });
+  await expect(
+    openLocalFile(testClient.workspace.access, "/work/project", "report.pdf"),
+  ).resolves.toMatchObject({ ok: false });
 
   expect(record).toHaveBeenCalledOnce();
   const [{ message }] = record.mock.calls[0]!;
@@ -95,7 +117,9 @@ it("handles a synchronous host refusal through the same feedback boundary", asyn
     throw new Error("Finder is unavailable");
   });
 
-  await expect(revealLocalFile("/work/project", "src/main.go")).resolves.toMatchObject({
+  await expect(
+    revealLocalFile(testClient.workspace.access, "/work/project", "src/main.go"),
+  ).resolves.toMatchObject({
     ok: false,
   });
 

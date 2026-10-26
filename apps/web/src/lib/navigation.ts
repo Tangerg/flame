@@ -1,4 +1,3 @@
-import { createSingletonPort } from "@/lib/ports/singletonPort";
 export interface AppLocation {
   session: string;
   view: string | null;
@@ -25,12 +24,6 @@ export interface Navigator {
   back(): void;
   forward(): void;
 }
-
-const port = createSingletonPort<Navigator>("Navigator port is not configured");
-
-export const configureNavigator = port.configure;
-
-export const navigator = port.get;
 
 export function applyPatch(location: AppLocation, patch: LocationPatch): AppLocation {
   return {

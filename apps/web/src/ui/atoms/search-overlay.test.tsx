@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { useState } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { SearchOverlay } from "@/ui/atoms/search-overlay";
@@ -38,7 +46,7 @@ afterEach(async () => {
 
 describe("search overlay", () => {
   it("hands focus back to whatever opened it", async () => {
-    render(<Harness />);
+    testClient.render(<Harness />);
     const trigger = screen.getByRole("button", { name: "Find" });
     trigger.focus();
 
@@ -60,7 +68,7 @@ describe("search overlay", () => {
         expect(destination.closest('[aria-hidden="true"], [data-base-ui-inert]')).toBeNull();
         destination.focus();
       });
-      render(<Harness onSelect={choose} />);
+      testClient.render(<Harness onSelect={choose} />);
       const trigger = screen.getByRole("button", { name: "Find" });
       const destination = screen.getByRole("button", { name: "Destination" });
       trigger.focus();
@@ -83,7 +91,7 @@ describe("search overlay", () => {
 
   it("restores context before an action that does not choose another focus target", async () => {
     const choose = vi.fn(() => expect(document.activeElement).toBe(trigger));
-    render(<Harness onSelect={choose} />);
+    testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     trigger.focus();
     fireEvent.click(trigger);
@@ -96,7 +104,7 @@ describe("search overlay", () => {
 
   it("returns on cancellation without delivering a choice", async () => {
     const choose = vi.fn();
-    render(<Harness onSelect={choose} />);
+    testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     trigger.focus();
     fireEvent.click(trigger);
@@ -109,7 +117,7 @@ describe("search overlay", () => {
 
   it("does not repeat a delivered choice on reopen and cancellation", async () => {
     const choose = vi.fn();
-    render(<Harness onSelect={choose} />);
+    testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     trigger.focus();
     fireEvent.click(trigger);
@@ -131,7 +139,7 @@ describe("search overlay", () => {
 
   it.each(["cancel", "select"])("respects later outside focus during %s", async (intent) => {
     const choose = vi.fn();
-    render(<Harness onSelect={choose} />);
+    testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     const destination = screen.getByRole("button", { name: "Destination" });
     trigger.focus();
@@ -150,7 +158,7 @@ describe("search overlay", () => {
 
   it("can deliver a destination after its opener disappears", async () => {
     const choose = vi.fn(() => destination.focus());
-    const { rerender } = render(<Harness onSelect={choose} />);
+    const { rerender } = testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     const destination = screen.getByRole("button", { name: "Destination" });
     trigger.focus();
@@ -167,7 +175,7 @@ describe("search overlay", () => {
 
   it("retires an undelivered choice when the surface unmounts", async () => {
     const choose = vi.fn();
-    const { unmount } = render(<Harness onSelect={choose} />);
+    const { unmount } = testClient.render(<Harness onSelect={choose} />);
     const trigger = screen.getByRole("button", { name: "Find" });
     trigger.focus();
     fireEvent.click(trigger);

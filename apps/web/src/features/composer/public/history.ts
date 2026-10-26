@@ -1,8 +1,9 @@
-import { composerState } from "@/features/composer/application/ports/state";
-export function recallPreviousComposerHistory(): boolean {
-  return composerState().recallPreviousHistory();
+import { type ComposerAccess } from "@/features/composer/public/composer";
+
+export function recallPreviousComposerHistory(composerAccess: ComposerAccess): boolean {
+  return composerAccess.recallPreviousHistory();
 }
 
-export function recallNextComposerHistory(): boolean {
-  return composerState().recallNextHistory();
+export function recallNextComposerHistory(composerAccess: ComposerAccess): boolean {
+  return composerAccess.recallNextHistory();
 }

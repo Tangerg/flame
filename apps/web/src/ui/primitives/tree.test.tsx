@@ -1,10 +1,18 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type ComponentProps } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TreePrimitive } from "@/ui/primitives/tree";
 describe("tree item selection semantics", () => {
   it("declares selection for selectable branches and omits it for nonselectable items", () => {
-    render(
+    testClient.render(
       <TreePrimitive.Root>
         <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Selectable branch
@@ -36,7 +44,7 @@ describe("tree item selection semantics", () => {
 
 describe("tree keyboard navigation", () => {
   it("does not enter the next sibling when an expanded branch has no visible children", () => {
-    render(
+    testClient.render(
       <TreePrimitive.Root>
         <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Empty directory
@@ -53,7 +61,7 @@ describe("tree keyboard navigation", () => {
   });
 
   it("enters a visible child and returns to its parent with the opposite arrow", () => {
-    render(
+    testClient.render(
       <TreePrimitive.Root>
         <TreePrimitive.Item level={1} expanded selected focusable onActivate={vi.fn()}>
           Directory
@@ -78,7 +86,7 @@ describe("tree keyboard navigation", () => {
 describe("tree focus entry", () => {
   function renderTree(rootProps: ComponentProps<typeof TreePrimitive.Root> = {}) {
     const onActivate = vi.fn();
-    render(
+    testClient.render(
       <>
         <button>Outside</button>
         <TreePrimitive.Root aria-label="Files" {...rootProps}>
@@ -142,7 +150,7 @@ describe("tree focus entry", () => {
   });
 
   it("keeps focus on a tree without a cursor row", () => {
-    render(
+    testClient.render(
       <TreePrimitive.Root aria-label="Files">
         <TreePrimitive.Item level={1} selected focusable={false} onActivate={vi.fn()}>
           Only

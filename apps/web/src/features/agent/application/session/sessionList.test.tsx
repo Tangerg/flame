@@ -1,11 +1,17 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode } from "react";
-import {
-  configureAgentSessionStatePort,
-  type AgentSessionStatePort,
-} from "@/features/agent/application/ports/sessionState";
+import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/application/session/sessionQueries";
 import { useReconcilePersistedAgentSessions } from "@/features/agent/application/session/sessionList";
@@ -51,12 +57,12 @@ describe("useReconcilePersistedAgentSessions", () => {
   it("reconciles again when an authoritative list drops a remotely deleted session", async () => {
     const restoreLastSession = vi.fn();
     const reconcileSessions = vi.fn();
-    restoreState = configureAgentSessionStatePort({
+    restoreState = stubInstance(testClient.agent.access.state, {
       restoreLastSession,
       reconcileSessions,
     } as unknown as AgentSessionStatePort);
 
-    ({ unmount: unmountHook } = renderHook(() => useReconcilePersistedAgentSessions(), {
+    ({ unmount: unmountHook } = testClient.renderHook(() => useReconcilePersistedAgentSessions(), {
       wrapper,
     }));
     await waitFor(() => expect(reconcileSessions).toHaveBeenLastCalledWith(["ses_a", "ses_b"]));

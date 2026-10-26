@@ -1,10 +1,16 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { workingDirectoryPicker } from "@/features/navigation/application/ports/workingDirectoryPicker";
-import {
-  installWorkingDirectoryPicker,
-  useWorkingDirectorySelection,
-} from "@/features/navigation/adapters/workingDirectorySelection";
+
+import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryDialog } from "@/features/navigation/ui/WorkingDirectoryDialog";
 import { t } from "@/lib/i18n/index";
 const runtime = vi.hoisted(() => ({
@@ -29,7 +35,7 @@ vi.mock("@/features/agent/public/session", () => ({
 
 vi.mock("@/features/composer/public/focus", () => ({ focusComposer: runtime.focus }));
 
-let picker: ReturnType<typeof installWorkingDirectoryPicker>;
+let picker: ReturnType<typeof createWorkingDirectoryPicker>;
 
 beforeEach(() => {
   runtime.create.mockReset().mockResolvedValue("session-new");
@@ -37,14 +43,22 @@ beforeEach(() => {
   runtime.focus.mockReset();
   runtime.local = false;
   runtime.endpoint = "https://runtime.example";
-  picker = installWorkingDirectoryPicker(runtime.browse, () => runtime.local);
+  picker = createWorkingDirectoryPicker(
+    runtime.browse,
+    () => runtime.local,
+    () => runtime.endpoint,
+  );
 });
 
 afterEach(() => picker.dispose());
 
 function open() {
-  render(<WorkingDirectoryDialog />);
-  act(() => workingDirectoryPicker().open());
+  testClient.render(
+    <WorkingDirectoryProvider value={picker.access}>
+      <WorkingDirectoryDialog />
+    </WorkingDirectoryProvider>,
+  );
+  act(() => picker.access.open());
 }
 
 describe("Runtime workspace selection", () => {
@@ -57,7 +71,7 @@ describe("Runtime workspace selection", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Create session" }));
     await waitFor(() => expect(runtime.create).toHaveBeenCalledWith({ cwd: "/srv/project" }));
-    await waitFor(() => expect(useWorkingDirectorySelection.getState().selection).toBeNull());
+    await waitFor(() => expect(picker.store.getState().selection).toBeNull());
     expect(runtime.focus).toHaveBeenCalledOnce();
     expect(runtime.browse).not.toHaveBeenCalled();
   });
@@ -69,9 +83,7 @@ describe("Runtime workspace selection", () => {
       target: { value: "/missing" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create session" }));
-    await waitFor(() =>
-      expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
-    );
+    await waitFor(() => expect(picker.store.getState().selection?.busy).toBe(false));
     expect(screen.getByRole("alert").textContent).toContain(t("session.error.create"));
     expect((screen.getByLabelText("Runtime workspace directory") as HTMLInputElement).value).toBe(
       "/missing",
@@ -80,9 +92,7 @@ describe("Runtime workspace selection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create session" }));
     await waitFor(() => expect(runtime.create).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
-    );
+    await waitFor(() => expect(picker.store.getState().selection?.busy).toBe(false));
     expect(runtime.create).toHaveBeenLastCalledWith({ cwd: "/missing" });
   });
 
@@ -95,7 +105,7 @@ describe("Runtime workspace selection", () => {
     await screen.findByRole("alert");
     fireEvent.change(field, { target: { value: "/srv/project" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(useWorkingDirectorySelection.getState().selection?.error).toBeNull();
+    expect(picker.store.getState().selection?.error).toBeNull();
   });
 
   it("reports chooser failure inside the dialog and clears it on retry", async () => {
@@ -123,9 +133,7 @@ describe("Runtime workspace selection", () => {
     expect(field.getAttribute("aria-invalid")).toBeNull();
     expect(field.getAttribute("aria-describedby")).toBe(alert.id);
 
-    await waitFor(() =>
-      expect(useWorkingDirectorySelection.getState().selection?.busy).toBe(false),
-    );
+    await waitFor(() => expect(picker.store.getState().selection?.busy).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
     await waitFor(() => expect((field as HTMLInputElement).value).toBe("/picked"));
     expect(screen.queryByRole("alert")).toBeNull();
@@ -139,9 +147,9 @@ describe("Runtime workspace selection", () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Browse this computer" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    act(() => workingDirectoryPicker().open());
+    act(() => picker.access.open());
     await act(async () => native.reject(new Error("stale chooser")));
-    expect(useWorkingDirectorySelection.getState().selection).toMatchObject({
+    expect(picker.store.getState().selection).toMatchObject({
       busy: false,
       error: null,
     });
@@ -159,9 +167,9 @@ describe("Runtime workspace selection", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "Create session" }));
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      act(() => workingDirectoryPicker().open());
+      act(() => picker.access.open());
       await act(async () => pending.resolve(outcome));
-      expect(useWorkingDirectorySelection.getState().selection).toMatchObject({
+      expect(picker.store.getState().selection).toMatchObject({
         path: "",
         busy: false,
         error: null,
@@ -174,7 +182,7 @@ describe("Runtime workspace selection", () => {
   it("cancels without a Session mutation", () => {
     open();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(useWorkingDirectorySelection.getState().selection).toBeNull();
+    expect(picker.store.getState().selection).toBeNull();
     expect(runtime.create).not.toHaveBeenCalled();
   });
 
@@ -188,7 +196,7 @@ describe("Runtime workspace selection", () => {
       picker.cancel();
       runtime.local = false;
       runtime.endpoint = "https://successor-runtime.example";
-      workingDirectoryPicker().open();
+      picker.access.open();
     });
     const task = `${t("session.directory.title")} https://successor-runtime.example`;
     expect(screen.getByRole("dialog", { name: task })).toBeTruthy();
@@ -198,20 +206,24 @@ describe("Runtime workspace selection", () => {
     expect((screen.getByLabelText("Runtime workspace directory") as HTMLInputElement).value).toBe(
       "",
     );
-    expect(useWorkingDirectorySelection.getState().selection?.path).toBe("");
-    expect(useWorkingDirectorySelection.getState().selection?.canBrowse).toBe(false);
+    expect(picker.store.getState().selection?.path).toBe("");
+    expect(picker.store.getState().selection?.canBrowse).toBe(false);
     expect(runtime.create).not.toHaveBeenCalled();
   });
 
-  it("keeps successor dialog ownership when an older plugin is disposed", () => {
+  it("keeps a successor instance's dialog when an older picker is disposed", () => {
     open();
-    const successor = installWorkingDirectoryPicker(runtime.browse, () => runtime.local);
+    const successor = createWorkingDirectoryPicker(
+      runtime.browse,
+      () => runtime.local,
+      () => runtime.endpoint,
+    );
     act(() => {
-      workingDirectoryPicker().open();
+      successor.access.open();
       picker.dispose();
     });
-    expect(useWorkingDirectorySelection.getState().selection).not.toBeNull();
+    expect(successor.store.getState().selection).not.toBeNull();
     successor.dispose();
-    expect(useWorkingDirectorySelection.getState().selection).toBeNull();
+    expect(successor.store.getState().selection).toBeNull();
   });
 });

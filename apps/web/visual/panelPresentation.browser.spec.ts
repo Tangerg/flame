@@ -38,7 +38,7 @@ for (const theme of ["light", "dark"]) {
       await expect(view.locator("[data-diff-file]")).toHaveCount(1);
       await expect(view.locator("[data-diff-file]").first()).toHaveAttribute(
         "title",
-        "runtime/protocol/session.go",
+        "packages/go-sdk/protocol/session.go",
       );
       await filter.fill("");
       await expect(view.locator("[data-diff-file]")).toHaveCount(2);

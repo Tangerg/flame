@@ -1,12 +1,10 @@
+import { createTheme, type Theme } from "@/features/theme/adapters/theme";
+let owner: Theme;
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { contributeForTest, resetKernelForTest } from "@/test/kernel";
 import { rememberThemePaint } from "@/features/theme/adapters/themePaint";
-import { installDocumentAppearance } from "@/features/theme/adapters/documentAppearance";
-import { installAppearancePreferencePort } from "@/features/theme/adapters/appearancePreferenceBinding";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
-import { configureSystemAppearancePort } from "@/features/theme/application/ports/systemAppearance";
 import { resolveThemeScheme, retainThemeSelection } from "@/features/theme/application/themeScheme";
 const theme = "package:installation:light";
 
@@ -16,23 +14,24 @@ beforeEach(() => {
   localStorage.clear();
   document.documentElement.className = "";
   document.documentElement.removeAttribute("style");
-  installAppearancePreferencePort();
-  configureSystemAppearancePort({ scheme: () => "dark" });
+  owner = createTheme(document, window);
+  vi.spyOn(owner.access.system, "scheme").mockReturnValue("dark");
 });
 
 afterEach(async () => {
+  owner.dispose();
   await resetKernelForTest();
 });
 
 it("uses the rendered projection for first paint without admitting a runtime theme", () => {
-  rememberThemePaint(theme, "light", "#fafafa");
+  rememberThemePaint(() => localStorage, theme, "light", "#fafafa");
   localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
   const bootstrap = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   expect(bootstrap).toBeDefined();
   Function(bootstrap!)();
   expect(document.documentElement.classList.contains("theme-light")).toBe(true);
   expect(document.documentElement.style.backgroundColor).toBe("#fafafa");
-  expect(resolveThemeScheme(theme)).toBe("dark");
+  expect(resolveThemeScheme(owner.access.system, theme)).toBe("dark");
 });
 
 it.each([
@@ -41,7 +40,7 @@ it.each([
 ] as const)(
   "opens built-in %s on its neutral canvas despite an old tinted paint",
   (theme, old, canvas) => {
-    rememberThemePaint(theme, theme, old);
+    rememberThemePaint(() => localStorage, theme, theme, old);
     localStorage.setItem("flame.appearance", JSON.stringify({ state: { theme } }));
 
     Function(html.match(/<script>([\s\S]*?)<\/script>/)![1]!)();
@@ -69,13 +68,13 @@ it.each([
 );
 
 it("cannot advance the selected preference through a paint projection", () => {
-  rememberThemePaint(theme, "light", "#fafafa");
-  expect(useAppearanceStore.getState().theme).not.toBe(theme);
-  useAppearanceStore.setState({ theme });
-  retainThemeSelection([theme], "package:");
-  expect(useAppearanceStore.getState().theme).toBe(theme);
-  retainThemeSelection([], "package:");
-  expect(useAppearanceStore.getState().theme).toBe("system");
+  rememberThemePaint(() => localStorage, theme, "light", "#fafafa");
+  expect(owner.store.getState().theme).not.toBe(theme);
+  owner.store.setState({ theme });
+  retainThemeSelection(owner.access.preference, [theme], "package:");
+  expect(owner.store.getState().theme).toBe(theme);
+  retainThemeSelection(owner.access.preference, [], "package:");
+  expect(owner.store.getState().theme).toBe("system");
 });
 
 it("refuses malformed paint data and ignores another source's selection", () => {
@@ -87,13 +86,13 @@ it("refuses malformed paint data and ignores another source's selection", () => 
   const bootstrap = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   Function(bootstrap!)();
   expect(document.documentElement.style.backgroundColor).not.toContain("url(");
-  useAppearanceStore.setState({ theme: "light" });
-  retainThemeSelection([], "package:");
-  expect(useAppearanceStore.getState().theme).toBe("light");
+  owner.store.setState({ theme: "light" });
+  retainThemeSelection(owner.access.preference, [], "package:");
+  expect(owner.store.getState().theme).toBe("light");
 });
 
 it("forgets the paint of a package theme Runtime stops admitting so cold boot follows the system", async () => {
-  const uninstall = installDocumentAppearance(useAppearanceStore);
+  const uninstall = owner.start();
   try {
     await contributeForTest((ctx) => {
       ctx.contribute(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
@@ -104,12 +103,12 @@ it("forgets the paint of a package theme Runtime stops admitting so cold boot fo
         tokens: { "color-bg": "#fafafa" },
       });
     });
-    useAppearanceStore.setState({ theme });
+    owner.store.setState({ theme });
     expect(localStorage.getItem("flame.theme-paint")).toContain(`"theme":"${theme}"`);
 
-    retainThemeSelection([], "package:");
+    retainThemeSelection(owner.access.preference, [], "package:");
 
-    expect(useAppearanceStore.getState().theme).toBe("system");
+    expect(owner.store.getState().theme).toBe("system");
     expect(localStorage.getItem("flame.theme-paint")).toBeNull();
     document.documentElement.className = "";
     document.documentElement.removeAttribute("style");

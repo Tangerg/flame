@@ -1,9 +1,2 @@
-export {
-  applyRuntimeEndpoint,
-  currentRuntimeEndpoint,
-  configuredRuntimeTarget,
-  defaultRuntimeEndpoint,
-  hasRuntimeAccessToken,
-  resetRuntimeEndpoint,
-  type RuntimeEndpointRejection,
-} from "@/features/connection/application/runtimeEndpoint";
+export type { RuntimeEndpointRejection } from "@/features/connection/application/runtimeEndpoint";
+export { useRuntime } from "@/features/connection/public/runtime";

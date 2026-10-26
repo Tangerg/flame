@@ -14,7 +14,7 @@
 // The cure is to write the longhands: `paddingInline` beside `paddingTop` and `paddingBottom`
 // says the same thing in keys that cannot collide.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 

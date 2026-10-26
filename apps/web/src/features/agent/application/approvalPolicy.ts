@@ -1,3 +1,4 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type MCPServerID } from "@/features/mcp/public/serverIdentity";
 import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
 import {
@@ -6,14 +7,14 @@ import {
 } from "@/features/agent/application/approvalPolicyQueries";
 import { type ApprovalMode, type ApprovalModeResult } from "@/features/agent/domain/hitl";
 import { queryClient } from "@/lib/queryClient";
-import { agentRuntime } from "@/features/agent/application/ports/runtimeGateway";
-import {
-  agentCommandOwner,
-  type AgentCommandOwner,
-} from "@/features/agent/application/agentCommandOwner";
-export function setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult> {
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
+
+import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
+export function setApprovalMode(
+  agentAccess: AgentAccess,
+  mode: ApprovalMode,
+): Promise<ApprovalModeResult> {
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
   return owner.serializeApprovalMode(async () => {
     let saved: ApprovalModeResult;
     try {
@@ -31,13 +32,13 @@ export function setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>
   });
 }
 
-export async function forgetRule(id: string): Promise<void> {
-  return forgetRules([id]);
+export async function forgetRule(agentAccess: AgentAccess, id: string): Promise<void> {
+  return forgetRules(agentAccess, [id]);
 }
 
-export function forgetRules(ids: string[]): Promise<void> {
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
+export function forgetRules(agentAccess: AgentAccess, ids: string[]): Promise<void> {
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
   return owner.serializeApprovalRules(async () => {
     try {
       for (const id of ids) {
@@ -69,9 +70,13 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
   }
 }
 
-export function allowMCPTool(server: MCPServerID, name: string): Promise<void> {
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
+export function allowMCPTool(
+  agentAccess: AgentAccess,
+  server: MCPServerID,
+  name: string,
+): Promise<void> {
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
   return owner.serializeApprovalRules(async () => {
     try {
       await owner.settle(runtime.allowMCPTool(server, name));

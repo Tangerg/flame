@@ -1,14 +1,22 @@
+import { createAgentStateFixture } from "@/test/agentOwners";
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type AgentSessionMaterialRead,
   type AgentSessionSnapshot,
   type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
-import { configureAgentRuntimeGateway } from "@/features/agent/application/ports/runtimeGateway";
+} from "@/features/agent/application/runtimeGateway";
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { useNotificationStore } from "@/features/notifications/public/notifications";
-import { installAgentStatePorts } from "@/features/agent/adapters/agentStatePorts";
 import {
   refreshAgentSessionProjection,
   revalidateAgentSessionProjection,
@@ -45,21 +53,21 @@ function companion(label: string) {
 let restoreRuntime: (() => void) | undefined;
 
 beforeEach(() => {
-  useAgentStore.getState().dropSession(SESSION_ID);
-  useAgentStore.getState().ensureSession(SESSION_ID);
+  testClient.agent.projection.store.getState().dropSession(SESSION_ID);
+  testClient.agent.projection.store.getState().ensureSession(SESSION_ID);
 });
 
 afterEach(() => {
   restoreRuntime?.();
   restoreRuntime = undefined;
-  useAgentStore.getState().dropSession(SESSION_ID);
+  testClient.agent.projection.store.getState().dropSession(SESSION_ID);
 });
 
 describe("refreshAgentSessionProjection", () => {
   it.each([false, true])(
     "renders non-application only from the committed terminal input snapshot (superseded=%s)",
     async (superseded) => {
-      useAgentStore.getState().appendLocalMessage(SESSION_ID, {
+      testClient.agent.projection.store.getState().appendLocalMessage(SESSION_ID, {
         id: "reserved_user_item",
         role: "user",
         runId: null,
@@ -98,16 +106,16 @@ describe("refreshAgentSessionProjection", () => {
           },
         ],
       };
-      restoreRuntime = configureAgentRuntimeGateway({
+      restoreRuntime = stubInstance(testClient.agent.access.runtime, {
         loadSessionSnapshot: () => read.promise,
       } as unknown as AgentRuntimeGateway);
-      const refreshing = refreshAgentSessionProjection(SESSION_ID);
+      const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
       expect(useNotificationStore.getState().log).toHaveLength(0);
       if (superseded) writeNewerProjectionFact();
       read.resolve(material(terminal));
       await refreshing;
       expect(useNotificationStore.getState().log).toHaveLength(0);
-      const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
+      const view = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
       expect(view.messages).toHaveLength(superseded ? 2 : 1);
       const input = view.messages.find((message) => message.id === "reserved_user_item")!;
       expect(steerInputFeedback(input)).toBe(superseded ? "accepted" : "notApplied");
@@ -116,9 +124,11 @@ describe("refreshAgentSessionProjection", () => {
 
   it("preserves the mounted owner's shared settlement for repeated notifications", async () => {
     const pending = Promise.withResolvers<boolean>();
-    useAgentStore.getState().setSynchronize(SESSION_ID, () => pending.promise);
+    testClient.agent.projection.store.getState().setSynchronize(SESSION_ID, () => pending.promise);
     try {
-      expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).toBe(pending.promise);
+      expect(
+        synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+      ).toBe(pending.promise);
     } finally {
       pending.resolve(false);
     }
@@ -126,29 +136,33 @@ describe("refreshAgentSessionProjection", () => {
 
   it("lets a command await the mounted Session lifecycle owner", async () => {
     const synchronize = vi.fn().mockResolvedValue(true);
-    useAgentStore.getState().setSynchronize(SESSION_ID, synchronize);
+    testClient.agent.projection.store.getState().setSynchronize(SESSION_ID, synchronize);
 
-    await expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).resolves.toBe(true);
+    await expect(
+      synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+    ).resolves.toBe(true);
     expect(synchronize).toHaveBeenCalledWith("after-live");
   });
 
   it("reports an unmounted Session instead of creating a second repair path", async () => {
-    useAgentStore.getState().dropSession(SESSION_ID);
+    testClient.agent.projection.store.getState().dropSession(SESSION_ID);
 
-    await expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).resolves.toBe(false);
+    await expect(
+      synchronizeMountedAgentSession(testClient.agent.access, SESSION_ID, "after-live"),
+    ).resolves.toBe(false);
   });
 
   it("keeps the old projection visible until the complete read commits", async () => {
     writeNewerProjectionFact();
-    const visible = useAgentStore.getState().sessions[SESSION_ID]!.view;
+    const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("complete");
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(SESSION_ID);
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view).toBe(visible);
+    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
 
     read.resolve(material(snapshot(1), projectCompanion));
     await expect(refreshing).resolves.toMatchObject({
@@ -168,12 +182,12 @@ describe("refreshAgentSessionProjection", () => {
       .fn()
       .mockImplementationOnce(() => older.promise)
       .mockImplementationOnce(() => newer.promise);
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot,
     } as unknown as AgentRuntimeGateway);
 
-    const olderRefresh = refreshAgentSessionProjection(SESSION_ID);
-    const newerRefresh = refreshAgentSessionProjection(SESSION_ID);
+    const olderRefresh = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    const newerRefresh = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
     newer.resolve(material(snapshot(2), projectNewer));
     await expect(newerRefresh).resolves.toMatchObject({
       plan: { revision: 2 },
@@ -181,7 +195,7 @@ describe("refreshAgentSessionProjection", () => {
     });
     older.resolve(material(snapshot(1), projectOlder));
     await expect(olderRefresh).resolves.toBeNull();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view).toMatchObject({
+    expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toMatchObject({
       plan: { revision: 2 },
       shared: { companion: "newer" },
     });
@@ -192,30 +206,34 @@ describe("refreshAgentSessionProjection", () => {
   it("discards a read that raced with a live projection write", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("raced");
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(SESSION_ID);
+    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
     writeNewerProjectionFact();
     read.resolve(material(snapshot(1), projectCompanion));
 
     await expect(refreshing).resolves.toBeNull();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.messages.map((m) => m.id)).toEqual([
-      "newer_fact",
-    ]);
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.shared.companion).toBeUndefined();
+    expect(
+      testClient.agent.projection.store
+        .getState()
+        .sessions[SESSION_ID]!.view.messages.map((m) => m.id),
+    ).toEqual(["newer_fact"]);
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.shared.companion,
+    ).toBeUndefined();
     expect(projectCompanion).toHaveBeenCalledOnce();
   });
 
   it("returns authoritative facts even when a newer local write rejects their commit", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("authoritative-only");
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const revalidating = revalidateAgentSessionProjection(SESSION_ID);
+    const revalidating = revalidateAgentSessionProjection(testClient.agent.access, SESSION_ID);
     writeNewerProjectionFact();
     read.resolve(material(snapshot(4), projectCompanion));
 
@@ -226,43 +244,51 @@ describe("refreshAgentSessionProjection", () => {
         shared: { companion: "authoritative-only" },
       },
     });
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.messages.map((m) => m.id)).toEqual([
-      "newer_fact",
-    ]);
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.shared.companion).toBeUndefined();
+    expect(
+      testClient.agent.projection.store
+        .getState()
+        .sessions[SESSION_ID]!.view.messages.map((m) => m.id),
+    ).toEqual(["newer_fact"]);
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.shared.companion,
+    ).toBeUndefined();
   });
 
   it("leaves the prior projection intact when the durable read fails", async () => {
     writeNewerProjectionFact();
-    const visible = useAgentStore.getState().sessions[SESSION_ID]!.view;
-    restoreRuntime = configureAgentRuntimeGateway({
+    const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn().mockRejectedValue(new Error("offline")),
     } as unknown as AgentRuntimeGateway);
 
-    await expect(refreshAgentSessionProjection(SESSION_ID)).rejects.toThrow("offline");
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view).toBe(visible);
+    await expect(
+      refreshAgentSessionProjection(testClient.agent.access, SESSION_ID),
+    ).rejects.toThrow("offline");
+    expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
   });
 
   it("treats an authoritatively missing session as no applicable projection", async () => {
     writeNewerProjectionFact();
-    const visible = useAgentStore.getState().sessions[SESSION_ID]!.view;
-    restoreRuntime = configureAgentRuntimeGateway({
+    const visible = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view;
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn().mockResolvedValue(null),
     } as unknown as AgentRuntimeGateway);
 
-    await expect(refreshAgentSessionProjection(SESSION_ID)).resolves.toBeNull();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view).toBe(visible);
+    await expect(
+      refreshAgentSessionProjection(testClient.agent.access, SESSION_ID),
+    ).resolves.toBeNull();
+    expect(testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view).toBe(visible);
   });
 
   it("retires a non-cooperative snapshot read without allowing a late commit", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("aborted");
     const controller = new AbortController();
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(SESSION_ID, {
+    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID, {
       signal: controller.signal,
     });
     controller.abort();
@@ -270,7 +296,7 @@ describe("refreshAgentSessionProjection", () => {
 
     read.resolve(material(snapshot(9), projectCompanion));
     await Promise.resolve();
-    const plan = useAgentStore.getState().sessions[SESSION_ID]!.view.plan;
+    const plan = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.plan;
     expect(plan?.revision).not.toBe(9);
     expect(projectCompanion).not.toHaveBeenCalled();
   });
@@ -278,18 +304,20 @@ describe("refreshAgentSessionProjection", () => {
   it("revokes an unsignaled snapshot at the Runtime connection boundary", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("retired");
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
 
-    const refreshing = refreshAgentSessionProjection(SESSION_ID);
-    synchronizeMountedAgentSessions({ ownership: "retire-live" });
+    const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    synchronizeMountedAgentSessions(testClient.agent.access, { ownership: "retire-live" });
     read.resolve(material(snapshot(11), projectCompanion));
 
     await expect(refreshing).resolves.toBeNull();
-    const plan = useAgentStore.getState().sessions[SESSION_ID]!.view.plan;
+    const plan = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.plan;
     expect(plan?.revision).not.toBe(11);
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.shared.companion).toBeUndefined();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.shared.companion,
+    ).toBeUndefined();
     expect(projectCompanion).toHaveBeenCalledOnce();
   });
 
@@ -300,26 +328,34 @@ describe("refreshAgentSessionProjection", () => {
       .fn()
       .mockImplementationOnce(() => predecessor.promise)
       .mockImplementationOnce(() => successor.promise);
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot,
     } as unknown as AgentRuntimeGateway);
-    useAgentStore.getState().setCommandError(SESSION_ID, { code: "old-server" });
+    testClient.agent.projection.store
+      .getState()
+      .setCommandError(SESSION_ID, { code: "old-server" });
 
-    const retiredRead = refreshAgentSessionProjection(SESSION_ID);
-    synchronizeMountedAgentSessions({ ownership: "replace-server" });
+    const retiredRead = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+    synchronizeMountedAgentSessions(testClient.agent.access, { ownership: "replace-server" });
 
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.problem.commandError,
+    ).toBeNull();
     expect(loadSessionSnapshot).toHaveBeenCalledTimes(2);
     successor.resolve(material(snapshot(22)));
     await vi.waitFor(() =>
-      expect(useAgentStore.getState().sessions[SESSION_ID]!.view.plan).toMatchObject({
+      expect(
+        testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.plan,
+      ).toMatchObject({
         revision: 22,
       }),
     );
 
     predecessor.resolve(material(snapshot(11)));
     await expect(retiredRead).resolves.toBeNull();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.plan).toMatchObject({
+    expect(
+      testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.plan,
+    ).toMatchObject({
       revision: 22,
     });
   });
@@ -327,32 +363,33 @@ describe("refreshAgentSessionProjection", () => {
   it("rejects an old port's snapshot and companion material after adapter replacement", async () => {
     const read = Promise.withResolvers<AgentSessionMaterialRead>();
     const projectCompanion = companion("retired-port");
-    restoreRuntime = configureAgentRuntimeGateway({
+    restoreRuntime = stubInstance(testClient.agent.access.runtime, {
       loadSessionSnapshot: vi.fn(() => read.promise),
     } as unknown as AgentRuntimeGateway);
-    const disposeRetiredState = installAgentStatePorts();
+    const disposeRetiredState = createAgentStateFixture(testClient).dispose;
     let disposeSuccessorState: (() => void) | undefined;
     try {
-      const refreshing = refreshAgentSessionProjection(SESSION_ID);
-      disposeSuccessorState = installAgentStatePorts();
+      const refreshing = refreshAgentSessionProjection(testClient.agent.access, SESSION_ID);
+      disposeSuccessorState = createAgentStateFixture(testClient).dispose;
 
       read.resolve(material(snapshot(10), projectCompanion));
 
       await expect(refreshing).resolves.toBeNull();
-      const plan = useAgentStore.getState().sessions[SESSION_ID]!.view.plan;
+      const plan = testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.plan;
       expect(plan?.revision).not.toBe(10);
-      expect(useAgentStore.getState().sessions[SESSION_ID]!.view.shared.companion).toBeUndefined();
+      expect(
+        testClient.agent.projection.store.getState().sessions[SESSION_ID]!.view.shared.companion,
+      ).toBeUndefined();
       expect(projectCompanion).toHaveBeenCalledOnce();
     } finally {
       disposeRetiredState();
       disposeSuccessorState?.();
-      installAgentStatePorts();
     }
   });
 });
 
 function writeNewerProjectionFact(): void {
-  useAgentStore.getState().appendLocalMessage(SESSION_ID, {
+  testClient.agent.projection.store.getState().appendLocalMessage(SESSION_ID, {
     id: "newer_fact",
     role: "user",
     runId: null,

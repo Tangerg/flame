@@ -1,36 +1,35 @@
-import { configureFontAvailabilityPort } from "@/features/theme/application/preferences/ports/fontAvailability";
-const measured = new Map<string, number>();
+import { type FontAvailability } from "@/features/theme/application/preferences/systemFonts";
 
-function textWidth(stack: string, text: string): number {
-  const key = `${stack}\0${text}`;
-  const remembered = measured.get(key);
-  if (remembered !== undefined) return remembered;
-  const probe = document.createElement("span");
-  probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font-size:48px;font-family:${stack}`;
-  probe.textContent = text;
-  document.body.append(probe);
-  const width = probe.getBoundingClientRect().width;
-  probe.remove();
-  measured.set(key, width);
-  return width;
-}
+export function createBrowserFontAvailability(document: Document): FontAvailability {
+  const measured = new Map<string, number>();
 
-const SHAPE = "mmmiiiWWW@#%";
+  function textWidth(stack: string, text: string): number {
+    const key = `${stack}\0${text}`;
+    const remembered = measured.get(key);
+    if (remembered !== undefined) return remembered;
+    const probe = document.createElement("span");
+    probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font-size:48px;font-family:${stack}`;
+    probe.textContent = text;
+    document.body.append(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    measured.set(key, width);
+    return width;
+  }
 
-function isAvailable(family: string): boolean {
-  if (typeof document === "undefined") return false;
-  return (
-    textWidth(`"${family}", serif`, SHAPE) !== textWidth("serif", SHAPE) ||
-    textWidth(`"${family}", monospace`, SHAPE) !== textWidth("monospace", SHAPE)
-  );
-}
+  const SHAPE = "mmmiiiWWW@#%";
 
-function hasTabularFigures(family: string): boolean {
-  if (typeof document === "undefined") return false;
-  const stack = `"${family}", monospace`;
-  return textWidth(stack, "0000000000") === textWidth(stack, "1111111111");
-}
+  function isAvailable(family: string): boolean {
+    return (
+      textWidth(`"${family}", serif`, SHAPE) !== textWidth("serif", SHAPE) ||
+      textWidth(`"${family}", monospace`, SHAPE) !== textWidth("monospace", SHAPE)
+    );
+  }
 
-export function installBrowserFontAvailability(): () => void {
-  return configureFontAvailabilityPort({ isAvailable, hasTabularFigures });
+  function hasTabularFigures(family: string): boolean {
+    const stack = `"${family}", monospace`;
+    return textWidth(stack, "0000000000") === textWidth(stack, "1111111111");
+  }
+
+  return { isAvailable, hasTabularFigures };
 }

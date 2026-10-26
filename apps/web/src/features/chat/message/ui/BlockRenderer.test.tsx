@@ -1,6 +1,14 @@
-import { navigator } from "@/lib/navigation";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { AnimatePresence } from "motion/react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   type AgentRunView,
@@ -51,7 +59,7 @@ describe("activity header semantics", () => {
       },
     };
 
-    render(renderMessageBlocks(row, CTX));
+    testClient.render(renderMessageBlocks(row, CTX));
     const summary = screen.getByRole("button", { name: /2 issues.*1 denied.*3 steps/ });
     expect(summary.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText("Run the suite")).toBeNull();
@@ -106,7 +114,7 @@ describe("activity header semantics", () => {
         {renderMessageBlocks(row, ctx)}
       </MessageContext.Provider>
     );
-    const { container, rerender } = render(renderRow());
+    const { container, rerender } = testClient.render(renderRow());
     const content = within(container);
     const summary = content.getByRole("button", { name: /1 read · 1 search.*3 steps/ });
     fireEvent.click(summary);
@@ -199,7 +207,7 @@ describe("activity header semantics", () => {
         },
       };
 
-      const { container } = render(renderMessageBlocks(row, CTX));
+      const { container } = testClient.render(renderMessageBlocks(row, CTX));
       const header = container.querySelector('[data-slot="agent-activity-header"]');
       expect(header?.querySelector("svg")?.getAttribute("data-icon-name")).toBe(icon);
       expect(header?.textContent).toContain(summary);
@@ -227,7 +235,7 @@ describe("approval settlement rendering", () => {
       delegatedRuns: {},
       awaiting: new Map([[id, "root-run"]]),
     };
-    const { rerender } = render(renderBlock(block, 0, facts, CTX));
+    const { rerender } = testClient.render(renderBlock(block, 0, facts, CTX));
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Allow once" }).disabled).toBe(
       false,
     );
@@ -261,7 +269,7 @@ describe("approval settlement rendering", () => {
       delegatedRuns: {},
       awaiting: new Map(),
     };
-    const { container } = render(renderBlock(block, 0, facts, CTX));
+    const { container } = testClient.render(renderBlock(block, 0, facts, CTX));
     expect(container.querySelector('[data-slot="approval-surface"]')).toBeNull();
     expect(screen.queryByText("Approved", { exact: true })).toBeNull();
     expect(screen.queryByText("Declined", { exact: true })).toBeNull();
@@ -291,7 +299,7 @@ it("animates opaque tool arrivals without remounting their surface when regroupe
       <AnimatePresence initial={false}>{renderMessageBlocks(row, CTX)}</AnimatePresence>
     </MessageContext.Provider>
   );
-  const { container, rerender } = render(renderRow());
+  const { container, rerender } = testClient.render(renderRow());
   const expectImmediate = () => {
     const units = container.querySelectorAll<HTMLElement>("[data-block-anchor]");
     expect(units.length).toBeGreaterThan(0);
@@ -328,7 +336,7 @@ it("animates opaque tool arrivals without remounting their surface when regroupe
   expect(container.querySelector("[data-block-anchor]")).toBe(surface);
 });
 
-it("does not animate historical tools on initial render", () => {
+it("does not animate historical tools on initial testClient.render", () => {
   const call = tool("historical-tool");
   const row = {
     message: message("historical-message", "root-run", call.id),
@@ -338,7 +346,7 @@ it("does not animate historical tools on initial render", () => {
       awaiting: new Map<string, string>(),
     },
   };
-  const { container } = render(
+  const { container } = testClient.render(
     <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
       <AnimatePresence initial={false}>{renderMessageBlocks(row, CTX)}</AnimatePresence>
     </MessageContext.Provider>,
@@ -406,7 +414,7 @@ function message(id: string, runId: string, toolCallId: string): Message {
 
 function renderRootTool(toolCallId: string, facts: TurnFacts) {
   const rootMessage = message("root-message", "root-run", toolCallId);
-  return render(
+  return testClient.render(
     <MessageContext.Provider value={{ sessionId: "session-1", message: rootMessage }}>
       {renderBlock(rootMessage.blocks[0]!, 0, facts, CTX)}
     </MessageContext.Provider>,
@@ -444,7 +452,7 @@ describe("delegated Run rendering", () => {
     expect(screen.queryByText("No narrative material yet")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Sub-agent.*Finished/ }));
-    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child-run" });
+    expect(testClient.navigation.get()).toMatchObject({ dock: "subagents", subagent: "child-run" });
     expect(screen.getAllByRole("button", { name: /Sub-agent.*Finished/ })).toHaveLength(1);
 
     const taskAnchors = document.querySelectorAll("#task-root, #task-child");
@@ -490,7 +498,7 @@ describe("delegated Run rendering", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
 
     expect(agentRunCommands.cancel).toHaveBeenCalledOnce();
-    expect(agentRunCommands.cancel).toHaveBeenCalledWith({
+    expect(agentRunCommands.cancel).toHaveBeenCalledWith(testClient.agent.access, {
       sessionId: "session-1",
       runId: "child-run",
     });
@@ -526,7 +534,7 @@ describe("standing tool outcomes", () => {
         {renderMessageBlocks(row, CTX)}
       </MessageContext.Provider>
     );
-    const { rerender } = render(renderRow());
+    const { rerender } = testClient.render(renderRow());
     expect(document.querySelector('[data-tool="set_plan"]')).not.toBeNull();
 
     const error = "at most one step may be in_progress";

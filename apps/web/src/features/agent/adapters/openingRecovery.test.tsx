@@ -1,6 +1,15 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { createAgentGatewayFixture } from "@/test/agentOwners";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { navigator } from "@/lib/navigation";
+
 import { loadPluginsForTest } from "@/test/kernel";
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
 import { type FlameClient } from "@flame/runtime-client";
@@ -19,9 +28,8 @@ import {
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import originalRun from "@flame/runtime-client/testing/samples/runref.full.json";
 import originalSession from "@flame/runtime-client/testing/samples/session.json";
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { agentTextInput } from "@/features/agent/domain/input";
 import { revalidateAgentSessionMaterial } from "@/features/agent/application/session/refreshSessionProjection";
 import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
@@ -30,7 +38,7 @@ const SID = "ses_cold_opening";
 
 const prefix = "cold-opening-test:";
 
-let disposeGateway: ReturnType<typeof installAgentRuntimeGateway> | undefined;
+let disposeGateway: ReturnType<typeof createAgentGatewayFixture> | undefined;
 
 const journals: Array<ReturnType<typeof createMutationJournal>> = [];
 
@@ -212,17 +220,19 @@ function mountedClient(
     sessions: { snapshot },
     runs: { ...cold.methods.runs, subscribe },
   } as unknown as FlameClient;
-  disposeGateway = installAgentRuntimeGateway(() => client);
+  disposeGateway = createAgentGatewayFixture(testClient, () => client);
   const driver = { start: vi.fn(), resume: vi.fn() } as unknown as RuntimeAgentDriver;
   const readClient = () => client;
-  const hook = renderHook(() => useAgentSession(readClient, () => driver, SID, vi.fn()));
+  const hook = testClient.renderHook(() =>
+    useAgentSession(testClient.sessionDependencies, readClient, () => driver, SID, vi.fn()),
+  );
   return { ...cold, call, snapshot, subscribe, driver, hook };
 }
 
 beforeEach(async () => {
   await loadPluginsForTest();
-  navigator().go({ session: SID });
-  useAgentStore.getState().dropSession(SID);
+  testClient.navigation.go({ session: SID });
+  testClient.agent.projection.store.getState().dropSession(SID);
 });
 
 afterEach(() => {
@@ -230,7 +240,7 @@ afterEach(() => {
   disposeGateway = undefined;
   for (const journal of journals.splice(0)) journal.dispose();
   for (const key of storage().keys()) storage().remove(key);
-  useAgentStore.getState().dropSession(SID);
+  testClient.agent.projection.store.getState().dropSession(SID);
   vi.restoreAllMocks();
 });
 
@@ -240,40 +250,52 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     const options = { observationFailure: true };
     const cold = mountedClient(operation, options);
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.openingCommands).toHaveLength(1),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.openingCommands,
+      ).toHaveLength(1),
     );
     await act(async () => {});
     act(() => {
-      expect(useAgentStore.getState().sessions[SID]!.retryOpening!(key)).toBe(true);
+      expect(testClient.agent.projection.store.getState().sessions[SID]!.retryOpening!(key)).toBe(
+        true,
+      );
     });
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.openingCommands).toEqual([]),
+      expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual(
+        [],
+      ),
     );
     expect(storage().keys()).toEqual([]);
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toBeNull();
     act(() => {
-      expect(useAgentStore.getState().sessions[SID]!.send!(agentTextInput("changed draft"))).toBe(
-        false,
-      );
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.send!(
+          agentTextInput("changed draft"),
+        ),
+      ).toBe(false);
     });
     options.observationFailure = false;
     await act(async () => {
-      await useAgentStore.getState().sessions[SID]!.synchronize!("after-live");
+      await testClient.agent.projection.store.getState().sessions[SID]!.synchronize!("after-live");
     });
     await waitFor(() => expect(cold.subscribe).toHaveBeenCalledOnce());
     expect(cold.call.mock.calls.filter(([method]) => method === `runs.${operation}`)).toHaveLength(
       1,
     );
-    expect(useAgentStore.getState().sessions[SID]!.openingCommands).toEqual([]);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual([]);
     cold.hook.unmount();
   });
   it("recreates all owners, shows the frozen original, and explicitly retries it once before following the current Segment", async () => {
     const key = await seed(operation);
     const cold = mountedClient(operation);
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.openingCommands).toHaveLength(1),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.openingCommands,
+      ).toHaveLength(1),
     );
-    const pending = useAgentStore.getState().sessions[SID]!.openingCommands[0]!;
+    const pending = testClient.agent.projection.store.getState().sessions[SID]!.openingCommands[0]!;
     expect(pending).toMatchObject({
       operation,
       idempotencyKey: key,
@@ -291,13 +313,15 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     );
     expect(cold.call.mock.calls.map(([method]) => method)).toEqual(["runs.getAcceptance"]);
     expect(storage().keys()).toHaveLength(1);
-    await revalidateAgentSessionMaterial(SID, async () =>
-      runtimeSessionMaterial(SID, await cold.snapshot()),
+    await revalidateAgentSessionMaterial(testClient.agent.access, SID, async () =>
+      runtimeSessionMaterial(testClient.agent.access.sharedMaterial, SID, await cold.snapshot()),
     );
-    expect(useAgentStore.getState().sessions[SID]!.openingCommands).toEqual([pending]);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual([
+      pending,
+    ]);
     await act(async () => {});
     act(() => {
-      const session = useAgentStore.getState().sessions[SID]!;
+      const session = testClient.agent.projection.store.getState().sessions[SID]!;
       expect(session.send!(agentTextInput("replacement draft"))).toBe(false);
       expect(session.resume!("run_replacement", [])).toBe(false);
       expect(session.retryOpening!(key)).toBe(true);
@@ -318,9 +342,9 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     });
     expect(cold.driver.start).not.toHaveBeenCalled();
     expect(cold.driver.resume).not.toHaveBeenCalled();
-    expect(useAgentStore.getState().sessions[SID]!.openingCommands).toEqual([]);
+    expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual([]);
     expect(
-      useAgentStore
+      testClient.agent.projection.store
         .getState()
         .sessions[SID]!.view.messages.some((message) => message.id === "item_original"),
     ).toBe(true);
@@ -334,10 +358,14 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
       await seed(operation);
       const cold = mountedClient(operation, { accepted: true, retired });
       await waitFor(() =>
-        expect(useAgentStore.getState().sessions[SID]!.authoritativeRevision).toBeGreaterThan(0n),
+        expect(
+          testClient.agent.projection.store.getState().sessions[SID]!.authoritativeRevision,
+        ).toBeGreaterThan(0n),
       );
       expect(cold.call.mock.calls.every(([method]) => method === "runs.getAcceptance")).toBe(true);
-      expect(useAgentStore.getState().sessions[SID]!.openingCommands).toEqual([]);
+      expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual(
+        [],
+      );
       expect(storage().keys()).toEqual([]);
       await waitFor(() => expect(cold.subscribe).toHaveBeenCalledTimes(retired ? 0 : 1));
       cold.hook.unmount();
@@ -351,13 +379,16 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
       .map((key) => storage().get(key));
     const cold = mountedClient(operation, { queryFailure: true });
     await waitFor(() =>
-      expect(useAgentStore.getState().sessions[SID]!.openingCommands[0]?.receipt).toBe("unknown"),
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.openingCommands[0]?.receipt,
+      ).toBe("unknown"),
     );
     await act(async () => {});
     act(() => {
       expect(
-        useAgentStore.getState().sessions[SID]!.retryOpening!(
-          useAgentStore.getState().sessions[SID]!.openingCommands[0]!.idempotencyKey,
+        testClient.agent.projection.store.getState().sessions[SID]!.retryOpening!(
+          testClient.agent.projection.store.getState().sessions[SID]!.openingCommands[0]!
+            .idempotencyKey,
         ),
       ).toBe(true);
     });
@@ -370,7 +401,9 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     ).toEqual(evidence);
     expect(cold.driver.start).not.toHaveBeenCalled();
     expect(cold.driver.resume).not.toHaveBeenCalled();
-    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+    expect(
+      testClient.agent.projection.store.getState().sessions[SID]!.problem.commandError,
+    ).toBeNull();
     cold.hook.unmount();
   });
 });

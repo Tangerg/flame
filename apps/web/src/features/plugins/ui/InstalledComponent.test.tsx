@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
 afterEach(() => {
@@ -13,7 +21,7 @@ it("retains the original component exception for inspection before reloading", (
   function Broken(): never {
     throw error;
   }
-  render(
+  testClient.render(
     <ComponentBoundary scope="installed component">
       <Broken />
     </ComponentBoundary>,
@@ -31,7 +39,7 @@ it("captures component identity, generation, time and React stack at the failure
   function BrokenSchedule(): never {
     throw new Error("original schedule exception");
   }
-  const view = render(
+  const view = testClient.render(
     <ComponentBoundary scope={scope}>
       <BrokenSchedule />
     </ComponentBoundary>,

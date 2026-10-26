@@ -1,12 +1,18 @@
+import { createAgentGatewayFixture } from "@/test/agentOwners";
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
-import { installAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
-import {
-  configureAgentRuntimeGateway,
-  type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
 import {
   forgetRules,
   setApprovalMode,
@@ -38,7 +44,7 @@ describe("approval policy", () => {
   it("sets a global MCP rule through approval and invalidates every rule view", async () => {
     const setRule = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ approval: { setRule } }) as unknown as FlameClient;
-    uninstall = installAgentRuntimeGateway(getRuntimeClient).dispose;
+    uninstall = createAgentGatewayFixture(testClient, getRuntimeClient).dispose;
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     const docs = { origin: { type: "user" as const }, name: "docs" };
     const request = {
@@ -48,7 +54,7 @@ describe("approval policy", () => {
       decision: "allow" as const,
     };
 
-    await allowMCPTool(docs, "read");
+    await allowMCPTool(testClient.agent.access, docs, "read");
 
     expect(setRule).toHaveBeenCalledWith(request);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [APPROVAL_RULES_KEY] });
@@ -61,13 +67,13 @@ describe("approval policy", () => {
       .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
-    uninstall = configureAgentRuntimeGateway({
+    uninstall = stubInstance(testClient.agent.access.runtime, {
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
     queryClient.setQueryData([APPROVAL_MODE_KEY], saved("balanced"));
 
-    const safe = setApprovalMode("safe");
-    const yolo = setApprovalMode("yolo");
+    const safe = setApprovalMode(testClient.agent.access, "safe");
+    const yolo = setApprovalMode(testClient.agent.access, "yolo");
     await Promise.resolve();
     expect(setMode).toHaveBeenCalledTimes(1);
 
@@ -87,12 +93,12 @@ describe("approval policy", () => {
       .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
       .mockResolvedValueOnce(saved("yolo"));
-    uninstall = configureAgentRuntimeGateway({
+    uninstall = stubInstance(testClient.agent.access.runtime, {
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
 
-    const rejected = setApprovalMode("safe");
-    const accepted = setApprovalMode("yolo");
+    const rejected = setApprovalMode(testClient.agent.access, "safe");
+    const accepted = setApprovalMode(testClient.agent.access, "yolo");
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
@@ -102,15 +108,15 @@ describe("approval policy", () => {
 
   it("does not serialize the successor behind an old Plugin Host mode change", async () => {
     const retiredMode = Promise.withResolvers<ApprovalModeResult>();
-    uninstall = configureAgentRuntimeGateway({
+    uninstall = stubInstance(testClient.agent.access.runtime, {
       setApprovalMode: vi.fn(() => retiredMode.promise),
     } as unknown as AgentRuntimeGateway);
-    const retired = setApprovalMode("safe");
+    const retired = setApprovalMode(testClient.agent.access, "safe");
 
     const successorSetMode = vi.fn().mockResolvedValue(saved("yolo"));
     runtimeClient = () => ({ approval: { setMode: successorSetMode } }) as unknown as FlameClient;
-    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
-    const successor = setApprovalMode("yolo");
+    const disposeSuccessor = createAgentGatewayFixture(testClient, getRuntimeClient);
+    const successor = setApprovalMode(testClient.agent.access, "yolo");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorSetMode.mock.calls.length;
     retiredMode.resolve(saved("safe"));
@@ -131,26 +137,26 @@ describe("approval policy", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(failure);
-    uninstall = configureAgentRuntimeGateway({
+    uninstall = stubInstance(testClient.agent.access.runtime, {
       forgetApprovalRule,
     } as unknown as AgentRuntimeGateway);
     const key = [APPROVAL_RULES_KEY, { sessionId: "ses_1" }];
     queryClient.setQueryData(key, [rule("rule-1"), rule("rule-2")]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
 
-    await expect(forgetRules(["rule-1", "rule-2"])).rejects.toBe(failure);
+    await expect(forgetRules(testClient.agent.access, ["rule-1", "rule-2"])).rejects.toBe(failure);
     expect(queryClient.getQueryData(key)).toEqual([rule("rule-2")]);
   });
 
   it("keeps an accepted rule deletion successful when cache repair fails", async () => {
-    uninstall = configureAgentRuntimeGateway({
+    uninstall = stubInstance(testClient.agent.access.runtime, {
       forgetApprovalRule: vi.fn().mockResolvedValue(undefined),
     } as unknown as AgentRuntimeGateway);
     const key = [APPROVAL_RULES_KEY, { sessionId: "ses_1" }];
     queryClient.setQueryData(key, [rule("rule-1")]);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("cache unavailable"));
 
-    await expect(forgetRules(["rule-1"])).resolves.toBeUndefined();
+    await expect(forgetRules(testClient.agent.access, ["rule-1"])).resolves.toBeUndefined();
     expect(queryClient.getQueryData(key)).toEqual([]);
   });
 
@@ -159,12 +165,12 @@ describe("approval policy", () => {
     const forgetRetired = vi.fn(() => retiredWrite.promise);
     const forgetSuccessor = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ approval: { forgetRule: forgetRetired } }) as unknown as FlameClient;
-    const retiredInstallation = installAgentRuntimeGateway(getRuntimeClient);
-    const command = rejected(forgetRules(["rule-1", "rule-2"]));
+    const retiredInstallation = createAgentGatewayFixture(testClient, getRuntimeClient);
+    const command = rejected(forgetRules(testClient.agent.access, ["rule-1", "rule-2"]));
     await vi.waitFor(() => expect(forgetRetired).toHaveBeenCalledOnce());
 
     runtimeClient = () => ({ approval: { forgetRule: forgetSuccessor } }) as unknown as FlameClient;
-    const successorInstallation = installAgentRuntimeGateway(getRuntimeClient);
+    const successorInstallation = createAgentGatewayFixture(testClient, getRuntimeClient);
     try {
       await expect(command).resolves.toMatchObject({ message: "agent_command_owner_retired" });
       expect(forgetSuccessor).not.toHaveBeenCalled();

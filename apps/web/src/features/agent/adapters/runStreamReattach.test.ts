@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   RpcConnectionError,
@@ -10,15 +18,15 @@ import { type Session } from "@flame/runtime-client/wire";
 import sessionSample from "@flame/runtime-client/testing/samples/session.json";
 import { type RunStream, type RunStreamPosition } from "@/features/agent/adapters/agentRunPump";
 import { createRunStreamReattach } from "@/features/agent/adapters/runStreamReattach";
-import { useAgentStore } from "@/features/agent/adapters/agentStore";
+
 import { loadPluginsForTest } from "@/test/kernel";
 beforeEach(async () => {
   await loadPluginsForTest();
-  useAgentStore.getState().ensureSession("ses_1");
+  testClient.agent.projection.store.getState().ensureSession("ses_1");
 });
 
 afterEach(() => {
-  useAgentStore.getState().dropSession("ses_1");
+  testClient.agent.projection.store.getState().dropSession("ses_1");
   vi.restoreAllMocks();
 });
 
@@ -51,7 +59,7 @@ describe("run stream reattach", () => {
     const error = new RpcProtocolError("runs.subscribe result", [], "request_invalid_ack");
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>().mockRejectedValue(error);
     const recoverProjection = vi.fn(async () => {});
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -75,7 +83,7 @@ describe("run stream reattach", () => {
         },
       };
     });
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -95,7 +103,7 @@ describe("run stream reattach", () => {
   it("replays from the last folded event while the cursor remains trustworthy", async () => {
     const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>(async () => emptyStream());
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -121,7 +129,7 @@ describe("run stream reattach", () => {
         data: { type: "run_finished" },
       }),
     );
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -144,7 +152,7 @@ describe("run stream reattach", () => {
         data: { type: "run_waiting" },
       }),
     );
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
@@ -165,7 +173,7 @@ describe("run stream reattach", () => {
       .fn<FlameClient["runs"]["subscribe"]>()
       .mockRejectedValue(new RpcConnectionError("fetch failed"));
     const onConnectionLost = vi.fn();
-    const reattach = createRunStreamReattach({
+    const reattach = createRunStreamReattach(testClient.agent.access, {
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,

@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useTheme } from "@/features/theme/public/theme";
 import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
@@ -6,8 +8,8 @@ import { Switch } from "@flame/ui";
 import { Select, vocab } from "@flame/ui";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@flame/ui/typography";
 import { useT } from "@/lib/i18n/index";
-import { useSystemFonts } from "@/features/theme/application/preferences/systemFonts";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { systemFonts } from "@/features/theme/application/preferences/systemFonts";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { face } from "@flame/ui/tokens.stylex";
 const fsx = stylex.create({
@@ -29,7 +31,8 @@ function FontPicker({
   onChange: (v: string) => void;
   defaultLabel: string;
 }) {
-  const fonts = useSystemFonts(mono);
+  const { fonts: availability } = useTheme();
+  const fonts = useMemo(() => systemFonts(availability, mono), [availability, mono]);
   const custom = value !== SYSTEM;
 
   return (
@@ -83,7 +86,7 @@ export function FontSection() {
   const codeFontSize = useAppearance((s) => s.codeFontSize);
   const fontSmoothing = useAppearance((s) => s.fontSmoothing);
   const { setUiFont, setCodeFont, setFontSize, setCodeFontSize, setFontSmoothing } =
-    editAppearance();
+    useAppearanceEdit();
 
   const codeSizeOptions = [
     { value: SIZE_RESET, label: t("settings.font.followUi") },

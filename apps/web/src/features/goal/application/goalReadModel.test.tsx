@@ -1,4 +1,12 @@
-import { renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type GoalState, useGoalMaterial } from "@/features/goal/application/goalReadModel";
 const material = vi.hoisted(() => ({
@@ -29,7 +37,7 @@ afterEach(() => {
 describe("useGoalMaterial", () => {
   it("publishes the Goal together with the Agent projection generation that admitted it", () => {
     material.value = state("predecessor");
-    const { result, rerender } = renderHook(() => useGoalMaterial());
+    const { result, rerender } = testClient.renderHook(() => useGoalMaterial());
     expect(result.current).toEqual({ generation: 1, value: state("predecessor") });
 
     material.generation = 2;

@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useTasksStore } from "@/extensions/tasksStore";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
@@ -7,11 +9,8 @@ import { Popover } from "@/ui/index";
 import { ProgressBar } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { IconButton, ScrollRegion, toneInk, vocab } from "@flame/ui";
-import {
-  type TaskEntry,
-  type TaskStatus,
-} from "@/features/workspace/application/ports/taskReadoutPort";
-import { taskProgressPercent, useTaskReadout } from "@/features/workspace/application/taskReadout";
+import { type TaskEntry, type TaskStatus } from "@/extensions/tasksStore";
+import { taskProgressPercent, taskReadout } from "@/features/workspace/application/taskReadout";
 const STATUS_ICON: Record<
   TaskStatus,
   { name: IconName; label: string; tone?: "accent" | "negative" }
@@ -67,8 +66,9 @@ const p = stylex.create({
 });
 
 export function TasksPill() {
-  const readout = useTaskReadout();
   const t = useT();
+  const tasks = useTasksStore((state) => state.tasks);
+  const readout = useMemo(() => taskReadout(t, tasks), [t, tasks]);
   if (!readout) return null;
 
   const { name, tone } = STATUS_ICON[readout.head.status];

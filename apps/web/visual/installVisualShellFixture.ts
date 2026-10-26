@@ -1,16 +1,14 @@
+import { type VisualClient } from "./client";
 import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
 import { createElement } from "react";
 import { RenameSession } from "../../../plugins/trajectory/component/component";
 import { InstalledSessionActionComponent } from "@/features/plugins/ui/InstalledComponent";
-import { navigator } from "@/lib/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
-import { installAgentStatePorts } from "@/features/agent/adapters/agentStatePorts";
-import { useAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
-import { useSessionSearchStore } from "@/features/navigation/session-search/application/sessionSearchState";
+import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
 import { useCommandMenuStore } from "@/features/command/menu/application/commandMenuState";
 import { defaultCommands } from "@/features/command/defaultCommands";
 import { sidebarActions } from "@/features/sidebar/index";
@@ -21,7 +19,6 @@ import { builtinVisualStyles } from "@/features/theme/visualStyles/index";
 import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
 import { defaultAccents } from "@/features/theme/defaultAccents";
-import { installWorkspaceNavigationPort } from "@/features/workspace/adapters/navigationStatePort";
 import {
   WORKSPACE_PROJECTS_KEY,
   type WorkspaceProjectSummary,
@@ -30,8 +27,6 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type AnyPlugin } from "dougong";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
-import { useShellLayoutStore } from "@/features/workspace/adapters/shellLayoutStore";
 import {
   type VisualShellOverlay,
   type VisualShellTheme,
@@ -185,6 +180,7 @@ function sessionActionsPlugin(runtimeClient: () => FlameClient): AnyPlugin {
 }
 
 export async function installVisualShellFixture(
+  visual: VisualClient,
   runtimeClient: () => FlameClient,
   state: VisualWorkIndexState,
   theme: VisualShellTheme,
@@ -195,31 +191,37 @@ export async function installVisualShellFixture(
   queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { retry: false });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { retry: false });
 
-  installVisualRuntimeServiceStatusPort();
-  installAgentStatePorts();
-  installWorkspaceNavigationPort(() => "https://visual.flame.test");
-  useAgentSessionStore.setState({
+  installVisualRuntimeServiceStatusPort(visual);
+  visual.agent.sessions.store.setState({
     openSessionIds: state === "populated" ? [ACTIVE_SESSION_ID] : [],
     lastSessionId: "",
   });
-  navigator().go({ session: state === "populated" ? ACTIVE_SESSION_ID : "" });
-  useAppearanceStore.setState({ theme, visualStyle: "flame" });
-  useShellLayoutStore.setState({
+  visual.navigation.go({ session: state === "populated" ? ACTIVE_SESSION_ID : "" });
+  visual.theme.store.setState({ theme, visualStyle: "flame" });
+  visual.workspace.layout.setState({
     sidebarCollapsed: !sidebarOpen,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
   });
 
   await loadPluginsForTest(
-    visualRuntimeStream,
-    visualNavigationBootstrap,
+    visualRuntimeStream(visual),
+    visualNavigationBootstrap(visual),
     sessionActionsPlugin(runtimeClient),
     dataProviderPlugin(state),
-    flameLight,
+    flameLight(visual.theme.access.preference),
     defaultAccents,
-    flameDark,
+    flameDark(visual.theme.access.preference),
     ...builtinVisualStyles,
     sessionSearch,
-    defaultCommands,
+    defaultCommands(
+      visual.agent.access,
+      visual.composer.access,
+      visual.workspace.access,
+      visual.runtime,
+      visual.directory.access,
+      visual.navigation,
+      visual.theme.access,
+    ),
     commandMenu,
     sidebarActions,
     sidebarProjects,

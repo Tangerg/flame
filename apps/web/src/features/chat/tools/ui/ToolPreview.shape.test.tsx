@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -39,7 +47,7 @@ afterEach(resetKernelForTest);
 
 describe("optional result rendering", () => {
   it("keeps recorded results readable without a package", () => {
-    render(<ToolPreview tool={tool} />);
+    testClient.render(<ToolPreview tool={tool} />);
     expect(screen.getByText(/needle here/)).toBeTruthy();
   });
   it("selects a unique named contribution before a shape contribution regardless of order", () => {
@@ -79,7 +87,7 @@ describe("optional result rendering", () => {
         },
       }),
     );
-    render(<ToolPreview tool={tool} />);
+    testClient.render(<ToolPreview tool={tool} />);
     expect(screen.getByText("enhanced rendered")).toBeTruthy();
     expect(screen.getByText(/needle here/)).toBeTruthy();
     await resetKernelForTest();
@@ -122,7 +130,7 @@ describe("optional result rendering", () => {
             },
           }),
         );
-        render(<ToolPreview tool={call} />);
+        testClient.render(<ToolPreview tool={call} />);
         const result = screen.getByRole("region", {
           name: mode === "enhanced" ? "Enhanced result" : "Result",
         });

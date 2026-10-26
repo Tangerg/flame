@@ -1,11 +1,19 @@
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { HoverTrack } from "@flame/ui";
 import { AgentRow } from "@/ui/agent/navigation-row";
 afterEach(cleanup);
 
 function renderTrack() {
-  const { container } = render(
+  const { container } = testClient.render(
     <HoverTrack>
       <AgentRow>First</AgentRow>
       <AgentRow>Second</AgentRow>
@@ -56,7 +64,7 @@ describe("a navigation row inside a hover track", () => {
   });
 
   it("paints nothing extra when no track owns the row", () => {
-    const { container } = render(<AgentRow>Alone</AgentRow>);
+    const { container } = testClient.render(<AgentRow>Alone</AgentRow>);
     const row = container.querySelector<HTMLElement>(".agent-row");
     if (!row) throw new Error("the row renders nothing");
     fireEvent.pointerEnter(row);

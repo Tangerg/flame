@@ -1,11 +1,9 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
-import { type SessionProjectionSynchronizationOwnership } from "@/features/agent/application/ports/sessionView";
-import {
-  agentRuntime,
-  type AgentSessionMaterialRead,
-} from "@/features/agent/application/ports/runtimeGateway";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+import { type SessionProjectionSynchronizationOwnership } from "@/features/agent/application/session/sessionAccess";
+import { type AgentSessionMaterialRead } from "@/features/agent/application/runtimeGateway";
+
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { reconcileSteerMessages } from "@/features/agent/application/view/viewMutations";
 import { restoreUnresolvedSteers } from "@/features/agent/application/input/steering";
@@ -21,30 +19,34 @@ export interface AgentSessionProjectionRevalidation {
 }
 
 export async function refreshAgentSessionProjection(
+  agentAccess: AgentAccess,
   sessionId: string,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionView | null> {
-  const result = await revalidateAgentSessionProjection(sessionId, options);
+  const result = await revalidateAgentSessionProjection(agentAccess, sessionId, options);
   return result?.committed ? result.authoritativeView : null;
 }
 
 export async function revalidateAgentSessionProjection(
+  agentAccess: AgentAccess,
   sessionId: string,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionProjectionRevalidation | null> {
   return revalidateAgentSessionMaterial(
+    agentAccess,
     sessionId,
-    () => agentRuntime().loadSessionSnapshot(sessionId, options.signal),
+    () => agentAccess.runtime.loadSessionSnapshot(sessionId, options.signal),
     options,
   );
 }
 
 export async function revalidateAgentSessionMaterial(
+  agentAccess: AgentAccess,
   sessionId: string,
   readMaterial: () => Promise<AgentSessionMaterialRead | null>,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionProjectionRevalidation | null> {
-  const viewPort = agentSessionView();
+  const viewPort = agentAccess.view;
   const token = viewPort.beginViewRefresh(sessionId, options.invalidateQueuedRunEvents ?? false);
   if (!token) return null;
 
@@ -64,7 +66,7 @@ export async function revalidateAgentSessionMaterial(
     material.unresolvedOpenings,
   );
   if (committed && material.unresolvedSteers?.length)
-    restoreUnresolvedSteers(sessionId, material.unresolvedSteers);
+    restoreUnresolvedSteers(agentAccess, sessionId, material.unresolvedSteers);
   return {
     authoritativeView: view,
     committed,
@@ -77,33 +79,35 @@ export interface MountedAgentSessionSynchronization {
 }
 
 export function synchronizeMountedAgentSession(
+  agentAccess: AgentAccess,
   sessionId: string,
   ownership: SessionProjectionSynchronizationOwnership,
 ): Promise<boolean> {
-  const entry = agentSessionView().getSession(sessionId);
+  const entry = agentAccess.view.getSession(sessionId);
   if (!entry) return Promise.resolve(false);
   if (entry.synchronize) return entry.synchronize(ownership);
   if (ownership === "retire-live") return Promise.resolve(false);
-  return refreshAgentSessionProjection(sessionId).then((view) => view !== null);
+  return refreshAgentSessionProjection(agentAccess, sessionId).then((view) => view !== null);
 }
 
 export function synchronizeMountedAgentSessions(
+  agentAccess: AgentAccess,
   request: MountedAgentSessionSynchronization,
 ): readonly string[] {
-  const sessions = agentSessionView().getSessions();
+  const sessions = agentAccess.view.getSessions();
   const mountedIds = Object.keys(sessions);
   const requested = request.sessionIds ? new Set(request.sessionIds) : null;
   const targets = requested
     ? mountedIds.filter((sessionId) => requested.has(sessionId))
     : mountedIds;
   if (request.ownership === "replace-live" || request.ownership === "retire-live") {
-    agentSessionView().retireProjectionGeneration(targets);
+    agentAccess.view.retireProjectionGeneration(targets);
   }
   if (request.ownership === "replace-server") {
-    agentSessionView().replaceServerScope(targets);
+    agentAccess.view.replaceServerScope(targets);
   }
   for (const sessionId of targets) {
-    void synchronizeMountedAgentSession(sessionId, request.ownership);
+    void synchronizeMountedAgentSession(agentAccess, sessionId, request.ownership);
   }
   return targets;
 }

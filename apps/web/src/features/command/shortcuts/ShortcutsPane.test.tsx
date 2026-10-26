@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COMMAND, SHORTCUT } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -48,7 +56,7 @@ function press(init: KeyboardEventInit) {
 
 describe("ShortcutsPane", () => {
   it("records a new shortcut and remembers it as an override", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     expect(useShortcutOverrides.getState().recording).toBe(true);
 
@@ -58,7 +66,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("re-evaluates a fresh combo after a conflict instead of freezing", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     press({ key: "k", code: "KeyK", ctrlKey: true, metaKey: true });
     expect(screen.getByRole("alert")).toBeTruthy();
@@ -70,7 +78,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("explains a conflict and only takes the keys over when asked", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     press({ key: "k", code: "KeyK", ctrlKey: true, metaKey: true });
 
@@ -86,13 +94,13 @@ describe("ShortcutsPane", () => {
 
   it("puts a changed shortcut back to its default", () => {
     useShortcutOverrides.setState({ overrides: { open: "mod+j" } });
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
     expect(useShortcutOverrides.getState().overrides).toEqual({});
   });
 
   it("cancels recording without admitting a shortcut override", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     press({ key: "Control", code: "ControlLeft", ctrlKey: true });
     expect(useShortcutOverrides.getState().recording).toBe(true);
@@ -106,7 +114,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("explains a fixed shortcut conflict without offering to replace it", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     press({ key: "n", code: "KeyN", ctrlKey: true, metaKey: true });
     expect(screen.getByRole("alert").textContent).toContain("New session");
@@ -119,7 +127,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("releases recording when the pane unmounts", () => {
-    const { unmount } = render(<ShortcutsPane />);
+    const { unmount } = testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     expect(useShortcutOverrides.getState().recording).toBe(true);
     unmount();
@@ -131,7 +139,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("captures keys only from the active recorder", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     window.dispatchEvent(
       new KeyboardEvent("keydown", { key: "j", code: "KeyJ", ctrlKey: true, metaKey: true }),
@@ -151,7 +159,7 @@ describe("ShortcutsPane", () => {
 
   it("records Space as a binding that dispatches and resets to the original", () => {
     const space = { key: " ", code: "Space" };
-    const view = render(
+    const view = testClient.render(
       <>
         <ShortcutsProvider />
         <ShortcutsPane />
@@ -183,7 +191,7 @@ describe("ShortcutsPane", () => {
   });
 
   it("allows bare Enter in the recorder while Tab remains navigation", () => {
-    render(<ShortcutsPane />);
+    testClient.render(<ShortcutsPane />);
     fireEvent.click(screen.getByRole("button", { name: /change the shortcut for open thing/i }));
     press({ key: "Tab", code: "Tab" });
     expect(useShortcutOverrides.getState().recording).toBe(true);

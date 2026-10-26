@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { test } from "node:test";
 import { inspectAgentWireTypes } from "./check-agent-wire.mjs";
-import { assertSourceClosure } from "./source-graph.mjs";
+import { assertSourceClosure } from "../../../tooling/source-graph.mjs";
 
 function fixture(publicSource, inspect) {
   const root = mkdtempSync(join(tmpdir(), "flame-agent-wire-"));

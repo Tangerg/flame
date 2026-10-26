@@ -1,3 +1,5 @@
+import { useComposer } from "@/features/composer/public/composer";
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { isImeKey } from "@flame/ui";
 import { focusComposer as focusComposerTarget } from "@/features/composer/public/focus";
@@ -42,6 +44,9 @@ export function useInspectionFocus({
   dockAvailable: boolean;
   dockVisible: boolean;
 }) {
+  const composerAccess = useComposer();
+  const workspaceAccess = useWorkspace();
+
   const subagentRunId = useWorkspaceSubagentRunId();
   const delivered = useRef<WorkspaceInspection | null>(null);
   const returningRef = useRef<ReturnFocus | null>(null);
@@ -194,9 +199,10 @@ export function useInspectionFocus({
     const activeElement = inspection.origin.ownerDocument.activeElement;
     returningRef.current = { inspection, activeElement, sessionId };
     const presentation = dockAvailable || inspection.previous ? "dock" : "main";
-    if (!returnFromWorkspaceInspection(inspection, presentation)) returningRef.current = null;
+    if (!returnFromWorkspaceInspection(workspaceAccess, inspection, presentation))
+      returningRef.current = null;
   };
-  const requestComposerFocus = (focus = focusComposerTarget) => {
+  const requestComposerFocus = (focus = focusComposerTarget.bind(null, composerAccess)) => {
     const conversation = conversationRef.current;
     if (!conversation) return;
     const doc = conversation.ownerDocument;
@@ -216,7 +222,7 @@ export function useInspectionFocus({
       focus,
     };
     composerRequest.current = request;
-    selectWorkspaceChat(hideDock ? "hide-dock" : "preserve-dock");
+    selectWorkspaceChat(workspaceAccess, hideDock ? "hide-dock" : "preserve-dock");
     setComposerRender(request.completion);
   };
   const onMaterialKeyDown = (event: KeyboardEvent<HTMLElement>) => {

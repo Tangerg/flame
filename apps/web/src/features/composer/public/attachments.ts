@@ -1,35 +1,52 @@
+import { useComposer } from "@/features/composer/public/composer";
 import { type ComposerImage, type PastedText } from "@/features/composer/domain/draft";
-import { composerState } from "@/features/composer/application/ports/state";
+
 export type { ComposerImage, PastedText } from "@/features/composer/domain/draft";
 
 export function useComposerImages(): readonly ComposerImage[] {
-  return composerState().useImages();
+  const composerAccess = useComposer();
+
+  return composerAccess.useImages();
 }
 
 export function useComposerPastes(): readonly PastedText[] {
-  return composerState().usePastes();
+  const composerAccess = useComposer();
+
+  return composerAccess.usePastes();
 }
 
 export function useAddComposerImageFiles(): (files: File[]) => void {
-  return composerState().useAddImageFiles();
+  const composerAccess = useComposer();
+
+  return composerAccess.useAddImageFiles();
 }
 
 export function useRemoveComposerImage(): (id: string) => void {
-  return composerState().useRemoveImage();
+  const composerAccess = useComposer();
+
+  return composerAccess.useRemoveImage();
 }
 
 export function useAddComposerPaste(): (text: string) => void {
-  return composerState().useAddPaste();
+  const composerAccess = useComposer();
+
+  return composerAccess.useAddPaste();
 }
 
 export function useRemoveComposerPaste(): (id: string) => void {
-  return composerState().useRemovePaste();
+  const composerAccess = useComposer();
+
+  return composerAccess.useRemovePaste();
 }
 
 export function useEditComposerPaste(): (id: string, text: string) => boolean {
-  return composerState().useEditPaste();
+  const composerAccess = useComposer();
+
+  return composerAccess.useEditPaste();
 }
 
 export function useRestoreComposerPaste(): (id: string, text: string) => void {
-  return composerState().useRestorePaste();
+  const composerAccess = useComposer();
+
+  return composerAccess.useRestorePaste();
 }

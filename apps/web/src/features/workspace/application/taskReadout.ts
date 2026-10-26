@@ -1,21 +1,12 @@
-import { useMemo } from "react";
 import { clamp01 } from "@/lib/clamp";
 import { type Translate } from "@/lib/i18n/index";
-import { useT } from "@/lib/i18n/index";
-import { type TaskEntry } from "@/features/workspace/application/ports/taskReadoutPort";
-import { taskReadoutPort } from "@/features/workspace/application/ports/taskReadoutPort";
+import { type TaskEntry } from "@/extensions/tasksStore";
 export interface TaskReadout {
   tasks: TaskEntry[];
   runningCount: number;
   head: TaskEntry;
   label: string;
   title: string;
-}
-
-export function useTaskReadout(): TaskReadout | null {
-  const tasks = taskReadoutPort().useTasks();
-  const t = useT();
-  return useMemo(() => taskReadout(t, tasks), [t, tasks]);
 }
 
 export function taskReadout(t: Translate, tasks: Map<string, TaskEntry>): TaskReadout | null {

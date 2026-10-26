@@ -1,5 +1,5 @@
 import { asSessionId, type FlameClient, type SessionArtifact } from "@flame/runtime-client";
-import { ConversationArchiveOwner } from "@/features/workspace/application/conversationExport";
+import { type ConversationArchive } from "@/features/workspace/application/conversationExport";
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 import { prettyJSON } from "@/lib/json";
@@ -29,11 +29,12 @@ function runtimeConversationArchiveGateway(client: FlameClient): ConversationArc
   };
 }
 
-export function installConversationArchiveGateway(
+export function createConversationArchiveGateway(
+  archive: ConversationArchive,
   runtimeClient: () => FlameClient,
   files: FileTransferPort,
 ) {
-  const owner = ConversationArchiveOwner.install({
+  const owner = archive.install({
     gateway: runtimeConversationArchiveGateway(runtimeClient()),
     files,
   });

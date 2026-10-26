@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { Icon } from "@/ui/index";
@@ -60,6 +61,8 @@ export function DelegatedRunLink({
   taskLabel?: string;
   onOpen?: () => void;
 }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const current = useWorkspaceSubagentRunId() === run.id;
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
@@ -72,7 +75,7 @@ export function DelegatedRunLink({
       <Pressable
         aria-current={current ? "true" : undefined}
         onClick={(event) =>
-          onOpen ? onOpen() : openWorkspaceSubagentRun(run.id, event.currentTarget)
+          onOpen ? onOpen() : openWorkspaceSubagentRun(workspaceAccess, run.id, event.currentTarget)
         }
         className={stylex.props(styles.link, current && styles.current).className}
       >

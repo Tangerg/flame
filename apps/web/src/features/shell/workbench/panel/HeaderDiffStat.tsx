@@ -1,9 +1,12 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { Button, DiffStat, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { openWorkspaceDiffForFile } from "@/features/workspace/public/navigation";
 import { useWorkingTreeChanges } from "@/features/workspace/public/queries";
 export function HeaderDiffStat({ className }: { className?: string }) {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const changes = useWorkingTreeChanges();
   if (!changes) return null;
@@ -16,7 +19,7 @@ export function HeaderDiffStat({ className }: { className?: string }) {
       size="sm"
       aria-label={t("diff.worktree.open", { count: changes.files })}
       title={t("diff.worktree.open", { count: changes.files })}
-      onClick={(event) => openWorkspaceDiffForFile("", event.currentTarget)}
+      onClick={(event) => openWorkspaceDiffForFile(workspaceAccess, "", event.currentTarget)}
       chip
       face="mono"
       className={className}

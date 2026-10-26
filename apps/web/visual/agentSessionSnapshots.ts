@@ -12,7 +12,7 @@ import {
   runtimePendingInterruptSet,
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
-import { type AgentSessionSnapshot } from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeGateway";
 import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
@@ -1104,7 +1104,7 @@ export const READING_BLOCKS_MARKDOWN = [
   "",
   "An [unavailable source](javascript:alert%281%29) remains part of the recorded explanation.",
   "",
-  '[protocol]: https://example.test/runtime/protocol "Accepted protocol contract"',
+  '[protocol]: https://example.test/packages/go-sdk/protocol "Accepted protocol contract"',
   "[implementation notes]: https://example.test/runtime/implementation",
 ].join("\n");
 

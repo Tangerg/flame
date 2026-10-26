@@ -1,12 +1,17 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { contributeForTest } from "@/test/kernel";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { beforeEach, describe, expect, it } from "vitest";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import {
-  useContextDockStore,
-  WorkspaceFileFocus,
-} from "@/features/workspace/adapters/contextDockStore";
-import { navigator } from "@/lib/navigation";
+import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
+
 import {
   hasWorkspaceViewForTool,
   openWorkspaceViewForTool,
@@ -33,8 +38,8 @@ describe("openWorkspaceViewForTool", () => {
         component: () => null,
       }),
     );
-    navigator().go({ view: null, dock: null });
-    useContextDockStore.setState({
+    testClient.navigation.go({ view: null, dock: null });
+    testClient.workspace.dock.store.setState({
       dockViewIds: [],
       lastViewId: null,
       fileFocus: WorkspaceFileFocus.empty(),
@@ -57,14 +62,16 @@ describe("openWorkspaceViewForTool", () => {
 
   it("keeps command tools in the conversation", () => {
     openWorkspaceViewForTool(
+      testClient.workspace.access,
       toolCall({ id: "t1", name: "shell", category: "shell", fn: "ls -la" }),
     );
-    expect(navigator().get().dock).toBeNull();
-    expect(navigator().get().view).toBeNull();
+    expect(testClient.navigation.get().dock).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
   });
 
   it("opens a fileEdit tool as the diff split and focuses its file", () => {
     openWorkspaceViewForTool(
+      testClient.workspace.access,
       toolCall({
         id: "t2",
         name: "apply_patch",
@@ -73,42 +80,53 @@ describe("openWorkspaceViewForTool", () => {
         fnKind: "path",
       }),
     );
-    expect(navigator().get().dock).toBe("package:review:diff");
-    expect(navigator().get().view).toBeNull();
-    expect(useContextDockStore.getState().fileFocus).toMatchObject({
+    expect(testClient.navigation.get().dock).toBe("package:review:diff");
+    expect(testClient.navigation.get().view).toBeNull();
+    expect(testClient.workspace.dock.store.getState().fileFocus).toMatchObject({
       path: "src/app.ts",
       revision: 1n,
     });
   });
 
   it("does not feed a multi-file patch label to the diff's active-file focus", () => {
-    useContextDockStore.getState().focusFile("src/old.ts");
+    testClient.workspace.dock.store.getState().focusFile("src/old.ts");
     openWorkspaceViewForTool(
+      testClient.workspace.access,
       toolCall({ id: "t3", name: "apply_patch", category: "edit", fn: "apply_patch" }),
     );
-    expect(navigator().get().dock).toBe("package:review:diff");
-    expect(useContextDockStore.getState().fileFocus).toMatchObject({ path: "", revision: 2n });
+    expect(testClient.navigation.get().dock).toBe("package:review:diff");
+    expect(testClient.workspace.dock.store.getState().fileFocus).toMatchObject({
+      path: "",
+      revision: 2n,
+    });
   });
 
   it("promotes no view for inline-only categories", () => {
-    openWorkspaceViewForTool(toolCall({ id: "t4", name: "grep", category: "search", fn: "foo" }));
-    expect(navigator().get().dock).toBeNull();
-    expect(navigator().get().view).toBeNull();
+    openWorkspaceViewForTool(
+      testClient.workspace.access,
+      toolCall({ id: "t4", name: "grep", category: "search", fn: "foo" }),
+    );
+    expect(testClient.navigation.get().dock).toBeNull();
+    expect(testClient.navigation.get().view).toBeNull();
   });
 
   it("opens a read tool at its file without showing a diff", () => {
     openWorkspaceViewForTool(
+      testClient.workspace.access,
       toolCall({ id: "t5", name: "read", category: "read", fn: "src/app.ts", fnKind: "path" }),
     );
-    expect(navigator().get().dock).toBe("file");
-    expect(useContextDockStore.getState().fileViewer).toEqual({ path: "src/app.ts", line: 0 });
+    expect(testClient.navigation.get().dock).toBe("file");
+    expect(testClient.workspace.dock.store.getState().fileViewer).toEqual({
+      path: "src/app.ts",
+      line: 0,
+    });
   });
 
   it("offers no file destination without an authoritative path", () => {
     const read = toolCall({ id: "t6", name: "read", category: "read", fn: "Read file" });
     expect(hasWorkspaceViewForTool(read)).toBe(false);
-    openWorkspaceViewForTool(read);
-    expect(navigator().get().dock).toBeNull();
+    openWorkspaceViewForTool(testClient.workspace.access, read);
+    expect(testClient.navigation.get().dock).toBeNull();
   });
 
   it("routes the projected category independently of the tool name", () => {
@@ -120,9 +138,9 @@ describe("openWorkspaceViewForTool", () => {
       fnKind: "path",
     });
     expect(hasWorkspaceViewForTool(extensionRead)).toBe(true);
-    openWorkspaceViewForTool(extensionRead);
-    expect(navigator().get().dock).toBe("file");
-    expect(useContextDockStore.getState().fileViewer).toEqual({
+    openWorkspaceViewForTool(testClient.workspace.access, extensionRead);
+    expect(testClient.navigation.get().dock).toBe("file");
+    expect(testClient.workspace.dock.store.getState().fileViewer).toEqual({
       path: "src/extension.ts",
       line: 0,
     });

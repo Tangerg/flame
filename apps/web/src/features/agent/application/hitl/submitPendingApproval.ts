@@ -1,13 +1,16 @@
-import { agentSessionState } from "@/features/agent/application/ports/sessionState";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+import { type AgentAccess } from "@/features/agent/public/agent";
+
 import { getApprovalActions } from "@/features/agent/application/hitl/useApprovalSubmit";
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
 import { resumeInterrupt } from "@/features/agent/application/hitl/useInterruptResume";
-import { interruptResponseIsStaged } from "@/features/agent/application/hitl/interruptResponseCoordinator";
+
 import { selectAwaitingGroups } from "@/features/agent/application/view/awaitingInterrupts";
-export function submitPendingApproval(decision: ApprovalDecision): boolean {
-  const sid = agentSessionState().getActiveSessionId();
-  const entry = agentSessionView().getSession(sid);
+export function submitPendingApproval(
+  agentAccess: AgentAccess,
+  decision: ApprovalDecision,
+): boolean {
+  const sid = agentAccess.state.getActiveSessionId();
+  const entry = agentAccess.view.getSession(sid);
   if (!entry) return false;
 
   const awaiting = selectAwaitingGroups(entry.view);
@@ -18,7 +21,7 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
     group.interrupts.some(
       (interrupt) =>
         interrupt.kind === "approval" &&
-        !interruptResponseIsStaged({
+        !agentAccess.interrupts.isStaged({
           sessionId: sid,
           rootRunId: group.rootRunId,
           itemId: interrupt.itemId,
@@ -28,7 +31,7 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
   const interrupt = oi?.interrupts.find(
     (candidate) =>
       candidate.kind === "approval" &&
-      !interruptResponseIsStaged({
+      !agentAccess.interrupts.isStaged({
         sessionId: sid,
         rootRunId: oi.rootRunId,
         itemId: candidate.itemId,
@@ -44,7 +47,7 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
     return true;
   }
 
-  resumeInterrupt(sid, oi.rootRunId, itemId, {
+  resumeInterrupt(agentAccess, sid, oi.rootRunId, itemId, {
     type: "approval",
     decision,
   });

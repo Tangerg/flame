@@ -1,16 +1,22 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  activateComposerStorage,
-  useComposerStore,
-} from "@/features/composer/adapters/composerStore";
-import * as imageInput from "@/features/composer/public/input";
-const composer = () => useComposerStore.getState();
 
-const STORAGE_KEY = useComposerStore.persist.getOptions().name!;
+import * as imageInput from "@/features/composer/public/input";
+const composer = () => testClient.composer.store.getState();
+
+let STORAGE_KEY: string;
 
 afterEach(() => vi.restoreAllMocks());
 
 beforeEach(() => {
+  STORAGE_KEY = testClient.composer.store.persist.getOptions().name!;
   localStorage.removeItem(STORAGE_KEY);
   composer().clear();
 });
@@ -26,9 +32,9 @@ describe("the composer's drafts", () => {
 
     composer().clear();
     localStorage.setItem(STORAGE_KEY, payload);
-    await useComposerStore.persist.rehydrate();
+    await testClient.composer.store.persist.rehydrate();
 
-    const partialize = useComposerStore.persist.getOptions().partialize!;
+    const partialize = testClient.composer.store.persist.getOptions().partialize!;
     expect(JSON.parse(JSON.stringify(partialize(composer() as never)))).toEqual(written);
     composer().loadSession("s1");
     expect(composer().composer.draft.value).toBe("half a thought");
@@ -71,14 +77,14 @@ describe("submission binding", () => {
 
 describe("captured authoring lifetime", () => {
   it("retires a draft callback after a storage target changes away and back", () => {
-    activateComposerStorage("https://draft-a.example");
+    testClient.composer.activate("https://draft-a.example");
     composer().loadSession("same-session");
     composer().setValue("original target");
     const submission = composer().captureSubmission();
-    activateComposerStorage("https://draft-b.example");
+    testClient.composer.activate("https://draft-b.example");
     composer().loadSession("same-session");
     composer().setValue("successor target");
-    activateComposerStorage("https://draft-a.example");
+    testClient.composer.activate("https://draft-a.example");
     expect(submission.consume("original target")).toBe(false);
     expect(composer().composer.draft.value).toBe("original target");
   });
@@ -114,7 +120,9 @@ describe("captured draft replacement", () => {
     composer().addImages([{ mime: "image/png", data: "old-image" }]);
     const replace = composer().captureDraftReplacement();
     const observed = vi.fn();
-    const unsubscribe = useComposerStore.subscribe((state) => observed(state.composer.draft));
+    const unsubscribe = testClient.composer.store.subscribe((state) =>
+      observed(state.composer.draft),
+    );
 
     try {
       expect(
@@ -186,14 +194,14 @@ describe("captured draft replacement", () => {
   });
 
   it("retires replacement after the storage target changes away and back", () => {
-    activateComposerStorage("https://replace-draft-a.test");
+    testClient.composer.activate("https://replace-draft-a.test");
     composer().loadSession("same-session");
     composer().setValue("original target");
     const replace = composer().captureDraftReplacement();
-    activateComposerStorage("https://replace-draft-b.test");
+    testClient.composer.activate("https://replace-draft-b.test");
     composer().loadSession("same-session");
     composer().setValue("successor target");
-    activateComposerStorage("https://replace-draft-a.test");
+    testClient.composer.activate("https://replace-draft-a.test");
     composer().loadSession("same-session");
 
     expect(replace({ text: "history input" })).toBe(false);

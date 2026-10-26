@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { writeToClipboard } from "@/lib/clipboard";
@@ -60,7 +68,7 @@ describe("SessionIdentity", () => {
   });
 
   it("offers a native More actions button beside the unchanged title heading", () => {
-    render(<Host {...release} />);
+    testClient.render(<Host {...release} />);
 
     const heading = screen.getByRole("heading", { level: 1, name: "Release notes" });
     const more = moreButton("Release notes");
@@ -99,7 +107,7 @@ describe("SessionIdentity", () => {
       successLabel: "Session ID copied",
     },
   ])("copies through the $route menu with $label", async ({ route, label, text, successLabel }) => {
-    render(<Host {...release} />);
+    testClient.render(<Host {...release} />);
 
     const menu = await openMenu(route, "Release notes");
     expect(itemLabels(menu)).toEqual(["Copy working directory", "Copy session ID"]);
@@ -112,7 +120,7 @@ describe("SessionIdentity", () => {
   it.each(["context", "dropdown"] as const)(
     "offers only the session ID in the %s menu without a workspace",
     async (route) => {
-      render(<Host sessionId="session-only" title="Draft" />);
+      testClient.render(<Host sessionId="session-only" title="Draft" />);
 
       expect(screen.queryByText("/")).toBeNull();
       const menu = await openMenu(route, "Draft");
@@ -123,7 +131,7 @@ describe("SessionIdentity", () => {
   it.each(["context", "dropdown"] as const)(
     "offers only the working directory in the %s menu without a session ID",
     async (route) => {
-      render(<Host sessionId="" title="New session" workspacePath="/repo/flame" />);
+      testClient.render(<Host sessionId="" title="New session" workspacePath="/repo/flame" />);
 
       const menu = await openMenu(route, "New session");
       expect(itemLabels(menu)).toEqual(["Copy working directory"]);
@@ -131,7 +139,7 @@ describe("SessionIdentity", () => {
   );
 
   it("renders no menu trigger or empty menu when nothing can be copied", async () => {
-    render(<Host sessionId="" title="New session" />);
+    testClient.render(<Host sessionId="" title="New session" />);
 
     expect(screen.queryByRole("button", { name: /More actions/ })).toBeNull();
     fireEvent.contextMenu(screen.getByRole("heading", { level: 1, name: "New session" }));
@@ -144,7 +152,7 @@ describe("SessionIdentity", () => {
   it.each(["context", "dropdown"] as const)(
     "retires an open %s menu when the Session is replaced",
     async (route) => {
-      const view = render(<Host {...release} />);
+      const view = testClient.render(<Host {...release} />);
       const outside = screen.getByRole("button", { name: "Outside" });
       const menu = await openMenu(route, "Release notes");
 
@@ -165,7 +173,7 @@ describe("SessionIdentity", () => {
   );
 
   it("keeps an open menu on a renamed Session with its current identity", async () => {
-    const view = render(<Host {...release} />);
+    const view = testClient.render(<Host {...release} />);
     const menu = await openMenu("dropdown", "Release notes");
 
     view.rerender(<Host {...release} title="Shipped notes" />);
@@ -182,7 +190,7 @@ describe("SessionIdentity", () => {
   it.each(["context", "dropdown"] as const)(
     "retires an open %s menu with its hidden host and keeps later outside focus",
     async (route) => {
-      const view = render(<Host {...release} />);
+      const view = testClient.render(<Host {...release} />);
       const outside = screen.getByRole("button", { name: "Outside" });
       const menu = await openMenu(route, "Release notes");
 

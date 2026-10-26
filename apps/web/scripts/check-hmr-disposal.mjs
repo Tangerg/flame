@@ -11,7 +11,7 @@
 // exactly the set of calls that run at import; a registration inside a function or a callback is
 // indented, runs when its owner runs, and is that owner's to clean up.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 

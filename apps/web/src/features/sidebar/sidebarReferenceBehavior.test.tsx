@@ -1,4 +1,12 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SidebarActions } from "@/features/sidebar/actions";
 import { ProjectsSection } from "@/features/sidebar/projects";
@@ -49,19 +57,19 @@ afterEach(() => {
 
 describe("Codex-aligned Work Index actions", () => {
   it("keeps folder selection out of the global action stack", () => {
-    render(<SidebarActions />);
+    testClient.render(<SidebarActions />);
 
     expect(screen.queryByRole("button", { name: "Open folder" })).toBeNull();
   });
 
   it("owns folder selection from the Projects section header", () => {
-    render(<ProjectsSection />);
+    testClient.render(<ProjectsSection />);
 
     expect(screen.getByRole("button", { name: "Add project" })).toBeTruthy();
   });
 
   it("keeps the Projects add action visible without hover discovery", () => {
-    render(<ProjectsSection />);
+    testClient.render(<ProjectsSection />);
 
     const addProject = screen.getByRole("button", { name: "Add project" });
     expect(addProject.classList.contains("opacity-0")).toBe(false);
@@ -70,7 +78,7 @@ describe("Codex-aligned Work Index actions", () => {
   it("withdraws Session creation affordances while Runtime commands are unavailable", () => {
     model.actions.canCreateSession = false;
     model.actions.canCreateSessionInFolder = false;
-    render(
+    testClient.render(
       <>
         <SidebarActions />
         <ProjectsSection />

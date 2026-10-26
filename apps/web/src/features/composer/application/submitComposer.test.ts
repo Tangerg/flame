@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { COMPOSER_SUBMIT_MODE } from "@/features/composer/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -6,7 +14,7 @@ import { type SlashCommandRunCtx } from "@/features/composer/public/types";
 import { SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
 import { submitComposer, type SubmitDeps } from "@/features/composer/application/submitComposer";
 import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
-import { useComposerStore } from "@/features/composer/adapters/composerStore";
+
 import {
   captureComposerFocus,
   registerComposerFocusTarget,
@@ -171,7 +179,7 @@ describe("submitComposer", () => {
     await command((context) => {
       accept = context.accept;
     });
-    const store = () => useComposerStore.getState();
+    const store = () => testClient.composer.store.getState();
     store().loadSession("slash-revision");
     store().setValue("/echo same");
     const draft = store().captureSubmission();
@@ -285,14 +293,16 @@ it("does not steal focus after a delayed acceptance", async () => {
   const editor = document.createElement("textarea");
   const other = document.createElement("button");
   document.body.append(editor, other);
-  const unregister = registerComposerFocusTarget(editor);
+  const unregister = registerComposerFocusTarget(testClient.composer.access, editor);
   try {
     let accept!: () => void;
     await command((context) => {
       accept = context.accept;
     });
     editor.focus();
-    const input = deps("/echo later", { restoreFocus: captureComposerFocus() });
+    const input = deps("/echo later", {
+      restoreFocus: captureComposerFocus(testClient.composer.access),
+    });
     submitComposer(input);
     other.focus();
     accept();

@@ -1,6 +1,6 @@
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
-import { SelectionQuote } from "@/features/composer/quote-selection/ui/SelectionQuote";
+import { SelectionQuote } from "@/features/composer/quote-selection/SelectionQuote";
 export default definePlugin({
   name: "flame.builtin.quote-selection",
   setup(ctx) {

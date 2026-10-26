@@ -1,10 +1,18 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import {
   defaultScheduler,
   notifyManager,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { type Host } from "dougong";
@@ -83,10 +91,13 @@ describe("createParameterizedDataQuery", () => {
     );
     const useResource = createParameterizedDataQuery<{ workspace: string }, string>("resource");
 
-    const { result, rerender } = renderHook(({ workspace }) => useResource({ workspace }), {
-      initialProps: { workspace: "/work/old" },
-      wrapper: createWrapper(),
-    });
+    const { result, rerender } = testClient.renderHook(
+      ({ workspace }) => useResource({ workspace }),
+      {
+        initialProps: { workspace: "/work/old" },
+        wrapper: createWrapper(),
+      },
+    );
     await waitFor(() => expect(result.current.data).toBe("old value"));
 
     rerender({ workspace: "/work/new" });
@@ -101,7 +112,7 @@ describe("createParameterizedDataQuery", () => {
     await registerProvider(fetcher);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
 
-    const { result } = renderHook(() => useResource(undefined), {
+    const { result } = testClient.renderHook(() => useResource(undefined), {
       wrapper: createWrapper(),
     });
 
@@ -128,7 +139,7 @@ describe("createParameterizedDataQuery", () => {
       ]),
     );
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), {
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(retiredFetcher).toHaveBeenCalledOnce());
@@ -171,7 +182,7 @@ describe("createParameterizedDataQuery", () => {
     const successor = Promise.withResolvers<string>();
     const successorFetcher = vi.fn(() => successor.promise);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), {
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(hook.result.current.data).toBe("cached retired value"));
@@ -212,7 +223,7 @@ describe("createParameterizedDataQuery", () => {
     const specDefaults = queryClient.getDefaultOptions();
     const params = { id: "same" };
     const useResource = createParameterizedDataQuery<typeof params, string>("resource");
-    const hook = renderHook(() => useResource(params), {
+    const hook = testClient.renderHook(() => useResource(params), {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(retiredFetcher).toHaveBeenCalledOnce());
@@ -261,7 +272,9 @@ describe("createParameterizedDataQuery", () => {
     ]);
     ownedHosts.push(host);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
+      wrapper: productQueryWrapper,
+    });
     await waitFor(() => expect(stableSignal).toBeDefined());
     expect(stableSignal!.aborted).toBe(false);
 
@@ -300,7 +313,7 @@ describe("createParameterizedDataQuery", () => {
     ownedHosts.push(host);
     const successorFetcher = vi.fn().mockResolvedValue("override value");
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), {
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(retiredFetcher).toHaveBeenCalledOnce());
@@ -334,7 +347,7 @@ describe("createParameterizedDataQuery", () => {
     ]);
     ownedHosts.push(host);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), {
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
       wrapper: productQueryWrapper,
     });
     await waitFor(() => expect(hook.result.current.data).toBe("stable value"));
@@ -370,7 +383,9 @@ describe("createParameterizedDataQuery", () => {
     ]);
     ownedHosts.push(host);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    const hook = renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
+    const hook = testClient.renderHook(() => useResource({ id: "same" }), {
+      wrapper: productQueryWrapper,
+    });
     await waitFor(() => expect(hook.result.current.fetchStatus).toBe("fetching"));
     const cancellation = Promise.withResolvers<void>();
     const cancel = queryClient.cancelQueries.bind(queryClient);

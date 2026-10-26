@@ -1,3 +1,10 @@
+import { type ThemeAccess } from "@/features/theme/public/theme";
+import { type AgentAccess } from "@/features/agent/public/agent";
+import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
+import { type ComposerAccess } from "@/features/composer/public/composer";
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
+import { type WorkingDirectoryAccess } from "@/features/navigation/public/workingDirectory";
+import { type Navigator } from "@/lib/navigation";
 import { type CommandSpec } from "@/features/command/public/commands";
 import { toggleThemeScheme } from "@/features/theme/public/scheme";
 import { closeActiveAgentSession } from "@/features/agent/public/session";
@@ -10,7 +17,7 @@ import {
 } from "@/features/workspace/public/navigation";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
-import { navigator } from "@/lib/navigation";
+
 import { createNewSession } from "@/features/navigation/public/workIndex";
 type CommandRun = CommandSpec["run"];
 
@@ -85,27 +92,42 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
   ];
 }
 
-function closeFocusedSurface(): void {
-  if (closeActiveWorkspaceView()) return;
-  if (closeActiveWorkspaceDockView()) return;
-  closeActiveAgentSession();
+function closeFocusedSurface(agentAccess: AgentAccess, workspaceAccess: WorkspaceAccess): void {
+  if (closeActiveWorkspaceView(workspaceAccess)) return;
+  if (closeActiveWorkspaceDockView(workspaceAccess)) return;
+  closeActiveAgentSession(agentAccess);
 }
 
-export const defaultCommands = definePlugin({
-  name: "flame.builtin.default-commands",
-  setup(ctx) {
-    for (const command of defaultStaticCommands({
-      toggleSidebar: toggleWorkspaceSidebar,
-      toggleDock: toggleWorkspaceDock,
-      toggleTheme: toggleThemeScheme,
-      newChat: createNewSession,
-      closeFocused: closeFocusedSurface,
-      historyBack: () => navigator().back(),
-      historyForward: () => navigator().forward(),
-      previousSession: () => stepActiveAgentSession(-1),
-      nextSession: () => stepActiveAgentSession(1),
-    })) {
-      ctx.contribute(COMMAND, command);
-    }
-  },
-});
+export const defaultCommands = (
+  agentAccess: AgentAccess,
+  composerAccess: ComposerAccess,
+  workspaceAccess: WorkspaceAccess,
+  runtimeAccess: RuntimeAccess,
+  directoryAccess: WorkingDirectoryAccess,
+  navigation: Navigator,
+  themeAccess: ThemeAccess,
+) =>
+  definePlugin({
+    name: "flame.builtin.default-commands",
+    setup(ctx) {
+      for (const command of defaultStaticCommands({
+        toggleSidebar: toggleWorkspaceSidebar.bind(null, workspaceAccess),
+        toggleDock: toggleWorkspaceDock.bind(null, workspaceAccess),
+        toggleTheme: () => toggleThemeScheme(themeAccess),
+        newChat: createNewSession.bind(
+          null,
+          agentAccess,
+          composerAccess,
+          runtimeAccess,
+          directoryAccess,
+        ),
+        closeFocused: closeFocusedSurface.bind(null, agentAccess, workspaceAccess),
+        historyBack: () => navigation.back(),
+        historyForward: () => navigation.forward(),
+        previousSession: () => stepActiveAgentSession(agentAccess, -1),
+        nextSession: () => stepActiveAgentSession(agentAccess, 1),
+      })) {
+        ctx.contribute(COMMAND, command);
+      }
+    },
+  });

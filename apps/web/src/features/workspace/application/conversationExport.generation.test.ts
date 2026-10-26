@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  ConversationArchiveOwner,
-  exportConversationMarkdown,
-  exportConversationJson,
-  exportSessionTrajectory,
-  importConversationJson,
-} from "@/features/workspace/application/conversationExport";
+import { type ConversationArchiveOwner } from "@/features/workspace/application/conversationExport";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+
 import { type ConversationArchiveGateway } from "@/features/workspace/application/ports/conversationArchiveGateway";
 import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
 import { createFileTransfer } from "@/features/workspace/adapters/fileTransfer";
@@ -49,6 +46,7 @@ let download = vi.fn<(filename: string, content: string, mime: string) => Promis
 let files: FileTransferPort | null;
 
 beforeEach(() => {
+  testClient = createTestClient({ start: false });
   mocks.activeSessionId = "session-current";
   mocks.sessionExport = true;
   mocks.invalidateAgentSessions.mockReset().mockResolvedValue(undefined);
@@ -62,16 +60,17 @@ beforeEach(() => {
   files = null;
 });
 
-afterEach(() => {
+afterEach(async () => {
   for (const dispose of disposers.splice(0).reverse()) dispose();
+  await testClient.dispose();
   vi.restoreAllMocks();
 });
 
 describe("conversation archive generation", () => {
   it.each([
-    ["Markdown", exportConversationMarkdown],
-    ["JSON", exportConversationJson],
-    ["trajectory", exportSessionTrajectory],
+    ["Markdown", () => testClient.workspace.access.archive.exportConversationMarkdown()],
+    ["JSON", () => testClient.workspace.access.archive.exportConversationJson()],
+    ["trajectory", () => testClient.workspace.access.archive.exportSessionTrajectory()],
   ] as const)("waits for the %s file handoff to finish", async (_format, run) => {
     const handoff = Promise.withResolvers<void>();
     download.mockImplementationOnce(() => handoff.promise);
@@ -95,9 +94,9 @@ describe("conversation archive generation", () => {
   });
 
   it.each([
-    ["Markdown", exportConversationMarkdown],
-    ["JSON", exportConversationJson],
-    ["trajectory", exportSessionTrajectory],
+    ["Markdown", () => testClient.workspace.access.archive.exportConversationMarkdown()],
+    ["JSON", () => testClient.workspace.access.archive.exportConversationJson()],
+    ["trajectory", () => testClient.workspace.access.archive.exportSessionTrajectory()],
   ] as const)("reports a deferred %s save failure", async (_format, run) => {
     const handoff = Promise.withResolvers<void>();
     const failure = new Error("selected file could not be written");
@@ -125,7 +124,7 @@ describe("conversation archive generation", () => {
       exportTrajectory: vi.fn().mockResolvedValue("original captured evidence"),
     });
 
-    const exporting = exportSessionTrajectory();
+    const exporting = testClient.workspace.access.archive.exportSessionTrajectory();
     await vi.waitFor(() => expect(download).toHaveBeenCalledOnce());
     owner.replaceRuntimeGeneration(() => ({
       exportConversation: async () => "current conversation",
@@ -138,7 +137,7 @@ describe("conversation archive generation", () => {
     expect(mocks.notifyError).not.toHaveBeenCalled();
     expect(download.mock.calls[0]?.[1]).toBe("original captured evidence");
 
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
     expect(download).toHaveBeenLastCalledWith(
       expect.stringContaining("flame-session-current-trajectory-"),
       "current evidence",
@@ -152,7 +151,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
 
-    const exporting = exportSessionTrajectory();
+    const exporting = testClient.workspace.access.archive.exportSessionTrajectory();
     mocks.activeSessionId = "session-other";
     response.resolve('{"schemaVersion":1,"evidence":"complete"}');
     await exporting;
@@ -170,7 +169,7 @@ describe("conversation archive generation", () => {
     mocks.sessionExport = false;
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
     expect(exportTrajectory).not.toHaveBeenCalled();
     expect(download).not.toHaveBeenCalled();
     expect(mocks.notifyError).toHaveBeenCalledOnce();
@@ -181,7 +180,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory: vi.fn().mockRejectedValue(failure) });
 
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
 
     expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("session is busy", {
       source: "session",
@@ -194,7 +193,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportConversation: vi.fn().mockRejectedValue(failure) });
 
-    await exportConversationMarkdown();
+    await testClient.workspace.access.archive.exportConversationMarkdown();
 
     expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("session is busy", {
       source: "session",
@@ -208,11 +207,11 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: () => Promise.resolve(JSON.stringify(artifact)) });
     installGateway({ importConversation });
 
-    await importConversationJson();
+    await testClient.workspace.access.archive.importConversationJson();
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(artifact);
     expect(mocks.notifyError).not.toHaveBeenCalled();
-    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
+    expect(mocks.selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "imported");
   });
 
   it("retires a pending evidence export before the previous Runtime can download", async () => {
@@ -221,7 +220,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     const owner = installGateway({ exportTrajectory });
 
-    const exporting = exportSessionTrajectory();
+    const exporting = testClient.workspace.access.archive.exportSessionTrajectory();
     await vi.waitFor(() => expect(exportTrajectory).toHaveBeenCalledOnce());
     owner.replaceRuntimeGeneration(
       () =>
@@ -234,7 +233,7 @@ describe("conversation archive generation", () => {
     await drainMicrotasks();
 
     expect(download).not.toHaveBeenCalled();
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
     expect(download).toHaveBeenCalledWith(
       expect.stringContaining("flame-session-current-trajectory-"),
       "current",
@@ -248,7 +247,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportTrajectory });
 
-    await exportSessionTrajectory();
+    await testClient.workspace.access.archive.exportSessionTrajectory();
 
     expect(exportTrajectory).not.toHaveBeenCalled();
     expect(download).not.toHaveBeenCalled();
@@ -260,7 +259,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: () => picker.promise });
     installGateway({ importConversation: vi.fn() });
 
-    const retired = importConversationJson();
+    const retired = testClient.workspace.access.archive.importConversationJson();
     await drainMicrotasks();
     installGateway({ importConversation: successorImport });
     const hasSettled = observedSettlement(retired);
@@ -286,7 +285,7 @@ describe("conversation archive generation", () => {
     });
     installGateway({ importConversation: retiredImport });
 
-    const retired = importConversationJson();
+    const retired = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(retiredImport).toHaveBeenCalledOnce());
     installGateway({ importConversation: vi.fn().mockResolvedValue({ id: "successor-session" }) });
     const hasSettled = observedSettlement(retired);
@@ -309,7 +308,7 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText: vi.fn() });
     installGateway({ exportConversation: retiredExport });
 
-    const retired = exportConversationMarkdown();
+    const retired = testClient.workspace.access.archive.exportConversationMarkdown();
     await vi.waitFor(() => expect(retiredExport).toHaveBeenCalledOnce());
     installGateway({
       exportConversation: vi.fn().mockResolvedValue("successor"),
@@ -337,9 +336,11 @@ describe("conversation archive generation", () => {
     } as unknown as ConversationArchiveGateway;
     const owner = installGateway(gateway);
 
-    const retired = importConversationJson();
+    const retired = testClient.workspace.access.archive.importConversationJson();
     const hasSettled = observedSettlement(retired);
-    await vi.waitFor(() => expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported"));
+    await vi.waitFor(() =>
+      expect(mocks.rehydrateSessionView).toHaveBeenCalledWith(testClient.agent.access, "imported"),
+    );
     owner.replaceRuntimeGeneration(() => gateway);
     await drainMicrotasks();
     const settledAtReplacement = hasSettled();
@@ -365,7 +366,7 @@ describe("conversation archive generation", () => {
     } as unknown as ConversationArchiveGateway;
     const owner = installGateway(gateway);
 
-    const retired = importConversationJson();
+    const retired = testClient.workspace.access.archive.importConversationJson();
     const hasSettled = observedSettlement(retired);
     await vi.waitFor(() => expect(mocks.invalidateAgentSessions).toHaveBeenCalledOnce());
     owner.replaceRuntimeGeneration(() => gateway);
@@ -390,10 +391,10 @@ describe("conversation archive generation", () => {
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
     });
 
-    await importConversationJson();
+    await testClient.workspace.access.archive.importConversationJson();
 
-    expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported");
-    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
+    expect(mocks.rehydrateSessionView).toHaveBeenCalledWith(testClient.agent.access, "imported");
+    expect(mocks.selectAgentSession).toHaveBeenCalledWith(testClient.agent.access, "imported");
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
@@ -411,7 +412,7 @@ describe("conversation archive generation", () => {
     installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
     installGateway(completeGateway(importConversation));
 
-    const failed = importConversationJson();
+    const failed = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
     choose(click.mock.instances[0] as HTMLInputElement, unreadable);
     await failed;
@@ -427,13 +428,16 @@ describe("conversation archive generation", () => {
     expect(mocks.success).not.toHaveBeenCalled();
 
     const artifact = validArtifact("imported");
-    const retried = importConversationJson();
+    const retried = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
     choose(click.mock.instances[1] as HTMLInputElement, new File([artifact], "readable.json"));
     await retried;
 
     expect(importConversation).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
-    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("imported");
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith(
+      testClient.agent.access,
+      "imported",
+    );
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).toHaveBeenCalledOnce();
   });
@@ -444,7 +448,7 @@ describe("conversation archive generation", () => {
     installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
     installGateway(completeGateway(importConversation));
 
-    const cancelled = importConversationJson();
+    const cancelled = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
     (click.mock.instances[0] as HTMLInputElement).dispatchEvent(new Event("cancel"));
     await cancelled;
@@ -466,7 +470,7 @@ describe("conversation archive generation", () => {
     installFiles(createFileTransfer({ saveTextFile: vi.fn().mockResolvedValue(true) }));
     const owner = installGateway(completeGateway(retiredImport));
 
-    const retired = importConversationJson();
+    const retired = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
     choose(click.mock.instances[0] as HTMLInputElement, slow);
     owner.replaceRuntimeGeneration(() => completeGateway(successorImport));
@@ -478,13 +482,16 @@ describe("conversation archive generation", () => {
     expect(retiredImport).not.toHaveBeenCalled();
 
     const artifact = validArtifact("successor-session");
-    const current = importConversationJson();
+    const current = testClient.workspace.access.archive.importConversationJson();
     await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
     choose(click.mock.instances[1] as HTMLInputElement, new File([artifact], "current.json"));
     await current;
 
     expect(successorImport).toHaveBeenCalledExactlyOnceWith(JSON.parse(artifact));
-    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith("successor-session");
+    expect(mocks.selectAgentSession).toHaveBeenCalledExactlyOnceWith(
+      testClient.agent.access,
+      "successor-session",
+    );
     expect(mocks.success).toHaveBeenCalledOnce();
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
@@ -496,8 +503,8 @@ describe("conversation archive generation", () => {
     installFiles({ saveText: download, pickText });
     installGateway({ importConversation });
 
-    const first = importConversationJson();
-    const repeated = importConversationJson();
+    const first = testClient.workspace.access.archive.importConversationJson();
+    const repeated = testClient.workspace.access.archive.importConversationJson();
 
     expect(repeated).toBe(first);
     expect(pickText).toHaveBeenCalledOnce();
@@ -509,7 +516,7 @@ describe("conversation archive generation", () => {
 
 function installGateway(gateway: Partial<ConversationArchiveGateway>): ConversationArchiveOwner {
   if (!files) throw new Error("test file transfer is not installed");
-  const owner = ConversationArchiveOwner.install({
+  const owner = testClient.workspace.access.archive.install({
     gateway: gateway as ConversationArchiveGateway,
     files,
   });

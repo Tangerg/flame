@@ -1,3 +1,11 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type FeatureCapability, type ServerCapabilities } from "@flame/runtime-client";
 import {
@@ -5,15 +13,8 @@ import {
   type RuntimeConnectionInspection,
   type RuntimeConnectionInspector,
 } from "@/features/connection/application/runtimeService";
-import { runtimeServiceStatus } from "@/features/connection/application/ports/serviceStatus";
+
 import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
-import {
-  resetRuntimeConnectionForTest,
-  runtimeSupportsTopic,
-  startRuntimeConnection,
-  useRuntimeConnectionStore,
-  useServerFeature,
-} from "@/features/connection/adapters/runtimeConnectionProjection";
 function feature(enabled: boolean): FeatureCapability {
   return { enabled, clientOptIn: false, requiredByRunProtocol: false };
 }
@@ -74,16 +75,16 @@ function inspection(capabilities = makeCaps()): RuntimeConnectionInspection<Serv
 
 describe("runtime connection projection", () => {
   beforeEach(() => {
-    resetRuntimeConnectionForTest();
+    testClient.projection.dispose();
   });
 
   afterEach(() => {
-    resetRuntimeConnectionForTest();
+    testClient.projection.dispose();
     vi.useRealTimers();
   });
 
   it("starts empty before discovery", () => {
-    const state = useRuntimeConnectionStore.getState();
+    const state = testClient.projection.store.getState();
     expect(state).toMatchObject({
       connectionGeneration: null,
       capabilities: null,
@@ -93,15 +94,15 @@ describe("runtime connection projection", () => {
   });
 
   it("makes negotiated feature and topic facts readable", () => {
-    useRuntimeConnectionStore.setState({ capabilities: makeCaps() });
-    const caps = useRuntimeConnectionStore.getState().capabilities!;
+    testClient.projection.store.setState({ capabilities: makeCaps() });
+    const caps = testClient.projection.store.getState().capabilities!;
 
     expect(caps.features.reasoning?.enabled).toBe(true);
     expect(caps.features.multimodal?.enabled).toBe(false);
     expect(caps.runEvents.includes("item.started")).toBe(true);
-    expect(runtimeSupportsTopic("files.changed")).toBe(true);
-    expect(runtimeSupportsTopic("hooks.changed")).toBe(false);
-    expect(typeof useServerFeature).toBe("function");
+    expect(testClient.projection.capabilities.supportsRuntimeTopic("files.changed")).toBe(true);
+    expect(testClient.projection.capabilities.supportsRuntimeTopic("hooks.changed")).toBe(false);
+    expect(typeof testClient.projection.capabilities.useCapability).toBe("function");
   });
 
   it("publishes process generation changes even when capabilities keep the same identity", async () => {
@@ -109,7 +110,7 @@ describe("runtime connection projection", () => {
     const changed = vi.fn();
     let settleInspection: (value: RuntimeConnectionInspection<ServerCapabilities>) => void = () =>
       undefined;
-    const owner = startRuntimeConnection({
+    const owner = testClient.projection.start({
       inspect: vi.fn(
         () =>
           new Promise<RuntimeConnectionInspection<ServerCapabilities>>((resolve) => {
@@ -121,15 +122,15 @@ describe("runtime connection projection", () => {
 
     const retired = RuntimeConnectionGeneration.forProcess("runtime_retired");
     const successor = RuntimeConnectionGeneration.forProcess("runtime_successor");
-    useRuntimeConnectionStore.setState({ connectionGeneration: retired, capabilities });
-    useRuntimeConnectionStore.setState({ connectionGeneration: successor, capabilities });
+    testClient.projection.store.setState({ connectionGeneration: retired, capabilities });
+    testClient.projection.store.setState({ connectionGeneration: successor, capabilities });
 
     expect(changed).toHaveBeenCalledTimes(2);
     expect(owner.connectionGeneration()).toBe(successor);
     unsubscribe();
     settleInspection(inspection());
     await vi.waitFor(() =>
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready"),
+      expect(testClient.projection.store.getState().service.phase).toBe("ready"),
     );
     owner.dispose();
   });
@@ -147,16 +148,16 @@ describe("runtime connection projection", () => {
           }),
       ),
     };
-    const retired = startRuntimeConnection(retiredInspector);
+    const retired = testClient.projection.start(retiredInspector);
     const retiredChanges = vi.fn();
     const unsubscribeRetired = retired.subscribeConnection(retiredChanges);
     const successorCapabilities = makeCaps({ runtimeTopics: ["mcp.changed"] });
-    const successor = startRuntimeConnection({
+    const successor = testClient.projection.start({
       inspect: vi.fn().mockResolvedValue(inspection(successorCapabilities)),
     });
 
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+      expect(testClient.projection.store.getState().service.phase).toBe("ready");
     });
     expect(retiredSignal?.aborted).toBe(true);
 
@@ -165,8 +166,8 @@ describe("runtime connection projection", () => {
     await Promise.resolve();
     retired.dispose();
 
-    expect(useRuntimeConnectionStore.getState().capabilities).toBe(successorCapabilities);
-    expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+    expect(testClient.projection.store.getState().capabilities).toBe(successorCapabilities);
+    expect(testClient.projection.store.getState().service.phase).toBe("ready");
     const successorGeneration = successor.connectionGeneration();
     expect(successorGeneration).not.toBeNull();
     expect(retired.connectionGeneration()).toBeNull();
@@ -176,7 +177,7 @@ describe("runtime connection projection", () => {
     unsubscribeRetired();
 
     successor.dispose();
-    expect(useRuntimeConnectionStore.getState()).toMatchObject({
+    expect(testClient.projection.store.getState()).toMatchObject({
       connectionGeneration: null,
       capabilities: null,
       service: { phase: "checking" },
@@ -185,16 +186,16 @@ describe("runtime connection projection", () => {
 
   it("publishes service readiness and capabilities as one observable state", async () => {
     const observed: Array<{ phase: string; hasCapabilities: boolean }> = [];
-    const unsubscribe = useRuntimeConnectionStore.subscribe((state) => {
+    const unsubscribe = testClient.projection.store.subscribe((state) => {
       observed.push({
         phase: state.service.phase,
         hasCapabilities: state.capabilities !== null,
       });
     });
-    const owner = startRuntimeConnection({ inspect: vi.fn().mockResolvedValue(inspection()) });
+    const owner = testClient.projection.start({ inspect: vi.fn().mockResolvedValue(inspection()) });
 
     await vi.waitFor(() => {
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+      expect(testClient.projection.store.getState().service.phase).toBe("ready");
     });
 
     expect(observed).not.toContainEqual({ phase: "ready", hasCapabilities: false });
@@ -205,11 +206,11 @@ describe("runtime connection projection", () => {
 
   it("keeps one connection generation across healthy inspections of the same process", async () => {
     const inspector = { inspect: vi.fn().mockResolvedValue(inspection()) };
-    const owner = startRuntimeConnection(inspector);
+    const owner = testClient.projection.start(inspector);
     await vi.waitFor(() => expect(owner.connectionGeneration()).not.toBeNull());
     const admitted = owner.connectionGeneration();
 
-    await runtimeServiceStatus().refresh();
+    await testClient.runtime.status.refresh();
 
     expect(inspector.inspect).toHaveBeenCalledTimes(2);
     expect(owner.connectionGeneration()).toBe(admitted);
@@ -230,7 +231,7 @@ describe("runtime connection projection", () => {
             }),
         ),
     };
-    const owner = startRuntimeConnection(inspector);
+    const owner = testClient.projection.start(inspector);
     await vi.waitFor(() => expect(owner.connectionGeneration()).not.toBeNull());
     const predecessor = owner.connectionGeneration();
     const order: string[] = [];
@@ -246,7 +247,7 @@ describe("runtime connection projection", () => {
     );
 
     expect(order).toEqual(["connection:none", "commit:none", "scope:none"]);
-    expect(useRuntimeConnectionStore.getState()).toMatchObject({
+    expect(testClient.projection.store.getState()).toMatchObject({
       connectionGeneration: null,
       capabilities: null,
       service: { phase: "checking" },
@@ -286,12 +287,12 @@ describe("runtime connection projection", () => {
             }),
         ),
     };
-    const owner = startRuntimeConnection(inspector);
+    const owner = testClient.projection.start(inspector);
     await vi.advanceTimersByTimeAsync(0);
     const predecessorGeneration = owner.connectionGeneration()!;
     const connectionChanges = vi.fn();
     const unsubscribe = owner.subscribeConnection(connectionChanges);
-    const retiredInspection = runtimeServiceStatus().refresh();
+    const retiredInspection = testClient.runtime.status.refresh();
     expect(inspector.inspect).toHaveBeenCalledTimes(2);
 
     owner.reportConnectionLoss(predecessorGeneration);
@@ -300,7 +301,7 @@ describe("runtime connection projection", () => {
     expect(inspector.inspect).toHaveBeenCalledTimes(2);
     expect(signals[0]?.aborted).toBe(true);
     expect(owner.connectionGeneration()).toBeNull();
-    expect(useRuntimeConnectionStore.getState().service.phase).toBe("reconnecting");
+    expect(testClient.projection.store.getState().service.phase).toBe("reconnecting");
 
     settleRetiredInspection(inspection());
     await retiredInspection;
@@ -335,14 +336,14 @@ describe("runtime connection projection", () => {
           .mockRejectedValueOnce(new Error("connection refused"))
           .mockResolvedValueOnce(inspection()),
       };
-      const owner = startRuntimeConnection(inspector);
+      const owner = testClient.projection.start(inspector);
       await vi.advanceTimersByTimeAsync(0);
       const predecessorGeneration = owner.connectionGeneration();
       expect(predecessorGeneration).not.toBeNull();
 
       owner.reportConnectionLoss(predecessorGeneration!);
       await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
-      expect(useRuntimeConnectionStore.getState()).toMatchObject({
+      expect(testClient.projection.store.getState()).toMatchObject({
         connectionGeneration: null,
         capabilities: null,
         service: { phase: "unavailable" },
@@ -352,7 +353,7 @@ describe("runtime connection projection", () => {
       const successorGeneration = owner.connectionGeneration();
       expect(successorGeneration).not.toBeNull();
       expect(successorGeneration).not.toBe(predecessorGeneration);
-      expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
+      expect(testClient.projection.store.getState().service.phase).toBe("ready");
       owner.dispose();
     } finally {
       vi.useRealTimers();

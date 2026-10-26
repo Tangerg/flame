@@ -1,8 +1,16 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReasoningBlock } from "@/features/chat/message/ui/cards/ReasoningBlock";
 function renderReasoning(status: "running" | "complete", text: string) {
-  return render(<ReasoningBlock text={text} status={status} />);
+  return testClient.render(<ReasoningBlock text={text} status={status} />);
 }
 
 function scrollportOf(container: HTMLElement): HTMLElement {
@@ -33,7 +41,7 @@ describe("ReasoningBlock disclosure policy", () => {
     vi.useFakeTimers();
     const now = vi.spyOn(performance, "now");
     now.mockReturnValue(0);
-    const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
+    const view = testClient.render(<ReasoningBlock text="Hidden rationale" status="running" />);
     expect(screen.getByRole("button", { name: /Thinking/ })).toBeTruthy();
 
     now.mockReturnValue(8_400);
@@ -41,13 +49,13 @@ describe("ReasoningBlock disclosure policy", () => {
     expect(screen.getByRole("button", { name: /Thought for 8.4s/ })).toBeTruthy();
 
     view.unmount();
-    render(<ReasoningBlock text="Hidden rationale" status="complete" />);
+    testClient.render(<ReasoningBlock text="Hidden rationale" status="complete" />);
     expect(screen.getByRole("button", { name: /^Thought$/ })).toBeTruthy();
     now.mockRestore();
   });
 
   it("starts shut while it thinks and keeps whatever the reader chose after it settles", () => {
-    const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
+    const view = testClient.render(<ReasoningBlock text="Hidden rationale" status="running" />);
     const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
 
     expect(live().getAttribute("aria-expanded")).toBe("false");
@@ -68,7 +76,7 @@ describe("ReasoningBlock disclosure policy", () => {
 
   it("shows the newest line of a thought it is hiding, and only while it is still thinking", () => {
     const text = "An earlier step.\n\nWhat it is weighing right now.";
-    const view = render(<ReasoningBlock text={text} status="running" />);
+    const view = testClient.render(<ReasoningBlock text={text} status="running" />);
     const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
     const glimpse = () =>
       view.container.querySelector('[data-slot="reasoning-glimpse"]')?.textContent ?? null;

@@ -1,5 +1,5 @@
 import { buildInput } from "@/features/composer/public/input";
-import { type ComposerSubmission } from "@/features/composer/application/ports/state";
+import { type ComposerSubmission } from "@/features/composer/application/state";
 import { agentTextInput, type AgentInput } from "@/features/agent/public/input";
 import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import {

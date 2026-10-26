@@ -1,14 +1,19 @@
+import { stubInstance } from "@/test/stubInstance";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_AGENT_SESSION_VIEW, type AgentRunView } from "@/features/agent/public/sessionView";
+import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
 import {
-  configureAgentSessionStatePort,
-  type AgentSessionStatePort,
-} from "@/features/agent/application/ports/sessionState";
-import {
-  configureAgentSessionViewPort,
   type AgentSessionViewEntry,
   type AgentSessionViewPort,
-} from "@/features/agent/application/ports/sessionView";
+} from "@/features/agent/application/session/sessionAccess";
 import { cancelSessionRun, stopCurrentRootRun } from "@/features/agent/application/run/runCommands";
 const disposers: Array<() => void> = [];
 
@@ -47,10 +52,10 @@ function configureSessions(
   sessions: Record<string, AgentSessionViewEntry>,
 ): void {
   disposers.push(
-    configureAgentSessionStatePort({
+    stubInstance(testClient.agent.access.state, {
       getActiveSessionId: () => activeSessionId,
     } as unknown as AgentSessionStatePort),
-    configureAgentSessionViewPort({
+    stubInstance(testClient.agent.access.view, {
       getSession: (sessionId: string) => sessions[sessionId],
     } as unknown as AgentSessionViewPort),
   );
@@ -74,7 +79,7 @@ describe("active Session Run commands", () => {
       retryOpening: null,
     });
 
-    expect(stopCurrentRootRun()).toBe(true);
+    expect(stopCurrentRootRun(testClient.agent.access)).toBe(true);
     expect(stop).toHaveBeenCalledOnce();
     expect(cancelRun).not.toHaveBeenCalled();
   });
@@ -103,9 +108,15 @@ describe("active Session Run commands", () => {
       retryOpening: null,
     });
 
-    expect(cancelSessionRun({ sessionId: "session-1", runId: running.id })).toBe(true);
-    expect(cancelSessionRun({ sessionId: "session-1", runId: finished.id })).toBe(false);
-    expect(cancelSessionRun({ sessionId: "session-1", runId: "run-missing" })).toBe(false);
+    expect(
+      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: running.id }),
+    ).toBe(true);
+    expect(
+      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: finished.id }),
+    ).toBe(false);
+    expect(
+      cancelSessionRun(testClient.agent.access, { sessionId: "session-1", runId: "run-missing" }),
+    ).toBe(false);
     expect(cancelRun).toHaveBeenCalledOnce();
     expect(cancelRun).toHaveBeenCalledWith(running.id);
   });
@@ -137,7 +148,7 @@ describe("active Session Run commands", () => {
     });
 
     expect(
-      cancelSessionRun({
+      cancelSessionRun(testClient.agent.access, {
         sessionId: "session-predecessor",
         runId: "run-predecessor",
       }),

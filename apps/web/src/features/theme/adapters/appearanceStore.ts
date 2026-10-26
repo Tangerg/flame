@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault } from "@/lib/persistedStore";
 import { type Paired } from "@/lib/persistedStore";
@@ -39,45 +39,47 @@ const _paired: Paired<AppearancePreference, z.infer<typeof appearancePersistSche
 
 void _paired;
 
-export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>()(
-  persist(
-    (set) => ({
-      theme: "system",
-      visualStyle: "flame",
-      accent: DEFAULT_ACCENT,
-      customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
-      contrast: DEFAULT_CONTRAST,
-      uiFont: "",
-      codeFont: "",
-      fontSize: null,
-      codeFontSize: null,
-      fontSmoothing: true,
-      density: DEFAULT_UI_DENSITY,
-      radiusScale: 1,
-      motionScale: 1,
-      paperTexture: "off",
-      paperTextureStrength: DEFAULT_PAPER_TEXTURE_STRENGTH,
+export function createAppearanceStore(storage: () => Storage) {
+  return createStore<AppearancePreference & AppearanceEdit>()(
+    persist(
+      (set) => ({
+        theme: "system",
+        visualStyle: "flame",
+        accent: DEFAULT_ACCENT,
+        customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
+        contrast: DEFAULT_CONTRAST,
+        uiFont: "",
+        codeFont: "",
+        fontSize: null,
+        codeFontSize: null,
+        fontSmoothing: true,
+        density: DEFAULT_UI_DENSITY,
+        radiusScale: 1,
+        motionScale: 1,
+        paperTexture: "off",
+        paperTextureStrength: DEFAULT_PAPER_TEXTURE_STRENGTH,
 
-      setTheme: (theme) => set({ theme }),
-      setVisualStyle: (visualStyle) => set({ visualStyle }),
-      setAccent: (accent) => set({ accent }),
-      setCustomTheme: (patch) => set((s) => ({ customTheme: { ...s.customTheme, ...patch } })),
-      setContrast: (contrast) => set({ contrast }),
-      setUiFont: (uiFont) => set({ uiFont }),
-      setCodeFont: (codeFont) => set({ codeFont }),
-      setFontSize: (fontSize) => set({ fontSize }),
-      setCodeFontSize: (codeFontSize) => set({ codeFontSize }),
-      setFontSmoothing: (fontSmoothing) => set({ fontSmoothing }),
-      setDensity: (density) => set({ density }),
-      setRadiusScale: (radiusScale) => set({ radiusScale }),
-      setMotionScale: (motionScale) => set({ motionScale }),
-      setPaperTexture: (paperTexture) => set({ paperTexture }),
-      setPaperTextureStrength: (paperTextureStrength) => set({ paperTextureStrength }),
-    }),
-    {
-      name: APPEARANCE_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      merge: rehydrateOrDefault(APPEARANCE_STORAGE_KEY, appearancePersistSchema),
-    },
-  ),
-);
+        setTheme: (theme) => set({ theme }),
+        setVisualStyle: (visualStyle) => set({ visualStyle }),
+        setAccent: (accent) => set({ accent }),
+        setCustomTheme: (patch) => set((s) => ({ customTheme: { ...s.customTheme, ...patch } })),
+        setContrast: (contrast) => set({ contrast }),
+        setUiFont: (uiFont) => set({ uiFont }),
+        setCodeFont: (codeFont) => set({ codeFont }),
+        setFontSize: (fontSize) => set({ fontSize }),
+        setCodeFontSize: (codeFontSize) => set({ codeFontSize }),
+        setFontSmoothing: (fontSmoothing) => set({ fontSmoothing }),
+        setDensity: (density) => set({ density }),
+        setRadiusScale: (radiusScale) => set({ radiusScale }),
+        setMotionScale: (motionScale) => set({ motionScale }),
+        setPaperTexture: (paperTexture) => set({ paperTexture }),
+        setPaperTextureStrength: (paperTextureStrength) => set({ paperTextureStrength }),
+      }),
+      {
+        name: APPEARANCE_STORAGE_KEY,
+        storage: createJSONStorage(storage),
+        merge: rehydrateOrDefault(APPEARANCE_STORAGE_KEY, appearancePersistSchema),
+      },
+    ),
+  );
+}

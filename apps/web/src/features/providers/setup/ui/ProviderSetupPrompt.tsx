@@ -1,3 +1,4 @@
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { Button } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
 import { PROVIDERS_PANE } from "@/features/settings/public/paneIDs";
@@ -19,6 +20,8 @@ const ps = stylex.create({
 });
 
 export function ProviderSetupPrompt() {
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const { data: providers } = useProviders();
   if (!needsProviderSetup(providers)) return null;
@@ -32,7 +35,7 @@ export function ProviderSetupPrompt() {
           <p {...stylex.props(ps.body, typeStep.uiMd)}>{t("providers.setup.sub")}</p>
           <Button
             variant="primary"
-            onClick={() => openWorkspaceSettingsPane(PROVIDERS_PANE)}
+            onClick={() => openWorkspaceSettingsPane(workspaceAccess, PROVIDERS_PANE)}
             className={stylex.props(ps.action).className}
           >
             <Icon name="settings" size="sm" />

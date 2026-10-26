@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MarkdownRenderer } from "@/features/chat/message/ui/markdown/MarkdownRenderer";
@@ -30,7 +38,9 @@ describe("SvgArtifact", () => {
   it.each(["svg", "xml", "html", "htm"])(
     "opens a %s SVG fence as an inert image and returns to its source",
     async (language) => {
-      const { container } = render(<MarkdownRenderer text={fence(language)} reveal="instant" />);
+      const { container } = testClient.render(
+        <MarkdownRenderer text={fence(language)} reveal="instant" />,
+      );
       const source = screen.getByRole("button", { name: LABEL });
       const preview = source.querySelector("img");
       expect(preview?.getAttribute("src")).toBe(svgSource(SVG));
@@ -54,7 +64,7 @@ describe("SvgArtifact", () => {
     const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     try {
-      render(
+      testClient.render(
         <>
           <div className={MESSAGE_CONTENT_CLASS}>
             <MarkdownRenderer
@@ -98,7 +108,7 @@ describe("SvgArtifact", () => {
         <SvgArtifact code={code} lang="svg" />
       </div>
     );
-    const { rerender } = render(view(SVG));
+    const { rerender } = testClient.render(view(SVG));
     const source = screen.getByRole("button", { name: LABEL });
     const dialog = await open(source);
     const updated = SVG.replace("Runtime", "Desktop");

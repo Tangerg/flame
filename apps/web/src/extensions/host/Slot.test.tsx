@@ -1,4 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/extensions/definePlugin";
 import { Slot } from "@/extensions/host/Slot";
@@ -6,7 +14,7 @@ import { contributeLayout } from "@/extensions/contributeHelpers";
 import { loadPluginsForTest } from "@/test/kernel";
 describe("slot", () => {
   it("renders nothing when no plugin has filled the slot", () => {
-    const { container } = render(<Slot name="empty.slot" />);
+    const { container } = testClient.render(<Slot name="empty.slot" />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -28,7 +36,7 @@ describe("slot", () => {
         },
       }),
     );
-    const { container } = render(<Slot name="test.slot" />);
+    const { container } = testClient.render(<Slot name="test.slot" />);
     expect(container.textContent).toBe("BA");
   });
 
@@ -53,7 +61,7 @@ describe("slot", () => {
         },
       }),
     );
-    render(<Slot name="test.boundary.slot" />);
+    testClient.render(<Slot name="test.boundary.slot" />);
     expect(screen.getByText("still-here")).toBeTruthy();
     expect(screen.getByText(/failed to render/i)).toBeTruthy();
     spy.mockRestore();
@@ -72,7 +80,7 @@ describe("slot", () => {
         },
       }),
     );
-    const { container } = render(<Slot name="test.wrap" wrapper className="foo" />);
+    const { container } = testClient.render(<Slot name="test.wrap" wrapper className="foo" />);
     const wrapper = container.querySelector('[data-slot="test.wrap"]');
     expect(wrapper).not.toBeNull();
     expect(wrapper?.className).toBe("foo");

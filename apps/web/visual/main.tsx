@@ -1,3 +1,5 @@
+import { createVisualClient } from "./client";
+import { disposeOnHmr } from "@/lib/hmr";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { type ServerCapabilities, type Diff } from "@flame/runtime-client/wire";
@@ -10,18 +12,12 @@ import { MotionConfig } from "motion/react";
 import "@flame/ui/styles.css";
 import { CodeHighlightProvider, TooltipProvider, FontScaleProvider } from "@flame/ui";
 import { HighlightedCodeSource } from "@/lib/highlight/HighlightedCodeSource";
-import { publishMotionScale } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { selectLocale } from "@/features/i18n/application/localeSelection";
-import { configureNavigator } from "@/lib/navigation";
-import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { uiTypeLadderCssVariables } from "@/features/theme/kit/typeLadder";
 import { UI_DENSITY_MODES } from "@/features/theme/kit/appearance";
-import { installAppearancePreferencePort } from "@/features/theme/adapters/appearancePreferenceBinding";
-import { installDocumentAppearance } from "@/features/theme/adapters/documentAppearance";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
 import {
   VISUAL_AGENT_STATES,
@@ -53,7 +49,11 @@ const VISUAL_CLOCK_STARTED_AT = performance.now();
 
 Date.now = () => VISUAL_NOW + (performance.now() - VISUAL_CLOCK_STARTED_AT);
 
-configureNavigator(createMemoryNavigator());
+let currentRuntimeClient: FlameClient | undefined;
+export const visualClient = createVisualClient(() => {
+  if (!currentRuntimeClient) throw new Error("Visual Runtime client is not configured");
+  return currentRuntimeClient;
+});
 
 function fixtureTheme(value: string | null): FixtureTheme {
   return value === "dark" ? "dark" : "light";
@@ -179,7 +179,7 @@ rootElement.classList.add(`theme-${theme}`);
 
 rootElement.style.setProperty("--motion-scale", String(motionScale));
 
-publishMotionScale(motionScale);
+visualClient.theme.appearance.publishMotionScale(motionScale);
 
 if (motionScale === 0) rootElement.dataset.motion = "off";
 else delete rootElement.dataset.motion;
@@ -216,6 +216,7 @@ async function installVisualRuntimeClient(
       },
     }),
   );
+  currentRuntimeClient = client;
   return client;
 }
 
@@ -232,7 +233,12 @@ async function fixtureNode(): Promise<ReactNode> {
       import("@/features/theme/visualStyles/index"),
       import("@/features/theme/defaultAccents"),
     ]);
-    for (const plugin of [flameLight, flameDark, defaultAccents, ...builtinVisualStyles]) {
+    for (const plugin of [
+      flameLight(visualClient.theme.access.preference),
+      flameDark(visualClient.theme.access.preference),
+      defaultAccents,
+      ...builtinVisualStyles,
+    ]) {
       await loadPluginsForTest(plugin);
     }
     if (fixture === "atoms") {
@@ -267,10 +273,17 @@ async function fixtureNode(): Promise<ReactNode> {
       runtimeInput.readDiff,
       query.get("skills-commands") === "accept",
     );
-    await installVisualWorkspaceFixture(() => runtimeClient, workspaceState, theme, runtimeInput, {
-      pane: settingsPane,
-      fullViewId: requestedFullView,
-    });
+    await installVisualWorkspaceFixture(
+      visualClient,
+      () => runtimeClient,
+      workspaceState,
+      theme,
+      runtimeInput,
+      {
+        pane: settingsPane,
+        fullViewId: requestedFullView,
+      },
+    );
     return <VisualWorkspaceFixture state={workspaceState} />;
   }
   if (fixture === "shell") {
@@ -286,6 +299,7 @@ async function fixtureNode(): Promise<ReactNode> {
       },
     );
     await installVisualShellFixture(
+      visualClient,
       () => runtimeClient,
       workIndexState,
       theme,
@@ -319,6 +333,7 @@ async function fixtureNode(): Promise<ReactNode> {
     },
   );
   const view = await installVisualAgentFixture(
+    visualClient,
     () => runtimeClient,
     state,
     output,
@@ -340,7 +355,7 @@ await selectLocale(locale);
 
 const node = await fixtureNode();
 
-useAppearanceStore.setState({
+visualClient.theme.store.setState({
   theme,
   motionScale,
   ...(requestedFontSize !== null && Number.isFinite(Number(requestedFontSize))
@@ -355,21 +370,32 @@ useAppearanceStore.setState({
   ...(fontSmoothing !== undefined ? { fontSmoothing } : {}),
 });
 
-installAppearancePreferencePort();
+visualClient.theme.start();
 
-installDocumentAppearance(useAppearanceStore);
-
-createRoot(container).render(
-  <QueryClientProvider client={queryClient}>
-    <MotionConfig reducedMotion="user">
-      <FontScaleProvider fontSize={useAppearanceStore.getState().fontSize ?? 14}>
-        <CodeHighlightProvider component={HighlightedCodeSource}>
-          <TooltipProvider>{node}</TooltipProvider>
-        </CodeHighlightProvider>
-      </FontScaleProvider>
-    </MotionConfig>
-  </QueryClientProvider>,
+const root = createRoot(container);
+root.render(
+  <visualClient.Wrapper>
+    <QueryClientProvider client={queryClient}>
+      <MotionConfig reducedMotion="user">
+        <FontScaleProvider fontSize={visualClient.theme.store.getState().fontSize ?? 14}>
+          <CodeHighlightProvider component={HighlightedCodeSource}>
+            <TooltipProvider>{node}</TooltipProvider>
+          </CodeHighlightProvider>
+        </FontScaleProvider>
+      </MotionConfig>
+    </QueryClientProvider>
+  </visualClient.Wrapper>,
 );
+
+const dispose = () => {
+  root.unmount();
+  void visualClient.dispose();
+};
+window.addEventListener("beforeunload", dispose);
+disposeOnHmr(() => {
+  window.removeEventListener("beforeunload", dispose);
+  dispose();
+});
 
 const FIXTURE_FACES = ['1rem "JetBrains Mono"'];
 

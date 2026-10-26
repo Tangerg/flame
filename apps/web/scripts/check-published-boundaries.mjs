@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { builtinContext } from "./builtin-contexts.mjs";
 
 const SRC = join(process.cwd(), "src");
@@ -245,43 +245,6 @@ for (const file of scanned) {
     });
   }
 
-  if (!isTest && rel.startsWith("features/") && /\blet\s+port\s*:/.test(text)) {
-    violations.push({
-      file: rel,
-      reason: "builtin application ports must use replacement-safe singletonPort lifecycle",
-    });
-  }
-
-  if (
-    !isTest &&
-    /features\/.+\/application\/ports\/.+\.ts$/.test(rel) &&
-    /configure\w+(?:Port|Gateway)/.test(text) &&
-    !/@\/lib\/ports\/singletonPort/.test(text)
-  ) {
-    violations.push({
-      file: rel,
-      reason: "configurable application ports must use singletonPort lifecycle ownership",
-    });
-  }
-
-  if (
-    !isTest &&
-    /plugins\/(?:builtin\/.+\/adapters|host)\/.+\.(ts|tsx)$/.test(rel) &&
-    // `install*` names one thing in this tree: it installs a port and hands back the
-    // disposer. The parameterless form was the only one checked, so an installer that
-    // took the Host slipped through — and it wasn't installing a port at all, it was
-    // subscribing through a facade the Host already disposes. Two of those had drifted
-    // to the prefix (`installHostBridge`, `installEndpointMirror`); both are named for
-    // what they do now, which is what makes this a reliable signal to read.
-    /export\s+function\s+install\w+\([^)]*\)\s*:\s*void/.test(text)
-  ) {
-    violations.push({
-      file: rel,
-      reason:
-        "an install* function installs a port and returns its disposer — rename it, or return one",
-    });
-  }
-
   if (
     !isTest &&
     // Keyed on "declares a plugin", not on `index.ts`: that filename was the shape when
@@ -294,7 +257,7 @@ for (const file of scanned) {
   ) {
     violations.push({
       file: rel,
-      reason: "plugin setup must retain and return the port installer's disposer",
+      reason: "plugin setup must retain and release the installed resource",
     });
   }
 

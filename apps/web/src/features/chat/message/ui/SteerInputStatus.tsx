@@ -1,3 +1,4 @@
+import { useAgent } from "@/features/agent/public/agent";
 import { Badge, Button } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { retrySteerInput } from "@/features/agent/public/input";
@@ -18,13 +19,15 @@ export function SteerInputStatus({
   feedback?: SteerInputFeedback;
   messageId: string;
 }) {
+  const agentAccess = useAgent();
+
   const t = useT();
   if (!feedback) return null;
   return (
     <>
       <Badge>{t(LABELS[feedback])}</Badge>
       {feedback === "unknown" && (
-        <Button variant="ghost" size="sm" onClick={() => retrySteerInput(messageId)}>
+        <Button variant="ghost" size="sm" onClick={() => retrySteerInput(agentAccess, messageId)}>
           {t("agent.command.retry")}
         </Button>
       )}

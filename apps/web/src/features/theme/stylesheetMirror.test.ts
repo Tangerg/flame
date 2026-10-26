@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { visualStyleMotion, type Scheme, type VisualStyleMotion } from "@/lib/appearance";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
+import { DEFAULT_MOTION, type Scheme, type VisualStyleMotion } from "@/lib/appearance";
+import { createTheme, type Theme } from "@/features/theme/adapters/theme";
+let owner: Theme;
+beforeEach(() => {
+  owner = createTheme(document, window);
+});
 import { COLOR_THEME, VISUAL_STYLE } from "@/features/theme/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { loadPluginsForTest } from "@/test/kernel";
@@ -13,8 +17,8 @@ import { visualStyleMotionTokens } from "@/features/theme/visualStyles/tokens";
 describe("the palette blocks and the theme specs they mirror", () => {
   beforeEach(async () => {
     await loadPluginsForTest(
-      (await import("@/features/theme/themes/flame-light")).default,
-      (await import("@/features/theme/themes/flame-dark")).default,
+      (await import("@/features/theme/themes/flame-light")).default(owner.access.preference),
+      (await import("@/features/theme/themes/flame-dark")).default(owner.access.preference),
     );
   });
 
@@ -54,7 +58,7 @@ describe("the stylesheet defaults and the visual style that replaces them", () =
 
   it("agree with the fallback every consumer stands on until a style publishes", () => {
     const spec = lookupExtensionByKey(VISUAL_STYLE, "flame") as { motion: VisualStyleMotion };
-    expect(visualStyleMotion()).toEqual(spec.motion);
+    expect(DEFAULT_MOTION).toEqual(spec.motion);
   });
 });
 
@@ -65,14 +69,14 @@ describe("the stylesheet defaults and the scalars the painter writes alone", () 
     [":root", "light"],
     ["html.theme-dark", "dark"],
   ])("agree on the ink step %s opens at (%s)", (selector, scheme) => {
-    const { contrast } = useAppearanceStore.getState();
+    const { contrast } = owner.store.getState();
     expect(percent(declaredInBlock(selector, "--depth-step"))).toBe(
       percent(depthStep(scheme as Scheme, contrast)),
     );
   });
 
   it("agree on the shape and motion scales", () => {
-    const { radiusScale, motionScale } = useAppearanceStore.getState();
+    const { radiusScale, motionScale } = owner.store.getState();
     expect(declaredInBlock(":root", "--radius-scale")).toBe(String(radiusScale));
     expect(declaredInBlock(":root", "--motion-scale")).toBe(String(motionScale));
   });

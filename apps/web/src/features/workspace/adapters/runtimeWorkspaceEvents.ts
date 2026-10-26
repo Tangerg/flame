@@ -1,3 +1,4 @@
+import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type FlameClient, type RuntimeTopic } from "@flame/runtime-client";
 import { RUNTIME_SUBSCRIBE_METHOD } from "@flame/runtime-client";
 import {
@@ -26,11 +27,12 @@ const SUBSCRIBED_TOPICS: readonly RuntimeTopic[] = [
   "approvals.changed",
 ];
 
-export function canSubscribeWorkspaceEvents(): boolean {
-  return runtimeSupportsStreamingMethod(RUNTIME_SUBSCRIBE_METHOD);
+export function canSubscribeWorkspaceEvents(runtimeAccess: RuntimeAccess): boolean {
+  return runtimeSupportsStreamingMethod(runtimeAccess, RUNTIME_SUBSCRIBE_METHOD);
 }
 
 export async function subscribeRuntimeWorkspaceEvents(
+  runtimeAccess: RuntimeAccess,
   runtimeClient: () => FlameClient,
   target: WorkspaceWatchTarget,
   signal: AbortSignal,
@@ -40,7 +42,7 @@ export async function subscribeRuntimeWorkspaceEvents(
     string | undefined,
     { watchId: string; cwd?: string; paths: Set<string> }
   >();
-  if (runtimeCapability("fileWatch")) {
+  if (runtimeCapability(runtimeAccess, "fileWatch")) {
     if (target.type === "workspace") {
       requested.set(target.cwd, { watchId: "active-session", cwd: target.cwd, paths: new Set() });
     }
@@ -78,7 +80,7 @@ export async function subscribeRuntimeWorkspaceEvents(
     }),
   );
   const watches = resolved.filter((watch) => watch !== undefined);
-  const topics = SUBSCRIBED_TOPICS.filter(runtimeSupportsTopic);
+  const topics = SUBSCRIBED_TOPICS.filter(runtimeSupportsTopic.bind(null, runtimeAccess));
   const { events } = await client.runtimeEvents.subscribe(
     { topics, ...(watches.length ? { watches } : {}) },
     signal,

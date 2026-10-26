@@ -1,6 +1,6 @@
 import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
-import { type AgentSessionSnapshot } from "@/features/agent/application/ports/runtimeGateway";
+import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeGateway";
 import { reduceDurableItem } from "@/features/agent/application/fold/reducer";
 import { foldRunSnapshot } from "@/features/agent/application/fold/runSnapshot";
 import { foldPendingInterruptSet } from "@/features/agent/application/fold/pendingInterruptSnapshot";

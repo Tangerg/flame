@@ -24,6 +24,12 @@ registration and lifetime mechanisms; it never owns business extension points.
 `src/platform` translates Browser/Wails effects. `src/ui` contains product
 presentation composites over shared `@flame/ui` controls and tokens.
 
+The composition root creates each feature instance and its backing state once.
+React consumers use that owner's Provider; commands and plugin factories capture
+explicit dependencies. Tests construct independent instances in `test/renderClient.tsx`,
+and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
+registry or module-global port installer is part of the product API.
+
 Appearance settings use section headings and direct label/control rows. Existing
 control labels, selected values and error feedback carry the task; the page does
 not repeat explanatory introductions or one-line descriptions. Section headings
@@ -158,6 +164,7 @@ with the existing factory, and unexpected failures propagate. Runtime still owns
 creation and final validation; external failures can report a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
-`tests/integration`; visual fixtures live in `visual`. The full check includes
+`tests/integration`; repository Go cross-product checks live in
+`../../tooling/integration`. Visual fixtures live in `visual`. The full check includes
 compiler-resolved dependency/contract guards, lifecycle tests, resource drift,
 styles, localization and the production bundle.

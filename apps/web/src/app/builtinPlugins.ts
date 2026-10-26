@@ -1,7 +1,14 @@
+import { type Theme } from "@/features/theme/adapters/theme";
+import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
+import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
+import { type AgentOwner } from "@/features/agent/adapters/agent";
+import { type ComposerOwner } from "@/features/composer/adapters/composerStatePorts";
+import { type WorkspaceOwner } from "@/features/workspace/adapters/workspace";
+import { type createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
+import { type Navigator } from "@/lib/navigation";
 import { shellServices } from "./shellServices";
 import { type ClientHost } from "@/platform/host";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
-import { createMessageImagesPlugin } from "@/features/chat/message/images";
 import { type AnyPlugin } from "dougong";
 import appearance from "@/features/settings/appearance";
 import { createBrandPlugin } from "@/features/settings/brand/index";
@@ -9,7 +16,7 @@ import approvalsPane from "@/features/approvals/index";
 import personalization from "@/features/settings/personalization/index";
 import chatSearch from "@/features/chat/search/index";
 import quoteSelection from "@/features/composer/quote-selection/index";
-import { composerBootstrap } from "@/features/composer/index";
+import { createComposerBootstrap } from "@/features/composer/index";
 import { composerKeymap } from "@/features/composer/index";
 import { composerRunOptions } from "@/features/composer/index";
 import { composerSend } from "@/features/composer/index";
@@ -17,7 +24,7 @@ import { composerToolbar } from "@/features/composer/index";
 import connectionSettings from "@/features/connection/settings/index";
 import { createAgentBootstrapPlugin } from "@/features/agent/bootstrap/index";
 import { createObservabilityPlugin } from "@/features/observability/index";
-import { PRODUCT_NAME, PRODUCT_SLUG, CLIENT_VERSION } from "@/app/product";
+import { PRODUCT_SLUG, CLIENT_VERSION } from "@/app/product";
 import { createRuntimePlugin } from "@/features/connection/index";
 import conversationExport from "@/features/workspace/conversationExport";
 import { defaultAccents } from "@/features/theme/defaultAccents";
@@ -25,7 +32,7 @@ import { defaultCommands } from "@/features/command/defaultCommands";
 import { defaultRoles } from "@/features/chat/defaultRoles";
 import { defaultTitle } from "@/app/defaultTitle";
 import { createWorkspaceBootstrapPlugin } from "@/features/workspace/bootstrap";
-import { workspaceService } from "@/features/workspace/adapters/workspaceService";
+import { createWorkspaceService } from "@/features/workspace/adapters/workspaceService";
 import { createWorkspaceEventsPlugin } from "@/features/workspace/events";
 import { workspaceSessionNavigation } from "@/features/workspace/sessionNavigation";
 import { workspaceKeymap } from "@/features/workspace/keymap";
@@ -64,37 +71,49 @@ import { createCompletionNotifyPlugin } from "@/features/notifications/index";
 import { statusNotifications } from "@/features/notifications/index";
 import { windowTitle } from "@/features/shell/windowTitle";
 import { tasksPill } from "@/features/workspace/tasks";
-import { appearancePlugins } from "@/features/theme/index";
+import { createAppearancePlugins } from "@/features/theme/index";
 import toaster from "@/features/notifications/toaster/index";
 import { toolActions, toolIcons } from "@/features/chat/tools/toolMeta";
 import { subagentsView } from "@/features/chat/message/subagents";
-import toolViewOpener from "@/features/workspace/tool-view-opener/index";
+import toolViewOpener from "@/features/workspace/toolViewOpener";
 import { fileView } from "@/features/workspace/views";
-export const toolRenderingPlugins: AnyPlugin[] = [toolActions, toolViewOpener, toolIcons];
+export function createToolRenderingPlugins(workspace: WorkspaceOwner["access"]): AnyPlugin[] {
+  return [toolActions, toolViewOpener(workspace), toolIcons];
+}
 
 export function createBuiltinPlugins(
   connection: ReturnType<typeof createRuntimeConnection>,
   host: ClientHost,
+  navigation: Navigator,
+  agent: AgentOwner,
+  composerOwner: ComposerOwner,
+  workspace: WorkspaceOwner,
+  directory: ReturnType<typeof createWorkingDirectoryPicker>,
+  notifications: NotificationOwner,
+  installedPlugins: InstalledPluginsOwner,
+  theme: Theme,
 ): AnyPlugin[] {
+  const agentAccess = agent.access;
+  const composerAccess = composerOwner.access;
+  const workspaceAccess = workspace.access;
+  const runtimeAccess = connection.access;
+  const directoryAccess = directory.access;
   const runtimeClient = connection.client;
   const infrastructure: AnyPlugin[] = [
     nativeShell,
     createObservabilityPlugin({ name: `${PRODUCT_SLUG}-frontend`, version: CLIENT_VERSION }),
-    createNavigationBootstrapPlugin(
-      () => host.chooseWorkingDirectory(),
-      connection.localWorkspaceAvailable,
-    ),
-    createAgentBootstrapPlugin(runtimeClient),
-    createRuntimePlugin(runtimeClient, connection.sidecar, () => connection.bootstrap().runtime),
-    createWorkspaceBootstrapPlugin(runtimeClient, host, connection.localWorkspaceAvailable),
-    workspaceService,
-    createWorkspaceEventsPlugin(runtimeClient),
+    createNavigationBootstrapPlugin(directory),
+    createAgentBootstrapPlugin(agent, runtimeClient),
+    createRuntimePlugin(connection),
+    createWorkspaceBootstrapPlugin(workspace, runtimeClient),
+    createWorkspaceService(navigation, workspace),
+    createWorkspaceEventsPlugin(agentAccess, runtimeAccess, runtimeClient),
     workspaceSessionNavigation,
-    workspaceKeymap,
-    createRpcAgentPlugin(runtimeClient),
+    workspaceKeymap(workspaceAccess),
+    createRpcAgentPlugin(agentAccess, runtimeClient),
     defaultTitle,
     defaultAccents,
-    ...appearancePlugins,
+    ...createAppearancePlugins(theme),
     ...localePlugins,
     mainRoute,
   ];
@@ -105,15 +124,14 @@ export function createBuiltinPlugins(
     messageEdit,
     messageRegenerate,
     createMessageFeedbackPlugin(runtimeClient),
-    createMessageImagesPlugin((source) => host.saveImage(source)),
   ];
 
   const composer: AnyPlugin[] = [
-    composerBootstrap,
+    createComposerBootstrap(composerOwner),
     slashHints,
     composerToolbar,
-    composerRunOptions,
-    composerKeymap,
+    composerRunOptions(composerAccess),
+    composerKeymap(agentAccess, composerAccess, runtimeAccess),
     composerSend,
   ];
 
@@ -123,7 +141,7 @@ export function createBuiltinPlugins(
     approvalsPane,
     personalization,
     connectionSettings,
-    createPluginsPlugin(runtimeClient, connection.endpoint),
+    createPluginsPlugin(installedPlugins),
     createProvidersPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     createHooksPlugin(runtimeClient),
@@ -131,7 +149,11 @@ export function createBuiltinPlugins(
     subagentsView,
   ];
 
-  const workbench: AnyPlugin[] = [workbenchSidebar, workbenchChat, workbenchSettings];
+  const workbench: AnyPlugin[] = [
+    workbenchSidebar,
+    workbenchChat,
+    workbenchSettings(workspaceAccess),
+  ];
 
   const sidebar: AnyPlugin[] = [sidebarActions, sidebarProjects, sidebarRecents, sidebarFooter];
 
@@ -139,27 +161,35 @@ export function createBuiltinPlugins(
     toaster,
     chatSearch,
     quoteSelection,
-    defaultCommands,
+    defaultCommands(
+      agentAccess,
+      composerAccess,
+      workspaceAccess,
+      runtimeAccess,
+      directoryAccess,
+      navigation,
+      theme.access,
+    ),
     tasksPill,
     statusNotifications,
-    createCompletionNotifyPlugin(host, PRODUCT_NAME),
-    windowTitle,
-    shortcuts,
+    createCompletionNotifyPlugin(notifications),
+    windowTitle(agentAccess),
+    shortcuts(workspaceAccess),
     sessionSearch,
     commandMenu,
     narrativeRails,
-    createGoalPlugin(runtimeClient),
+    createGoalPlugin(agentAccess, composerAccess, runtimeAccess, runtimeClient),
     planProgress,
     providerSetup,
     contextUsage,
-    conversationExport,
+    conversationExport(workspaceAccess),
   ];
 
   return [
     shellServices,
     ...infrastructure,
     ...messageRendering,
-    ...toolRenderingPlugins,
+    ...createToolRenderingPlugins(workspaceAccess),
     ...composer,
     ...panes,
     ...workbench,

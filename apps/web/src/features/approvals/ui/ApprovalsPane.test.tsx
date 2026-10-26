@@ -1,4 +1,12 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
 import { type ApprovalMode, type ApprovalModeResult } from "@/features/agent/public/approvalPolicy";
@@ -37,7 +45,7 @@ afterEach(cleanup);
 describe("ApprovalsPane", () => {
   it("reports a Runtime internal error as a failed read that can be retried", () => {
     model.query = failed(new RpcError({ message: "internal", data: { type: "internal_error" } }));
-    render(<ApprovalsPane />);
+    testClient.render(<ApprovalsPane />);
 
     expect(screen.getByText(LOAD_FAILED)).toBeTruthy();
     expect(screen.queryByText(UNAVAILABLE)).toBeNull();
@@ -50,7 +58,7 @@ describe("ApprovalsPane", () => {
 
   it("keeps an HTTP 404 retryable instead of claiming the method is missing", () => {
     model.query = failed(new RpcTransportError("not found", 404));
-    render(<ApprovalsPane />);
+    testClient.render(<ApprovalsPane />);
 
     expect(screen.getByText(LOAD_FAILED)).toBeTruthy();
     expect(screen.queryByText(UNAVAILABLE)).toBeNull();
@@ -64,7 +72,7 @@ describe("ApprovalsPane", () => {
     model.query = failed(
       new RpcError({ message: "method not found", data: { type: "method_not_found" } }),
     );
-    render(<ApprovalsPane />);
+    testClient.render(<ApprovalsPane />);
 
     expect(screen.getByText(UNAVAILABLE)).toBeTruthy();
     expect(screen.getByText(UNAVAILABLE_SUB)).toBeTruthy();
@@ -76,7 +84,7 @@ describe("ApprovalsPane", () => {
 
   it("replaces the failure with the accepted mode once a retried read succeeds", () => {
     model.query = failed(new RpcError({ message: "internal", data: { type: "internal_error" } }));
-    const view = render(<ApprovalsPane />);
+    const view = testClient.render(<ApprovalsPane />);
     expect(screen.getByText(LOAD_FAILED)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
@@ -105,7 +113,7 @@ describe("ApprovalsPane", () => {
       status: "pending",
       refetch: model.refetch,
     };
-    render(<ApprovalsPane />);
+    testClient.render(<ApprovalsPane />);
 
     expect(screen.getByText("Mode")).toBeTruthy();
     expect(screen.getByText("Loading")).toBeTruthy();

@@ -1,4 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { type WorkIndexActions } from "@/features/navigation/public/workIndex";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
@@ -23,7 +31,7 @@ const actions = {
 describe("SessionList", () => {
   it("keeps the active session on screen even past the visible cap", () => {
     const sessions = Array.from({ length: 12 }, (_, index) => session(index + 1));
-    render(<SessionList sessions={sessions} actions={actions} activeSessionId="s11" />);
+    testClient.render(<SessionList sessions={sessions} actions={actions} activeSessionId="s11" />);
     expect(screen.getByRole("button", { name: /^Session 11 —/ }).getAttribute("aria-current")).toBe(
       "page",
     );

@@ -1,11 +1,18 @@
-import { createBrowserHost } from "@/platform/browserHost";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   announceSettlement,
   startCompletionNotifications,
 } from "@/features/notifications/completionNotify";
-import { installNotificationCentre } from "@/features/notifications/adapters/systemNotifier";
-import { useSystemNotificationsStore } from "@/features/notifications/systemNotifications";
+
 const calls = vi.hoisted(() => ({
   select: vi.fn(),
   chat: vi.fn(),
@@ -36,44 +43,58 @@ class FakeNotification {
 
 describe("announceSettlement", () => {
   let stop: () => void;
-  let uninstall: () => void;
+
   beforeEach(() => {
-    uninstall = installNotificationCentre(createBrowserHost());
-    stop = startCompletionNotifications(calls.reveal, "Flame");
+    stop = startCompletionNotifications(
+      testClient.notifications.access,
+      testClient.agent.access,
+      testClient.workspace.access,
+      calls.reveal,
+      "Flame",
+    );
     vi.stubGlobal("Notification", FakeNotification);
     vi.spyOn(document, "hasFocus").mockReturnValue(false);
     FakeNotification.permission = "granted";
     FakeNotification.last = null;
-    useSystemNotificationsStore.setState({ systemNotifications: true });
+    testClient.notifications.access.systemNotifications.setState({ systemNotifications: true });
     for (const call of Object.values(calls)) call.mockClear();
   });
   afterEach(() => {
     stop();
-    uninstall();
+
     vi.unstubAllGlobals();
   });
 
   it("opens the session the notification is about when it is clicked", async () => {
     await announceSettlement(
+      testClient.notifications.access,
       { sessionId: "s-b", status: "needsInput", errorMessage: null },
       "Flame",
     );
     expect(FakeNotification.last?.title).toMatch(/needs you/i);
     FakeNotification.last!.onclick!();
     expect(calls.reveal).toHaveBeenCalledOnce();
-    expect(calls.select).toHaveBeenCalledWith("s-b");
+    expect(calls.select).toHaveBeenCalledWith(testClient.agent.access, "s-b");
     expect(calls.chat).toHaveBeenCalledOnce();
   });
 
   it("stays quiet when the user turned notifications off", async () => {
-    useSystemNotificationsStore.setState({ systemNotifications: false });
-    await announceSettlement({ sessionId: "s-a", status: "finished", errorMessage: null }, "Flame");
+    testClient.notifications.access.systemNotifications.setState({ systemNotifications: false });
+    await announceSettlement(
+      testClient.notifications.access,
+      { sessionId: "s-a", status: "finished", errorMessage: null },
+      "Flame",
+    );
     expect(FakeNotification.last).toBeNull();
   });
 
   it("does not pretend to notify when the system refused permission", async () => {
     FakeNotification.permission = "denied";
-    await announceSettlement({ sessionId: "s-a", status: "finished", errorMessage: null }, "Flame");
+    await announceSettlement(
+      testClient.notifications.access,
+      { sessionId: "s-a", status: "finished", errorMessage: null },
+      "Flame",
+    );
     expect(FakeNotification.last).toBeNull();
   });
 });

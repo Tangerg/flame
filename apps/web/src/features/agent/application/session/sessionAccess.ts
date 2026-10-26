@@ -1,0 +1,133 @@
+import { type AgentOpenSessions } from "@/features/agent/application/session/sessionSelectionModel";
+import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
+import { type AgentInput } from "@/features/agent/domain/input";
+import { type InterruptResumeInput } from "@/features/agent/domain/hitl";
+import {
+  type AgentProblem,
+  type AgentPlan,
+  type AgentRunView,
+  type AgentSessionView,
+  type Message,
+} from "@/features/agent/public/sessionView";
+import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
+import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
+export type { AgentOpenSessions };
+
+export interface AgentSessionStatePort {
+  useActiveSessionId(): string;
+  getActiveSessionId(): string;
+  getLifecycleSnapshot(): AgentOpenSessions;
+  subscribeActiveSessionId(onChange: (sessionId: string) => void): () => void;
+  subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
+  selectSession(id: string): void;
+  closeSession(id: string): void;
+  deleteSession(id: string): void;
+  subscribeDeletedSession(listener: (id: string) => void): () => void;
+  reconcileSessions(liveIds: string[]): void;
+  restoreLastSession(): void;
+}
+
+export type StopCurrentRootRunAction = () => boolean;
+
+export type SessionProjectionSynchronizationOwnership =
+  "after-live" | "replace-live" | "retire-live" | "replace-server";
+
+export type SynchronizeSessionAction = (
+  ownership: SessionProjectionSynchronizationOwnership,
+) => Promise<boolean>;
+
+export type CancelRunAction = (runId: string) => void;
+
+export type SendAgentInputAction = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
+
+export type ResumeRunAction = (
+  runId: string,
+  responses: InterruptResumeInput[],
+  onSettled?: () => void,
+  onStartError?: () => void,
+) => boolean;
+
+export interface AgentSessionViewEntry {
+  view: AgentSessionView;
+  viewEpoch: bigint;
+  viewRevision: bigint;
+  authoritativeRevision: bigint;
+  stop: StopCurrentRootRunAction | null;
+  send: SendAgentInputAction | null;
+  resume: ResumeRunAction | null;
+  synchronize: SynchronizeSessionAction | null;
+  cancelRun: CancelRunAction | null;
+  openingCommands: readonly AgentOpeningCommand[];
+  retryOpening: ((idempotencyKey: string) => boolean) | null;
+}
+
+export interface AgentViewRefreshToken {
+  readonly generation: bigint;
+  readonly requestSequence: bigint;
+  readonly viewRevision: bigint;
+}
+
+export interface AgentProjectionMaterial<T> {
+  readonly generation: bigint;
+  readonly value: T | undefined;
+}
+
+export interface AgentSessionViewPort {
+  useCurrentRootRun(): AgentRunView | null;
+  useCurrentRootRunning(): boolean;
+  useRootNarrativeMessages(): Message[];
+  useTranscriptRows(): readonly TranscriptRow[];
+  useProblem(): AgentProblem | null;
+  useOpeningCommands(): readonly AgentOpeningCommand[];
+  usePlan(): AgentProjectionMaterial<AgentPlan>;
+  useSharedMaterial<T = unknown>(path?: string): AgentProjectionMaterial<T>;
+  useAction(kind: "stop"): StopCurrentRootRunAction | null;
+  useAction(kind: "send"): SendAgentInputAction | null;
+  getCurrentView(): AgentSessionView;
+  getSessions(): Record<string, AgentSessionViewEntry>;
+  getSession(sessionId: string): AgentSessionViewEntry | undefined;
+  sendToSession(sessionId: string, input: AgentInput, options?: AgentRunStartOptions): boolean;
+  dropMessage(sessionId: string, messageId: string): void;
+  projectSteerReceipt(
+    sessionId: string,
+    messageId: string,
+    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
+  ): void;
+  projectSteerDelivery(
+    sessionId: string,
+    messageId: string,
+    command: Pick<NonNullable<Message["steer"]>, "runId" | "delivery">,
+  ): void;
+  reconcileMessageIdentity(
+    sessionId: string,
+    fromId: string,
+    toId: string,
+    steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
+  ): void;
+  appendLocalUserMessage(sessionId: string, messageId: string, input: AgentInput): void;
+  beginViewRefresh(
+    sessionId: string,
+    invalidateQueuedRunEvents: boolean,
+  ): AgentViewRefreshToken | null;
+  commitViewRefresh(
+    sessionId: string,
+    token: AgentViewRefreshToken,
+    view: AgentSessionView,
+    openingCommands?: readonly AgentOpeningCommand[],
+  ): boolean;
+  retireProjectionGeneration(sessionIds: readonly string[]): void;
+  replaceServerScope(sessionIds: readonly string[]): void;
+  clearProblem(sessionId: string): void;
+  subscribeSessions(
+    onChange: (sessions: Record<string, AgentSessionViewEntry>) => void,
+  ): () => void;
+}
+
+export interface AgentSession {
+  send: (input: AgentInput, options?: AgentRunStartOptions) => boolean;
+  stop: () => void;
+}
+
+export interface AgentDefaultSessionPort {
+  useDefaultChatSession(): AgentSession;
+}

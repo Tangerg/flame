@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "@flame/runtime-client";
@@ -17,7 +25,7 @@ const notImplemented = new RpcError({
 describe("DataView", () => {
   it("keeps recovery available when the HTTP endpoint is unavailable", () => {
     const onRetry = vi.fn();
-    render(
+    testClient.render(
       <DataView
         items={undefined}
         isLoading={false}
@@ -36,7 +44,7 @@ describe("DataView", () => {
 
   it("recovers from an error rather than dead-ending on it", () => {
     const onRetry = vi.fn();
-    render(
+    testClient.render(
       <DataView items={undefined} isLoading={false} failure={broke} onRetry={onRetry}>
         {rows}
       </DataView>,
@@ -67,7 +75,7 @@ describe("DataView", () => {
         </div>
       </div>
     );
-    const view = render(panel({ isLoading: false, failure: broke }));
+    const view = testClient.render(panel({ isLoading: false, failure: broke }));
     const outer = screen.getByLabelText("Panel");
     const reader = screen.getByLabelText("Reader");
     const focusPanel = vi.spyOn(outer, "focus");
@@ -91,7 +99,7 @@ describe("DataView", () => {
 
   it("leaves focus Retry does not own with its owner", () => {
     const onRetry = vi.fn();
-    render(
+    testClient.render(
       <>
         <button>Another control</button>
         <div role="group" tabIndex={-1} aria-label="Reader">
@@ -113,7 +121,7 @@ describe("DataView", () => {
 
   it("retries without a surviving host and keeps the focus its callback claims", () => {
     const onRetry = vi.fn(() => screen.getByRole("textbox", { name: "Message" }).focus());
-    render(
+    testClient.render(
       <>
         <textarea aria-label="Message" />
         <DataView items={undefined} isLoading={false} failure={broke} onRetry={onRetry}>
@@ -130,7 +138,7 @@ describe("DataView", () => {
   });
 
   it("keeps the failure glyph even when the caller renames the failure", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <DataView
         items={[]}
         isLoading={false}
@@ -147,7 +155,7 @@ describe("DataView", () => {
 
   it("offers no retry for a call the Runtime does not implement", () => {
     const onRetry = vi.fn();
-    render(
+    testClient.render(
       <DataView
         items={undefined}
         isLoading={false}
@@ -164,7 +172,7 @@ describe("DataView", () => {
   });
 
   it("does not invent a retry the caller has no way to serve", () => {
-    render(
+    testClient.render(
       <DataView items={undefined} isLoading={false} failure={broke}>
         {rows}
       </DataView>,
@@ -175,7 +183,7 @@ describe("DataView", () => {
 
   it("leaves an empty result to its own icon and no action", () => {
     const onRetry = vi.fn();
-    const { container } = render(
+    const { container } = testClient.render(
       <DataView
         items={[]}
         isLoading={false}
@@ -192,7 +200,7 @@ describe("DataView", () => {
 
   it("tells a Runtime that broke from one that never had the call", () => {
     const onRetry = vi.fn();
-    const view = render(
+    const view = testClient.render(
       <DataView items={undefined} isLoading={false} failure={broke} onRetry={onRetry}>
         {rows}
       </DataView>,
@@ -215,7 +223,7 @@ describe("DataError", () => {
   it("hands owned Retry focus to its caller's surviving sibling composite", () => {
     const target = createRef<HTMLDivElement>();
     const callbackFocus: (Element | null)[] = [];
-    render(
+    testClient.render(
       <>
         <TreePrimitive.Root ref={target} aria-label="Recovered files">
           <TreePrimitive.Item level={1} selected={false} focusable onActivate={vi.fn()}>
@@ -245,7 +253,7 @@ describe("DataError", () => {
   });
 
   it("classifies an unsupported call with its caller's copy and offers no retry", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       <DataError
         failure={notImplemented}
         unsupported={{ icon: "folder", sub: "The last files remain.", size: "compact" }}
@@ -267,7 +275,7 @@ describe("DataError", () => {
     { name: "a transport failure", failure: new RpcTransportError("not found", 404) },
   ])("keeps generic recovery for $name", ({ failure }) => {
     const onRetry = vi.fn();
-    const { container } = render(
+    const { container } = testClient.render(
       <DataError failure={failure} unsupported={{ title: "Not supported" }} onRetry={onRetry} />,
     );
 

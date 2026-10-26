@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type BlockCtx } from "@/features/chat/message/ui/blockContext";
@@ -50,7 +58,7 @@ describe("shared message transcript", () => {
     healthy.message.blocks = [
       { kind: "text", text: "The healthy message remains readable.", status: "complete" },
     ];
-    render(transcript([row("render-boom"), healthy]));
+    testClient.render(transcript([row("render-boom"), healthy]));
     await act(async () => vi.dynamicImportSettled());
 
     expect(screen.getAllByRole("alert")).toHaveLength(1);
@@ -58,7 +66,7 @@ describe("shared message transcript", () => {
   });
 
   it("separates changes between known days without labeling the first day or undated turns", () => {
-    const { container } = render(
+    const { container } = testClient.render(
       transcript([
         row("undated-first"),
         row("invalid-first", "not-a-date"),
@@ -94,7 +102,7 @@ describe("shared message transcript", () => {
       },
     ];
     const earlier = row("earlier", "2000-01-01T12:00:00");
-    const { rerender } = render(transcript([thought]));
+    const { rerender } = testClient.render(transcript([thought]));
     const trigger = screen.getByRole("button", { name: "Thought" });
     fireEvent.click(trigger);
     await act(async () => vi.dynamicImportSettled());
@@ -130,7 +138,7 @@ describe("shared message transcript", () => {
       message: { ...answer.message, runId: "other-run" },
       runOwner: { kind: "owned", runId: "other-run", status: "finished" },
     };
-    const { rerender } = render(transcript([process, otherAnswer]));
+    const { rerender } = testClient.render(transcript([process, otherAnswer]));
     await act(async () => vi.dynamicImportSettled());
     expect(screen.getAllByRole("button", { name: "Thought" })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "2 steps" })).toBeNull();

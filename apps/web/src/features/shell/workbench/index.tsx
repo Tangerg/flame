@@ -1,3 +1,4 @@
+import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { createRef, type RefObject } from "react";
 import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/panel/ChatPanel";
 import { useWarmMarkdownRenderer } from "@/features/chat/public/message/rendering";
@@ -53,21 +54,22 @@ export const workbenchSidebar = definePlugin({
   },
 });
 
-export const workbenchSettings = definePlugin({
-  name: "flame.builtin.workbench-settings",
-  setup(ctx) {
-    ctx.contribute(WORKSPACE_VIEW, {
-      id: WORKSPACE_SETTINGS_VIEW,
-      title: "settings.title",
-      icon: "settings",
-      order: 200,
-      component: SettingsPage,
-    });
-    ctx.contribute(COMMAND, {
-      id: "settings.open",
-      label: "settings.title",
-      combo: "Mod+,",
-      run: () => openWorkspaceView(WORKSPACE_SETTINGS_VIEW),
-    });
-  },
-});
+export const workbenchSettings = (workspaceAccess: WorkspaceAccess) =>
+  definePlugin({
+    name: "flame.builtin.workbench-settings",
+    setup(ctx) {
+      ctx.contribute(WORKSPACE_VIEW, {
+        id: WORKSPACE_SETTINGS_VIEW,
+        title: "settings.title",
+        icon: "settings",
+        order: 200,
+        component: SettingsPage,
+      });
+      ctx.contribute(COMMAND, {
+        id: "settings.open",
+        label: "settings.title",
+        combo: "Mod+,",
+        run: () => openWorkspaceView(workspaceAccess, WORKSPACE_SETTINGS_VIEW),
+      });
+    },
+  });

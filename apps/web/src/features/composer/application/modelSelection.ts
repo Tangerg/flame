@@ -1,4 +1,4 @@
-import { type ComposerModelPreference } from "@/features/composer/application/ports/state";
+import { type ComposerModelPreference } from "@/features/composer/application/state";
 export interface ComposerModelOption {
   id: string;
   provider: string;

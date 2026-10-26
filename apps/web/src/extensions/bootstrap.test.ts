@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type Host } from "dougong";
-import { act, renderHook } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createKernel, startKernel, stopKernel } from "@/extensions/bootstrap";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -32,7 +40,9 @@ describe("kernel generation ownership", () => {
     hosts.push(await startKernel([plugin("test.old")]));
     hosts.push(await startKernel([plugin("test.successor")]));
 
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.successor"]);
+    expect(testClient.renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "test.successor",
+    ]);
   });
 
   it("does not let a stale stop retract the successor generation", async () => {
@@ -43,7 +53,9 @@ describe("kernel generation ownership", () => {
     await stopKernel(old);
 
     expect(publishedKernel()).toBe(successor);
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.successor"]);
+    expect(testClient.renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "test.successor",
+    ]);
   });
 
   it("keeps unpublished installations isolated from the active generation", async () => {
@@ -52,13 +64,15 @@ describe("kernel generation ownership", () => {
     hosts.push(active, unpublished);
 
     expect(publishedKernel()).toBe(active);
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.active"]);
+    expect(testClient.renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "test.active",
+    ]);
   });
 
   it("follows Host installation and removal without a second registration path", async () => {
     const host = await startKernel([plugin("test.active")]);
     hosts.push(host);
-    const hook = renderHook(() => useInstalledPlugins());
+    const hook = testClient.renderHook(() => useInstalledPlugins());
     const change = host.change();
     const late = change.install(plugin("test.late"));
 
@@ -75,7 +89,7 @@ describe("kernel generation ownership", () => {
   it("reads the restored Host plan after a failed installation", async () => {
     const host = await startKernel([plugin("test.active")]);
     hosts.push(host);
-    const hook = renderHook(() => useInstalledPlugins());
+    const hook = testClient.renderHook(() => useInstalledPlugins());
     const change = host.change();
     change.install(
       definePlugin({
@@ -117,6 +131,6 @@ describe("kernel generation ownership", () => {
     await expect(starting).rejects.toThrow(/aborted/i);
     expect(cleanup).toHaveBeenCalledOnce();
     expect(publishedKernel()).toBeUndefined();
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual([]);
+    expect(testClient.renderHook(() => useInstalledPlugins()).result.current).toEqual([]);
   });
 });

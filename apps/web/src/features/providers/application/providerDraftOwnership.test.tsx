@@ -1,4 +1,12 @@
-import { act, renderHook } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { type ProviderGateway } from "@/features/providers/application/ports/providerGateway";
@@ -28,7 +36,7 @@ describe("provider draft ownership", () => {
     const owner = ProviderMutationOwner.install(first);
     const stop = observeProviderDraftLifetime();
     const provider = { id: "same-provider", baseUrl: "https://provider.example" };
-    const hook = renderHook(() => ({
+    const hook = testClient.renderHook(() => ({
       draft: useProviderDraft(provider),
       update: useUpdateProvider(),
       test: useTestProvider(),

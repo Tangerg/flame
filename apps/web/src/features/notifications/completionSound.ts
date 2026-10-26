@@ -16,16 +16,18 @@ const _paired: Paired<CompletionSoundState, z.infer<typeof persistSchema>> = tru
 
 void _paired;
 
-export const useCompletionSoundStore = create<CompletionSoundState>()(
-  persist(
-    (set) => ({
-      completionSound: false,
-      setCompletionSound: (completionSound) => set({ completionSound }),
-    }),
-    {
-      name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
-    },
-  ),
-);
+export function createCompletionSoundStore() {
+  return create<CompletionSoundState>()(
+    persist(
+      (set) => ({
+        completionSound: false,
+        setCompletionSound: (completionSound) => set({ completionSound }),
+      }),
+      {
+        name: STORAGE_KEY,
+        storage: createJSONStorage(() => localStorage),
+        merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
+      },
+    ),
+  );
+}

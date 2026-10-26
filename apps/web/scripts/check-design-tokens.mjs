@@ -15,7 +15,7 @@
 // signal the ladder needs a step, not that this callsite needs an exception —
 // add the step in globals.css so every other callsite can reach it too.
 
-import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { assertSourceCoverage, sourceFiles } from "../../../tooling/source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 

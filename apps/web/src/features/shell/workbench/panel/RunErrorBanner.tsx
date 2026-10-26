@@ -1,3 +1,5 @@
+import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
+import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
@@ -12,7 +14,7 @@ import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
 import { dismissActiveSessionProblem } from "@/features/agent/public/run";
 import { useActiveSessionProblem } from "@/features/agent/public/run";
 import { useT } from "@/lib/i18n/index";
-import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
+import { useMotion } from "@/lib/motion";
 import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
 import { openDiagnosticsView } from "@/features/workspace/public/deeplinks";
 import { showWorkspaceDock } from "@/features/workspace/public/navigation";
@@ -25,8 +27,8 @@ const reb = stylex.create({
   glyph: { marginTop: space.s0_5, color: color.negative },
 });
 
-function findLastUserText(): string {
-  const last = getActiveConversationMessages().findLast(
+function findLastUserText(agentAccess: AgentAccess): string {
+  const last = getActiveConversationMessages(agentAccess).findLast(
     (m) => m.role === "user" && flattenText(m.blocks).trim() !== "",
   );
   return last ? flattenText(last.blocks).trim() : "";
@@ -39,6 +41,10 @@ interface RetryCountdown {
 }
 
 export function RunErrorBanner() {
+  const { disclosureExitTransition, disclosureTransition } = useMotion();
+  const agentAccess = useAgent();
+  const workspaceAccess = useWorkspace();
+
   const t = useT();
   const error = useActiveSessionProblem();
   const send = useChatSend();
@@ -67,12 +73,12 @@ export function RunErrorBanner() {
     return () => clearInterval(id);
   }, [error, retryAfter]);
 
-  const retryText = error ? findLastUserText() : "";
+  const retryText = error ? findLastUserText(agentAccess) : "";
 
   const onRetry = () => {
     if (retryIn > 0 || !canSend || !retryText) return;
     if (!send(agentTextInput(retryText))) return;
-    dismissActiveSessionProblem();
+    dismissActiveSessionProblem(agentAccess);
   };
 
   const canRetry =
@@ -127,12 +133,12 @@ export function RunErrorBanner() {
               <BannerAction
                 icon="history"
                 label={t("runError.action.context")}
-                onClick={showWorkspaceDock}
+                onClick={showWorkspaceDock.bind(null, workspaceAccess)}
               />
               <BannerAction
                 icon="activity"
                 label={t("runError.action.diagnostics")}
-                onClick={openDiagnosticsView}
+                onClick={openDiagnosticsView.bind(null, workspaceAccess)}
               />
             </div>
           </div>
@@ -141,7 +147,7 @@ export function RunErrorBanner() {
             size="xs"
             quiet
             aria-label={t("runError.action.dismiss")}
-            onClick={dismissActiveSessionProblem}
+            onClick={dismissActiveSessionProblem.bind(null, agentAccess)}
           />
         </motion.div>
       )}

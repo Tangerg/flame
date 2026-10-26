@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { type PropsWithChildren } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type BlockCtx } from "@/features/chat/public/message/rendering";
@@ -113,7 +121,7 @@ describe("MessageStream terminal footer materialization", () => {
   });
 
   it("animates a newly appended turn without fading or transforming its surface", () => {
-    const { container, rerender } = render(
+    const { container, rerender } = testClient.render(
       <MessageStream rows={[]} ctx={CTX} sessionId="session-arrival" />,
     );
     rerender(
@@ -129,7 +137,7 @@ describe("MessageStream terminal footer materialization", () => {
 
   it("keeps the Run outcome out of layout until the terminal visible generation settles", async () => {
     root.current = { running: true, terminalTurnIndex: () => -1 };
-    const { rerender } = render(
+    const { rerender } = testClient.render(
       <MessageStream rows={[transcriptRow("running")]} ctx={CTX} sessionId="session-footer" />,
     );
     expect(screen.queryByTestId("root-run-outcome")).toBeNull();
@@ -156,7 +164,7 @@ describe("MessageStream terminal footer materialization", () => {
   it("keeps a finished Run outcome with its exact turn while a successor user message is unassigned", async () => {
     root.current = { running: false, terminalTurnIndex: () => 0 };
 
-    render(
+    testClient.render(
       <MessageStream
         rows={[transcriptRow("complete"), optimisticUserRow()]}
         ctx={CTX}
@@ -184,7 +192,7 @@ describe("MessageStream reading measurement", () => {
         status: "complete",
       },
     ];
-    render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-disclosure" />);
+    testClient.render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-disclosure" />);
     await act(async () => vi.dynamicImportSettled());
     const trigger = screen.getByRole("button", { name: "Thought" });
     act(() => trigger.focus());
@@ -209,7 +217,7 @@ describe("MessageStream reading measurement", () => {
         </ContentVisibility>
       </ContentVisibility>
     );
-    const { container, rerender } = render(stream(true));
+    const { container, rerender } = testClient.render(stream(true));
     await act(async () => vi.dynamicImportSettled());
     const viewport = container.querySelector<HTMLElement>(".msg-scroll-viewport")!;
     const content = viewport.firstElementChild as HTMLElement;
@@ -259,7 +267,7 @@ it("preserves reading focus after geometry changes in the main transcript", asyn
       status: "complete",
     },
   ];
-  render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-reading-geometry" />);
+  testClient.render(<MessageStream rows={[row]} ctx={CTX} sessionId="session-reading-geometry" />);
   await act(async () => vi.dynamicImportSettled());
   const viewport = follow.scrollRef.current!;
   const target = screen.getByRole("button", { name: "Thought" });

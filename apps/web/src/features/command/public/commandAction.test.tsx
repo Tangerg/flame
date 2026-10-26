@@ -1,4 +1,12 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcError } from "@flame/runtime-client";
 import { useCommandAction } from "@/features/command/public/commandAction";
@@ -31,7 +39,7 @@ describe("useCommandAction", () => {
 
   it("runs one command at a time even when the caller renders no disabled state", () => {
     const command = vi.fn(() => new Promise<void>(() => {}));
-    render(<Harness command={command} />);
+    testClient.render(<Harness command={command} />);
 
     const button = screen.getByRole("button");
     fireEvent.click(button);
@@ -42,7 +50,7 @@ describe("useCommandAction", () => {
 
   it("shows the command running on the control that started it", async () => {
     const settle = Promise.withResolvers<void>();
-    render(<Harness command={() => settle.promise} />);
+    testClient.render(<Harness command={() => settle.promise} />);
 
     const button = screen.getByRole("button");
     fireEvent.click(button);
@@ -61,7 +69,7 @@ describe("useCommandAction", () => {
         new RpcError({ message: "runtime said no", data: { type: "invalid_request" } }),
       ),
     );
-    render(<Harness command={command} />);
+    testClient.render(<Harness command={command} />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
@@ -75,7 +83,9 @@ describe("useCommandAction", () => {
   });
 
   it("falls back rather than showing an internal error's own words", async () => {
-    render(<Harness command={() => Promise.reject(new Error("undefined is not a function"))} />);
+    testClient.render(
+      <Harness command={() => Promise.reject(new Error("undefined is not a function"))} />,
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
@@ -84,7 +94,7 @@ describe("useCommandAction", () => {
   });
 
   it("stays quiet when the owner retired the command", async () => {
-    render(<Harness command={() => Promise.reject(new Retired("gone"))} />);
+    testClient.render(<Harness command={() => Promise.reject(new Retired("gone"))} />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
@@ -99,7 +109,7 @@ describe("useCommandAction", () => {
         new RpcError({ message: "runtime said no", data: { type: "invalid_request" } }),
       ),
     );
-    render(<Harness command={command} onError={onError} />);
+    testClient.render(<Harness command={command} onError={onError} />);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
@@ -117,7 +127,9 @@ describe("useCommandAction", () => {
 
   it("keeps a retired failure away from the task's own error sink", async () => {
     const onError = vi.fn();
-    render(<Harness command={() => Promise.reject(new Retired("gone"))} onError={onError} />);
+    testClient.render(
+      <Harness command={() => Promise.reject(new Retired("gone"))} onError={onError} />,
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));

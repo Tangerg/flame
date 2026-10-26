@@ -1,3 +1,4 @@
+import { type AgentAccess, useAgent } from "@/features/agent/public/agent";
 import { queryClient } from "@/lib/queryClient";
 import { useCallback } from "react";
 import {
@@ -5,23 +6,11 @@ import {
   commitCreatedAgentSession,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
-import {
-  agentRuntime,
-  type AgentRuntimeGateway,
-} from "@/features/agent/application/ports/runtimeGateway";
-import {
-  agentSessionState,
-  type AgentSessionStatePort,
-} from "@/features/agent/application/ports/sessionState";
-import {
-  agentSessionView,
-  type AgentSessionViewPort,
-} from "@/features/agent/application/ports/sessionView";
+import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
+import { type AgentSessionStatePort } from "@/features/agent/application/session/sessionAccess";
+import { type AgentSessionViewPort } from "@/features/agent/application/session/sessionAccess";
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
-import {
-  agentCommandOwner,
-  type AgentCommandOwner,
-} from "@/features/agent/application/agentCommandOwner";
+import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
 export interface CreateSessionOptions {
   cwd: string;
   reuseEmptySession?: boolean;
@@ -60,12 +49,12 @@ function alreadyOnAnEmptySession(
   return loaded && loaded.messages.length === 0 ? sessionId : null;
 }
 
-function doCreate(opts: CreateSessionOptions): Promise<string | null> {
+function doCreate(agentAccess: AgentAccess, opts: CreateSessionOptions): Promise<string | null> {
   if (opts.cwd.trim() === "") return Promise.resolve(null);
-  const owner = agentCommandOwner();
-  const runtime = agentRuntime();
-  const state = agentSessionState();
-  const view = agentSessionView();
+  const owner = agentAccess.commands.current();
+  const runtime = agentAccess.runtime;
+  const state = agentAccess.state;
+  const view = agentAccess.view;
   const key = joinKey(opts);
   const fresh = alreadyOnAnEmptySession(opts, state, view);
   if (fresh) return Promise.resolve(fresh);
@@ -77,15 +66,17 @@ function doCreate(opts: CreateSessionOptions): Promise<string | null> {
     });
 }
 
-export function createSession(): Promise<string | null> {
-  const sessionId = agentSessionState().getActiveSessionId();
+export function createSession(agentAccess: AgentAccess): Promise<string | null> {
+  const sessionId = agentAccess.state.getActiveSessionId();
   if (!sessionId) return Promise.resolve(null);
   const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
   const cwd = sessions?.find((session) => session.id === sessionId)?.workspace.path;
   if (!cwd || cwd.trim() === "") return Promise.resolve(null);
-  return doCreate({ cwd, reuseEmptySession: true });
+  return doCreate(agentAccess, { cwd, reuseEmptySession: true });
 }
 
 export function useCreateSession(): (opts: CreateSessionOptions) => Promise<string | null> {
-  return useCallback((opts) => doCreate(opts), []);
+  const agentAccess = useAgent();
+
+  return useCallback((opts) => doCreate(agentAccess, opts), [agentAccess]);
 }

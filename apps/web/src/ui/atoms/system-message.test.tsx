@@ -1,4 +1,12 @@
-import { render } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 import { describe, expect, it } from "vitest";
 import { SystemMessage } from "@/ui/atoms/system-message";
 describe("system message semantics", () => {
@@ -8,14 +16,14 @@ describe("system message semantics", () => {
     ["error", "circle-x", "alert"],
     ["success", "circle-check", "status"],
   ] as const)("distinguishes a %s message", (variant, icon, role) => {
-    const view = render(<SystemMessage variant={variant}>Result</SystemMessage>);
+    const view = testClient.render(<SystemMessage variant={variant}>Result</SystemMessage>);
     const message = view.getByRole(role);
     expect(message.querySelector("svg")?.getAttribute("data-icon-name")).toBe(icon);
     expect(message.textContent).toBe("Result");
   });
 
   it("honors an explicit icon without changing the message role", () => {
-    const view = render(
+    const view = testClient.render(
       <SystemMessage variant="warning" icon="shield">
         Approval required
       </SystemMessage>,
@@ -26,7 +34,7 @@ describe("system message semantics", () => {
   });
 
   it("can suppress the glyph while preserving the status", () => {
-    const view = render(<SystemMessage hideIcon>Information</SystemMessage>);
+    const view = testClient.render(<SystemMessage hideIcon>Information</SystemMessage>);
     expect(view.getByRole("status").querySelector("svg")).toBeNull();
   });
 });

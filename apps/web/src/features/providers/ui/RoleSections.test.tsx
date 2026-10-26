@@ -1,4 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EmbeddingModelSection, UtilityModelSection } from "@/features/providers/ui/RoleSections";
 const provider = vi.hoisted(() => ({
@@ -40,7 +48,7 @@ describe("Provider role mutation material", () => {
 
   it("binds embedding-role feedback to the same Runtime material generation", async () => {
     provider.setEmbeddingRole.mockResolvedValue({ ok: false, error: "retired embedding failure" });
-    const view = render(<EmbeddingModelSection />);
+    const view = testClient.render(<EmbeddingModelSection />);
 
     fireEvent.click(screen.getByRole("button", { name: "Embedding model" }));
     fireEvent.click(await screen.findByRole("menuitemradio", { name: "Off" }));
@@ -54,7 +62,7 @@ describe("Provider role mutation material", () => {
 
   it("retires a failed role mutation with its Runtime generation", async () => {
     provider.setUtilityRole.mockResolvedValue({ ok: false, error: "retired role failure" });
-    const view = render(<UtilityModelSection />);
+    const view = testClient.render(<UtilityModelSection />);
 
     fireEvent.click(screen.getByRole("button", { name: "Utility model" }));
     fireEvent.click(await screen.findByRole("menuitemradio", { name: "Use Runtime default" }));
@@ -73,7 +81,7 @@ describe("Provider role mutation material", () => {
         resolve = settle;
       }),
     );
-    render(<UtilityModelSection />);
+    testClient.render(<UtilityModelSection />);
 
     const trigger = screen.getByRole("button", { name: "Utility model" });
     fireEvent.click(trigger);
@@ -96,7 +104,7 @@ describe("Provider role mutation material", () => {
 
   it("does not claim a role is off while its value is still unknown", () => {
     provider.roleState = { kind: "loading" };
-    render(<EmbeddingModelSection />);
+    testClient.render(<EmbeddingModelSection />);
     expect(screen.queryByText("Off")).toBeNull();
     expect(screen.queryByText(/No provider/i)).toBeNull();
     expect(screen.getByRole("button", { name: /embedding model/i }).hasAttribute("disabled")).toBe(
@@ -107,7 +115,7 @@ describe("Provider role mutation material", () => {
   it("offers a retry instead of the Runtime default when loading failed", () => {
     const retry = vi.fn();
     provider.roleState = { kind: "error", retry };
-    render(<UtilityModelSection />);
+    testClient.render(<UtilityModelSection />);
     expect(screen.queryByText(/use runtime default/i)).toBeNull();
     expect(screen.getByRole("alert").textContent).toMatch(/unknown/i);
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));

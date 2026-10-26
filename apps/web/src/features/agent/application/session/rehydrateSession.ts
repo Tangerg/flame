@@ -1,14 +1,18 @@
+import { type AgentAccess } from "@/features/agent/public/agent";
 import { refreshAgentSessionProjection } from "@/features/agent/application/session/refreshSessionProjection";
-import { agentSessionView } from "@/features/agent/application/ports/sessionView";
+
 const REWRITE_SYNCHRONIZATION_ATTEMPTS = 2;
 
-export async function rehydrateSessionView(sessionId: string): Promise<void> {
-  const synchronize = agentSessionView().getSession(sessionId)?.synchronize;
+export async function rehydrateSessionView(
+  agentAccess: AgentAccess,
+  sessionId: string,
+): Promise<void> {
+  const synchronize = agentAccess.view.getSession(sessionId)?.synchronize;
   for (let attempt = 0; attempt < REWRITE_SYNCHRONIZATION_ATTEMPTS; attempt += 1) {
     const committed = synchronize
       ? await synchronize("after-live")
       : Boolean(
-          await refreshAgentSessionProjection(sessionId, {
+          await refreshAgentSessionProjection(agentAccess, sessionId, {
             invalidateQueuedRunEvents: true,
           }),
         );

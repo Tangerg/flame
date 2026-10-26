@@ -1,3 +1,9 @@
+import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
+import { createStorage } from "@/extensions/storage";
+import { onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+
 import { runtimeRequestMeta } from "@/app/runtimeProtocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBuiltinPlugins } from "@/app/builtinPlugins";
@@ -35,7 +41,7 @@ const resetKernelForTest = async () => {
   if (running) await stopKernel(running);
   running = undefined;
 };
-import { installedRuntimeMutationJournalStorage } from "@/features/connection/public/mutationJournal";
+
 import { type FlameClient } from "@flame/runtime-client";
 let connection: ReturnType<typeof createRuntimeConnection>;
 
@@ -44,9 +50,27 @@ const host = createBrowserHost();
 let builtinPlugins: ReturnType<typeof createBuiltinPlugins>;
 
 beforeEach(async () => {
-  connection = createRuntimeConnection(host, runtimeRequestMeta);
+  connection = createRuntimeConnection(
+    host,
+    runtimeRequestMeta,
+    createRuntimeMutationJournalStorage(createStorage("flame.builtin.runtime")),
+  );
   await connection.initialize();
-  builtinPlugins = createBuiltinPlugins(connection, host);
+  const owned = createTestClient({ connection, host, start: false });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+  builtinPlugins = createBuiltinPlugins(
+    connection,
+    host,
+    testClient.navigation,
+    testClient.agent,
+    testClient.composer,
+    testClient.workspace,
+    testClient.directory,
+    testClient.notifications,
+    testClient.installedPlugins,
+    testClient.theme,
+  );
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
     "EventSource",
@@ -110,21 +134,27 @@ describe("built-in contributions", () => {
     expect(shadowed).toEqual([]);
   });
 
-  // Every Runtime adapter must compose after the endpoint and mutation journal are installed.
-  it("hands every startup plugin the client the Runtime plugin finished configuring", async () => {
-    const journalInstalled: boolean[] = [];
+  it("hands every startup plugin the connection's already journal-backed client", async () => {
+    const earlyClient = connection.client();
+    const received: FlameClient[] = [];
     vi.spyOn(connection, "client").mockImplementation(() => {
-      journalInstalled.push(installedRuntimeMutationJournalStorage() !== null);
-      return {} as unknown as FlameClient;
+      received.push(earlyClient);
+      return earlyClient;
     });
-    builtinPlugins = createBuiltinPlugins(connection, host);
-
+    builtinPlugins = createBuiltinPlugins(
+      connection,
+      host,
+      testClient.navigation,
+      testClient.agent,
+      testClient.composer,
+      testClient.workspace,
+      testClient.directory,
+      testClient.notifications,
+      testClient.installedPlugins,
+      testClient.theme,
+    );
     running = await startKernel(builtinPlugins);
-
-    expect(journalInstalled.length).toBeGreaterThan(0);
-    expect(
-      journalInstalled.filter((installed) => !installed).length,
-      "a plugin composed against the connection before the Runtime plugin configured it",
-    ).toBe(0);
+    expect(received.length).toBeGreaterThan(0);
+    expect(received.every((client) => client === earlyClient)).toBe(true);
   });
 });

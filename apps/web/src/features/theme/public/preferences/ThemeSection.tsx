@@ -13,7 +13,7 @@ import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { DEFAULT_ACCENT } from "@/features/theme/public/appearance";
 import { solidFill } from "@/features/theme/kit/scale";
 import { SettingRow } from "@/ui/settings/SettingRow";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { color, corner, radius, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string }> = {
   dark: { bg: "#0c0d0f", surface: "#16181b" },
@@ -102,7 +102,7 @@ export function ThemeSection() {
   const t = useT();
   const themes = useExtensionPoint(COLOR_THEME);
   const theme = useAppearance((s) => s.theme);
-  const { setTheme } = editAppearance();
+  const { setTheme } = useAppearanceEdit();
 
   const isSystem = theme === "system";
   const activeSpec = themes.find((s) => s.id === theme);

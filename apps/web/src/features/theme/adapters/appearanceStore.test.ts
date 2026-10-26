@@ -1,30 +1,34 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { createAppearanceStore } from "@/features/theme/adapters/appearanceStore";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
 
+let store: ReturnType<typeof createAppearanceStore>;
+beforeEach(() => {
+  store = createAppearanceStore(() => localStorage);
+});
 afterEach(() => {
   localStorage.clear();
-  useAppearanceStore.setState(useAppearanceStore.getInitialState());
+  store.setState(store.getInitialState());
   vi.restoreAllMocks();
 });
 describe("appearance defaults", () => {
   it("starts on the same theme the pre-paint bootstrap and the native frame assume", () => {
-    expect(useAppearanceStore.getInitialState().theme).toBe("system");
+    expect(store.getInitialState().theme).toBe("system");
   });
 
   it("starts on Flame Orange as the default primary color", () => {
-    expect(useAppearanceStore.getInitialState().accent).toBe("#fb6e30");
+    expect(store.getInitialState().accent).toBe("#fb6e30");
   });
 
   it("starts without a paper texture", () => {
-    expect(useAppearanceStore.getInitialState().paperTexture).toBe("off");
-    expect(useAppearanceStore.getInitialState().paperTextureStrength).toBe(3);
+    expect(store.getInitialState().paperTexture).toBe("off");
+    expect(store.getInitialState().paperTextureStrength).toBe(3);
   });
 });
 
 describe("paper preference persistence", () => {
   it("retains existing appearance choices when the new paper fields are absent", async () => {
-    const state: Partial<AppearancePreference> = { ...useAppearanceStore.getInitialState() };
+    const state: Partial<AppearancePreference> = { ...store.getInitialState() };
     delete state.paperTexture;
     delete state.paperTextureStrength;
     Object.assign(state, {
@@ -37,8 +41,8 @@ describe("paper preference persistence", () => {
       motionScale: 0,
     });
     localStorage.setItem("flame.appearance", JSON.stringify({ state, version: 0 }));
-    await useAppearanceStore.persist.rehydrate();
-    expect(useAppearanceStore.getState()).toMatchObject({
+    await store.persist.rehydrate();
+    expect(store.getState()).toMatchObject({
       ...state,
       paperTexture: "off",
       paperTextureStrength: 3,
@@ -46,13 +50,13 @@ describe("paper preference persistence", () => {
   });
 
   it("restores the selected paper and strength from the actual storage adapter", async () => {
-    useAppearanceStore.getState().setPaperTexture("cotton");
-    useAppearanceStore.getState().setPaperTextureStrength(5);
+    store.getState().setPaperTexture("cotton");
+    store.getState().setPaperTextureStrength(5);
     const saved = localStorage.getItem("flame.appearance")!;
-    useAppearanceStore.setState(useAppearanceStore.getInitialState());
+    store.setState(store.getInitialState());
     localStorage.setItem("flame.appearance", saved);
-    await useAppearanceStore.persist.rehydrate();
-    expect(useAppearanceStore.getState()).toMatchObject({
+    await store.persist.rehydrate();
+    expect(store.getState()).toMatchObject({
       paperTexture: "cotton",
       paperTextureStrength: 5,
     });
@@ -65,11 +69,11 @@ describe("paper preference persistence", () => {
     { paperTextureStrength: 2.5 },
   ])("rejects a malformed paper preference (%j)", async (invalid) => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const state = { ...useAppearanceStore.getInitialState(), ...invalid };
+    const state = { ...store.getInitialState(), ...invalid };
     localStorage.setItem("flame.appearance", JSON.stringify({ state, version: 0 }));
-    await useAppearanceStore.persist.rehydrate();
+    await store.persist.rehydrate();
     expect(warning).toHaveBeenCalledOnce();
-    expect(useAppearanceStore.getState()).toMatchObject({
+    expect(store.getState()).toMatchObject({
       paperTexture: "off",
       paperTextureStrength: 3,
     });

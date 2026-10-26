@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/index";
 import { ACCENT } from "@/features/theme/public/extensionPoints";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { solidInk, solidFill } from "@/features/theme/kit/scale";
-import { useAppearance, editAppearance } from "@/features/theme/public/appearance";
+import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { ColorPickerInput } from "@/ui/index";
 import { Icon } from "@/ui/index";
@@ -112,7 +112,7 @@ export function AccentSection() {
   const t = useT();
   const accents = useExtensionPoint(ACCENT);
   const accent = useAppearance((s) => s.accent);
-  const { setAccent } = editAppearance();
+  const { setAccent } = useAppearanceEdit();
   const isCustom = !accents.some((a) => a.color === accent);
 
   return (

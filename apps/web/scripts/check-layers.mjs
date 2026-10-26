@@ -8,7 +8,11 @@
 // regressions we care about (UI/plugin upward deps, rpc purity) without
 // policing every legitimate inward dependency.
 
-import { readSourceGraph, RUNTIME_CLIENT_EDGE, RUNTIME_JSON_EDGE } from "./source-graph.mjs";
+import {
+  readSourceGraph,
+  RUNTIME_CLIENT_EDGE,
+  RUNTIME_JSON_EDGE,
+} from "../../../tooling/source-graph.mjs";
 import {
   atCompositionRoot,
   builtinContext,

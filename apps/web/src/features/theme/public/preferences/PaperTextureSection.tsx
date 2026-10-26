@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/index";
 import {
   PAPER_TEXTURES,
   useAppearance,
-  editAppearance,
+  useAppearanceEdit,
   type PaperTexture,
 } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
@@ -20,7 +20,7 @@ export function PaperTextureSection() {
   const t = useT();
   const paperTexture = useAppearance((s) => s.paperTexture);
   const strength = useAppearance((s) => s.paperTextureStrength);
-  const { setPaperTexture, setPaperTextureStrength } = editAppearance();
+  const { setPaperTexture, setPaperTextureStrength } = useAppearanceEdit();
 
   return (
     <>

@@ -1,22 +1,20 @@
+import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { definePlugin } from "@/extensions/definePlugin";
-import {
-  exportConversationJson,
-  exportConversationMarkdown,
-  exportSessionTrajectory,
-  importConversationJson,
-} from "@/features/workspace/public/conversationArchive";
+
 import { conversationExportCommands } from "@/features/workspace/application/conversationExportCommands";
-export default definePlugin({
-  name: "flame.builtin.conversation-export",
-  setup(ctx) {
-    for (const command of conversationExportCommands({
-      exportMarkdown: exportConversationMarkdown,
-      exportJson: exportConversationJson,
-      exportTrajectory: exportSessionTrajectory,
-      importJson: importConversationJson,
-    })) {
-      ctx.contribute(COMMAND, command);
-    }
-  },
-});
+export default function createConversationExportPlugin(workspaceAccess: WorkspaceAccess) {
+  return definePlugin({
+    name: "flame.builtin.conversation-export",
+    setup(ctx) {
+      for (const command of conversationExportCommands({
+        exportMarkdown: workspaceAccess.archive.exportConversationMarkdown,
+        exportJson: workspaceAccess.archive.exportConversationJson,
+        exportTrajectory: workspaceAccess.archive.exportSessionTrajectory,
+        importJson: workspaceAccess.archive.importConversationJson,
+      })) {
+        ctx.contribute(COMMAND, command);
+      }
+    },
+  });
+}

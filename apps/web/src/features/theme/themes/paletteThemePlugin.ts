@@ -2,9 +2,10 @@ import { type AnyPlugin } from "dougong";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
-import { useAppearanceStore } from "@/features/theme/adapters/appearanceStore";
+import { type AppearancePreferencePort } from "@/features/theme/application/appearancePreference";
 import { paletteThemeContribution, type PaletteTheme } from "@/features/theme/kit/palette";
 export function paletteThemePlugin(
+  preference: AppearancePreferencePort,
   name: string,
   theme: (preference: AppearancePreference) => PaletteTheme,
 ): AnyPlugin {
@@ -18,9 +19,9 @@ export function paletteThemePlugin(
           preference.contrast,
           preference,
         );
-      const contribution = ctx.contribute(COLOR_THEME, derive(useAppearanceStore.getState()));
+      const contribution = ctx.contribute(COLOR_THEME, derive(preference.read()));
       ctx.cleanup(
-        useAppearanceStore.subscribe((next, previous) => {
+        preference.subscribe((next, previous) => {
           if (
             next.customTheme !== previous.customTheme ||
             next.accent !== previous.accent ||

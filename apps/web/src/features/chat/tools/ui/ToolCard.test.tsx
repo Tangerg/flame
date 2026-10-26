@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { ToolCard } from "@/features/chat/tools/ui/ToolCard";
 const opened = vi.hoisted(() => vi.fn());
@@ -44,7 +52,9 @@ function call(tool: Partial<ToolCall>): ToolCall {
 }
 
 function card(tool: Partial<ToolCall>) {
-  return render(<ToolCard tool={call(tool)} expanded={false} onToggleExpand={() => {}} />);
+  return testClient.render(
+    <ToolCard tool={call(tool)} expanded={false} onToggleExpand={() => {}} />,
+  );
 }
 
 function rows(tools: ToolCall[], expandedId?: string) {
@@ -131,7 +141,7 @@ describe("ToolCard", () => {
       result: "alpha-result-body",
     });
     const beta = call({ id: "call beta 2", name: "shell", fn: "go test ./beta" });
-    const { rerender } = render(rows([alpha, beta], alpha.id));
+    const { rerender } = testClient.render(rows([alpha, beta], alpha.id));
 
     expect((await screen.findByRole("region", { name: "Result" })).textContent).toContain(
       "alpha-result-body",

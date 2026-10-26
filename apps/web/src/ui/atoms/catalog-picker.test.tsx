@@ -1,5 +1,13 @@
+import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
+import { createTestClient, type TestClient } from "@/test/renderClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
 import { afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { CatalogList, CatalogPicker, RailCatalogPicker } from "@/ui/atoms/catalog-picker";
 afterEach(cleanup);
@@ -10,7 +18,7 @@ it.each(["pointer", "Escape"])(
     const select = vi.fn();
     const inputRef = createRef<HTMLInputElement>();
     const child = { id: "child", label: "Subagents" };
-    render(
+    testClient.render(
       <CatalogList
         label="Panels"
         placeholder="Find a panel"
@@ -49,7 +57,7 @@ it.each(["pointer", "Escape"])(
 it.each([{ isComposing: true }, { keyCode: 229 }])(
   "leaves the catalog query with the composing input for %j",
   (composition) => {
-    render(
+    testClient.render(
       <CatalogList
         label="Panels"
         placeholder="Find a panel"
@@ -70,7 +78,7 @@ it.each([{ isComposing: true }, { keyCode: 229 }])(
 
 it("clears a popup query before dismissing and restoring its trigger", async () => {
   const select = vi.fn();
-  render(
+  testClient.render(
     <CatalogPicker
       label="Browse panels"
       placeholder="Find a panel"
@@ -98,7 +106,7 @@ it("clears a popup query before dismissing and restoring its trigger", async () 
 it("returns a cleared model search to its chosen group and exact item", async () => {
   const select = vi.fn();
   const selected = { id: "b/shared", label: "Shared model", active: true };
-  render(
+  testClient.render(
     <RailCatalogPicker
       label="Switch model"
       placeholder="Search models"
@@ -138,7 +146,7 @@ it("clears a catalog query before an enclosing Escape navigation", async () => {
   };
   document.body.addEventListener("keydown", observeNavigation);
   try {
-    render(
+    testClient.render(
       <CatalogList
         label="Panels"
         placeholder="Find a panel"
@@ -165,7 +173,7 @@ it("clears a catalog query before an enclosing Escape navigation", async () => {
 it("filters the inline catalog by keywords, exposes empty results and selects with the keyboard", async () => {
   const select = vi.fn();
   const file = { id: "file", label: "Files", keywords: ["workspace"] };
-  render(
+  testClient.render(
     <CatalogList
       label="Panels"
       placeholder="Find a panel"
@@ -195,7 +203,7 @@ it("filters the inline catalog by keywords, exposes empty results and selects wi
 it("delivers a selection after the catalog closes so its consumer can create a native surface", async () => {
   const stillOpen = vi.fn();
   const item = { id: "trajectory", label: "Trajectory" };
-  render(
+  testClient.render(
     <>
       <CatalogPicker
         label="Browse panels"

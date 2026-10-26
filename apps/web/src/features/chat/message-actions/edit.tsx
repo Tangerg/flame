@@ -1,3 +1,4 @@
+import { useComposer } from "@/features/composer/public/composer";
 import { useT } from "@/lib/i18n/index";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -6,6 +7,8 @@ import { canEditMessage } from "@/features/chat/message-actions/application/mess
 import { editMessageInComposer } from "@/features/chat/message-actions/public/messageActions";
 import { MessageActionButton } from "@/features/chat/message-actions/MessageActionButton";
 function EditButton() {
+  const composerAccess = useComposer();
+
   const t = useT();
   const msg = useCurrentMessage();
   if (!canEditMessage(msg)) return null;
@@ -15,7 +18,7 @@ function EditButton() {
       icon="edit"
       aria-label={t("msgActions.edit")}
       role={msg.role}
-      onClick={() => editMessageInComposer(msg)}
+      onClick={() => editMessageInComposer(composerAccess, msg)}
     />
   );
 }
