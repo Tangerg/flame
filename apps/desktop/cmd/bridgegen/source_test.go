@@ -143,26 +143,3 @@ func TestWireRulesAndZodKeywordsMustResolve(t *testing.T) {
 		t.Fatal("an unsupported Schema keyword was ignored")
 	}
 }
-
-func TestActualNativeBridgeProjectionIsCurrent(t *testing.T) {
-	contract, err := loadContract("../..", "DesktopHost")
-	if err != nil {
-		t.Fatal(err)
-	}
-	actual, neutral, err := render(contract)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for path, want := range map[string][]byte{
-		"../../../web/src/platform/desktop.generated.ts":           actual,
-		"../../../web/src/foundation/notificationAuthorization.ts": neutral,
-	} {
-		got, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(got) != string(want) {
-			t.Errorf("%s is stale; run the Desktop bridge generator", path)
-		}
-	}
-}

@@ -42,8 +42,11 @@ go run ./cmd/bridgegen --source . --receiver DesktopHost \
 go test ./cmd/bridgegen ./internal/bridge
 ```
 
-These pure generator checks run on Linux as well as macOS. Full service binding
-and native I/O still require `make check-native` on macOS. The Web adapter owns
+These pure generator checks are self-contained within the Desktop module and run
+on Linux as well as macOS. The repository's `make check-generated` and
+`tooling/integration` compare the actual generator output with both checked-in
+Web projections byte for byte. Full service binding and native I/O still require
+`make check-native` on macOS. The Web adapter owns
 bootstrap caching, endpoint normalization, cancellation translation and unmeasured
 window geometry; the generator does not replace those behaviors. Browser uses its
 own host adapter. Selecting a remote Runtime does not grant native filesystem
