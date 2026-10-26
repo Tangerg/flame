@@ -23,7 +23,10 @@ rename provenance remain selectable in the scrolling content for text, binary
 and metadata-only files; complete paths also remain in the overview rows.
 
 Returning from a list-owned reader retains its query and scroll and focuses the
-current row. A direct file entry leaves Escape to the host's source-return owner;
+current row. Changing or clearing the local query reveals the beginning of its
+results while retaining search focus. Unchanged queries and refreshed reads
+preserve the current reading position. A direct file entry leaves Escape to the
+host's source-return owner;
 its independent Files command opens the overview. Layout popups consume their own
 dismissal first. Refresh retains the chosen reader when it remains in the accepted
 comparison; an absent file returns to the overview with an explicit notice. Failed

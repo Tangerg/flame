@@ -78,6 +78,10 @@ validation and keyboard focus independently visible through correction, cancel,
 source return and continued drafting; see Invalid fields and keyboard focus.
 The Dock strip also reveals a current tab whose ordered position changes while
 retaining its material and focus; see Current tab visibility after reordering.
+Short file headers now share available width while long identities and command
+groups wrap; see File-header width and reading room. Diff query changes now
+reveal the result beginning while refresh and detail return retain reading;
+see Diff filtered-result arrival.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -8874,6 +8878,107 @@ maps bind **1,209 final artifacts** and **12 native input files**. This Markdown
 receipt changes no qualified product source. Preserve existing brand, Composer,
 comparison, navigation and Runtime owners for the next batch; the continuous goal
 remains active.
+
+### Diff filtered-result arrival
+
+The task is reply → changed-file overview → deep reading → filter/refine/clear →
+one difference/layout → retained list → original source → continued draft. Fresh
+base: `dc879dde8062b725ae43dd0d30c6e8f06e2cbcd4`. Existing file-header sizing,
+literal copying, status language and source-return contracts remain delivered.
+
+Actual original Wails with the existing 200-file fixture reproduces the gap:
+after native scrolling reaches **16,202 px**, entering `module-0` yields 100
+matches but leaves the viewport at **7,802 px**, showing `module-091` through
+`module-099`. The first match remains above the viewport. These files remain
+reachable by scrolling; the finding concerns reading order and task efficiency.
+
+| Severity | Owner                                      | Before                                                               | After                                                                                    | Why                                                           |
+| -------- | ------------------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| MEDIUM   | `plugins/diff/component/component.tsx:171` | A changed query replaces rows but retains the old deep-list position | Query edits and either clear path reveal the result beginning with search focus retained | The visible results should start with the newly requested set |
+
+The existing Diff filter state now advances through one local `filterFiles`
+action. A changed value uses the already imported SDK `scrollPositions` helper
+to reset only the panel's containing readers. An unchanged value does nothing.
+SearchField continues to own its clear button, local Escape, IME guard and focus;
+Diff's detail/list history and the host's source return keep their separate
+owners. Refresh does not invoke this action. There is no new state, effect,
+listener, shared API, dependency, helper text or Runtime/Git behavior. Only the
+Diff resource changes when all eleven portable components rebuild normally.
+
+Read-only ZCode `GitPane.tsx:335–382` demonstrates explicit Find navigation
+revealing its active file; its expansion, virtualizer and content-search model
+are not copied. Its `diff-viewer.tsx:60–140` supplies separate source-reading
+composition. HeroUI `search-field.tsx:27–159` keeps search/clear under the field
+primitive; Flame retains Base UI and its existing SearchField. The Desktop/docs
+feedback's G02/G03/G04 task and geometry concerns guide this narrower finding.
+Retained ChatGPT, Arc, Radix and Ace research remains context. Better-interface's
+six domains retain named keyboard reading, natural layout, current copy/type/
+colors and existing control surfaces. Typography, whitespace, hierarchy, color,
+motion, interaction, responsiveness and originality receive scoped review;
+unchanged contrast and animation timing are not newly qualified. This resolves
+the observed query-arrival gap, not the whole-product or award objective.
+
+Verification (2026-10-27):
+
+- Original focused baseline passes **1 file / 22 tests**. Three new behavioral
+  regressions then fail on the original implementation (**3 failed / 22 passed**),
+  observing retained 1,200/600 px instead of the requested beginning. Final
+  Diff/host inspection suites pass **2 files / 112 tests**, including changed
+  versus unchanged query, no new RPC, refresh preservation, both clears, search
+  focus and the existing detail/list/source contracts. No valid assertion or
+  check is weakened.
+- Candidate prerequisites, tests, normal resource rebuild, private assets and
+  EN/ZH hosts pass serially in **20.03 s**. Web formatting, types, lint, design
+  system, chrome, styles and tokens pass. The first gate chain then stops at
+  `check:plugin-modules` because production `dist/index.html` is absent. The
+  remaining checks run in dependency order: five plugin gates, normal
+  **make check-native** (**29.76 s**), then the same bundle-module check. All
+  pass in **32.68 s**. Completed earlier gates are not needlessly repeated.
+  The native check includes production staging, Desktop Go tests/vet/build and
+  the supported Wails build. Existing linker and chunk-size notices are non-failing.
+- Actual Wails EN/light/14 px/Orange qualifies source entry and deep-list query
+  arrival at **466 px** and keyboard Home to **320 px** Dock. Changing to 100
+  matches, refining to ten, pointer Clear and local Escape each restore the
+  beginning and search focus. Manual reading, Refresh and file detail return
+  retain **7,825 px**. Opening `module-095`, dismissing its layout menu, switching
+  to Side by side and returning preserve its query and focused current row.
+- Twenty observed native Zoom In actions reach **720 × 450 CSS px / 200%**.
+  The existing inspection owner promotes the same Diff full width. Collapsing
+  only fixture navigation removes harness chrome; a deep-read query change
+  then shows `module-000` at scroll 0 with search focused. First Escape clears
+  the query; the next returns to the exact Review source. Actual Size and input
+  continuation preserve `Keep the comparison draft. Continue after review.`
+- Actual Wails ZH/dark/18 px/custom pale accent qualifies native divider Home to
+  320 px and a physical resize to **1121 × 729**. Filtering, refining, local
+  clear, `module-011` entry, menu dismissal and list return preserve the current
+  object and query. Twenty native zoom steps reach **560 × 364 CSS px / 200%**;
+  after fixture navigation collapses, a changed query shows `module-000` at
+  scroll 0. Local clear and exact source return remain distinct. Actual Size
+  and continued input retain `核对变更后继续。 已核对，继续。` before Quit.
+- The native scenes use production installed views over the existing canonical
+  `review-files=200` fixture. Private overlays select isolated assets/name/route
+  and production chrome; a passive observer reads geometry, query, focus and
+  scroll without driving UI. All accepted reports contain zero unhandled errors.
+  No live Git/Runtime write, Send, provider run, browser visual suite, performance
+  benchmark, Claude CLI or subagent runs. Live release replacement, VoiceOver,
+  OS IME, RTL, other-platform GUIs, new contrast measurements and animation
+  timing remain outside this qualification. Existing installations require normal
+  explicit release selection to consume the rebuilt Diff ESM.
+
+**Approve** for the inspected query/read/return task. Retirement verifies all
+**8 recorded PIDs dead**, three apps unregistered, seven new checkout roots,
+six Library paths and three bundle-temp paths removed. All **39 output-presence
+baselines**, four original file hashes, 18 Library baselines, **5,831 accepted
+non-Markdown inputs**, eleven accepted resources and four read-only references
+are preserved. The original native-check binary is restored byte-for-byte. The
+exact root `flame-diff-query-1027-wCUE7w` is absent. Its verified in-memory gzip
+retains **100 UTF-8 records / 67 capture hashes**, both 598-file asset maps and
+final native app/build provenance, SHA-256
+`bdead99050efe776cd79c2296c19173ef8c37dae21a38e5c13bcf25c66fd95f6`.
+This batch is committed locally only. The primary parallel checkout, remote and
+user data remain untouched; the continuous goal stays active. No migration is
+needed. Continue from fresh task evidence rather than repeating this resolved
+filter-arrival defect.
 
 ### Diff source selection and native copying
 

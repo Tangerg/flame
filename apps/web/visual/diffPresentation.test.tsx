@@ -15,7 +15,7 @@ import { WorkspaceDiff } from "../../../plugins/diff/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
 import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
-import { ACTIVE_DIFF_FILE, REVIEW_DIFF } from "./diffSnapshot";
+import { ACTIVE_DIFF_FILE, REVIEW_DIFF, scaledReview } from "./diffSnapshot";
 const releases: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
@@ -141,6 +141,60 @@ it("retains the list filter and scroll and returns to the current file row", asy
   expect(viewport.scrollTop).toBe(125);
   expect(document.activeElement).toBe(row);
 });
+
+it("reveals the beginning of a changed filter while preserving unchanged reading and refresh", async () => {
+  const report = scaledReview(20);
+  const read = vi.fn(async () => report);
+  const { get } = mountDiff("", read);
+  await loaded();
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
+  const viewport = screen.getByTestId("viewport");
+  search.focus();
+  viewport.scrollTop = 1200;
+
+  fireEvent.change(search, { target: { value: "module-01" } });
+  expect(viewport.scrollTop).toBe(0);
+  const rows = within(screen.getByRole("region", { name: "Changed files" })).getAllByRole("button");
+  expect(rows).toHaveLength(10);
+  expect(rows[0]!.getAttribute("data-diff-file")).toBe("src/generated/module-010.ts");
+  expect(document.activeElement).toBe(search);
+  expect(get).toHaveBeenCalledOnce();
+
+  viewport.scrollTop = 300;
+  fireEvent.change(search, { target: { value: "module-01" } });
+  expect(viewport.scrollTop).toBe(300);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  await loaded();
+  expect(viewport.scrollTop).toBe(300);
+  expect(search.value).toBe("module-01");
+  expect(document.activeElement).toBe(search);
+});
+
+it.each(["clear button", "Escape"])(
+  "reveals the unfiltered beginning through %s",
+  async (action) => {
+    mountDiff("", async () => scaledReview(20));
+    await loaded();
+    const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Filter files" });
+    const viewport = screen.getByTestId("viewport");
+    search.focus();
+    fireEvent.change(search, { target: { value: "module-01" } });
+    viewport.scrollTop = 600;
+
+    if (action === "Escape") fireEvent.keyDown(search, { key: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: "Clear filter" }));
+
+    expect(viewport.scrollTop).toBe(0);
+    expect(search.value).toBe("");
+    expect(document.activeElement).toBe(search);
+    const rows = within(screen.getByRole("region", { name: "Changed files" })).getAllByRole(
+      "button",
+    );
+    expect(rows).toHaveLength(20);
+    expect(rows[0]!.getAttribute("data-diff-file")).toBe("src/generated/module-000.ts");
+  },
+);
 
 it("opens a requested file directly while keeping complete paths in the list and reader", async () => {
   const { outsideEscape } = mountDiff(`/Users/visual/scope/${ACTIVE_DIFF_FILE}`);

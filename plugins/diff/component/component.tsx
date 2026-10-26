@@ -168,6 +168,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       ? textFiles.reduce((sum, item) => sum + item[key]!, 0)
       : undefined;
 
+  function filterFiles(next: string) {
+    if (next === filter) return;
+    setFilter(next);
+    for (const position of scrollPositions(panel.current))
+      position.element.scrollTop = 0;
+  }
   function openFile(path: string) {
     if (!file) overviewScroll.current = scrollPositions(panel.current);
     pendingFocus.current = { target: "file", active: document.activeElement };
@@ -388,8 +394,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   aria-label={t("filter.label")}
                   placeholder={t("filter.placeholder")}
                   value={filter}
-                  onChange={(event) => setFilter(event.target.value)}
-                  onClear={() => setFilter("")}
+                  onChange={(event) => filterFiles(event.target.value)}
+                  onClear={() => filterFiles("")}
                   clearLabel={t("filter.clear")}
                   disabled={!accepted}
                 />
