@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 const maxCacheBytes = 64 << 20
@@ -18,7 +18,7 @@ type response struct {
 type cache struct{ db *sql.DB }
 
 func openCache(ctx context.Context, path string) (*cache, error) {
-	db, err := sqlitebase.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
+	db, err := sqlite.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func openCache(ctx context.Context, path string) (*cache, error) {
 
 func (c *cache) read(ctx context.Context, key string) (response, error) {
 	var result response
-	err := sqlitebase.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT etag,links,body FROM responses WHERE key=?`, key).Scan(&result.etag, &result.links, &result.body)
+	err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT etag,links,body FROM responses WHERE key=?`, key).Scan(&result.etag, &result.links, &result.body)
 	if errors.Is(err, sql.ErrNoRows) {
 		return response{}, nil
 	}
@@ -41,8 +41,8 @@ func (c *cache) read(ctx context.Context, key string) (response, error) {
 }
 
 func (c *cache) save(ctx context.Context, key string, result response) error {
-	return sqlitebase.RunInTx(ctx, c.db, func(ctx context.Context) error {
-		connection := sqlitebase.Connection(ctx, c.db)
+	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
+		connection := sqlite.Connection(ctx, c.db)
 		if result.etag == "" {
 			_, err := connection.ExecContext(ctx, `DELETE FROM responses WHERE key=?`, key)
 			return err

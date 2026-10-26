@@ -89,14 +89,21 @@ workspaces and original command outcomes through the shared native confinement.
 dispatch intents over the public Runtime workspace observation stream.
 Other packages contain only their declared content or presentation resources.
 
-Backend implementations live in `<name>/backend` beside their manifests, contracts
-and optional `<name>/component` UI. First-party backends share the repository Go
-module with Runtime, so they build and test together against the in-tree Runtime and
-public SDK. Production plugin code imports only public Runtime APIs; `architecture_test.go`
-rejects any `runtime/internal` import, and host-specific integration tests stay with
-Runtime's host adapters. The author exporter repackages each plugin as its own
-independent, separately versioned module for distribution. Shared invariants and
-native mechanisms have one public implementation consumed by every backend.
+Each native backend has one process entry in `<name>/backend` and private
+implementation under `<name>/internal`. Domain types own deterministic policy;
+Application owns workflows; private SQLite adapters own persistence and atomic
+receipts; contract code publishes typed projections. Delivery, Tool codecs and
+callback adapters live with the process that composes them. A plugin only keeps
+the boundaries its behavior requires.
+
+The first-party backends belong to the independent `plugins/go.mod` member of
+`go.work`. They import the public SDK, never Runtime implementation. The
+`architecture_test.go` guard checks these dependency directions and excludes
+production imports of test fixtures. Host integration tests exercise published
+contracts and installed executables. Author export carries a selected plugin's
+backend, required internal sources, component and release resources as one
+independent module; it does not grant Memory's canonical publisher authority.
+Shared technical mechanisms have one public SDK implementation.
 
 ## Independent author projects and release packages
 
@@ -115,9 +122,9 @@ projected from this repository's respective compiler configurations.
 New features publish one owned descriptor; implementations of
 existing consumer contracts reuse the
 published exact schemas. Memory uses the public
-[`plugin-sdk/memory`](../packages/go-sdk/plugin/memory/README.md) contract, so its
+[`go-sdk/plugin/memory`](../packages/go-sdk/plugin/memory/README.md) contract, so its
 author namespace cannot redefine the host's role. Go
-production and tool dependencies are vendored from immutable standard root/nested
+production and tool dependencies are vendored from immutable workspace-member
 module artifacts; SDK source and manifests are never rewritten or trimmed.
 [Consumer distribution](../docs/reference/consumers.md) explains frozen candidate
 versions, verified local materials and isolated offline execution. UI-backed
@@ -217,3 +224,14 @@ registered in the existing Session row menu from local admitted metadata; the mo
 loads when opened. The SDK captures the accepted ID/revision/title. Trajectory owns
 its naming form and calls canonical `sessions.update`, preserving unknown-command
 reconciliation. No closed contributes.actions or plugins.renameSession wrapper remains.
+
+## Contract changes after private package consolidation
+
+Go publishers derive schemas from their current owned types. Moving those types
+changes Scope's qualified schema definition names and therefore the release
+contract identity. Regenerate the canonical descriptor, SDK and client bindings,
+backend resources and component together, then build and explicitly select the
+complete new release. Former Go paths and schema aliases are not retained.
+Descriptor-owned contracts, including Saved usage reports, keep their published
+opaque definition names. Memory's implementation binds its canonical SDK contract;
+only the separate canonical publisher can advance that contract.

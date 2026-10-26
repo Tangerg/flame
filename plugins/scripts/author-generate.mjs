@@ -12,9 +12,10 @@ for (const resource of contracts) {
   execFileSync(
     join(
       project,
-      "tools/contractgen" + (process.platform === "win32" ? ".exe" : ""),
+      "tools/flame-sdk" + (process.platform === "win32" ? ".exe" : ""),
     ),
     [
+      "contract",
       "--feature",
       join(
         project,

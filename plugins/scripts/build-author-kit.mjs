@@ -151,7 +151,7 @@ try {
     .trim()
     .split("\n")
     .filter((path) =>
-      ["backend", "component", "contracts", "package"].some(
+      ["backend", "internal", "component", "contracts", "package"].some(
         (entry) => path === `plugins/${plugin}/${entry}`,
       ),
     );
@@ -180,7 +180,7 @@ try {
   await cp(new URL("./build.mjs", import.meta.url), join(output, "build.mjs"));
   const backend = await exists(join(output, "backend"));
   const tools = new Set([
-    "github.com/Tangerg/flame/packages/go-sdk/cmd/archive",
+    "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
   ]);
   async function rewrite(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -189,8 +189,8 @@ try {
       else if (entry.name.endsWith(".go")) {
         let text = await readFile(path, "utf8");
         text = text.replaceAll(
-          `github.com/Tangerg/flame/plugins/${plugin}/backend`,
-          `${modulePath}/backend`,
+          `github.com/Tangerg/flame/plugins/${plugin}/`,
+          `${modulePath}/`,
         );
         text = text.replaceAll(
           /go run (github\.com\/Tangerg\/flame\/packages\/go-sdk\/cmd\/[a-zA-Z0-9_-]+)/g,
@@ -207,7 +207,11 @@ try {
       }
     }
   }
-  if (plan.native && backend) await rewrite(join(output, "backend"));
+  if (plan.native && backend) {
+    await rewrite(join(output, "backend"));
+    if (await exists(join(output, "internal")))
+      await rewrite(join(output, "internal"));
+  }
   if (plan.native)
     await prepareGoKit({
       repository: root,
@@ -435,7 +439,7 @@ try {
   await writeFile(
     join(output, "README.md"),
     managed && !plan.native
-      ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. Prebuilt contractgen and archive tools are development-only programs; the included selected Node companion runs backend storage tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects contracts/capability.json without changing existing opaque schema names. Rebuild and explicitly select a new release after edits. Preserve prior installations and data; Usage Reports uses a fresh archive at the pre-release cutover.\n`
+      ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. The prebuilt flame-sdk contract and archive commands are development-only tools; the included selected Node companion runs backend storage tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects contracts/capability.json without changing existing opaque schema names. Rebuild and explicitly select a new release after edits. Preserve prior installations and data; Usage Reports uses a fresh archive at the pre-release cutover.\n`
       : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${sdk.path}@${sdk.version} from ${sdk.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);

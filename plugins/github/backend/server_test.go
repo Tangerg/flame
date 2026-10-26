@@ -9,11 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
-	"github.com/Tangerg/flame/plugins/github/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -46,7 +45,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 			t.Errorf("unexpected query path: %s", request.URL.Path)
 			return upstream(404, "", nil), nil
 		}
-	}), resource.Credential{})
+	}), credential{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		{contracts.Issue.Name(), "get_issue", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
 		{contracts.File.Name(), "read_file", rpc.FileInput{Repository: "owner/repo", Path: "README.md"}},
 	} {
-		input, err := jsoninput.Encode(test.input)
+		input, err := jsonvalue.Encode(test.input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +92,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if method.Descriptor().Kind != capability.Query {
+		if method.Descriptor().Kind != extension.Query {
 			t.Fatal("read operation acquired mutation authority")
 		}
 		typed, err := method.Invoke(t.Context(), "", input)
@@ -108,7 +107,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		model, err := jsoninput.Parse(encoded)
+		model, err := jsonvalue.Parse(encoded)
 		if err != nil || model != typed {
 			t.Fatalf("typed/Tool %s diverged: %s, %s, %v", test.tool, typed.String(), model.String(), err)
 		}
@@ -125,13 +124,13 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := rpc.IssueInput{Repository: "owner/repo", Number: 42}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := method.Invoke(t.Context(), "", admitted); err == nil {
 		t.Fatal("typed query hid rejected authorization")
-	} else if refusal, ok := errors.AsType[*capability.Refusal](err); !ok || refusal.Code != "unauthorized" {
+	} else if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "unauthorized" {
 		t.Fatalf("typed refusal = %v", err)
 	}
 	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "get_issue", Arguments: input})

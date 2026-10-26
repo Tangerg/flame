@@ -11,7 +11,7 @@ await buildPlugin({
   archives: values.archives,
   archiveTool: fileURLToPath(
     new URL(
-      "./tools/archive" + (process.platform === "win32" ? ".exe" : ""),
+      "./tools/flame-sdk" + (process.platform === "win32" ? ".exe" : ""),
       import.meta.url,
     ),
   ),

@@ -7,12 +7,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
-	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
 )
 
 func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *testing.T) {
@@ -45,7 +45,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatal(err)
 	}
 	input := rpc.ImportInput{Content: knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,11 +70,11 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	}
 	changed := input
 	changed.Content.Text = "Another intent."
-	changedJSON, err := jsoninput.Encode(changed)
+	changedJSON, err := jsonvalue.Encode(changed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "stale", input, admitted); !errors.Is(err, knowledge.ErrRevisionConflict) {
@@ -85,7 +85,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 		t.Fatalf("known refusal was re-executed: %v", err)
 	}
 	input.ExpectedRevision = 1
-	admitted, err = jsoninput.Encode(input)
+	admitted, err = jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}

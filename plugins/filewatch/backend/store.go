@@ -8,8 +8,8 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 )
 
 const (
@@ -26,7 +26,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sqlitebase.OpenSchema(ctx, path, []string{
+	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
 		`CREATE TABLE IF NOT EXISTS configuration (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
 		`INSERT INTO configuration(id,snapshot) VALUES(1,'` + string(initial) + `')`,
@@ -47,7 +47,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) configuration(ctx context.Context) (filewatch.Configuration, error) {
 	var raw string
-	if err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw); err != nil {
+	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw); err != nil {
 		return filewatch.Configuration{}, err
 	}
 	var snapshot filewatch.Snapshot
@@ -74,7 +74,7 @@ func (s *store) configure(ctx context.Context, expected int64, draft *filewatch.
 	if err != nil {
 		return filewatch.Snapshot{}, err
 	}
-	_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
+	_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
 	return next.Snapshot(), err
 }
 
@@ -84,8 +84,8 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 	if err != nil {
 		return err
 	}
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		connection := sqlitebase.Connection(ctx, s.db)
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+		connection := sqlite.Connection(ctx, s.db)
 		var previous string
 		err := connection.QueryRowContext(ctx, `SELECT capture FROM events WHERE generation=? AND sequence=?`, capture.Generation, capture.Sequence).Scan(&previous)
 		if err == nil {
@@ -147,7 +147,7 @@ func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	var generation, raw string
 	var sequence uint64
 	var accepted int
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
 	if errors.Is(err, sql.ErrNoRows) {
 		return filewatch.Event{}, filewatch.ErrNotFound
 	}
@@ -162,7 +162,7 @@ func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(fi
 	if pendingOnly {
 		query, limit = `SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending
 	}
-	rows, err := sqlitebase.Connection(ctx, s.db).QueryContext(ctx, query, limit+1)
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, query, limit+1)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func decodeEvent(id, generation string, sequence uint64, raw string, accepted in
 }
 
 func (s *store) acceptRun(ctx context.Context, id string) error {
-	result, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
+	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
 	if err != nil {
 		return err
 	}

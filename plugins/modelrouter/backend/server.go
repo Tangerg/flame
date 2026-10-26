@@ -7,8 +7,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -70,11 +70,4 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	return server, nil
-}
-
-func classify(err error) string {
-	if errors.Is(err, errStoredPolicy) {
-		return ""
-	}
-	return rpc.Classify(err)
 }

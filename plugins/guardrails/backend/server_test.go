@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/plugins/guardrails/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -61,7 +61,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "edit-policy", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "guardrails"}})
+			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "edit-policy", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "guardrails"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,14 +92,14 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err = pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "inspect-input", Origin: capability.Model, Target: capability.Target{Scope: "call", Reference: "inspect-input"}})
+			ctx, err = pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "inspect-input", Origin: extension.Model, Target: extension.Target{Scope: "call", Reference: "inspect-input"}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, text := range []string{"public input", secret} {
 				request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart(text)))
 				before := request.Clone()
-				original, err := jsoninput.Encode(request)
+				original, err := jsonvalue.Encode(request)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -112,7 +112,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 					if err != nil {
 						t.Fatal(err)
 					}
-					projected, err := jsoninput.Encode(output)
+					projected, err := jsonvalue.Encode(output)
 					if err != nil || projected != original {
 						t.Fatalf("allowed wire input changed: %s %v", projected.String(), err)
 					}
@@ -137,7 +137,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*capability.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*extension.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

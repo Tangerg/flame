@@ -41,11 +41,11 @@ Use generic `plugins.call` / `plugins call --request ...` with the contribution'
 installation, release, contract and an installation target. Queries have no command
 key or mutation receipt.
 
-| Typed method | MCP tool | Input |
-| --- | --- | --- |
+| Typed method                  | MCP tool      | Input                                                                               |
+| ----------------------------- | ------------- | ----------------------------------------------------------------------------------- |
 | `flame.github/list-issues.v1` | `list_issues` | `repository`, `state` (`open`, `closed`, `all`), `page` (positive), `limit` (1–100) |
-| `flame.github/get-issue.v1` | `get_issue` | `repository`, positive issue `number` |
-| `flame.github/read-file.v1` | `read_file` | `repository`, relative `path`, optional nonempty `ref` |
+| `flame.github/get-issue.v1`   | `get_issue`   | `repository`, positive issue `number`                                               |
+| `flame.github/read-file.v1`   | `read_file`   | `repository`, relative `path`, optional nonempty `ref`                              |
 
 `repository` is `owner/name`. Issues include a `pullRequest` discriminator because
 GitHub's issue endpoints also return pull requests. Listing projects the next page
@@ -68,7 +68,7 @@ GitHub's [issues](https://docs.github.com/en/rest/issues/issues?apiVersion=2026-
 contracts define the external boundary. Enterprise endpoints, OAuth flows, writes
 and context contribution require their own demonstrated needs.
 
-Generate with `go generate ./plugins/github/backend/rpc` and verify the
+Generate with `go generate ./plugins/github/internal/contract` and verify the
 changed backend with `go test ./plugins/github/backend/... -count=1` from
 the repository workspace. Tests use deterministic HTTP transports and no live
 GitHub credentials.

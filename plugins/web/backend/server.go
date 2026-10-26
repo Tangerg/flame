@@ -4,22 +4,15 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
-	"github.com/Tangerg/flame/plugins/web/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
+	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/web"
 )
-
-func classify(err error) string {
-	if errors.Is(err, errStoredSnapshot) {
-		return ""
-	}
-	return rpc.Classify(err)
-}
 
 func readTool[P, R any](name, description string, read func(context.Context, P) (R, error)) (tool.Tool, error) {
 	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description}, func(ctx context.Context, input P) (R, error) {
@@ -31,7 +24,7 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 			return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
 		kind, message := tool.FailureKindFailed, "web: read failed"
-		if refusal, known := errors.AsType[*capability.Refusal](err); known {
+		if refusal, known := errors.AsType[*extension.Refusal](err); known {
 			kind, message = tool.FailureKindRejected, refusal.Message
 		} else if classify(err) != "" {
 			kind, message = tool.FailureKindRejected, err.Error()

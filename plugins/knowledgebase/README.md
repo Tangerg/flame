@@ -66,5 +66,5 @@ embedding/commit remains unconfirmed; absence of a receipt cannot authorize repl
 Database corruption is a protocol failure, not a business refusal.
 
 Generate contracts from the repository workspace with
-`go generate ./plugins/knowledgebase/backend/rpc`. Run the backend's tests from
+`go generate ./plugins/knowledgebase/internal/contract`. Run the backend's tests from
 the workspace with `go test ./plugins/knowledgebase/backend/... -count=1`.

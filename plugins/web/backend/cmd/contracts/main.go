@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Tangerg/flame/plugins/web/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 )
 
 func main() {

@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -87,12 +87,12 @@ type background struct {
 	store           *store
 	host            host
 	namespace       string
-	target          capability.Target
+	target          extension.Target
 	contribution    string
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, store *store, host host, namespace string, target capability.Target, contribution string, closeHost func() error) *background {
+func newBackground(ctx context.Context, store *store, host host, namespace string, target extension.Target, contribution string, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
@@ -157,8 +157,8 @@ func (b *background) dispatchStatus(err error) {
 	}
 }
 
-func (b *background) invocation() capability.Invocation {
-	return capability.Invocation{ID: uuid.NewString(), Origin: capability.Automatic, Target: b.target}
+func (b *background) invocation() extension.Invocation {
+	return extension.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 }
 
 func (b *background) run() {

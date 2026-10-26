@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 )
 
 type watchedFixture struct {
@@ -103,7 +103,7 @@ func TestBackgroundRetainsOriginalIntentAcrossLostReplyDisableAndRestart(t *test
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
 	host := &fixtureHost{store: s, admitErr: errors.New("fixture: acknowledgement lost"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 8)}
-	target := capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
+	target := extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}
 	worker := newBackground(t.Context(), s, host, "original-runtime", target, "filewatch-operations", func() error { return nil })
 	select {
 	case <-host.watches:
@@ -147,7 +147,7 @@ func TestBackgroundRetainsOriginalIntentAcrossLostReplyDisableAndRestart(t *test
 	}
 	defer worker.Close()
 	recovered := receiveFixture(t, host.attempts)
-	if !reflect.DeepEqual(original, recovered) || recovered.Invocation.Origin != capability.Automatic || recovered.Invocation.Target != target {
+	if !reflect.DeepEqual(original, recovered) || recovered.Invocation.Origin != extension.Automatic || recovered.Invocation.Target != target {
 		t.Fatalf("recovery changed captured authority or input: %+v %+v", original, recovered)
 	}
 	deadline := time.After(5 * time.Second)
@@ -179,7 +179,7 @@ func TestSourceFailureRequiresRearmAndNeverBecomesANoopWatch(t *testing.T) {
 	draft := fixtureDraft()
 	configureFixture(t, s, 1, &draft)
 	host := &fixtureHost{store: s, watchErr: errors.New("fixture: source unavailable"), watches: make(chan watchedFixture, 4), attempts: make(chan filewatch.Capture, 4)}
-	worker := newBackground(t.Context(), s, host, "runtime", capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}, "filewatch-operations", func() error { return nil })
+	worker := newBackground(t.Context(), s, host, "runtime", extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}, "filewatch-operations", func() error { return nil })
 	if err := worker.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestResyncAndGapsCaptureUncertaintyInsteadOfInventingFileWrites(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	worker := &background{target: capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}
+	worker := &background{target: extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}
 	generation := "22222222-2222-4222-8222-222222222222"
 	for _, gap := range []bool{false, true} {
 		event := protocol.RuntimeEvent{Type: protocol.RuntimeResync, Sequence: 7, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, WatchIDs: []string{generation}}

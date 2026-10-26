@@ -88,20 +88,26 @@ admission without a known outcome; it is not a successful empty result. Former
 call-context input, completed-only, digest-only and bare-result databases are refused without conversion;
 retain that directory separately and use a fresh directory for this breaking change.
 
-`plugins/memory/backend/rpc/contracts.go` is the typed method
-source used by actual server registration. Query consumers use its generated
-contract rather than importing the private domain or constructing another schema.
-Core Run context consumes the generated Go projection in
-`runtime/internal/adapter/integration/pluginservices/memorycontract`; CLI keeps its
-independent generated projection from the same source. Its generated
-canonical capability, Schema, method references and TypeScript data maps live
-under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
-with `go generate ./plugins/memory/backend/rpc`; the existing contractgen
-projects the same methods. Generated Go operation frames are defined projection
-types, so callers explicitly convert shared read shapes instead of depending on
-transparent aliases. Consumers regenerate their own projections from the published
-descriptor. The package builder copies this namespace into the
-compiled package. Do not hand-edit generated artifacts or duplicate schemas.
+`plugins/memory/contractgen` is the canonical consumer-contract publisher.
+`internal/contract/contracts.go` binds the published SDK descriptor to local
+codecs for server registration. Runtime and CLI consume the generated public Go
+projection in `packages/go-sdk/plugin/memory`; components consume the generated
+TypeScript projection of that same descriptor. None imports private Domain or
+Application implementations.
+
+The model completion intent and resource envelope belong to
+`internal/application`. The caller policy is a generated projection of that
+workflow budget. Extraction and curation share its existing ledger/publication
+workflow; callback I/O and transactional receipt publication remain in `backend`.
+The backend's own `cmd/contracts` only projects an already published consumer
+contract and caller policy. Independent author kits include required internal
+implementation source but exclude the canonical publisher.
+
+Run `make generate` from the repository root after owner changes. It publishes
+the consumer contract before implementation, SDK and component projections.
+Generated operation frames are defined projection types; each consumer explicitly
+converts the shapes it needs. The package builder includes generated namespace
+resources in the compiled release. Do not edit generated artifacts or copy schemas.
 
 The published snapshot owns its identity pattern, closed scope/origin/status
 vocabularies and Unicode content boundary. These derive from the private Go model
@@ -137,14 +143,12 @@ source lives in [`backend`](backend) as part of the independent first-party Go
 module. Verify from `plugins` with the workspace enabled: `go test ./...`,
 `go vet ./...`, and `go build ./...`.
 
-## Public consumer client
+## Component consumer
 
-`src/client.ts` supplies headless reads and durable commands over this package's
-generated capability and public Runtime client. It owns traversal validation and
-acknowledgement decoding; business changes and receipts remain in the backend.
-Its exported item is a consumer projection, with vocabulary derived from the
-same generated contract. It imports no Desktop/Workspace implementation. Workspace
-adapters translate this client into their own application ports.
+`component/useMemory.ts` reads and submits through the public component context
+and the generated method maps. The component owns traversal and presentation;
+the backend owns business changes and immutable receipts. Headless integration
+fixtures live with their test consumer instead of publishing another client API.
 
 ## Shared presentation
 

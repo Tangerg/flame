@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
-	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 )
 
 func TestPublishedCallerPolicyHasOneSource(t *testing.T) {

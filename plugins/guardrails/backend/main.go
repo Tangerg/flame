@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,7 +18,7 @@ func run(ctx context.Context) (err error) {
 	if !filepath.IsAbs(data) {
 		return errors.New("guardrails: PLUGIN_DATA must be absolute")
 	}
-	lease, err := advisorylock.AcquireDirectory(ctx, data)
+	lease, err := filesystem.AcquireDirectoryLease(ctx, data)
 	if err != nil {
 		return err
 	}

@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
-	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
+	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -60,7 +60,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "policy-edit", Origin: capability.Human, Target: capability.Target{Scope: "installation", Reference: "router"}})
+			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "policy-edit", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "router"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -86,7 +86,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			routeContext, err := pluginsdk.WithInvocation(t.Context(), capability.Invocation{ID: "route", Origin: capability.Automatic, Target: capability.Target{Scope: "call", Reference: "route"}})
+			routeContext, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "route", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "route"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestPolicyCommandsAndSelectionShareTheDurableOwnerAcrossReopen(t *testing.T
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*capability.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*extension.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

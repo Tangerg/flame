@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
+
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 	"github.com/Tangerg/scope/tools/web/tavily"
@@ -32,13 +32,13 @@ type sourceFailure struct {
 func (e *sourceFailure) Error() string { return "web: " + e.operation + " provider request failed" }
 func (e *sourceFailure) Unwrap() error { return e.cause }
 
-func jinaSource(ctx context.Context, key capture.APIKey, httpClient *http.Client) (fetchPage, error) {
-	if !key.Configured() {
+func jinaSource(ctx context.Context, key apiKey, httpClient *http.Client) (fetchPage, error) {
+	if !key.configured() {
 		return func(context.Context, *web.FetchRequest) (*web.FetchResponse, error) {
-			return nil, &capability.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
+			return nil, &extension.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
 		}, nil
 	}
-	client, err := jina.NewClient(ctx, jina.Config{APIKey: key.Value(), HTTPClient: httpClient})
+	client, err := jina.NewClient(ctx, jina.Config{APIKey: key.value, HTTPClient: httpClient})
 	if err != nil {
 		return nil, err
 	}
@@ -51,13 +51,13 @@ func jinaSource(ctx context.Context, key capture.APIKey, httpClient *http.Client
 	}, nil
 }
 
-func tavilySource(ctx context.Context, key capture.APIKey, httpClient *http.Client) (searchWeb, error) {
-	if !key.Configured() {
+func tavilySource(ctx context.Context, key apiKey, httpClient *http.Client) (searchWeb, error) {
+	if !key.configured() {
 		return func(context.Context, *web.SearchRequest) (*web.SearchResponse, error) {
-			return nil, &capability.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}
+			return nil, &extension.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}
 		}, nil
 	}
-	client, err := tavily.NewClient(ctx, tavily.Config{APIKey: key.Value(), HTTPClient: httpClient})
+	client, err := tavily.NewClient(ctx, tavily.Config{APIKey: key.value, HTTPClient: httpClient})
 	if err != nil {
 		return nil, err
 	}

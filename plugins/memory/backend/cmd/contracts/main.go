@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 )
 
 func main() {

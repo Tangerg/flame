@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 
@@ -38,7 +37,7 @@ func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
 func TestProviderFailureKeepsItsCauseWithoutPublishingCredentials(t *testing.T) {
 	secret := "private-source-fixture-key"
 	cause := errors.New("provider echoed " + secret)
-	key, err := capture.NewAPIKey(&secret)
+	key, err := newAPIKey(&secret)
 	if err != nil {
 		t.Fatal(err)
 	}

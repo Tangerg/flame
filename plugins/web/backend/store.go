@@ -6,8 +6,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 )
 
 type store struct{ db *sql.DB }
@@ -15,7 +15,7 @@ type store struct{ db *sql.DB }
 var errStoredSnapshot = errors.New("web: invalid stored snapshot")
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	db, err := sqlitebase.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`})
+	db, err := sqlite.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`})
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 
 func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 	var raw string
-	err := sqlitebase.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM snapshots WHERE id=?`, id).Scan(&raw)
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT snapshot FROM snapshots WHERE id=?`, id).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
 		return capture.Document{}, capture.ErrNotFound
 	}
@@ -43,7 +43,7 @@ func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 }
 
 func (s *store) capture(ctx context.Context, document capture.Document) error {
-	return sqlitebase.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
 		original, err := s.read(ctx, document.Snapshot().ID)
 		if err == nil {
 			if original.Snapshot() != document.Snapshot() {
@@ -58,10 +58,10 @@ func (s *store) capture(ctx context.Context, document capture.Document) error {
 		if err != nil {
 			return err
 		}
-		if _, err := sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
+		if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
 			return err
 		}
-		_, err = sqlitebase.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
+		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
 		return err
 	})
 }

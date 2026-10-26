@@ -53,7 +53,7 @@ recreating a default policy. Generated management contracts live beside the
 generated selection contract; regenerate with:
 
 ```sh
-go generate ./plugins/modelrouter/backend/rpc
+go generate ./plugins/modelrouter/internal/contract
 ```
 
 Runtime admits the selected identity against its provider configuration and actual

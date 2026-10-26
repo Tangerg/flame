@@ -5,24 +5,23 @@ import (
 	"errors"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	"github.com/Tangerg/flame/plugins/schedules/backend/transport"
+	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
-type runHost struct{ client *runtimeclient.Client }
+type remoteRuns struct{ client *runtimeclient.Client }
 
-func connectRunHost(ctx context.Context, ref pluginsdk.CallbackRef) (transport.RunHost, func() error, error) {
+func connectRunHost(ctx context.Context, ref pluginsdk.CallbackRef) (runHost, func() error, error) {
 	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
 		return nil, nil, err
 	}
-	return runHost{client: client}, client.Close, nil
+	return remoteRuns{client: client}, client.Close, nil
 }
 
-func (h runHost) Namespace(ctx context.Context) (string, error) {
+func (h remoteRuns) Namespace(ctx context.Context) (string, error) {
 	discovery, err := h.client.Discover(ctx, protocol.CallOptions{})
 	if err != nil {
 		return "", err
@@ -30,7 +29,7 @@ func (h runHost) Namespace(ctx context.Context) (string, error) {
 	return discovery.Capabilities.Limits.Idempotency.Namespace, nil
 }
 
-func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
+func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) error {
 	execution := request.Execution()
 	selection := execution.ModelSelection()
 	start := protocol.StartRunRequest{
@@ -69,6 +68,6 @@ func (h runHost) Admit(ctx context.Context, request schedule.RunRequest) error {
 	return nil
 }
 
-func (h runHost) Notify(ctx context.Context, contribution string) error {
+func (h remoteRuns) Notify(ctx context.Context, contribution string) error {
 	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, protocol.CommandOptions{})
 }

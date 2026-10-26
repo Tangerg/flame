@@ -8,8 +8,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -92,11 +92,4 @@ func newServer(store *store) (*sdk.Server, *pluginsdk.Backend, error) {
 		return nil, nil, err
 	}
 	return server, backend, nil
-}
-
-func classify(err error) string {
-	if errors.Is(err, errStored) {
-		return ""
-	}
-	return rpc.Classify(err)
 }

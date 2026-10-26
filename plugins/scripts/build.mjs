@@ -185,6 +185,7 @@ export async function buildPlugin({
       )
         throw new Error("plugin archive requires a bounded name and version");
     const archiveArgs = [
+      "archive",
       "--source",
       output,
       "--output",
@@ -205,7 +206,7 @@ export async function buildPlugin({
         ? archiveArgs
         : [
             "tool",
-            "github.com/Tangerg/flame/packages/go-sdk/cmd/archive",
+            "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
             ...archiveArgs,
           ],
       {

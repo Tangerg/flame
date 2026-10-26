@@ -71,11 +71,11 @@ including after terminal execution or Runtime restart. Selecting a new release
 can reconcile captured work only through its original available current contract;
 former incompatible routes are not converted or retargeted.
 
-`plugins/schedules/backend/rpc/contracts.go` is the typed method
+`plugins/schedules/internal/contract/contracts.go` is the typed method
 source used by actual server registration and query consumers. Its generated
 canonical capability, Schema, method references and TypeScript data maps live
 under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
-with `go generate ./plugins/schedules/backend/rpc`; the existing contractgen
+with `go generate ./plugins/schedules/internal/contract`; the SDK contract command
 projects the same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the

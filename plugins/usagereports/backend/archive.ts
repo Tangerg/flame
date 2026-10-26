@@ -13,8 +13,8 @@ import {
 } from "@flame/backend-sdk";
 import { validateWire } from "@flame/runtime-client/validation";
 
-export const MAX_REPORTS = 64;
-export const MAX_REPORT_BYTES = 1 << 20;
+const MAX_REPORTS = 64;
+const MAX_REPORT_BYTES = 1 << 20;
 type Period = "daily" | "weekly";
 type RecordValue = Record<string, unknown>;
 type Command = Pick<

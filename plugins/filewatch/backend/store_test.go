@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
-	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
+	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 	"github.com/google/uuid"
 )
 
@@ -24,7 +24,7 @@ func fixtureDraft() filewatch.Draft {
 func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.Draft) filewatch.Snapshot {
 	t.Helper()
 	input := rpc.ConfigureInput{ExpectedRevision: revision, Trigger: draft}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.D
 
 func captureFixture(t *testing.T, sequence uint64, generation string) filewatch.Observation {
 	t.Helper()
-	value, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: filewatch.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: capability.Invocation{ID: uuid.NewString(), Origin: capability.Automatic, Target: capability.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
+	value, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: sequence, Revision: 2, Kind: filewatch.Changed, Paths: []string{"input.txt"}, ObservedAt: time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC), Trigger: fixtureDraft(), SessionID: "ses_" + uuid.NewString(), RunID: "run_" + uuid.NewString(), Invocation: extension.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: extension.Target{Scope: "installation", Reference: "11111111-1111-4111-8111-111111111111"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 		t.Fatalf("confirmed intent remained pending: %v %v", pending, err)
 	}
 	input := rpc.ConfigureInput{ExpectedRevision: 3, Trigger: &draft}
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
