@@ -7,8 +7,8 @@ import (
 	"iter"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -18,7 +18,7 @@ type implementationRecord struct {
 }
 
 func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testing.T) {
-	config := MethodConfig{Name: "reviews.update", Kind: capability.Mutation, Target: "installation", Description: "Update a review."}
+	config := MethodConfig{Name: "reviews.update", Kind: extension.Mutation, Target: "installation", Description: "Update a review."}
 	defined, err := NewMethod[contractInput, contractInput](config)
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testin
 		t.Fatalf("independent implementation = %+v, %v", result, err)
 	}
 	for _, raw := range []string{`{"status":"not-published","revision":1}`, `{"status":"open"}`, `{"status":"open","revision":1,"extra":true}`} {
-		admitted, err := jsoninput.Parse([]byte(raw))
+		admitted, err := jsonvalue.Parse([]byte(raw))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,13 +95,13 @@ func TestImplementationUsesPublishedContractInsteadOfLocalTypeIdentity(t *testin
 	input.Revision = 2
 	if _, err := bound.CallCommand(t.Context(), "original", input); err == nil {
 		t.Fatal("invalid implementation output became success")
-	} else if _, known := errors.AsType[*capability.Refusal](err); known {
+	} else if _, known := errors.AsType[*extension.Refusal](err); known {
 		t.Fatal("invalid output became a known refusal")
 	}
 }
 
 func TestStreamingImplementationRetainsPublishedInputChunkAndOutput(t *testing.T) {
-	defined, err := NewStreamingMethod[contractInput, contractInput, contractInput](MethodConfig{Name: "reviews.stream", Kind: capability.Query, Target: "installation", Description: "Read reviews."})
+	defined, err := NewStreamingMethod[contractInput, contractInput, contractInput](MethodConfig{Name: "reviews.stream", Kind: extension.Query, Target: "installation", Description: "Read reviews."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,19 +171,19 @@ func TestStreamingImplementationRetainsPublishedInputChunkAndOutput(t *testing.T
 }
 
 func TestImplementationRequiresAnExistingMethodAndMatchingDelivery(t *testing.T) {
-	unary, err := NewMethod[struct{}, bool](MethodConfig{Name: "read", Kind: capability.Query, Target: "installation", Description: "Read."})
+	unary, err := NewMethod[struct{}, bool](MethodConfig{Name: "read", Kind: extension.Query, Target: "installation", Description: "Read."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := NewStreamingMethod[struct{}, bool, bool](MethodConfig{Name: "stream", Kind: capability.Query, Target: "installation", Description: "Stream."})
+	stream, err := NewStreamingMethod[struct{}, bool, bool](MethodConfig{Name: "stream", Kind: extension.Query, Target: "installation", Description: "Stream."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	owner := testCapability(t, unary.Descriptor(), stream.Descriptor())
 	for _, candidate := range []struct {
-		owner *capability.Contract
+		owner *extension.Capability
 		name  string
-	}{{nil, "read"}, {&capability.Contract{}, "read"}, {owner, "missing"}} {
+	}{{nil, "read"}, {&extension.Capability{}, "read"}, {owner, "missing"}} {
 		if _, err := ImplementMethod[struct{}, bool](candidate.owner, candidate.name); err == nil {
 			t.Fatal("missing unary contract admitted")
 		}

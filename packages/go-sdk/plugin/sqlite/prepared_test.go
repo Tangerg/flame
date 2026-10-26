@@ -3,19 +3,18 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
-	db, err := sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema})
+	db, err := sqlite.OpenSchema(t.Context(), path, []string{CommandsSchema})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +26,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	db, err = sqlitebase.OpenSchema(t.Context(), path, []string{CommandsSchema})
+	db, err = sqlite.OpenSchema(t.Context(), path, []string{CommandsSchema})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,10 +34,10 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if pending, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil); err != nil || pending == nil || pending.NewlyAdmitted() || len(reply) != 0 {
 		t.Fatalf("pending command lost its reconciliation-only admission: %v, %s, %v", pending, reply, err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed method=%v", err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, idempotency.ErrKeyConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
 	if _, err := Command(t.Context(), db, "maintain", "original", "input", input, nil, func(context.Context, string) (string, error) {
@@ -50,7 +49,7 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 }
 
 func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
-	db, err := sqlitebase.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`})
+	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "private.db"), []string{CommandsSchema, `CREATE TABLE counter(value INTEGER NOT NULL)`, `INSERT INTO counter VALUES(0)`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,24 +59,21 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outcome, err := pluginsdk.Reply("saved", nil, nil)
+	outcome, err := pluginsdk.EncodeReply("saved", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := json.Marshal(outcome)
-	if err != nil {
-		t.Fatal(err)
-	}
+	reply := outcome.JSON()
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER abort_completion BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	mutate := func(ctx context.Context) error {
-		if _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
+		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`); err != nil {
 			return err
 		}
 		return prepared.Complete(ctx, reply)
 	}
-	if err := sqlitebase.RunInTx(t.Context(), db, mutate); err == nil {
+	if err := sqlite.RunInTx(t.Context(), db, mutate); err == nil {
 		t.Fatal("receipt failure committed mutation")
 	}
 	var count int
@@ -91,21 +87,18 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if _, err := db.ExecContext(t.Context(), `DROP TRIGGER abort_completion`); err != nil {
 		t.Fatal(err)
 	}
-	if err := sqlitebase.RunInTx(t.Context(), db, mutate); err != nil {
+	if err := sqlite.RunInTx(t.Context(), db, mutate); err != nil {
 		t.Fatal(err)
 	}
 	if err := prepared.Complete(t.Context(), reply); err != nil {
 		t.Fatal(err)
 	}
-	other, err := pluginsdk.Reply("different", nil, nil)
+	other, err := pluginsdk.EncodeReply("different", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	changed, err := json.Marshal(other)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, idempotency.ErrKeyConflict) {
+	changed := other.JSON()
+	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, extension.ErrInvocationConflict) {
 		t.Fatalf("completed outcome changed: %v", err)
 	}
 	duplicate, original, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil)

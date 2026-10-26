@@ -16,7 +16,6 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	transport "github.com/Tangerg/flame/packages/go-sdk/protocol/jsonrpc"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 	"golang.org/x/text/encoding"
@@ -161,7 +160,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	return callResult{}, call.readError(io.ErrUnexpectedEOF)
 }
 
-func encodeRemoteRequest(id transport.ID, name string, parameters any, metadata protocol.RequestMeta) ([]byte, error) {
+func encodeRemoteRequest(id jsonrpc.ID, name string, parameters any, metadata protocol.RequestMeta) ([]byte, error) {
 	encoded, err := json.Marshal(parameters)
 	if err != nil {
 		return nil, err
@@ -179,20 +178,20 @@ func encodeRemoteRequest(id transport.ID, name string, parameters any, metadata 
 	if err != nil {
 		return nil, err
 	}
-	return transport.EncodeMessage(&transport.Request{ID: id, Method: name, Params: encoded})
+	return jsonrpc.EncodeMessage(&jsonrpc.Request{ID: id, Method: name, Params: encoded})
 }
 
-func decodeRemoteResponse(encoded []byte, id transport.ID, method methodMeta) (callResult, error) {
-	message, err := transport.DecodeMessage(encoded)
+func decodeRemoteResponse(encoded []byte, id jsonrpc.ID, method methodMeta) (callResult, error) {
+	message, err := protocol.DecodeRPCMessage(encoded)
 	if err != nil {
 		return callResult{}, invalidRemote("invalid json-rpc response")
 	}
-	response, ok := message.(*transport.Response)
+	response, ok := message.(*jsonrpc.Response)
 	if !ok || response.ID.Raw() != id.Raw() {
 		return callResult{}, invalidRemote("response does not acknowledge this request")
 	}
 	if response.Error != nil {
-		rpcError, ok := errors.AsType[*transport.Error](response.Error)
+		rpcError, ok := errors.AsType[*jsonrpc.Error](response.Error)
 		if !ok {
 			return callResult{}, invalidRemote("invalid operation error envelope")
 		}
@@ -210,7 +209,7 @@ func decodeRemoteResponse(encoded []byte, id transport.ID, method methodMeta) (c
 		}
 		return callResult{Failure: failure}, nil
 	}
-	value, err := method.DecodeResult(response.Result)
+	value, err := method.decodeResult(response.Result)
 	if err != nil {
 		return callResult{}, invalidRemote("response violates the runtime contract")
 	}

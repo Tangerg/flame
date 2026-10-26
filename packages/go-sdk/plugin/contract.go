@@ -8,27 +8,27 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
 type MethodConfig struct {
 	Name        string
-	Kind        capability.MethodKind
+	Kind        extension.MethodKind
 	Target      string
 	Description string
 }
 
 type Method[P, R any] struct {
-	contract *capability.Method
+	contract *extension.Method
 }
 
 // ImplementMethod binds local codecs to a published contract. Only the contract
 // owner defines wire identity; deriving schemas from these types would give a
 // relocated or independently written implementation a different authority.
-func ImplementMethod[P, R any](owner *capability.Contract, name string) (*Method[P, R], error) {
+func ImplementMethod[P, R any](owner *extension.Capability, name string) (*Method[P, R], error) {
 	if owner == nil {
 		return nil, errors.New("plugin: method contract is required")
 	}
@@ -54,15 +54,15 @@ func NewMethod[P, R any](config MethodConfig) (*Method[P, R], error) {
 	if err != nil {
 		return nil, fmt.Errorf("plugin: %s output: %w", config.Name, err)
 	}
-	contract, err := capability.AdmitMethod(capability.MethodDescriptor{Name: config.Name, Kind: config.Kind, Target: config.Target, Description: config.Description, Input: input.JSON(), Output: output.JSON()})
+	contract, err := extension.AdmitMethod(extension.MethodDescriptor{Name: config.Name, Kind: config.Kind, Target: config.Target, Description: config.Description, Input: input.JSON(), Output: output.JSON()})
 	if err != nil {
 		return nil, err
 	}
 	return &Method[P, R]{contract: contract}, nil
 }
 
-func (m *Method[P, R]) Name() string                            { return m.contract.Name() }
-func (m *Method[P, R]) Descriptor() capability.MethodDescriptor { return m.contract.Descriptor() }
+func (m *Method[P, R]) Name() string                           { return m.contract.Name() }
+func (m *Method[P, R]) Descriptor() extension.MethodDescriptor { return m.contract.Descriptor() }
 
 // Raw input admission precedes typed business execution. Re-encoding the decoded
 // value would erase missing required members by inserting their Go zero values.
@@ -74,7 +74,7 @@ func (m *Method[P, R]) RegisterServer(backend *Backend, classify func(error) str
 }
 
 func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Context, *sdk.ServerSession, Command[P]) (R, error)) boundMethod {
-	return boundMethod{contract: m.contract, validate: validateMethodInput[P](m.contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*Result[jsontext.Value], error) {
+	return boundMethod{contract: m.contract, validate: validateMethodInput[P](m.contract), invoke: func(ctx context.Context, session *sdk.ServerSession, wire *invokeParams) (*methodResult[jsontext.Value], error) {
 		ctx, command, err := admitCommand[P](ctx, m.contract, wire)
 		if err != nil {
 			return nil, err
@@ -89,7 +89,7 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 				return nil, fmt.Errorf("plugin: %s output: %w", m.Name(), err)
 			}
 		}
-		outcome, err := Reply(value, operationErr, classify)
+		outcome, err := reply(value, operationErr, classify)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 		if err != nil {
 			return nil, err
 		}
-		var result Result[jsontext.Value]
+		var result methodResult[jsontext.Value]
 		if err := json.Unmarshal(data, &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
@@ -107,7 +107,7 @@ func (m *Method[P, R]) bind(classify func(error) string, handler func(context.Co
 
 // Typed decoders may enforce constraints Schema cannot express. Validation must
 // stay pure so a host can establish admission before retaining mutation work.
-func validateMethodInput[P any](contract *capability.Method) func(jsontext.Value) error {
+func validateMethodInput[P any](contract *extension.Method) func(jsontext.Value) error {
 	return func(data jsontext.Value) error {
 		_, input, err := decodeMethodInput[P](data)
 		if err != nil {
@@ -119,24 +119,24 @@ func validateMethodInput[P any](contract *capability.Method) func(jsontext.Value
 
 func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, input P) (R, error) {
 	var zero R
-	if m.contract.Kind() != capability.Query {
+	if m.contract.Kind() != extension.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
-	return m.call(ctx, session, &Params[P]{Input: input})
+	return m.call(ctx, session, &methodParams[P]{Input: input})
 }
 
 func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id string, input P) (R, error) {
 	var zero R
-	if m.contract.Kind() != capability.Mutation {
+	if m.contract.Kind() != extension.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := validateCommandID(id); err != nil {
 		return zero, err
 	}
-	return m.call(ctx, session, &Params[P]{Input: input, CommandID: id})
+	return m.call(ctx, session, &methodParams[P]{Input: input, CommandID: id})
 }
 
-func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, params *Params[P]) (R, error) {
+func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, params *methodParams[P]) (R, error) {
 	var zero R
 	if session == nil {
 		return zero, errors.New("plugin: client session is required")
@@ -145,9 +145,9 @@ func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, par
 	return m.callBinding(ctx, binding, params)
 }
 
-func (m *Method[P, R]) callBinding(ctx context.Context, binding *Binding, params *Params[P]) (R, error) {
+func (m *Method[P, R]) callBinding(ctx context.Context, binding *Binding, params *methodParams[P]) (R, error) {
 	var zero R
-	input, err := jsoninput.Encode(params.Input)
+	input, err := jsonvalue.Encode(params.Input)
 	if err != nil {
 		return zero, err
 	}
@@ -187,26 +187,26 @@ func (m *BoundMethod[P, R]) Call(ctx context.Context, input P) (R, error) {
 
 func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	if m.method.contract.Kind() != capability.Query {
+	if m.method.contract.Kind() != extension.Query {
 		return zero, errors.New("plugin: command requires a logical identity")
 	}
-	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input, ParamsBase: metadata})
+	return m.method.callBinding(ctx, m.binding, &methodParams[P]{Input: input, ParamsBase: metadata})
 }
 
 func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id string, input P) (R, error) {
 	var zero R
-	if m.method.contract.Kind() != capability.Mutation {
+	if m.method.contract.Kind() != extension.Mutation {
 		return zero, errors.New("plugin: query must not carry a command identity")
 	}
 	if err := validateCommandID(id); err != nil {
 		return zero, err
 	}
-	return m.method.callBinding(ctx, m.binding, &Params[P]{Input: input, CommandID: id})
+	return m.method.callBinding(ctx, m.binding, &methodParams[P]{Input: input, CommandID: id})
 }
 
 func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P) (R, bool, error) {
 	var zero R
-	admitted, err := jsoninput.Encode(input)
+	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		return zero, false, err
 	}
@@ -221,7 +221,7 @@ func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id string, input P)
 	return result, true, nil
 }
 
-func admitCommand[P any](ctx context.Context, contract *capability.Method, wire *invokeParams) (context.Context, Command[P], error) {
+func admitCommand[P any](ctx context.Context, contract *extension.Method, wire *invokeParams) (context.Context, Command[P], error) {
 	encoded, err := json.Marshal(struct {
 		sdk.ParamsBase
 		Input     jsontext.Value `json:"input"`
@@ -230,17 +230,17 @@ func admitCommand[P any](ctx context.Context, contract *capability.Method, wire 
 	if err != nil {
 		return ctx, Command[P]{}, err
 	}
-	var params Params[P]
+	var params methodParams[P]
 	if err := json.Unmarshal(encoded, &params, json.RejectUnknownMembers(true)); err != nil {
 		return ctx, Command[P]{}, err
 	}
 	if params.inputJSON.Validate() != nil {
 		return ctx, Command[P]{}, errors.New("plugin: method input is required")
 	}
-	if contract.Kind() == capability.Query && params.CommandID != "" {
+	if contract.Kind() == extension.Query && params.CommandID != "" {
 		return ctx, Command[P]{}, errors.New("plugin: query must not carry a command identity")
 	}
-	if contract.Kind() == capability.Mutation {
+	if contract.Kind() == extension.Mutation {
 		if err := validateCommandID(params.CommandID); err != nil {
 			return ctx, Command[P]{}, err
 		}

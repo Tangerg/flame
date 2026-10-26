@@ -2,7 +2,7 @@
 
 package protocol
 
-func (l ListSessionTrajectoryRequest) ValidateWire() error {
+func (l ListSessionTrajectoryRequest) validateWire() error {
 	return collectWireViolations("ListSessionTrajectoryRequest",
 		requiredText("sessionId", l.SessionID),
 		identity("sessionId", l.SessionID),
@@ -12,7 +12,7 @@ func (l ListSessionTrajectoryRequest) ValidateWire() error {
 	)
 }
 
-func (e ExportTrajectoryRequest) ValidateWire() error {
+func (e ExportTrajectoryRequest) validateWire() error {
 	return collectWireViolations("ExportTrajectoryRequest",
 		requiredText("sessionId", e.SessionID),
 		identity("sessionId", e.SessionID),
@@ -20,7 +20,7 @@ func (e ExportTrajectoryRequest) ValidateWire() error {
 	)
 }
 
-func (l ListSessionsRequest) ValidateWire() error {
+func (l ListSessionsRequest) validateWire() error {
 	return collectWireViolations("ListSessionsRequest",
 		maxLength("search", l.Search, 1024),
 		optionalPositiveNumber("limit", l.Limit),
@@ -28,7 +28,7 @@ func (l ListSessionsRequest) ValidateWire() error {
 	)
 }
 
-func (g GetSessionRequest) ValidateWire() error {
+func (g GetSessionRequest) validateWire() error {
 	return collectWireViolations("GetSessionRequest",
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
@@ -36,7 +36,7 @@ func (g GetSessionRequest) ValidateWire() error {
 	)
 }
 
-func (g GetSessionSnapshotRequest) ValidateWire() error {
+func (g GetSessionSnapshotRequest) validateWire() error {
 	return collectWireViolations("GetSessionSnapshotRequest",
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
@@ -44,7 +44,7 @@ func (g GetSessionSnapshotRequest) ValidateWire() error {
 	)
 }
 
-func (u UpdateSessionRequest) ValidateWire() error {
+func (u UpdateSessionRequest) validateWire() error {
 	return collectWireViolations("UpdateSessionRequest",
 		requiredText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
@@ -64,7 +64,7 @@ func (u UpdateSessionRequest) ValidateWire() error {
 	)
 }
 
-func (d DeleteSessionRequest) ValidateWire() error {
+func (d DeleteSessionRequest) validateWire() error {
 	return collectWireViolations("DeleteSessionRequest",
 		requiredText("sessionId", d.SessionID),
 		identity("sessionId", d.SessionID),
@@ -72,7 +72,7 @@ func (d DeleteSessionRequest) ValidateWire() error {
 	)
 }
 
-func (f ForkSessionRequest) ValidateWire() error {
+func (f ForkSessionRequest) validateWire() error {
 	return collectWireViolations("ForkSessionRequest",
 		requiredText("sessionId", f.SessionID),
 		identity("sessionId", f.SessionID),
@@ -82,7 +82,7 @@ func (f ForkSessionRequest) ValidateWire() error {
 	)
 }
 
-func (r RollbackSessionRequest) ValidateWire() error {
+func (r RollbackSessionRequest) validateWire() error {
 	return collectWireViolations("RollbackSessionRequest",
 		requiredText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
@@ -95,7 +95,7 @@ func (r RollbackSessionRequest) ValidateWire() error {
 	)
 }
 
-func (e ExportSessionRequest) ValidateWire() error {
+func (e ExportSessionRequest) validateWire() error {
 	return collectWireViolations("ExportSessionRequest",
 		requiredText("sessionId", e.SessionID),
 		identity("sessionId", e.SessionID),
@@ -104,7 +104,7 @@ func (e ExportSessionRequest) ValidateWire() error {
 	)
 }
 
-func (l ListModelEndpointsRequest) ValidateWire() error {
+func (l ListModelEndpointsRequest) validateWire() error {
 	return collectWireViolations("ListModelEndpointsRequest",
 		requiredText("parentCallId", l.ParentCallID),
 		identity("parentCallId", l.ParentCallID),
@@ -114,7 +114,7 @@ func (l ListModelEndpointsRequest) ValidateWire() error {
 	)
 }
 
-func (l ListModelInvocationsRequest) ValidateWire() error {
+func (l ListModelInvocationsRequest) validateWire() error {
 	return collectWireViolations("ListModelInvocationsRequest",
 		requiredText("runId", l.RunID),
 		identity("runId", l.RunID),
@@ -124,7 +124,7 @@ func (l ListModelInvocationsRequest) ValidateWire() error {
 	)
 }
 
-func (s StartRunRequest) ValidateWire() error {
+func (s StartRunRequest) validateWire() error {
 	return collectWireViolations("StartRunRequest",
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
@@ -144,7 +144,7 @@ func (s StartRunRequest) ValidateWire() error {
 	)
 }
 
-func (r ResumeRunRequest) ValidateWire() error {
+func (r ResumeRunRequest) validateWire() error {
 	return collectWireViolations("ResumeRunRequest",
 		requiredText("runId", r.RunID),
 		identity("runId", r.RunID),
@@ -153,7 +153,7 @@ func (r ResumeRunRequest) ValidateWire() error {
 	)
 }
 
-func (s SubscribeRunRequest) ValidateWire() error {
+func (s SubscribeRunRequest) validateWire() error {
 	return collectWireViolations("SubscribeRunRequest",
 		requiredText("runId", s.RunID),
 		identity("runId", s.RunID),
@@ -164,7 +164,7 @@ func (s SubscribeRunRequest) ValidateWire() error {
 	)
 }
 
-func (c CancelRunRequest) ValidateWire() error {
+func (c CancelRunRequest) validateWire() error {
 	return collectWireViolations("CancelRunRequest",
 		requiredText("runId", c.RunID),
 		identity("runId", c.RunID),
@@ -173,7 +173,7 @@ func (c CancelRunRequest) ValidateWire() error {
 	)
 }
 
-func (s SteerRunRequest) ValidateWire() error {
+func (s SteerRunRequest) validateWire() error {
 	return collectWireViolations("SteerRunRequest",
 		requiredText("runId", s.RunID),
 		identity("runId", s.RunID),
@@ -185,7 +185,7 @@ func (s SteerRunRequest) ValidateWire() error {
 	)
 }
 
-func (g GetRunRequest) ValidateWire() error {
+func (g GetRunRequest) validateWire() error {
 	return collectWireViolations("GetRunRequest",
 		requiredText("runId", g.RunID),
 		identity("runId", g.RunID),
@@ -193,7 +193,7 @@ func (g GetRunRequest) ValidateWire() error {
 	)
 }
 
-func (g GetRunAcceptanceRequest) ValidateWire() error {
+func (g GetRunAcceptanceRequest) validateWire() error {
 	return collectWireViolations("GetRunAcceptanceRequest",
 		requiredText("namespace", g.Namespace),
 		requiredTextPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
@@ -203,7 +203,7 @@ func (g GetRunAcceptanceRequest) ValidateWire() error {
 	)
 }
 
-func (l ListRunsRequest) ValidateWire() error {
+func (l ListRunsRequest) validateWire() error {
 	return collectWireViolations("ListRunsRequest",
 		identity("sessionId", l.SessionID),
 		maxLength("sessionId", l.SessionID, 256),
@@ -215,7 +215,7 @@ func (l ListRunsRequest) ValidateWire() error {
 	)
 }
 
-func (l ListInterruptsRequest) ValidateWire() error {
+func (l ListInterruptsRequest) validateWire() error {
 	return collectWireViolations("ListInterruptsRequest",
 		identity("sessionId", l.SessionID),
 		maxLength("sessionId", l.SessionID, 256),
@@ -226,7 +226,7 @@ func (l ListInterruptsRequest) ValidateWire() error {
 	)
 }
 
-func (g GetPlanRequest) ValidateWire() error {
+func (g GetPlanRequest) validateWire() error {
 	return collectWireViolations("GetPlanRequest",
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
@@ -234,7 +234,7 @@ func (g GetPlanRequest) ValidateWire() error {
 	)
 }
 
-func (l ListItemsRequest) ValidateWire() error {
+func (l ListItemsRequest) validateWire() error {
 	return collectWireViolations("ListItemsRequest",
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
@@ -242,7 +242,7 @@ func (l ListItemsRequest) ValidateWire() error {
 	)
 }
 
-func (g GetDiffRequest) ValidateWire() error {
+func (g GetDiffRequest) validateWire() error {
 	return collectWireViolations("GetDiffRequest",
 		optionalPositiveNumber("limit", g.Limit),
 		closedEnum("mode", string(g.Mode), []string{"worktree", "base"}, true),
@@ -251,21 +251,21 @@ func (g GetDiffRequest) ValidateWire() error {
 	)
 }
 
-func (g GrepRequest) ValidateWire() error {
+func (g GrepRequest) validateWire() error {
 	return collectWireViolations("GrepRequest",
 		requiredText("query", g.Query),
 		optionalPositiveNumber("limit", g.Limit),
 	)
 }
 
-func (l ListFilesRequest) ValidateWire() error {
+func (l ListFilesRequest) validateWire() error {
 	return collectWireViolations("ListFilesRequest",
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
 	)
 }
 
-func (r ReadFileRequest) ValidateWire() error {
+func (r ReadFileRequest) validateWire() error {
 	return collectWireViolations("ReadFileRequest",
 		requiredText("path", r.Path),
 		optionalPositiveNumber("startLine", r.StartLine),
@@ -275,7 +275,7 @@ func (r ReadFileRequest) ValidateWire() error {
 	)
 }
 
-func (r RuntimeSubscribeRequest) ValidateWire() error {
+func (r RuntimeSubscribeRequest) validateWire() error {
 	return collectWireViolations("RuntimeSubscribeRequest",
 		requiredItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
@@ -283,19 +283,19 @@ func (r RuntimeSubscribeRequest) ValidateWire() error {
 	)
 }
 
-func (s SkillDetailRequest) ValidateWire() error {
+func (s SkillDetailRequest) validateWire() error {
 	return collectWireViolations("SkillDetailRequest",
 		requiredTextPattern("name", s.Name, "\\S"),
 	)
 }
 
-func (s SkillNameRequest) ValidateWire() error {
+func (s SkillNameRequest) validateWire() error {
 	return collectWireViolations("SkillNameRequest",
 		requiredTextPattern("name", s.Name, "\\S"),
 	)
 }
 
-func (s SkillProposalRef) ValidateWire() error {
+func (s SkillProposalRef) validateWire() error {
 	return collectWireViolations("SkillProposalRef",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
@@ -303,25 +303,25 @@ func (s SkillProposalRef) ValidateWire() error {
 	)
 }
 
-func (s SetMCPToolExposureRequest) ValidateWire() error {
+func (s SetMCPToolExposureRequest) validateWire() error {
 	return collectWireViolations("SetMCPToolExposureRequest",
 		requiredTextPattern("name", s.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
-func (m MCPServerCandidate) ValidateWire() error {
+func (m MCPServerCandidate) validateWire() error {
 	return collectWireViolations("MCPServerCandidate",
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
-func (m MCPAuthorizationAttemptRequest) ValidateWire() error {
+func (m MCPAuthorizationAttemptRequest) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptRequest",
 		requiredTextPattern("attemptId", m.AttemptID, "^mcpauth_[A-Z2-7]{26,64}$"),
 	)
 }
 
-func (p PluginCommandRequest) ValidateWire() error {
+func (p PluginCommandRequest) validateWire() error {
 	return collectWireViolations("PluginCommandRequest",
 		requiredText("namespace", p.Namespace),
 		requiredTextPattern("namespace", p.Namespace, "^idp_[0-9a-f]{32}$"),
@@ -330,7 +330,7 @@ func (p PluginCommandRequest) ValidateWire() error {
 	)
 }
 
-func (c CallPluginRequest) ValidateWire() error {
+func (c CallPluginRequest) validateWire() error {
 	return collectWireViolations("CallPluginRequest",
 		requiredText("contract", c.Contract),
 		requiredText("input", c.Input),
@@ -348,13 +348,13 @@ func (c CallPluginRequest) ValidateWire() error {
 	)
 }
 
-func (p PluginChangeNotice) ValidateWire() error {
+func (p PluginChangeNotice) validateWire() error {
 	return collectWireViolations("PluginChangeNotice",
 		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
-func (o OpenPluginResourcesRequest) ValidateWire() error {
+func (o OpenPluginResourcesRequest) validateWire() error {
 	return collectWireViolations("OpenPluginResourcesRequest",
 		requiredTextPattern("componentId", o.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredTextPattern("installationId", o.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
@@ -362,7 +362,7 @@ func (o OpenPluginResourcesRequest) ValidateWire() error {
 	)
 }
 
-func (r ReadPluginResourceRequest) ValidateWire() error {
+func (r ReadPluginResourceRequest) validateWire() error {
 	return collectWireViolations("ReadPluginResourceRequest",
 		requiredTextPattern("componentId", r.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredTextPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
@@ -370,14 +370,14 @@ func (r ReadPluginResourceRequest) ValidateWire() error {
 	)
 }
 
-func (r ResolvePluginPointRequest) ValidateWire() error {
+func (r ResolvePluginPointRequest) validateWire() error {
 	return collectWireViolations("ResolvePluginPointRequest",
 		requiredText("contract", r.Contract),
 		requiredText("attributes", r.Attributes),
 	)
 }
 
-func (r ResolvePluginRequirementsRequest) ValidateWire() error {
+func (r ResolvePluginRequirementsRequest) validateWire() error {
 	return collectWireViolations("ResolvePluginRequirementsRequest",
 		requiredTextPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
@@ -385,7 +385,7 @@ func (r ResolvePluginRequirementsRequest) ValidateWire() error {
 	)
 }
 
-func (s SelectPluginProviderRequest) ValidateWire() error {
+func (s SelectPluginProviderRequest) validateWire() error {
 	return collectWireViolations("SelectPluginProviderRequest",
 		requiredTextPattern("contribution", s.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("role", s.Role),
@@ -394,27 +394,27 @@ func (s SelectPluginProviderRequest) ValidateWire() error {
 	)
 }
 
-func (s SetPluginCompositionRequest) ValidateWire() error {
+func (s SetPluginCompositionRequest) validateWire() error {
 	return collectWireViolations("SetPluginCompositionRequest",
 		requiredText("contract", s.Contract),
 		uniqueItems("members", s.Members),
 	)
 }
 
-func (r ResolvePluginCompositionRequest) ValidateWire() error {
+func (r ResolvePluginCompositionRequest) validateWire() error {
 	return collectWireViolations("ResolvePluginCompositionRequest",
 		requiredText("contract", r.Contract),
 	)
 }
 
-func (i InstallPluginRequest) ValidateWire() error {
+func (i InstallPluginRequest) validateWire() error {
 	return collectWireViolations("InstallPluginRequest",
 		requiredText("source", i.Source),
 		maxLength("source", i.Source, 4096),
 	)
 }
 
-func (s StagePluginRequest) ValidateWire() error {
+func (s StagePluginRequest) validateWire() error {
 	return collectWireViolations("StagePluginRequest",
 		requiredTextPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredText("source", s.Source),
@@ -422,39 +422,39 @@ func (s StagePluginRequest) ValidateWire() error {
 	)
 }
 
-func (p PluginReleaseRequest) ValidateWire() error {
+func (p PluginReleaseRequest) validateWire() error {
 	return collectWireViolations("PluginReleaseRequest",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
 	)
 }
 
-func (c ConfigurePluginRequest) ValidateWire() error {
+func (c ConfigurePluginRequest) validateWire() error {
 	return collectWireViolations("ConfigurePluginRequest",
 		requiredTextPattern("installationId", c.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("digest", c.Digest, "^[0-9a-f]{64}$"),
 	)
 }
 
-func (s SetPluginEnablementRequest) ValidateWire() error {
+func (s SetPluginEnablementRequest) validateWire() error {
 	return collectWireViolations("SetPluginEnablementRequest",
 		requiredTextPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
 }
 
-func (p PluginRequest) ValidateWire() error {
+func (p PluginRequest) validateWire() error {
 	return collectWireViolations("PluginRequest",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
 }
 
-func (s SetHookTrustRequest) ValidateWire() error {
+func (s SetHookTrustRequest) validateWire() error {
 	return collectWireViolations("SetHookTrustRequest",
 		requiredText("projectRoot", s.ProjectRoot),
 	)
 }
 
-func (s SetApprovalRuleRequest) ValidateWire() error {
+func (s SetApprovalRuleRequest) validateWire() error {
 	return collectWireViolations("SetApprovalRuleRequest",
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
@@ -466,26 +466,26 @@ func (s SetApprovalRuleRequest) ValidateWire() error {
 	)
 }
 
-func (s SetApprovalModeRequest) ValidateWire() error {
+func (s SetApprovalModeRequest) validateWire() error {
 	return collectWireViolations("SetApprovalModeRequest",
 		closedEnum("mode", string(s.Mode), []string{"safe", "balanced", "yolo"}, false),
 	)
 }
 
-func (l ListApprovalRulesRequest) ValidateWire() error {
+func (l ListApprovalRulesRequest) validateWire() error {
 	return collectWireViolations("ListApprovalRulesRequest",
 		identity("sessionId", l.SessionID),
 		maxLength("sessionId", l.SessionID, 256),
 	)
 }
 
-func (f ForgetApprovalRuleRequest) ValidateWire() error {
+func (f ForgetApprovalRuleRequest) validateWire() error {
 	return collectWireViolations("ForgetApprovalRuleRequest",
 		requiredText("id", f.ID),
 	)
 }
 
-func (s StartGoalRequest) ValidateWire() error {
+func (s StartGoalRequest) validateWire() error {
 	return collectWireViolations("StartGoalRequest",
 		requiredText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
@@ -504,7 +504,7 @@ func (s StartGoalRequest) ValidateWire() error {
 	)
 }
 
-func (u UpdateGoalRequest) ValidateWire() error {
+func (u UpdateGoalRequest) validateWire() error {
 	return collectWireViolations("UpdateGoalRequest",
 		requiredText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
@@ -513,7 +513,7 @@ func (u UpdateGoalRequest) ValidateWire() error {
 	)
 }
 
-func (g GoalRequest) ValidateWire() error {
+func (g GoalRequest) validateWire() error {
 	return collectWireViolations("GoalRequest",
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
@@ -521,7 +521,7 @@ func (g GoalRequest) ValidateWire() error {
 	)
 }
 
-func (u UpdateProviderRequest) ValidateWire() error {
+func (u UpdateProviderRequest) validateWire() error {
 	return collectWireViolations("UpdateProviderRequest",
 		requiredText("provider", u.Provider),
 		identity("provider", u.Provider),
@@ -529,7 +529,7 @@ func (u UpdateProviderRequest) ValidateWire() error {
 	)
 }
 
-func (t TestProviderRequest) ValidateWire() error {
+func (t TestProviderRequest) validateWire() error {
 	return collectWireViolations("TestProviderRequest",
 		requiredText("provider", t.Provider),
 		identity("provider", t.Provider),
@@ -537,14 +537,14 @@ func (t TestProviderRequest) ValidateWire() error {
 	)
 }
 
-func (l ListModelsRequest) ValidateWire() error {
+func (l ListModelsRequest) validateWire() error {
 	return collectWireViolations("ListModelsRequest",
 		identity("provider", l.Provider),
 		maxLength("provider", l.Provider, 64),
 	)
 }
 
-func (u UtilityRole) ValidateWire() error {
+func (u UtilityRole) validateWire() error {
 	return collectWireViolations("UtilityRole",
 		identity("provider", u.Provider),
 		maxLength("provider", u.Provider, 64),
@@ -553,7 +553,7 @@ func (u UtilityRole) ValidateWire() error {
 	)
 }
 
-func (e EmbeddingRole) ValidateWire() error {
+func (e EmbeddingRole) validateWire() error {
 	return collectWireViolations("EmbeddingRole",
 		identity("provider", e.Provider),
 		maxLength("provider", e.Provider, 64),
@@ -562,13 +562,13 @@ func (e EmbeddingRole) ValidateWire() error {
 	)
 }
 
-func (i InvokeToolRequest) ValidateWire() error {
+func (i InvokeToolRequest) validateWire() error {
 	return collectWireViolations("InvokeToolRequest",
 		requiredText("name", i.Name),
 	)
 }
 
-func (s SessionUsageRequest) ValidateWire() error {
+func (s SessionUsageRequest) validateWire() error {
 	return collectWireViolations("SessionUsageRequest",
 		requiredText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
@@ -576,13 +576,13 @@ func (s SessionUsageRequest) ValidateWire() error {
 	)
 }
 
-func (u UsageSummaryRequest) ValidateWire() error {
+func (u UsageSummaryRequest) validateWire() error {
 	return collectWireViolations("UsageSummaryRequest",
 		optionalPositiveNumber("sinceDays", u.SinceDays),
 	)
 }
 
-func (f FeedbackRequest) ValidateWire() error {
+func (f FeedbackRequest) validateWire() error {
 	return collectWireViolations("FeedbackRequest",
 		identity("sessionId", f.SessionID),
 		maxLength("sessionId", f.SessionID, 256),
@@ -596,7 +596,7 @@ func (f FeedbackRequest) ValidateWire() error {
 	)
 }
 
-func (p ProblemData) ValidateWire() error {
+func (p ProblemData) validateWire() error {
 	return collectWireViolations("ProblemData",
 		optionalPositiveScalarNumber("retryAfterSeconds", p.RetryAfterSeconds),
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
@@ -829,7 +829,7 @@ func (p ProblemData) ValidateWire() error {
 	)
 }
 
-func (c CancelRunResponse) ValidateWire() error {
+func (c CancelRunResponse) validateWire() error {
 	return collectWireViolations("CancelRunResponse",
 		closedEnum("type", string(c.Type), []string{"root", "child"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "root"), "run", c),
@@ -839,7 +839,7 @@ func (c CancelRunResponse) ValidateWire() error {
 	)
 }
 
-func (r RunAcceptance) ValidateWire() error {
+func (r RunAcceptance) validateWire() error {
 	return collectWireViolations("RunAcceptance",
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
@@ -873,7 +873,7 @@ func (r RunAcceptance) ValidateWire() error {
 	)
 }
 
-func (r RunOutcome) ValidateWire() error {
+func (r RunOutcome) validateWire() error {
 	return collectWireViolations("RunOutcome",
 		closedEnum("type", string(r.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "error", r),
@@ -888,7 +888,7 @@ func (r RunOutcome) ValidateWire() error {
 	)
 }
 
-func (t TrajectoryEntry) ValidateWire() error {
+func (t TrajectoryEntry) validateWire() error {
 	return collectWireViolations("TrajectoryEntry",
 		closedEnum("type", string(t.Type), []string{"run", "model", "endpoint", "item"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "run"), "occurredAt", t),
@@ -914,7 +914,7 @@ func (t TrajectoryEntry) ValidateWire() error {
 	)
 }
 
-func (i Item) ValidateWire() error {
+func (i Item) validateWire() error {
 	return collectWireViolations("Item",
 		requiredText("id", i.ID),
 		identity("id", i.ID),
@@ -1050,7 +1050,7 @@ func (i Item) ValidateWire() error {
 	)
 }
 
-func (i ItemDelta) ValidateWire() error {
+func (i ItemDelta) validateWire() error {
 	return collectWireViolations("ItemDelta",
 		closedEnum("type", string(i.Type), []string{"content", "reasoning", "toolArguments", "toolOutput"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "content"), "text", i),
@@ -1064,7 +1064,7 @@ func (i ItemDelta) ValidateWire() error {
 	)
 }
 
-func (c CapabilityRequirement) ValidateWire() error {
+func (c CapabilityRequirement) validateWire() error {
 	return collectWireViolations("CapabilityRequirement",
 		requiredText("name", c.Name),
 		closedEnum("type", string(c.Type), []string{"feature", "interruptType", "runtimeTopic"}, false),
@@ -1074,7 +1074,7 @@ func (c CapabilityRequirement) ValidateWire() error {
 	)
 }
 
-func (i ItemListScope) ValidateWire() error {
+func (i ItemListScope) validateWire() error {
 	return collectWireViolations("ItemListScope",
 		identity("sessionId", i.SessionID),
 		maxLength("sessionId", i.SessionID, 256),
@@ -1089,7 +1089,7 @@ func (i ItemListScope) ValidateWire() error {
 	)
 }
 
-func (c ContentBlock) ValidateWire() error {
+func (c ContentBlock) validateWire() error {
 	return collectWireViolations("ContentBlock",
 		optionalTextPattern("text", c.Text, "\\S"),
 		optionalTextPattern("mime", c.Mime, "^image/"),
@@ -1103,7 +1103,7 @@ func (c ContentBlock) ValidateWire() error {
 	)
 }
 
-func (q QuestionField) ValidateWire() error {
+func (q QuestionField) validateWire() error {
 	return collectWireViolations("QuestionField",
 		requiredTextPattern("prompt", q.Prompt, "\\S"),
 		maxLength("header", q.Header, 12),
@@ -1119,7 +1119,7 @@ func (q QuestionField) ValidateWire() error {
 	)
 }
 
-func (p ProviderConfigChange) ValidateWire() error {
+func (p ProviderConfigChange) validateWire() error {
 	return collectWireViolations("ProviderConfigChange",
 		optionalText("value", p.Value),
 		closedEnum("type", string(p.Type), []string{"set", "clear"}, false),
@@ -1128,7 +1128,7 @@ func (p ProviderConfigChange) ValidateWire() error {
 	)
 }
 
-func (m MCPOrigin) ValidateWire() error {
+func (m MCPOrigin) validateWire() error {
 	return collectWireViolations("MCPOrigin",
 		optionalTextPattern("installationId", m.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		closedEnum("type", string(m.Type), []string{"user", "installation"}, false),
@@ -1137,7 +1137,7 @@ func (m MCPOrigin) ValidateWire() error {
 	)
 }
 
-func (m MCPHandshakeTimeout) ValidateWire() error {
+func (m MCPHandshakeTimeout) validateWire() error {
 	return collectWireViolations("MCPHandshakeTimeout",
 		optionalPositiveNumber("seconds", m.Seconds),
 		optionalMaximumNumber("seconds", m.Seconds, 9223372036),
@@ -1147,7 +1147,7 @@ func (m MCPHandshakeTimeout) ValidateWire() error {
 	)
 }
 
-func (m MCPConnection) ValidateWire() error {
+func (m MCPConnection) validateWire() error {
 	return collectWireViolations("MCPConnection",
 		closedEnum("type", string(m.Type), []string{"stdio", "streamableHttp"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
@@ -1162,7 +1162,7 @@ func (m MCPConnection) ValidateWire() error {
 	)
 }
 
-func (m MCPConnectionInput) ValidateWire() error {
+func (m MCPConnectionInput) validateWire() error {
 	return collectWireViolations("MCPConnectionInput",
 		closedEnum("type", string(m.Type), []string{"stdio", "streamableHttp"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
@@ -1177,7 +1177,7 @@ func (m MCPConnectionInput) ValidateWire() error {
 	)
 }
 
-func (m MCPAuthorizationChange) ValidateWire() error {
+func (m MCPAuthorizationChange) validateWire() error {
 	return collectWireViolations("MCPAuthorizationChange",
 		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
@@ -1185,7 +1185,7 @@ func (m MCPAuthorizationChange) ValidateWire() error {
 	)
 }
 
-func (m MCPHeadersChange) ValidateWire() error {
+func (m MCPHeadersChange) validateWire() error {
 	return collectWireViolations("MCPHeadersChange",
 		nonEmptyProperties("value", m.Value),
 		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
@@ -1194,7 +1194,7 @@ func (m MCPHeadersChange) ValidateWire() error {
 	)
 }
 
-func (m MCPEnvironmentChange) ValidateWire() error {
+func (m MCPEnvironmentChange) validateWire() error {
 	return collectWireViolations("MCPEnvironmentChange",
 		nonEmptyProperties("value", m.Value),
 		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
@@ -1203,7 +1203,7 @@ func (m MCPEnvironmentChange) ValidateWire() error {
 	)
 }
 
-func (m MCPServerState) ValidateWire() error {
+func (m MCPServerState) validateWire() error {
 	return collectWireViolations("MCPServerState",
 		optionalNonNegativeNumber("toolCount", m.ToolCount),
 		optionalMaximumNumber("toolCount", m.ToolCount, 2048),
@@ -1225,7 +1225,7 @@ func (m MCPServerState) ValidateWire() error {
 	)
 }
 
-func (m MCPAuthorizationAttemptStatus) ValidateWire() error {
+func (m MCPAuthorizationAttemptStatus) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptStatus",
 		closedEnum("type", string(m.Type), []string{"pending", "succeeded", "failed", "canceled"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "pending"), "error", m),
@@ -1236,7 +1236,7 @@ func (m MCPAuthorizationAttemptStatus) ValidateWire() error {
 	)
 }
 
-func (p PluginValueChange) ValidateWire() error {
+func (p PluginValueChange) validateWire() error {
 	return collectWireViolations("PluginValueChange",
 		optionalMaxLength("value", p.Value, 8192),
 		closedEnum("type", string(p.Type), []string{"set", "clear"}, false),
@@ -1245,7 +1245,7 @@ func (p PluginValueChange) ValidateWire() error {
 	)
 }
 
-func (p PluginRealization) ValidateWire() error {
+func (p PluginRealization) validateWire() error {
 	return collectWireViolations("PluginRealization",
 		optionalMinItems("unavailableBackends", p.UnavailableBackends, 1),
 		uniqueItems("unavailableBackends", p.UnavailableBackends),
@@ -1255,7 +1255,7 @@ func (p PluginRealization) ValidateWire() error {
 	)
 }
 
-func (p PluginServerDeclaration) ValidateWire() error {
+func (p PluginServerDeclaration) validateWire() error {
 	return collectWireViolations("PluginServerDeclaration",
 		requiredTextPattern("name", p.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		closedEnum("type", string(p.Type), []string{"stdio", "streamableHttp", "managedNode"}, false),
@@ -1282,7 +1282,7 @@ func (p PluginServerDeclaration) ValidateWire() error {
 	)
 }
 
-func (p PluginInputState) ValidateWire() error {
+func (p PluginInputState) validateWire() error {
 	return collectWireViolations("PluginInputState",
 		closedEnum("type", string(p.Type), []string{"unset", "configured", "value"}, false),
 		forbiddenWhen(wireFieldEquals(p, "type", "unset"), "value", p),
@@ -1291,7 +1291,7 @@ func (p PluginInputState) ValidateWire() error {
 	)
 }
 
-func (p PluginComponent) ValidateWire() error {
+func (p PluginComponent) validateWire() error {
 	return collectWireViolations("PluginComponent",
 		closedEnum("type", string(p.Type), []string{"manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "manifestField"), "name", p),
@@ -1305,7 +1305,7 @@ func (p PluginComponent) ValidateWire() error {
 	)
 }
 
-func (t ToolRef) ValidateWire() error {
+func (t ToolRef) validateWire() error {
 	return collectWireViolations("ToolRef",
 		optionalTextPattern("name", t.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 		optionalTextPattern("endpoint", t.Endpoint, "^[A-Za-z0-9_-]{1,64}$"),
@@ -1323,7 +1323,7 @@ func (t ToolRef) ValidateWire() error {
 	)
 }
 
-func (a ApprovalSubject) ValidateWire() error {
+func (a ApprovalSubject) validateWire() error {
 	return collectWireViolations("ApprovalSubject",
 		closedEnum("type", string(a.Type), []string{"all", "exact", "glob"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "all"), "value", a),
@@ -1332,7 +1332,7 @@ func (a ApprovalSubject) ValidateWire() error {
 	)
 }
 
-func (i Interrupt) ValidateWire() error {
+func (i Interrupt) validateWire() error {
 	return collectWireViolations("Interrupt",
 		requiredText("itemId", i.ItemID),
 		identity("itemId", i.ItemID),
@@ -1355,7 +1355,7 @@ func (i Interrupt) ValidateWire() error {
 	)
 }
 
-func (i InterruptResponseValue) ValidateWire() error {
+func (i InterruptResponseValue) validateWire() error {
 	return collectWireViolations("InterruptResponseValue",
 		nonEmptyItems("answers", i.Answers),
 		closedEnum("type", string(i.Type), []string{"approval", "answer"}, false),
@@ -1370,7 +1370,7 @@ func (i InterruptResponseValue) ValidateWire() error {
 	)
 }
 
-func (s StreamEvent) ValidateWire() error {
+func (s StreamEvent) validateWire() error {
 	return collectWireViolations("StreamEvent",
 		identity("itemId", s.ItemID),
 		maxLength("itemId", s.ItemID, 256),
@@ -1430,7 +1430,7 @@ func (s StreamEvent) ValidateWire() error {
 	)
 }
 
-func (r RuntimeEvent) ValidateWire() error {
+func (r RuntimeEvent) validateWire() error {
 	return collectWireViolations("RuntimeEvent",
 		positiveNumber("sequence", r.Sequence),
 		maximumNumber("sequence", r.Sequence, 9007199254740991),
@@ -1585,7 +1585,7 @@ func (r RuntimeEvent) ValidateWire() error {
 	)
 }
 
-func (a ArtifactOutcome) ValidateWire() error {
+func (a ArtifactOutcome) validateWire() error {
 	return collectWireViolations("ArtifactOutcome",
 		closedEnum("type", string(a.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "error", a),
@@ -1603,7 +1603,7 @@ func (a ArtifactOutcome) ValidateWire() error {
 	)
 }
 
-func (a ArtifactItem) ValidateWire() error {
+func (a ArtifactItem) validateWire() error {
 	return collectWireViolations("ArtifactItem",
 		requiredText("id", a.ID),
 		identity("id", a.ID),
@@ -1734,7 +1734,7 @@ func (a ArtifactItem) ValidateWire() error {
 	)
 }
 
-func (d DiffBaseline) ValidateWire() error {
+func (d DiffBaseline) validateWire() error {
 	return collectWireViolations("DiffBaseline",
 		optionalTextPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
 		closedEnum("type", string(d.Type), []string{"head", "mergeBase", "emptyTree"}, false),
@@ -1744,7 +1744,7 @@ func (d DiffBaseline) ValidateWire() error {
 	)
 }
 
-func (d DiffRow) ValidateWire() error {
+func (d DiffRow) validateWire() error {
 	return collectWireViolations("DiffRow",
 		optionalPositiveScalarNumber("leftLine", d.LeftLine),
 		optionalPositiveScalarNumber("rightLine", d.RightLine),
@@ -1768,7 +1768,7 @@ func (d DiffRow) ValidateWire() error {
 	)
 }
 
-func (m ModelEndpointInvocation) ValidateWire() error {
+func (m ModelEndpointInvocation) validateWire() error {
 	return collectWireViolations("ModelEndpointInvocation",
 		identity("sessionId", m.SessionID),
 		maxLength("sessionId", m.SessionID, 256),
@@ -1800,7 +1800,7 @@ func (m ModelEndpointInvocation) ValidateWire() error {
 	)
 }
 
-func (m ModelInvocation) ValidateWire() error {
+func (m ModelInvocation) validateWire() error {
 	return collectWireViolations("ModelInvocation",
 		requiredText("runId", m.RunID),
 		identity("runId", m.RunID),
@@ -1827,7 +1827,7 @@ func (m ModelInvocation) ValidateWire() error {
 	)
 }
 
-func (t ToolAttempt) ValidateWire() error {
+func (t ToolAttempt) validateWire() error {
 	return collectWireViolations("ToolAttempt",
 		requiredText("runId", t.RunID),
 		identity("runId", t.RunID),
@@ -1847,7 +1847,7 @@ func (t ToolAttempt) ValidateWire() error {
 	)
 }
 
-func (p PluginInput) ValidateWire() error {
+func (p PluginInput) validateWire() error {
 	return collectWireViolations("PluginInput",
 		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		closedEnum("target", string(p.Target), []string{"env", "header", "authorization"}, false),
@@ -1857,7 +1857,7 @@ func (p PluginInput) ValidateWire() error {
 	)
 }
 
-func (m ModelTokenLimits) ValidateWire() error {
+func (m ModelTokenLimits) validateWire() error {
 	return collectWireViolations("ModelTokenLimits",
 		optionalPositiveNumber("contextWindow", m.ContextWindow),
 		optionalPositiveNumber("maxInputTokens", m.MaxInputTokens),
@@ -1866,7 +1866,7 @@ func (m ModelTokenLimits) ValidateWire() error {
 	)
 }
 
-func (f FeedbackEntry) ValidateWire() error {
+func (f FeedbackEntry) validateWire() error {
 	return collectWireViolations("FeedbackEntry",
 		identity("sessionId", f.SessionID),
 		maxLength("sessionId", f.SessionID, 256),
@@ -1879,7 +1879,7 @@ func (f FeedbackEntry) ValidateWire() error {
 	)
 }
 
-func (r RunProgress) ValidateWire() error {
+func (r RunProgress) validateWire() error {
 	return collectWireViolations("RunProgress",
 		optionalNonNegativeNumber("step", r.Step),
 		optionalNonNegativeNumber("contextTokens", r.ContextTokens),
@@ -1887,7 +1887,7 @@ func (r RunProgress) ValidateWire() error {
 	)
 }
 
-func (r RunEvent) ValidateWire() error {
+func (r RunEvent) validateWire() error {
 	return collectWireViolations("RunEvent",
 		requiredText("runId", r.RunID),
 		identity("runId", r.RunID),
@@ -1902,7 +1902,7 @@ func (r RunEvent) ValidateWire() error {
 	)
 }
 
-func (s Session) ValidateWire() error {
+func (s Session) validateWire() error {
 	return collectWireViolations("Session",
 		requiredText("id", s.ID),
 		identity("id", s.ID),
@@ -1923,7 +1923,7 @@ func (s Session) ValidateWire() error {
 	)
 }
 
-func (p PlanState) ValidateWire() error {
+func (p PlanState) validateWire() error {
 	return collectWireViolations("PlanState",
 		positiveNumber("revision", p.Revision),
 		maximumNumber("revision", p.Revision, 9007199254740991),
@@ -1931,7 +1931,7 @@ func (p PlanState) ValidateWire() error {
 	)
 }
 
-func (h HookInfo) ValidateWire() error {
+func (h HookInfo) validateWire() error {
 	return collectWireViolations("HookInfo",
 		requiredText("source", h.Source),
 		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
@@ -1951,7 +1951,7 @@ func (h HookInfo) ValidateWire() error {
 	)
 }
 
-func (a ApprovalRule) ValidateWire() error {
+func (a ApprovalRule) validateWire() error {
 	return collectWireViolations("ApprovalRule",
 		requiredText("id", a.ID),
 		identity("id", a.ID),
@@ -1965,7 +1965,7 @@ func (a ApprovalRule) ValidateWire() error {
 	)
 }
 
-func (f FileContent) ValidateWire() error {
+func (f FileContent) validateWire() error {
 	return collectWireViolations("FileContent",
 		positiveNumber("totalLines", f.TotalLines),
 		optionalPositiveScalarNumber("startLine", f.StartLine),
@@ -1975,7 +1975,7 @@ func (f FileContent) ValidateWire() error {
 	)
 }
 
-func (w WorkspaceFileChange) ValidateWire() error {
+func (w WorkspaceFileChange) validateWire() error {
 	return collectWireViolations("WorkspaceFileChange",
 		requiredText("path", w.Path),
 		optionalNonNegativeNumber("added", w.Added),
@@ -1991,7 +1991,7 @@ func (w WorkspaceFileChange) ValidateWire() error {
 	)
 }
 
-func (f FileDiff) ValidateWire() error {
+func (f FileDiff) validateWire() error {
 	return collectWireViolations("FileDiff",
 		requiredText("path", f.Path),
 		optionalNonNegativeNumber("added", f.Added),
@@ -2007,7 +2007,7 @@ func (f FileDiff) ValidateWire() error {
 	)
 }
 
-func (g Goal) ValidateWire() error {
+func (g Goal) validateWire() error {
 	return collectWireViolations("Goal",
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
@@ -2031,7 +2031,7 @@ func (g Goal) ValidateWire() error {
 	)
 }
 
-func (g GoalReason) ValidateWire() error {
+func (g GoalReason) validateWire() error {
 	return collectWireViolations("GoalReason",
 		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"}, false),
 		requiredWhen(wireFieldEquals(g, "code", "runNotCompleted"), "detail", g),
@@ -2044,7 +2044,7 @@ func (g GoalReason) ValidateWire() error {
 	)
 }
 
-func (m MCPAuthorizationAttempt) ValidateWire() error {
+func (m MCPAuthorizationAttempt) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
 		requiredWhen(true, "createdAt", m),
@@ -2055,7 +2055,7 @@ func (m MCPAuthorizationAttempt) ValidateWire() error {
 	)
 }
 
-func (r RunSummary) ValidateWire() error {
+func (r RunSummary) validateWire() error {
 	return collectWireViolations("RunSummary",
 		requiredText("id", r.ID),
 		identity("id", r.ID),
@@ -2096,7 +2096,7 @@ func (r RunSummary) ValidateWire() error {
 	)
 }
 
-func (r RunRef) ValidateWire() error {
+func (r RunRef) validateWire() error {
 	return collectWireViolations("RunRef",
 		identity("activeSegmentId", r.ActiveSegmentID),
 		maxLength("activeSegmentId", r.ActiveSegmentID, 256),
@@ -2144,7 +2144,7 @@ func (r RunRef) ValidateWire() error {
 	)
 }
 
-func (p PendingInterruptSet) ValidateWire() error {
+func (p PendingInterruptSet) validateWire() error {
 	return collectWireViolations("PendingInterruptSet",
 		requiredText("rootRunId", p.RootRunID),
 		identity("rootRunId", p.RootRunID),
@@ -2160,7 +2160,7 @@ func (p PendingInterruptSet) ValidateWire() error {
 	)
 }
 
-func (a ArtifactRun) ValidateWire() error {
+func (a ArtifactRun) validateWire() error {
 	return collectWireViolations("ArtifactRun",
 		requiredText("id", a.ID),
 		identity("id", a.ID),
@@ -2197,7 +2197,7 @@ func (a ArtifactRun) ValidateWire() error {
 	)
 }
 
-func (a ArtifactSession) ValidateWire() error {
+func (a ArtifactSession) validateWire() error {
 	return collectWireViolations("ArtifactSession",
 		requiredText("id", a.ID),
 		identity("id", a.ID),
@@ -2215,7 +2215,7 @@ func (a ArtifactSession) ValidateWire() error {
 	)
 }
 
-func (a ArtifactToolResult) ValidateWire() error {
+func (a ArtifactToolResult) validateWire() error {
 	return collectWireViolations("ArtifactToolResult",
 		requiredTextPattern("id", a.ID, "^[A-Z2-7]{2,64}$"),
 		requiredText("body", a.Body),
@@ -2226,7 +2226,7 @@ func (a ArtifactToolResult) ValidateWire() error {
 	)
 }
 
-func (a ArtifactProblem) ValidateWire() error {
+func (a ArtifactProblem) validateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
 		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
@@ -2243,14 +2243,14 @@ func (a ArtifactProblem) ValidateWire() error {
 	)
 }
 
-func (c CallPluginResponse) ValidateWire() error {
+func (c CallPluginResponse) validateWire() error {
 	return collectWireViolations("CallPluginResponse",
 		requiredAnyWhen(true, []string{"output", "failure"}, c),
 		forbiddenWhen(wireFieldPresent(c, "failure"), "output", c),
 	)
 }
 
-func (p PluginStreamEvent) ValidateWire() error {
+func (p PluginStreamEvent) validateWire() error {
 	return collectWireViolations("PluginStreamEvent",
 		closedEnum("kind", string(p.Kind), []string{"chunk", "result", "failure"}, false),
 		requiredWhen(wireFieldEquals(p, "kind", "chunk"), "value", p),
@@ -2262,41 +2262,41 @@ func (p PluginStreamEvent) ValidateWire() error {
 	)
 }
 
-func (p PageContinuation) ValidateWire() error {
+func (p PageContinuation) validateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
 	)
 }
 
-func (p PageQuery) ValidateWire() error {
+func (p PageQuery) validateWire() error {
 	return collectWireViolations("PageQuery",
 		optionalPositiveNumber("limit", p.Limit),
 		maxLength("cursor", p.Cursor, 65536),
 	)
 }
 
-func (s SessionTrajectory) ValidateWire() error {
+func (s SessionTrajectory) validateWire() error {
 	return collectWireViolations("SessionTrajectory",
 		minimumNumber("schemaVersion", s.SchemaVersion, 3),
 		maximumNumber("schemaVersion", s.SchemaVersion, 3),
 	)
 }
 
-func (s SessionArtifact) ValidateWire() error {
+func (s SessionArtifact) validateWire() error {
 	return collectWireViolations("SessionArtifact",
 		minimumNumber("version", s.Version, 31),
 		maximumNumber("version", s.Version, 31),
 	)
 }
 
-func (t ToolInvocation) ValidateWire() error {
+func (t ToolInvocation) validateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
 		closedEnum("category", string(t.Category), []string{"shell", "edit", "read", "search", "web", "task", "unknown"}, true),
 	)
 }
 
-func (s SubscribeRunResponse) ValidateWire() error {
+func (s SubscribeRunResponse) validateWire() error {
 	return collectWireViolations("SubscribeRunResponse",
 		requiredText("runId", s.RunID),
 		identity("runId", s.RunID),
@@ -2310,7 +2310,7 @@ func (s SubscribeRunResponse) ValidateWire() error {
 	)
 }
 
-func (i InterruptResponse) ValidateWire() error {
+func (i InterruptResponse) validateWire() error {
 	return collectWireViolations("InterruptResponse",
 		requiredText("itemId", i.ItemID),
 		identity("itemId", i.ItemID),
@@ -2318,7 +2318,7 @@ func (i InterruptResponse) ValidateWire() error {
 	)
 }
 
-func (r RunMetrics) ValidateWire() error {
+func (r RunMetrics) validateWire() error {
 	return collectWireViolations("RunMetrics",
 		nonNegativeNumber("steps", r.Steps),
 		nonNegativeNumber("activeDurationMillis", r.ActiveDurationMillis),
@@ -2326,7 +2326,7 @@ func (r RunMetrics) ValidateWire() error {
 	)
 }
 
-func (m ModelUsage) ValidateWire() error {
+func (m ModelUsage) validateWire() error {
 	return collectWireViolations("ModelUsage",
 		nonNegativeNumber("inputTokens", m.InputTokens),
 		nonNegativeNumber("outputTokens", m.OutputTokens),
@@ -2337,7 +2337,7 @@ func (m ModelUsage) ValidateWire() error {
 	)
 }
 
-func (u Usage) ValidateWire() error {
+func (u Usage) validateWire() error {
 	return collectWireViolations("Usage",
 		identityPropertyNames("byModel", u.ByModel),
 		maxPropertyNameLength("byModel", u.ByModel, 256),
@@ -2350,7 +2350,7 @@ func (u Usage) ValidateWire() error {
 	)
 }
 
-func (r RunProtocolProfile) ValidateWire() error {
+func (r RunProtocolProfile) validateWire() error {
 	return collectWireViolations("RunProtocolProfile",
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
 		uniqueItems("interruptTypes", r.InterruptTypes),
@@ -2359,7 +2359,7 @@ func (r RunProtocolProfile) ValidateWire() error {
 	)
 }
 
-func (r RunSessionOpening) ValidateWire() error {
+func (r RunSessionOpening) validateWire() error {
 	return collectWireViolations("RunSessionOpening",
 		requiredText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
@@ -2370,7 +2370,7 @@ func (r RunSessionOpening) ValidateWire() error {
 	)
 }
 
-func (g GenerationParams) ValidateWire() error {
+func (g GenerationParams) validateWire() error {
 	return collectWireViolations("GenerationParams",
 		optionalNonNegativeNumber("temperature", g.Temperature),
 		optionalMaximumNumber("temperature", g.Temperature, 2),
@@ -2382,20 +2382,20 @@ func (g GenerationParams) ValidateWire() error {
 	)
 }
 
-func (q Question) ValidateWire() error {
+func (q Question) validateWire() error {
 	return collectWireViolations("Question",
 		requiredItems("fields", q.Fields),
 		maxItems("fields", q.Fields, 4),
 	)
 }
 
-func (q QuestionOption) ValidateWire() error {
+func (q QuestionOption) validateWire() error {
 	return collectWireViolations("QuestionOption",
 		requiredTextPattern("label", q.Label, "\\S"),
 	)
 }
 
-func (s StartRunResponse) ValidateWire() error {
+func (s StartRunResponse) validateWire() error {
 	return collectWireViolations("StartRunResponse",
 		requiredText("runId", s.RunID),
 		identity("runId", s.RunID),
@@ -2409,7 +2409,7 @@ func (s StartRunResponse) ValidateWire() error {
 	)
 }
 
-func (r ResumeRunResponse) ValidateWire() error {
+func (r ResumeRunResponse) validateWire() error {
 	return collectWireViolations("ResumeRunResponse",
 		requiredText("runId", r.RunID),
 		identity("runId", r.RunID),
@@ -2423,7 +2423,7 @@ func (r ResumeRunResponse) ValidateWire() error {
 	)
 }
 
-func (s SteerRunResponse) ValidateWire() error {
+func (s SteerRunResponse) validateWire() error {
 	return collectWireViolations("SteerRunResponse",
 		requiredText("userItemId", s.UserItemID),
 		identity("userItemId", s.UserItemID),
@@ -2431,7 +2431,7 @@ func (s SteerRunResponse) ValidateWire() error {
 	)
 }
 
-func (u UsageCoverage) ValidateWire() error {
+func (u UsageCoverage) validateWire() error {
 	return collectWireViolations("UsageCoverage",
 		nonNegativeNumber("calls", u.Calls),
 		nonNegativeNumber("reportedCalls", u.ReportedCalls),
@@ -2443,13 +2443,13 @@ func (u UsageCoverage) ValidateWire() error {
 	)
 }
 
-func (r RecordedUsage) ValidateWire() error {
+func (r RecordedUsage) validateWire() error {
 	return collectWireViolations("RecordedUsage",
 		optionalNonNegativeNumber("recordedCostUsd", r.RecordedCostUSD),
 	)
 }
 
-func (m ModelInvocationUsage) ValidateWire() error {
+func (m ModelInvocationUsage) validateWire() error {
 	return collectWireViolations("ModelInvocationUsage",
 		nonNegativeNumber("inputTokens", m.InputTokens),
 		nonNegativeNumber("outputTokens", m.OutputTokens),
@@ -2459,7 +2459,7 @@ func (m ModelInvocationUsage) ValidateWire() error {
 	)
 }
 
-func (p Plan) ValidateWire() error {
+func (p Plan) validateWire() error {
 	return collectWireViolations("Plan",
 		requiredText("sessionId", p.SessionID),
 		identity("sessionId", p.SessionID),
@@ -2467,7 +2467,7 @@ func (p Plan) ValidateWire() error {
 	)
 }
 
-func (p PlanStep) ValidateWire() error {
+func (p PlanStep) validateWire() error {
 	return collectWireViolations("PlanStep",
 		requiredText("id", p.ID),
 		requiredTextPattern("description", p.Description, "\\S"),
@@ -2475,27 +2475,27 @@ func (p PlanStep) ValidateWire() error {
 	)
 }
 
-func (w WorkspaceRef) ValidateWire() error {
+func (w WorkspaceRef) validateWire() error {
 	return collectWireViolations("WorkspaceRef",
 		requiredText("path", w.Path),
 	)
 }
 
-func (w WorkspaceInfo) ValidateWire() error {
+func (w WorkspaceInfo) validateWire() error {
 	return collectWireViolations("WorkspaceInfo",
 		requiredText("projectRoot", w.ProjectRoot),
 		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
 	)
 }
 
-func (w WorkspaceSummary) ValidateWire() error {
+func (w WorkspaceSummary) validateWire() error {
 	return collectWireViolations("WorkspaceSummary",
 		requiredText("name", w.Name),
 		nonNegativeNumber("sessionCount", w.SessionCount),
 	)
 }
 
-func (f FileEntry) ValidateWire() error {
+func (f FileEntry) validateWire() error {
 	return collectWireViolations("FileEntry",
 		requiredText("path", f.Path),
 		requiredText("name", f.Name),
@@ -2504,27 +2504,27 @@ func (f FileEntry) ValidateWire() error {
 	)
 }
 
-func (g GrepResult) ValidateWire() error {
+func (g GrepResult) validateWire() error {
 	return collectWireViolations("GrepResult",
 		nonNegativeNumber("total", g.Total),
 	)
 }
 
-func (g GrepMatch) ValidateWire() error {
+func (g GrepMatch) validateWire() error {
 	return collectWireViolations("GrepMatch",
 		requiredText("path", g.Path),
 		positiveNumber("lineNumber", g.LineNumber),
 	)
 }
 
-func (u UsageBucket) ValidateWire() error {
+func (u UsageBucket) validateWire() error {
 	return collectWireViolations("UsageBucket",
 		requiredText("key", u.Key),
 		optionalNonNegativeNumber("recordedCostUsd", u.RecordedCostUSD),
 	)
 }
 
-func (u UsageSummary) ValidateWire() error {
+func (u UsageSummary) validateWire() error {
 	return collectWireViolations("UsageSummary",
 		nonNegativeNumber("sessions", u.Sessions),
 		nonNegativeNumber("runs", u.Runs),
@@ -2532,14 +2532,14 @@ func (u UsageSummary) ValidateWire() error {
 	)
 }
 
-func (s SkillDiagnostic) ValidateWire() error {
+func (s SkillDiagnostic) validateWire() error {
 	return collectWireViolations("SkillDiagnostic",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredText("detail", s.Detail),
 	)
 }
 
-func (s SkillDetail) ValidateWire() error {
+func (s SkillDetail) validateWire() error {
 	return collectWireViolations("SkillDetail",
 		requiredText("path", s.Path),
 		requiredTextPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
@@ -2548,21 +2548,21 @@ func (s SkillDetail) ValidateWire() error {
 	)
 }
 
-func (s Skill) ValidateWire() error {
+func (s Skill) validateWire() error {
 	return collectWireViolations("Skill",
 		requiredTextPattern("name", s.Name, "\\S"),
 		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
 	)
 }
 
-func (m ManagedSkill) ValidateWire() error {
+func (m ManagedSkill) validateWire() error {
 	return collectWireViolations("ManagedSkill",
 		requiredTextPattern("name", m.Name, "\\S"),
 		closedEnum("lifecycle", string(m.Lifecycle), []string{"active", "archived"}, false),
 	)
 }
 
-func (s SkillProposal) ValidateWire() error {
+func (s SkillProposal) validateWire() error {
 	return collectWireViolations("SkillProposal",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
@@ -2573,19 +2573,19 @@ func (s SkillProposal) ValidateWire() error {
 	)
 }
 
-func (l ListApprovalRulesResult) ValidateWire() error {
+func (l ListApprovalRulesResult) validateWire() error {
 	return collectWireViolations("ListApprovalRulesResult",
 		maxItems("rules", l.Rules, 2048),
 	)
 }
 
-func (m MCPServerID) ValidateWire() error {
+func (m MCPServerID) validateWire() error {
 	return collectWireViolations("MCPServerID",
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
-func (m MCPToolExposure) ValidateWire() error {
+func (m MCPToolExposure) validateWire() error {
 	return collectWireViolations("MCPToolExposure",
 		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
@@ -2593,14 +2593,14 @@ func (m MCPToolExposure) ValidateWire() error {
 	)
 }
 
-func (m MCPTool) ValidateWire() error {
+func (m MCPTool) validateWire() error {
 	return collectWireViolations("MCPTool",
 		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 		requiredTextPattern("modelName", m.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
 	)
 }
 
-func (p PluginClientComponent) ValidateWire() error {
+func (p PluginClientComponent) validateWire() error {
 	return collectWireViolations("PluginClientComponent",
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
@@ -2610,14 +2610,14 @@ func (p PluginClientComponent) ValidateWire() error {
 	)
 }
 
-func (p PluginPoint) ValidateWire() error {
+func (p PluginPoint) validateWire() error {
 	return collectWireViolations("PluginPoint",
 		requiredText("contract", p.Contract),
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
-func (p PluginPointValue) ValidateWire() error {
+func (p PluginPointValue) validateWire() error {
 	return collectWireViolations("PluginPointValue",
 		requiredText("contract", p.Contract),
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
@@ -2625,14 +2625,14 @@ func (p PluginPointValue) ValidateWire() error {
 	)
 }
 
-func (p PluginPointReference) ValidateWire() error {
+func (p PluginPointReference) validateWire() error {
 	return collectWireViolations("PluginPointReference",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
-func (p PluginPointBinding) ValidateWire() error {
+func (p PluginPointBinding) validateWire() error {
 	return collectWireViolations("PluginPointBinding",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
@@ -2641,7 +2641,7 @@ func (p PluginPointBinding) ValidateWire() error {
 	)
 }
 
-func (p PluginOperationBinding) ValidateWire() error {
+func (p PluginOperationBinding) validateWire() error {
 	return collectWireViolations("PluginOperationBinding",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
@@ -2650,20 +2650,20 @@ func (p PluginOperationBinding) ValidateWire() error {
 	)
 }
 
-func (p PluginRequirement) ValidateWire() error {
+func (p PluginRequirement) validateWire() error {
 	return collectWireViolations("PluginRequirement",
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("contract", p.Contract),
 	)
 }
 
-func (p PluginCollaborator) ValidateWire() error {
+func (p PluginCollaborator) validateWire() error {
 	return collectWireViolations("PluginCollaborator",
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
-func (p PluginCallFailure) ValidateWire() error {
+func (p PluginCallFailure) validateWire() error {
 	return collectWireViolations("PluginCallFailure",
 		requiredText("code", p.Code),
 		maxLength("code", p.Code, 256),
@@ -2671,7 +2671,7 @@ func (p PluginCallFailure) ValidateWire() error {
 	)
 }
 
-func (p PluginContribution) ValidateWire() error {
+func (p PluginContribution) validateWire() error {
 	return collectWireViolations("PluginContribution",
 		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
@@ -2680,7 +2680,7 @@ func (p PluginContribution) ValidateWire() error {
 	)
 }
 
-func (p PluginRendererSelector) ValidateWire() error {
+func (p PluginRendererSelector) validateWire() error {
 	return collectWireViolations("PluginRendererSelector",
 		requiredText("name", p.Name),
 		maxLength("name", p.Name, 256),
@@ -2688,7 +2688,7 @@ func (p PluginRendererSelector) ValidateWire() error {
 	)
 }
 
-func (p PluginThemeColors) ValidateWire() error {
+func (p PluginThemeColors) validateWire() error {
 	return collectWireViolations("PluginThemeColors",
 		optionalTextPattern("background", p.Background, "^#[0-9a-fA-F]{6}$"),
 		optionalTextPattern("foreground", p.Foreground, "^#[0-9a-fA-F]{6}$"),
@@ -2698,7 +2698,7 @@ func (p PluginThemeColors) ValidateWire() error {
 	)
 }
 
-func (p PluginProviderSelection) ValidateWire() error {
+func (p PluginProviderSelection) validateWire() error {
 	return collectWireViolations("PluginProviderSelection",
 		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("role", p.Role),
@@ -2707,21 +2707,21 @@ func (p PluginProviderSelection) ValidateWire() error {
 	)
 }
 
-func (p PluginCompositionMember) ValidateWire() error {
+func (p PluginCompositionMember) validateWire() error {
 	return collectWireViolations("PluginCompositionMember",
 		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
 }
 
-func (p PluginComposition) ValidateWire() error {
+func (p PluginComposition) validateWire() error {
 	return collectWireViolations("PluginComposition",
 		requiredText("contract", p.Contract),
 		uniqueItems("members", p.Members),
 	)
 }
 
-func (p Provider) ValidateWire() error {
+func (p Provider) validateWire() error {
 	return collectWireViolations("Provider",
 		requiredText("id", p.ID),
 		identity("id", p.ID),
@@ -2732,14 +2732,14 @@ func (p Provider) ValidateWire() error {
 	)
 }
 
-func (p ProviderCredential) ValidateWire() error {
+func (p ProviderCredential) validateWire() error {
 	return collectWireViolations("ProviderCredential",
 		requiredText("masked", p.Masked),
 		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
 	)
 }
 
-func (m ModelPricing) ValidateWire() error {
+func (m ModelPricing) validateWire() error {
 	return collectWireViolations("ModelPricing",
 		nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
 		nonNegativeNumber("outputUsdPerMillionTokens", m.OutputUSDPerMillionTokens),
@@ -2748,7 +2748,7 @@ func (m ModelPricing) ValidateWire() error {
 	)
 }
 
-func (m Model) ValidateWire() error {
+func (m Model) validateWire() error {
 	return collectWireViolations("Model",
 		requiredText("id", m.ID),
 		requiredText("provider", m.Provider),
@@ -2759,7 +2759,7 @@ func (m Model) ValidateWire() error {
 	)
 }
 
-func (m ModelCapabilities) ValidateWire() error {
+func (m ModelCapabilities) validateWire() error {
 	return collectWireViolations("ModelCapabilities",
 		identityItems("reasoningLevels", m.ReasoningLevels),
 		maxItemLength("reasoningLevels", m.ReasoningLevels, 32),
@@ -2770,14 +2770,14 @@ func (m ModelCapabilities) ValidateWire() error {
 	)
 }
 
-func (a AgentDoc) ValidateWire() error {
+func (a AgentDoc) validateWire() error {
 	return collectWireViolations("AgentDoc",
 		requiredTextPattern("path", a.Path, "\\S"),
 		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
 	)
 }
 
-func (g GoalUsage) ValidateWire() error {
+func (g GoalUsage) validateWire() error {
 	return collectWireViolations("GoalUsage",
 		nonNegativeNumber("runs", g.Runs),
 		optionalNonNegativeNumber("costUsd", g.CostUSD),
@@ -2785,14 +2785,14 @@ func (g GoalUsage) ValidateWire() error {
 	)
 }
 
-func (c ClientInfo) ValidateWire() error {
+func (c ClientInfo) validateWire() error {
 	return collectWireViolations("ClientInfo",
 		requiredText("name", c.Name),
 		requiredText("version", c.Version),
 	)
 }
 
-func (s ServerInfo) ValidateWire() error {
+func (s ServerInfo) validateWire() error {
 	return collectWireViolations("ServerInfo",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("version", s.Version, "\\S"),
@@ -2800,7 +2800,7 @@ func (s ServerInfo) ValidateWire() error {
 	)
 }
 
-func (s ServerCapabilities) ValidateWire() error {
+func (s ServerCapabilities) validateWire() error {
 	return collectWireViolations("ServerCapabilities",
 		uniqueItems("runEvents", s.RunEvents),
 		uniqueItems("runtimeTopics", s.RuntimeTopics),
@@ -2811,13 +2811,13 @@ func (s ServerCapabilities) ValidateWire() error {
 	)
 }
 
-func (r RuntimeLimits) ValidateWire() error {
+func (r RuntimeLimits) validateWire() error {
 	return collectWireViolations("RuntimeLimits",
 		optionalPositiveNumber("maxConcurrentRuns", r.MaxConcurrentRuns),
 	)
 }
 
-func (c ClientCapabilities) ValidateWire() error {
+func (c ClientCapabilities) validateWire() error {
 	return collectWireViolations("ClientCapabilities",
 		uniqueItems("interruptTypes", c.InterruptTypes),
 		uniqueItems("excludedEphemeralEvents", c.ExcludedEphemeralEvents),
@@ -2826,21 +2826,21 @@ func (c ClientCapabilities) ValidateWire() error {
 	)
 }
 
-func (m MCPAuthorizationAttemptLimits) ValidateWire() error {
+func (m MCPAuthorizationAttemptLimits) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptLimits",
 		positiveNumber("retentionSeconds", m.RetentionSeconds),
 		maximumNumber("retentionSeconds", m.RetentionSeconds, 9223372036),
 	)
 }
 
-func (w WatchSpec) ValidateWire() error {
+func (w WatchSpec) validateWire() error {
 	return collectWireViolations("WatchSpec",
 		nonEmptyItems("paths", w.Paths),
 		uniqueItems("paths", w.Paths),
 	)
 }
 
-func (a ActiveRunRef) ValidateWire() error {
+func (a ActiveRunRef) validateWire() error {
 	return collectWireViolations("ActiveRunRef",
 		requiredText("runId", a.RunID),
 		identity("runId", a.RunID),
@@ -2849,14 +2849,14 @@ func (a ActiveRunRef) ValidateWire() error {
 	)
 }
 
-func (f FieldError) ValidateWire() error {
+func (f FieldError) validateWire() error {
 	return collectWireViolations("FieldError",
 		requiredText("field", f.Field),
 		requiredText("detail", f.Detail),
 	)
 }
 
-func (r RunReplayLimits) ValidateWire() error {
+func (r RunReplayLimits) validateWire() error {
 	return collectWireViolations("RunReplayLimits",
 		positiveNumber("maxEvents", r.MaxEvents),
 		positiveNumber("maxBytes", r.MaxBytes),
@@ -2864,7 +2864,7 @@ func (r RunReplayLimits) ValidateWire() error {
 	)
 }
 
-func (i IdempotencyLimits) ValidateWire() error {
+func (i IdempotencyLimits) validateWire() error {
 	return collectWireViolations("IdempotencyLimits",
 		positiveNumber("retentionSeconds", i.RetentionSeconds),
 		maximumNumber("retentionSeconds", i.RetentionSeconds, 9223372036),
@@ -2872,7 +2872,7 @@ func (i IdempotencyLimits) ValidateWire() error {
 	)
 }
 
-func (s SubscriptionLimits) ValidateWire() error {
+func (s SubscriptionLimits) validateWire() error {
 	return collectWireViolations("SubscriptionLimits",
 		positiveNumber("maxTopics", s.MaxTopics),
 		positiveNumber("maxWatches", s.MaxWatches),
@@ -2882,7 +2882,7 @@ func (s SubscriptionLimits) ValidateWire() error {
 	)
 }
 
-func (a ApprovalModePolicy) ValidateWire() error {
+func (a ApprovalModePolicy) validateWire() error {
 	return collectWireViolations("ApprovalModePolicy",
 		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
 		closedEnum("write", string(a.Write), []string{"pass", "prompt", "deny"}, false),
@@ -2891,79 +2891,79 @@ func (a ApprovalModePolicy) ValidateWire() error {
 	)
 }
 
-func (a ApprovalModeResult) ValidateWire() error {
+func (a ApprovalModeResult) validateWire() error {
 	return collectWireViolations("ApprovalModeResult",
 		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
 	)
 }
 
-func (e ExportSessionResponse) ValidateWire() error {
+func (e ExportSessionResponse) validateWire() error {
 	return collectWireViolations("ExportSessionResponse",
 		closedEnum("format", string(e.Format), []string{"md", "json"}, false),
 	)
 }
 
-func (i InterruptPayload) ValidateWire() error {
+func (i InterruptPayload) validateWire() error {
 	return collectWireViolations("InterruptPayload",
 		closedEnum("risk", string(i.Risk), []string{"low", "medium", "high"}, true),
 	)
 }
 
-func (l ListItemsResponse) ValidateWire() error {
+func (l ListItemsResponse) validateWire() error {
 	return collectWireViolations("ListItemsResponse",
 		maxLength("nextCursor", l.NextCursor, 65536),
 	)
 }
 
-func (m MCPStatusProblem) ValidateWire() error {
+func (m MCPStatusProblem) validateWire() error {
 	return collectWireViolations("MCPStatusProblem",
 		closedEnum("type", string(m.Type), []string{"mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"}, false),
 	)
 }
 
-func (m MCPTestResult) ValidateWire() error {
+func (m MCPTestResult) validateWire() error {
 	return collectWireViolations("MCPTestResult",
 		closedEnum("outcome", string(m.Outcome), []string{"reachable", "authorizationRequired", "timedOut", "failed"}, false),
 	)
 }
 
-func (p PluginDiagnostic) ValidateWire() error {
+func (p PluginDiagnostic) validateWire() error {
 	return collectWireViolations("PluginDiagnostic",
 		closedEnum("code", string(p.Code), []string{"unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"}, false),
 	)
 }
 
-func (p PluginInstallation) ValidateWire() error {
+func (p PluginInstallation) validateWire() error {
 	return collectWireViolations("PluginInstallation",
 		closedEnum("presentation", string(p.Presentation), []string{"admitted", "withheld"}, false),
 	)
 }
 
-func (p PluginTheme) ValidateWire() error {
+func (p PluginTheme) validateWire() error {
 	return collectWireViolations("PluginTheme",
 		closedEnum("scheme", string(p.Scheme), []string{"dark", "light"}, false),
 	)
 }
 
-func (p ProviderTestResult) ValidateWire() error {
+func (p ProviderTestResult) validateWire() error {
 	return collectWireViolations("ProviderTestResult",
 		closedEnum("outcome", string(p.Outcome), []string{"reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"}, false),
 	)
 }
 
-func (r RememberScope) ValidateWire() error {
+func (r RememberScope) validateWire() error {
 	return collectWireViolations("RememberScope",
 		closedEnum("scope", string(r.Scope), []string{"session", "project", "global"}, false),
 	)
 }
 
-func (s SessionUsage) ValidateWire() error {
+func (s SessionUsage) validateWire() error {
 	return collectWireViolations("SessionUsage",
 		optionalNonNegativeNumber("recordedCostUsd", s.RecordedCostUSD),
 	)
 }
 
-func (t ToolSpec) ValidateWire() error {
+func (t ToolSpec) validateWire() error {
 	return collectWireViolations("ToolSpec",
 		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
 	)

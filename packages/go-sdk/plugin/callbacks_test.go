@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	contractsdk "github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -31,7 +31,7 @@ type callbackOwnerKey struct{}
 
 func callbackTestMethod(t *testing.T, target string) *Method[callbackInput, int64] {
 	t.Helper()
-	method, err := NewMethod[callbackInput, int64](MethodConfig{Name: "test.host/compute", Kind: contractsdk.Query, Target: target, Description: "Compute for the captured owner."})
+	method, err := NewMethod[callbackInput, int64](MethodConfig{Name: "test.host/compute", Kind: extension.Query, Target: target, Description: "Compute for the captured owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestRPCContinuationsSharePublishedMethodsWithoutReplacingOrLeakingThem(t *t
 	session := new(sdk.ClientSession)
 	host.AdmitSession(session)
 	makeCallback := func(name string) (*Method[callbackInput, int64], Callback) {
-		method, err := NewMethod[callbackInput, int64](MethodConfig{Name: name, Kind: contractsdk.Query, Target: "call", Description: "Read the captured owner."})
+		method, err := NewMethod[callbackInput, int64](MethodConfig{Name: name, Kind: extension.Query, Target: "call", Description: "Read the captured owner."})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +215,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	method := callbackTestMethod(t, "call")
 	callback, err := NewCallback(method, nil, func(_ context.Context, command Command[callbackInput]) (int64, error) {
 		if command.Input.Value == 1 {
-			return 0, &contractsdk.Refusal{Code: "conflict", Message: "original decision"}
+			return 0, &extension.Refusal{Code: "conflict", Message: "original decision"}
 		}
 		return 0, errors.New("unconfirmed storage failure")
 	})
@@ -228,7 +228,7 @@ func TestCallbackRefusalAndUncertaintyUseTheMethodContract(t *testing.T) {
 	}
 	defer release()
 	_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-	failure, known := errors.AsType[*contractsdk.Refusal](err)
+	failure, known := errors.AsType[*extension.Refusal](err)
 	if !known || failure.Code != "conflict" || failure.Message != "original decision" {
 		t.Fatalf("known refusal changed: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestCallbackCapacitiesDoNotInventAnOwnerResult(t *testing.T) {
 			}
 			defer release()
 			_, err = CallHost(t.Context(), ref, method, "", callbackInput{1})
-			var failure *contractsdk.Refusal
+			var failure *extension.Refusal
 			if err == nil || errors.As(err, &failure) {
 				t.Fatalf("capacity failure became a known business result: %v", err)
 			}
@@ -449,13 +449,13 @@ func TestCallbackBackendProcess(t *testing.T) {
 		os.Exit(1)
 	}
 	method := callbackTestMethod(t, "captured")
-	err = errors.Join(
-		RegisterServer(backend, "test.backend/inner", nil, func(_ context.Context, _ *sdk.ServerSession, input callbackInput) (int64, error) {
-			return input.Value + 10, nil
-		}),
-		RegisterServer(backend, "test.backend/outer", nil, func(ctx context.Context, _ *sdk.ServerSession, input callbackParentInput) (int64, error) {
-			return CallHost(ctx, input.Callback, method, "", callbackInput{input.Value})
-		}),
+	err = errors.Join(testMethod[callbackInput, int64](t, "test.backend/inner", extension.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[callbackInput]) (int64, error) {
+		input := command.Input
+		return input.Value + 10, nil
+	}), testMethod[callbackParentInput, int64](t, "test.backend/outer", extension.Query).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[callbackParentInput]) (int64, error) {
+		input := command.Input
+		return CallHost(ctx, input.Callback, method, "", callbackInput{input.Value})
+	}),
 	)
 	if err == nil {
 		err = backend.Publish()
@@ -496,7 +496,7 @@ func TestPublicCallbacksAreReentrantThroughARealHeadlessBackend(t *testing.T) {
 		if ctx.Value(callbackOwnerKey{}) != "captured parent" {
 			return 0, errors.New("nested origin/parent changed")
 		}
-		return Call[callbackInput, int64](ctx, session, "test.backend/inner", command.Input)
+		return testMethod[callbackInput, int64](t, "test.backend/inner", extension.Query).Call(ctx, session, command.Input)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -507,7 +507,7 @@ func TestPublicCallbacksAreReentrantThroughARealHeadlessBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
-	value, err := Call[callbackParentInput, int64](ctx, session, "test.backend/outer", callbackParentInput{ref, 5})
+	value, err := testMethod[callbackParentInput, int64](t, "test.backend/outer", extension.Query).Call(ctx, session, callbackParentInput{ref, 5})
 	if err != nil || value != 15 {
 		t.Fatalf("nested headless invocation value=%d error=%v", value, err)
 	}
@@ -519,7 +519,7 @@ func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
 	host.AdmitSession(session)
 	var calls atomic.Int32
 	owner := context.WithValue(t.Context(), callbackOwnerKey{}, "activation")
-	original := contractsdk.Invocation{ID: "original", Origin: contractsdk.Automatic, Target: contractsdk.Target{Scope: "installation", Reference: "owner"}}
+	original := extension.Invocation{ID: "original", Origin: extension.Automatic, Target: extension.Target{Scope: "installation", Reference: "owner"}}
 	if err := host.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		invocation, err := InvocationFromContext(r.Context())
 		if err != nil || invocation != original || r.Context().Value(callbackOwnerKey{}) != "activation" {
@@ -531,7 +531,7 @@ func TestBackgroundRPCInvocationIsValidatedAfterAuthentication(t *testing.T) {
 	})); err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.OpenRPCWithInvocation(owner, session, callbackTestLimits, func(ctx context.Context, v contractsdk.Invocation) (context.Context, error) {
+	ref, release, err := host.OpenRPCWithInvocation(owner, session, callbackTestLimits, func(ctx context.Context, v extension.Invocation) (context.Context, error) {
 		if v != original {
 			return nil, errors.New("different caller")
 		}

@@ -6,10 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -33,8 +31,9 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 			backend := testBackend(t, server)
-			if err := RegisterServer(backend, ReceiptMethod, nil, func(_ context.Context, _ *sdk.ServerSession, input ReceiptRequest) (Receipt, error) {
-				digest, err := jsoninput.Encode("input")
+			if err := testMethod[ReceiptRequest, Receipt](t, ReceiptMethod, extension.Query).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[ReceiptRequest]) (Receipt, error) {
+				input := command.Input
+				digest, err := jsonvalue.Encode("input")
 				if err != nil || input.ID != "original" || input.Method != "review.update" || input.InputDigest != digest.Digest() {
 					t.Fatalf("lookup changed original binding: %+v, %v", input, err)
 				}
@@ -42,7 +41,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			if err := RegisterCommand(backend, "review.update", nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
+			if err := testMethod[string, string](t, "review.update", extension.Mutation).RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) {
 				t.Error("receipt lookup executed mutation")
 				return "", nil
 			}); err != nil {
@@ -57,7 +56,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 			if found != test.found || value != test.value {
 				t.Fatalf("receipt = %q, %t, %v", value, found, err)
 			}
-			failure, known := errors.AsType[*capability.Refusal](err)
+			failure, known := errors.AsType[*extension.Refusal](err)
 			switch {
 			case test.failure != "":
 				if !known || failure.Code != test.failure {
@@ -75,7 +74,7 @@ func TestReceiptLookupIsReadOnlyAndPreservesOutcomeEvidence(t *testing.T) {
 }
 
 func TestReceiptRequestRefusesMissingAndInvalidBindings(t *testing.T) {
-	digest, err := jsoninput.Encode("input")
+	digest, err := jsonvalue.Encode("input")
 	if err != nil {
 		t.Fatal(err)
 	}

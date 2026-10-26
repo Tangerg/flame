@@ -7,8 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -16,15 +16,15 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 	type input struct {
 		Revision int64 `json:"revision"`
 	}
-	unary, err := NewMethod[input, bool](MethodConfig{Name: "example.records/update", Kind: capability.Mutation, Target: "installation", Description: "Update a record."})
+	unary, err := NewMethod[input, bool](MethodConfig{Name: "example.records/update", Kind: extension.Mutation, Target: "installation", Description: "Update a record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	query, err := NewMethod[input, bool](MethodConfig{Name: "example.records/read", Kind: capability.Query, Target: "installation", Description: "Read a record."})
+	query, err := NewMethod[input, bool](MethodConfig{Name: "example.records/read", Kind: extension.Query, Target: "installation", Description: "Read a record."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	stream, err := NewStreamingMethod[input, string, bool](MethodConfig{Name: "example.records/stream", Kind: capability.Mutation, Target: "installation", Description: "Stream a record update."})
+	stream, err := NewStreamingMethod[input, string, bool](MethodConfig{Name: "example.records/stream", Kind: extension.Mutation, Target: "installation", Description: "Stream a record update."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 	}); err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "example.records", Composition: capability.Collection, Scope: "installation"}, unary.Descriptor(), query.Descriptor(), stream.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.records", Composition: extension.Collection, Scope: "installation"}, unary.Descriptor(), query.Descriptor(), stream.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 			number string
 			shape  bool
 		}{{"0.0", true}, {"1e0", true}, {"9223372036854775808", false}} {
-			raw, err := jsoninput.Parse([]byte(`{"revision":` + scenario.number + `}`))
+			raw, err := jsonvalue.Parse([]byte(`{"revision":` + scenario.number + `}`))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -87,7 +87,7 @@ func TestInputValidationUsesTypedUnaryAndStreamContractsWithoutDispatch(t *testi
 				t.Fatalf("%s accepted typed-invalid %s: %v", name, raw.String(), err)
 			}
 		}
-		valid, err := jsoninput.Parse([]byte(`{"revision":9007199254740993}`))
+		valid, err := jsonvalue.Parse([]byte(`{"revision":9007199254740993}`))
 		if err != nil {
 			t.Fatal(err)
 		}

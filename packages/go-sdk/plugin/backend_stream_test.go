@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -137,7 +137,7 @@ func TestBackendDecoratorStreamsThroughCapturedModelNextWithoutDeadlock(t *testi
 }
 
 func TestBackendStreamRetainsOriginalInvocationAndConsumerBackpressure(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "call", Description: "Stream records."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: extension.Mutation, Target: "call", Description: "Stream records."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestBackendStreamRetainsOriginalInvocationAndConsumerBackpressure(t *testin
 }
 
 func TestStoppingBackendStreamCancelsProducerWithoutAnotherInvocation(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "call", Description: "Cancelable stream."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: extension.Mutation, Target: "call", Description: "Cancelable stream."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +215,7 @@ func TestStoppingBackendStreamCancelsProducerWithoutAnotherInvocation(t *testing
 }
 
 func TestBackendStreamFailureKeepsPartialEvidenceWithoutRetry(t *testing.T) {
-	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: capability.Mutation, Target: "call", Description: "Fail after a stream chunk."})
+	method, err := NewStreamingMethod[callbackInput, int64, bool](MethodConfig{Name: "records.stream", Kind: extension.Mutation, Target: "call", Description: "Fail after a stream chunk."})
 	if err != nil {
 		t.Fatal(err)
 	}

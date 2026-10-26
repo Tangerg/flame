@@ -68,9 +68,8 @@ func TestStandaloneImports(t *testing.T) {
 func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
 	root := moduleRoot(t)
 	values := map[string]bool{
-		"capability": true, "point": true, "dependency": true, "exactint": true, "exactjson": true,
-		"fingerprint": true, "identity": true, "optional": true, "resourceid": true, "instant": true,
-		"jsoninput": true, "model": true, "workspace": true,
+		"extension": true, "exactint": true, "identity": true, "instant": true,
+		"jsonvalue": true, "model": true, "pagination": true,
 	}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -168,14 +167,8 @@ func assertOnlyJSONNumberIsUsed(t *testing.T, relative, path string, imported *a
 	})
 }
 
-func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
+func TestPublicTypesUseTheirOwningDeclaration(t *testing.T) {
 	root := moduleRoot(t)
-	// The boundary is the package, not a file in it: splitting or renaming a file
-	// inside protocol/jsonrpc does not change which ring owns the alias.
-	const aliasBoundary = "protocol/jsonrpc"
-	allowed := map[string]struct{}{
-		"Message": {}, "Request": {}, "Response": {}, "ID": {}, "Error": {},
-	}
 	internal := root
 	err := filepath.WalkDir(internal, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -202,10 +195,7 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 				if !typeSpec.Assign.IsValid() {
 					continue
 				}
-				_, named := allowed[typeSpec.Name.Name]
-				if filepath.ToSlash(filepath.Dir(rel)) != aliasBoundary || !named {
-					t.Errorf("%s declares transparent alias %s; use the owning type directly or define a semantic boundary type", rel, typeSpec.Name.Name)
-				}
+				t.Errorf("%s declares transparent alias %s; use the owning type directly or define a semantic boundary type", rel, typeSpec.Name.Name)
 			}
 		}
 		return nil
@@ -218,7 +208,7 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 func TestSDKUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		"exactjson": "names json.Number as the exact-number carrier",
+		"jsonvalue": "names json.Number as the exact-number carrier",
 	}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -265,8 +255,7 @@ func TestSDKUsesOneJSONVocabulary(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"capture", "exactint", "exactjson", "idempotency",
-		"identity", "optional",
+		"capture", "exactint", "jsonvalue", "extension", "identity", "model", "pagination",
 	} {
 		forbidExternalImports(t, filepath.Join(root, name), []string{
 			"github.com/Tangerg/flame/runtime/internal/domain",
@@ -285,13 +274,12 @@ func TestProtocolStaysWireOnly(t *testing.T) {
 	// their public paths must not escape the former private-import boundary.
 	banned := []string{"github.com/Tangerg/flame/runtime"}
 	for _, name := range []string{
-		"client", "plugin", "storage", "contractgen", "cmd", "fileinput", "sandbox",
-		"httpresponse", "model/catalog", "model/text", "cancellation", "capture",
-		"idempotency", "opaquetoken", "pagination", "pathidentity",
+		"client", "plugin", "sqlite", "contractgen", "cmd", "filesystem", "sandbox",
+		"httpresponse", "model/catalog", "cancellation", "capture", "pagination",
 	} {
 		banned = append(banned, sdkModulePath+"/"+name)
 	}
-	for _, name := range []string{"protocol", "contractshape"} {
+	for _, name := range []string{"protocol", "jsonvalue"} {
 		forbidExternalImports(t, filepath.Join(root, name), append(banned, frameworkImports...))
 	}
 }

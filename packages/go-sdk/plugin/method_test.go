@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	contractsdk "github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,23 +21,23 @@ func TestCallsRejectAmbiguousBackendReplies(t *testing.T) {
 	}{{"read", false}, {"command", true}} {
 		for _, reply := range []struct {
 			name   string
-			result *Result[string]
+			result *methodResult[string]
 		}{
-			{"neither", &Result[string]{}},
-			{"both", &Result[string]{Value: &value, Failure: &contractsdk.Refusal{Code: "refused", Message: "failed"}}},
+			{"neither", &methodResult[string]{}},
+			{"both", &methodResult[string]{Value: &value, Failure: &extension.Refusal{Code: "refused", Message: "failed"}}},
 		} {
 			t.Run(caller.name+"/"+reply.name, func(t *testing.T) {
 				session := replySession(t, reply.result)
 				var err error
 				if caller.command {
-					_, err = CallCommand[string, string](t.Context(), session, "flame.test/reply.v1", "command", "input")
+					_, err = testMethod[string, string](t, "flame.test/reply.v1", extension.Mutation).CallCommand(t.Context(), session, "command", "input")
 				} else {
-					_, err = Call[string, string](t.Context(), session, "flame.test/reply.v1", "input")
+					_, err = testMethod[string, string](t, "flame.test/reply.v1", extension.Query).Call(t.Context(), session, "input")
 				}
 				if err == nil {
 					t.Fatal("malformed backend reply succeeded")
 				}
-				if _, classified := errors.AsType[*contractsdk.Refusal](err); classified {
+				if _, classified := errors.AsType[*extension.Refusal](err); classified {
 					t.Fatalf("malformed backend reply became a classified failure: %v", err)
 				}
 			})
@@ -58,20 +58,20 @@ func TestMethodsPreserveKnownRefusalsAndUnknownFailures(t *testing.T) {
 						return ""
 					}
 					if command {
-						return RegisterCommand(server, "flame.test/failure", classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
+						return testMethod[string, string](t, "flame.test/failure", extension.Mutation).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
 					}
-					return RegisterServer(server, "flame.test/failure", classify, func(context.Context, *sdk.ServerSession, string) (string, error) { return "", cause })
+					return testMethod[string, string](t, "flame.test/failure", extension.Query).RegisterServer(server, classify, func(context.Context, *sdk.ServerSession, Command[string]) (string, error) { return "", cause })
 				}, "flame.test/failure")
 				var err error
 				if command {
-					_, err = CallCommand[string, string](t.Context(), session, "flame.test/failure", "logical-command", "input")
+					_, err = testMethod[string, string](t, "flame.test/failure", extension.Mutation).CallCommand(t.Context(), session, "logical-command", "input")
 				} else {
-					_, err = Call[string, string](t.Context(), session, "flame.test/failure", "input")
+					_, err = testMethod[string, string](t, "flame.test/failure", extension.Query).Call(t.Context(), session, "input")
 				}
 				if err == nil {
 					t.Fatal("failed operation succeeded")
 				}
-				failure, known := errors.AsType[*contractsdk.Refusal](err)
+				failure, known := errors.AsType[*extension.Refusal](err)
 				if known != (cause == refused) {
 					t.Fatalf("known business classification = %v; cause = %v", err, cause)
 				}
@@ -97,18 +97,18 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 	var calls atomic.Int64
 	server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
 	backend := testBackend(t, server)
-	if err := RegisterCommand(backend, "flame.test/admission", nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
+	if err := testMethod[string, string](t, "flame.test/admission", extension.Mutation).RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command Command[string]) (string, error) {
 		calls.Add(1)
 		return command.Input, nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-	if err := sdk.AddSendingCustomMethod[*malformedParams, *Result[jsontext.Value]](client, invokeMethod); err != nil {
+	if err := sdk.AddSendingCustomMethod[*malformedParams, *methodResult[jsontext.Value]](client, invokeMethod); err != nil {
 		t.Fatal(err)
 	}
 	session := connectPublishedBackend(t, backend, client)
-	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/admission", Kind: contractsdk.Mutation, Target: "installation", Description: "admission"})
+	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/admission", Kind: extension.Mutation, Target: "installation", Description: "admission"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,10 +120,10 @@ func TestCommandsRejectMalformedEnvelopeBeforeMutation(t *testing.T) {
 		{Input: "input", CommandID: strings.Repeat("c", 257)},
 		{Input: "input", CommandID: "command", Extra: true},
 	} {
-		params.Protocol = contractsdk.Protocol
+		params.Protocol = extension.Protocol
 		params.Method = "flame.test/admission"
 		params.Contract = contract.Digest()
-		if result, err := sdk.CallCustomMethod[*malformedParams, *Result[jsontext.Value]](t.Context(), session, invokeMethod, &params); err == nil || result != nil {
+		if result, err := sdk.CallCustomMethod[*malformedParams, *methodResult[jsontext.Value]](t.Context(), session, invokeMethod, &params); err == nil || result != nil {
 			t.Fatalf("malformed command reached a result: %+v, %v", result, err)
 		}
 	}
@@ -140,7 +140,7 @@ func TestMethodWireRejectsUnknownInputAndOutputFields(t *testing.T) {
 		`{"input":{"text":"a","extra":true}}`,
 		`{"input":{"text":"a"},"extra":true}`,
 	} {
-		var params Params[input]
+		var params methodParams[input]
 		if err := json.Unmarshal([]byte(wire), &params); err == nil {
 			t.Fatalf("unknown parameter member accepted: %s", wire)
 		}
@@ -150,12 +150,12 @@ func TestMethodWireRejectsUnknownInputAndOutputFields(t *testing.T) {
 		`{"value":{"text":"a"},"extra":true}`,
 		`{"failure":{"code":"conflict","message":"failed","extra":true}}`,
 	} {
-		var result Result[input]
+		var result methodResult[input]
 		if err := json.Unmarshal([]byte(wire), &result); err == nil {
 			t.Fatalf("unknown result member accepted: %s", wire)
 		}
 	}
-	var params Params[input]
+	var params methodParams[input]
 	if err := json.Unmarshal([]byte(`{"_meta":{"caller":"retained"},"input":{"text":"a"},"commandId":"command"}`), &params); err != nil || string(params.GetMeta()["caller"]) != `"retained"` || params.Input.Text != "a" || params.CommandID != "command" {
 		t.Fatalf("admitted parameters lost identity, input or MCP metadata: %+v, %v", params, err)
 	}
@@ -163,7 +163,7 @@ func TestMethodWireRejectsUnknownInputAndOutputFields(t *testing.T) {
 
 func TestMethodReplyPreservesExplicitNullableValue(t *testing.T) {
 	for _, value := range []any{struct{}{}, 0, false, "", []string{}} {
-		reply, err := Reply(value, nil, nil)
+		reply, err := reply(value, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -171,7 +171,7 @@ func TestMethodReplyPreservesExplicitNullableValue(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var decoded Result[any]
+		var decoded methodResult[any]
 		if err := json.Unmarshal(encoded, &decoded); err != nil {
 			t.Fatal(err)
 		}
@@ -179,14 +179,14 @@ func TestMethodReplyPreservesExplicitNullableValue(t *testing.T) {
 			t.Fatalf("empty/zero value was omitted: %s, %v", encoded, err)
 		}
 	}
-	var nullable Result[[]string]
+	var nullable methodResult[[]string]
 	if err := json.Unmarshal([]byte(`{"value":null}`), &nullable); err != nil {
 		t.Fatal(err)
 	}
 	if value, err := nullable.value("empty query"); err != nil || value != nil {
 		t.Fatalf("explicit nullable value became an unconfirmed reply: %v, %v", value, err)
 	}
-	var scalar Result[string]
+	var scalar methodResult[string]
 	if err := json.Unmarshal([]byte(`{"value":null}`), &scalar); err == nil {
 		t.Fatal("non-nullable result accepted null")
 	}
@@ -229,27 +229,27 @@ func connectMethodSessions(t *testing.T, server *sdk.Server, client *sdk.Client)
 }
 
 func TestCallsPreserveBackendFailureClassification(t *testing.T) {
-	session := replySession(t, &Result[string]{Failure: &contractsdk.Refusal{Code: "refused", Message: "failed"}})
-	_, err := CallCommand[string, string](t.Context(), session, "flame.test/reply.v1", "command", "input")
-	failure, ok := errors.AsType[*contractsdk.Refusal](err)
+	session := replySession(t, &methodResult[string]{Failure: &extension.Refusal{Code: "refused", Message: "failed"}})
+	_, err := testMethod[string, string](t, "flame.test/reply.v1", extension.Mutation).CallCommand(t.Context(), session, "command", "input")
+	failure, ok := errors.AsType[*extension.Refusal](err)
 	if !ok || failure.Code != "refused" || failure.Message != "failed" || err.Error() != "failed" {
 		t.Fatalf("backend classification lost: %v", err)
 	}
 }
 
-func replySession(t *testing.T, result *Result[string]) *sdk.ClientSession {
+func replySession(t *testing.T, result *methodResult[string]) *sdk.ClientSession {
 	t.Helper()
 	server := sdk.NewServer(&sdk.Implementation{Name: "backend"}, nil)
-	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/reply.v1", Kind: contractsdk.Mutation, Target: "installation", Description: "reply"})
+	method, err := NewMethod[string, string](MethodConfig{Name: "flame.test/reply.v1", Kind: extension.Mutation, Target: "installation", Description: "reply"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*Result[Description], error) {
-		return Reply(Description{Protocol: contractsdk.Protocol, Methods: []contractsdk.MethodDescriptor{method.Descriptor()}}, nil, nil)
+	if err := sdk.AddReceivingCustomMethod(server, describeMethod, func(context.Context, *sdk.ServerSession, *protocolParams) (*methodResult[Description], error) {
+		return reply(Description{Protocol: extension.Protocol, Methods: []extension.MethodDescriptor{method.Descriptor()}}, nil, nil)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*Result[string], error) {
+	if err := sdk.AddReceivingCustomMethod(server, invokeMethod, func(context.Context, *sdk.ServerSession, *invokeParams) (*methodResult[string], error) {
 		return result, nil
 	}); err != nil {
 		t.Fatal(err)
@@ -286,4 +286,13 @@ func connectPublishedBackend(t *testing.T, backend *Backend, client *sdk.Client)
 		t.Fatal(err)
 	}
 	return connectMethodSessions(t, backend.server, client)
+}
+
+func testMethod[P, R any](t *testing.T, name string, kind extension.MethodKind) *Method[P, R] {
+	t.Helper()
+	method, err := NewMethod[P, R](MethodConfig{Name: name, Kind: kind, Target: "installation", Description: name})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return method
 }

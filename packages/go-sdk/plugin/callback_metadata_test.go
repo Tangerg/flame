@@ -6,21 +6,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.T) {
-	input, err := jsoninput.Encode(map[string]string{"runId": "run_original"})
+	input, err := jsonvalue.Encode(map[string]string{"runId": "run_original"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	var calls int
 	var captured CallbackRef
-	var capturedInvocation capability.Invocation
+	var capturedInvocation extension.Invocation
 	session := methodSession(t, func(backend *Backend) error {
-		return RegisterCommand(backend, "owner.dispatch", nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[map[string]string]) (string, error) {
+		return testMethod[map[string]string, string](t, "owner.dispatch", extension.Mutation).RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command Command[map[string]string]) (string, error) {
 			calls++
 			ref, err := CallbackFromContext(ctx)
 			if err != nil {
@@ -42,7 +42,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	invocation := capability.Invocation{ID: "original", Origin: capability.Model, Parent: "parent-tool", Target: capability.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
+	invocation := extension.Invocation{ID: "original", Origin: extension.Model, Parent: "parent-tool", Target: extension.Target{Scope: binding.Descriptor().Target, Reference: "run_original"}}
 	ctx, err := WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func TestCallbackMetadataChangesWithoutChangingAdmittedBusinessInput(t *testing.
 		t.Fatalf("invalid metadata entered business execution: calls=%d error=%v", calls, err)
 	}
 	forged := invocation
-	forged.Origin = capability.Human
+	forged.Origin = extension.Human
 	var supplied sdk.ParamsBase
 	if err := supplied.Set(InvocationMetadataKey, forged); err != nil {
 		t.Fatal(err)

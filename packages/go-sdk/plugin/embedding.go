@@ -6,7 +6,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 )
 
 type TextEmbeddings struct {
@@ -17,7 +17,7 @@ type TextEmbeddings struct {
 // TextEmbeddingMethod projects vectors from the captured embedding model. The
 // model adapter retains the complete provider response and endpoint evidence.
 func TextEmbeddingMethod() (*Method[[]string, TextEmbeddings], error) {
-	return NewMethod[[]string, TextEmbeddings](MethodConfig{Name: "flame.model/embed-texts.v2", Kind: capability.Mutation, Target: "call", Description: "Embed texts and identify the vector space captured by this exchange."})
+	return NewMethod[[]string, TextEmbeddings](MethodConfig{Name: "flame.model/embed-texts.v2", Kind: extension.Mutation, Target: "call", Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
 func CallTextEmbedding(ctx context.Context, ref CallbackRef, id string, texts []string) (TextEmbeddings, error) {

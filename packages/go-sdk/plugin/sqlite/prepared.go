@@ -7,11 +7,10 @@ import (
 	"errors"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 // PreparedCommand is a projection of a durable private command admission.
@@ -20,13 +19,13 @@ import (
 type PreparedCommand struct {
 	db         *sql.DB
 	id, method string
-	input      jsoninput.Input
+	input      jsonvalue.Value
 	fresh      bool
 }
 
 // validateNew checks only local preconditions before the first durable admission.
 // Existing pending work and receipts must reconcile without acquiring new collaborators.
-func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsoninput.Input, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input jsonvalue.Value, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
 	if db == nil || id == "" || len(id) > 256 || !utf8.ValidString(id) || method == "" || !utf8.ValidString(method) {
 		return nil, nil, errors.New("managed plugin: database, method and bounded command identity are required")
 	}
@@ -35,12 +34,12 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 	}
 	var reply []byte
 	started := false
-	err := sqlitebase.RunInTx(ctx, db, func(ctx context.Context) error {
+	err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		var previousMethod, previousInput string
-		err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
-				return idempotency.ErrKeyConflict
+				return extension.ErrInvocationConflict
 			}
 			return nil
 		}
@@ -52,7 +51,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 				return err
 			}
 		}
-		if _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
+		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
 			return err
 		}
 		started = true
@@ -68,21 +67,21 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 }
 
 // ResumeCommand reads original private input and admission without creating work.
-func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsoninput.Input, []byte, error) {
+func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*PreparedCommand, jsonvalue.Value, []byte, error) {
 	var storedMethod, raw string
 	var reply []byte
-	if err := sqlitebase.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
-		return nil, jsoninput.Input{}, nil, err
+	if err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply); err != nil {
+		return nil, jsonvalue.Value{}, nil, err
 	}
 	if storedMethod != method {
-		return nil, jsoninput.Input{}, nil, idempotency.ErrKeyConflict
+		return nil, jsonvalue.Value{}, nil, extension.ErrInvocationConflict
 	}
-	input, err := jsoninput.Parse([]byte(raw))
+	input, err := jsonvalue.Parse([]byte(raw))
 	if err != nil {
-		return nil, jsoninput.Input{}, nil, err
+		return nil, jsonvalue.Value{}, nil, err
 	}
 	if input.String() != raw {
-		return nil, jsoninput.Input{}, nil, errors.New("managed plugin: retained input is not canonical")
+		return nil, jsonvalue.Value{}, nil, errors.New("managed plugin: retained input is not canonical")
 	}
 	if len(reply) != 0 {
 		return nil, input, reply, nil
@@ -98,27 +97,27 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	if c == nil {
 		return errors.New("managed plugin: prepared command is required")
 	}
-	if _, err := pluginsdk.DecodeReply[jsoninput.Input](reply); err != nil {
-		if _, known := errors.AsType[*capability.Refusal](err); !known {
+	if _, err := pluginsdk.DecodeReply[jsonvalue.Value](reply); err != nil {
+		if _, known := errors.AsType[*extension.Refusal](err); !known {
 			return err
 		}
 	}
-	return sqlitebase.RunInTx(ctx, c.db, func(ctx context.Context) error {
+	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
 		var method, input string
 		var original []byte
-		if err := sqlitebase.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
+		if err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &original); err != nil {
 			return err
 		}
 		if method != c.method || input != c.input.String() {
-			return idempotency.ErrKeyConflict
+			return extension.ErrInvocationConflict
 		}
 		if len(original) != 0 {
 			if !bytes.Equal(original, reply) {
-				return idempotency.ErrKeyConflict
+				return extension.ErrInvocationConflict
 			}
 			return nil
 		}
-		_, err := sqlitebase.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
+		_, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
 		return err
 	})
 }

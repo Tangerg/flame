@@ -6,16 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "private.db")
 	schema := []string{CommandsSchema, `CREATE TABLE IF NOT EXISTS counter(value INTEGER NOT NULL)`, `INSERT INTO counter SELECT 0 WHERE NOT EXISTS(SELECT 1 FROM counter)`}
-	db, err := sqlitebase.OpenSchema(t.Context(), path, schema)
+	db, err := sqlite.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,12 +33,12 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		method, err := pluginsdk.NewMethod[input, string](pluginsdk.MethodConfig{Name: "update", Kind: capability.Mutation, Target: "installation", Description: "update"})
+		method, err := pluginsdk.NewMethod[input, string](pluginsdk.MethodConfig{Name: "update", Kind: extension.Mutation, Target: "installation", Description: "update"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if err := RegisterCommand(binding, db, method, nil, func(ctx context.Context, _ *sdk.ServerSession, _ input) (string, error) {
-			_, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
+			_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `UPDATE counter SET value=value+1`)
 			return "saved", err
 		}); err != nil {
 			t.Fatal(err)
@@ -66,8 +67,15 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 		return session, owner
 	}
 	session, owner := connect()
-	raw := jsontext.Value(`{"z":"same","n":1.0}`)
-	if value, err := pluginsdk.CallCommand[jsontext.Value, string](t.Context(), session, "update", "original", raw); err != nil || value != "saved" {
+	raw, err := jsonvalue.Parse([]byte(`{"z":"same","n":1.0}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding, err := pluginsdk.Resolve(t.Context(), session, "update")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value, err := binding.Invoke(t.Context(), "original", raw); err != nil || value.String() != `"saved"` {
 		t.Fatalf("mutation = %q, %v", value, err)
 	}
 	if err := session.Close(); err != nil {
@@ -79,7 +87,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := sqlitebase.OpenSchema(t.Context(), path, schema)
+	reopened, err := sqlite.OpenSchema(t.Context(), path, schema)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +100,15 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	if _, _, err := pluginsdk.ReadReceipt[input, string](t.Context(), session, "original", "update", input{N: 1, Z: "same"}); err == nil {
 		t.Fatal("decoded DTO replaced original numeric identity")
 	}
-	if _, err := pluginsdk.CallCommand[jsontext.Value, string](t.Context(), session, "update", "original", jsontext.Value(`{"n":1,"z":"same"}`)); err == nil {
+	binding, err = pluginsdk.Resolve(t.Context(), session, "update")
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed, err := jsonvalue.Parse([]byte(`{"n":1,"z":"same"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := binding.Invoke(t.Context(), "original", changed); err == nil {
 		t.Fatal("changed raw input replayed an earlier mutation")
 	}
 	var count int
@@ -111,7 +127,7 @@ func TestReceiptRegistrationRequiresACommandMethod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	query, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "read", Kind: capability.Query, Target: "installation", Description: "read"})
+	query, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "read", Kind: extension.Query, Target: "installation", Description: "read"})
 	if err != nil {
 		t.Fatal(err)
 	}

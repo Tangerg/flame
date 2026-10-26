@@ -3,12 +3,11 @@ package sandbox
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
 )
 
 func TestCopyTreePreservesDirectoryAndSymlinkSemantics(t *testing.T) {
@@ -169,7 +168,7 @@ func TestTreeCopierRejectsReplacedSourceDirectory(t *testing.T) {
 		source: sourceRoot, destination: destinationRoot,
 		buffer: make([]byte, workspaceCopyBufferBytes), maxEntries: maxWorkspaceCopyEntries,
 	}
-	if err := copier.copyDirectory(t.Context(), "nested", expected); err == nil || !errors.Is(err, fileinput.ErrChanged) {
+	if err := copier.copyDirectory(t.Context(), "nested", expected); err == nil || !errors.Is(err, filesystem.ErrChanged) {
 		t.Fatalf("copy replaced directory error = %v, want fileinput.ErrChanged", err)
 	}
 }
@@ -203,7 +202,7 @@ func TestTreeCopierRejectsReplacedSourceSymlink(t *testing.T) {
 	}
 	defer func() { _ = errors.Join(destinationRoot.Close(), sourceRoot.Close()) }()
 	copier := treeCopier{source: sourceRoot, destination: destinationRoot}
-	if err := copier.copySymlink("link", "link", expected); err == nil || !errors.Is(err, fileinput.ErrChanged) {
+	if err := copier.copySymlink("link", "link", expected); err == nil || !errors.Is(err, filesystem.ErrChanged) {
 		t.Fatalf("copy replaced symlink error = %v, want fileinput.ErrChanged", err)
 	}
 }

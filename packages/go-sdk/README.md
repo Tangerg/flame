@@ -1,28 +1,41 @@
 # Go SDK
 
-This module owns Flame's public Go contracts and mechanisms. It has no dependency
-on Runtime, products, first-party plugins or repository tooling, including in its
-tests and development commands.
+This module owns Flame's public Go contracts and reusable mechanisms. It has no
+dependency on Runtime, products, first-party plugins or repository tooling,
+including in tests and development commands.
 
-| Package                        | Responsibility                                                         |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `client`                       | Remote HTTP/SSE client and generated typed operations                  |
-| `protocol`, `protocol/jsonrpc` | Wire values, admission and envelope guarantees                         |
-| `plugin`                       | Backend authoring, callbacks and captured invocation authority         |
-| `plugin/memory`                | Published Memory contract consumed by hosts and independent providers  |
-| `contractgen`                  | Admitted schema model and deterministic feature projections            |
-| `cmd/contractgen`              | Feature and model-role author generation                               |
-| `cmd/backendbindings`          | Go backend protocol to TypeScript projection with explicit input paths |
-| `cmd/archive`                  | Safe plugin release archive construction                               |
-| `storage`                      | SQLite transaction, cancellation, lock and directory mechanisms        |
+| Package | Owner |
+| --- | --- |
+| `client` | Remote HTTP/SSE lifecycle and generated typed operations |
+| `protocol` | Runtime wire values, complete tree admission and strict RPC envelopes |
+| `extension` | Admitted operation, capability and extension-point contracts |
+| `plugin` | Backend authoring, captured callbacks, invocation and receipt encoding |
+| `plugin/memory` | Published Memory consumer contract |
+| `plugin/sqlite` | Atomic plugin mutations and durable receipts |
+| `model` | Provider/model selection, generation values and token estimates |
+| `model/catalog` | Translation of Scope's released model catalog |
+| `identity` | Shared resource identities, canonical digests and lexical constraints |
+| `jsonvalue` | Immutable admitted JSON and exact structural encoding |
+| `filesystem` | File admission, path identity, directory resolution and leases |
+| `sqlite` | SQLite connections, cancellation and transactions |
+| `pagination` | Page limits and bounded opaque cursors |
+| `contractgen` | Admitted schema model and deterministic TypeScript emission |
+| `cancellation`, `capture`, `exactint`, `httpresponse`, `instant`, `sandbox` | Focused technical guarantees used across owners |
 
-Other named packages own shared values or guarantees such as identity, exact JSON,
-resource paths, cancellation, bounded capture and opaque-token encoding. Runtime
-owns product persistence and lifecycle transitions; sharing a mechanism does not
-move product policy into this module.
+`cmd/flame-sdk` is the single author command. Its `contract`, `backend-protocol`
+and `archive` subcommands generate feature/model contracts, project the backend
+protocol and construct release archives. Backend protocol projection reads the
+matching SDK sources that built the command; use `go run` without `-trimpath`.
+It does not accept another checkout as a source of protocol constants.
+
+Runtime owns execution identities, durable replay and transcript rendering.
+The SDK's lexical mechanisms do not own product lifecycle policy. Plugin receipts
+are encoded through `EncodeReply`; only the business owner commits their durable
+representation. Protocol consumers validate complete values with
+`ValidateWireTree`; individual generated node validators are private.
 
 Use the Go version in `go.mod`. From this directory run `GOWORK=off go test ./...`.
-Cross-module regeneration is coordinated from the repository root by `make generate`:
-publishers own contract identities, and this SDK contains their generated consumer
-projections. SDK commands do not import those publisher implementations. Generated
-wire methods and validators are projected by Runtime's Host generator.
+Cross-module regeneration is coordinated from the repository root by
+`make generate`. Publishers own contract identities; the SDK holds generated
+consumer projections and its commands never import publisher implementations.
+Runtime's generator owns the typed Runtime operations and wire constraints.

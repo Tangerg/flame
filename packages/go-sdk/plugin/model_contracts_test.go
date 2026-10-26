@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -16,7 +16,7 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 	}
 	for _, test := range []struct {
 		name  string
-		load  func() (*capability.Contract, error)
+		load  func() (*extension.Capability, error)
 		input any
 	}{
 		{"observer", ModelObserverContract, *request},
@@ -25,11 +25,11 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 		{"tool-proposal", ToolProposalContract, chat.ToolCall{ID: "logical-call", Name: "resource", Arguments: `{}`}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			input, err := jsoninput.Encode(test.input)
+			input, err := jsonvalue.Encode(test.input)
 			if err != nil {
 				t.Fatal(err)
 			}
-			invalid, err := jsoninput.Parse([]byte(`{"unexpected":true}`))
+			invalid, err := jsonvalue.Parse([]byte(`{"unexpected":true}`))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +71,7 @@ func TestPublishedModelContractsKeepConsumerDescriptorsIndependent(t *testing.T)
 func BenchmarkPublishedModelContracts(b *testing.B) {
 	for _, test := range []struct {
 		name string
-		load func() (*capability.Contract, error)
+		load func() (*extension.Capability, error)
 	}{
 		{"observer", ModelObserverContract},
 		{"input", ModelInputContract},

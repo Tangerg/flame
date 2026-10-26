@@ -6,7 +6,7 @@ import (
 	"errors"
 	"iter"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -60,10 +60,10 @@ func (r ModelCallRequest) Validate() error {
 }
 
 func SelectedModelMethod() (*Method[ModelCallRequest, ModelResult], error) {
-	return NewMethod[ModelCallRequest, ModelResult](MethodConfig{Name: "flame.model/selected-call.v1", Kind: capability.Mutation, Target: "call", Description: "Perform one independently selected, budgeted and observed model exchange."})
+	return NewMethod[ModelCallRequest, ModelResult](MethodConfig{Name: "flame.model/selected-call.v1", Kind: extension.Mutation, Target: "call", Description: "Perform one independently selected, budgeted and observed model exchange."})
 }
 func SelectedModelStreamMethod() (*StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error) {
-	return NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](MethodConfig{Name: "flame.model/selected-stream.v1", Kind: capability.Mutation, Target: "call", Description: "Consume one independently selected, budgeted and observed model stream."})
+	return NewStreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult](MethodConfig{Name: "flame.model/selected-stream.v1", Kind: extension.Mutation, Target: "call", Description: "Consume one independently selected, budgeted and observed model stream."})
 }
 func CallSelectedModel(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {
@@ -111,7 +111,7 @@ func NewSelectedModelCallback(call func(context.Context, Command[ModelCallReques
 			return ModelResult{}, err
 		}
 		response, err := call(ctx, command)
-		if refusal, known := errors.AsType[*capability.Refusal](err); known && response == nil {
+		if refusal, known := errors.AsType[*extension.Refusal](err); known && response == nil {
 			return ModelResult{}, refusal
 		}
 		return modelResult(response, err)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -25,7 +25,7 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 				if len(arguments) == 0 {
 					arguments = []byte("{}")
 				}
-				input, err := jsoninput.Parse(arguments)
+				input, err := jsonvalue.Parse(arguments)
 				if err != nil {
 					return nil, err
 				}

@@ -1,10 +1,7 @@
 package plugin
 
 import (
-	"errors"
-	"strings"
-
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -18,10 +15,11 @@ type ModelSelection struct {
 }
 
 func (s ModelSelection) Validate() error {
-	if strings.TrimSpace(s.Provider) == "" || strings.TrimSpace(s.Model) == "" {
-		return errors.New("model selection: exact provider and model are required")
+	selection, err := model.NewWithReasoningEffort(s.Provider, s.Model, s.ReasoningEffort)
+	if err != nil {
+		return err
 	}
-	return nil
+	return selection.ValidateExact()
 }
 
 // ModelSelectionRequest offers the caller's proposal before its exact binding.
@@ -45,12 +43,12 @@ func (r ModelSelectionRequest) Validate() error {
 	return nil
 }
 func ModelSelectionMethod() (*Method[ModelSelectionRequest, ModelSelection], error) {
-	return NewMethod[ModelSelectionRequest, ModelSelection](MethodConfig{Name: "flame.model-selection/select.v2", Kind: capability.Query, Target: "call", Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
+	return NewMethod[ModelSelectionRequest, ModelSelection](MethodConfig{Name: "flame.model-selection/select.v2", Kind: extension.Query, Target: "call", Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
 }
-func ModelSelectionContract() (*capability.Contract, error) {
+func ModelSelectionContract() (*extension.Capability, error) {
 	method, err := ModelSelectionMethod()
 	if err != nil {
 		return nil, err
 	}
-	return capability.New(capability.Config{Reference: "flame.model-selection.v2", Composition: capability.Selection, Scope: "call"}, method.Descriptor())
+	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.model-selection.v2", Composition: extension.Selection, Scope: "call"}, method.Descriptor())
 }

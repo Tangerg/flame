@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,7 +21,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	})
 	session := new(sdk.ClientSession)
 	callbacks.AdmitSession(session)
-	owner := capability.Invocation{ID: "original-tool", Origin: capability.Model, Parent: "executing-run", Target: capability.Target{Scope: "installation", Reference: "owner"}}
+	owner := extension.Invocation{ID: "original-tool", Origin: extension.Model, Parent: "executing-run", Target: extension.Target{Scope: "installation", Reference: "owner"}}
 	ctx, err := WithInvocation(t.Context(), owner)
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ func TestTextEmbeddingCallbackKeepsChildAttributionAndCallerBudget(t *testing.T)
 	var calls atomic.Int32
 	callback, err := NewTextEmbeddingCallback(func(ctx context.Context, command Command[[]string]) (TextEmbeddings, error) {
 		invocation, err := InvocationFromContext(ctx)
-		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (capability.Target{Scope: "call", Reference: command.ID}) {
+		if err != nil || invocation.ID != command.ID || invocation.Origin != owner.Origin || invocation.Parent != owner.ID || invocation.Target != (extension.Target{Scope: "call", Reference: command.ID}) {
 			t.Errorf("embedding changed original ownership: %+v, %v", invocation, err)
 		}
 		input, err := command.RequestInput()

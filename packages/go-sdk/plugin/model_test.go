@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -29,12 +29,12 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
 	host.AdmitSession(session)
-	parent := capability.Invocation{ID: "original-maintenance", Origin: capability.Human, Parent: "original-operation", Target: capability.Target{Scope: "installation", Reference: "captured-installation"}}
+	parent := extension.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: extension.Target{Scope: "installation", Reference: "captured-installation"}}
 	ctx, err := WithInvocation(t.Context(), parent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := make(chan capability.Invocation, 2)
+	seen := make(chan extension.Invocation, 2)
 	callback, err := NewModelCallback(func(ctx context.Context, command Command[chat.Request]) (*chat.Response, error) {
 		invocation, err := InvocationFromContext(ctx)
 		if err != nil || invocation.ID != command.ID {
@@ -58,7 +58,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 			t.Fatal(err)
 		}
 		actual := <-seen
-		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (capability.Target{Scope: "call", Reference: id}) {
+		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (extension.Target{Scope: "call", Reference: id}) {
 			t.Fatalf("call lost original ancestry: %+v", actual)
 		}
 	}

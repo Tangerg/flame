@@ -11,7 +11,7 @@ func TestClientCapabilitiesWireValidationRejectsUnknownEphemeralEvents(t *testin
 			SuppressibleRunItemDelta,
 		},
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected the complete opt-out set: %v", err)
 	}
 
@@ -21,7 +21,7 @@ func TestClientCapabilitiesWireValidationRejectsUnknownEphemeralEvents(t *testin
 
 			err := (ClientCapabilities{
 				ExcludedEphemeralEvents: []SuppressibleRunEventType{event},
-			}).ValidateWire()
+			}).validateWire()
 			assertConstraintField(t, err, "ClientCapabilities", "excludedEphemeralEvents[0]")
 		})
 	}

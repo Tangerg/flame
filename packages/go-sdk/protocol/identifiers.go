@@ -1,8 +1,6 @@
 package protocol
 
-import (
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-)
+import runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 
 // IDPrefixEvent frames the opaque replay cursor. Business plugin identities
 // belong to their feature contracts, not to the Core protocol.
@@ -24,27 +22,22 @@ const MaximumRunEventIDCharacters = runtimeidentity.MaximumEventCharacters
 // lookup subject.
 const MaximumIdempotencyKeyCharacters = 255
 
-// ValidateSessionID reports whether value is an exact opaque Session identity.
 func ValidateSessionID(value string) error {
 	return runtimeidentity.ValidateResource("session", value, MaximumResourceIdentityCharacters)
 }
 
-// ValidateRunID reports whether value is an exact opaque Run identity.
 func ValidateRunID(value string) error {
 	return runtimeidentity.ValidateResource("run", value, MaximumResourceIdentityCharacters)
 }
 
-// ValidateSegmentID reports whether value is an exact opaque Segment identity.
 func ValidateSegmentID(value string) error {
 	return runtimeidentity.ValidateResource("segment", value, MaximumResourceIdentityCharacters)
 }
 
-// ValidateItemID reports whether value is an exact opaque Item identity.
 func ValidateItemID(value string) error {
 	return runtimeidentity.ValidateResource("item", value, MaximumResourceIdentityCharacters)
 }
 
-// ValidateRunEventID reports whether value is an exact opaque Run event identity.
 func ValidateRunEventID(value string) error {
 	return runtimeidentity.ValidateResource("event", value, MaximumRunEventIDCharacters)
 }

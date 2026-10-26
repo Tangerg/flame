@@ -10,14 +10,6 @@ import (
 	"unicode/utf8"
 )
 
-var (
-	ErrIncompleteModelSelection    = errors.New("model selection: provider and model must be set together")
-	ErrReasoningEffortWithoutModel = errors.New("model selection: reasoning effort requires provider and model")
-	ErrProviderIdentity            = errors.New("model selection: invalid provider identity")
-	ErrModelIdentity               = errors.New("model selection: invalid model identity")
-	ErrReasoningEffortIdentity     = errors.New("model selection: invalid reasoning effort identity")
-)
-
 // ValidateResource enforces the shared opaque resource envelope without
 // assigning meaning to an identity or normalizing caller material.
 func ValidateResource(kind, value string, maximumCharacters int) error {
@@ -90,47 +82,6 @@ func ValidateEventIdentity(value string) error {
 	}
 	if !strings.HasPrefix(value, EventPrefix) {
 		return fmt.Errorf("event identity is not framed with %q", EventPrefix)
-	}
-	return nil
-}
-
-func ValidateProviderIdentity(value string) error {
-	return validateModelIdentity(value, MaximumProviderCharacters, ErrProviderIdentity)
-}
-
-func ValidateModelIdentity(value string) error {
-	return validateModelIdentity(value, MaximumModelCharacters, ErrModelIdentity)
-}
-
-func ValidateReasoningEffortIdentity(value string) error {
-	return validateModelIdentity(value, MaximumReasoningEffortCharacters, ErrReasoningEffortIdentity)
-}
-
-func ValidateModelSelection(provider, model, reasoningEffort string) error {
-	if (provider == "") != (model == "") {
-		return ErrIncompleteModelSelection
-	}
-	if model == "" && reasoningEffort != "" {
-		return ErrReasoningEffortWithoutModel
-	}
-	if model == "" {
-		return nil
-	}
-	if err := ValidateProviderIdentity(provider); err != nil {
-		return err
-	}
-	if err := ValidateModelIdentity(model); err != nil {
-		return err
-	}
-	if reasoningEffort != "" {
-		return ValidateReasoningEffortIdentity(reasoningEffort)
-	}
-	return nil
-}
-
-func validateModelIdentity(value string, maximumCharacters int, identityError error) error {
-	if err := ValidateText(value, maximumCharacters); err != nil {
-		return fmt.Errorf("%w: %v", identityError, err)
 	}
 	return nil
 }

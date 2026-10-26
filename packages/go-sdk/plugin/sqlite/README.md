@@ -11,7 +11,7 @@ failure invents no receipt. `ReadReceipt` and its `RegisterReceipts` transport r
 binding without invoking the use case. Reusing an identity with changed original
 JSON is a conflict; absent evidence never authorizes replay.
 
-Identity conflicts retain the public `packages/go-sdk/idempotency.ErrKeyConflict`
+Identity conflicts retain the public `packages/go-sdk/extension.ErrInvocationConflict`
 category. Classify it with `errors.Is`; an independent author's refusal classifier
 does not need private Runtime source or an error-string match.
 
@@ -19,4 +19,4 @@ For operations with external work, `AdmitCommand` commits original admission fir
 Only `NewlyAdmitted` permits a first external attempt. `ResumeCommand` reads pending
 work without creating it; `PreparedCommand.Complete` joins the private owner's short
 publication transaction. Unknown outcomes remain pending, including after restart.
-Use `packages/go-sdk/storage/sqlite` for schema admission and transaction ownership.
+Use `packages/go-sdk/sqlite` for schema admission and transaction ownership.

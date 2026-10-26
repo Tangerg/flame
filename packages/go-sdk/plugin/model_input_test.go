@@ -4,7 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -17,7 +17,7 @@ func TestModelInputTransformationPreservesRouteToolsAndOutputEnvelope(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if contract.Descriptor().Composition != capability.Decoration || method.Descriptor().Kind != capability.Query {
+	if contract.Descriptor().Composition != extension.Decoration || method.Descriptor().Kind != extension.Query {
 		t.Fatal("input transformation grants model execution")
 	}
 	original, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original")))

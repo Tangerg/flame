@@ -1,10 +1,8 @@
 package client
 
-import (
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-)
+import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-func pluginCallOptions(options protocol.PluginCallOptions) callConfig {
+func pluginCallOptions(options protocol.PluginCallOptions,) callConfig {
 	return callConfig{
 		RequestMeta:          currentRequestMeta(options.RequestMeta),
 		IdempotencyKey:       options.IdempotencyKey,
@@ -12,11 +10,11 @@ func pluginCallOptions(options protocol.PluginCallOptions) callConfig {
 	}
 }
 
-func callOptions(options protocol.CallOptions) callConfig {
+func callOptions(options protocol.CallOptions,) callConfig {
 	return callConfig{RequestMeta: currentRequestMeta(options.RequestMeta)}
 }
 
-func commandOptions(options protocol.CommandOptions) callConfig {
+func commandOptions(options protocol.CommandOptions,) callConfig {
 	return callConfig{
 		RequestMeta:          currentRequestMeta(options.RequestMeta),
 		IdempotencyKey:       options.IdempotencyKey,
@@ -24,7 +22,7 @@ func commandOptions(options protocol.CommandOptions) callConfig {
 	}
 }
 
-func runCommandOptions(options protocol.RunCommandOptions) callConfig {
+func runCommandOptions(options protocol.RunCommandOptions,) callConfig {
 	return callConfig{
 		RequestMeta:          currentRequestMeta(options.RequestMeta),
 		IdempotencyKey:       options.IdempotencyKey,
@@ -33,18 +31,18 @@ func runCommandOptions(options protocol.RunCommandOptions) callConfig {
 	}
 }
 
-func runSubscriptionOptions(options protocol.RunSubscriptionOptions) callConfig {
+func runSubscriptionOptions(options protocol.RunSubscriptionOptions,) callConfig {
 	return callConfig{
 		RequestMeta:  currentRequestMeta(options.RequestMeta),
 		AfterEventID: options.AfterEventID,
 	}
 }
 
-func subscriptionOptions(options protocol.SubscriptionOptions) callConfig {
+func subscriptionOptions(options protocol.SubscriptionOptions,) callConfig {
 	return callConfig{RequestMeta: currentRequestMeta(options.RequestMeta)}
 }
 
-func currentRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
+func currentRequestMeta(meta protocol.RequestMeta,) protocol.RequestMeta {
 	if meta.ProtocolVersion == "" {
 		meta.ProtocolVersion = protocol.Version
 	}

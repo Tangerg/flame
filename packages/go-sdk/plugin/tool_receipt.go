@@ -6,8 +6,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -23,6 +23,10 @@ type ToolReceipt struct {
 	IsError bool   `json:"isError,omitzero"`
 }
 
+func ToolReceiptQuery() (*Method[ReceiptRequest, ToolReceipt], error) {
+	return NewMethod[ReceiptRequest, ToolReceipt](MethodConfig{Name: ToolReceiptMethod, Kind: extension.Query, Target: "installation", Description: ToolReceiptMethod})
+}
+
 func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
 	encoded, err := json.Marshal(output)
 	if err != nil {
@@ -33,7 +37,7 @@ func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
 
 // ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.
 // A missing or unsupported read never permits another Tool invocation.
-func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, remote string, admitted jsoninput.Input) (*chat.ToolOutput, error) {
+func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, remote string, admitted jsonvalue.Value) (*chat.ToolOutput, error) {
 	if session == nil {
 		return nil, errors.New("plugin: client session is required")
 	}
@@ -48,11 +52,11 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	method, err := NewMethod[ReceiptRequest, ToolReceipt](MethodConfig{Name: ToolReceiptMethod, Kind: capability.Query, Target: "installation", Description: ToolReceiptMethod})
+	method, err := ToolReceiptQuery()
 	if err != nil {
 		return nil, err
 	}
-	input, err := jsoninput.Encode(request)
+	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return nil, err
 	}

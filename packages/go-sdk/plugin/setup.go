@@ -10,10 +10,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/fingerprint"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -21,25 +19,25 @@ const setupMethod = "io.github.tangerg.flame/operations.setup"
 const activateMethod = "io.github.tangerg.flame/operations.activate"
 
 type SetupContribution struct {
-	Background *capability.Target `json:"background,omitzero"`
-	ID         string             `json:"id"`
-	Export     string             `json:"export"`
-	Requires   []SetupDependency  `json:"requires"`
+	Background *extension.Target `json:"background,omitzero"`
+	ID         string            `json:"id"`
+	Export     string            `json:"export"`
+	Requires   []SetupDependency `json:"requires"`
 }
 
 type SetupDependency struct {
-	ID       string                `json:"id"`
-	Contract capability.Descriptor `json:"contract"`
-	Optional bool                  `json:"optional"`
-	Bindings []SetupBinding        `json:"bindings"`
+	ID       string                         `json:"id"`
+	Contract extension.CapabilityDescriptor `json:"contract"`
+	Optional bool                           `json:"optional"`
+	Bindings []SetupBinding                 `json:"bindings"`
 }
 
 // SetupBinding is the setup transport projection of one resolved implementation.
 type SetupBinding struct {
-	InstallationID string                `json:"installationId"`
-	Digest         string                `json:"digest"`
-	Contribution   string                `json:"contribution"`
-	Contract       capability.Descriptor `json:"contract"`
+	InstallationID string                         `json:"installationId"`
+	Digest         string                         `json:"digest"`
+	Contribution   string                         `json:"contribution"`
+	Contract       extension.CapabilityDescriptor `json:"contract"`
 }
 
 // Setup supplies only the entry's named, already resolved dependencies.
@@ -70,7 +68,7 @@ func (p *setupParams) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &value, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	if value.Protocol != capability.Protocol || value.Contributions == nil {
+	if value.Protocol != extension.Protocol || value.Contributions == nil {
 		return errors.New("plugin: current setup protocol and contributions are required")
 	}
 	*p = setupParams(value)
@@ -161,7 +159,7 @@ func (b *Backend) registerSetup() error {
 	if err := b.registerActivation(); err != nil {
 		return err
 	}
-	return sdk.AddReceivingCustomMethod(b.server, setupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*Result[bool], error) {
+	return sdk.AddReceivingCustomMethod(b.server, setupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*methodResult[bool], error) {
 		var err error
 		if err := validateSetup(params.Contributions); err != nil {
 			return nil, err
@@ -226,7 +224,7 @@ func (b *Backend) registerSetup() error {
 		if err != nil {
 			return nil, errors.Join(err, activation.close())
 		}
-		return Reply(true, nil, nil)
+		return reply(true, nil, nil)
 	})
 }
 
@@ -242,7 +240,7 @@ func invokeSetup(handler func(context.Context, Setup) (io.Closer, error), ctx co
 func validateSetup(values []SetupContribution) error {
 	seen := map[string]bool{}
 	for _, value := range values {
-		if !capability.ValidExportName(value.Export) || seen[value.ID] || value.Requires == nil {
+		if !extension.ValidExportName(value.Export) || seen[value.ID] || value.Requires == nil {
 			return errors.New("plugin: invalid or duplicate setup contribution")
 		}
 		if value.Background != nil {
@@ -269,15 +267,15 @@ func validateSetup(values []SetupContribution) error {
 			if err := validateSetupBindings(dependency.ID, dependency.Bindings); err != nil {
 				return err
 			}
-			contract, err := capability.FromDescriptor(dependency.Contract)
+			contract, err := extension.AdmitCapability(dependency.Contract)
 			if err != nil {
 				return err
 			}
-			if !dependency.Optional && len(dependency.Bindings) == 0 || contract.Descriptor().Composition == capability.Selection && len(dependency.Bindings) > 1 {
+			if !dependency.Optional && len(dependency.Bindings) == 0 || contract.Descriptor().Composition == extension.Selection && len(dependency.Bindings) > 1 {
 				return errors.New("plugin: invalid setup dependency cardinality")
 			}
 			for _, binding := range dependency.Bindings {
-				actual, err := capability.FromDescriptor(binding.Contract)
+				actual, err := extension.AdmitCapability(binding.Contract)
 				if err != nil {
 					return err
 				}
@@ -294,7 +292,7 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 	if err := validateSetup(contributions); err != nil {
 		return err
 	}
-	result, err := sdk.CallCustomMethod[*setupParams, *Result[bool]](ctx, session, setupMethod, &setupParams{ParamsBase: metadata, Protocol: capability.Protocol, Contributions: slices.Clone(contributions)})
+	result, err := sdk.CallCustomMethod[*setupParams, *methodResult[bool]](ctx, session, setupMethod, &setupParams{ParamsBase: metadata, Protocol: extension.Protocol, Contributions: slices.Clone(contributions)})
 	if err != nil {
 		return err
 	}
@@ -306,7 +304,7 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 }
 
 func validateSetupInstallation(value string) error {
-	_, err := resourceid.ParseInstallation(value)
+	_, err := identity.ParseInstallation(value)
 	return err
 }
 func validateSetupID(value string) error {
@@ -326,7 +324,7 @@ func validateSetupBindings(id string, bindings []SetupBinding) error {
 		if err := validateSetupInstallation(value.InstallationID); err != nil {
 			return err
 		}
-		if _, err := fingerprint.ParseDigest(value.Digest); err != nil {
+		if _, err := identity.ParseDigest(value.Digest); err != nil {
 			return err
 		}
 		if err := validateSetupID(value.Contribution); err != nil {
@@ -337,8 +335,8 @@ func validateSetupBindings(id string, bindings []SetupBinding) error {
 }
 
 func (b *Backend) registerActivation() error {
-	return sdk.AddReceivingCustomMethod(b.server, activateMethod, func(ctx context.Context, session *sdk.ServerSession, params *protocolParams) (*Result[bool], error) {
-		if params == nil || params.Protocol != capability.Protocol {
+	return sdk.AddReceivingCustomMethod(b.server, activateMethod, func(ctx context.Context, session *sdk.ServerSession, params *protocolParams) (*methodResult[bool], error) {
+		if params == nil || params.Protocol != extension.Protocol {
 			return nil, errors.New("plugin: current activation protocol is required")
 		}
 		b.mu.RLock()
@@ -367,7 +365,7 @@ func (b *Backend) registerActivation() error {
 		if activation.startErr != nil {
 			return nil, activation.startErr
 		}
-		return Reply(true, nil, nil)
+		return reply(true, nil, nil)
 	})
 }
 func startActivation(resource ActivationResource) (err error) {
@@ -379,7 +377,7 @@ func startActivation(resource ActivationResource) (err error) {
 	return resource.Start()
 }
 func Activate(ctx context.Context, session *sdk.ClientSession) error {
-	result, err := sdk.CallCustomMethod[*protocolParams, *Result[bool]](ctx, session, activateMethod, &protocolParams{Protocol: capability.Protocol})
+	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[bool]](ctx, session, activateMethod, &protocolParams{Protocol: extension.Protocol})
 	if err != nil {
 		return err
 	}

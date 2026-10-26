@@ -116,7 +116,7 @@ func TestRuntimeEventWireConstraints(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := test.event.ValidateWire()
+			err := test.event.validateWire()
 			if test.field == "" {
 				if err != nil {
 					t.Fatalf("ValidateWire rejected a valid event: %v", err)
@@ -138,10 +138,10 @@ func TestRunEventRequiresTimestamp(t *testing.T) {
 			Progress: &RunProgress{Activity: "Calling model"},
 		},
 	}
-	assertConstraintField(t, event.ValidateWire(), "RunEvent", "timestamp")
+	assertConstraintField(t, event.validateWire(), "RunEvent", "timestamp")
 
 	event.Timestamp = time.Unix(1, 0).UTC()
-	if err := event.ValidateWire(); err != nil {
+	if err := event.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a timestamped event: %v", err)
 	}
 }
@@ -152,13 +152,13 @@ func TestSessionRequiresLifecycleTimes(t *testing.T) {
 	session := Session{
 		ID: "ses_1", Status: SessionStatusIdle, Provider: "provider", Model: "model", Revision: 1,
 	}
-	assertConstraintField(t, session.ValidateWire(), "Session", "createdAt")
-	assertConstraintField(t, session.ValidateWire(), "Session", "updatedAt")
+	assertConstraintField(t, session.validateWire(), "Session", "createdAt")
+	assertConstraintField(t, session.validateWire(), "Session", "updatedAt")
 
 	session.CreatedAt = time.Unix(1, 0).UTC()
-	assertConstraintField(t, session.ValidateWire(), "Session", "updatedAt")
+	assertConstraintField(t, session.validateWire(), "Session", "updatedAt")
 	session.UpdatedAt = session.CreatedAt
-	if err := session.ValidateWire(); err != nil {
+	if err := session.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a timestamped session: %v", err)
 	}
 }
@@ -170,13 +170,13 @@ func TestGoalRequiresLifecycleTimes(t *testing.T) {
 		SessionID: "ses_1", Objective: "finish", Status: GoalActive,
 		Provider: "provider", Model: "model",
 	}
-	assertConstraintField(t, goal.ValidateWire(), "Goal", "createdAt")
-	assertConstraintField(t, goal.ValidateWire(), "Goal", "updatedAt")
+	assertConstraintField(t, goal.validateWire(), "Goal", "createdAt")
+	assertConstraintField(t, goal.validateWire(), "Goal", "updatedAt")
 
 	goal.CreatedAt = time.Unix(1, 0).UTC()
-	assertConstraintField(t, goal.ValidateWire(), "Goal", "updatedAt")
+	assertConstraintField(t, goal.validateWire(), "Goal", "updatedAt")
 	goal.UpdatedAt = goal.CreatedAt
-	if err := goal.ValidateWire(); err != nil {
+	if err := goal.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a timestamped goal: %v", err)
 	}
 }
@@ -185,10 +185,10 @@ func TestPlanStateRequiresUpdateTime(t *testing.T) {
 	t.Parallel()
 
 	state := PlanState{Revision: 1, Steps: []PlanStep{}}
-	assertConstraintField(t, state.ValidateWire(), "PlanState", "updatedAt")
+	assertConstraintField(t, state.validateWire(), "PlanState", "updatedAt")
 
 	state.UpdatedAt = time.Unix(1, 0).UTC()
-	if err := state.ValidateWire(); err != nil {
+	if err := state.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a timestamped Plan state: %v", err)
 	}
 }
@@ -199,13 +199,13 @@ func TestArtifactSessionRequiresLifecycleTimes(t *testing.T) {
 	session := ArtifactSession{
 		ID: "ses_1", Provider: "provider", Model: "model",
 	}
-	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "createdAt")
-	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "updatedAt")
+	assertConstraintField(t, session.validateWire(), "ArtifactSession", "createdAt")
+	assertConstraintField(t, session.validateWire(), "ArtifactSession", "updatedAt")
 
 	session.CreatedAt = time.Unix(1, 0).UTC()
-	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "updatedAt")
+	assertConstraintField(t, session.validateWire(), "ArtifactSession", "updatedAt")
 	session.UpdatedAt = session.CreatedAt
-	if err := session.ValidateWire(); err != nil {
+	if err := session.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a timestamped artifact Session: %v", err)
 	}
 }
@@ -240,13 +240,13 @@ func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 
 	assertConstraintField(
 		t,
-		(RunProgress{}).ValidateWire(),
+		(RunProgress{}).validateWire(),
 		"RunProgress",
 		"step|usage|contextTokens|activity",
 	)
 	negativeStep, negativeContext := -1, int64(-1)
-	assertConstraintField(t, (RunProgress{Step: &negativeStep}).ValidateWire(), "RunProgress", "step")
-	assertConstraintField(t, (RunProgress{ContextTokens: &negativeContext}).ValidateWire(), "RunProgress", "contextTokens")
+	assertConstraintField(t, (RunProgress{Step: &negativeStep}).validateWire(), "RunProgress", "step")
+	assertConstraintField(t, (RunProgress{ContextTokens: &negativeContext}).validateWire(), "RunProgress", "contextTokens")
 
 	zeroStep, zeroContext := 0, int64(0)
 	for _, progress := range []RunProgress{
@@ -255,7 +255,7 @@ func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 		{ContextTokens: &zeroContext},
 		{Activity: "Calling model"},
 	} {
-		if err := progress.ValidateWire(); err != nil {
+		if err := progress.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid progress %+v: %v", progress, err)
 		}
 	}
@@ -265,11 +265,11 @@ func TestSegmentFinishedCarriesTheRunItEndedWith(t *testing.T) {
 	t.Parallel()
 
 	missing := StreamEvent{Type: StreamSegmentFinished}
-	assertConstraintField(t, missing.ValidateWire(), "StreamEvent", "run")
+	assertConstraintField(t, missing.validateWire(), "StreamEvent", "run")
 
 	valid := missing
 	valid.Run = &RunRef{}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a segment boundary carrying its Run: %v", err)
 	}
 }
@@ -278,10 +278,10 @@ func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
 	t.Parallel()
 
 	unwritten := Plan{SessionID: "ses_1"}
-	if err := unwritten.ValidateWire(); err != nil {
+	if err := unwritten.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected unwritten Plan: %v", err)
 	}
-	assertConstraintField(t, (PlanState{}).ValidateWire(), "PlanState", "revision")
+	assertConstraintField(t, (PlanState{}).validateWire(), "PlanState", "revision")
 
 	committed := Plan{
 		SessionID: "ses_1",
@@ -296,7 +296,7 @@ func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
 	assertConstraintField(t, ValidateWireTree(committed), "Plan", "state.steps[0].description")
 
 	updatedWithoutState := StreamEvent{Type: StreamPlanUpdated, Plan: &unwritten}
-	assertConstraintField(t, updatedWithoutState.ValidateWire(), "StreamEvent", "plan.state")
+	assertConstraintField(t, updatedWithoutState.validateWire(), "StreamEvent", "plan.state")
 }
 
 func TestRollbackFileRestorationRequiresRunBoundary(t *testing.T) {
@@ -308,24 +308,24 @@ func TestRollbackFileRestorationRequiresRunBoundary(t *testing.T) {
 		{SessionID: "ses_1", ToRunID: "run_1", RestoreType: RestoreFiles},
 		{SessionID: "ses_1", ToRunID: "run_1", RestoreType: RestoreBoth},
 	} {
-		if err := request.ValidateWire(); err != nil {
+		if err := request.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected rollback target %+v: %v", request, err)
 		}
 	}
 	for _, restore := range []RestoreType{RestoreFiles, RestoreBoth} {
 		assertConstraintField(t, (RollbackSessionRequest{
 			SessionID: "ses_1", RestoreType: restore,
-		}).ValidateWire(), "RollbackSessionRequest", "toRunId")
+		}).validateWire(), "RollbackSessionRequest", "toRunId")
 	}
 }
 
 func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 	t.Parallel()
 
-	for _, value := range []WireValidator{
+	for _, value := range []wireValidator{
 		AgentDoc{Path: "/repo/AGENTS.md", Scope: AgentDocScopeProjectRoot},
 	} {
-		if err := value.ValidateWire(); err != nil {
+		if err := value.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected complete %T: %v", value, err)
 		}
 	}
@@ -333,11 +333,11 @@ func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "AgentDoc", field: "path", value: AgentDoc{Path: " \t", Scope: AgentDocScopeHome}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 	}
 }
 
@@ -345,7 +345,7 @@ func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
 	t.Parallel()
 
 	const revision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-	for _, value := range []WireValidator{
+	for _, value := range []wireValidator{
 		Skill{Name: "review", Scope: SkillScopeProject},
 		ManagedSkill{Name: "review", Lifecycle: SkillLifecycleActive},
 		SkillProposal{
@@ -355,7 +355,7 @@ func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
 		},
 		SkillProposalRef{Name: "review", Revision: revision, Scope: SkillProposalScopeUser},
 	} {
-		if err := value.ValidateWire(); err != nil {
+		if err := value.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected complete %T: %v", value, err)
 		}
 	}
@@ -363,7 +363,7 @@ func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "Skill", field: "name", value: Skill{Scope: SkillScopeProject}},
 		{shape: "ManagedSkill", field: "name", value: ManagedSkill{Name: " \t", Lifecycle: SkillLifecycleActive}},
@@ -381,7 +381,7 @@ func TestSkillWireConstraintsPublishCompleteProjectionIdentity(t *testing.T) {
 			Name: "review", Revision: "short", Scope: SkillProposalScopeUser,
 		}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 	}
 }
 
@@ -393,51 +393,51 @@ func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {
 		{Text: "details"},
 		{Rating: FeedbackNegative, Text: "details"},
 	} {
-		if err := request.ValidateWire(); err != nil {
+		if err := request.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected feedback with content: %v", err)
 		}
 	}
-	assertConstraintField(t, (FeedbackRequest{}).ValidateWire(), "FeedbackRequest", "rating|text")
-	assertConstraintField(t, (FeedbackRequest{Text: " \t"}).ValidateWire(), "FeedbackRequest", "text")
+	assertConstraintField(t, (FeedbackRequest{}).validateWire(), "FeedbackRequest", "rating|text")
+	assertConstraintField(t, (FeedbackRequest{Text: " \t"}).validateWire(), "FeedbackRequest", "text")
 }
 
 func TestOutputCollectionWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	pending := PendingInterruptSet{Interrupts: []Interrupt{}}
-	assertConstraintField(t, pending.ValidateWire(), "PendingInterruptSet", "interrupts")
+	assertConstraintField(t, pending.validateWire(), "PendingInterruptSet", "interrupts")
 	pending = PendingInterruptSet{
 		RootRunID: "run_1", SessionID: "ses_1", Interrupts: []Interrupt{{}},
 		CreatedAt: time.Unix(1, 0).UTC(),
 	}
-	if err := pending.ValidateWire(); err != nil {
+	if err := pending.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected complete pending interrupt set: %v", err)
 	}
 	pending.CreatedAt = time.Time{}
-	assertConstraintField(t, pending.ValidateWire(), "PendingInterruptSet", "createdAt")
+	assertConstraintField(t, pending.validateWire(), "PendingInterruptSet", "createdAt")
 
 	capability := ProblemData{
 		Type:                 ErrCapabilityNotNeg.Error(),
 		RequiredCapabilities: []CapabilityRequirement{},
 	}
-	assertConstraintField(t, capability.ValidateWire(), "ProblemData", "requiredCapabilities")
+	assertConstraintField(t, capability.validateWire(), "ProblemData", "requiredCapabilities")
 
 	duplicate := CapabilityRequirement{Type: RequirementFeature, Name: "subagents"}
 	capability.RequiredCapabilities = []CapabilityRequirement{duplicate, duplicate}
-	assertConstraintField(t, capability.ValidateWire(), "ProblemData", "requiredCapabilities")
+	assertConstraintField(t, capability.validateWire(), "ProblemData", "requiredCapabilities")
 }
 
 func TestMCPSecretMapChangesRejectEmptyReplacement(t *testing.T) {
 	t.Parallel()
 
 	headers := MCPHeadersChange{Type: MCPSecretSet, Value: map[string]string{}}
-	assertConstraintField(t, headers.ValidateWire(), "MCPHeadersChange", "value")
+	assertConstraintField(t, headers.validateWire(), "MCPHeadersChange", "value")
 
 	environment := MCPEnvironmentChange{Type: MCPSecretSet, Value: map[string]string{}}
-	assertConstraintField(t, environment.ValidateWire(), "MCPEnvironmentChange", "value")
+	assertConstraintField(t, environment.validateWire(), "MCPEnvironmentChange", "value")
 
 	headers.Value = map[string]string{"X-API-Key": "secret"}
-	if err := headers.ValidateWire(); err != nil {
+	if err := headers.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a non-empty headers replacement: %v", err)
 	}
 }
@@ -448,12 +448,12 @@ func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 		ID: "rule_1", Scope: ApprovalRuleScopeGlobal, Tool: ToolRef{Type: ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
 		Decision: ApprovalRuleDecisionAllow,
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("valid global ApprovalRule: %v", err)
 	}
 	project := valid
 	project.Scope, project.Dir = ApprovalRuleScopeProject, "/workspace"
-	if err := project.ValidateWire(); err != nil {
+	if err := project.validateWire(); err != nil {
 		t.Fatalf("valid project ApprovalRule: %v", err)
 	}
 
@@ -475,7 +475,7 @@ func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), "ApprovalRule", test.field)
+			assertConstraintField(t, test.value.validateWire(), "ApprovalRule", test.field)
 		})
 	}
 }
@@ -484,7 +484,7 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	t.Parallel()
 
 	seconds := 30
-	valid := []WireValidator{
+	valid := []wireValidator{
 		MCPHandshakeTimeout{Type: MCPHandshakeUnbounded},
 		MCPHandshakeTimeout{Type: MCPHandshakeBounded, Seconds: &seconds},
 		MCPConnection{Type: MCPTransportStreamableHTTP, URL: "https://example.com/mcp"},
@@ -497,7 +497,7 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 		MCPEnvironmentChange{Type: MCPSecretClear},
 	}
 	for _, value := range valid {
-		if err := value.ValidateWire(); err != nil {
+		if err := value.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected legal %T branch: %v", value, err)
 		}
 	}
@@ -512,15 +512,15 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	}
 
 	assertConstraintField(t,
-		(MCPConnectionInput{Type: MCPTransportStdio}).ValidateWire(),
+		(MCPConnectionInput{Type: MCPTransportStdio}).validateWire(),
 		"MCPConnectionInput", "command",
 	)
 	assertConstraintField(t,
-		(MCPConnectionInput{Type: MCPTransportStreamableHTTP}).ValidateWire(),
+		(MCPConnectionInput{Type: MCPTransportStreamableHTTP}).validateWire(),
 		"MCPConnectionInput", "url",
 	)
 	assertConstraintField(t,
-		(MCPAuthorizationChange{Type: MCPSecretSet}).ValidateWire(),
+		(MCPAuthorizationChange{Type: MCPSecretSet}).validateWire(),
 		"MCPAuthorizationChange", "value",
 	)
 }
@@ -531,11 +531,11 @@ func testUserServer(name string) MCPServerID {
 
 func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	request := MCPAuthorizationAttemptRequest{AttemptID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"}
-	if err := request.ValidateWire(); err != nil {
+	if err := request.validateWire(); err != nil {
 		t.Fatalf("canonical request identity: %v", err)
 	}
 	request.AttemptID = "mcpauth_missing"
-	assertConstraintField(t, request.ValidateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
+	assertConstraintField(t, request.validateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
 
 	attempt := MCPAuthorizationAttempt{
 		ID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA", Server: testUserServer("github"), CreatedAt: time.Unix(1, 0).UTC(),
@@ -545,12 +545,12 @@ func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		t.Fatalf("canonical response identity: %v", err)
 	}
 	attempt.ID = "mcpauth_missing"
-	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "id")
+	assertConstraintField(t, attempt.validateWire(), "MCPAuthorizationAttempt", "id")
 	attempt.ID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
 	attempt.Server = testUserServer("GitHub")
 	assertConstraintField(t, ValidateWireTree(attempt), "MCPAuthorizationAttempt", "server.name")
 	attempt.Server, attempt.CreatedAt = testUserServer("github"), time.Time{}
-	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "createdAt")
+	assertConstraintField(t, attempt.validateWire(), "MCPAuthorizationAttempt", "createdAt")
 }
 
 // The structured identity is the only spelling: a joined string does not
@@ -607,7 +607,7 @@ func TestSetApprovalRuleBindsSourceAndScope(t *testing.T) {
 			t.Errorf("invalid request accepted: %+v", request)
 		}
 	}
-	if err := (ListApprovalRulesRequest{}).ValidateWire(); err != nil {
+	if err := (ListApprovalRulesRequest{}).validateWire(); err != nil {
 		t.Fatalf("global rules require a session: %v", err)
 	}
 }
@@ -618,7 +618,7 @@ func TestApprovalSubjectWireRequiresExplicitMatchType(t *testing.T) {
 		{Type: ApprovalSubjectExact, Value: "echo ["},
 		{Type: ApprovalSubjectGlob, Value: "echo *"},
 	} {
-		if err := subject.ValidateWire(); err != nil {
+		if err := subject.validateWire(); err != nil {
 			t.Errorf("valid subject %+v: %v", subject, err)
 		}
 	}
@@ -629,7 +629,7 @@ func TestApprovalSubjectWireRequiresExplicitMatchType(t *testing.T) {
 		{Type: ApprovalSubjectExact},
 		{Type: ApprovalSubjectGlob},
 	} {
-		if err := subject.ValidateWire(); err == nil {
+		if err := subject.validateWire(); err == nil {
 			t.Errorf("invalid subject accepted: %+v", subject)
 		}
 	}
@@ -751,19 +751,19 @@ func TestRunOpeningResponseWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	start := StartRunResponse{RunID: "run_1", SegmentID: "seg_1"}
-	assertConstraintField(t, start.ValidateWire(), "StartRunResponse", "userItemId")
+	assertConstraintField(t, start.validateWire(), "StartRunResponse", "userItemId")
 	start.UserItemID = "item_1"
-	if err := start.ValidateWire(); err != nil {
+	if err := start.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a complete start response: %v", err)
 	}
 
 	resume := ResumeRunResponse{RunID: "run_1", SegmentID: "seg_2"}
-	if err := resume.ValidateWire(); err != nil {
+	if err := resume.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a response-only resume: %v", err)
 	}
 	empty := ""
 	resume.UserItemID = &empty
-	assertConstraintField(t, resume.ValidateWire(), "ResumeRunResponse", "userItemId")
+	assertConstraintField(t, resume.validateWire(), "ResumeRunResponse", "userItemId")
 }
 
 func TestCancelRunReasonWireConstraintUsesUnicodeCharacters(t *testing.T) {
@@ -771,12 +771,12 @@ func TestCancelRunReasonWireConstraintUsesUnicodeCharacters(t *testing.T) {
 
 	const maximum = 1024
 	valid := CancelRunRequest{RunID: "run_1", Reason: strings.Repeat("界", maximum)}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected the cancellation reason boundary: %v", err)
 	}
 
 	valid.Reason += "界"
-	assertConstraintField(t, valid.ValidateWire(), "CancelRunRequest", "reason")
+	assertConstraintField(t, valid.validateWire(), "CancelRunRequest", "reason")
 }
 
 func TestRunProtocolProfileWireConstraints(t *testing.T) {
@@ -786,21 +786,21 @@ func TestRunProtocolProfileWireConstraints(t *testing.T) {
 		RequiredFeatures: []RunProtocolFeature{RunProtocolFeatureSubagents},
 		InterruptTypes:   []InterruptType{InterruptApproval, InterruptQuestion},
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a valid profile: %v", err)
 	}
 
 	repeatedFeature := valid
 	repeatedFeature.RequiredFeatures = append(repeatedFeature.RequiredFeatures, RunProtocolFeatureSubagents)
-	assertConstraintField(t, repeatedFeature.ValidateWire(), "RunProtocolProfile", "requiredFeatures")
+	assertConstraintField(t, repeatedFeature.validateWire(), "RunProtocolProfile", "requiredFeatures")
 
 	repeatedInterrupt := valid
 	repeatedInterrupt.InterruptTypes = append(repeatedInterrupt.InterruptTypes, InterruptApproval)
-	assertConstraintField(t, repeatedInterrupt.ValidateWire(), "RunProtocolProfile", "interruptTypes")
+	assertConstraintField(t, repeatedInterrupt.validateWire(), "RunProtocolProfile", "interruptTypes")
 
 	unknown := valid
 	unknown.RequiredFeatures = []RunProtocolFeature{"telepathy"}
-	assertConstraintField(t, unknown.ValidateWire(), "RunProtocolProfile", "requiredFeatures[0]")
+	assertConstraintField(t, unknown.validateWire(), "RunProtocolProfile", "requiredFeatures[0]")
 }
 
 func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {
@@ -820,7 +820,7 @@ func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {
 			},
 		}},
 	}
-	assertConstraintField(t, pending.Interrupts[0].ValidateWire(), "Interrupt", "runId")
+	assertConstraintField(t, pending.Interrupts[0].validateWire(), "Interrupt", "runId")
 	assertConstraintField(
 		t,
 		ValidateWireTree(pending),
@@ -867,28 +867,28 @@ func TestContentBlocksRequireSemanticTextAndImageMediaType(t *testing.T) {
 		Type: ContentBlockText,
 		Text: " \n\t",
 	}
-	assertConstraintField(t, blank.ValidateWire(), "ContentBlock", "text")
+	assertConstraintField(t, blank.validateWire(), "ContentBlock", "text")
 	assertConstraintField(t, ValidateWireTree(StartRunRequest{
 		SessionID: "ses_1",
 		Input:     []ContentBlock{blank},
 	}), "StartRunRequest", "input[0].text")
-	if err := (ContentBlock{Type: ContentBlockText, Text: " continue "}).ValidateWire(); err != nil {
+	if err := (ContentBlock{Type: ContentBlockText, Text: " continue "}).validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected meaningful text: %v", err)
 	}
-	if err := (ContentBlock{Type: ContentBlockImage, Mime: "image/png", Data: "AA=="}).ValidateWire(); err != nil {
+	if err := (ContentBlock{Type: ContentBlockImage, Mime: "image/png", Data: "AA=="}).validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected image-only content: %v", err)
 	}
 
 	artifactBlank := ContentBlock{Type: ContentBlockText, Text: " \n\t"}
-	assertConstraintField(t, artifactBlank.ValidateWire(), "ContentBlock", "text")
+	assertConstraintField(t, artifactBlank.validateWire(), "ContentBlock", "text")
 	for _, test := range []struct {
 		shape   string
-		content WireValidator
+		content wireValidator
 	}{
 		{shape: "ContentBlock", content: ContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
 		{shape: "ContentBlock", content: ContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
 	} {
-		assertConstraintField(t, test.content.ValidateWire(), test.shape, "mime")
+		assertConstraintField(t, test.content.validateWire(), test.shape, "mime")
 	}
 }
 
@@ -897,12 +897,12 @@ func TestToolInvocationsRequireNonBlankNames(t *testing.T) {
 
 	for _, test := range []struct {
 		shape      string
-		invocation WireValidator
+		invocation wireValidator
 	}{
 		{shape: "ToolInvocation", invocation: ToolInvocation{Name: " \t", Arguments: map[string]any{}}},
 		{shape: "ToolInvocation", invocation: ToolInvocation{Name: " \t", Arguments: map[string]any{}}},
 	} {
-		assertConstraintField(t, test.invocation.ValidateWire(), test.shape, "name")
+		assertConstraintField(t, test.invocation.validateWire(), test.shape, "name")
 	}
 }
 
@@ -915,22 +915,22 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 		Type: ItemTypeUserMessage, CreatedAt: at,
 		Content: []ContentBlock{{Type: ContentBlockText, Text: "hello"}},
 	}
-	if err := message.ValidateWire(); err != nil {
+	if err := message.validateWire(); err != nil {
 		t.Fatalf("message timing: %v", err)
 	}
 	message.StartedAt = at
-	assertConstraintField(t, message.ValidateWire(), "Item", "startedAt")
+	assertConstraintField(t, message.validateWire(), "Item", "startedAt")
 
 	toolCall := Item{
 		ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning,
 		Type: ItemTypeToolCall, StartedAt: at,
 		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
-	if err := toolCall.ValidateWire(); err != nil {
+	if err := toolCall.validateWire(); err != nil {
 		t.Fatalf("tool-call timing: %v", err)
 	}
 	toolCall.CreatedAt = at
-	assertConstraintField(t, toolCall.ValidateWire(), "Item", "createdAt")
+	assertConstraintField(t, toolCall.validateWire(), "Item", "createdAt")
 
 	finishedAt := at.Add(time.Minute)
 	toolCall = Item{
@@ -938,19 +938,19 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: finishedAt,
 		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
-	if err := toolCall.ValidateWire(); err != nil {
+	if err := toolCall.validateWire(); err != nil {
 		t.Fatalf("terminal tool-call with unknown execution duration: %v", err)
 	}
 	durationMillis := int64(500)
 	toolCall.DurationMillis = &durationMillis
-	if err := toolCall.ValidateWire(); err != nil {
+	if err := toolCall.validateWire(); err != nil {
 		t.Fatalf("terminal tool-call with exact execution duration: %v", err)
 	}
 	toolCall.Status = ItemStatusCompleted
 	toolCall.DurationMillis = nil
-	assertConstraintField(t, toolCall.ValidateWire(), "Item", "durationMillis")
+	assertConstraintField(t, toolCall.validateWire(), "Item", "durationMillis")
 	toolCall.DurationMillis = &durationMillis
-	if err := toolCall.ValidateWire(); err != nil {
+	if err := toolCall.validateWire(); err != nil {
 		t.Fatalf("completed tool-call with exact execution duration: %v", err)
 	}
 
@@ -959,17 +959,17 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: finishedAt,
 		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
-	if err := artifactToolCall.ValidateWire(); err != nil {
+	if err := artifactToolCall.validateWire(); err != nil {
 		t.Fatalf("artifact tool-call timing: %v", err)
 	}
 	artifactToolCall.Status = ItemStatusCompleted
-	assertConstraintField(t, artifactToolCall.ValidateWire(), "ArtifactItem", "durationMillis")
+	assertConstraintField(t, artifactToolCall.validateWire(), "ArtifactItem", "durationMillis")
 	artifactToolCall.DurationMillis = &durationMillis
-	if err := artifactToolCall.ValidateWire(); err != nil {
+	if err := artifactToolCall.validateWire(); err != nil {
 		t.Fatalf("completed artifact tool-call with exact execution duration: %v", err)
 	}
 	artifactToolCall.CreatedAt = at
-	assertConstraintField(t, artifactToolCall.ValidateWire(), "ArtifactItem", "createdAt")
+	assertConstraintField(t, artifactToolCall.validateWire(), "ArtifactItem", "createdAt")
 }
 
 func TestItemPayloadsMatchTheirLifecycleFacts(t *testing.T) {
@@ -980,7 +980,7 @@ func TestItemPayloadsMatchTheirLifecycleFacts(t *testing.T) {
 		name  string
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{
 			name:  "runtime user message owns content",
@@ -1034,7 +1034,7 @@ func TestItemPayloadsMatchTheirLifecycleFacts(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 		})
 	}
 }
@@ -1048,7 +1048,7 @@ func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
 		name  string
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{
 			name:  "user message has no running lifecycle",
@@ -1078,7 +1078,7 @@ func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 		})
 	}
 
@@ -1086,23 +1086,23 @@ func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
 		Type: StreamItemStarted,
 		Item: &Item{ID: "item_user", RunID: "run_1", Status: ItemStatusCompleted, Type: ItemTypeUserMessage, CreatedAt: at, Content: content},
 	}
-	assertConstraintField(t, startedUser.ValidateWire(), "StreamEvent", "item.type")
+	assertConstraintField(t, startedUser.validateWire(), "StreamEvent", "item.type")
 
 	completedAnchor := StreamEvent{
 		Type: StreamItemCompleted,
 		Item: &Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeAgentMessage, CreatedAt: at},
 	}
-	assertConstraintField(t, completedAnchor.ValidateWire(), "StreamEvent", "item.status")
+	assertConstraintField(t, completedAnchor.validateWire(), "StreamEvent", "item.status")
 }
 
 func TestPublishedLimitWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	replay := RunReplayLimits{Scope: ReplayScopeRuntimeInstanceRootSegment}
-	assertConstraintField(t, replay.ValidateWire(), "RunReplayLimits", "maxEvents")
+	assertConstraintField(t, replay.validateWire(), "RunReplayLimits", "maxEvents")
 
 	subscription := SubscriptionLimits{}
-	err := subscription.ValidateWire()
+	err := subscription.validateWire()
 	assertConstraintField(t, err, "SubscriptionLimits", "maxTopics")
 	assertConstraintField(t, err, "SubscriptionLimits", "maxWatches")
 
@@ -1117,18 +1117,18 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 			RuntimeSubscription:      SubscriptionLimits{MaxTopics: 1, MaxWatches: 1, MaxPaths: 1, MaxDirectoryEntries: 1, MaxFileBytes: 1},
 		}
 	}
-	if err := validRuntimeLimits(nil).ValidateWire(); err != nil {
+	if err := validRuntimeLimits(nil).validateWire(); err != nil {
 		t.Fatalf("unbounded Runtime limits: %v", err)
 	}
 	positiveConcurrentRuns := 1
-	if err := validRuntimeLimits(&positiveConcurrentRuns).ValidateWire(); err != nil {
+	if err := validRuntimeLimits(&positiveConcurrentRuns).validateWire(); err != nil {
 		t.Fatalf("bounded Runtime limits: %v", err)
 	}
 	invalidNamespace := validRuntimeLimits(nil)
 	invalidNamespace.Idempotency.Namespace = "idp_test"
-	assertConstraintField(t, invalidNamespace.Idempotency.ValidateWire(), "IdempotencyLimits", "namespace")
+	assertConstraintField(t, invalidNamespace.Idempotency.validateWire(), "IdempotencyLimits", "namespace")
 	zeroConcurrentRuns := 0
-	assertConstraintField(t, validRuntimeLimits(&zeroConcurrentRuns).ValidateWire(), "RuntimeLimits", "maxConcurrentRuns")
+	assertConstraintField(t, validRuntimeLimits(&zeroConcurrentRuns).validateWire(), "RuntimeLimits", "maxConcurrentRuns")
 	if int64(math.MaxInt) > MaximumDurationSeconds {
 		tooLongSeconds64 := MaximumDurationSeconds + 1
 		tooLongSeconds := int(tooLongSeconds64)
@@ -1139,12 +1139,12 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 		assertConstraintField(t, ValidateWireTree(tooLong), "RuntimeLimits", "mcpAuthorizationAttempts.retentionSeconds")
 		assertConstraintField(t, (MCPHandshakeTimeout{
 			Type: MCPHandshakeBounded, Seconds: &tooLongSeconds,
-		}).ValidateWire(), "MCPHandshakeTimeout", "seconds")
+		}).validateWire(), "MCPHandshakeTimeout", "seconds")
 	}
 
 	zeroContext := int64(0)
-	assertConstraintField(t, (ModelTokenLimits{}).ValidateWire(), "ModelTokenLimits", "contextWindow|maxInputTokens|maxOutputTokens")
-	assertConstraintField(t, (ModelTokenLimits{ContextWindow: &zeroContext}).ValidateWire(), "ModelTokenLimits", "contextWindow")
+	assertConstraintField(t, (ModelTokenLimits{}).validateWire(), "ModelTokenLimits", "contextWindow|maxInputTokens|maxOutputTokens")
+	assertConstraintField(t, (ModelTokenLimits{ContextWindow: &zeroContext}).validateWire(), "ModelTokenLimits", "contextWindow")
 }
 
 func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
@@ -1155,26 +1155,26 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 		Input:     []ContentBlock{{Type: ContentBlockText, Text: "go"}},
 		Provider:  "provider",
 	}
-	assertConstraintField(t, start.ValidateWire(), "StartRunRequest", "model")
+	assertConstraintField(t, start.validateWire(), "StartRunRequest", "model")
 
 	provider := "provider"
 	update := UpdateSessionRequest{
 		SessionID: "ses_1", ExpectedRevision: 1, Provider: &provider,
 	}
-	assertConstraintField(t, update.ValidateWire(), "UpdateSessionRequest", "model")
+	assertConstraintField(t, update.validateWire(), "UpdateSessionRequest", "model")
 
 	model := "model"
 	update = UpdateSessionRequest{
 		SessionID: "ses_1", ExpectedRevision: 1, Model: &model,
 	}
-	assertConstraintField(t, update.ValidateWire(), "UpdateSessionRequest", "provider")
+	assertConstraintField(t, update.validateWire(), "UpdateSessionRequest", "provider")
 
 	goalStart := StartGoalRequest{SessionID: "ses_1", Objective: "finish", Provider: "provider"}
-	assertConstraintField(t, goalStart.ValidateWire(), "StartGoalRequest", "model")
+	assertConstraintField(t, goalStart.validateWire(), "StartGoalRequest", "model")
 	goalStart = StartGoalRequest{SessionID: "ses_1", Objective: " \t", ReasoningEffort: "high"}
-	assertConstraintField(t, goalStart.ValidateWire(), "StartGoalRequest", "objective")
+	assertConstraintField(t, goalStart.validateWire(), "StartGoalRequest", "objective")
 	goalStart.Objective = "finish"
-	goalSelectionErr := goalStart.ValidateWire()
+	goalSelectionErr := goalStart.validateWire()
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "provider")
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "model")
 
@@ -1222,7 +1222,7 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), "GoalReason", test.field)
+			assertConstraintField(t, test.value.validateWire(), "GoalReason", test.field)
 		})
 	}
 
@@ -1237,8 +1237,8 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 		t.Fatalf("valid blocked Goal: %v", err)
 	}
 
-	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1"}).ValidateWire(), "UpdateGoalRequest", "objective")
-	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1", Objective: "\t"}).ValidateWire(), "UpdateGoalRequest", "objective")
+	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1"}).validateWire(), "UpdateGoalRequest", "objective")
+	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1", Objective: "\t"}).validateWire(), "UpdateGoalRequest", "objective")
 }
 
 func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
@@ -1251,7 +1251,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		Model:           strings.Repeat("模", modelchoice.MaximumModelIdentityCharacters),
 		ReasoningEffort: strings.Repeat("强", modelchoice.MaximumReasoningEffortCharacters),
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("identity boundaries: %v", err)
 	}
 
@@ -1259,7 +1259,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		name  string
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{
 			name: "provider whitespace", shape: "StartRunRequest", field: "provider",
@@ -1302,7 +1302,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 		})
 	}
 }
@@ -1350,7 +1350,7 @@ func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "PageQuery", field: "limit", value: PageQuery{Limit: wireIntPointer(-1)}},
 		{shape: "PageQuery", field: "limit", value: PageQuery{Limit: wireIntPointer(0)}},
@@ -1377,7 +1377,7 @@ func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	} {
 		t.Run(test.shape+"."+test.field, func(t *testing.T) {
 			t.Parallel()
-			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 		})
 	}
 }
@@ -1389,7 +1389,7 @@ func TestRunSummaryRequiresExecutionAttribution(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model",
 		Status: RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("valid RunSummary: %v", err)
 	}
 	for _, test := range []struct {
@@ -1403,7 +1403,7 @@ func TestRunSummaryRequiresExecutionAttribution(t *testing.T) {
 		t.Run(test.field, func(t *testing.T) {
 			run := valid
 			test.mutate(&run)
-			assertConstraintField(t, run.ValidateWire(), "RunSummary", test.field)
+			assertConstraintField(t, run.validateWire(), "RunSummary", test.field)
 		})
 	}
 }
@@ -1418,12 +1418,12 @@ func TestRunSummaryCarriesEveryChildEdgeOrNone(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model",
 		Status: RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
 	}
-	if err := root.ValidateWire(); err != nil {
+	if err := root.validateWire(); err != nil {
 		t.Fatalf("a run with no child edges is a root: %v", err)
 	}
 	child := root
 	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = "item_spawn", "run_root", "run_root"
-	if err := child.ValidateWire(); err != nil {
+	if err := child.validateWire(); err != nil {
 		t.Fatalf("a run with every child edge: %v", err)
 	}
 	for _, test := range []struct {
@@ -1438,7 +1438,7 @@ func TestRunSummaryCarriesEveryChildEdgeOrNone(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			partial := root
 			test.mutate(&partial)
-			assertConstraintField(t, partial.ValidateWire(), "RunSummary", test.missing)
+			assertConstraintField(t, partial.validateWire(), "RunSummary", test.missing)
 		})
 	}
 }
@@ -1462,7 +1462,7 @@ func TestIntegerBoundsCompareWithoutFloat64Rounding(t *testing.T) {
 func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 	t.Parallel()
 
-	for name, value := range map[string]WireValidator{
+	for name, value := range map[string]wireValidator{
 		"Session": Session{
 			ID: "ses_1", Status: SessionStatusIdle, Provider: "provider", Model: "model",
 			CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger,
@@ -1472,7 +1472,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		},
 		"PlanState": PlanState{Revision: MaximumExactJSONInteger, UpdatedAt: time.Unix(1, 0).UTC()},
 	} {
-		if err := value.ValidateWire(); err != nil {
+		if err := value.validateWire(); err != nil {
 			t.Fatalf("%s exact boundary: %v", name, err)
 		}
 	}
@@ -1480,7 +1480,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{name: "Session", field: "revision", value: Session{
 			Status: SessionStatusIdle, Provider: "provider", Model: "model",
@@ -1492,7 +1492,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		{name: "PlanState", field: "revision", value: PlanState{Revision: MaximumExactJSONInteger + 1}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			assertConstraintField(t, test.value.ValidateWire(), test.name, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.name, test.field)
 		})
 	}
 }
@@ -1501,16 +1501,16 @@ func TestPageContinuationBoundIsPromotedToEveryPageInstantiation(t *testing.T) {
 	t.Parallel()
 
 	boundary := strings.Repeat("x", MaximumPaginationCursorCharacters)
-	if err := (Page[string]{PageContinuation: PageContinuation{NextCursor: boundary}}).ValidateWire(); err != nil {
+	if err := (Page[string]{PageContinuation: PageContinuation{NextCursor: boundary}}).validateWire(); err != nil {
 		t.Fatalf("boundary page continuation: %v", err)
 	}
 
 	oversized := boundary + "x"
-	for _, page := range []WireValidator{
+	for _, page := range []wireValidator{
 		Page[string]{PageContinuation: PageContinuation{NextCursor: oversized}},
 		Page[int]{PageContinuation: PageContinuation{NextCursor: oversized}},
 	} {
-		assertConstraintField(t, page.ValidateWire(), "PageContinuation", "nextCursor")
+		assertConstraintField(t, page.validateWire(), "PageContinuation", "nextCursor")
 	}
 }
 
@@ -1520,14 +1520,14 @@ func TestRunEventIdentityFramingDistinguishesAbsentFromMalformed(t *testing.T) {
 	if err := (RunEvent{
 		RunID: "run_1", SegmentID: "seg_1", EventID: IDPrefixEvent + "opaque",
 		Timestamp: time.Unix(1, 0).UTC(),
-	}).ValidateWire(); err != nil {
+	}).validateWire(); err != nil {
 		t.Fatalf("valid RunEvent identity: %v", err)
 	}
-	if err := (SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1"}).ValidateWire(); err != nil {
+	if err := (SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1"}).validateWire(); err != nil {
 		t.Fatalf("absent head event identity: %v", err)
 	}
 	assertConstraintField(t,
-		(SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1", HeadEventID: wireStringPointer("")}).ValidateWire(),
+		(SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1", HeadEventID: wireStringPointer("")}).validateWire(),
 		"SubscribeRunResponse", "headEventId",
 	)
 }
@@ -1539,7 +1539,7 @@ func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
 		name  string
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{name: "session padding", shape: "GetSessionRequest", field: "sessionId", value: GetSessionRequest{SessionID: " ses_1"}},
 		{name: "run whitespace", shape: "GetRunRequest", field: "runId", value: GetRunRequest{RunID: "run\n1"}},
@@ -1549,7 +1549,7 @@ func TestOperationalResourceIdentitiesAreExactAndBounded(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+			assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 		})
 	}
 	assertConstraintField(t, ValidateWireTree(ResumeRunRequest{
@@ -1569,11 +1569,11 @@ func TestWorkspaceReadWindowAndDiffFormatRejectMeaninglessFieldCombinations(t *t
 	assertConstraintField(t, (ReadFileRequest{
 		Path:    "README.md",
 		EndLine: wireIntPointer(4),
-	}).ValidateWire(), "ReadFileRequest", "startLine")
+	}).validateWire(), "ReadFileRequest", "startLine")
 	assertConstraintField(t, (GetDiffRequest{
 		Format: DiffFormatRaw,
 		Limit:  wireIntPointer(4),
-	}).ValidateWire(), "GetDiffRequest", "limit")
+	}).validateWire(), "GetDiffRequest", "limit")
 }
 
 func wireIntPointer(value int) *int { return &value }
@@ -1595,7 +1595,7 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 		{field: "maxTokens", value: GenerationParams{MaxTokens: &zeroTokens}},
 		{field: "stop", value: GenerationParams{Stop: []string{}}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), "GenerationParams", test.field)
+		assertConstraintField(t, test.value.validateWire(), "GenerationParams", test.field)
 	}
 
 	nonFiniteCost := math.Inf(1)
@@ -1609,7 +1609,7 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 		{field: "steps", value: GoalUsage{Steps: -1}},
 		{field: "costUsd", value: GoalUsage{CostUSD: &nonFiniteCost}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), "GoalUsage", test.field)
+		assertConstraintField(t, test.value.validateWire(), "GoalUsage", test.field)
 	}
 
 	goal := Goal{
@@ -1631,7 +1631,7 @@ func TestArtifactRunRequiresExecutionAttribution(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model",
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("valid ArtifactRun: %v", err)
 	}
 	for _, test := range []struct {
@@ -1644,7 +1644,7 @@ func TestArtifactRunRequiresExecutionAttribution(t *testing.T) {
 		t.Run(test.field, func(t *testing.T) {
 			run := valid
 			test.mutate(&run)
-			assertConstraintField(t, run.ValidateWire(), "ArtifactRun", test.field)
+			assertConstraintField(t, run.validateWire(), "ArtifactRun", test.field)
 		})
 	}
 }
@@ -1668,7 +1668,7 @@ func TestArtifactRunRequiresLifecycleTimes(t *testing.T) {
 		t.Run(test.field, func(t *testing.T) {
 			run := valid
 			test.mutate(&run)
-			assertConstraintField(t, run.ValidateWire(), "ArtifactRun", test.field)
+			assertConstraintField(t, run.validateWire(), "ArtifactRun", test.field)
 		})
 	}
 }
@@ -1679,7 +1679,7 @@ func TestArtifactToolResultRequiresPortableBlobFacts(t *testing.T) {
 	valid := ArtifactToolResult{
 		ID: "BLOB234", ItemID: "item_1", Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
 	}
-	if err := valid.ValidateWire(); err != nil {
+	if err := valid.validateWire(); err != nil {
 		t.Fatalf("valid ArtifactToolResult: %v", err)
 	}
 	for _, test := range []struct {
@@ -1694,7 +1694,7 @@ func TestArtifactToolResultRequiresPortableBlobFacts(t *testing.T) {
 		t.Run(test.field, func(t *testing.T) {
 			result := valid
 			test.mutate(&result)
-			assertConstraintField(t, result.ValidateWire(), "ArtifactToolResult", test.field)
+			assertConstraintField(t, result.validateWire(), "ArtifactToolResult", test.field)
 		})
 	}
 }
@@ -1703,16 +1703,16 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 
 	artifact := SessionArtifact{Version: SessionArtifactVersion - 1}
-	assertConstraintField(t, artifact.ValidateWire(), "SessionArtifact", "version")
+	assertConstraintField(t, artifact.validateWire(), "SessionArtifact", "version")
 	artifact.Version = SessionArtifactVersion + 1
-	assertConstraintField(t, artifact.ValidateWire(), "SessionArtifact", "version")
+	assertConstraintField(t, artifact.validateWire(), "SessionArtifact", "version")
 
 	cost := -0.01
 	tooLongDuration := MaximumDurationMilliseconds + 1
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "RunMetrics", field: "steps", value: RunMetrics{Steps: -1}},
 		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: -1}},
@@ -1724,21 +1724,21 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactItem", field: "durationMillis", value: ArtifactItem{DurationMillis: &tooLongDuration}},
 		{shape: "ArtifactProblem", field: "retryAfterSeconds", value: ArtifactProblem{RetryAfterSeconds: -1}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 	}
 	if int64(math.MaxInt) > MaximumDurationSeconds {
 		tooLongSeconds64 := MaximumDurationSeconds + 1
 		tooLongSeconds := int(tooLongSeconds64)
 		assertConstraintField(t, (ArtifactProblem{
 			Type: ArtifactProblemTimeout, RetryAfterSeconds: tooLongSeconds,
-		}).ValidateWire(), "ArtifactProblem", "retryAfterSeconds")
+		}).validateWire(), "ArtifactProblem", "retryAfterSeconds")
 	}
 	assertConstraintField(t, (ArtifactProblem{
 		Type: ArtifactProblemToolFailed, RetryAfterSeconds: 1,
-	}).ValidateWire(), "ArtifactProblem", "retryAfterSeconds")
+	}).validateWire(), "ArtifactProblem", "retryAfterSeconds")
 	if err := (ArtifactProblem{
 		Type: ArtifactProblemRateLimited, RetryAfterSeconds: 1,
-	}).ValidateWire(); err != nil {
+	}).validateWire(); err != nil {
 		t.Fatalf("transient Run retry hint validation error = %v", err)
 	}
 }
@@ -1753,18 +1753,18 @@ func TestSessionArtifactFailureTaxonomiesAreContextual(t *testing.T) {
 		Tool:  &ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 		Error: &ArtifactProblem{Type: ArtifactProblemToolFailed},
 	}
-	assertConstraintField(t, completedTool.ValidateWire(), "ArtifactItem", "error")
+	assertConstraintField(t, completedTool.validateWire(), "ArtifactItem", "error")
 
 	incompleteTool := completedTool
 	incompleteTool.Status = ItemStatusIncomplete
 	incompleteTool.Error = &ArtifactProblem{Type: ArtifactProblemRunLost}
-	assertConstraintField(t, incompleteTool.ValidateWire(), "ArtifactItem", "error.type")
+	assertConstraintField(t, incompleteTool.validateWire(), "ArtifactItem", "error.type")
 
 	timedOut := ArtifactOutcome{
 		Type:  ArtifactOutcomeTimedOut,
 		Error: &ArtifactProblem{Type: ArtifactProblemProviderUnavailable},
 	}
-	assertConstraintField(t, timedOut.ValidateWire(), "ArtifactOutcome", "error.type")
+	assertConstraintField(t, timedOut.validateWire(), "ArtifactOutcome", "error.type")
 }
 
 func TestWorkspaceChangePathsAreRequired(t *testing.T) {
@@ -1772,12 +1772,12 @@ func TestWorkspaceChangePathsAreRequired(t *testing.T) {
 
 	for _, test := range []struct {
 		shape string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "FileDiff", value: FileDiff{Status: FileStatusModified}},
 		{shape: "WorkspaceFileChange", value: WorkspaceFileChange{Status: FileStatusModified}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, "path")
+		assertConstraintField(t, test.value.validateWire(), test.shape, "path")
 	}
 }
 
@@ -1787,7 +1787,7 @@ func TestWorkspaceOutputIdentitiesAreRequired(t *testing.T) {
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "WorkspaceInfo", field: "projectRoot", value: WorkspaceInfo{Availability: WorkspaceAvailable}},
 		{shape: "WorkspaceSummary", field: "name", value: WorkspaceSummary{}},
@@ -1796,7 +1796,7 @@ func TestWorkspaceOutputIdentitiesAreRequired(t *testing.T) {
 		{shape: "GrepMatch", field: "path", value: GrepMatch{LineNumber: 1}},
 		{shape: "UsageBucket", field: "key", value: UsageBucket{}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 	}
 }
 
@@ -1810,7 +1810,7 @@ func TestReachableOutputLeavesKeepGeneratedConstraints(t *testing.T) {
 		Page: Page[Item]{PageContinuation: PageContinuation{
 			NextCursor: strings.Repeat("a", MaximumPaginationCursorCharacters+1),
 		}},
-	}).ValidateWire(), "ListItemsResponse", "nextCursor")
+	}).validateWire(), "ListItemsResponse", "nextCursor")
 }
 
 func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
@@ -1820,7 +1820,7 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 		{Event: HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: HookScopeProject, Source: "/repo/.flame/hooks.json"},
 		{Event: HookEventStop, Inject: "remember this", Scope: HookScopeGlobal, Source: "/home/.flame/hooks.json"},
 	} {
-		if err := hook.ValidateWire(); err != nil {
+		if err := hook.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid hook %+v: %v", hook, err)
 		}
 	}
@@ -1835,34 +1835,34 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 		{field: "matcher", hook: HookInfo{Event: HookEventStop, Matcher: "shell*", Command: "check", Scope: HookScopeGlobal, Source: "/hooks.json"}},
 		{field: "source", hook: HookInfo{Event: HookEventStop, Command: "check", Scope: HookScopeGlobal}},
 	} {
-		assertConstraintField(t, test.hook.ValidateWire(), "HookInfo", test.field)
+		assertConstraintField(t, test.hook.validateWire(), "HookInfo", test.field)
 	}
 }
 
 func TestFileContentWindowBoundariesAreAtomic(t *testing.T) {
 	t.Parallel()
 
-	if err := (FileContent{TotalLines: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{TotalLines: 1}).validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected an unwindowed file: %v", err)
 	}
-	if err := (FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}).validateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a complete window: %v", err)
 	}
-	assertConstraintField(t, (FileContent{TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
-	assertConstraintField(t, (FileContent{TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
+	assertConstraintField(t, (FileContent{TotalLines: 1, StartLine: 1}).validateWire(), "FileContent", "endLine")
+	assertConstraintField(t, (FileContent{TotalLines: 1, EndLine: 1}).validateWire(), "FileContent", "startLine")
 }
 
 func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) {
 	t.Parallel()
 
 	count := 1
-	for _, value := range []WireValidator{
+	for _, value := range []wireValidator{
 		WorkspaceFileChange{Path: "main.go", Status: FileStatusRenamed, PreviousPath: "old.go"},
 		WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Binary: true},
 		FileDiff{Path: "main.go", Status: FileStatusRenamed, PreviousPath: "old.go", Rows: []DiffRow{}},
 		FileDiff{Path: "main.go", Status: FileStatusModified, Binary: true, Rows: []DiffRow{}},
 	} {
-		if err := value.ValidateWire(); err != nil {
+		if err := value.validateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid %T metadata: %v", value, err)
 		}
 	}
@@ -1870,7 +1870,7 @@ func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) 
 	for _, test := range []struct {
 		shape string
 		field string
-		value WireValidator
+		value wireValidator
 	}{
 		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Path: "main.go", Status: FileStatusRenamed}},
 		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, PreviousPath: "old.go"}},
@@ -1879,7 +1879,7 @@ func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) 
 		{shape: "FileDiff", field: "previousPath", value: FileDiff{Path: "main.go", Status: FileStatusUntracked, PreviousPath: "old.go"}},
 		{shape: "FileDiff", field: "removed", value: FileDiff{Path: "main.go", Status: FileStatusModified, Binary: true, Removed: &count}},
 	} {
-		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+		assertConstraintField(t, test.value.validateWire(), test.shape, test.field)
 	}
 }
 
@@ -1893,10 +1893,10 @@ func TestOptionalMCPUpdateConstraintsPreserveAndValidatePresentValues(t *testing
 
 	negative := -1
 	timeout := MCPHandshakeTimeout{Type: MCPHandshakeBounded, Seconds: &negative}
-	assertConstraintField(t, timeout.ValidateWire(), "MCPHandshakeTimeout", "seconds")
+	assertConstraintField(t, timeout.validateWire(), "MCPHandshakeTimeout", "seconds")
 
 	repeated := []string{"read", "read"}
-	assertConstraintField(t, (MCPToolExposure{Server: testUserServer("files"), DisabledTools: repeated}).ValidateWire(), "MCPToolExposure", "disabledTools")
+	assertConstraintField(t, (MCPToolExposure{Server: testUserServer("files"), DisabledTools: repeated}).validateWire(), "MCPToolExposure", "disabledTools")
 }
 
 func assertConstraintField(t *testing.T, err error, shape, field string) {
@@ -1922,7 +1922,7 @@ func assertConstraintField(t *testing.T, err error, shape, field string) {
 func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
 	t.Parallel()
 	validInfo := ServerInfo{Name: "flame-runtime", Version: "dev", Home: "/home/test"}
-	if err := validInfo.ValidateWire(); err != nil {
+	if err := validInfo.validateWire(); err != nil {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
@@ -1933,14 +1933,14 @@ func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
 		{"version", ServerInfo{Name: "flame-runtime", Version: " \t", Home: "/home/test"}},
 		{"home", ServerInfo{Name: "flame-runtime", Version: "dev"}},
 	} {
-		assertConstraintField(t, test.invalid.ValidateWire(), "ServerInfo", test.field)
+		assertConstraintField(t, test.invalid.validateWire(), "ServerInfo", test.field)
 	}
 	validCatalog := ServerCapabilities{
 		RunEvents:        []StreamEventType{StreamSegmentStarted, StreamSegmentFinished},
 		RuntimeTopics:    []RuntimeTopic{TopicFilesChanged},
 		StreamingMethods: []string{"runs.start", "runs.resume", "runs.subscribe"},
 	}
-	if err := validCatalog.ValidateWire(); err != nil {
+	if err := validCatalog.validateWire(); err != nil {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
@@ -1956,6 +1956,6 @@ func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
 	} {
 		catalog := validCatalog
 		test.invalidate(&catalog)
-		assertConstraintField(t, catalog.ValidateWire(), "ServerCapabilities", test.field)
+		assertConstraintField(t, catalog.validateWire(), "ServerCapabilities", test.field)
 	}
 }

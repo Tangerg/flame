@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 const (
@@ -103,7 +103,7 @@ func openCopyRoot(expected copyRoot, role string) (*os.Root, os.FileInfo, error)
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("stat opened workspace copy %s: %w", role, err)
 	}
-	if !opened.IsDir() || !fileinput.SameVersion(expected.info, opened) {
+	if !opened.IsDir() || !filesystem.SameVersion(expected.info, opened) {
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("workspace copy %s changed while it was being opened", role)
 	}
@@ -160,7 +160,7 @@ func (t *treeCopier) readSourceDirectory(
 	if remaining < 0 {
 		return nil, nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
 	}
-	directory, opened, err := fileinput.OpenDirectoryAtExpected(t.source, name, expected)
+	directory, opened, err := filesystem.OpenDirectoryAtExpected(t.source, name, expected)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open source directory %q: %w", filepath.ToSlash(name), err)
 	}
@@ -183,7 +183,7 @@ func (t *treeCopier) readSourceDirectory(
 	if err != nil {
 		return nil, nil, fmt.Errorf("stat source directory %q after reading: %w", filepath.ToSlash(name), err)
 	}
-	if !fileinput.SameVersion(opened, after) {
+	if !filesystem.SameVersion(opened, after) {
 		return nil, nil, fmt.Errorf("source directory %q changed while it was being read", filepath.ToSlash(name))
 	}
 	t.entries += len(entries)
@@ -240,9 +240,9 @@ func (t *treeCopier) copyFile(
 	}
 	t.totalBytes += size
 
-	source, openedInfo, err := fileinput.OpenAtExpected(t.source, localName, info, maxWorkspaceCopyFileBytes)
+	source, openedInfo, err := filesystem.OpenFileAtExpected(t.source, localName, info, maxWorkspaceCopyFileBytes)
 	if err != nil {
-		if errors.Is(err, fileinput.ErrChanged) || errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) {
+		if errors.Is(err, filesystem.ErrChanged) || errors.Is(err, filesystem.ErrNotRegular) || errors.Is(err, filesystem.ErrFileTooLarge) {
 			return fmt.Errorf("source file %q changed before copy: %w", portableName, err)
 		}
 		return fmt.Errorf("open source file %q: %w", portableName, err)
@@ -266,7 +266,7 @@ func (t *treeCopier) copyFile(
 
 	reader := io.LimitReader(cancellation.Reader(ctx, source), size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
-	verifyErr := fileinput.VerifyAtVersion(source, openedInfo, t.source, localName)
+	verifyErr := filesystem.VerifyAtVersion(source, openedInfo, t.source, localName)
 	closeErr := errors.Join(destination.Close(), source.Close())
 	if copyErr != nil || verifyErr != nil || closeErr != nil {
 		return fmt.Errorf(
@@ -292,16 +292,16 @@ func (w writeOnly) Write(buffer []byte) (int, error) {
 
 func (t *treeCopier) copySymlink(portableName, localName string, expected fs.FileInfo) error {
 	before, err := t.source.Lstat(localName)
-	if err != nil || !fileinput.SameVersion(expected, before) || before.Mode()&os.ModeSymlink == 0 {
-		return fmt.Errorf("source symlink %q changed before copy: %w", portableName, errors.Join(err, fileinput.ErrChanged))
+	if err != nil || !filesystem.SameVersion(expected, before) || before.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("source symlink %q changed before copy: %w", portableName, errors.Join(err, filesystem.ErrChanged))
 	}
 	target, err := t.source.Readlink(localName)
 	if err != nil {
 		return fmt.Errorf("read symlink %q: %w", portableName, err)
 	}
 	after, err := t.source.Lstat(localName)
-	if err != nil || !fileinput.SameVersion(before, after) {
-		return fmt.Errorf("source symlink %q changed during copy: %w", portableName, errors.Join(err, fileinput.ErrChanged))
+	if err != nil || !filesystem.SameVersion(before, after) {
+		return fmt.Errorf("source symlink %q changed during copy: %w", portableName, errors.Join(err, filesystem.ErrChanged))
 	}
 	portableTarget := filepath.ToSlash(target)
 	if err := validateSymlinkTarget(portableName, portableTarget); err != nil {
@@ -318,7 +318,7 @@ func (t *treeCopier) verifySourceDirectory(name string, expected fs.FileInfo) er
 	if err != nil {
 		return fmt.Errorf("stat source directory %q after copy: %w", filepath.ToSlash(name), err)
 	}
-	if !fileinput.SameVersion(expected, current) {
+	if !filesystem.SameVersion(expected, current) {
 		return fmt.Errorf("source directory %q changed during copy", filepath.ToSlash(name))
 	}
 	return nil

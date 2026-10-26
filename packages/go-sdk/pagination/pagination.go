@@ -21,8 +21,7 @@ import (
 	"fmt"
 	"slices"
 
-	runtimeidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/opaquetoken"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // ErrInvalidCursor reports a cursor that cannot continue this query: damaged,
@@ -79,12 +78,12 @@ func Encode(namespace string, filters []string, key []string) (string, error) {
 	if !rawMaterialFits(namespace, filters, key) {
 		return "", ErrCursorTooLarge
 	}
-	encoded, err := opaquetoken.Encode(token{
+	encoded, err := EncodeToken(token{
 		Namespace: namespace,
 		Filters:   slices.Clone(filters), Key: slices.Clone(key),
-	}, runtimeidentity.MaximumCursorCharacters)
+	}, identity.MaximumCursorCharacters)
 	if err != nil {
-		if errors.Is(err, opaquetoken.ErrTooLarge) {
+		if errors.Is(err, ErrTokenTooLarge) {
 			return "", ErrCursorTooLarge
 		}
 		return "", fmt.Errorf("%w: encode: %v", ErrInvalidCursorMaterial, err)
@@ -102,11 +101,11 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 	if cursor == "" {
 		return nil, nil
 	}
-	if len(cursor) > runtimeidentity.MaximumCursorCharacters {
+	if len(cursor) > identity.MaximumCursorCharacters {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidCursor, ErrCursorTooLarge)
 	}
 	var decoded token
-	if err := opaquetoken.Decode(cursor, runtimeidentity.MaximumCursorCharacters, &decoded); err != nil {
+	if err := DecodeToken(cursor, identity.MaximumCursorCharacters, &decoded); err != nil {
 		return nil, ErrInvalidCursor
 	}
 	if decoded.Namespace != namespace ||
@@ -121,7 +120,7 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 // and every slice element consumes at least one decoded byte. Escaping can make
 // the final token larger, which the exact encoded-size check catches afterward.
 func rawMaterialFits(namespace string, groups ...[]string) bool {
-	remaining := runtimeidentity.MaximumCursorCharacters
+	remaining := identity.MaximumCursorCharacters
 	consume := func(size int) bool {
 		if size < 0 || size > remaining {
 			return false
@@ -224,10 +223,3 @@ func PageOf[T any](rows []T, limit int, namespace string, filters []string, next
 }
 
 // Explicit projects the caller intent without resolving the read owner's ceiling.
-func (l RequestedLimit) Explicit() *int {
-	if l.mode == requestedLimitDefault {
-		return nil
-	}
-	value := l.value
-	return &value
-}

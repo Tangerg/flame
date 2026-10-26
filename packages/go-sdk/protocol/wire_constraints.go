@@ -4,6 +4,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"maps"
 	"math"
 	"reflect"
@@ -12,34 +13,18 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/Tangerg/flame/packages/go-sdk/contractshape"
 )
 
-// WireValidator is implemented by a DTO whose wire contract is stricter than its
-// flat Go representation.
-//
-// Implementations are GENERATED (wire_constraints.generated.go) from the Contract
-// Registry. Value constraints, closed-enum membership, union variants and
-// conditional field rules therefore have one author shared by Go, JSON Schema
-// and TypeScript. A hand-written ValidateWire would be a second author.
-//
-// [ValidateWireTree] composes these node-local validators at delivery boundaries.
-// Keeping the generated method local to one DTO avoids generated parent shapes
-// restating child rules, while the tree walk makes it impossible for a response
-// or event to skip a constrained nested DTO.
-//
-// ValidateWire stays a pure function of the value — no storage, dispatcher or
-// executor. "Does this session exist" is not a
-// shape constraint and remains a use-case decision.
-type WireValidator interface {
-	ValidateWire() error
+// Generated node checks share the registry's rules. Only complete JSON-tree
+// validation is public so a caller cannot accidentally skip a nested constraint.
+type wireValidator interface {
+	validateWire() error
 }
 
 // ValidateWireTree validates every constrained DTO reachable through the JSON
 // representation of value. It is the delivery-boundary operation: requests,
 // responses, errors and events call it once at their root, and it composes the
-// generated node-local [WireValidator] implementations with precise JSON paths.
+// generated node-local [wireValidator] implementations with precise JSON paths.
 //
 // Interface-valued payloads are intentionally opaque. They carry extension or
 // provider data whose schema is owned outside the first-party wire contract, so
@@ -95,14 +80,14 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 
 	var fields []FieldError
 	if value.CanInterface() {
-		if validator, ok := value.Interface().(WireValidator); ok {
-			fields = append(fields, prefixedWireErrors(path, validator.ValidateWire())...)
+		if validator, ok := value.Interface().(wireValidator); ok {
+			fields = append(fields, prefixedWireErrors(path, validator.validateWire())...)
 		}
 	}
 
 	switch value.Kind() {
 	case reflect.Struct:
-		for _, field := range contractshape.Fields(value.Type()) {
+		for _, field := range jsonvalue.Fields(value.Type()) {
 			fields = append(fields, validateWireValue(
 				value.FieldByName(field.GoName),
 				joinWirePath(path, field.Name),
@@ -121,7 +106,7 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 		keys := value.MapKeys()
 		slices.SortFunc(keys, func(left, right reflect.Value) int { return strings.Compare(left.String(), right.String()) })
 		for _, key := range keys {
-			fields = append(fields, validateWireValue(value.MapIndex(key), contractshape.MapPath(path, key.String()), visiting)...)
+			fields = append(fields, validateWireValue(value.MapIndex(key), jsonvalue.MapPath(path, key.String()), visiting)...)
 		}
 	}
 	return fields
@@ -424,7 +409,7 @@ func textPatternItems[Identity ~string](field string, values []Identity, pattern
 
 func maxPropertyNameLength[Value any](field string, values map[string]Value, maximum int) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := maxLength(contractshape.MapPath(field, key), key, maximum); violation.Field != "" {
+		if violation := maxLength(jsonvalue.MapPath(field, key), key, maximum); violation.Field != "" {
 			return violation
 		}
 	}
@@ -433,7 +418,7 @@ func maxPropertyNameLength[Value any](field string, values map[string]Value, max
 
 func identityPropertyNames[Value any](field string, values map[string]Value) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := identity(contractshape.MapPath(field, key), key); violation.Field != "" {
+		if violation := identity(jsonvalue.MapPath(field, key), key); violation.Field != "" {
 			return violation
 		}
 	}
@@ -647,7 +632,7 @@ func lookupWireValue(value reflect.Value, path string) (reflect.Value, bool, boo
 		if !current.IsValid() || current.Kind() != reflect.Struct {
 			return reflect.Value{}, false, false
 		}
-		wireField, found := contractshape.LookupField(current.Type(), segment)
+		wireField, found := jsonvalue.LookupField(current.Type(), segment)
 		if !found {
 			return reflect.Value{}, false, false
 		}
