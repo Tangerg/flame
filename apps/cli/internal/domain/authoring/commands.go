@@ -1,18 +1,17 @@
-package prompt
+package authoring
 
 import (
 	"errors"
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // SteerRun injects an instruction only into the exact running segment the user
 // is currently observing. A stale segment must be rejected, never retargeted.
 type SteerRun struct {
-	CommandID replay.CommandID
+	CommandID CommandID
 	RunID     string
 	SegmentID string
 	Message   Message
@@ -20,7 +19,7 @@ type SteerRun struct {
 }
 
 type StartRun struct {
-	CommandID replay.CommandID
+	CommandID CommandID
 	SessionID string
 	Message   Message
 	Options   RunOptions

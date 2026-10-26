@@ -11,8 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -78,10 +77,10 @@ func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRu
 	return r.cancel(ctx, request, options)
 }
 
-func testStartRequest(sessionID string, message prompt.Message) prompt.StartRun {
-	return prompt.StartRun{
+func testStartRequest(sessionID string, message authoring.Message) authoring.StartRun {
+	return authoring.StartRun{
 		SessionID: sessionID, Message: message,
-		Options: prompt.RunOptions{},
+		Options: authoring.RunOptions{},
 	}
 }
 
@@ -130,8 +129,8 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: "ses_1", Message: prompt.Message{Text: "hello"}, Options: prompt.RunOptions{
+	stream, err := runtime.StartRun(t.Context(), authoring.StartRun{
+		SessionID: "ses_1", Message: authoring.Message{Text: "hello"}, Options: authoring.RunOptions{
 			Provider: "deepseek", Model: "deepseek-reasoner", ReasoningEffort: "high",
 		},
 	})
@@ -162,7 +161,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 }
 
 func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
-	commandID := replay.CommandID("cli_0123456789abcdef0123456789abcdef")
+	commandID := authoring.CommandID("cli_0123456789abcdef0123456789abcdef")
 	const namespace = compatibleReplayNamespace
 	stub := runBindingStub{}
 	stub.start = func(_ context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
@@ -201,7 +200,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 		runs: stub, meta: requestMeta("test"),
 		profile: profileWithReplayNamespace(t, namespace),
 	}
-	request := testStartRequest("ses_1", prompt.Message{Text: "start"})
+	request := testStartRequest("ses_1", authoring.Message{Text: "start"})
 	request.CommandID = commandID
 	if _, err := runtime.StartRun(t.Context(), request); err != nil {
 		t.Fatal(err)
@@ -212,18 +211,18 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{CommandID: commandID, RunID: "run_1"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.SteerRun(t.Context(), prompt.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "steer"}}); err != nil {
+	if _, err := runtime.SteerRun(t.Context(), authoring.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: authoring.Message{Text: "steer"}}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapability(t *testing.T) {
 	t.Parallel()
-	attachment := prompt.Attachment{
+	attachment := authoring.Attachment{
 		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}
-	message := prompt.Message{Attachments: []prompt.Attachment{attachment}}
+	message := authoring.Message{Attachments: []authoring.Attachment{attachment}}
 	for _, test := range []struct {
 		name string
 		call func(context.Context, *Connection) error
@@ -250,7 +249,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "steer",
 			call: func(ctx context.Context, runtime *Connection) error {
-				_, err := runtime.SteerRun(ctx, prompt.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
+				_, err := runtime.SteerRun(ctx, authoring.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
 				return err
 			},
 		},
@@ -318,8 +317,8 @@ func TestSubscribeRunRejectsInvalidReplayCursorBeforeBinding(t *testing.T) {
 		return nil, nil, nil
 	}}, meta: requestMeta("test")}
 	for _, cursor := range []string{
-		"opaque",
-		protocol.IDPrefixEvent + strings.Repeat("x", protocol.MaximumRunEventIDCharacters),
+		"opaque", protocol.IDPrefixEvent +
+			strings.Repeat("x", protocol.MaximumRunEventIDCharacters),
 	} {
 		if _, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
 			RunID: "run_1", SegmentID: "seg_1", AfterEventID: cursor,
@@ -393,7 +392,7 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	started, err := runtime.StartRun(t.Context(), testStartRequest("ses_1", prompt.Message{Text: "start"}))
+	started, err := runtime.StartRun(t.Context(), testStartRequest("ses_1", authoring.Message{Text: "start"}))
 	requireRuntimeContractViolation(t, err)
 	receipt, accepted := conversation.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(started) || receipt.RunID != "run_started" || receipt.SegmentID != "seg_started" {
@@ -487,7 +486,7 @@ func TestProjectAnswerMapsRememberedDenial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := projected.Response.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(projected.Response); err != nil {
 		t.Fatalf("projected denial violates runtime wire contract: %v", err)
 	}
 	if projected.Response.Type != protocol.InterruptResponseApproval ||
@@ -509,7 +508,7 @@ func TestProjectAnswerPreservesQuestionFieldOrderAndOwnsValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := projected.Response.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(projected.Response); err != nil {
 		t.Fatalf("projected question violates runtime wire contract: %v", err)
 	}
 	if projected.Response.Type != protocol.InterruptResponseAnswer ||
@@ -654,8 +653,8 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 		return nil, protocol.ErrStaleSegment
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	_, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
-		RunID: "run_1", SegmentID: "seg_2", Message: prompt.Message{Text: "focus on the parser"},
+	_, err := runtime.SteerRun(t.Context(), authoring.SteerRun{
+		RunID: "run_1", SegmentID: "seg_2", Message: authoring.Message{Text: "focus on the parser"},
 	})
 	if !errors.Is(err, conversation.ErrStaleSegment) {
 		t.Fatalf("SteerRun error = %v, want ErrStaleSegment", err)
@@ -669,8 +668,8 @@ func TestSteerRunReturnsTheExactAcceptanceReceipt(t *testing.T) {
 			return &want, nil
 		},
 	}}
-	got, err := connection.SteerRun(t.Context(), prompt.SteerRun{
-		RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "preserve the receipt"},
+	got, err := connection.SteerRun(t.Context(), authoring.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: authoring.Message{Text: "preserve the receipt"},
 	})
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("steer receipt = %+v, error %v", got, err)
@@ -683,8 +682,8 @@ func TestSteerRunDistinguishesMissingReceiptFromRefusal(t *testing.T) {
 			return nil, nil
 		},
 	}}
-	_, err := connection.SteerRun(t.Context(), prompt.SteerRun{
-		RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "preserve accepted input"},
+	_, err := connection.SteerRun(t.Context(), authoring.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: authoring.Message{Text: "preserve accepted input"},
 	})
 	if !errors.Is(err, conversation.ErrSteerReceiptUnavailable) || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("missing accepted receipt = %v", err)

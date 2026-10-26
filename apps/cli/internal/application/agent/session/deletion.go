@@ -8,9 +8,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type deletionRuntime interface {
@@ -39,7 +39,7 @@ func Delete(
 	if authoring == nil {
 		return DeletionResult{}, workbench.ErrUnavailable
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return DeletionResult{}, err
 	}
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
@@ -77,7 +77,7 @@ func settleDeletion(
 	ctx context.Context,
 	runtime deletionRuntime,
 	request conversation.DeleteSession,
-	replayGuard replay.Guard,
+	replayGuard flameauthoring.ReplayGuard,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (mutation.Outcome, error) {
@@ -182,7 +182,7 @@ func resolveExpired(
 	ctx context.Context,
 	runtime deletionRuntime,
 	sessionID string,
-	replayGuard replay.Guard,
+	replayGuard flameauthoring.ReplayGuard,
 	policy mutation.ReplayPolicy,
 ) (mutation.Outcome, error) {
 	if !policy.SameStore(replayGuard) {

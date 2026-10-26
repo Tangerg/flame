@@ -31,7 +31,7 @@ func TestCappedBufferCannotBeBypassedByReaderFrom(t *testing.T) {
 	if written != produced {
 		t.Fatalf("io.Copy wrote %d bytes, want the producer's full drain of %d", written, produced)
 	}
-	if len(output.Bytes()) != maxCommandOutputBytes || !output.overflow {
-		t.Fatalf("captured %d bytes, overflow=%t", len(output.Bytes()), output.overflow)
+	if len(output.bytes()) != maxCommandOutputBytes || !output.overflow {
+		t.Fatalf("captured %d bytes, overflow=%t", len(output.bytes()), output.overflow)
 	}
 }

@@ -11,15 +11,14 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type openingProbe struct {
 	queries []protocol.GetRunAcceptanceRequest
-	starts  []prompt.StartRun
+	starts  []authoring.StartRun
 	resumes []conversation.ResumeRun
 	lookup  func() (protocol.RunAcceptance, error)
 	start   func() (conversation.SegmentStream, error)
@@ -30,7 +29,7 @@ func (p *openingProbe) GetRunAcceptance(_ context.Context, query protocol.GetRun
 	return p.lookup()
 }
 
-func (p *openingProbe) StartRun(_ context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
+func (p *openingProbe) StartRun(_ context.Context, command authoring.StartRun) (conversation.SegmentStream, error) {
 	p.starts = append(p.starts, command.Clone())
 	return p.start()
 }
@@ -50,7 +49,7 @@ func TestOpeningLookupRemainsReadOnlyAfterDeliveryExpiry(t *testing.T) {
 					t.Fatal(err)
 				}
 				time.Sleep(2 * time.Hour)
-				command := prompt.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: prompt.Message{Text: "frozen"}}
+				command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: authoring.Message{Text: "frozen"}}
 				receipt := protocol.RunAcceptance{Type: acceptance}
 				if acceptance != protocol.RunAcceptanceNotRecorded {
 					receipt.RunID, receipt.SegmentID, receipt.SessionID, receipt.UserItemID = "run_original", "seg_original", command.SessionID, "item_original"
@@ -59,7 +58,7 @@ func TestOpeningLookupRemainsReadOnlyAfterDeliveryExpiry(t *testing.T) {
 					receipt.Run = &protocol.RunRef{RunSummary: protocol.RunSummary{ID: receipt.RunID, SessionID: receipt.SessionID, Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_later"}
 				}
 				probe := &openingProbe{lookup: func() (protocol.RunAcceptance, error) { return receipt, nil }}
-				stream, err := OpenStart(t.Context(), probe, command, guard, policy)
+				stream, err := openStart(t.Context(), probe, command, guard, policy)
 				wantQuery := protocol.GetRunAcceptanceRequest{Namespace: guard.Namespace(), Key: string(command.CommandID), Operation: protocol.RunCommandStart}
 				if !slices.Equal(probe.queries, []protocol.GetRunAcceptanceRequest{wantQuery}) || len(probe.starts) != 0 {
 					t.Fatalf("lookup mutated delivery: queries=%+v starts=%+v", probe.queries, probe.starts)
@@ -103,7 +102,7 @@ func TestOpeningRechecksAdmissionAfterLookup(t *testing.T) {
 			time.Sleep(2 * time.Hour)
 			return protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}, nil
 		}}
-		_, err = OpenStart(t.Context(), probe, prompt.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original"}, guard, policy)
+		_, err = openStart(t.Context(), probe, authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original"}, guard, policy)
 		if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(probe.starts) != 0 {
 			t.Fatalf("expired command crossed delivery admission: %v, %+v", err, probe.starts)
 		}
@@ -118,7 +117,7 @@ func TestOpeningQueryFailureCannotBecomeARefusal(t *testing.T) {
 	}
 	failure := errors.New("acceptance response is invalid")
 	probe := &openingProbe{lookup: func() (protocol.RunAcceptance, error) { return protocol.RunAcceptance{}, failure }}
-	_, err = OpenStart(t.Context(), probe, prompt.StartRun{CommandID: mutation.NewCommandID()}, guard, policy)
+	_, err = openStart(t.Context(), probe, authoring.StartRun{CommandID: mutation.NewCommandID()}, guard, policy)
 	if !mutation.OutcomeUnknown(err) || !errors.Is(err, failure) || len(probe.starts) != 0 {
 		t.Fatalf("query failure changed command outcome: %v, %+v", err, probe.starts)
 	}
@@ -131,7 +130,7 @@ func TestOpeningLostAcknowledgementQueriesTheOriginalPreparedCommand(t *testing.
 		if err != nil {
 			t.Fatal(err)
 		}
-		command := prompt.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: prompt.Message{Text: "frozen"}, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "frozen"}}}
+		command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: authoring.Message{Text: "frozen"}, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "frozen"}}}
 		probe := &openingProbe{}
 		probe.lookup = func() (protocol.RunAcceptance, error) {
 			if len(probe.starts) == 0 {
@@ -143,7 +142,7 @@ func TestOpeningLostAcknowledgementQueriesTheOriginalPreparedCommand(t *testing.
 			return conversation.SegmentStream{}, conversation.ErrDisconnected
 		}
 		opened, err := mutation.ConfirmAdmitted(t.Context(), mutation.AcknowledgementBackoff(), nil, func(ctx context.Context) (conversation.SegmentStream, error) {
-			return OpenStart(ctx, probe, command, guard, policy)
+			return openStart(ctx, probe, command, guard, policy)
 		})
 		if err != nil || opened.RunID != "run_original" || len(probe.starts) != 1 || !probe.starts[0].Equal(command) || len(probe.queries) != 2 {
 			t.Fatalf("lost acknowledgement redelivered or changed input: opened=%+v err=%v starts=%+v queries=%+v", opened, err, probe.starts, probe.queries)
@@ -165,7 +164,7 @@ func TestResumeLookupCannotSettleAnotherRunOrDifferentInput(t *testing.T) {
 		{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SegmentID: "seg_original", UserItemID: "item_unexpected"},
 	} {
 		probe := &openingProbe{lookup: func() (protocol.RunAcceptance, error) { return receipt, nil }}
-		_, err := OpenResume(t.Context(), probe, conversation.ResumeRun{CommandID: mutation.NewCommandID(), RunID: "run_original"}, guard, policy)
+		_, err := openResume(t.Context(), probe, conversation.ResumeRun{CommandID: mutation.NewCommandID(), RunID: "run_original"}, guard, policy)
 		if !mutation.OutcomeUnknown(err) || len(probe.resumes) != 0 || probe.queries[0].Operation != protocol.RunCommandResume {
 			t.Fatalf("mismatched receipt settled resume: %v, %+v", err, probe)
 		}
@@ -178,10 +177,10 @@ func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := prompt.Message{Text: "frozen input", Attachments: []prompt.Attachment{{ID: "image", Name: "image.png", Path: "/absent/image.png", MimeType: "image/png", Kind: protocol.ContentBlockImage, Size: 1}}}
+	message := authoring.Message{Text: "frozen input", Attachments: []authoring.Attachment{{ID: "image", Name: "image.png", Path: "/absent/image.png", MimeType: "image/png", Kind: protocol.ContentBlockImage, Size: 1}}}
 	for _, accepted := range []bool{true, false} {
 		t.Run(string(protocol.RunCommandStart)+" accepted="+fmt.Sprint(accepted), func(t *testing.T) {
-			pending := workbench.PendingRun{State: workbench.PendingRunDispatching, Command: prompt.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: message}, Replay: guard}
+			pending := workbench.PendingRun{State: workbench.PendingRunDispatching, Command: authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: "ses_original", Message: message}, Replay: guard}
 			probe := &openingProbe{lookup: func() (protocol.RunAcceptance, error) {
 				if !accepted {
 					return protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}, nil
@@ -189,7 +188,7 @@ func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.
 				return protocol.RunAcceptance{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SegmentID: "seg_original", SessionID: "ses_original", UserItemID: "item_original"}, nil
 			}}
 			_, err := OpenPendingStart(t.Context(), probe, pending, policy)
-			if len(probe.queries) != 1 || len(probe.starts) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, replay.ErrCommandInputUnavailable)) {
+			if len(probe.queries) != 1 || len(probe.starts) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, authoring.ErrCommandInputUnavailable)) {
 				t.Fatalf("input availability changed acceptance lookup: queries=%+v starts=%+v err=%v", probe.queries, probe.starts, err)
 			}
 		})
@@ -202,7 +201,7 @@ func TestPendingOpeningLooksUpAcceptanceBeforeRequiringPreparedInput(t *testing.
 				return protocol.RunAcceptance{Type: protocol.RunAcceptanceAccepted, RunID: "run_original", SegmentID: "seg_original", SessionID: "ses_original", UserItemID: "item_original"}, nil
 			}}
 			_, err := OpenPendingResume(t.Context(), probe, pending, policy)
-			if len(probe.queries) != 1 || len(probe.resumes) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, replay.ErrCommandInputUnavailable)) {
+			if len(probe.queries) != 1 || len(probe.resumes) != 0 || (accepted && err != nil) || (!accepted && !errors.Is(err, authoring.ErrCommandInputUnavailable)) {
 				t.Fatalf("input availability changed acceptance lookup: queries=%+v resumes=%+v err=%v", probe.queries, probe.resumes, err)
 			}
 		})

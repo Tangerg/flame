@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
@@ -26,7 +26,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 
 	started := time.Now()
 	deadline := started.Add(2 * time.Second)
-	var draft prompt.Message
+	var draft authoring.Message
 	var found bool
 	for time.Now().Before(deadline) {
 		host.Send(input.Key{Code: input.Backspace})
@@ -36,13 +36,13 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if found && draft.Equal(prompt.Message{Text: "draft survives no-op edits"}) {
+			if found && draft.Equal(authoring.Message{Text: "draft survives no-op edits"}) {
 				break
 			}
 		}
 		time.Sleep(draftPersistenceDelay / 10)
 	}
-	if !found || !draft.Equal(prompt.Message{Text: "draft survives no-op edits"}) {
+	if !found || !draft.Equal(authoring.Message{Text: "draft survives no-op edits"}) {
 		t.Fatalf("autosaved draft = (%+v, %v), want the authored value while no-op edits continue", draft, found)
 	}
 	stop()
@@ -58,7 +58,7 @@ func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
 
 	host.Send(input.Key{Text: "你好"})
 	host.Shows(t, "你好")
-	awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: "你好"})
+	awaitStoredDraft(t, workbenchForHost, sessionID, authoring.Message{Text: "你好"})
 	stop()
 }
 
@@ -98,16 +98,16 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 
 			test.edit(t, host)
 			host.Shows(t, test.want)
-			awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: test.want})
+			awaitStoredDraft(t, workbenchForHost, sessionID, authoring.Message{Text: test.want})
 			stop()
 		})
 	}
 }
 
-func awaitStoredDraft(t *testing.T, currentWorkbench func() *workbench.Store, sessionID string, want prompt.Message) {
+func awaitStoredDraft(t *testing.T, currentWorkbench func() *workbench.Store, sessionID string, want authoring.Message) {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
-	var draft prompt.Message
+	var draft authoring.Message
 	var found bool
 	var err error
 	for time.Now().Before(deadline) {
@@ -120,10 +120,10 @@ func awaitStoredDraft(t *testing.T, currentWorkbench func() *workbench.Store, se
 	t.Fatalf("autosaved draft = (%+v, %v, %v), want %+v", draft, found, err, want)
 }
 
-func storedDraft(currentWorkbench func() *workbench.Store, sessionID string) (prompt.Message, bool, error) {
+func storedDraft(currentWorkbench func() *workbench.Store, sessionID string) (authoring.Message, bool, error) {
 	store := currentWorkbench()
 	if store == nil {
-		return prompt.Message{}, false, errors.New("workbench has not opened")
+		return authoring.Message{}, false, errors.New("workbench has not opened")
 	}
 	message, found := store.Draft(sessionID)
 	return message, found, nil

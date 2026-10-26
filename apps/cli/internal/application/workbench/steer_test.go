@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -19,7 +18,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	}
 	sessionID := "ses_steer"
 	attachment := steerTestAttachment(t.TempDir())
-	source := prompt.Message{Text: "/steer inspect the parser", Attachments: []prompt.Attachment{attachment}}
+	source := authoring.Message{Text: "/steer inspect the parser", Attachments: []authoring.Attachment{attachment}}
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -47,7 +46,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	if !found || !staged.Command().Equal(pending.Command()) {
 		t.Fatalf("reopened pending steer = %+v, found %t", staged, found)
 	}
-	newer := prompt.Message{Text: "new input while steer settles"}
+	newer := authoring.Message{Text: "new input while steer settles"}
 	if saveDraftErr := reopened.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -55,7 +54,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := prompt.Message{Text: newer.Text, Attachments: []prompt.Attachment{attachment}}
+	want := authoring.Message{Text: newer.Text, Attachments: []authoring.Attachment{attachment}}
 	if !recovered.Equal(want) {
 		t.Fatalf("recovered draft = %+v, want %+v", recovered, want)
 	}
@@ -84,7 +83,7 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	}
 	sessionID := "ses_steer"
 	attachment := steerTestAttachment(t.TempDir())
-	source := prompt.Message{Text: "/steer inspect the parser", Attachments: []prompt.Attachment{attachment}}
+	source := authoring.Message{Text: "/steer inspect the parser", Attachments: []authoring.Attachment{attachment}}
 	pending := steerTestPending(t, sessionID, attachment)
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -96,7 +95,7 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	if stored, found := store.PendingSteer(sessionID); !found || !pendingSteerEqual(returned, stored) || returned.inputDigest != stored.inputDigest {
 		t.Fatalf("staged pending steer = %+v, stored %+v (found %t)", returned, stored, found)
 	}
-	newer := prompt.Message{Text: "keep this newer thought"}
+	newer := authoring.Message{Text: "keep this newer thought"}
 	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -171,8 +170,8 @@ func TestPendingSteerSpellsOneStagingTimeWhateverZoneItArrivesIn(t *testing.T) {
 	}
 }
 
-func steerTestAttachment(directory string) prompt.Attachment {
-	return prompt.Attachment{
+func steerTestAttachment(directory string) authoring.Attachment {
+	return authoring.Attachment{
 		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(directory, "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
@@ -181,26 +180,24 @@ func steerTestAttachment(directory string) prompt.Attachment {
 func steerTestPending(
 	t *testing.T,
 	sessionID string,
-	attachment prompt.Attachment,
+	attachment authoring.Attachment,
 ) PendingSteer {
 	t.Helper()
 	stagedAt := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
-	replayGuard, err := replay.NewProtectedGuard("runtime-test", stagedAt.Add(time.Hour))
+	replayGuard, err := authoring.NewProtectedGuard("runtime-test", stagedAt.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
 	pending, err := NewPendingSteer(
-		sessionID,
-		prompt.SteerRun{
+		sessionID, authoring.SteerRun{
 			CommandID: "cli_11111111111111111111111111111111",
 			RunID:     "run_1", SegmentID: "seg_1",
-			Message: prompt.Message{Text: "inspect the parser", Attachments: []prompt.Attachment{attachment}},
+			Message: authoring.Message{Text: "inspect the parser", Attachments: []authoring.Attachment{attachment}},
 			Input: []protocol.ContentBlock{
 				{Type: protocol.ContentBlockText, Text: "inspect the parser"},
 				{Type: protocol.ContentBlockText, Text: "fixture attachment"},
 			},
-		},
-		stagedAt,
+		}, stagedAt,
 		replayGuard,
 	)
 	if err != nil {
@@ -220,7 +217,7 @@ func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
 	}
 	sessionID := "ses_steer_identity"
 	attachment := steerTestAttachment(t.TempDir())
-	source := prompt.Message{Text: "/steer inspect the parser", Attachments: []prompt.Attachment{attachment}}
+	source := authoring.Message{Text: "/steer inspect the parser", Attachments: []authoring.Attachment{attachment}}
 	if err := store.SaveDraft(sessionID, source); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +226,7 @@ func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	stale := replay.CommandID("cli_22222222222222222222222222222222")
+	stale := authoring.CommandID("cli_22222222222222222222222222222222")
 	if err := stale.Validate(); err != nil {
 		t.Fatalf("the stale identity is malformed, so the claim would never be asked: %v", err)
 	}
@@ -239,7 +236,7 @@ func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
 	if err := store.AcknowledgePendingSteer(sessionID, stale); err == nil {
 		t.Fatal("acknowledgement settled a steer it does not name")
 	}
-	if _, err := store.RejectPendingSteer(sessionID, stale, prompt.Message{}); err == nil {
+	if _, err := store.RejectPendingSteer(sessionID, stale, authoring.Message{}); err == nil {
 		t.Fatal("rejection settled a steer it does not name")
 	}
 	if _, found := store.PendingSteer(sessionID); !found {

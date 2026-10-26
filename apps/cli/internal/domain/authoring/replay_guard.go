@@ -1,4 +1,4 @@
-package replay
+package authoring
 
 import (
 	json "encoding/json/v2"
@@ -8,43 +8,43 @@ import (
 	"time"
 )
 
-type GuardKind string
+type replayGuardKind string
 
 const (
-	GuardUnprotected GuardKind = "unprotected"
-	GuardProtected   GuardKind = "protected"
+	guardUnprotected replayGuardKind = "unprotected"
+	guardProtected   replayGuardKind = "protected"
 )
 
 // Guard binds one durable command identity to either an explicit lack of a
 // replay promise or one exact Runtime store and deadline. Its zero value is
 // invalid so queue-local state cannot be inferred from empty strings/times.
-type Guard struct {
-	kind      GuardKind
+type ReplayGuard struct {
+	kind      replayGuardKind
 	namespace string
 	until     time.Time
 }
 
-func UnprotectedGuard() Guard { return Guard{kind: GuardUnprotected} }
+func UnprotectedGuard() ReplayGuard { return ReplayGuard{kind: guardUnprotected} }
 
-func NewProtectedGuard(namespace string, until time.Time) (Guard, error) {
+func NewProtectedGuard(namespace string, until time.Time) (ReplayGuard, error) {
 	namespace = strings.TrimSpace(namespace)
 	if namespace == "" {
-		return Guard{}, errors.New("protected command replay guard namespace is empty")
+		return ReplayGuard{}, errors.New("protected command replay guard namespace is empty")
 	}
 	if until.IsZero() {
-		return Guard{}, errors.New("protected command replay guard deadline is empty")
+		return ReplayGuard{}, errors.New("protected command replay guard deadline is empty")
 	}
-	return Guard{kind: GuardProtected, namespace: namespace, until: until.UTC()}, nil
+	return ReplayGuard{kind: guardProtected, namespace: namespace, until: until.UTC()}, nil
 }
 
-func (g Guard) Validate() error {
+func (g ReplayGuard) Validate() error {
 	switch g.kind {
-	case GuardUnprotected:
+	case guardUnprotected:
 		if g.namespace != "" || !g.until.IsZero() {
 			return errors.New("unprotected command replay guard carries protected state")
 		}
 		return nil
-	case GuardProtected:
+	case guardProtected:
 		if strings.TrimSpace(g.namespace) == "" || g.namespace != strings.TrimSpace(g.namespace) || g.until.IsZero() {
 			return errors.New("protected command replay guard is incomplete")
 		}
@@ -54,26 +54,24 @@ func (g Guard) Validate() error {
 	}
 }
 
-func (g Guard) Kind() GuardKind { return g.kind }
+func (g ReplayGuard) Protected() bool { return g.kind == guardProtected }
 
-func (g Guard) Protected() bool { return g.kind == GuardProtected }
+func (g ReplayGuard) Namespace() string { return g.namespace }
 
-func (g Guard) Namespace() string { return g.namespace }
-
-func (g Guard) Until() time.Time { return g.until }
+func (g ReplayGuard) Until() time.Time { return g.until }
 
 type guardJSON struct {
-	Type      GuardKind  `json:"type"`
-	Namespace string     `json:"namespace,omitzero"`
-	Until     *time.Time `json:"until,omitzero"`
+	Type      replayGuardKind `json:"type"`
+	Namespace string          `json:"namespace,omitzero"`
+	Until     *time.Time      `json:"until,omitzero"`
 }
 
-func (g Guard) MarshalJSON() ([]byte, error) {
+func (g ReplayGuard) MarshalJSON() ([]byte, error) {
 	if err := g.Validate(); err != nil {
 		return nil, err
 	}
 	wire := guardJSON{Type: g.kind}
-	if g.kind == GuardProtected {
+	if g.kind == guardProtected {
 		wire.Namespace = g.namespace
 		until := g.until
 		wire.Until = &until
@@ -81,19 +79,19 @@ func (g Guard) MarshalJSON() ([]byte, error) {
 	return json.Marshal(wire)
 }
 
-func (g *Guard) UnmarshalJSON(data []byte) error {
+func (g *ReplayGuard) UnmarshalJSON(data []byte) error {
 	var wire guardJSON
 	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode command replay guard: %w", err)
 	}
 	switch wire.Type {
-	case GuardUnprotected:
+	case guardUnprotected:
 		if wire.Namespace != "" || wire.Until != nil {
 			return errors.New("unprotected command replay guard carries protected state")
 		}
 		*g = UnprotectedGuard()
 		return nil
-	case GuardProtected:
+	case guardProtected:
 		if wire.Until == nil {
 			return errors.New("protected command replay guard deadline is empty")
 		}

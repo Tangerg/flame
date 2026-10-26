@@ -14,7 +14,7 @@ type Feedback struct{ runtime *Connection }
 
 func (f *Feedback) Record(ctx context.Context, request protocol.FeedbackRequest) error {
 	r := f.runtime
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return err
 	}
 	options := r.commandOptions()

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RunEvent is one projected runtime event. EventID is an opaque replay token
@@ -34,7 +34,7 @@ func (r RunEvent) StreamSegment() string {
 // remains here is the stream segment this package assigns and the projected
 // payload the conversation is about to fold.
 func (r RunEvent) Validate() error {
-	if err := runtimeprotocol.ValidateSegmentID(r.StreamSegment()); err != nil {
+	if err := protocol.ValidateSegmentID(r.StreamSegment()); err != nil {
 		return fmt.Errorf("run event stream: %w", err)
 	}
 	if err := ValidateEvent(r.Event); err != nil {
@@ -102,7 +102,7 @@ type CustomEvent struct {
 type BlockCompleted struct{ Block Block }
 
 type PlanChanged struct {
-	Plan runtimeprotocol.Plan
+	Plan protocol.Plan
 }
 
 // SegmentFinished closes a segment with the Run record Runtime committed at
@@ -117,7 +117,7 @@ type SegmentFinished struct {
 // Suspended reports whether the Run is waiting on interrupts another Run in
 // its tree raised.
 func (e SegmentFinished) Suspended() bool {
-	return e.Run.Status == runtimeprotocol.RunStatusWaiting && len(e.Interrupts) == 0
+	return e.Run.Status == protocol.RunStatusWaiting && len(e.Interrupts) == 0
 }
 
 func (SegmentStarted) isEvent() {}

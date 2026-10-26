@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
 )
 
 func TestWorkbenchFactoryIsLazyForHelpAndCompletion(t *testing.T) {
@@ -53,7 +53,7 @@ func TestWorkbenchFactoryIsolatesAndRecoversEachRuntimeTarget(t *testing.T) {
 		if _, found := store.Draft(sessionID); found {
 			t.Fatalf("target %q inherited another target's draft", endpoint)
 		}
-		if err := store.SaveDraft(sessionID, prompt.Message{Text: "target: " + endpoint}); err != nil {
+		if err := store.SaveDraft(sessionID, authoring.Message{Text: "target: " + endpoint}); err != nil {
 			t.Fatal(err)
 		}
 		if err := store.Close(); err != nil {
@@ -84,16 +84,16 @@ func TestWorkbenchFactoryRetainsUnknownOpeningUnderOnePartitionOwner(t *testing.
 	}
 	t.Cleanup(func() { _ = first.Close() })
 	const sessionID = "ses_shared"
-	const commandID replay.CommandID = "cli_00000000000000000000000000000001"
+	const commandID authoring.CommandID = "cli_00000000000000000000000000000001"
 	pending := workbench.PendingRun{
 		State:  workbench.PendingRunQueued,
-		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
-		Command: prompt.StartRun{CommandID: commandID, SessionID: sessionID, Message: prompt.Message{Text: "original intent"}},
+		Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
+		Command: authoring.StartRun{CommandID: commandID, SessionID: sessionID, Message: authoring.Message{Text: "original intent"}},
 	}
 	if err := first.StagePendingRun(pending); err != nil {
 		t.Fatal(err)
 	}
-	guard, err := replay.NewProtectedGuard("idp_00000000000000000000000000000001", time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC))
+	guard, err := authoring.NewProtectedGuard("idp_00000000000000000000000000000001", time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestWorkbenchFactoryRetainsUnknownOpeningUnderOnePartitionOwner(t *testing.
 		_ = second.Close()
 		t.Fatal("second partition writer admitted")
 	}
-	if err := first.SaveDraft(sessionID, prompt.Message{Text: "new draft"}); err != nil {
+	if err := first.SaveDraft(sessionID, authoring.Message{Text: "new draft"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := first.Close(); err != nil {

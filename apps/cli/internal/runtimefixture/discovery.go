@@ -12,10 +12,7 @@ func Discovery() *protocol.DiscoverResponse {
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home/test",
 		},
 		Capabilities: protocol.ServerCapabilities{
-			RunEvents: []protocol.StreamEventType{
-				protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished,
-				protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated,
-			},
+			RunEvents:        []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated},
 			RuntimeTopics:    protocol.RuntimeTopics(),
 			StreamingMethods: []string{"runs.start", "runs.resume", "runs.subscribe"},
 			Features:         map[string]protocol.FeatureCapability{},
@@ -24,7 +21,7 @@ func Discovery() *protocol.DiscoverResponse {
 				Idempotency:              protocol.IdempotencyLimits{RetentionSeconds: 600, Namespace: "idp_0123456789abcdef0123456789abcdef"},
 				RunReplay:                protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
 				MCPAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 600},
-				RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
+				RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32, MaxPaths: 64, MaxDirectoryEntries: 1024, MaxFileBytes: 1 << 20},
 			},
 		},
 	}

@@ -3,8 +3,7 @@ package conversation
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -13,9 +12,9 @@ func TestResumeRunEqualityIncludesCompleteDecisionValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := prompt.Message{Text: "continue after approval"}
+	message := authoring.Message{Text: "continue after approval"}
 	resume := ResumeRun{
-		CommandID: replay.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1", Message: &message,
+		CommandID: authoring.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1", Message: &message,
 		Answers: []InterruptAnswer{
 			{ItemID: "approval", Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override}},
 			{ItemID: "question", Answer: QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},

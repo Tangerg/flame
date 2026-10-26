@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -17,43 +16,15 @@ import (
 	"github.com/Tangerg/oolong/highlight"
 )
 
-func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
+func TestCustomRuntimeEventsDoNotInventTranscriptBlocks(t *testing.T) {
 	view := testTranscriptView(t)
-	registry := new(extensions.Registry)
-	loaded, err := extensions.Load(registry, extensions.Plugin{
-		ID: "test.custom-events", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{CustomEventPresenters.Capability()},
-		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
-				Name: "vendor.trace",
-				Present: func(presentation BlockPresentation, event conversation.CustomEvent) []headless.Block {
-					return []headless.Block{&kit.Entry{Theme: presentation.Theme, Label: "trace", Body: string(event.PayloadJSON)}}
-				},
-			}, extensions.Contribution{})
-			return err
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
-
 	if err := view.ApplyRunEvent(conversation.RunEvent{
 		RunID: "run_1", Event: conversation.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc"}`)},
-	}, registry); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.ApplyRunEvent(conversation.RunEvent{
-		RunID: "run_1", Event: conversation.CustomEvent{Name: "vendor.unhandled", PayloadJSON: []byte(`null`)},
-	}, registry); err != nil {
-		t.Fatal(err)
-	}
-	if view.content.Len() != 1 || !view.JumpToRun("run_1") {
-		t.Fatalf("custom event was not retained for its run: content = %d", view.content.Len())
-	}
-	drawn := drawRoot(t, view, 48, 6)
-	if !strings.Contains(drawn, "trace") || !strings.Contains(drawn, `"span":"abc"`) {
-		t.Fatalf("custom event rendering =\n%s", drawn)
+	if view.content.Len() != 0 {
+		t.Fatalf("custom event created %d transcript blocks", view.content.Len())
 	}
 }
 
@@ -62,11 +33,11 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	root := headless.NewRoot(view)
 	surface := grid.NewSurface(32, 5)
 	started := conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}
-	if err := view.Apply(conversation.BlockStarted{Block: started}, nil); err != nil {
+	if err := view.Apply(conversation.BlockStarted{Block: started}); err != nil {
 		t.Fatal(err)
 	}
 	initial := strings.Repeat("a paragraph long enough to occupy rows\n\n", 12)
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: initial}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: initial}); err != nil {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
@@ -78,7 +49,7 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	}
 	wantOffset := view.scroll.Offset()
 
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "new streamed tail\n\n"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "new streamed tail\n\n"}); err != nil {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
@@ -92,12 +63,6 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 
 func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 	view := testTranscriptView(t)
-	registry := new(extensions.Registry)
-	loaded, err := extensions.Load(registry, builtinPlugin())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
 	for _, block := range []conversation.Block{
 		{ID: "user", RunID: "run_1", Kind: conversation.BlockUser, Text: "list the desktop"},
 		{
@@ -105,7 +70,7 @@ func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 			Text: strings.Repeat("answer paragraph\n\n", 12) + "visible tail",
 		},
 	} {
-		if err := view.Apply(conversation.BlockCompleted{Block: block}, registry); err != nil {
+		if err := view.Apply(conversation.BlockCompleted{Block: block}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -121,12 +86,6 @@ func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 
 func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	view := testTranscriptView(t)
-	registry := new(extensions.Registry)
-	loaded, err := extensions.Load(registry, builtinPlugin())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Deployment target",
 		Fields: []conversation.QuestionField{{Prompt: "Which platform?", Kind: conversation.QuestionText}},
@@ -135,7 +94,7 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 		ID: question.ItemID, RunID: question.RunID, Status: conversation.BlockStatusCompleted,
 		Kind: conversation.BlockQuestion, Question: &question,
 	}
-	if applyErr := view.Apply(conversation.BlockCompleted{Block: block}, registry); applyErr != nil {
+	if applyErr := view.Apply(conversation.BlockCompleted{Block: block}); applyErr != nil {
 		t.Fatal(applyErr)
 	}
 	if drawn := drawRoot(t, view, 48, 6); strings.Contains(drawn, question.Title) {
@@ -147,7 +106,7 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	answered := question.Clone()
 	answered.Answers = [][]string{{"linux"}}
 	block.Question = &answered
-	if applyErr := view.Apply(conversation.BlockCompleted{Block: block}, registry); applyErr != nil {
+	if applyErr := view.Apply(conversation.BlockCompleted{Block: block}); applyErr != nil {
 		t.Fatal(applyErr)
 	}
 	drawn := drawRoot(t, view, 48, 6)
@@ -161,12 +120,6 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 
 func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	view := testTranscriptView(t)
-	registry := new(extensions.Registry)
-	loaded, err := extensions.Load(registry, builtinPlugin())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Abandoned question",
 		Fields: []conversation.QuestionField{{Prompt: "Continue?", Kind: conversation.QuestionText}},
@@ -174,7 +127,7 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{
 		ID: question.ItemID, RunID: question.RunID, Status: conversation.BlockStatusCompleted,
 		Kind: conversation.BlockQuestion, Question: &question,
-	}}, registry); err != nil {
+	}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := view.reconcilePendingQuestions(nil); err != nil {
@@ -283,10 +236,10 @@ func TestStreamingSearchRefreshPreservesTheCurrentMatch(t *testing.T) {
 func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 	view := testTranscriptView(t)
 	started := conversation.Block{ID: "earlier", Kind: conversation.BlockAssistant}
-	if err := view.Apply(conversation.BlockStarted{Block: started}, nil); err != nil {
+	if err := view.Apply(conversation.BlockStarted{Block: started}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "earlier stream\n\n"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "earlier stream\n\n"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, body := range []string{"needle one", "needle two", "needle three"} {
@@ -302,7 +255,7 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 
 	// The still-live block precedes the selected match and introduces a new match,
 	// shifting every later result index. The cursor follows the retained BlockID.
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "needle from earlier stream\n\n"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "needle from earlier stream\n\n"}); err != nil {
 		t.Fatal(err)
 	}
 	acceptSearchResult(t, view)
@@ -314,13 +267,13 @@ func TestInterleavedStreamSearchRefreshTracksTheStableMatchBlock(t *testing.T) {
 func TestTranscriptAppendsAssistantDeltasInEventOrder(t *testing.T) {
 	view := testTranscriptView(t)
 	started := conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}
-	if err := view.Apply(conversation.BlockStarted{Block: started}, nil); err != nil {
+	if err := view.Apply(conversation.BlockStarted{Block: started}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "first block"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: "first block"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: " second block"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: " second block"}); err != nil {
 		t.Fatal(err)
 	}
 	drawn := drawRoot(t, view, 48, 8)
@@ -329,7 +282,7 @@ func TestTranscriptAppendsAssistantDeltasInEventOrder(t *testing.T) {
 		t.Fatalf("ordered assistant rendering =\n%s", drawn)
 	}
 
-	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: " tail"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: started.ID, Text: " tail"}); err != nil {
 		t.Fatal(err)
 	}
 	drawn = drawRoot(t, view, 48, 8)
@@ -349,7 +302,7 @@ func TestInterleavedTextBlocksStreamIndependently(t *testing.T) {
 		conversation.BlockDelta{BlockID: "answer", Text: " tail"},
 		conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "assistant final"}},
 	} {
-		if err := view.Apply(event, nil); err != nil {
+		if err := view.Apply(event); err != nil {
 			t.Fatalf("apply %T: %v", event, err)
 		}
 	}
@@ -372,7 +325,7 @@ func TestInterleavedTextBlocksStreamIndependently(t *testing.T) {
 func TestStreamedAssistantCompletionAppendsInlineImages(t *testing.T) {
 	view := testTranscriptView(t)
 	started := conversation.Block{ID: "answer", RunID: "run_1", Kind: conversation.BlockAssistant, Status: conversation.BlockStatusRunning}
-	if err := view.ApplyRunEvent(conversation.RunEvent{RunID: "run_1", Event: conversation.BlockStarted{Block: started}}, nil); err != nil {
+	if err := view.ApplyRunEvent(conversation.RunEvent{RunID: "run_1", Event: conversation.BlockStarted{Block: started}}); err != nil {
 		t.Fatal(err)
 	}
 	completed := started
@@ -381,7 +334,7 @@ func TestStreamedAssistantCompletionAppendsInlineImages(t *testing.T) {
 	completed.Images = []conversation.InlineImage{{
 		ID: "answer:image:0", Name: "chart.png", MIMEType: "image/png", Data: []byte("png"),
 	}}
-	if err := view.ApplyRunEvent(conversation.RunEvent{RunID: "run_1", Event: conversation.BlockCompleted{Block: completed}}, nil); err != nil {
+	if err := view.ApplyRunEvent(conversation.RunEvent{RunID: "run_1", Event: conversation.BlockCompleted{Block: completed}}); err != nil {
 		t.Fatal(err)
 	}
 	if view.content.Len() != 2 || !view.JumpToRun("run_1") {
@@ -401,7 +354,7 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	tool := beginTestTool(view, running)
 	tool.SetExpanded(true)
 	initial := strings.Repeat("tool output long enough to occupy rows\n", 20)
-	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: initial}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: initial}); err != nil {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
@@ -413,7 +366,7 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	}
 	wantOffset := view.scroll.Offset()
 
-	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "new tool tail\n"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "new tool tail\n"}); err != nil {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
@@ -434,7 +387,7 @@ func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T)
 	tool := beginTestTool(view, running)
 	tool.SetExpanded(true)
 	for _, chunk := range []string{"first\n", "second\n"} {
-		if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: chunk}, nil); err != nil {
+		if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: chunk}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -446,7 +399,7 @@ func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T)
 		ArgumentsJSON: []byte(`{"phase":"authoritative-arguments"}`),
 		ResultJSON:    []byte(`{"resultMarker":"authoritative-result"}`),
 	}
-	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}, nil); err != nil {
+	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}); err != nil {
 		t.Fatal(err)
 	}
 	if !tool.Expanded() {
@@ -472,22 +425,16 @@ func TestObservationFailureRetainsRuntimeToolStatus(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			view := testTranscriptView(t)
-			registry := new(extensions.Registry)
-			loaded, err := extensions.Load(registry, builtinPlugin())
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = loaded.Dispose() })
 			view.ToggleDetails()
 			call := conversation.ToolCall{Kind: test.kind, Command: "pending command", Path: "live.go", Status: conversation.ToolRunning}
-			if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call}}, registry); err != nil {
+			if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call}}); err != nil {
 				t.Fatal(err)
 			}
-			if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "observed output"}, nil); err != nil {
+			if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "observed output"}); err != nil {
 				t.Fatal(err)
 			}
 			if test.kind == conversation.ToolRead {
-				if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool-2", Kind: conversation.BlockTool, Tool: &call}}, registry); err != nil {
+				if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool-2", Kind: conversation.BlockTool, Tool: &call}}); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -517,7 +464,7 @@ func TestDetailFreeCompletedToolIsNotAnnouncedExpandable(t *testing.T) {
 	var selection transcriptSelection
 	view.OnSelection(func(next transcriptSelection) { selection = next })
 	call := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
-	block := newToolBlock(BlockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
+	block := newToolBlock(blockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
 		ID: "tool", Kind: conversation.BlockTool, Tool: &call,
 	})
 	id := view.place(block, true)
@@ -544,7 +491,7 @@ func TestCompletingASelectedToolWithoutDetailsRemovesItsExpansionAction(t *testi
 		t.Fatalf("running selection = %+v", selection)
 	}
 	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
-	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}, nil); err != nil {
+	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}); err != nil {
 		t.Fatal(err)
 	}
 	if selection.Expandable || selection.Expanded || tool.Expanded() {
@@ -557,13 +504,13 @@ func TestCompletingASelectedToolThatLosesDetailsKeepsItsHeaderVisible(t *testing
 	tool := beginTestTool(view, conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning})
 	toolID := view.toolViews[0].id
 	tool.SetExpanded(true)
-	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: strings.Repeat("partial output\n", 20)}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: strings.Repeat("partial output\n", 20)}); err != nil {
 		t.Fatal(err)
 	}
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
 	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolOK}
-	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}, nil); err != nil {
+	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed}}); err != nil {
 		t.Fatal(err)
 	}
 	viewport.root.Draw(viewport.surface.View())
@@ -584,7 +531,7 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	canceled := conversation.ToolCall{Kind: conversation.ToolShell, Command: "pending command", Status: conversation.ToolCanceled}
 	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{
 		ID: "tool", Kind: conversation.BlockTool, Status: conversation.BlockStatusIncomplete, Tool: &canceled,
-	}}, nil); err != nil {
+	}}); err != nil {
 		t.Fatal(err)
 	}
 	viewport.root.Draw(viewport.surface.View())
@@ -596,15 +543,15 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 
 func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 	view := testTranscriptView(t)
-	if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}, nil); err != nil {
+	if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(conversation.BlockDelta{BlockID: "answer", Text: "partial answer"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: "answer", Text: "partial answer"}); err != nil {
 		t.Fatal(err)
 	}
 	tool := beginTestTool(view, conversation.ToolCall{Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolRunning})
 	tool.SetExpanded(true)
-	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "partial tool output\n"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "partial tool output\n"}); err != nil {
 		t.Fatal(err)
 	}
 	canceled := conversation.ToolCall{
@@ -614,13 +561,13 @@ func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 		{ID: "answer", Kind: conversation.BlockAssistant, Status: conversation.BlockStatusIncomplete, Text: "partial answer"},
 		{ID: "tool", Kind: conversation.BlockTool, Status: conversation.BlockStatusIncomplete, Tool: &canceled},
 	} {
-		if err := view.Apply(conversation.BlockCompleted{Block: block}, nil); err != nil {
+		if err := view.Apply(conversation.BlockCompleted{Block: block}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if err := view.Apply(conversation.SegmentFinished{Run: conversation.Run{
 		Status: protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled},
-	}}, nil); err != nil {
+	}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(view.textStreams) != 0 || len(view.tools) != 0 {
@@ -650,7 +597,7 @@ func TestChildBlockCompletionLeavesTheRootsCollidingBlockLive(t *testing.T) {
 	rootID, childID, blockID := "run_root", "run_child", "answer"
 	apply := func(runID string, event conversation.Event) {
 		t.Helper()
-		if err := view.ApplyRunEvent(conversation.RunEvent{RunID: runID, Event: event}, nil); err != nil {
+		if err := view.ApplyRunEvent(conversation.RunEvent{RunID: runID, Event: event}); err != nil {
 			t.Fatalf("apply %T for %s: %v", event, runID, err)
 		}
 	}
@@ -1129,7 +1076,7 @@ func (s selectedToolViewport) requireHeaderVisible(t *testing.T) {
 
 func appendTestTool(view *transcriptView, id, output string) *toolBlock {
 	call := conversation.ToolCall{Kind: conversation.ToolShell, Command: "echo " + id, Output: output, Status: conversation.ToolOK}
-	block := newToolBlock(BlockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
+	block := newToolBlock(blockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
 		ID: id, Kind: conversation.BlockTool, Tool: &call,
 	})
 	blockID := view.place(block, true)
@@ -1138,7 +1085,7 @@ func appendTestTool(view *transcriptView, id, output string) *toolBlock {
 }
 
 func beginTestTool(view *transcriptView, call conversation.ToolCall) *toolBlock {
-	block := newToolBlock(BlockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
+	block := newToolBlock(blockPresentation{Theme: view.theme, Glyphs: view.glyphs, Look: view.look, Syntax: view.syntax}, conversation.Block{
 		ID: "tool", Kind: conversation.BlockTool, Tool: &call,
 	})
 	blockID := view.place(block, false)

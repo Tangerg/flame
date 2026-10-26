@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -74,11 +74,7 @@ func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	t.Parallel()
 
-	profile := terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{
-		protocol.FeatureGit:           {},
-		protocol.FeatureRelocate:      {},
-		protocol.FeatureSessionExport: {},
-	})
+	profile := terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {}, protocol.FeatureRelocate: {}, protocol.FeatureSessionExport: {}})
 	application := &app{
 		runtimeProfile: &profile,
 		execution:      executionState{conversation: conversation.New()},
@@ -99,12 +95,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.T) {
 	t.Parallel()
 
-	features := map[string]protocol.FeatureCapability{
-		protocol.FeatureGoals:   {},
-		protocol.FeatureSkills:  {},
-		protocol.FeatureMCP:     {},
-		protocol.FeaturePlugins: {},
-	}
+	features := map[string]protocol.FeatureCapability{protocol.FeatureGoals: {}, protocol.FeatureSkills: {}, protocol.FeatureMCP: {}, protocol.FeaturePlugins: {}}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,
@@ -146,14 +137,12 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *testing.T) {
 	t.Parallel()
 
-	application := &app{runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{
-		protocol.FeatureMultimodal: {Enabled: false},
-	}))}
-	text := prompt.Message{Attachments: []prompt.Attachment{{Kind: protocol.ContentBlockText}}}
+	application := &app{runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureMultimodal: {Enabled: false}}))}
+	text := authoring.Message{Attachments: []authoring.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {
 		t.Fatalf("text attachment: %v", err)
 	}
-	image := prompt.Message{Attachments: []prompt.Attachment{{Kind: protocol.ContentBlockImage}}}
+	image := authoring.Message{Attachments: []authoring.Attachment{{Kind: protocol.ContentBlockImage}}}
 	if err := application.validateMessageCapabilities(image); err == nil || !strings.Contains(err.Error(), "multimodal") {
 		t.Fatalf("image attachment error = %v", err)
 	}
@@ -280,14 +269,14 @@ func TestRejectedSlashCommandsPreserveTheEditorAndAttachments(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			application := &app{
 				status: &statusView{}, execution: executionState{conversation: conversation.New()},
-				commands: newCommandCatalog(), attachmentElements: make(map[uint64]prompt.Attachment),
+				commands: newCommandCatalog(), attachmentElements: make(map[uint64]authoring.Attachment),
 			}
 			if err := application.commands.add("test", extensions.CommandDescriptor{Name: "inspect", Title: "Inspect", Arguments: test.arguments}, func(string, func()) { t.Fatal("rejected command executed") }, test.availability); err != nil {
 				t.Fatal(err)
 			}
 			editor := application.composer.Editor()
 			attachment := editor.InsertElement(fileElement, "@context.txt")
-			application.attachmentElements[attachment.ID] = prompt.Attachment{ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}
+			application.attachmentElements[attachment.ID] = authoring.Attachment{ID: "context", Kind: protocol.ContentBlockText, Name: "context.txt", MimeType: "text/plain"}
 			editor.Insert(test.text)
 			editor.SetCursor(0, 3)
 			revision := editor.Revision()

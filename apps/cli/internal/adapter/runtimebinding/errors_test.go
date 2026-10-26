@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestTransportAvailabilityAndMutationCertaintyRemainIndependent(t *testing.T) {

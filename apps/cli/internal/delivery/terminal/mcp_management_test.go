@@ -695,13 +695,7 @@ func TestMCPServerDetailNamesEachStatusCategory(t *testing.T) {
 	for problem, test := range map[protocol.MCPStatusProblemType]struct {
 		state protocol.MCPServerStateType
 		want  string
-	}{
-		protocol.MCPStatusAuthorizationRequired: {protocol.MCPServerNeedsAuth, "authorization is required"},
-		protocol.MCPStatusDialFailed:            {protocol.MCPServerFailed, "connection failed"},
-		protocol.MCPStatusToolDiscoveryFailed:   {protocol.MCPServerFailed, "valid tool list"},
-		protocol.MCPStatusConfigurationFailed:   {protocol.MCPServerFailed, "stored credentials"},
-		protocol.MCPStatusAuthorizationFailed:   {protocol.MCPServerFailed, "sign-in did not complete"},
-	} {
+	}{protocol.MCPStatusAuthorizationRequired: {protocol.MCPServerNeedsAuth, "authorization is required"}, protocol.MCPStatusDialFailed: {protocol.MCPServerFailed, "connection failed"}, protocol.MCPStatusToolDiscoveryFailed: {protocol.MCPServerFailed, "valid tool list"}, protocol.MCPStatusConfigurationFailed: {protocol.MCPServerFailed, "stored credentials"}, protocol.MCPStatusAuthorizationFailed: {protocol.MCPServerFailed, "sign-in did not complete"}} {
 		server := protocol.MCPServer{ID: id, Status: protocol.MCPServerState{Type: test.state, Error: &protocol.MCPStatusProblem{Type: problem}}}
 		if detail, err := mcpServerDetail(server); err != nil || !strings.Contains(detail, test.want) || strings.Contains(detail, string(problem)) {
 			t.Errorf("%s rendered as %q, %v", problem, detail, err)

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -53,10 +53,10 @@ func TestUserMessageBlockDegradesWithoutLosingTextAtMinimalWidth(t *testing.T) {
 }
 
 func TestUserPresenterKeepsAttachmentsInsideTheMessageSurface(t *testing.T) {
-	rendered := presentUser(BlockPresentation{Theme: kit.Dark()}, conversation.Block{
+	rendered := presentUser(blockPresentation{Theme: kit.Dark()}, conversation.Block{
 		Kind:        conversation.BlockUser,
 		Text:        "review this",
-		Attachments: []prompt.Attachment{{Name: "design.md", MimeType: "text/markdown"}},
+		Attachments: []authoring.Attachment{{Name: "design.md", MimeType: "text/markdown"}},
 	})
 	if len(rendered) != 1 {
 		t.Fatalf("presented blocks = %d, want 1", len(rendered))
@@ -74,7 +74,7 @@ func TestQuestionPresenterShowsAcceptedTranscriptAnswers(t *testing.T) {
 		Title: "Target", Fields: []conversation.QuestionField{{Prompt: "Which platform?"}},
 		Answers: [][]string{{"linux"}},
 	}
-	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
+	rendered := presentQuestion(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
 	if len(rendered) != 1 {
 		t.Fatalf("presented blocks = %d, want 1", len(rendered))
 	}
@@ -90,7 +90,7 @@ func TestPendingQuestionPresenterHasNoVisibleInterruptSurface(t *testing.T) {
 		RunID: "run_1", ItemID: "question_1", Title: "Target",
 		Fields: []conversation.QuestionField{{Prompt: "Which platform?", Kind: conversation.QuestionText}},
 	}
-	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
+	rendered := presentQuestion(blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
 	block, ok := rendered[0].(*questionBlock)
 	if !ok {
 		t.Fatalf("presented question = %T", rendered[0])

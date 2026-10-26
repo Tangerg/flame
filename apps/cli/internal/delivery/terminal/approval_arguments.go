@@ -36,12 +36,12 @@ func (a *app) openApprovalArgumentEditor() {
 	})
 }
 
-func (a *app) approvalPreviewSections() []ToolSection {
+func (a *app) approvalPreviewSections() []toolSection {
 	sections := slices.Clone(a.dialogs.approvalSections)
 	if a.dialogs.approvalOverride == nil {
 		return sections
 	}
-	return append(sections, ToolSection{
+	return append(sections, toolSection{
 		Title: "Edited arguments · one-shot", Style: toolSectionCode,
 		Language: "json", Text: a.dialogs.approvalArguments,
 	})

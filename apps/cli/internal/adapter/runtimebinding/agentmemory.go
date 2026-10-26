@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -34,9 +34,9 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	seen := make(map[string]struct{})
 	for {
 		if traversal != nil {
-			input.Cursor = traversal.Current()
+			input.Cursor = traversal.cursor()
 		}
-		encoded, err := jsoninput.Encode(input)
+		encoded, err := jsonvalue.Encode(input)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 			seen[item.ID] = struct{}{}
 			items = append(items, item)
 		}
-		more, err := traversal.Advance(result.NextCursor)
+		more, err := traversal.advance(result.NextCursor)
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 }
 
 func (a *AgentMemory) PrepareReview(ctx context.Context, id string, decision memory.ReviewDecision) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(memory.ReviewV1Input{ID: strings.TrimSpace(id), Decision: string(decision)})
+	input, err := jsonvalue.Encode(memory.ReviewV1Input{ID: strings.TrimSpace(id), Decision: string(decision)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -97,7 +97,7 @@ func (a *AgentMemory) PrepareReview(ctx context.Context, id string, decision mem
 }
 
 func (a *AgentMemory) PrepareUpdate(ctx context.Context, request memory.UpdateV1Input) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(request)
+	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -121,19 +121,19 @@ func memoryProjection(row memory.UpdateV1Output) memory.Item {
 }
 
 func (a *AgentMemory) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(memory.DeleteV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsonvalue.Encode(memory.DeleteV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	return a.prepareCommand(ctx, memory.DeleteV1Method, input)
 }
 
-func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jsoninput.Input) (protocol.CallPluginRequest, error) {
+func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jsonvalue.Value) (protocol.CallPluginRequest, error) {
 	bound, err := a.runtime.selectedInstalledCall(ctx, memory.CapabilityJSON, name)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	contract, err := capability.Parse([]byte(bound.Contract))
+	contract, err := extension.ParseCapability([]byte(bound.Contract))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -148,7 +148,7 @@ func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jso
 	return bound, nil
 }
 
-func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (a *AgentMemory) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	return a.runtime.CallPlugin(ctx, request, commandID)
 }
 
@@ -156,7 +156,7 @@ func (a *AgentMemory) PrepareAdd(ctx context.Context, request memory.AddV1Input)
 	if _, err := conversation.NewMemoryTarget(memory.Scope(request.Scope), request.CWD); err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	input, err := jsoninput.Encode(request)
+	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}

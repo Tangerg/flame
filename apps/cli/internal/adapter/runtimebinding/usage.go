@@ -15,7 +15,7 @@ type usageBinding interface {
 
 func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (conversation.SessionUsageReport, error) {
 	request := protocol.SessionUsageRequest{SessionID: sessionID}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return conversation.SessionUsageReport{}, fmt.Errorf("session usage: %w", err)
 	}
 	result, err := r.usage.GetSessionUsage(ctx, request, r.callOptions())
@@ -43,7 +43,7 @@ func (r *Connection) Summary(ctx context.Context, period conversation.UsageSumma
 		sinceDays = protocolPositiveInt(days)
 	}
 	request := protocol.UsageSummaryRequest{SinceDays: sinceDays}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return conversation.UsageSummary{}, fmt.Errorf("usage summary: %w", err)
 	}
 	result, err := r.usage.GetUsageSummary(ctx, request, r.callOptions())

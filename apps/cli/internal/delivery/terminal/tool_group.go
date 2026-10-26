@@ -213,7 +213,7 @@ func (t *toolGroupBlock) readerDocument() readerDocument {
 	for index, tool := range t.tools {
 		child := tool.readerDocument()
 		prefix := fmt.Sprintf("%d. %s", index+1, child.Title)
-		document.Sections = append(document.Sections, ToolSection{
+		document.Sections = append(document.Sections, toolSection{
 			Title: prefix, Style: toolSectionParagraph, Text: child.Detail,
 		})
 		for _, section := range child.Sections {

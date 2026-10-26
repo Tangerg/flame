@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type workspaceReaderMode uint8
@@ -94,7 +93,7 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 			if diff.Truncated {
 				detail += " · truncated"
 			}
-			return readerDocument{Title: "Workspace diff", Detail: detail, Sections: []ToolSection{{Title: "Comparison", Style: toolSectionParagraph, Text: baseline}, {Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: text}}}, nil
+			return readerDocument{Title: "Workspace diff", Detail: detail, Sections: []toolSection{{Title: "Comparison", Style: toolSectionParagraph, Text: baseline}, {Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: text}}}, nil
 		}, workspaceReaderNone)
 	return nil
 }
@@ -250,7 +249,7 @@ func paragraphDocument(title, detail string, lines []string) readerDocument {
 	if strings.TrimSpace(text) == "" {
 		text = "No results."
 	}
-	return readerDocument{Title: title, Detail: detail, Sections: []ToolSection{{Title: "Results", Style: toolSectionParagraph, Text: text}}}
+	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{Title: "Results", Style: toolSectionParagraph, Text: text}}}
 }
 
 func codeDocument(title, detail, text, pathOrLanguage string, lineNumbers bool) readerDocument {
@@ -258,7 +257,7 @@ func codeDocument(title, detail, text, pathOrLanguage string, lineNumbers bool) 
 	if strings.ContainsAny(pathOrLanguage, `./\`) {
 		language = languageForPath(pathOrLanguage)
 	}
-	return readerDocument{Title: title, Detail: detail, Sections: []ToolSection{{Title: "Content", Style: toolSectionCode, Language: language, Text: text, LineNumbers: lineNumbers}}}
+	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{Title: "Content", Style: toolSectionCode, Language: language, Text: text, LineNumbers: lineNumbers}}}
 }
 
 func workspaceChangesDocument(path string, changes []workspace.Change) readerDocument {

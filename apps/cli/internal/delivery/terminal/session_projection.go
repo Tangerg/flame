@@ -6,8 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -21,7 +20,7 @@ func (a *app) restore(snapshot conversation.SessionSnapshot) {
 		a.fail(err)
 		return
 	}
-	if err := presentSnapshot(a.transcript, snapshot, a.registry); err != nil {
+	if err := presentSnapshot(a.transcript, snapshot); err != nil {
 		a.fail(err)
 		return
 	}
@@ -29,14 +28,14 @@ func (a *app) restore(snapshot conversation.SessionSnapshot) {
 	a.restoreSteerReceipts(snapshot)
 }
 
-func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot, registry *extensions.Registry) error {
+func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot) error {
 	view.SetRuns(snapshot.Runs)
 	for _, block := range snapshot.Transcript {
 		var event conversation.Event = conversation.BlockCompleted{Block: block}
 		if block.Status == conversation.BlockStatusRunning {
 			event = conversation.BlockStarted{Block: block}
 		}
-		if err := view.Apply(event, registry); err != nil {
+		if err := view.Apply(event); err != nil {
 			return fmt.Errorf("restore transcript block %s: %w", block.ID, err)
 		}
 	}
@@ -73,7 +72,7 @@ func (a *app) projectSession(snapshot conversation.SessionSnapshot, attached *co
 		return sessionProjection{}, err
 	}
 	transcript := a.newTranscript()
-	if err := presentSnapshot(transcript, snapshot, a.registry); err != nil {
+	if err := presentSnapshot(transcript, snapshot); err != nil {
 		transcript.Close()
 		return sessionProjection{}, err
 	}
@@ -223,6 +222,6 @@ func (a *app) setActiveSession(session conversation.Session) {
 	a.setWindowTitle()
 }
 
-func (a *app) displayOptions() prompt.RunOptions {
+func (a *app) displayOptions() authoring.RunOptions {
 	return displayRunOptions(a.options, a.session.current)
 }

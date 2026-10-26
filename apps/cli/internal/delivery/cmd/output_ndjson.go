@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"encoding/json/jsontext"
@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -20,20 +20,20 @@ import (
 // caller here wants what happened, already folded; the wire additionally carries
 // segment identity, replay windows and dedup keys that exist to make a
 // reconnecting consumer correct and would be noise in a pipe.
-type NDJSON struct {
+type ndjsonRenderer struct {
 	out   io.Writer
 	err   error
-	scope runScope
+	scope outputRunScope
 }
 
 // NewNDJSON builds an event-stream renderer over w.
-func NewNDJSON(w io.Writer) *NDJSON {
-	return &NDJSON{out: w}
+func newNDJSONRenderer(w io.Writer) *ndjsonRenderer {
+	return &ndjsonRenderer{out: w}
 }
 
 // Begin binds the stream to the accepted run without emitting a synthetic
 // event. The runtime's segment.started event remains the first output frame.
-func (n *NDJSON) Begin(run conversation.Run, _ prompt.RunOptions) error {
+func (n *ndjsonRenderer) Begin(run conversation.Run, _ authoring.RunOptions) error {
 	if n.err != nil {
 		return n.err
 	}
@@ -77,8 +77,8 @@ type eventRecord struct {
 	Payload          jsontext.Value  `json:"payload,omitzero"`
 	Block            *blockFrame     `json:"block,omitzero"`
 	Transcript       []blockFrame    `json:"transcript,omitzero"`
-	Run              *runFrame       `json:"run,omitzero"`
-	Runs             []runFrame      `json:"runs,omitzero"`
+	Run              *runJSONFrame   `json:"run,omitzero"`
+	Runs             []runJSONFrame  `json:"runs,omitzero"`
 	Plan             []planFrame     `json:"plan,omitzero"`
 	Interrupts       []interruptJSON `json:"interrupts,omitzero"`
 	Outcome          *outcomeJSON    `json:"outcome,omitzero"`
@@ -216,7 +216,7 @@ type modelUsageJSON struct {
 }
 
 // Render writes one line. As with [Text], the first error sticks.
-func (n *NDJSON) Render(envelope conversation.RunEvent) error {
+func (n *ndjsonRenderer) Render(envelope conversation.RunEvent) error {
 	if n.err != nil {
 		return n.err
 	}
@@ -235,14 +235,14 @@ func (n *NDJSON) Render(envelope conversation.RunEvent) error {
 	}
 	f.RunID, f.EventID, f.SegmentID = envelope.RunID, envelope.EventID, envelope.SegmentID
 	f.StreamSegmentID, f.At = envelope.StreamSegment(), envelope.At
-	n.err = WriteJSONLine(n.out, f)
+	n.err = writeJSONLine(n.out, f)
 	return n.err
 }
 
 // Reconcile emits a replacement snapshot frame. Unlike a runtime event it has
 // no eventId: consumers replace their durable projection with this frame, then
 // continue folding later segment events on top.
-func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
+func (n *ndjsonRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if n.err != nil {
 		return n.err
 	}
@@ -262,7 +262,7 @@ func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	frame := eventRecord{
 		Type: "run.snapshot", RunID: target.ID, SessionID: snapshot.Session.ID, Status: string(target.Status),
 		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
-		Runs:       make([]runFrame, 0, len(snapshot.Runs)),
+		Runs:       make([]runJSONFrame, 0, len(snapshot.Runs)),
 	}
 	for _, run := range snapshot.Runs {
 		if run.ID == target.ID || run.Lineage.RootRunID() == target.ID {
@@ -285,7 +285,7 @@ func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if target.Status == protocol.RunStatusFinished {
 		frame.Outcome, frame.Usage = encodeOutcome(target.Outcome), encodeUsage(target.Usage)
 	}
-	n.err = WriteJSONLine(n.out, frame)
+	n.err = writeJSONLine(n.out, frame)
 	return n.err
 }
 
@@ -373,7 +373,7 @@ func cloneFloat64(value *float64) *float64 {
 	return new(*value)
 }
 
-func encodeRunOptions(options prompt.RunOptions) *runOptionsJSON {
+func encodeRunOptions(options authoring.RunOptions) *runOptionsJSON {
 	options = options.Clone()
 	return &runOptionsJSON{
 		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
@@ -434,7 +434,7 @@ func encodeInterrupt(interrupt conversation.Interrupt) *interruptJSON {
 
 // Close reports the first write error, if any. There is nothing to flush: a line
 // is encoded per event.
-func (n *NDJSON) Close() error { return n.err }
+func (n *ndjsonRenderer) Close() error { return n.err }
 
 func encodeBlock(b conversation.Block) *blockFrame {
 	out := &blockFrame{

@@ -7,22 +7,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type steerRuntimeStub struct {
-	requests     []prompt.SteerRun
+	requests     []authoring.SteerRun
 	err          error
 	afterRequest func()
 }
 
-func (s *steerRuntimeStub) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (s *steerRuntimeStub) SteerRun(_ context.Context, request authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	s.requests = append(s.requests, request.Clone())
 	err := s.err
 	if s.afterRequest != nil {
@@ -112,17 +113,17 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondCommand := prompt.SteerRun{
+	secondCommand := authoring.SteerRun{
 		CommandID: "cli_44444444444444444444444444444444",
 		RunID:     "run_2",
 		SegmentID: "seg_2",
-		Message:   prompt.Message{Text: "recover safely"},
+		Message:   authoring.Message{Text: "recover safely"},
 	}
 	second, err := workbench.NewPendingSteer("ses_2", secondCommand, secondStagedAt, guard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSource := prompt.Message{Text: "/steer recover safely"}
+	secondSource := authoring.Message{Text: "/steer recover safely"}
 	if err := fixture.store.SaveDraft(second.SessionID(), secondSource); err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +194,7 @@ func TestUnpreparedLegacySteerHasUnknownOutcomeWithoutADispatch(t *testing.T) {
 	}
 	runtime := new(steerRuntimeStub)
 	result, err := DeliverSteer(t.Context(), runtime, legacy, fixture.policy(t), fastBackoff(t))
-	if result.Outcome != mutation.Unknown || !errors.Is(err, replay.ErrCommandInputUnavailable) || len(runtime.requests) != 0 {
+	if result.Outcome != mutation.Unknown || !errors.Is(err, authoring.ErrCommandInputUnavailable) || len(runtime.requests) != 0 {
 		t.Fatalf("legacy steer = %s, %v, %d dispatches", result.Outcome, err, len(runtime.requests))
 	}
 }
@@ -247,13 +248,13 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 type steerFixture struct {
 	store      *workbench.Store
 	pending    workbench.PendingSteer
-	capability replay.Capability
+	capability authoring.ReplayCapability
 	now        time.Time
 }
 
 func (f *steerFixture) policy(t *testing.T) mutation.ReplayPolicy {
 	t.Helper()
-	policy, err := mutation.NewReplayPolicy(f.capability, func() time.Time { return f.now })
+	policy, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: f.capability}, func() time.Time { return f.now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,25 +268,25 @@ func stagedSteer(t *testing.T) *steerFixture {
 		t.Fatal(err)
 	}
 	stagedAt := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
-	capability, err := replay.NewCapability("runtime-test", time.Hour)
+	capability, err := authoring.NewReplayCapability("runtime-test", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fixture := &steerFixture{store: store, capability: capability, now: stagedAt}
-	attachment := prompt.Attachment{
+	attachment := authoring.Attachment{
 		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
-	request := prompt.SteerRun{
+	request := authoring.SteerRun{
 		CommandID: "cli_22222222222222222222222222222222",
 		RunID:     "run_1", SegmentID: "seg_1",
-		Message: prompt.Message{Text: "inspect the parser", Attachments: []prompt.Attachment{attachment}},
+		Message: authoring.Message{Text: "inspect the parser", Attachments: []authoring.Attachment{attachment}},
 		Input: []protocol.ContentBlock{
 			{Type: protocol.ContentBlockText, Text: "inspect the parser"},
 			{Type: protocol.ContentBlockText, Text: "fixture attachment"},
 		},
 	}
-	source := prompt.Message{Text: "/steer inspect the parser", Attachments: []prompt.Attachment{attachment}}
+	source := authoring.Message{Text: "/steer inspect the parser", Attachments: []authoring.Attachment{attachment}}
 	if saveDraftErr := store.SaveDraft("ses_1", source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -308,7 +309,7 @@ func fastBackoff(t testing.TB) retry.Backoff {
 	return backoff
 }
 
-func prepareSteerTestInput(t *testing.T, store *workbench.Store, request prompt.SteerRun) *workbench.PreparedInput {
+func prepareSteerTestInput(t *testing.T, store *workbench.Store, request authoring.SteerRun) *workbench.PreparedInput {
 	t.Helper()
 	input, err := store.PrepareInput(t.Context(), request.Message, request.Input)
 	if err != nil {

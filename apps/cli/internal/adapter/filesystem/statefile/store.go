@@ -12,10 +12,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/spf13/pathologize"
-
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
-	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
 )
 
 // listReadBatchSize bounds temporary directory metadata, not the number of
@@ -30,13 +28,13 @@ type Store struct {
 	rootName string
 	root     *os.Root
 	cleanup  goruntime.Cleanup
-	lease    *advisorylock.Lease
+	lease    *filesystem.DirectoryLease
 }
 
 type openedRoots struct {
 	boundary *os.Root
 	root     *os.Root
-	lease    *advisorylock.Lease
+	lease    *filesystem.DirectoryLease
 }
 
 // Open validates, creates, and pins an owned state root.
@@ -63,7 +61,7 @@ func Open(root string) (_ *Store, err error) {
 	if !expected.IsDir() || expected.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("state root is not a directory")
 	}
-	lease, err := advisorylock.TryDirectory(root)
+	lease, err := filesystem.TryDirectoryLease(root)
 	if err != nil {
 		return nil, fmt.Errorf("acquire state directory: %w", err)
 	}
@@ -160,14 +158,14 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	// OpenAtExpected is given this same observation and applies the regular-file
 	// and size rules to it before opening, then again to what it opened, so the
 	// switch below already carries both answers.
-	file, opened, err := fileinput.OpenAtExpected(directory, base, info, maximumBytes)
+	file, opened, err := filesystem.OpenFileAtExpected(directory, base, info, maximumBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return nil, fmt.Errorf("state file %q changed while it was being opened", name)
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return nil, fmt.Errorf("state file %q is not regular", name)
-		case errors.Is(err, fileinput.ErrTooLarge):
+		case errors.Is(err, filesystem.ErrFileTooLarge):
 			return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
 		default:
 			return nil, err
@@ -181,8 +179,8 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if int64(len(body)) > maximumBytes {
 		return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
 	}
-	if err := fileinput.VerifyAtVersion(file, opened, directory, base); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyAtVersion(file, opened, directory, base); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return nil, fmt.Errorf("state file %q changed while it was being read", name)
 		}
 		return nil, fmt.Errorf("verify state file %q after reading: %w", name, err)
@@ -203,7 +201,7 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, directory.Close()) }()
-	opened, _, err := fileinput.OpenDirectoryAt(directory, ".")
+	opened, _, err := filesystem.OpenDirectoryAt(directory, ".")
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +419,7 @@ func createTemporary(directory *os.Root) (*os.File, string, error) {
 }
 
 func syncDirectoryAt(root *os.Root, name string) error {
-	directory, _, err := fileinput.OpenDirectoryAt(root, name)
+	directory, _, err := filesystem.OpenDirectoryAt(root, name)
 	if err != nil {
 		return err
 	}

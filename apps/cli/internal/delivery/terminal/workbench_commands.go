@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/kit"
 )
 
@@ -30,8 +30,8 @@ func (a *app) stashPrompt() error {
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	a.draftState.Reset(a.session.current.ID, prompt.Message{})
-	a.restoreComposer(prompt.Message{})
+	a.draftState.Reset(a.session.current.ID, authoring.Message{})
+	a.restoreComposer(authoring.Message{})
 	a.message("stashed prompt · " + stash.ID)
 	return nil
 }

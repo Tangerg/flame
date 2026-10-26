@@ -1,4 +1,4 @@
-package prompt
+package authoring
 
 import (
 	"strings"

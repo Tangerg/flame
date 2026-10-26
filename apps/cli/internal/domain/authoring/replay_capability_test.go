@@ -1,4 +1,4 @@
-package replay
+package authoring
 
 import (
 	json "encoding/json/v2"
@@ -9,7 +9,7 @@ import (
 func TestCapabilityOwnsStoreIdentityRetentionAndDeadline(t *testing.T) {
 	t.Parallel()
 
-	capability, err := NewCapability(" runtime-a ", 10*time.Minute)
+	capability, err := NewReplayCapability(" runtime-a ", 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,11 +39,11 @@ func TestCapabilityRejectsPartialOrNonWireRepresentableFacts(t *testing.T) {
 		{namespace: "runtime-a", retention: -time.Second},
 		{namespace: "runtime-a", retention: time.Millisecond},
 	} {
-		if _, err := NewCapability(input.namespace, input.retention); err == nil {
+		if _, err := NewReplayCapability(input.namespace, input.retention); err == nil {
 			t.Fatalf("NewCapability(%q, %s) succeeded", input.namespace, input.retention)
 		}
 	}
-	if err := (Capability{}).Validate(); err == nil {
+	if err := (ReplayCapability{}).Validate(); err == nil {
 		t.Fatal("zero Capability was valid")
 	}
 }
@@ -51,7 +51,7 @@ func TestCapabilityRejectsPartialOrNonWireRepresentableFacts(t *testing.T) {
 func TestCapabilityJSONIsStrictAndRoundTrips(t *testing.T) {
 	t.Parallel()
 
-	want, err := NewCapability("runtime-a", 10*time.Minute)
+	want, err := NewReplayCapability("runtime-a", 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestCapabilityJSONIsStrictAndRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got Capability
+	var got ReplayCapability
 	if err := json.Unmarshal(encoded, &got); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestCapabilityJSONIsStrictAndRoundTrips(t *testing.T) {
 		`{"namespace":"runtime-a","retentionSeconds":1,"extra":true}`,
 		`{"namespace":"runtime-a","retentionSeconds":1} {}`,
 	} {
-		var decoded Capability
+		var decoded ReplayCapability
 		if err := json.Unmarshal([]byte(invalid), &decoded); err == nil {
 			t.Fatalf("decoded invalid capability %s", invalid)
 		}

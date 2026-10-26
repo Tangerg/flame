@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -27,14 +25,14 @@ var errQueuedPromptDispatching = errors.New("queued prompt is already being sent
 type queueView struct {
 	theme    kit.Theme
 	glyphs   kit.Glyphs
-	snapshot queue.Snapshot
+	snapshot authoring.QueueSnapshot
 }
 
 func newQueueView(theme kit.Theme, glyphs kit.Glyphs) *queueView {
 	return &queueView{theme: theme, glyphs: glyphs}
 }
 
-func (q *queueView) Set(snapshot queue.Snapshot) {
+func (q *queueView) Set(snapshot authoring.QueueSnapshot) {
 	q.snapshot = snapshot
 }
 
@@ -80,7 +78,7 @@ func (q *queueView) Draw(view grid.View) {
 	}
 }
 
-func queueEntryLabel(entry queue.Entry) string {
+func queueEntryLabel(entry authoring.QueueEntry) string {
 	label := strings.TrimSpace(entry.Message.Text)
 	if line, _, ok := strings.Cut(label, "\n"); ok {
 		label = strings.TrimSpace(line)
@@ -147,7 +145,7 @@ func (a *app) drainQueue() bool {
 	return true
 }
 
-func (a *app) attemptQueuedDispatchSettlement(commandID replay.CommandID) error {
+func (a *app) attemptQueuedDispatchSettlement(commandID authoring.CommandID) error {
 	entry, retired, err := a.queue.SettleDispatch(a.session.current.ID, commandID)
 	if err != nil {
 		return err
@@ -156,7 +154,7 @@ func (a *app) attemptQueuedDispatchSettlement(commandID replay.CommandID) error 
 	return nil
 }
 
-func (a *app) retireQueuedCommand(sessionID string, commandID replay.CommandID) error {
+func (a *app) retireQueuedCommand(sessionID string, commandID authoring.CommandID) error {
 	entry, retired, err := a.queue.Retire(sessionID, commandID)
 	if err != nil {
 		return err
@@ -165,7 +163,7 @@ func (a *app) retireQueuedCommand(sessionID string, commandID replay.CommandID) 
 	return nil
 }
 
-func (a *app) presentQueuedRetirement(entry queue.Entry, retired bool) {
+func (a *app) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) {
 	if !retired {
 		return
 	}
@@ -174,7 +172,7 @@ func (a *app) presentQueuedRetirement(entry queue.Entry, retired bool) {
 	a.syncQueue()
 }
 
-func (a *app) settleQueuedDispatch(commandID replay.CommandID) bool {
+func (a *app) settleQueuedDispatch(commandID authoring.CommandID) bool {
 	if a.operations.Active(pendingRunSettlementOperation) {
 		return false
 	}
@@ -189,7 +187,7 @@ func (a *app) queuedDispatchCanceling() bool {
 	return a.queue.DispatchCanceling(a.session.current.ID)
 }
 
-func (a *app) reportQueuedDispatchSettlementFailure(commandID replay.CommandID, err error) {
+func (a *app) reportQueuedDispatchSettlementFailure(commandID authoring.CommandID, err error) {
 	if errors.Is(err, workbench.ErrDispatchCanceling) {
 		return
 	}
@@ -198,7 +196,7 @@ func (a *app) reportQueuedDispatchSettlementFailure(commandID replay.CommandID, 
 	a.retryQueuedDispatchSettlement(commandID)
 }
 
-func (a *app) retryQueuedDispatchSettlement(commandID replay.CommandID) {
+func (a *app) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
 	receipt := a.execution.opening
 	a.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
@@ -210,7 +208,7 @@ func (a *app) retryQueuedDispatchSettlement(commandID replay.CommandID) {
 // retryCanceledRuntimeOwnership is the cancellation counterpart to ordinary
 // acknowledgement settlement. It retries both a pending HITL decision and the
 // exact opening command, because either can remain after a partial state write.
-func (a *app) retryCanceledRuntimeOwnership(runID string, commandID replay.CommandID) {
+func (a *app) retryCanceledRuntimeOwnership(runID string, commandID authoring.CommandID) {
 	a.retryAuthoringSettlement(
 		ownershipSettlementOperation,
 		func() error { return a.retireCanceledRuntimeOwnership(runID, commandID) },
@@ -262,7 +260,7 @@ func (a *app) finishQueuedSettlementRecovery(receipt *openingReceipt) {
 // A canceled ownership retry may outlive the queue drain that starts the next
 // run. It must only clear the opening identity it originally owned; otherwise
 // a late local disk recovery could detach the successor's lifecycle.
-func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string, commandID replay.CommandID) {
+func (a *app) finishCanceledRuntimeOwnershipRecovery(runID string, commandID authoring.CommandID) {
 	if a.execution.opening != nil && a.execution.opening.RunID == runID && a.execution.opening.CommandID == commandID {
 		a.execution.opening = nil
 	}
@@ -280,7 +278,7 @@ func (a *app) finishAuthoringSettlementRecovery() {
 	}
 }
 
-func (a *app) syncQueue() queue.Snapshot {
+func (a *app) syncQueue() authoring.QueueSnapshot {
 	snapshot := a.queue.Snapshot(a.session.current.ID)
 	a.queueView.Set(snapshot)
 	a.prompt.SetQueued(len(snapshot.Entries))
@@ -297,7 +295,7 @@ func (a *app) syncQueue() queue.Snapshot {
 	return snapshot
 }
 
-func pendingRunByCommandID(pending []workbench.PendingRun, commandID replay.CommandID) (workbench.PendingRun, bool) {
+func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.CommandID) (workbench.PendingRun, bool) {
 	for _, candidate := range pending {
 		if candidate.Command.CommandID == commandID {
 			return candidate, true
@@ -335,7 +333,7 @@ func (a *app) buildQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.
 	a.dialogs.queueDialog = dialog
 }
 
-func (a *app) holdQueuedPrompt(entry queue.Entry) error {
+func (a *app) holdQueuedPrompt(entry authoring.QueueEntry) error {
 	if entry.SessionID != a.session.current.ID {
 		return errors.New("queued prompt belongs to another session")
 	}
@@ -349,7 +347,7 @@ func (a *app) holdQueuedPrompt(entry queue.Entry) error {
 	return nil
 }
 
-func (a *app) saveQueuedPrompt(entry queue.Entry, message prompt.Message, sendNow bool) error {
+func (a *app) saveQueuedPrompt(entry authoring.QueueEntry, message authoring.Message, sendNow bool) error {
 	if entry.SessionID != a.session.current.ID {
 		return errors.New("queued prompt belongs to another session")
 	}
@@ -367,7 +365,7 @@ func (a *app) saveQueuedPrompt(entry queue.Entry, message prompt.Message, sendNo
 	return nil
 }
 
-func (a *app) releaseQueuedPrompt(entry queue.Entry) error {
+func (a *app) releaseQueuedPrompt(entry authoring.QueueEntry) error {
 	if err := a.queue.Release(entry.SessionID, entry.ID); err != nil {
 		return err
 	}
@@ -379,7 +377,7 @@ func (a *app) releaseQueuedPrompt(entry queue.Entry) error {
 	return nil
 }
 
-func (a *app) removeQueuedPrompt(id queue.EntryID) error {
+func (a *app) removeQueuedPrompt(id authoring.QueueEntryID) error {
 	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
@@ -393,7 +391,7 @@ func (a *app) removeQueuedPrompt(id queue.EntryID) error {
 	return nil
 }
 
-func (a *app) moveQueuedPrompt(id queue.EntryID, offset int) error {
+func (a *app) moveQueuedPrompt(id authoring.QueueEntryID, offset int) error {
 	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}
@@ -407,7 +405,7 @@ func (a *app) moveQueuedPrompt(id queue.EntryID, offset int) error {
 // sendQueuedNow persists priority in the queue before touching the active run.
 // Cancellation and dispatch therefore remain resumable if either runtime control
 // call is delayed or fails: the promoted entry is still the next FIFO item.
-func (a *app) sendQueuedNow(id queue.EntryID) error {
+func (a *app) sendQueuedNow(id authoring.QueueEntryID) error {
 	if entry, ok := a.queue.Dispatching(a.session.current.ID); ok && id == entry.ID {
 		return errQueuedPromptDispatching
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -29,7 +29,7 @@ func (a *app) requireRuntimeFeature(feature string) error {
 	return fmt.Errorf("runtime capability %q was not negotiated", feature)
 }
 
-func (a *app) validateMessageCapabilities(message prompt.Message) error {
+func (a *app) validateMessageCapabilities(message authoring.Message) error {
 	for _, attachment := range message.Attachments {
 		if attachment.Kind == protocol.ContentBlockImage {
 			return a.requireRuntimeFeature(protocol.FeatureMultimodal)

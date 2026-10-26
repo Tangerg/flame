@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 		Revision:  1,
 	}
 	var output bytes.Buffer
-	if err := WriteSessionJSON(&output, session); err != nil {
+	if err := writeSessionJSON(&output, session); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(output.String(), `"reasoningEffort":"xhigh"`) {
@@ -41,7 +41,7 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		},
 	}
 	var output bytes.Buffer
-	if err := WriteRunJSON(&output, run); err != nil {
+	if err := writeRunJSON(&output, run); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{

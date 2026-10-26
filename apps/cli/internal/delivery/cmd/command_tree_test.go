@@ -17,13 +17,12 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -282,11 +281,11 @@ type ambiguousControls struct {
 	loseResume   bool
 	startStream  conversation.SegmentStream
 	resumeStream conversation.SegmentStream
-	startID      replay.CommandID
-	resumeID     replay.CommandID
+	startID      flameauthoring.CommandID
+	resumeID     flameauthoring.CommandID
 }
 
-func (a *ambiguousControls) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (a *ambiguousControls) StartRun(ctx context.Context, input flameauthoring.StartRun) (conversation.SegmentStream, error) {
 	a.mu.Lock()
 	if a.startID != "" {
 		if a.startID != input.CommandID {
@@ -507,7 +506,7 @@ func TestReadPipedPromptRejectsUnboundedOrInvalidInput(t *testing.T) {
 		name  string
 		input io.Reader
 	}{
-		{name: "oversized", input: strings.NewReader(strings.Repeat("x", prompt.MaxMessageTextBytes+1))},
+		{name: "oversized", input: strings.NewReader(strings.Repeat("x", flameauthoring.MaxMessageTextBytes+1))},
 		{name: "invalid UTF-8", input: bytes.NewReader([]byte{0xff})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -871,7 +870,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := authoring.SaveDraft(target, prompt.Message{Text: "must be retired"}); saveDraftErr != nil {
+	if saveDraftErr := authoring.SaveDraft(target, flameauthoring.Message{Text: "must be retired"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if err := authoring.Close(); err != nil {
@@ -1001,9 +1000,9 @@ func TestApprovalRuleCommandsInspectAndForget(t *testing.T) {
 
 func createProjectApprovalRule(t *testing.T, runtime Runtime, sessionID string) string {
 	t.Helper()
-	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: "remember this"},
-		Options: prompt.RunOptions{},
+	stream, err := runtime.StartRun(t.Context(), flameauthoring.StartRun{
+		SessionID: sessionID, Message: flameauthoring.Message{Text: "remember this"},
+		Options: flameauthoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)

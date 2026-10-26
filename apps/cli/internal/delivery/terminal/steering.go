@@ -10,7 +10,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
@@ -27,12 +27,12 @@ func (a *app) steerRun(instruction string) error {
 	if err != nil {
 		return err
 	}
-	message := prompt.Message{Text: instruction, Attachments: slices.Clone(draft.Attachments)}
+	message := authoring.Message{Text: instruction, Attachments: slices.Clone(draft.Attachments)}
 	if validateMessageCapabilitiesErr := a.validateMessageCapabilities(message); validateMessageCapabilitiesErr != nil {
 		return validateMessageCapabilitiesErr
 	}
 	commandID := mutation.NewCommandID()
-	request := prompt.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
+	request := authoring.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
 	if validateErr := request.Validate(); validateErr != nil {
 		return validateErr
 	}
@@ -41,7 +41,7 @@ func (a *app) steerRun(instruction string) error {
 	// process stops before staging, restart restores the command for retry. The
 	// following aggregate replacement then transfers it and its attachments into
 	// the steer journal atomically.
-	sourceDraft := prompt.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
+	sourceDraft := authoring.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
 	if saveDraftErr := a.saveDraft(sourceDraft); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
@@ -84,7 +84,7 @@ func (a *app) steerRun(instruction string) error {
 	return nil
 }
 
-func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.Message, input *workbench.PreparedInput) error {
+func (a *app) deliverPreparedSteer(request authoring.SteerRun, sourceDraft authoring.Message, input *workbench.PreparedInput) error {
 	pending, err := runworkflow.StageSteer(
 		a.workbench, a.session.current.ID, request, sourceDraft, a.replayPolicy, input,
 	)
@@ -93,8 +93,8 @@ func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.M
 		return err
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
-	a.restoreComposer(prompt.Message{})
-	a.draftState.Reset(a.session.current.ID, prompt.Message{})
+	a.restoreComposer(authoring.Message{})
+	a.draftState.Reset(a.session.current.ID, authoring.Message{})
 	a.steers.track(pending)
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
@@ -168,14 +168,14 @@ func (a *app) acknowledgeSteer(pending workbench.PendingSteer) error {
 	return nil
 }
 
-func (a *app) rejectSteer(pending workbench.PendingSteer) (prompt.Message, error) {
+func (a *app) rejectSteer(pending workbench.PendingSteer) (authoring.Message, error) {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return prompt.Message{}, fmt.Errorf("read composer for attachment recovery: %w", err)
+		return authoring.Message{}, fmt.Errorf("read composer for attachment recovery: %w", err)
 	}
 	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
-		return prompt.Message{}, fmt.Errorf("save current session draft: %w", saveDraftErr)
+		return authoring.Message{}, fmt.Errorf("save current session draft: %w", saveDraftErr)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	recovered, err := a.workbench.RejectPendingSteer(
@@ -183,7 +183,7 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (prompt.Message, error
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle rejected steer command: %w", err))
-		return prompt.Message{}, fmt.Errorf("save restored attachments: %w", err)
+		return authoring.Message{}, fmt.Errorf("save restored attachments: %w", err)
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	return recovered, nil
@@ -192,7 +192,7 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (prompt.Message, error
 // restoreSteerAttachments returns a rejected steer's attachments to the
 // composer. A draft that cannot be read is left as the user wrote it and the
 // attachments are inserted into it, rather than replaced by them.
-func (a *app) restoreSteerAttachments(rejected []prompt.Attachment) {
+func (a *app) restoreSteerAttachments(rejected []authoring.Attachment) {
 	current, _, err := a.currentDraft()
 	if err != nil {
 		a.insertComposerAttachments(rejected)

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -79,7 +79,7 @@ type Block struct {
 	Redacted  bool
 	// DroppedMessages is meaningful only for a compaction notice.
 	DroppedMessages int
-	Attachments     []prompt.Attachment
+	Attachments     []authoring.Attachment
 	Images          []InlineImage
 	// Text is the block's body. Assistant and reasoning bodies are markdown and
 	// arrive in pieces (see [BlockDelta]). Tool deltas append to Tool.Output;

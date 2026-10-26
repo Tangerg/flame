@@ -6,24 +6,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestMergeSessionDraftPreservesBothAuthoringValues(t *testing.T) {
-	shared := prompt.Attachment{
+	shared := authoring.Attachment{
 		ID: "shared", Kind: protocol.ContentBlockText, Name: "shared.txt", Path: "/workspace/shared.txt", Size: 10,
 	}
-	existing := prompt.Message{
+	existing := authoring.Message{
 		Text: "destination draft",
-		Attachments: []prompt.Attachment{
+		Attachments: []authoring.Attachment{
 			shared,
 			{ID: "destination", Kind: protocol.ContentBlockText, Name: "destination.txt", Path: "/workspace/destination.txt", Size: 20},
 		},
 	}
-	incoming := prompt.Message{
+	incoming := authoring.Message{
 		Text: "input authored during navigation",
-		Attachments: []prompt.Attachment{
+		Attachments: []authoring.Attachment{
 			shared,
 			{ID: "incoming", Kind: protocol.ContentBlockText, Name: "incoming.txt", Path: "/workspace/incoming.txt", Size: 30},
 		},
@@ -51,10 +51,10 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	transfer := DraftTransfer{
 		SourceSessionID:      "source",
 		DestinationSessionID: "destination",
-		SourceBefore:         prompt.Message{Text: "latest source edit"},
-		SourceAfter:          prompt.Message{Text: "source baseline"},
-		DestinationBefore:    prompt.Message{Text: "destination draft"},
-		DestinationAfter:     prompt.Message{Text: "latest source edit"},
+		SourceBefore:         authoring.Message{Text: "latest source edit"},
+		SourceAfter:          authoring.Message{Text: "source baseline"},
+		DestinationBefore:    authoring.Message{Text: "destination draft"},
+		DestinationAfter:     authoring.Message{Text: "latest source edit"},
 	}
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -78,7 +78,7 @@ func TestStoreRecoversSessionDraftTransferAfterPartialCommit(t *testing.T) {
 	if applyDraftTransferErr := store.ApplyDraftTransfer(transfer); applyDraftTransferErr == nil {
 		t.Fatal("partially blocked draft transfer unexpectedly succeeded")
 	}
-	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, prompt.Message{Text: "must not overwrite the journal"}); saveDraftErr == nil ||
+	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, authoring.Message{Text: "must not overwrite the journal"}); saveDraftErr == nil ||
 		!strings.Contains(saveDraftErr.Error(), "draft transfer") {
 		t.Fatalf("source mutation while transfer is pending = %v", saveDraftErr)
 	}
@@ -114,8 +114,8 @@ func TestDraftTransferDoesNotNormalizeSessionIdentity(t *testing.T) {
 	transfer := DraftTransfer{
 		SourceSessionID:      " source",
 		DestinationSessionID: "destination",
-		SourceBefore:         prompt.Message{Text: "before"},
-		SourceAfter:          prompt.Message{Text: "after"},
+		SourceBefore:         authoring.Message{Text: "before"},
+		SourceAfter:          authoring.Message{Text: "after"},
 	}
 	if err := transfer.validate(); err == nil {
 		t.Fatal("DraftTransfer accepted an identity that requires trimming")
@@ -131,8 +131,8 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 	transfer := DraftTransfer{
 		SourceSessionID:      "deleted",
 		DestinationSessionID: "replacement",
-		SourceBefore:         prompt.Message{Text: "move me"},
-		DestinationAfter:     prompt.Message{Text: "move me"},
+		SourceBefore:         authoring.Message{Text: "move me"},
+		DestinationAfter:     authoring.Message{Text: "move me"},
 	}
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -142,7 +142,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 	}
 	// Simulate a crash after the source retirement but before the destination
 	// replacement. Recovery must finish the move instead of losing the draft.
-	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, prompt.Message{}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, authoring.Message{}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 
@@ -154,7 +154,7 @@ func TestStoreRecoversRetiredSourceDraftWithoutDuplicatingOwnership(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertDraft(t, reopened, transfer.SourceSessionID, prompt.Message{})
+	assertDraft(t, reopened, transfer.SourceSessionID, authoring.Message{})
 	assertDraft(t, reopened, transfer.DestinationSessionID, transfer.DestinationAfter)
 }
 
@@ -167,9 +167,9 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	transfer := DraftTransfer{
 		SourceSessionID:      "source",
 		DestinationSessionID: "destination",
-		SourceBefore:         prompt.Message{Text: "before"},
-		SourceAfter:          prompt.Message{Text: "baseline"},
-		DestinationAfter:     prompt.Message{Text: "before"},
+		SourceBefore:         authoring.Message{Text: "before"},
+		SourceAfter:          authoring.Message{Text: "baseline"},
+		DestinationAfter:     authoring.Message{Text: "before"},
 	}
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, transfer.SourceBefore); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -177,7 +177,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	if saveErr := store.save(sessionDraftTransferName, transfer); saveErr != nil {
 		t.Fatal(saveErr)
 	}
-	newer := prompt.Message{Text: "authored after the stale journal"}
+	newer := authoring.Message{Text: "authored after the stale journal"}
 	if saveDraftErr := store.SaveDraft(transfer.SourceSessionID, newer); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -201,7 +201,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 	assertDraft(t, reopened, transfer.SourceSessionID, newer)
 }
 
-func assertDraft(t *testing.T, store *Store, sessionID string, want prompt.Message) {
+func assertDraft(t *testing.T, store *Store, sessionID string, want authoring.Message) {
 	t.Helper()
 	got, found := store.Draft(sessionID)
 	if found != !want.IsEmpty() || !got.Equal(want) {

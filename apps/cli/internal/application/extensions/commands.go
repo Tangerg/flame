@@ -155,5 +155,3 @@ func (s SlashCommand) Validate() error {
 	}
 	return nil
 }
-
-var SlashCommands = NewCapabilityKeyedPoint("terminal.slash-command", Capability("terminal.commands"), func(command SlashCommand) string { return command.Descriptor.Name })

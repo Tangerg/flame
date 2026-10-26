@@ -9,11 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -39,19 +41,19 @@ func (p *persistence) Replace(name string, body []byte) error {
 }
 func (p *persistence) Remove(name string) error { delete(p.files, name); return nil }
 
-type callerFunc func(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error)
+type callerFunc func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 
-func (f callerFunc) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (f callerFunc) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	return f(ctx, request, id)
 }
 
 func policy(t *testing.T, namespace string, now *time.Time) mutation.ReplayPolicy {
 	t.Helper()
-	capability, err := replay.NewCapability(namespace, time.Hour)
+	capability, err := authoring.NewReplayCapability(namespace, time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := mutation.NewReplayPolicy(capability, func() time.Time { return *now })
+	result, err := mutation.PolicyFromProfile(runtimefixture.ReplayProfile{Capability: capability}, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,11 +62,11 @@ func policy(t *testing.T, namespace string, now *time.Time) mutation.ReplayPolic
 
 func request(t *testing.T) protocol.CallPluginRequest {
 	t.Helper()
-	contract, err := capability.New(capability.Config{Reference: "schedules", Composition: capability.Selection, Scope: "installation"}, capability.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: capability.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "schedules", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "flame.schedules/delete.v1", Kind: extension.Mutation, Target: "installation", Description: "Delete a schedule", Input: []byte(`{"type":"object","properties":{"id":{"type":"string"}},"required":["id"],"additionalProperties":false}`), Output: []byte(`{"type":"object","properties":{},"additionalProperties":false}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: strings.Repeat("1", 64), Contribution: "schedules-provider", Contract: string(contract.Identity().JSON()), Method: "flame.schedules/delete.v1", Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: `{"id":"sch_original"}`}
 }
 
 func execute(ctx context.Context, caller workbench.InstalledCaller, store *workbench.Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
@@ -82,8 +84,8 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 	original := request(t)
 	prepare := func(context.Context) (protocol.CallPluginRequest, error) { return original, nil }
 	ctx, cancel := context.WithCancel(t.Context())
-	var capturedID replay.CommandID
-	lost := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	var capturedID authoring.CommandID
+	lost := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		pending, staged := store.PendingInstalledCommand("schedule-delete:sch_original")
 		if !staged || pending.CommandID != id || !(input.Input == original.Input) {
 			t.Fatal("command dispatched before durable intent")
@@ -109,7 +111,7 @@ func TestLostAcknowledgementResumesOriginalRequestAfterRestart(t *testing.T) {
 		return protocol.CallPluginRequest{}, nil
 	}
 	calls := 0
-	recover := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	recover := callerFunc(func(_ context.Context, input protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		calls++
 		if id != capturedID || input.InstallationID != original.InstallationID || input.Digest != original.Digest || input.Contract != original.Contract || input.Method != original.Method || input.Contribution != original.Contribution || input.Target != original.Target || !(input.Input == original.Input) {
 			t.Fatal("recovery changed the captured route, input or identity")
@@ -137,7 +139,7 @@ func TestFailedPersistenceAndUnavailableOwnerCannotDiscardIntent(t *testing.T) {
 	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
 	prepare := func(context.Context) (protocol.CallPluginRequest, error) { return request(t), nil }
 	calls := 0
-	owner := callerFunc(func(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+	owner := callerFunc(func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		calls++
 		return nil, protocol.ErrPluginUnavailable
 	})
@@ -166,8 +168,8 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 	defer store.Close()
 	now := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
 	prepare := func(context.Context) (protocol.CallPluginRequest, error) { return request(t), nil }
-	var originalID replay.CommandID
-	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	var originalID authoring.CommandID
+	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if originalID != "" && id != originalID {
 			t.Fatal("cleanup failure allocated another command")
 		}
@@ -182,7 +184,7 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 		t.Fatal("failed retirement lost the original identity")
 	}
 	storage.fail = false
-	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if id != originalID {
 			t.Fatal("owner receipt was queried under another identity")
 		}
@@ -194,8 +196,8 @@ func TestOnlyOwnerEvidenceRetiresTheOriginalIntent(t *testing.T) {
 	if _, pending := store.PendingInstalledCommand("delete"); pending {
 		t.Fatal("confirmed owner receipt remains unresolved")
 	}
-	refusal := &capability.Refusal{Code: "revision_conflict", Message: "schedule changed"}
-	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	refusal := &extension.Refusal{Code: "revision_conflict", Message: "schedule changed"}
+	owner = callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if id == originalID {
 			t.Fatal("new intent reused the original identity")
 		}
@@ -221,8 +223,8 @@ func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
 		preparations++
 		return request(t), nil
 	}
-	var originalID replay.CommandID
-	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id replay.CommandID) (*protocol.CallPluginResponse, error) {
+	var originalID authoring.CommandID
+	owner := callerFunc(func(_ context.Context, _ protocol.CallPluginRequest, id authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		if originalID != "" && id != originalID {
 			t.Fatal("invalid acknowledgement replaced the original command")
 		}
@@ -230,7 +232,7 @@ func TestDecodedAcknowledgementPrecedesIntentRetirement(t *testing.T) {
 		return &protocol.CallPluginResponse{Output: `{}`}, nil
 	})
 	decode := func(*protocol.CallPluginResponse) (string, error) {
-		return "", &capability.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}
+		return "", &extension.Refusal{Code: "invalid_projection", Message: "invalid owner acknowledgement"}
 	}
 	if _, err := workbench.ExecuteInstalledCommand(t.Context(), owner, store, "accept", policy(t, "store", &now), prepare, decode); err == nil {
 		t.Fatal("invalid decoded acknowledgement became success")

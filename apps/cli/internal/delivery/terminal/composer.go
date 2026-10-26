@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 )
@@ -23,24 +23,24 @@ const draftPersistenceDelay = 150 * time.Millisecond
 const promptHistoryCapacity = 1000
 
 type attachmentInsertion struct {
-	item  prompt.Attachment
+	item  authoring.Attachment
 	count int
 }
 
 type draftObservation struct {
 	sessionID string
-	message   prompt.Message
+	message   authoring.Message
 	ready     bool
 }
 
-func (d *draftObservation) Observe(sessionID string, message prompt.Message) bool {
+func (d *draftObservation) Observe(sessionID string, message authoring.Message) bool {
 	changed := d.ready &&
 		(d.sessionID != sessionID || !d.message.Equal(message))
 	d.Reset(sessionID, message)
 	return changed
 }
 
-func (d *draftObservation) Reset(sessionID string, message prompt.Message) {
+func (d *draftObservation) Reset(sessionID string, message authoring.Message) {
 	d.sessionID = sessionID
 	d.message = message.Clone()
 	d.ready = true
@@ -50,20 +50,20 @@ func (d *draftObservation) Reset(sessionID string, message prompt.Message) {
 // recalled prompt therefore restores attachment chips as attachments instead of
 // turning their labels into ordinary @words.
 type promptHistory struct {
-	entries []prompt.Message
+	entries []authoring.Message
 	at      int
-	draft   prompt.Message
+	draft   authoring.Message
 }
 
-func (p *promptHistory) Load(messages []prompt.Message) {
-	p.entries, p.at, p.draft = nil, 0, prompt.Message{}
+func (p *promptHistory) Load(messages []authoring.Message) {
+	p.entries, p.at, p.draft = nil, 0, authoring.Message{}
 	for _, message := range messages {
 		p.Add(message)
 	}
 }
 
-func (p *promptHistory) Add(message prompt.Message) {
-	p.at, p.draft = 0, prompt.Message{}
+func (p *promptHistory) Add(message authoring.Message) {
+	p.at, p.draft = 0, authoring.Message{}
 	message = message.Clone()
 	if message.IsEmpty() {
 		return
@@ -79,9 +79,9 @@ func (p *promptHistory) Add(message prompt.Message) {
 	}
 }
 
-func (p *promptHistory) Back(current prompt.Message) (prompt.Message, bool) {
+func (p *promptHistory) Back(current authoring.Message) (authoring.Message, bool) {
 	if p.at >= len(p.entries) {
-		return prompt.Message{}, false
+		return authoring.Message{}, false
 	}
 	if p.at == 0 {
 		p.draft = current.Clone()
@@ -90,14 +90,14 @@ func (p *promptHistory) Back(current prompt.Message) (prompt.Message, bool) {
 	return p.entries[len(p.entries)-p.at].Clone(), true
 }
 
-func (p *promptHistory) Forward() (prompt.Message, bool) {
+func (p *promptHistory) Forward() (authoring.Message, bool) {
 	if p.at == 0 {
-		return prompt.Message{}, false
+		return authoring.Message{}, false
 	}
 	p.at--
 	if p.at == 0 {
 		draft := p.draft.Clone()
-		p.draft = prompt.Message{}
+		p.draft = authoring.Message{}
 		return draft, true
 	}
 	return p.entries[len(p.entries)-p.at].Clone(), true
@@ -119,7 +119,7 @@ func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
 	if err != nil {
 		return attachmentInsertion{}, err
 	}
-	if err := a.validateMessageCapabilities(prompt.Message{Attachments: []prompt.Attachment{item}}); err != nil {
+	if err := a.validateMessageCapabilities(authoring.Message{Attachments: []authoring.Attachment{item}}); err != nil {
 		return attachmentInsertion{}, err
 	}
 	for _, attached := range current.Attachments {
@@ -127,8 +127,8 @@ func (a *app) resolveAttachment(path string) (attachmentInsertion, error) {
 			return attachmentInsertion{}, fmt.Errorf("%s is already attached", item.Name)
 		}
 	}
-	if len(current.Attachments) >= prompt.MaxMessageAttachments {
-		return attachmentInsertion{}, fmt.Errorf("a prompt accepts at most %d attachments", prompt.MaxMessageAttachments)
+	if len(current.Attachments) >= authoring.MaxMessageAttachments {
+		return attachmentInsertion{}, fmt.Errorf("a prompt accepts at most %d attachments", authoring.MaxMessageAttachments)
 	}
 	return attachmentInsertion{item: item, count: len(current.Attachments) + 1}, nil
 }
@@ -138,7 +138,7 @@ func (a *app) insertAttachment(insertion attachmentInsertion) {
 	element := a.composer.Editor().InsertElement(fileElement, "@"+item.Name)
 	a.attachmentElements[element.ID] = item
 	a.scheduleDraftPersistence()
-	a.message(fmt.Sprintf("attached %s · %s · %d/%d", item.Name, item.MimeType, insertion.count, prompt.MaxMessageAttachments))
+	a.message(fmt.Sprintf("attached %s · %s · %d/%d", item.Name, item.MimeType, insertion.count, authoring.MaxMessageAttachments))
 }
 
 func (a *app) addAttachment(path string) error {
@@ -201,10 +201,10 @@ func (a *app) removeAllAttachments(elements []headless.Element) {
 
 type composerAttachment struct {
 	element headless.Element
-	item    prompt.Attachment
+	item    authoring.Attachment
 }
 
-func (a *app) findAttachment(elements []headless.Element, argument string) (headless.Element, prompt.Attachment, error) {
+func (a *app) findAttachment(elements []headless.Element, argument string) (headless.Element, authoring.Attachment, error) {
 	attached := make([]composerAttachment, 0, len(elements))
 	for _, element := range elements {
 		item, ok := a.attachmentElements[element.ID]
@@ -218,18 +218,18 @@ func (a *app) findAttachment(elements []headless.Element, argument string) (head
 			match := attached[position-1]
 			return match.element, match.item, nil
 		}
-		return headless.Element{}, prompt.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
+		return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
 	}
-	if matches := matchingAttachments(attached, func(item prompt.Attachment) bool { return argument == item.Name }); len(matches) > 0 {
+	if matches := matchingAttachments(attached, func(item authoring.Attachment) bool { return argument == item.Name }); len(matches) > 0 {
 		return uniqueAttachment(argument, matches)
 	}
-	if matches := matchingAttachments(attached, func(item prompt.Attachment) bool { return argument == filepathBase(item.Name) }); len(matches) > 0 {
+	if matches := matchingAttachments(attached, func(item authoring.Attachment) bool { return argument == filepathBase(item.Name) }); len(matches) > 0 {
 		return uniqueAttachment(argument, matches)
 	}
-	return headless.Element{}, prompt.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
+	return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is not in the composer", argument)
 }
 
-func matchingAttachments(attached []composerAttachment, matches func(prompt.Attachment) bool) []composerAttachment {
+func matchingAttachments(attached []composerAttachment, matches func(authoring.Attachment) bool) []composerAttachment {
 	selected := make([]composerAttachment, 0, len(attached))
 	for _, candidate := range attached {
 		if matches(candidate.item) {
@@ -239,9 +239,9 @@ func matchingAttachments(attached []composerAttachment, matches func(prompt.Atta
 	return selected
 }
 
-func uniqueAttachment(argument string, matches []composerAttachment) (headless.Element, prompt.Attachment, error) {
+func uniqueAttachment(argument string, matches []composerAttachment) (headless.Element, authoring.Attachment, error) {
 	if len(matches) != 1 {
-		return headless.Element{}, prompt.Attachment{}, fmt.Errorf("attachment %q is ambiguous; use its number or full name", argument)
+		return headless.Element{}, authoring.Attachment{}, fmt.Errorf("attachment %q is ambiguous; use its number or full name", argument)
 	}
 	return matches[0].element, matches[0].item, nil
 }
@@ -270,22 +270,22 @@ func (a *app) showAttachments() {
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "attachments", Body: strings.Join(lines, "\n")})
 }
 
-func (a *app) composerMessage() (prompt.Message, error) {
+func (a *app) composerMessage() (authoring.Message, error) {
 	editor := a.composer.Editor()
 	lines := strings.Split(editor.Text(), "\n")
 	elements := editor.Elements()
 	attachments, err := a.collectAttachments(editor, elements)
 	if err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
 	if err := stripAttachmentElements(lines, elements); err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
-	return prompt.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
+	return authoring.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
 }
 
-func (a *app) collectAttachments(editor *headless.Editor, elements []headless.Element) ([]prompt.Attachment, error) {
-	attachments := make([]prompt.Attachment, 0, len(elements))
+func (a *app) collectAttachments(editor *headless.Editor, elements []headless.Element) ([]authoring.Attachment, error) {
+	attachments := make([]authoring.Attachment, 0, len(elements))
 	for _, element := range elements {
 		if element.Kind != fileElement {
 			continue
@@ -329,7 +329,7 @@ func (a *app) clearComposer() {
 	a.confirmation.Reset()
 }
 
-func (a *app) rememberPrompt(message prompt.Message) error {
+func (a *app) rememberPrompt(message authoring.Message) error {
 	if a.workbench != nil {
 		if err := a.workbench.Remember(message); err != nil {
 			a.reportWorkbenchIssue(workbenchHistory, err)
@@ -380,7 +380,7 @@ func (a *app) cancelScheduledDraftSave() {
 	a.stopDraftSave = nil
 }
 
-func (a *app) saveDraft(message prompt.Message) error {
+func (a *app) saveDraft(message authoring.Message) error {
 	a.cancelScheduledDraftSave()
 	if err := a.drafts.Flush(a.session.current.ID, message); err != nil {
 		return err
@@ -391,7 +391,7 @@ func (a *app) saveDraft(message prompt.Message) error {
 
 // commitDraft makes a recoverable value durable before replacing the visible
 // composer. Callers retain their source value when persistence fails.
-func (a *app) commitDraft(message prompt.Message) error {
+func (a *app) commitDraft(message authoring.Message) error {
 	err := a.saveDraft(message)
 	a.reportWorkbenchIssue(workbenchDraft, err)
 	if err != nil {
@@ -403,19 +403,19 @@ func (a *app) commitDraft(message prompt.Message) error {
 
 // recoverDraft exposes an irreplaceable value before attempting persistence.
 // A failed save must not discard editor output or runtime recovery data.
-func (a *app) recoverDraft(message prompt.Message) error {
+func (a *app) recoverDraft(message authoring.Message) error {
 	a.restoreComposer(message)
 	return a.persistDraft()
 }
 
-func (a *app) restoreComposer(message prompt.Message) {
+func (a *app) restoreComposer(message authoring.Message) {
 	a.clearComposer()
 	a.insertComposerAttachments(message.Attachments)
 	a.composer.Editor().Insert(message.Text)
 	a.scheduleDraftPersistence()
 }
 
-func (a *app) insertComposerAttachments(items []prompt.Attachment) {
+func (a *app) insertComposerAttachments(items []authoring.Attachment) {
 	for _, item := range items {
 		element := a.composer.Editor().InsertElement(fileElement, "@"+item.Name)
 		a.attachmentElements[element.ID] = item

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (
@@ -74,14 +74,14 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if err := validateDocumentSource(source); err != nil {
 		return session.Document{}, err
 	}
-	file, info, err := fileinput.OpenExpected(path, source, int64(session.MaximumDocumentBytes))
+	file, info, err := filesystem.OpenFileExpected(path, source, int64(session.MaximumDocumentBytes))
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return session.Document{}, errors.New("session artifact changed while it was being opened")
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return session.Document{}, errors.New("session artifact is not a regular file")
-		case errors.Is(err, fileinput.ErrTooLarge):
+		case errors.Is(err, filesystem.ErrFileTooLarge):
 			return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 		default:
 			return session.Document{}, fmt.Errorf("open session artifact: %w", err)
@@ -98,8 +98,8 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if len(body) > session.MaximumDocumentBytes {
 		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 	}
-	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyPathVersion(file, info, path); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return session.Document{}, errors.New("session artifact changed while it was being read")
 		}
 		return session.Document{}, fmt.Errorf("verify session artifact after reading: %w", err)
@@ -242,7 +242,7 @@ func stage(root string, body []byte) (path string, err error) {
 }
 
 func syncCommittedDirectory(path string) {
-	directory, _, err := fileinput.OpenDirectory(path)
+	directory, _, err := filesystem.OpenDirectory(path)
 	if err != nil {
 		return
 	}

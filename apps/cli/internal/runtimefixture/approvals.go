@@ -10,16 +10,16 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	if err := (protocol.ListApprovalRulesRequest{SessionID: sessionID}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.ListApprovalRulesRequest{SessionID: sessionID})); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	r.mu.Lock()

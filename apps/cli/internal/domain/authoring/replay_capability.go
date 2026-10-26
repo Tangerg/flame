@@ -1,6 +1,6 @@
-// Package replay owns the CLI's model of one Runtime command replay
+// ReplayCapability owns the CLI's model of one Runtime command replay
 // store and the finite interval it promises for stable command identities.
-package replay
+package authoring
 
 import (
 	json "encoding/json/v2"
@@ -12,26 +12,26 @@ import (
 
 // Capability is the immutable replay promise published by one Runtime. Its
 // zero value is invalid: store identity and retention are one indivisible fact.
-type Capability struct {
+type ReplayCapability struct {
 	namespace string
 	retention time.Duration
 }
 
-func NewCapability(namespace string, retention time.Duration) (Capability, error) {
+func NewReplayCapability(namespace string, retention time.Duration) (ReplayCapability, error) {
 	namespace = strings.TrimSpace(namespace)
 	if namespace == "" {
-		return Capability{}, errors.New("command replay namespace is empty")
+		return ReplayCapability{}, errors.New("command replay namespace is empty")
 	}
 	if retention <= 0 {
-		return Capability{}, errors.New("command replay retention is not positive")
+		return ReplayCapability{}, errors.New("command replay retention is not positive")
 	}
 	if retention%time.Second != 0 {
-		return Capability{}, errors.New("command replay retention is not a whole number of seconds")
+		return ReplayCapability{}, errors.New("command replay retention is not a whole number of seconds")
 	}
-	return Capability{namespace: namespace, retention: retention}, nil
+	return ReplayCapability{namespace: namespace, retention: retention}, nil
 }
 
-func (c Capability) Validate() error {
+func (c ReplayCapability) Validate() error {
 	if strings.TrimSpace(c.namespace) == "" || c.namespace != strings.TrimSpace(c.namespace) {
 		return errors.New("command replay namespace is empty or has surrounding whitespace")
 	}
@@ -41,9 +41,9 @@ func (c Capability) Validate() error {
 	return nil
 }
 
-func (c Capability) Namespace() string { return c.namespace }
+func (c ReplayCapability) Namespace() string { return c.namespace }
 
-func (c Capability) Deadline(stagedAt time.Time) (time.Time, error) {
+func (c ReplayCapability) Deadline(stagedAt time.Time) (time.Time, error) {
 	if err := c.Validate(); err != nil {
 		return time.Time{}, err
 	}
@@ -58,7 +58,7 @@ type capabilityJSON struct {
 	RetentionSeconds int64  `json:"retentionSeconds"`
 }
 
-func (c Capability) MarshalJSON() ([]byte, error) {
+func (c ReplayCapability) MarshalJSON() ([]byte, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func (c Capability) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (c *Capability) UnmarshalJSON(data []byte) error {
+func (c *ReplayCapability) UnmarshalJSON(data []byte) error {
 	var wire capabilityJSON
 	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode command replay capability: %w", err)
@@ -75,7 +75,7 @@ func (c *Capability) UnmarshalJSON(data []byte) error {
 	if wire.RetentionSeconds <= 0 || wire.RetentionSeconds > int64((time.Duration(1<<63-1))/time.Second) {
 		return errors.New("command replay retentionSeconds is outside the positive duration range")
 	}
-	capability, err := NewCapability(
+	capability, err := NewReplayCapability(
 		wire.Namespace, time.Duration(wire.RetentionSeconds)*time.Second,
 	)
 	if err != nil {

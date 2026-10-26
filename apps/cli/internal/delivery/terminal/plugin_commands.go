@@ -22,6 +22,9 @@ func (a *app) ShowPlugins() {
 	for _, issue := range a.pluginIssues {
 		lines = append(lines, fmt.Sprintf("failed   source:%s · %v", issue.Source, issue.Err))
 	}
+	if len(lines) == 0 {
+		lines = append(lines, "No command plugins installed")
+	}
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "plugins", Body: strings.Join(lines, "\n")})
 }
 
@@ -59,8 +62,6 @@ func formatPluginStatus(status extensions.Status) string {
 
 func formatCapabilities(status extensions.Status) string {
 	switch {
-	case status.Trusted && status.Capabilities == nil:
-		return "unrestricted"
 	case len(status.Capabilities) == 0:
 		return "none"
 	default:
@@ -114,12 +115,6 @@ func (a *app) UnloadPlugin(id string) {
 		return
 	}
 	id = strings.TrimSpace(id)
-	for _, status := range a.pluginHost.Statuses() {
-		if status.ID == id && status.Trusted {
-			a.message("built-in plugin " + id + " can be reloaded but not unloaded")
-			return
-		}
-	}
 	affected, err := a.pluginHost.Affected(id)
 	if err != nil {
 		a.message(err.Error())

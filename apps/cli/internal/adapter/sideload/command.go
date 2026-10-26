@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -60,12 +60,12 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 	if err := validateCommandRequest(request); err != nil {
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s request: %w", e.pluginID, e.command, err)
 	}
-	executable, opened, err := fileinput.OpenExpected(e.source.path, e.source.identity, 0)
+	executable, opened, err := filesystem.OpenFileExpected(e.source.path, e.source.identity, 0)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry changed since discovery", e.pluginID, e.command)
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry is not a regular file", e.pluginID, e.command)
 		default:
 			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s open discovered entry: %w", e.pluginID, e.command, err)
@@ -103,7 +103,7 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 		if cause := context.Cause(ctx); cause != nil {
 			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, cause)
 		}
-		detail := strings.TrimSpace(stderr.String())
+		detail := strings.TrimSpace(stderr.string())
 		if detail == "" {
 			detail = err.Error()
 		}
@@ -112,7 +112,7 @@ func (e executableCommand) Execute(ctx context.Context, request extensions.Comma
 	if stdout.overflow || stderr.overflow {
 		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s exceeded the %d-byte output limit", e.pluginID, e.command, maxCommandOutputBytes)
 	}
-	return decodeCommandResponse(e.pluginID, e.command, stdout.Bytes())
+	return decodeCommandResponse(e.pluginID, e.command, stdout.bytes())
 }
 
 func validateCommandRequest(request extensions.CommandRequest) error {
@@ -197,5 +197,5 @@ func (c *cappedBuffer) Write(value []byte) (int, error) {
 	return length, nil
 }
 
-func (c *cappedBuffer) Bytes() []byte  { return c.buffer.Bytes() }
-func (c *cappedBuffer) String() string { return c.buffer.String() }
+func (c *cappedBuffer) bytes() []byte  { return c.buffer.Bytes() }
+func (c *cappedBuffer) string() string { return c.buffer.String() }

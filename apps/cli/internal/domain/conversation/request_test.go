@@ -4,15 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestStartRunValidation(t *testing.T) {
-	valid := prompt.StartRun{
-		SessionID: "ses_1", Message: prompt.Message{Text: "hello"},
-		Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
+	valid := authoring.StartRun{
+		SessionID: "ses_1", Message: authoring.Message{Text: "hello"},
+		Options: authoring.RunOptions{Provider: "mock", Model: "balanced"},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
@@ -28,7 +27,7 @@ func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 	if err := (DeleteSession{SessionID: "ses_1"}).Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := (DeleteSession{CommandID: replay.CommandID("invalid"), SessionID: "ses_1"}).Validate(); err == nil {
+	if err := (DeleteSession{CommandID: authoring.CommandID("invalid"), SessionID: "ses_1"}).Validate(); err == nil {
 		t.Fatal("invalid deletion command identity was accepted")
 	}
 	if err := (DeleteSession{}).Validate(); err == nil {
@@ -37,9 +36,9 @@ func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 }
 
 func TestStartRunEqualUsesTheCompleteMutationFingerprint(t *testing.T) {
-	request := prompt.StartRun{
-		CommandID: replay.CommandID("cli_11111111111111111111111111111111"), SessionID: "ses_1",
-		Message: prompt.Message{Text: "hello"}, Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
+	request := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_11111111111111111111111111111111"), SessionID: "ses_1",
+		Message: authoring.Message{Text: "hello"}, Options: authoring.RunOptions{Provider: "mock", Model: "balanced"},
 	}
 	if !request.Equal(request.Clone()) {
 		t.Fatal("cloned start request is not equal")
@@ -117,7 +116,7 @@ func TestSegmentStreamValidatesOperationSpecificUserItemIdentity(t *testing.T) {
 	if err := stream.ValidateSubscription(); err == nil {
 		t.Fatal("subscription stream with a user item id was accepted")
 	}
-	if err := stream.ValidateResume("run_1", &prompt.Message{Text: "continue"}); err != nil {
+	if err := stream.ValidateResume("run_1", &authoring.Message{Text: "continue"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := stream.ValidateResume("run_1", nil); err == nil {

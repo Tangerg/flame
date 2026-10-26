@@ -6,17 +6,17 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // RollbackSession keeps ToRunID and every earlier root run. An empty ToRunID
 // clears all history; file restoration therefore requires a concrete boundary.
 type RollbackSession struct {
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 	SessionID string
 	ToRunID   string
-	Scope     runtimeprotocol.RestoreType
+	Scope     protocol.RestoreType
 }
 
 func (r RollbackSession) Validate() error {
@@ -26,9 +26,9 @@ func (r RollbackSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := (runtimeprotocol.RollbackSessionRequest{
+	if err := protocol.ValidateWireTree((protocol.RollbackSessionRequest{
 		SessionID: r.SessionID, ToRunID: r.ToRunID, RestoreType: r.Scope,
-	}).ValidateWire(); err != nil {
+	})); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {
@@ -38,19 +38,19 @@ func (r RollbackSession) Validate() error {
 }
 
 func (r RollbackSession) RestoresFiles() bool {
-	return r.Scope == runtimeprotocol.RestoreFiles || r.Scope == runtimeprotocol.RestoreBoth
+	return r.Scope == protocol.RestoreFiles || r.Scope == protocol.RestoreBoth
 }
 
-func (r RollbackSession) FilesOnly() bool { return r.Scope == runtimeprotocol.RestoreFiles }
+func (r RollbackSession) FilesOnly() bool { return r.Scope == protocol.RestoreFiles }
 
 func (r RollbackSession) HistoryOnly() bool {
-	return r.Scope == "" || r.Scope == runtimeprotocol.RestoreHistory
+	return r.Scope == "" || r.Scope == protocol.RestoreHistory
 }
 
 // InputContent preserves a dropped run's opening input without pretending an
 // inline runtime image is already a local authoring attachment.
 type InputContent struct {
-	Kind     runtimeprotocol.ContentBlockType
+	Kind     protocol.ContentBlockType
 	Text     string
 	MimeType string
 	Data     []byte
@@ -65,11 +65,11 @@ func (i InputContent) Clone() InputContent {
 
 func (i InputContent) Validate() error {
 	switch i.Kind {
-	case runtimeprotocol.ContentBlockText:
+	case protocol.ContentBlockText:
 		if strings.TrimSpace(i.Text) == "" || i.MimeType != "" || len(i.Data) != 0 {
 			return errors.New("text input content is malformed")
 		}
-	case runtimeprotocol.ContentBlockImage:
+	case protocol.ContentBlockImage:
 		if strings.TrimSpace(i.MimeType) == "" || len(i.Data) == 0 || i.Text != "" {
 			return errors.New("image input content is malformed")
 		}
@@ -94,7 +94,7 @@ func (d DroppedRun) Clone() DroppedRun {
 }
 
 func (d DroppedRun) Validate() error {
-	if err := runtimeprotocol.ValidateRunID(d.RunID); err != nil {
+	if err := protocol.ValidateRunID(d.RunID); err != nil {
 		return fmt.Errorf("dropped run: %w", err)
 	}
 	for index, content := range d.Input {
@@ -113,9 +113,9 @@ func (d DroppedRun) OpeningText() (string, int) {
 	images := 0
 	for _, content := range d.Input {
 		switch content.Kind {
-		case runtimeprotocol.ContentBlockText:
+		case protocol.ContentBlockText:
 			parts = append(parts, content.Text)
-		case runtimeprotocol.ContentBlockImage:
+		case protocol.ContentBlockImage:
 			images++
 		}
 	}

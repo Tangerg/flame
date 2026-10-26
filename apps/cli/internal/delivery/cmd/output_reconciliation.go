@@ -1,11 +1,11 @@
-package render
+package cmd
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // resolveSnapshotRun selects the already accepted run from a cold projection.
@@ -19,7 +19,7 @@ func resolveSnapshotRun(snapshot conversation.SessionSnapshot, runID string) (co
 		}
 		return latest, nil
 	}
-	if err := runtimeprotocol.ValidateRunID(runID); err != nil {
+	if err := protocol.ValidateRunID(runID); err != nil {
 		return conversation.Run{}, fmt.Errorf("snapshot run: %w", err)
 	}
 	run, ok := snapshot.RunByID(runID)

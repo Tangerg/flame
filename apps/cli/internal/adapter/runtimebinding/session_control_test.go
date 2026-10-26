@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -46,7 +46,7 @@ func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.
 
 func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	image := []byte("image body")
-	commandID := replay.CommandID("cli_77777777777777777777777777777777")
+	commandID := authoring.CommandID("cli_77777777777777777777777777777777")
 	stub := sessionBindingStub{}
 	stub.rollback = func(_ context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 		if request.SessionID != "ses_1" || request.ToRunID != "run_1" || request.RestoreType != protocol.RestoreBoth {

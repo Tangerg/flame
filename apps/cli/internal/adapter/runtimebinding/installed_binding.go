@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -14,7 +14,7 @@ func (r *Connection) selectedInstalledCall(ctx context.Context, requiredJSON, na
 	if r.plugins == nil {
 		return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 	}
-	required, err := capability.Parse([]byte(requiredJSON))
+	required, err := extension.ParseCapability([]byte(requiredJSON))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -52,14 +52,14 @@ func (r *Connection) selectedInstalledCall(ctx context.Context, requiredJSON, na
 			if contribution.ID != selected.Contribution {
 				continue
 			}
-			actual, err := capability.Parse([]byte(contribution.Contract))
+			actual, err := extension.ParseCapability([]byte(contribution.Contract))
 			if err != nil {
 				return protocol.CallPluginRequest{}, errors.Join(protocol.ErrPluginUnavailable, err)
 			}
 			if actual.Identity() != required.Identity() {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution.ID, Contract: requiredJSON, Method: name, Target: capability.Target{Scope: required.Descriptor().Scope, Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution.ID, Contract: requiredJSON, Method: name, Target: extension.Target{Scope: required.Descriptor().Scope, Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable

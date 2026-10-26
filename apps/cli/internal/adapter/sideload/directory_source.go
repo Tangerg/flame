@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/spf13/pathologize"
 )
 
@@ -91,7 +91,7 @@ func (d *directoryDiscovery) scanRoot(configured string) {
 }
 
 func readDirectoryEntries(root string) (_ []os.DirEntry, err error) {
-	directory, _, err := fileinput.OpenDirectory(root)
+	directory, _, err := filesystem.OpenDirectory(root)
 	if err != nil {
 		return nil, fmt.Errorf("open plugin directory %q: %w", root, err)
 	}
@@ -222,7 +222,7 @@ func (d *commandTimeoutDeclaration) UnmarshalJSON(encoded []byte) error {
 	return nil
 }
 
-func (d commandTimeoutDeclaration) Resolve(name string) (time.Duration, error) {
+func (d commandTimeoutDeclaration) resolve(name string) (time.Duration, error) {
 	if !d.present {
 		if d.seconds != 0 {
 			return 0, fmt.Errorf("command %q absent timeout carries seconds", name)
@@ -247,14 +247,14 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if err := validateManifestSource(path, source); err != nil {
 		return extensions.Plugin{}, false, err
 	}
-	file, info, err := fileinput.OpenExpected(path, source, maxManifestBytes)
+	file, info, err := filesystem.OpenFileExpected(path, source, maxManifestBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being opened", path)
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q is not a regular file", path)
-		case errors.Is(err, fileinput.ErrTooLarge):
+		case errors.Is(err, filesystem.ErrFileTooLarge):
 			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
 		default:
 			return extensions.Plugin{}, false, fmt.Errorf("open plugin manifest %q: %w", path, err)
@@ -271,8 +271,8 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if len(encoded) > maxManifestBytes {
 		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
 	}
-	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyPathVersion(file, info, path); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being read", path)
 		}
 		return extensions.Plugin{}, false, fmt.Errorf("verify plugin manifest %q after reading: %w", path, err)
@@ -342,8 +342,8 @@ func compilePluginMetadata(declared pluginManifest) (extensions.Plugin, error) {
 
 func contributeCommands(commands []extensions.SlashCommand) func(*extensions.Scope) error {
 	return func(scope *extensions.Scope) error {
-		for i, command := range commands {
-			if _, err := scope.Contribute(extensions.SlashCommands, command, extensions.Contribution{Order: i}); err != nil {
+		for _, command := range commands {
+			if err := scope.ContributeCommand(command); err != nil {
 				return err
 			}
 		}
@@ -453,7 +453,7 @@ func compileCommand(
 	if err != nil {
 		return extensions.SlashCommand{}, err
 	}
-	timeout, err := declared.Timeout.Resolve(name)
+	timeout, err := declared.Timeout.resolve(name)
 	if err != nil {
 		return extensions.SlashCommand{}, err
 	}

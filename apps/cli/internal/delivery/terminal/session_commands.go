@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -389,24 +389,24 @@ const (
 // forced replacement transfers it because the source session no longer exists.
 type sessionDraftTransition struct {
 	sourceSessionID string
-	baseline        prompt.Message
+	baseline        authoring.Message
 	disposition     sourceDraftDisposition
 }
 
 func (s sessionDraftTransition) resolve(
 	store *workbench.Store,
 	destinationSessionID string,
-	destinationDraft prompt.Message,
-	currentDraft prompt.Message,
-) (prompt.Message, error) {
+	destinationDraft authoring.Message,
+	currentDraft authoring.Message,
+) (authoring.Message, error) {
 	switch s.disposition {
 	case retireSourceDraft:
 		if destinationSessionID == s.sourceSessionID {
-			return prompt.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
+			return authoring.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
 		}
 		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
 		if err != nil {
-			return prompt.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
+			return authoring.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
 		}
 		if strings.TrimSpace(currentDraft.Text) == "" && len(currentDraft.Attachments) == 0 {
 			return merged, nil
@@ -416,7 +416,7 @@ func (s sessionDraftTransition) resolve(
 			SourceBefore: currentDraft, DestinationBefore: destinationDraft,
 			DestinationAfter: merged,
 		}); err != nil {
-			return prompt.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
+			return authoring.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
 		}
 		return merged, nil
 	case preserveSourceDraft:
@@ -431,18 +431,18 @@ func (s sessionDraftTransition) resolve(
 		}
 		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
 		if err != nil {
-			return prompt.Message{}, fmt.Errorf("merge session draft: %w", err)
+			return authoring.Message{}, fmt.Errorf("merge session draft: %w", err)
 		}
 		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
 			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
 			SourceBefore: currentDraft, SourceAfter: s.baseline,
 			DestinationBefore: destinationDraft, DestinationAfter: merged,
 		}); err != nil {
-			return prompt.Message{}, fmt.Errorf("transfer session draft: %w", err)
+			return authoring.Message{}, fmt.Errorf("transfer session draft: %w", err)
 		}
 		return merged, nil
 	default:
-		return prompt.Message{}, errors.New("session draft transition has an invalid source disposition")
+		return authoring.Message{}, errors.New("session draft transition has an invalid source disposition")
 	}
 }
 
@@ -450,7 +450,7 @@ type sessionInstallation struct {
 	snapshot         conversation.SessionSnapshot
 	attachments      *attachment.Resolver
 	projection       sessionProjection
-	draft            prompt.Message
+	draft            authoring.Message
 	rollbackRecovery *workbench.SessionRollbackRecovery
 }
 
@@ -476,33 +476,33 @@ func (a *app) prepareSessionInstallation(snapshot conversation.SessionSnapshot) 
 
 func (a *app) prepareDestinationDraft(
 	session conversation.Session,
-) (prompt.Message, *workbench.SessionRollbackRecovery, error) {
+) (authoring.Message, *workbench.SessionRollbackRecovery, error) {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return prompt.Message{}, nil, err
+		return authoring.Message{}, nil, err
 	}
 	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
-		return prompt.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
+		return authoring.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
 	}
 	if activateSessionStateErr := a.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
-		return prompt.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
+		return authoring.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
 	}
 	draft, _ := a.workbench.Draft(session.ID)
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
-		return prompt.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
+		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	transition := a.session.draftTransition
 	if transition != nil {
 		if _, transitionErr := transition.resolve(a.workbench, session.ID, draft, current); transitionErr != nil {
-			return prompt.Message{}, nil, transitionErr
+			return authoring.Message{}, nil, transitionErr
 		}
 	}
 	// Draft transfer is the last separate preparation that can abort projection
 	// installation. Activation then materializes rollback recovery and retires
 	// its one-time report in the same durable Session state replacement.
-	activation, err := a.workbench.ActivateSessionDraft(session.ID, prompt.Message{})
+	activation, err := a.workbench.ActivateSessionDraft(session.ID, authoring.Message{})
 	if err != nil {
-		return prompt.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
+		return authoring.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
 	}
 	return activation.Draft, activation.Rollback, nil
 }

@@ -605,7 +605,7 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 	} {
 		t.Run(string(test.item.Type), func(t *testing.T) {
 			event := protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &test.item}
-			if err := event.ValidateWire(); err != nil {
+			if err := protocol.ValidateWireTree(event); err != nil {
 				t.Fatal(err)
 			}
 			live, included, err := projectEvent(protocol.RunEvent{

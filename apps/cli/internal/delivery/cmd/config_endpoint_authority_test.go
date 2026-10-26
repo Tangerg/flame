@@ -3,11 +3,12 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 )

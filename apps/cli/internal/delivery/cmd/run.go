@@ -16,8 +16,7 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -87,7 +86,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		runtime Runtime
 		profile RuntimeProfile
 		opened  conversation.SessionSnapshot
-		message prompt.Message
+		message authoring.Message
 	)
 	if r.sessionID == "" {
 		workspacePath, workspaceErr := resolveWorkspace(cmd, config)
@@ -137,7 +136,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	return runworkflow.Execute(cmd.Context(), runworkflow.Invocation{
 		Runtime:  runtime,
 		Renderer: newRunRenderer(cmd, format),
-		Start: prompt.StartRun{
+		Start: authoring.StartRun{
 			SessionID: opened.Session.ID,
 			Message:   message,
 			Options:   runOptions,
@@ -188,22 +187,22 @@ func (r *runFlags) readMessageText(cmd *cobra.Command, args []string) (string, e
 	return text, nil
 }
 
-func (r *runFlags) buildMessage(ctx context.Context, text, workspace string) (prompt.Message, error) {
+func (r *runFlags) buildMessage(ctx context.Context, text, workspace string) (authoring.Message, error) {
 	attached, err := resolveAttachments(ctx, workspace, r.files)
 	if err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
-	return prompt.Message{Text: text, Attachments: attached}, nil
+	return authoring.Message{Text: text, Attachments: attached}, nil
 }
 
 func newRunRenderer(cmd *cobra.Command, format outputFormat) runworkflow.Renderer {
 	switch format {
 	case outputJSON:
-		return render.NewResultJSON(cmd.OutOrStdout())
+		return newResultJSONRenderer(cmd.OutOrStdout())
 	case outputStreamingJSON:
-		return render.NewNDJSON(cmd.OutOrStdout())
+		return newNDJSONRenderer(cmd.OutOrStdout())
 	default:
-		return render.NewText(cmd.OutOrStdout())
+		return newTextRenderer(cmd.OutOrStdout())
 	}
 }
 
@@ -258,7 +257,7 @@ func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (s
 	return snapshot.Session.Workspace.Path, nil
 }
 
-func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]prompt.Attachment, error) {
+func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]authoring.Attachment, error) {
 	if len(paths) == 0 {
 		return nil, nil
 	}
@@ -267,7 +266,7 @@ func resolveAttachments(ctx context.Context, workspace string, paths []string) (
 		return nil, err
 	}
 	seen := make(map[string]struct{}, len(paths))
-	out := make([]prompt.Attachment, 0, len(paths))
+	out := make([]authoring.Attachment, 0, len(paths))
 	for _, path := range paths {
 		item, err := resolver.Resolve(ctx, path)
 		if err != nil {
@@ -276,8 +275,8 @@ func resolveAttachments(ctx context.Context, workspace string, paths []string) (
 		if _, duplicate := seen[item.Path]; duplicate {
 			continue
 		}
-		if len(out) >= prompt.MaxMessageAttachments {
-			return nil, fmt.Errorf("at most %d unique attachments are allowed", prompt.MaxMessageAttachments)
+		if len(out) >= authoring.MaxMessageAttachments {
+			return nil, fmt.Errorf("at most %d unique attachments are allowed", authoring.MaxMessageAttachments)
 		}
 		seen[item.Path] = struct{}{}
 		out = append(out, item)
@@ -302,8 +301,8 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 		return "", errNoPrompt
 	}
 	authoredPrompt := strings.Join(parts, "\n\n")
-	if len(authoredPrompt) > prompt.MaxMessageTextBytes {
-		return "", fmt.Errorf("prompt exceeds the %d-byte limit", prompt.MaxMessageTextBytes)
+	if len(authoredPrompt) > authoring.MaxMessageTextBytes {
+		return "", fmt.Errorf("prompt exceeds the %d-byte limit", authoring.MaxMessageTextBytes)
 	}
 	if !utf8.ValidString(authoredPrompt) {
 		return "", errors.New("prompt is not valid UTF-8")
@@ -323,12 +322,12 @@ func readPipedPrompt(in io.Reader) (string, error) {
 			return "", nil
 		}
 	}
-	b, err := io.ReadAll(io.LimitReader(in, prompt.MaxMessageTextBytes+1))
+	b, err := io.ReadAll(io.LimitReader(in, authoring.MaxMessageTextBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
-	if len(b) > prompt.MaxMessageTextBytes {
-		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", prompt.MaxMessageTextBytes)
+	if len(b) > authoring.MaxMessageTextBytes {
+		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", authoring.MaxMessageTextBytes)
 	}
 	if !utf8.Valid(b) {
 		return "", errors.New("piped prompt is not valid UTF-8")

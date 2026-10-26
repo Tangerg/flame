@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 func TestNegotiatedReplayPolicyRequiresANegotiatedProfile(t *testing.T) {
@@ -22,7 +22,7 @@ func TestNegotiatedReplayPolicyRequiresANegotiatedProfile(t *testing.T) {
 func TestNegotiatedReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) {
 	t.Parallel()
 
-	capability, err := replay.NewCapability(compatibleReplayNamespace, 10*time.Minute)
+	capability, err := authoring.NewReplayCapability(compatibleReplayNamespace, 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,9 +1,4 @@
-// Package extensions provides the application's typed extension substrate.
-//
-// A point is a typed address, a registry owns contributions, and a plugin owns
-// every contribution it installs. The registry is deliberately independent of
-// Cobra, oolong, and the runtime so each outer adapter can expose only the
-// extension points it actually consumes.
+// Package extensions owns discovered slash commands and their plugin lifetimes.
 package extensions
 
 import (
@@ -12,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"strings"
 	"sync"
 )
 
@@ -30,78 +24,23 @@ func (s registrationSequence) successor() (registrationSequence, bool) {
 	return s + 1, true
 }
 
-// Keying says whether a point has one contribution per stable key or permits
-// multiple independent contributions.
-type Keying string
-
-const (
-	Keyed Keying = "keyed"
-	Multi Keying = "multi"
-)
-
-// Valid reports whether keying names one supported contribution cardinality.
-func (k Keying) Valid() bool { return k == Keyed || k == Multi }
-
-// Capability names one permission a plugin may use. Capabilities are attached
-// to extension points, so policy is enforced at the operation rather than by
-// trusting each plugin to police itself.
+// Capability names a permission explicitly declared by an executable plugin.
 type Capability string
 
-// Point owns a typed definition shared by contributors and consumers. Copies
-// retain its identity; the same name cannot substitute a different definition.
-type Point[T any] struct {
-	owner      *byte
-	id         string
-	keying     Keying
-	capability Capability
-	keyOf      func(T) string
-}
+const CommandsCapability Capability = "terminal.commands"
 
-// NewCapabilityMultiPoint defines a protected point where ordered contributions
-// coexist.
-func NewCapabilityMultiPoint[T any](id string, capability Capability) Point[T] {
-	return Point[T]{owner: new(byte), id: id, keying: Multi, capability: capability}
-}
-
-// NewCapabilityKeyedPoint defines a protected keyed point.
-func NewCapabilityKeyedPoint[T any](id string, capability Capability, keyOf func(T) string) Point[T] {
-	return Point[T]{owner: new(byte), id: id, keying: Keyed, capability: capability, keyOf: keyOf}
-}
-
-// Capability reports the permission required to contribute to this point.
-func (p Point[T]) Capability() Capability { return p.capability }
-
-// Registry stores all contributions. Its zero value is ready and safe for
-// concurrent setup, lookup, and disposal.
-type Registry struct {
+type commandRegistry struct {
 	mu      sync.RWMutex
-	points  map[string]pointState
+	entries map[string]commandEntry
 	plugins map[string]registrationSequence
 	next    registrationSequence
 }
-
-type pointState struct {
-	owner   *byte
-	entries map[string]entry
+type commandEntry struct {
+	plugin  string
+	seq     registrationSequence
+	command SlashCommand
 }
-
-type entry struct {
-	plugin string
-	order  int
-	seq    registrationSequence
-	value  any
-}
-
-// Contribution configures one registration.
-type Contribution struct {
-	// Order sorts lower values first; registration order breaks ties.
-	Order int
-}
-
-// Disposable releases an owned registration. Dispose is idempotent.
-type Disposable interface {
-	Dispose() error
-}
+type disposable interface{ dispose() error }
 
 type disposal struct {
 	once sync.Once
@@ -109,40 +48,24 @@ type disposal struct {
 	err  error
 }
 
-func (d *disposal) Dispose() error {
+func (d *disposal) dispose() error {
 	d.once.Do(func() { d.err = d.do() })
 	return d.err
 }
 
-// Scope is the capability a plugin receives during setup. It owns every
-// disposable created through Contribute, enabling exact rollback and unload.
+// Scope owns command registrations made during one plugin setup transaction.
 // The scope is sealed when setup returns; plugins cannot attach ownership to a
 // completed or rolling-back installation transaction.
 type Scope struct {
-	mu           sync.Mutex
-	plugin       string
-	registry     *Registry
-	capabilities map[Capability]struct{}
-	disposables  []Disposable
-	open         bool
+	mu              sync.Mutex
+	plugin          string
+	registry        *commandRegistry
+	commandsAllowed bool
+	disposables     []disposable
+	open            bool
 }
 
-// OnDispose binds a plugin-owned side effect to rollback, unload, and reload.
-// Cleanups run in reverse registration order.
-func (s *Scope) OnDispose(cleanup func() error) error {
-	if cleanup == nil {
-		return errors.New("extensions: cleanup is required")
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.open {
-		return errScopeClosed
-	}
-	s.disposables = append(s.disposables, &disposal{do: cleanup})
-	return nil
-}
-
-func (s *Scope) seal() []Disposable {
+func (s *Scope) seal() []disposable {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.open = false
@@ -156,23 +79,20 @@ type Plugin struct {
 	APIVersion   int
 	Requires     []string
 	Capabilities []Capability
-	// Trusted permits an in-process composition root to omit a capability list.
-	// Never derive it from a sideloaded manifest or another external source.
-	Trusted bool
-	Setup   func(*Scope) error
+	Setup        func(*Scope) error
 }
 
-// Loaded is a successfully initialized plugin. Dispose unloads it in reverse
+// loadedPlugin is a successfully initialized plugin. dispose unloads it in reverse
 // registration order.
-type Loaded struct {
+type loadedPlugin struct {
 	once        sync.Once
-	disposables []Disposable
+	disposables []disposable
 	err         error
 }
 
-// Dispose unloads a plugin. Every cleanup runs even when another returns an
+// dispose unloads a plugin. Every cleanup runs even when another returns an
 // error or panics; the joined result is stable across repeated calls.
-func (l *Loaded) Dispose() error {
+func (l *loadedPlugin) dispose() error {
 	l.once.Do(func() {
 		var failures []error
 		for _, disposable := range slices.Backward(l.disposables) {
@@ -185,18 +105,18 @@ func (l *Loaded) Dispose() error {
 	return l.err
 }
 
-func disposeSafely(disposable Disposable) (err error) {
+func disposeSafely(disposable disposable) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("plugin cleanup panicked: %v", recovered)
 		}
 	}()
-	return disposable.Dispose()
+	return disposable.dispose()
 }
 
-// Load validates and initializes one plugin. Setup is transactional: a failure
+// load validates and initializes one plugin. Setup is transactional: a failure
 // rolls back everything contributed before the error.
-func Load(registry *Registry, plugin Plugin) (*Loaded, error) {
+func load(registry *commandRegistry, plugin Plugin) (*loadedPlugin, error) {
 	if registry == nil {
 		return nil, errors.New("extensions: registry is required")
 	}
@@ -209,20 +129,20 @@ func Load(registry *Registry, plugin Plugin) (*Loaded, error) {
 	}
 	scope := &Scope{
 		plugin: plugin.ID, registry: registry,
-		capabilities: capabilitySet(plugin),
-		disposables:  []Disposable{release},
-		open:         true,
+		commandsAllowed: slices.Contains(plugin.Capabilities, CommandsCapability),
+		disposables:     []disposable{release},
+		open:            true,
 	}
 	setupErr := setupSafely(plugin.Setup, scope)
 	disposables := scope.seal()
 	if setupErr != nil {
-		loaded := &Loaded{disposables: disposables}
-		if rollbackErr := loaded.Dispose(); rollbackErr != nil {
+		loaded := &loadedPlugin{disposables: disposables}
+		if rollbackErr := loaded.dispose(); rollbackErr != nil {
 			setupErr = errors.Join(setupErr, fmt.Errorf("rollback plugin %q: %w", plugin.ID, rollbackErr))
 		}
 		return nil, fmt.Errorf("load plugin %q: %w", plugin.ID, setupErr)
 	}
-	return &Loaded{disposables: disposables}, nil
+	return &loadedPlugin{disposables: disposables}, nil
 }
 
 func setupSafely(setup func(*Scope) error, scope *Scope) (err error) {
@@ -234,18 +154,7 @@ func setupSafely(setup func(*Scope) error, scope *Scope) (err error) {
 	return setup(scope)
 }
 
-func capabilitySet(plugin Plugin) map[Capability]struct{} {
-	if plugin.Trusted && plugin.Capabilities == nil {
-		return nil
-	}
-	out := make(map[Capability]struct{}, len(plugin.Capabilities))
-	for _, capability := range plugin.Capabilities {
-		out[capability] = struct{}{}
-	}
-	return out
-}
-
-func (r *Registry) claim(plugin string) (Disposable, error) {
+func (r *commandRegistry) claim(plugin string) (disposable, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.plugins[plugin]; exists {
@@ -271,176 +180,83 @@ func (r *Registry) claim(plugin string) (Disposable, error) {
 	}}, nil
 }
 
-// Contribute adds a value to a point and makes its lifetime belong to s.
-func (s *Scope) Contribute[T any](point Point[T], value T, options Contribution) (Disposable, error) {
+// ContributeCommand attaches one validated command to this plugin's lifetime.
+func (s *Scope) ContributeCommand(command SlashCommand) error {
 	if s == nil || s.registry == nil {
-		return nil, errors.New("extensions: plugin scope is required")
-	}
-	s.mu.Lock()
-	err := s.validateContribution(point)
-	s.mu.Unlock()
-	if err != nil {
-		return nil, err
-	}
-	// keyOf belongs to the point owner and may execute arbitrary code. Run it
-	// without the scope lock, then recheck the transaction before committing.
-	key, err := point.contributionKey(value)
-	if err != nil {
-		return nil, err
+		return errors.New("extensions: plugin scope is required")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if validateContributionErr := s.validateContribution(point); validateContributionErr != nil {
-		return nil, validateContributionErr
-	}
-	key, sequence, err := s.registry.insertContribution(s.plugin, point, key, value, options.Order)
-	if err != nil {
-		return nil, err
-	}
-	d := &disposal{do: func() error {
-		s.registry.removeContribution(point.id, key, sequence)
-		return nil
-	}}
-	s.disposables = append(s.disposables, d)
-	return d, nil
-}
-
-func (s *Scope) validateContribution[T any](point Point[T]) error {
 	if !s.open {
 		return errScopeClosed
 	}
-	if point.owner == nil || strings.TrimSpace(point.id) == "" {
-		return errors.New("extensions: point id is required")
+	if !s.commandsAllowed {
+		return fmt.Errorf("extensions: plugin %q needs capability %q", s.plugin, CommandsCapability)
 	}
-	if !point.keying.Valid() {
-		return fmt.Errorf("extensions: point %q has invalid keying %q", point.id, point.keying)
+	if err := command.Validate(); err != nil {
+		return err
 	}
-	if point.capability == "" || s.capabilities == nil {
+	sequence, err := s.registry.insert(s.plugin, command)
+	if err != nil {
+		return err
+	}
+	s.disposables = append(s.disposables, &disposal{do: func() error {
+		s.registry.remove(command.Descriptor.Name, sequence)
 		return nil
-	}
-	if _, allowed := s.capabilities[point.capability]; !allowed {
-		return fmt.Errorf("extensions: plugin %q needs capability %q to contribute to point %q", s.plugin, point.capability, point.id)
-	}
+	}})
 	return nil
 }
 
-func (p Point[T]) contributionKey(value T) (string, error) {
-	if p.keying == Multi {
-		return "", nil
-	}
-	if p.keyOf == nil {
-		return "", fmt.Errorf("extensions: keyed point %q requires a key policy", p.id)
-	}
-	key := strings.TrimSpace(p.keyOf(value))
-	if key == "" {
-		return "", fmt.Errorf("extensions: keyed point %q requires a stable key", p.id)
-	}
-	return key, nil
-}
-
-func (r *Registry) insertContribution[T any](
-	plugin string,
-	point Point[T],
-	key string,
-	value T,
-	order int,
-) (string, registrationSequence, error) {
+func (r *commandRegistry) insert(plugin string, command SlashCommand) (registrationSequence, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	state, err := r.pointStateFor(point)
-	if err != nil {
-		return "", 0, err
+	for _, identity := range command.Descriptor.Identities() {
+		for _, previous := range r.entries {
+			if slices.Contains(previous.command.Descriptor.Identities(), identity) {
+				return 0, fmt.Errorf("extensions: plugin %q cannot contribute command identity %q; owned by %q", plugin, identity, previous.plugin)
+			}
+		}
 	}
 	sequence, ok := r.next.successor()
 	if !ok {
-		return "", 0, errRegistrationSequenceExhausted
+		return 0, errRegistrationSequenceExhausted
 	}
-	if point.keying == Multi {
-		key = fmt.Sprintf("%s:%d", plugin, sequence)
+	if r.entries == nil {
+		r.entries = make(map[string]commandEntry)
 	}
-	if previous, duplicate := state.entries[key]; duplicate {
-		return "", 0, fmt.Errorf("extensions: plugin %q cannot contribute key %q to point %q; owned by %q",
-			plugin, key, point.id, previous.plugin)
-	}
-	if r.points == nil {
-		r.points = make(map[string]pointState)
-	}
+	command.Descriptor.Aliases = slices.Clone(command.Descriptor.Aliases)
+	r.entries[command.Descriptor.Name] = commandEntry{plugin: plugin, seq: sequence, command: command}
 	r.next = sequence
-	state.entries[key] = entry{plugin: plugin, order: order, seq: sequence, value: value}
-	r.points[point.id] = state
-	return key, sequence, nil
+	return sequence, nil
 }
 
-func (r *Registry) pointStateFor[T any](point Point[T]) (pointState, error) {
-	state, exists := r.points[point.id]
-	if exists && state.owner != point.owner {
-		return pointState{}, fmt.Errorf("extensions: point %q already has a different definition owner", point.id)
-	}
-	if !exists {
-		state = pointState{owner: point.owner, entries: make(map[string]entry)}
-	}
-	return state, nil
-}
-
-func (r *Registry) removeContribution(pointID, key string, sequence registrationSequence) {
+func (r *commandRegistry) remove(name string, sequence registrationSequence) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	state, ok := r.points[pointID]
-	if !ok {
-		return
+	if current, exists := r.entries[name]; exists && current.seq == sequence {
+		delete(r.entries, name)
 	}
-	current, ok := state.entries[key]
-	if !ok || current.seq != sequence {
-		return
-	}
-	delete(state.entries, key)
-	r.points[pointID] = state
 }
 
-// OwnedValue keeps contribution ownership attached to a typed value so an
-// adapter can cancel in-flight work before unloading its provider.
-type OwnedValue[T any] struct {
+// OwnedCommand retains the provider identity needed to cancel execution before unload.
+type OwnedCommand struct {
 	PluginID string
-	Value    T
+	Command  SlashCommand
 }
 
-// OwnedValues returns a typed, stable snapshot ordered by Contribution.Order
-// and then by registration order.
-func (r *Registry) OwnedValues[T any](point Point[T]) []OwnedValue[T] {
-	if r == nil {
-		return nil
-	}
+func (r *commandRegistry) commands() []OwnedCommand {
 	r.mu.RLock()
-	state, ok := r.points[point.id]
-	if !ok || state.owner != point.owner {
-		r.mu.RUnlock()
-		return nil
-	}
-	entries := make([]entry, 0, len(state.entries))
-	for _, item := range state.entries {
-		entries = append(entries, item)
+	entries := make([]commandEntry, 0, len(r.entries))
+	for _, entry := range r.entries {
+		entries = append(entries, entry)
 	}
 	r.mu.RUnlock()
-
-	slices.SortStableFunc(entries, func(a, b entry) int {
-		if order := cmp.Compare(a.order, b.order); order != 0 {
-			return order
-		}
-		return cmp.Compare(a.seq, b.seq)
-	})
-	out := make([]OwnedValue[T], 0, len(entries))
-	for _, item := range entries {
-		out = append(out, OwnedValue[T]{PluginID: item.plugin, Value: item.value.(T)})
+	slices.SortFunc(entries, func(a, b commandEntry) int { return cmp.Compare(a.seq, b.seq) })
+	result := make([]OwnedCommand, 0, len(entries))
+	for _, entry := range entries {
+		command := entry.command
+		command.Descriptor.Aliases = slices.Clone(command.Descriptor.Aliases)
+		result = append(result, OwnedCommand{PluginID: entry.plugin, Command: command})
 	}
-	return out
-}
-
-// Values is OwnedValues with ownership metadata intentionally projected away.
-func (r *Registry) Values[T any](point Point[T]) []T {
-	owned := r.OwnedValues(point)
-	out := make([]T, 0, len(owned))
-	for _, item := range owned {
-		out = append(out, item.Value)
-	}
-	return out
+	return result
 }

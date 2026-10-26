@@ -12,21 +12,15 @@ import (
 func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testing.T) {
 	t.Parallel()
 	discovery := compatibleDiscovery()
-	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
-		protocol.FeatureMCP:       {Enabled: true},
-		protocol.FeatureSubagents: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true},
-		protocol.FeatureGoals:     {},
-	}
+	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureMCP: {Enabled: true}, protocol.FeatureSubagents: {Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true}, protocol.FeatureGoals: {}}
 	for _, enabled := range []bool{false, true} {
-		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
-			protocol.FeatureSubagents: {Enabled: enabled},
-		}}
+		client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: enabled}}}
 		profile := requireProfile(t, discovery, client)
 		if !reflect.DeepEqual(profile.Discovery(), *discovery) || !reflect.DeepEqual(profile.ClientCapabilities(), client) {
 			t.Fatal("profile changed discovery or client capability values")
 		}
 		if !profile.Supports(protocol.FeatureMCP) || profile.Supports(protocol.FeatureGoals) ||
-			profile.Supports(protocol.FeatureSubagents) != enabled || !profile.SupportsRuntimeTopic(protocol.TopicFilesChanged) {
+			profile.Supports(protocol.FeatureSubagents) != enabled || !profile.supportsRuntimeTopic(protocol.TopicFilesChanged) {
 			t.Fatal("profile did not preserve the protocol capability agreement")
 		}
 		wantNames := []string{protocol.FeatureMCP}
@@ -80,12 +74,12 @@ func TestRuntimeProfileRejectsInvalidDiscoveryAtConstruction(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			discovery := compatibleDiscovery()
 			test.invalidate(discovery)
-			if _, err := NewProfile(discovery, nil); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+			if _, err := newProfile(discovery, nil); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("NewProfile = %v, want incompatible runtime", err)
 			}
 		})
 	}
-	if _, err := NewProfile(nil, nil); err == nil {
+	if _, err := newProfile(nil, nil); err == nil {
 		t.Fatal("nil discovery was accepted")
 	}
 	if err := (Profile{}).Validate(); err == nil {
@@ -104,7 +98,7 @@ func TestRuntimeProfilePreservesUnboundedConcurrency(t *testing.T) {
 
 func requireProfile(t *testing.T, discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) Profile {
 	t.Helper()
-	profile, err := NewProfile(discovery, client)
+	profile, err := newProfile(discovery, client)
 	if err != nil {
 		t.Fatal(err)
 	}

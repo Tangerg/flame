@@ -25,7 +25,7 @@ func (a *app) modelsReaderQuery() runtimeReaderQuery {
 			document := modelCatalogDocument(models)
 			if err != nil {
 				document.Detail += " · incomplete catalog"
-				document.Sections = append([]ToolSection{{
+				document.Sections = append([]toolSection{{
 					Title: "Provider discovery failed", Style: toolSectionCode, Text: err.Error(),
 				}}, document.Sections...)
 			}
@@ -38,7 +38,7 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 	if len(models) == 0 {
 		return paragraphDocument("Models", "none available", []string{"The runtime did not advertise any models."})
 	}
-	sections := make([]ToolSection, 0, len(models))
+	sections := make([]toolSection, 0, len(models))
 	for _, model := range models {
 		title := model.Provider + "/" + model.ID
 		if model.DisplayName != "" && model.DisplayName != model.ID {
@@ -47,7 +47,7 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 		if model.Deprecated {
 			title += " · deprecated"
 		}
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: title, Style: toolSectionCode,
 			Text: strings.Join(modelCatalogLines(model), "\n"),
 		})

@@ -10,9 +10,8 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func TestPublishCleansStagingFileAfterWriteFailure(t *testing.T) {

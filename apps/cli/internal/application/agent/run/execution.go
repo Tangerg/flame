@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -16,7 +16,7 @@ import (
 const cancellationTimeout = 5 * time.Second
 
 type Renderer interface {
-	Begin(conversation.Run, prompt.RunOptions) error
+	Begin(conversation.Run, authoring.RunOptions) error
 	Render(conversation.RunEvent) error
 	Reconcile(conversation.SessionSnapshot) error
 	Close() error
@@ -28,9 +28,9 @@ type SessionReader interface {
 
 type Lifecycle interface {
 	OpeningSource
-	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
-	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	SteerRun(context.Context, authoring.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 }
 
@@ -42,7 +42,7 @@ type Runtime interface {
 type Invocation struct {
 	Runtime    Runtime
 	Renderer   Renderer
-	Start      prompt.StartRun
+	Start      authoring.StartRun
 	ApproveAll bool
 
 	ReplayPolicy mutation.ReplayPolicy
@@ -82,7 +82,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	}
 	opened, err := mutation.ConfirmAdmitted(observationCtx, mutation.AcknowledgementBackoff(), nil,
 		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return OpenStart(ctx, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy)
+			return openStart(ctx, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy)
 		})
 	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
 		return err
@@ -237,7 +237,7 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 	continued, err := mutation.ConfirmAdmitted(
 		ctx, mutation.AcknowledgementBackoff(), nil,
 		func(ctx context.Context) (conversation.SegmentStream, error) {
-			return OpenResume(ctx, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy)
+			return openResume(ctx, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy)
 		},
 	)
 	if err != nil {

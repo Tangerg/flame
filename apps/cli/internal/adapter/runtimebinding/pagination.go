@@ -89,9 +89,9 @@ func newCursorTraversal(operation, initial string, maximumRequests int) (*cursor
 	return traversal, nil
 }
 
-func (c *cursorTraversal) Current() string { return c.current }
+func (c *cursorTraversal) cursor() string { return c.current }
 
-func (c *cursorTraversal) Advance(next string) (bool, error) {
+func (c *cursorTraversal) advance(next string) (bool, error) {
 	if next == "" {
 		c.current = ""
 		return false, nil

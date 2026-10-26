@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -30,7 +30,7 @@ func (c *memoryCommands) prepare(method string, value any) (protocol.CallPluginR
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: installation}, Input: string(body)}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: installation}, Input: string(body)}, nil
 }
 
 func (c *memoryCommands) PrepareAdd(_ context.Context, input memory.AddV1Input) (protocol.CallPluginRequest, error) {
@@ -65,7 +65,7 @@ func TestMemoryPendingAdmissionRunsBeforePreparationOrDispatch(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
-			caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+			caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 				calls++
 				return nil, protocol.ErrPluginUnavailable
 			}}
@@ -146,7 +146,7 @@ func TestPendingMemoryReadoutsKeepExactIdentityAndDecision(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Now()
-	caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+	caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		return nil, protocol.ErrPluginUnavailable
 	}}
 	for _, id := range []string{memoryID, "01980000-0000-7000-8000-000000000002"} {
@@ -170,11 +170,11 @@ func TestMemoryAdditionScopeMustMatchBeforeRetirement(t *testing.T) {
 	}
 	defer store.Close()
 	now := time.Now()
-	caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, replay.CommandID) (*protocol.CallPluginResponse, error) {
+	caller := &memoryCommands{callerFunc: func(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error) {
 		return &protocol.CallPluginResponse{Output: `{"item":{"scope":"user"}}`}, nil
 	}}
 	_, err = workbench.ExecuteMemoryAddition(t.Context(), caller, store, policy(t, "store", &now), memory.AddV1Input{Scope: "project", CWD: "/original", Content: "fact"})
-	if err == nil || !errors.Is(err, replay.ErrCommandOutcomeUnknown) || len(store.PendingInstalledCommands()) != 1 {
+	if err == nil || !errors.Is(err, authoring.ErrCommandOutcomeUnknown) || len(store.PendingInstalledCommands()) != 1 {
 		t.Fatalf("changed scope retired the original addition: %v", err)
 	}
 }

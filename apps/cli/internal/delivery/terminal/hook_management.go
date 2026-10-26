@@ -40,7 +40,7 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 	if len(catalog.Hooks) == 0 {
 		return paragraphDocument("Lifecycle hooks", detail, []string{"No global or project hooks are configured for " + workspacePath + "."})
 	}
-	sections := make([]ToolSection, 0, len(catalog.Hooks)*2)
+	sections := make([]toolSection, 0, len(catalog.Hooks)*2)
 	for _, hook := range catalog.Hooks {
 		state := "inactive"
 		if hook.Active {
@@ -58,8 +58,8 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 			actionTitle, action = "Shell command", hook.Command
 		}
 		sections = append(sections,
-			ToolSection{Title: string(hook.Event) + " · " + state, Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
-			ToolSection{Title: actionTitle, Style: toolSectionCode, Text: action},
+			toolSection{Title: string(hook.Event) + " · " + state, Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
+			toolSection{Title: actionTitle, Style: toolSectionCode, Text: action},
 		)
 	}
 	return readerDocument{Title: "Lifecycle hooks", Detail: detail, Sections: sections}

@@ -45,9 +45,9 @@ type toolBlock struct {
 	theme        kit.Theme
 	glyphs       kit.Glyphs
 	syntax       highlight.Renderer
-	presenters   []ToolPresenter
+	presenters   []toolPresenter
 	call         conversation.ToolCall
-	presentation ToolPresentation
+	presentation toolPresentation
 	expanded     bool
 	body         []headless.Block
 	observers    readerDocumentObservers
@@ -59,7 +59,7 @@ var (
 	_ mutableToolBlock       = (*toolBlock)(nil)
 )
 
-func newToolBlock(p BlockPresentation, block conversation.Block) *toolBlock {
+func newToolBlock(p blockPresentation, block conversation.Block) *toolBlock {
 	t := &toolBlock{theme: p.Theme, glyphs: p.Glyphs, syntax: p.Syntax, presenters: slices.Clone(p.Tools)}
 	t.Update(block)
 	return t
@@ -220,13 +220,13 @@ func (t *toolBlock) header() (toggle, label, status string, statusStyle grid.Sty
 func (t *toolBlock) rebuild() {
 	presentation, err := selectToolPresentation(t.presenters, t.call)
 	if err != nil {
-		presentation = ToolPresentation{
+		presentation = toolPresentation{
 			Label:    unknownToolLabel(t.call),
-			Sections: []ToolSection{{Title: "Presentation error", Style: toolSectionCode, Text: err.Error()}},
+			Sections: []toolSection{{Title: "Presentation error", Style: toolSectionCode, Text: err.Error()}},
 		}
 	}
 	t.presentation = presentation
-	t.body = renderToolSections(BlockPresentation{Theme: t.theme, Glyphs: t.glyphs, Syntax: t.syntax}, presentation.Sections, true)
+	t.body = renderToolSections(blockPresentation{Theme: t.theme, Glyphs: t.glyphs, Syntax: t.syntax}, presentation.Sections, true)
 	t.observers.notify(t.readerDocument())
 }
 
@@ -242,7 +242,7 @@ func (t *toolBlock) readerDocument() readerDocument {
 	return readerDocument{Title: t.presentation.Label, Detail: status, Sections: slices.Clone(t.presentation.Sections)}
 }
 
-func renderToolSections(p BlockPresentation, sections []ToolSection, truncate bool) []headless.Block {
+func renderToolSections(p blockPresentation, sections []toolSection, truncate bool) []headless.Block {
 	blocks := make([]headless.Block, 0, len(sections))
 	for _, section := range sections {
 		value := section.Text
@@ -280,7 +280,7 @@ func renderToolSections(p BlockPresentation, sections []ToolSection, truncate bo
 // sectionLanguage resolves the highlighter language for a code section. An
 // unset language is plain text, so a section that carries none says nothing
 // rather than repeating this answer.
-func sectionLanguage(section ToolSection) string {
+func sectionLanguage(section toolSection) string {
 	if section.Language == "" {
 		return "text"
 	}

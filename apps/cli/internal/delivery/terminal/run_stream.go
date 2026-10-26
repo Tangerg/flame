@@ -10,10 +10,9 @@ import (
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/term"
 )
 
@@ -60,8 +59,8 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 	return a.carried + current
 }
 
-func (a *app) startRun(commandID replay.CommandID, message prompt.Message, options prompt.RunOptions, status string) bool {
-	input := prompt.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
+func (a *app) startRun(commandID authoring.CommandID, message authoring.Message, options authoring.RunOptions, status string) bool {
+	input := authoring.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("run is absent from the durable outbox"))
@@ -100,7 +99,7 @@ func (a *app) startRun(commandID replay.CommandID, message prompt.Message, optio
 	return started
 }
 
-func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.PreparedInput, status string) bool {
+func (a *app) startPreparedRun(input authoring.StartRun, prepared *workbench.PreparedInput, status string) bool {
 	if !a.prepareRunStart(&input, prepared) {
 		return false
 	}
@@ -133,7 +132,7 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 				return errors.Join(err, a.retireQueuedCommand(input.SessionID, input.CommandID))
 			}
 			if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-				if identityErr := runtimeprotocol.ValidateRunID(receipt.RunID); identityErr != nil {
+				if identityErr := protocol.ValidateRunID(receipt.RunID); identityErr != nil {
 					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
 				}
 				a.execution.opening = &openingReceipt{RunID: receipt.RunID, CommandID: input.CommandID}
@@ -147,7 +146,7 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 	return true
 }
 
-func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.PreparedInput) bool {
+func (a *app) prepareRunStart(input *authoring.StartRun, prepared *workbench.PreparedInput) bool {
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("run is absent from the durable outbox"))
@@ -194,7 +193,7 @@ func (a *app) presentRunStart(status string) {
 	a.syncAnimation()
 }
 
-func (a *app) acceptStartedRun(input prompt.StartRun, opened conversation.SegmentStream) {
+func (a *app) acceptStartedRun(input authoring.StartRun, opened conversation.SegmentStream) {
 	a.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
 	pending := a.workbench.PendingRuns(input.SessionID)
 	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
@@ -212,7 +211,7 @@ func (a *app) acceptStartedRun(input prompt.StartRun, opened conversation.Segmen
 	}, applyRuntimeSettlement)
 }
 
-func (a *app) requeueDefinitivelyRefusedStart(input prompt.StartRun, failure error) error {
+func (a *app) requeueDefinitivelyRefusedStart(input authoring.StartRun, failure error) error {
 	callFailure, refused := errors.AsType[*startRunCallError](failure)
 	_, dispatchingPresent := a.queue.Dispatching(input.SessionID)
 	if !refused || mutation.OutcomeUnknown(callFailure.err) || !dispatchingPresent {
@@ -266,7 +265,7 @@ func (a *app) apply(event conversation.RunEvent) error {
 	if !result.Applied {
 		return nil
 	}
-	if err := a.transcript.ApplyRunEvent(event, a.registry); err != nil {
+	if err := a.transcript.ApplyRunEvent(event); err != nil {
 		return err
 	}
 	a.applyPresentationEvent(event)
@@ -316,7 +315,7 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 		}
 	case conversation.SegmentFinished:
 		switch {
-		case event.Run.Status == runtimeprotocol.RunStatusFinished:
+		case event.Run.Status == protocol.RunStatusFinished:
 			if envelope.RunID == a.execution.conversation.RunID() {
 				a.noteRunFinished()
 			}
@@ -379,13 +378,13 @@ func (a *app) finishFollowing() {
 
 func outcomeNotification(outcome conversation.Outcome) string {
 	switch outcome.Status {
-	case runtimeprotocol.OutcomeCompleted:
+	case protocol.OutcomeCompleted:
 		return "flame run completed"
-	case runtimeprotocol.OutcomeCanceled:
+	case protocol.OutcomeCanceled:
 		return "flame run canceled"
-	case runtimeprotocol.OutcomeTimedOut:
+	case protocol.OutcomeTimedOut:
 		return "flame run stopped: " + string(outcome.Status)
-	case runtimeprotocol.OutcomeFailed, runtimeprotocol.OutcomeLost:
+	case protocol.OutcomeFailed, protocol.OutcomeLost:
 		return "flame run failed"
 	default:
 		return ""

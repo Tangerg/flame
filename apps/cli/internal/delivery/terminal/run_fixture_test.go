@@ -1,12 +1,10 @@
 package terminal
 
-import (
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-)
+import "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 
-func testStartRun(sessionID, text string) prompt.StartRun {
-	return prompt.StartRun{
-		SessionID: sessionID, Message: prompt.Message{Text: text},
-		Options: prompt.RunOptions{},
+func testStartRun(sessionID, text string) authoring.StartRun {
+	return authoring.StartRun{
+		SessionID: sessionID, Message: authoring.Message{Text: text},
+		Options: authoring.RunOptions{},
 	}
 }

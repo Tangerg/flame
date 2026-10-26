@@ -1,7 +1,7 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -32,7 +32,7 @@ func newPromptView(
 	glyphs kit.Glyphs,
 	keys *keymap.Map,
 	composer *kit.Composer,
-	options prompt.RunOptions,
+	options authoring.RunOptions,
 ) *promptView {
 	panel := kit.NewPanel(kit.PanelConfig{
 		Box:     kit.Box{Theme: theme, Glyphs: glyphs},
@@ -108,7 +108,7 @@ func (p *promptView) syncFocus() {
 	p.rows.Focus(p.focused)
 }
 
-func (p *promptView) SetOptions(options prompt.RunOptions) {
+func (p *promptView) SetOptions(options authoring.RunOptions) {
 	p.panel.Box.Footer = modelLabel(options)
 }
 

@@ -1,4 +1,4 @@
-package queue
+package authoring
 
 import (
 	"encoding/binary"
@@ -6,31 +6,27 @@ import (
 	"math"
 	"reflect"
 	"testing"
-
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 )
 
 // enqueue mirrors the authoring transaction: the command identity is allocated
 // before the queue sees it, exactly as the terminal allocates it.
-func enqueue(q *Queue, sessionID string, message prompt.Message) (Entry, error) {
+func enqueue(q *Queue, sessionID string, message Message) (QueueEntry, error) {
 	return q.EnqueueCommand(
-		nextCommandID(q), sessionID, message,
-		prompt.RunOptions{},
+		nextCommandID(q), sessionID, message, RunOptions{},
 	)
 }
 
 func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
 	t.Parallel()
-	if err := (EntryID{}).Validate(); err == nil {
+	if err := (QueueEntryID{}).Validate(); err == nil {
 		t.Fatal("zero queue entry identity was constructed")
 	}
-	if err := (EntryID{}).Validate(); err == nil {
+	if err := (QueueEntryID{}).Validate(); err == nil {
 		t.Fatal("zero queue entry identity was validated")
 	}
-	prompts := New()
+	prompts := NewQueue()
 	prompts.nextID = math.MaxUint64
-	if _, err := enqueue(prompts, "session", prompt.Message{Text: "must not wrap"}); err == nil {
+	if _, err := enqueue(prompts, "session", Message{Text: "must not wrap"}); err == nil {
 		t.Fatal("exhausted queue identity sequence wrapped")
 	}
 	if snapshot := prompts.Snapshot("session"); len(snapshot.Entries) != 0 {
@@ -38,22 +34,22 @@ func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
 	}
 }
 
-func sameDispatchReservation(left, right State) bool {
+func sameDispatchReservation(left, right QueueState) bool {
 	leftID, leftPresent := left.DispatchingID()
 	rightID, rightPresent := right.DispatchingID()
 	return leftPresent == rightPresent && (!leftPresent || leftID == rightID)
 }
 
 func TestQueueKeepsSessionQueuesIsolatedAndSnapshotsDetached(t *testing.T) {
-	prompts := New()
-	first, err := enqueue(prompts, "one", prompt.Message{Text: "first"})
+	prompts := NewQueue()
+	first, err := enqueue(prompts, "one", Message{Text: "first"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, enqueueErr := enqueue(prompts, "two", prompt.Message{Text: "other session"}); enqueueErr != nil {
+	if _, enqueueErr := enqueue(prompts, "two", Message{Text: "other session"}); enqueueErr != nil {
 		t.Fatal(enqueueErr)
 	}
-	second, err := enqueue(prompts, "one", prompt.Message{Text: "second"})
+	second, err := enqueue(prompts, "one", Message{Text: "second"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,17 +68,17 @@ func TestQueueKeepsSessionQueuesIsolatedAndSnapshotsDetached(t *testing.T) {
 }
 
 func TestQueueRejectsDuplicateOrReusedCommandIdentitiesWithoutChangingState(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
 	before := prompts.State("session")
-	if _, err := prompts.EnqueueCommand(first.CommandID, "session", prompt.Message{Text: "another payload"}, prompt.RunOptions{}); err == nil {
+	if _, err := prompts.EnqueueCommand(first.CommandID, "session", Message{Text: "another payload"}, RunOptions{}); err == nil {
 		t.Fatal("duplicate command identity entered the FIFO")
 	}
-	if err := prompts.Update("session", first.ID, prompt.Message{Text: "edited"}, first.CommandID); err == nil {
+	if err := prompts.Update("session", first.ID, Message{Text: "edited"}, first.CommandID); err == nil {
 		t.Fatal("an edit reused the original command identity")
 	}
-	if err := prompts.Update("session", second.ID, prompt.Message{Text: "edited"}, first.CommandID); err == nil {
+	if err := prompts.Update("session", second.ID, Message{Text: "edited"}, first.CommandID); err == nil {
 		t.Fatal("an edit took another entry's command identity")
 	}
 	if after := prompts.State("session"); !reflect.DeepEqual(after, before) {
@@ -91,12 +87,12 @@ func TestQueueRejectsDuplicateOrReusedCommandIdentitiesWithoutChangingState(t *t
 }
 
 func TestQueueUpdatesMovesRemovesAndClearsByStableIdentity(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
-	third, _ := enqueue(prompts, "session", prompt.Message{Text: "third"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
+	third, _ := enqueue(prompts, "session", Message{Text: "third"})
 
-	if err := prompts.Update("session", second.ID, prompt.Message{Text: "edited"}, nextCommandID(prompts)); err != nil {
+	if err := prompts.Update("session", second.ID, Message{Text: "edited"}, nextCommandID(prompts)); err != nil {
 		t.Fatal(err)
 	}
 	if err := prompts.Move("session", third.ID, -2); err != nil {
@@ -122,10 +118,10 @@ func TestQueueUpdatesMovesRemovesAndClearsByStableIdentity(t *testing.T) {
 }
 
 func TestQueuePromotesAnEntryWithoutChangingItsIdentity(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
-	third, _ := enqueue(prompts, "session", prompt.Message{Text: "third"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
+	third, _ := enqueue(prompts, "session", Message{Text: "third"})
 
 	if err := prompts.Promote("session", third.ID); err != nil {
 		t.Fatal(err)
@@ -144,9 +140,9 @@ func TestQueuePromotesAnEntryWithoutChangingItsIdentity(t *testing.T) {
 }
 
 func TestQueueHoldsTheFrontEntryUntilEditingReleasesIt(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
 	if err := prompts.Hold("session", first.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -173,11 +169,11 @@ func TestQueueHoldsTheFrontEntryUntilEditingReleasesIt(t *testing.T) {
 }
 
 func TestQueueRejectsInvalidMessagesWithoutMutation(t *testing.T) {
-	prompts := New()
-	if _, err := enqueue(prompts, "", prompt.Message{Text: "valid"}); !errors.Is(err, ErrSessionIDRequired) {
+	prompts := NewQueue()
+	if _, err := enqueue(prompts, "", Message{Text: "valid"}); !errors.Is(err, ErrSessionIDRequired) {
 		t.Fatalf("empty session returned %v", err)
 	}
-	if _, err := enqueue(prompts, "session", prompt.Message{}); err == nil {
+	if _, err := enqueue(prompts, "session", Message{}); err == nil {
 		t.Fatal("empty message was accepted")
 	}
 	if snapshot := prompts.Snapshot("session"); len(snapshot.Entries) != 0 {
@@ -186,8 +182,8 @@ func TestQueueRejectsInvalidMessagesWithoutMutation(t *testing.T) {
 }
 
 func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
-	prompts := New()
-	existing, err := enqueue(prompts, "session", prompt.Message{Text: "existing"})
+	prompts := NewQueue()
+	existing, err := enqueue(prompts, "session", Message{Text: "existing"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,19 +191,19 @@ func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 		t.Fatal("queue did not reserve its existing entry")
 	}
 	before := prompts.State("session")
-	invalid := prompt.RunOptions{Provider: "deepseek"}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
-		SessionID: "session", Message: prompt.Message{Text: "invalid"}, Options: invalid,
+	invalid := RunOptions{Provider: "deepseek"}
+	command := StartRun{
+		CommandID: CommandID("cli_11111111111111111111111111111111"),
+		SessionID: "session", Message: Message{Text: "invalid"}, Options: invalid,
 	}
 	if _, err := prompts.EnqueueCommand(command.CommandID, command.SessionID, command.Message, command.Options); err == nil {
 		t.Fatal("queue accepted invalid run options")
 	}
-	if err := prompts.Restore("session", []prompt.StartRun{command}, command.CommandID); err == nil {
+	if err := prompts.Restore("session", []StartRun{command}, command.CommandID); err == nil {
 		t.Fatal("durable restore accepted invalid run options")
 	}
-	entryID := EntryID{value: 99}
-	state := State{Entries: []Entry{{
+	entryID := QueueEntryID{value: 99}
+	state := QueueState{Entries: []QueueEntry{{
 		ID: entryID, CommandID: command.CommandID, SessionID: command.SessionID,
 		Message: command.Message, Options: command.Options,
 	}}, Dispatching: new(entryID)}
@@ -222,15 +218,15 @@ func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 }
 
 func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
 	if err := prompts.Hold("session", first.ID); err != nil {
 		t.Fatal(err)
 	}
 	before := prompts.State("session")
 
-	if err := prompts.Update("session", first.ID, prompt.Message{Text: "edited"}, nextCommandID(prompts)); err != nil {
+	if err := prompts.Update("session", first.ID, Message{Text: "edited"}, nextCommandID(prompts)); err != nil {
 		t.Fatal(err)
 	}
 	if err := prompts.Release("session", first.ID); err != nil {
@@ -250,7 +246,7 @@ func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 	if after.Entries[0].CommandID != first.CommandID || after.Entries[0].Message.Text != "first" || !after.Entries[0].Held {
 		t.Fatalf("restored first entry = %+v", after.Entries[0])
 	}
-	next, err := enqueue(prompts, "session", prompt.Message{Text: "third"})
+	next, err := enqueue(prompts, "session", Message{Text: "third"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,13 +256,13 @@ func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 }
 
 func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
-	prompts := New()
-	if _, err := enqueue(prompts, "other", prompt.Message{Text: "advance local identity"}); err != nil {
+	prompts := NewQueue()
+	if _, err := enqueue(prompts, "other", Message{Text: "advance local identity"}); err != nil {
 		t.Fatal(err)
 	}
-	commands := []prompt.StartRun{
-		{CommandID: replay.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: prompt.Message{Text: "first"}, Options: prompt.RunOptions{}},
-		{CommandID: replay.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: prompt.Message{Text: "second"}, Options: prompt.RunOptions{}},
+	commands := []StartRun{
+		{CommandID: CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: Message{Text: "first"}, Options: RunOptions{}},
+		{CommandID: CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: Message{Text: "second"}, Options: RunOptions{}},
 	}
 	if err := prompts.Restore("session", commands, ""); err != nil {
 		t.Fatal(err)
@@ -286,10 +282,10 @@ func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 }
 
 func TestQueueRestoresADurableDispatchReservationAtomically(t *testing.T) {
-	prompts := New()
-	commands := []prompt.StartRun{
-		{CommandID: replay.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: prompt.Message{Text: "opening"}, Options: prompt.RunOptions{}},
-		{CommandID: replay.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: prompt.Message{Text: "queued"}, Options: prompt.RunOptions{}},
+	prompts := NewQueue()
+	commands := []StartRun{
+		{CommandID: CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: Message{Text: "opening"}, Options: RunOptions{}},
+		{CommandID: CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: Message{Text: "queued"}, Options: RunOptions{}},
 	}
 	if err := prompts.Restore("session", commands, commands[0].CommandID); err != nil {
 		t.Fatal(err)
@@ -310,12 +306,12 @@ func TestQueueRestoresADurableDispatchReservationAtomically(t *testing.T) {
 }
 
 func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
-	prompts := New()
-	existing, _ := enqueue(prompts, "session", prompt.Message{Text: "existing"})
+	prompts := NewQueue()
+	existing, _ := enqueue(prompts, "session", Message{Text: "existing"})
 	before := prompts.State("session")
-	commands := []prompt.StartRun{
-		{CommandID: replay.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: prompt.Message{Text: "first"}, Options: prompt.RunOptions{}},
-		{CommandID: replay.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: prompt.Message{Text: "second"}, Options: prompt.RunOptions{}},
+	commands := []StartRun{
+		{CommandID: CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: Message{Text: "first"}, Options: RunOptions{}},
+		{CommandID: CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: Message{Text: "second"}, Options: RunOptions{}},
 	}
 	if err := prompts.Restore("session", commands, commands[1].CommandID); err == nil {
 		t.Fatal("queue accepted a non-front durable dispatch")
@@ -328,10 +324,10 @@ func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
 }
 
 func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "opening"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "send next"})
-	third, _ := enqueue(prompts, "session", prompt.Message{Text: "leave last"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "opening"})
+	second, _ := enqueue(prompts, "session", Message{Text: "send next"})
+	third, _ := enqueue(prompts, "session", Message{Text: "leave last"})
 
 	dispatching, ok := prompts.BeginDispatch("session")
 	if !ok || dispatching.ID != first.ID {
@@ -367,9 +363,9 @@ func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.
 }
 
 func TestRestoreStatePreservesDispatchReservation(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "opening"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "queued"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "opening"})
+	second, _ := enqueue(prompts, "session", Message{Text: "queued"})
 	if _, ok := prompts.BeginDispatch("session"); !ok {
 		t.Fatal("could not reserve the front entry")
 	}
@@ -394,9 +390,9 @@ func TestRestoreStatePreservesDispatchReservation(t *testing.T) {
 }
 
 func TestRestoreStateRejectsInvalidDispatchWithoutChangingTheQueue(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "first"})
-	second, _ := enqueue(prompts, "session", prompt.Message{Text: "second"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "first"})
+	second, _ := enqueue(prompts, "session", Message{Text: "second"})
 	before := prompts.State("session")
 	invalid := before
 	invalid.Dispatching = new(second.ID)
@@ -412,12 +408,12 @@ func TestRestoreStateRejectsInvalidDispatchWithoutChangingTheQueue(t *testing.T)
 }
 
 func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "retry me"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "retry me"})
 	if _, ok := prompts.BeginDispatch("session"); !ok {
 		t.Fatal("could not reserve dispatch")
 	}
-	replacement := replay.CommandID("cli_99999999999999999999999999999999")
+	replacement := CommandID("cli_99999999999999999999999999999999")
 	if err := prompts.RequeueDispatch("session", first.CommandID, replacement); err != nil {
 		t.Fatal(err)
 	}
@@ -431,8 +427,8 @@ func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
 }
 
 func TestReleasingDispatchReturnsTheSameCommandToFIFO(t *testing.T) {
-	prompts := New()
-	first, _ := enqueue(prompts, "session", prompt.Message{Text: "opening"})
+	prompts := NewQueue()
+	first, _ := enqueue(prompts, "session", Message{Text: "opening"})
 	if prompts.ReleaseDispatch("session") {
 		t.Fatal("empty dispatch release reported a state change")
 	}
@@ -447,8 +443,8 @@ func TestReleasingDispatchReturnsTheSameCommandToFIFO(t *testing.T) {
 	}
 }
 
-func nextCommandID(q *Queue) replay.CommandID {
-	var entropy [replay.CommandIDEntropyBytes]byte
+func nextCommandID(q *Queue) CommandID {
+	var entropy [CommandIDEntropyBytes]byte
 	binary.BigEndian.PutUint64(entropy[:8], q.nextID+1)
-	return replay.NewCommandID(entropy)
+	return NewCommandID(entropy)
 }

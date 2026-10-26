@@ -65,10 +65,9 @@ The remote terminal detaches on exit without canceling an observed or newly acce
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
-The public Go SDK's `exactint` and `exactjson` packages own the shared numeric
-vocabulary. Filesystem adapters may use the existing `storage/advisorylock`
-primitive for their own partition lifetime; Domain and Application do not import
-that I/O capability. Settings may read the independent `packages/local-runtime`
+The public Go SDK's `exactint` and `jsonvalue` packages own the shared numeric
+vocabulary. Filesystem adapters use `filesystem.DirectoryLease` for their own
+partition lifetime; Domain and Application do not import that I/O capability. Settings may read the independent `packages/local-runtime`
 deployment defaults; only process composition and the binding adapter use its
 filesystem capabilities.
 
@@ -130,9 +129,18 @@ Runtime workspace references and local authoring directories have separate owner
 
 Sideloaded command protocol 2 carries both the Runtime workspace reference and the local authoring directory. The executable remains rooted in its discovered plugin directory. Manifest schema version 3 declares these semantics so an older executable is rejected before invocation; responses must also declare command protocol 2. Extension-host API version 1 is unchanged.
 
-`application/extensions` owns contributed command identity, argument cardinality, availability, request snapshots, results, and the typed command contribution point. `adapter/sideload` translates manifests and bounded process I/O into that contract without importing terminal delivery. Oolong block, tool, and custom-event presentation points remain in terminal delivery.
+`application/extensions` owns contributed command identity, argument cardinality,
+availability, request snapshots, results, dependency ordering, and plugin lifetimes.
+Each Host creates its private command registry. A setup scope can register only
+slash commands and requires the declared `terminal.commands` capability. The Host
+retains command and alias ownership, preserves registration order, and releases
+registrations during rollback, unload, reload, and final close. Terminal cancels
+provider-owned executions before changing that provider's lifecycle.
 
-Each contribution point has one definition identity. A separately constructed point with the same name cannot publish to or read the original point, including by weakening its capability. Keyed points derive identity only through their declared key policy; registration options do not override it. Plugin and dependency names must already have their canonical spelling at admission.
+`adapter/sideload` translates executable manifests and bounded process I/O into
+this command contract without importing terminal delivery. Built-in transcript
+and tool rendering belong directly to terminal delivery; presentation does not
+participate in plugin discovery or activation.
 
 Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
@@ -169,23 +177,21 @@ The CLI speaks one JSON vocabulary, `encoding/json/v2`. Duplicate members, trail
 
 A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycle, external translation, or terminal mechanism. Related behavior stays in responsibility-named files inside one package. Context namespace directories exist only for several peer packages and contain no facade Go files. A package does not earn a boundary merely because its type has an interface or its workflow has one action.
 
-| Owner               | Package                                              | Responsibility                                                                                       |
-| ------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Prompt authoring    | `domain/authoring/prompt`                            | Message and attachment values, authored model options, Start and Steer intents, frozen input         |
-| FIFO authoring      | `domain/authoring/queue`                             | Pure entry identity, editing holds, ordering and dispatch reservations                               |
-| Exact replay        | `domain/authoring/replay`                            | Stable command identity, capability and replay-guard values                                          |
-| Conversation        | `domain/conversation`                                | Transcript folding, stream deduplication, interrupt review and Runtime projections                   |
-| Workbench           | `application/workbench`                              | Local authoring lifetime, durable records, draft transfers, queue transactions and outbox settlement |
-| Mutation admission  | `application/mutation`                               | Identity generation, replay clocks and exact acknowledgement policy shared by workflows              |
-| Agent workflows     | `application/agent/run`, `application/agent/session` | Run observation and command workflows over consumer-owned Runtime ports                              |
-| Extensions          | `application/extensions`                             | Plugin activation, command contracts, contribution ownership and cleanup                             |
-| Runtime binding     | `adapter/runtimebinding`                             | Embedded/HTTP binding lifecycle, negotiation and projection translation                              |
-| Local storage       | `adapter/filesystem`                                 | Scoped filesystem adapters for attachments, editors, session artifacts and opaque state records      |
-| Sideload execution  | `adapter/sideload`                                   | Manifest translation, confined executable invocation and command-protocol validation                 |
-| User delivery       | `delivery/cmd`, `delivery/terminal`                  | Cobra commands and Oolong interaction, rendering and view lifetimes                                  |
-| Process composition | CLI root package                                     | Immutable Runtime target, lazy Workbench factory, port wiring and shutdown                           |
+| Owner               | Package                                              | Responsibility                                                                                                                                     |
+| ------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local authoring     | `domain/authoring`                                   | Message and attachment values, authored options, Start and Steer intents, FIFO editing and dispatch reservations, exact replay identity and guards |
+| Conversation        | `domain/conversation`                                | Transcript folding, stream deduplication, interrupt review and Runtime projections                                                                 |
+| Workbench           | `application/workbench`                              | Local authoring lifetime, durable records, draft transfers, queue transactions and outbox settlement                                               |
+| Mutation admission  | `application/mutation`                               | Identity generation, replay clocks and exact acknowledgement policy shared by workflows                                                            |
+| Agent workflows     | `application/agent/run`, `application/agent/session` | Run observation and command workflows over consumer-owned Runtime ports                                                                            |
+| Extensions          | `application/extensions`                             | Plugin activation, command contracts, contribution ownership and cleanup                                                                           |
+| Runtime binding     | `adapter/runtimebinding`                             | Embedded/HTTP binding lifecycle, negotiation and projection translation                                                                            |
+| Local storage       | `adapter/filesystem`                                 | Scoped filesystem adapters for attachments, editors, session artifacts and opaque state records                                                    |
+| Sideload execution  | `adapter/sideload`                                   | Manifest translation, confined executable invocation and command-protocol validation                                                               |
+| User delivery       | `delivery/cmd`, `delivery/terminal`                  | Cobra commands with private output renderers, Oolong interaction, rendering and view lifetimes                                                     |
+| Process composition | CLI root package                                     | Immutable Runtime target, lazy Workbench factory, port wiring and shutdown                                                                         |
 
-`authoring`, `agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains clocks, randomness and persistence in Application; moving its pure queue transitions to Domain does not move filesystem or process lifetime there. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.
+`agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains clocks, randomness and persistence in Application; moving its pure queue transitions to Domain does not move filesystem or process lifetime there. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.
 
 Do not create packages for individual actions, interfaces, or DTOs. Merge a single-consumer forwarding package into the consumer unless the package owns an external translation or reusable technical mechanism. Do not create broad `service`, `manager`, `backend`, `common`, or `helpers` packages.
 

@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-type scheduleFixtureRecord = schedule.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2JhY2tlbmQvZG9tYWlu_5fSnapshot
+type scheduleFixtureRecord = schedule.Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_5fSnapshot
 
 type scheduleBindingStub struct {
 	pluginBinding
@@ -46,7 +46,7 @@ func (s *scheduleBindingStub) ListPluginProviders(_ context.Context, options pro
 }
 func (s *scheduleBindingStub) ListPlugins(_ context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	s.assertMeta(options.RequestMeta)
-	contracts, err := capability.Parse([]byte(schedule.CapabilityJSON))
+	contracts, err := extension.ParseCapability([]byte(schedule.CapabilityJSON))
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		if s.createResult != nil {
 			row = cloneSchedule(*s.createResult)
 		}
-		output, err := jsoninput.Encode(row)
+		output, err := jsonvalue.Encode(row)
 		if err != nil {
 			s.t.Fatal(err)
 		}
@@ -107,7 +107,7 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 		if s.updateResult != nil {
 			row = cloneSchedule(*s.updateResult)
 		}
-		output, err := jsoninput.Encode(row)
+		output, err := jsonvalue.Encode(row)
 		if err != nil {
 			s.t.Fatal(err)
 		}
@@ -119,7 +119,7 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 			s.t.Fatal(err)
 		}
 		s.assertCommand("run:"+input.ID, protocol.CommandOptions{RequestMeta: options.RequestMeta, IdempotencyKey: options.IdempotencyKey})
-		output, err := jsoninput.Encode(schedule.RunNowV1Output{SessionID: "ses_headless", RunID: "run_headless"})
+		output, err := jsonvalue.Encode(schedule.RunNowV1Output{SessionID: "ses_headless", RunID: "run_headless"})
 		if err != nil {
 			s.t.Fatal(err)
 		}
@@ -164,7 +164,7 @@ func (s *scheduleBindingStub) CallPlugin(_ context.Context, request protocol.Cal
 	for _, row := range page.Data {
 		value.Rows = append(value.Rows, scheduleFixtureRecord(row))
 	}
-	encoded, err := jsoninput.Encode(value)
+	encoded, err := jsonvalue.Encode(value)
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -297,7 +297,7 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 
 func TestScheduleAdapterRejectsAMutationForAnotherSchedule(t *testing.T) {
 	r := &Connection{}
-	output, err := jsoninput.Encode(wireSchedule(time.Now(), "sch_other"))
+	output, err := jsonvalue.Encode(wireSchedule(time.Now(), "sch_other"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func TestScheduleUpdateKeepsOriginalRevisionAndPatchAfterCallerReuse(t *testing.
 	}
 	row := wireSchedule(time.Now(), "sch_original")
 	row.Revision = ^uint64(0)
-	output, err := jsoninput.Encode(row)
+	output, err := jsonvalue.Encode(row)
 	if err != nil {
 		t.Fatal(err)
 	}

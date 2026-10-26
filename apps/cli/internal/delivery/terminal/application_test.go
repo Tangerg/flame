@@ -21,8 +21,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -106,7 +105,7 @@ func runUIWithSettings(t *testing.T, backend Runtime, configured settings.Config
 
 func runUIConfigured(t *testing.T, backend Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
-	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: workspace, Plugins: plugins, Settings: configured})
+	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: workspace, PluginSources: []extensions.Source{testPluginSource{Plugins: plugins}}, Settings: configured})
 	return host, stop
 }
 
@@ -215,7 +214,7 @@ func runUIWithReplayState(
 	return host, stop, currentWorkbench
 }
 
-func durableCommandReplayGuard(t *testing.T) replay.Guard {
+func durableCommandReplayGuard(t *testing.T) authoring.ReplayGuard {
 	t.Helper()
 	return protectedCommandReplayGuard(t, terminalTestReplayNamespace, time.Now().UTC().Add(time.Hour))
 }
@@ -329,8 +328,8 @@ type recordingRuntime struct {
 	*runtimefixture.Runtime
 
 	mu     sync.Mutex
-	last   prompt.StartRun
-	inputs []prompt.StartRun
+	last   authoring.StartRun
+	inputs []authoring.StartRun
 	starts int
 }
 
@@ -339,7 +338,7 @@ type expiringUncommittedResumeRuntime struct {
 
 	mu              sync.Mutex
 	attempts        []conversation.ResumeRun
-	acceptedCommand replay.CommandID
+	acceptedCommand authoring.CommandID
 	acceptedStream  conversation.SegmentStream
 }
 
@@ -568,7 +567,7 @@ func (b *blockingSessionChangeRuntime) CreateSession(ctx context.Context, input 
 	}
 }
 
-func (b *blockingSessionChangeRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (b *blockingSessionChangeRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	b.starts.Add(1)
 	b.mu.Lock()
 	b.startedIn = input.SessionID
@@ -582,7 +581,7 @@ func (b *blockingSessionChangeRuntime) startedSession() string {
 	return b.startedIn
 }
 
-func (r *recordingRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *recordingRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	r.mu.Lock()
 	r.last = cloneStartRun(input)
 	r.inputs = append(r.inputs, cloneStartRun(input))
@@ -597,13 +596,13 @@ func (r *recordingRuntime) startCount() int {
 	return r.starts
 }
 
-func (r *recordingRuntime) options() prompt.RunOptions {
+func (r *recordingRuntime) options() authoring.RunOptions {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.last.Options
 }
 
-func (r *recordingRuntime) startInput() prompt.StartRun {
+func (r *recordingRuntime) startInput() authoring.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	input := r.last
@@ -611,22 +610,22 @@ func (r *recordingRuntime) startInput() prompt.StartRun {
 	return input
 }
 
-func (r *recordingRuntime) startInputs() []prompt.StartRun {
+func (r *recordingRuntime) startInputs() []authoring.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	inputs := make([]prompt.StartRun, len(r.inputs))
+	inputs := make([]authoring.StartRun, len(r.inputs))
 	for index, input := range r.inputs {
 		inputs[index] = cloneStartRun(input)
 	}
 	return inputs
 }
 
-func cloneStartRun(input prompt.StartRun) prompt.StartRun {
+func cloneStartRun(input authoring.StartRun) authoring.StartRun {
 	input.Message = input.Message.Clone()
 	return input
 }
 
-func (d *delayedFirstRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (d *delayedFirstRuntime) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	if d.starts.Add(1) == 1 {
 		<-ctx.Done()
 		return conversation.SegmentStream{}, context.Cause(ctx)
@@ -1210,10 +1209,10 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), prompt.StartRun{
-		CommandID: replay.CommandID("cli_55555555555555555555555555555555"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "persist mixed interrupt delivery"},
-		Options: prompt.RunOptions{},
+	opened, err := base.StartRun(t.Context(), authoring.StartRun{
+		CommandID: authoring.CommandID("cli_55555555555555555555555555555555"),
+		SessionID: "ses_demo_1", Message: authoring.Message{Text: "persist mixed interrupt delivery"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1235,7 +1234,7 @@ func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testi
 		t.Fatal(err)
 	}
 	command := conversation.ResumeRun{
-		CommandID: replay.CommandID("cli_66666666666666666666666666666666"),
+		CommandID: authoring.CommandID("cli_66666666666666666666666666666666"),
 		RunID:     opened.RunID,
 		Answers: []conversation.InterruptAnswer{
 			{
@@ -1522,15 +1521,15 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := prompt.StartRun{
-		CommandID: replay.CommandID("cli_77777777777777777777777777777777"),
+	command := authoring.StartRun{
+		CommandID: authoring.CommandID("cli_77777777777777777777777777777777"),
 		SessionID: "ses_demo_2",
-		Message:   prompt.Message{Text: "recover destination queued prompt"},
-		Options:   prompt.RunOptions{},
+		Message:   authoring.Message{Text: "recover destination queued prompt"},
+		Options:   authoring.RunOptions{},
 	}
 	if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{
 		State: workbench.PendingRunQueued, Command: command,
-		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+		Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 	}); stagePendingRunErr != nil {
 		t.Fatal(stagePendingRunErr)
 	}
@@ -1573,10 +1572,10 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), prompt.StartRun{
-		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
-		SessionID: "ses_demo_2", Message: prompt.Message{Text: "recover destination decision"},
-		Options: prompt.RunOptions{},
+	opened, err := base.StartRun(t.Context(), authoring.StartRun{
+		CommandID: authoring.CommandID("cli_88888888888888888888888888888888"),
+		SessionID: "ses_demo_2", Message: authoring.Message{Text: "recover destination decision"},
+		Options: authoring.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1594,7 +1593,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		t.Fatalf("destination interrupts = %+v", snapshot.Interrupts)
 	}
 	command := conversation.ResumeRun{
-		CommandID: replay.CommandID("cli_99999999999999999999999999999999"), RunID: opened.RunID,
+		CommandID: authoring.CommandID("cli_99999999999999999999999999999999"), RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
 			ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
@@ -1874,7 +1873,7 @@ func TestDraftClearWaitsForDurableRetirement(t *testing.T) {
 	host, stop, workbenchForHost := runUIWithState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("clear only after commit")
-	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{Text: "clear only after commit"})
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", authoring.Message{Text: "clear only after commit"})
 	restoreWrites := blockSessionStateWrites(t, stateDirectory, "ses_demo_1")
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -1971,7 +1970,7 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	backend := &uncertainCancellationRuntime{Runtime: base, commitBeforeTimeout: true}
 	profile := steerReplayTestProfile(t, t.TempDir())
 	application := &app{runtime: backend, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
-	commandID := replay.CommandID("cli_11111111111111111111111111111111")
+	commandID := authoring.CommandID("cli_11111111111111111111111111111111")
 	if err := application.cancelRootRun(t.Context(), conversation.CancelRun{
 		CommandID: commandID, RunID: opened.RunID, Reason: "test",
 	}, durableCommandReplayGuard(t)); err != nil {
@@ -2139,7 +2138,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	}
 	invalid := &invalidAcceptedStartRuntime{Runtime: base}
 	gate := &blockingFirstStartRuntime{
-		Runtime: invalid, started: make(chan prompt.StartRun, 1), release: make(chan struct{}),
+		Runtime: invalid, started: make(chan authoring.StartRun, 1), release: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
 	host, stop, _ := runUIWithReplayState(t, gate, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
@@ -2468,14 +2467,14 @@ func TestSlashCommandsEnforceTheirArgumentCardinality(t *testing.T) {
 
 func TestAPluginCanAddACommandWithoutChangingTheShell(t *testing.T) {
 	var loads atomic.Int32
-	plugin := extensions.Plugin{ID: "test.greeting", Version: "1.0.0", APIVersion: extensions.HostAPIVersion, Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()}, Setup: func(scope *extensions.Scope) error {
+	plugin := extensions.Plugin{ID: "test.greeting", Version: "1.0.0", APIVersion: extensions.HostAPIVersion, Capabilities: []extensions.Capability{extensions.CommandsCapability}, Setup: func(scope *extensions.Scope) error {
 		loads.Add(1)
-		_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+		err := scope.ContributeCommand(extensions.SlashCommand{
 			Descriptor: extensions.CommandDescriptor{Name: "hello", Title: "run a contributed command"},
 			Execute: func(context.Context, extensions.CommandRequest) (extensions.CommandResult, error) {
 				return extensions.CommandResult{Message: fmt.Sprintf("hello from plugin load %d", loads.Load())}, nil
 			},
-		}, extensions.Contribution{})
+		})
 		return err
 	}}
 	host, stop := runUI(t, plugin)
@@ -2519,14 +2518,14 @@ func TestAPluginCanAddACommandWithoutChangingTheShell(t *testing.T) {
 func TestAPluginSourceCanAddACommand(t *testing.T) {
 	plugin := extensions.Plugin{
 		ID: "test.source", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.CommandsCapability},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+			err := scope.ContributeCommand(extensions.SlashCommand{
 				Descriptor: extensions.CommandDescriptor{Name: "source-command", Title: "run a source command"},
 				Execute: func(context.Context, extensions.CommandRequest) (extensions.CommandResult, error) {
 					return extensions.CommandResult{Message: "plugin source command complete"}, nil
 				},
-			}, extensions.Contribution{})
+			})
 			return err
 		},
 	}
@@ -2534,7 +2533,7 @@ func TestAPluginSourceCanAddACommand(t *testing.T) {
 	backend.Instant = true
 	host, stop, _ := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, Workspace: "/tmp/flame-cli-test",
-		PluginSources: []extensions.Source{extensions.StaticSource{Name: "test", Plugins: []extensions.Plugin{plugin}}},
+		PluginSources: []extensions.Source{testPluginSource{Name: "test", Plugins: []extensions.Plugin{plugin}}},
 	})
 	host.Shows(t, "Ask flame")
 	host.Type("/source-command")
@@ -2561,9 +2560,9 @@ func TestAsynchronousPluginCommandKeepsTheTerminalResponsive(t *testing.T) {
 	release := make(chan struct{})
 	plugin := extensions.Plugin{
 		ID: "test.async", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.CommandsCapability},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+			err := scope.ContributeCommand(extensions.SlashCommand{
 				Descriptor: extensions.CommandDescriptor{Name: "slow", Title: "complete asynchronously"},
 				Execute: func(ctx context.Context, _ extensions.CommandRequest) (extensions.CommandResult, error) {
 					select {
@@ -2573,7 +2572,7 @@ func TestAsynchronousPluginCommandKeepsTheTerminalResponsive(t *testing.T) {
 						return extensions.CommandResult{}, context.Cause(ctx)
 					}
 				},
-			}, extensions.Contribution{})
+			})
 			return err
 		},
 	}
@@ -2607,16 +2606,16 @@ func TestUnloadingPluginCancelsItsInFlightCommand(t *testing.T) {
 	canceled := make(chan struct{}, 1)
 	plugin := extensions.Plugin{
 		ID: "test.cancel", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.CommandsCapability},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+			err := scope.ContributeCommand(extensions.SlashCommand{
 				Descriptor: extensions.CommandDescriptor{Name: "wait", Title: "wait until unloaded"},
 				Execute: func(ctx context.Context, _ extensions.CommandRequest) (extensions.CommandResult, error) {
 					<-ctx.Done()
 					canceled <- struct{}{}
 					return extensions.CommandResult{}, context.Cause(ctx)
 				},
-			}, extensions.Contribution{})
+			})
 			return err
 		},
 	}
@@ -2644,9 +2643,9 @@ func TestUnloadingAPluginLeavesIndependentCommandsRunning(t *testing.T) {
 	commandPlugin := func(id, name string, canceled chan<- struct{}, release <-chan struct{}) extensions.Plugin {
 		return extensions.Plugin{
 			ID: id, Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-			Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+			Capabilities: []extensions.Capability{extensions.CommandsCapability},
 			Setup: func(scope *extensions.Scope) error {
-				_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+				err := scope.ContributeCommand(extensions.SlashCommand{
 					Descriptor: extensions.CommandDescriptor{Name: name, Title: "wait for completion"},
 					Execute: func(ctx context.Context, _ extensions.CommandRequest) (extensions.CommandResult, error) {
 						select {
@@ -2657,7 +2656,7 @@ func TestUnloadingAPluginLeavesIndependentCommandsRunning(t *testing.T) {
 							return extensions.CommandResult{}, context.Cause(ctx)
 						}
 					},
-				}, extensions.Contribution{})
+				})
 				return err
 			},
 		}
@@ -2693,14 +2692,14 @@ func TestUnloadingAPluginLeavesIndependentCommandsRunning(t *testing.T) {
 func TestPluginCommandCannotShadowABuiltin(t *testing.T) {
 	plugin := extensions.Plugin{
 		ID: "test.shadow", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.CommandsCapability},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+			err := scope.ContributeCommand(extensions.SlashCommand{
 				Descriptor: extensions.CommandDescriptor{Name: "help", Title: "shadow help"},
 				Execute: func(context.Context, extensions.CommandRequest) (extensions.CommandResult, error) {
 					return extensions.CommandResult{Message: "shadowed builtin"}, nil
 				},
-			}, extensions.Contribution{})
+			})
 			return err
 		},
 	}
@@ -2950,7 +2949,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft("ses_demo_1", prompt.Message{Text: "saved before transition"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft("ses_demo_1", authoring.Message{Text: "saved before transition"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if err := store.Close(); err != nil {
@@ -3503,7 +3502,7 @@ func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft("ses_demo_1", prompt.Message{Text: "durable prefix"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft("ses_demo_1", authoring.Message{Text: "durable prefix"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if err := store.Close(); err != nil {
@@ -3566,7 +3565,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft("ses_demo_1", prompt.Message{Text: "must remain editable"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft("ses_demo_1", authoring.Message{Text: "must remain editable"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if err := store.Close(); err != nil {
@@ -3620,7 +3619,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft("ses_demo_1", prompt.Message{Text: "history must commit first"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft("ses_demo_1", authoring.Message{Text: "history must commit first"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	if err := store.Close(); err != nil {
@@ -3682,7 +3681,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	host, stop, workbenchForHost := runUIWithState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	host.Type("draft remains visible")
-	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{Text: "draft remains visible"})
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", authoring.Message{Text: "draft remains visible"})
 	restoreWrites := blockSessionStateWrites(t, stateDirectory, "ses_demo_1")
 
 	host.Send(input.Key{Code: input.Character, Rune: 'p', Mods: input.Ctrl})
@@ -3720,7 +3719,7 @@ func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stash, err := store.StashPrompt(prompt.Message{Text: "recoverable stash"})
+	stash, err := store.StashPrompt(authoring.Message{Text: "recoverable stash"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3742,7 +3741,7 @@ func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "applied prompt stash")
 	host.Shows(t, "recoverable stash")
-	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", prompt.Message{Text: "recoverable stash"})
+	awaitStoredDraft(t, workbenchForHost, "ses_demo_1", authoring.Message{Text: "recoverable stash"})
 	stop()
 }
 
@@ -3781,7 +3780,7 @@ func TestExternalEditorKeepsEditedTextWhenDraftPersistenceFails(t *testing.T) {
 	host.Shows(t, "Ask flame")
 	host.Type("original draft")
 	sessionID := firstRuntimeSession(t, backend)
-	awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: "original draft"})
+	awaitStoredDraft(t, workbenchForHost, sessionID, authoring.Message{Text: "original draft"})
 	restoreWrites := blockSessionStateWrites(t, stateDirectory, sessionID)
 
 	host.Send(input.Key{Code: input.Character, Rune: 'e', Mods: input.Ctrl})
@@ -3792,7 +3791,7 @@ func TestExternalEditorKeepsEditedTextWhenDraftPersistenceFails(t *testing.T) {
 
 	restoreWrites()
 	host.Type("!")
-	awaitStoredDraft(t, workbenchForHost, sessionID, prompt.Message{Text: "original draft\nrevised but not durable!"})
+	awaitStoredDraft(t, workbenchForHost, sessionID, authoring.Message{Text: "original draft\nrevised but not durable!"})
 	stop()
 }
 
@@ -4804,7 +4803,7 @@ func TestTerminalSurvivesExtremeResizeAndRemainsInteractive(t *testing.T) {
 	host.Hides(t, "resize draft")
 	host.Type("/plugins")
 	host.Press(input.Enter)
-	host.Shows(t, "terminal.core@1.0.0")
+	host.Shows(t, "No command plugins installed")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()
 }
@@ -4884,7 +4883,7 @@ func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
 	host.Shows(t, "complete")
 	host.Type("/plugins")
 	host.Press(input.Enter)
-	host.Shows(t, "terminal.core")
+	host.Shows(t, "No command plugins installed")
 	stop()
 }
 
@@ -4939,4 +4938,14 @@ func TestOutcomeNotificationMatchesTheRunVerdict(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testPluginSource struct {
+	Name    string
+	Plugins []extensions.Plugin
+}
+
+func (s testPluginSource) ID() string { return s.Name }
+func (s testPluginSource) Discover(context.Context) (extensions.SourceResult, error) {
+	return extensions.SourceResult{Plugins: s.Plugins}, nil
 }

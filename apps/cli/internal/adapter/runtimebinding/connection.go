@@ -15,13 +15,13 @@ import (
 	"sync"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
@@ -29,33 +29,15 @@ import (
 const clientName = "flame-cli"
 
 func supportedInterruptTypes() []protocol.InterruptType {
-	return []protocol.InterruptType{
-		protocol.InterruptApproval,
-		protocol.InterruptQuestion,
-	}
+	return []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion}
 }
 
 func recognizedRunEventTypes() []protocol.StreamEventType {
-	return []protocol.StreamEventType{
-		protocol.StreamSegmentStarted,
-		protocol.StreamSegmentProgress,
-		protocol.StreamSegmentFinished,
-		protocol.StreamItemStarted,
-		protocol.StreamItemDelta,
-		protocol.StreamItemCompleted,
-		protocol.StreamPlanUpdated,
-	}
+	return []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 }
 
 func requiredRunEventTypes() []protocol.StreamEventType {
-	return []protocol.StreamEventType{
-		protocol.StreamSegmentStarted,
-		protocol.StreamSegmentFinished,
-		protocol.StreamItemStarted,
-		protocol.StreamItemDelta,
-		protocol.StreamItemCompleted,
-		protocol.StreamPlanUpdated,
-	}
+	return []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 }
 
 // Config contains local Runtime paths, remote authorization, and client identity.
@@ -196,7 +178,7 @@ func openConnection(ctx context.Context, cfg Config, target settings.Runtime) (*
 	}
 	discovery, err := connection.discovery.Discover(ctx, connection.callOptions())
 	if err == nil {
-		connection.profile, err = NewProfile(discovery, connection.meta.ClientCapabilities)
+		connection.profile, err = newProfile(discovery, connection.meta.ClientCapabilities)
 	}
 	if err != nil {
 		return connection, classifyError(err)
@@ -212,9 +194,7 @@ func requestMeta(version string) protocol.RequestMeta {
 		ProtocolVersion: protocol.Version,
 		ClientInfo:      &protocol.ClientInfo{Name: clientName, Version: version},
 		ClientCapabilities: &protocol.ClientCapabilities{
-			Features: map[string]protocol.FeaturePreference{
-				protocol.FeatureSubagents: {Enabled: true},
-			},
+			Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 			InterruptTypes: supportedInterruptTypes(),
 		},
 	}
@@ -232,7 +212,7 @@ func (r *Connection) commandOptions() protocol.CommandOptions {
 	}
 }
 
-func (r *Connection) commandOptionsFor(commandID replay.CommandID) (protocol.CommandOptions, error) {
+func (r *Connection) commandOptionsFor(commandID authoring.CommandID) (protocol.CommandOptions, error) {
 	if commandID == "" {
 		return r.commandOptions(), nil
 	}
@@ -253,7 +233,7 @@ func (r *Connection) runCommandOptions() protocol.RunCommandOptions {
 	}
 }
 
-func (r *Connection) runCommandOptionsFor(commandID replay.CommandID) (protocol.RunCommandOptions, error) {
+func (r *Connection) runCommandOptionsFor(commandID authoring.CommandID) (protocol.RunCommandOptions, error) {
 	if commandID == "" {
 		return r.runCommandOptions(), nil
 	}
@@ -270,8 +250,7 @@ func (r *Connection) subscriptionOptions(afterEventID string) (protocol.RunSubsc
 	if afterEventID != "" {
 		if len(afterEventID) > protocol.MaximumRunEventIDCharacters {
 			return protocol.RunSubscriptionOptions{}, fmt.Errorf(
-				"run replay cursor exceeds the %d-character transport limit",
-				protocol.MaximumRunEventIDCharacters,
+				"run replay cursor exceeds the %d-character transport limit", protocol.MaximumRunEventIDCharacters,
 			)
 		}
 		if !strings.HasPrefix(afterEventID, protocol.IDPrefixEvent) {
@@ -296,8 +275,7 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 		return fmt.Errorf(
 			"%w: runtime serves %s, CLI requires %s",
 			conversation.ErrIncompatibleRuntime,
-			discovery.ProtocolVersion,
-			protocol.Version,
+			discovery.ProtocolVersion, protocol.Version,
 		)
 	}
 	if discovery.Capabilities.Limits.RunReplay.Scope != protocol.ReplayScopeRuntimeInstanceRootSegment {

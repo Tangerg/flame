@@ -41,7 +41,7 @@ func (t MemoryTarget) Validate() error {
 		if t.Workspace == "" {
 			return fmt.Errorf("agent memory project target requires a workspace")
 		}
-		if err := (protocol.WorkspaceRef{Path: t.Workspace}).ValidateWire(); err != nil {
+		if err := protocol.ValidateWireTree((protocol.WorkspaceRef{Path: t.Workspace})); err != nil {
 			return fmt.Errorf("agent memory workspace: %w", err)
 		}
 	default:

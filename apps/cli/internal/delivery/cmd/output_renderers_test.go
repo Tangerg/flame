@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -15,7 +15,7 @@ import (
 
 func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewText(&output)
+	renderer := newTextRenderer(&output)
 	for _, event := range testEvents() {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -34,8 +34,8 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 
 func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newTextRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("failed", finishedSegment(testRun(), conversation.Outcome{
@@ -58,7 +58,7 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 
 func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
-	configured, err := json.Marshal(encodeRunOptions(prompt.RunOptions{
+	configured, err := json.Marshal(encodeRunOptions(authoring.RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
 		Generation: protocol.GenerationParams{
 			Temperature: &temperature, MaxTokens: &maxTokens, TopP: &topP, Stop: []string{"END"},
@@ -71,7 +71,7 @@ func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 		t.Fatalf("configured options = %s, want %s", got, want)
 	}
 
-	inherited, err := json.Marshal(encodeRunOptions(prompt.RunOptions{Provider: "mock", Model: "balanced"}))
+	inherited, err := json.Marshal(encodeRunOptions(authoring.RunOptions{Provider: "mock", Model: "balanced"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,8 +82,8 @@ func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 
 func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newTextRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range []conversation.RunEvent{
@@ -113,7 +113,7 @@ func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 
 func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewNDJSON(&output)
+	renderer := newNDJSONRenderer(&output)
 	events := []conversation.RunEvent{
 		testEvent("evt_start", conversation.SegmentStarted{Run: testRun()}),
 		testEvent("evt_wait", parkedSegment(testRun(), conversation.Usage{InputTokens: 42},
@@ -177,8 +177,8 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 	event := testEvent("question", conversation.BlockCompleted{Block: block})
 
 	var textOutput bytes.Buffer
-	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	textRenderer := newTextRenderer(&textOutput)
+	if err := textRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Render(event); err != nil {
@@ -192,8 +192,8 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 	}
 
 	var jsonOutput bytes.Buffer
-	jsonRenderer := NewNDJSON(&jsonOutput)
-	if err := jsonRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	jsonRenderer := newNDJSONRenderer(&jsonOutput)
+	if err := jsonRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := jsonRenderer.Render(event); err != nil {
@@ -209,8 +209,8 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newNDJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	step, contextTokens := 4, int64(16_384)
@@ -248,8 +248,8 @@ func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 
 func TestNDJSONCarriesContentDelta(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newNDJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("content", conversation.BlockDelta{BlockID: "answer", Text: "third"})); err != nil {
@@ -336,8 +336,8 @@ func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 
 func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newResultJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("progress", conversation.RunProgress{Usage: &conversation.Usage{InputTokens: 33, OutputTokens: 5}})); err != nil {
@@ -357,7 +357,7 @@ func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) 
 
 func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
+	renderer := newResultJSONRenderer(&output)
 	for _, event := range []conversation.RunEvent{
 		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
 		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
@@ -384,7 +384,7 @@ func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T)
 
 func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
+	renderer := newResultJSONRenderer(&output)
 	for _, event := range []conversation.RunEvent{
 		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
 		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
@@ -409,7 +409,7 @@ func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 
 func TestResultJSONDoesNotRetainProvisionalTextForEmptyCompletion(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
+	renderer := newResultJSONRenderer(&output)
 	for _, event := range []conversation.RunEvent{
 		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
 		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
@@ -438,8 +438,8 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 	}})
 
 	var stream bytes.Buffer
-	ndjson := NewNDJSON(&stream)
-	if err := ndjson.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	ndjson := newNDJSONRenderer(&stream)
+	if err := ndjson.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ndjson.Render(completed); err != nil {
@@ -455,8 +455,8 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 	}
 
 	var resultOutput bytes.Buffer
-	result := NewResultJSON(&resultOutput)
-	if err := result.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	result := newResultJSONRenderer(&resultOutput)
+	if err := result.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := result.Render(completed); err != nil {
@@ -474,8 +474,8 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 	}
 
 	var textOutput bytes.Buffer
-	plain := NewText(&textOutput)
-	if err := plain.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	plain := newTextRenderer(&textOutput)
+	if err := plain.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := plain.Render(completed); err != nil {
@@ -488,8 +488,8 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newNDJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	event := testEvent("tool", conversation.BlockCompleted{Block: conversation.Block{
@@ -515,8 +515,8 @@ func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 
 func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newResultJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	question := conversation.Question{
@@ -548,8 +548,8 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 
 func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
+	renderer := newResultJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range testEvents() {
@@ -573,8 +573,8 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 	events := runTreeEvents(t)
 
 	var textOutput bytes.Buffer
-	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	textRenderer := newTextRenderer(&textOutput)
+	if err := textRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -595,8 +595,8 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 	}
 
 	var streamOutput bytes.Buffer
-	streamRenderer := NewNDJSON(&streamOutput)
-	if err := streamRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	streamRenderer := newNDJSONRenderer(&streamOutput)
+	if err := streamRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -616,8 +616,8 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 	}
 
 	var resultOutput bytes.Buffer
-	resultRenderer := NewResultJSON(&resultOutput)
-	if err := resultRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	resultRenderer := newResultJSONRenderer(&resultOutput)
+	if err := resultRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -670,8 +670,8 @@ func reconciliationSnapshot(t testing.TB) conversation.SessionSnapshot {
 func requireScopedResultJSON(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
-	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	renderer := newResultJSONRenderer(&output)
+	if err := renderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Reconcile(snapshot); err != nil {
@@ -688,8 +688,8 @@ func requireScopedResultJSON(t *testing.T, snapshot conversation.SessionSnapshot
 func requireScopedText(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
-	textRenderer := NewText(&output)
-	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	textRenderer := newTextRenderer(&output)
+	if err := textRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Reconcile(snapshot); err != nil {
@@ -706,8 +706,8 @@ func requireScopedText(t *testing.T, snapshot conversation.SessionSnapshot) {
 func requireScopedStream(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
-	streamRenderer := NewNDJSON(&output)
-	if err := streamRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
+	streamRenderer := newNDJSONRenderer(&output)
+	if err := streamRenderer.Begin(testRun(), authoring.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := streamRenderer.Reconcile(snapshot); err != nil {
@@ -728,13 +728,13 @@ func requireScopedStream(t *testing.T, snapshot conversation.SessionSnapshot) {
 func TestRenderersRejectInvalidEvents(t *testing.T) {
 	invalid := conversation.RunEvent{EventID: "evt", RunID: "run_1", SegmentID: "seg_1", Event: conversation.BlockDelta{}}
 	var output bytes.Buffer
-	if err := NewText(&output).Render(invalid); err == nil {
+	if err := newTextRenderer(&output).Render(invalid); err == nil {
 		t.Fatal("text accepted invalid event")
 	}
-	if err := NewNDJSON(&output).Render(invalid); err == nil {
+	if err := newNDJSONRenderer(&output).Render(invalid); err == nil {
 		t.Fatal("NDJSON accepted invalid event")
 	}
-	if err := NewResultJSON(&output).Render(invalid); err == nil {
+	if err := newResultJSONRenderer(&output).Render(invalid); err == nil {
 		t.Fatal("result JSON accepted invalid event")
 	}
 }

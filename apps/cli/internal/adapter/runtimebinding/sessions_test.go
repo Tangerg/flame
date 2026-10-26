@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -72,9 +72,7 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 		t.Fatal("oversized request cursor reached the Runtime binding")
 	}
 
-	_, err := projectSessionPage(
-		protocol.NewPageWithCursor([]protocol.Session{}, oversized), conversation.SessionQuery{}, conversation.DefaultPageRows,
-	)
+	_, err := projectSessionPage(protocol.NewPageWithCursor([]protocol.Session{}, oversized), conversation.SessionQuery{}, conversation.DefaultPageRows)
 	if err == nil || !strings.Contains(err.Error(), "continuation cursor larger") {
 		t.Fatalf("oversized response cursor error = %v", err)
 	}
@@ -200,10 +198,8 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 			ProjectRoot:  "/workspace",
 			Availability: protocol.WorkspaceAvailable,
 		}},
-		meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureRelocate: {Enabled: true},
-		}),
+		meta:    requestMeta("test"),
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureRelocate: {Enabled: true}}),
 	}
 	updated, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
@@ -270,9 +266,7 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessionCatalog: catalog, workspaces: resolved, meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureRelocate: {Enabled: true},
-		}),
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureRelocate: {Enabled: true}}),
 	}
 	if _, err := runtime.CreateSession(t.Context(), conversation.CreateSession{
 		Title: result.Title, Workspace: requested,
@@ -311,7 +305,7 @@ func (s sessionCatalogStub) DeleteSession(_ context.Context, request protocol.De
 
 func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 	t.Parallel()
-	commandID := replay.CommandID("cli_11111111111111111111111111111111")
+	commandID := authoring.CommandID("cli_11111111111111111111111111111111")
 	const namespace = compatibleReplayNamespace
 	called := false
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{delete: func(request protocol.DeleteSessionRequest, options protocol.CommandOptions) error {

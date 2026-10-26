@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
@@ -147,16 +147,16 @@ func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 
 func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 	deadline := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
-	guard, err := replay.NewProtectedGuard("runtime-a", deadline)
+	guard, err := authoring.NewProtectedGuard("runtime-a", deadline)
 	if err != nil {
 		t.Fatal(err)
 	}
-	capability, err := replay.NewCapability("runtime-a", time.Minute)
+	capability, err := authoring.NewReplayCapability("runtime-a", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
-		policy, policyErr := NewReplayPolicy(capability, func() time.Time { return deadline.Add(offset) })
+		policy, policyErr := newReplayPolicy(capability, func() time.Time { return deadline.Add(offset) })
 		if policyErr != nil {
 			t.Fatal(policyErr)
 		}
@@ -173,17 +173,17 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 func TestReplayAdmissionNeverStartsAnUnprotectedCommand(t *testing.T) {
 	t.Parallel()
 
-	capability, err := replay.NewCapability("runtime-a", time.Minute)
+	capability, err := authoring.NewReplayCapability("runtime-a", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := NewReplayPolicy(capability, time.Now)
+	policy, err := newReplayPolicy(capability, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	attempts := 0
 	_, err = ConfirmAdmitted(
-		t.Context(), fastBackoff(t), ReplayAdmission(policy, replay.UnprotectedGuard()),
+		t.Context(), fastBackoff(t), ReplayAdmission(policy, authoring.UnprotectedGuard()),
 		func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, nil

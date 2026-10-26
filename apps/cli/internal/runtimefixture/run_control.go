@@ -7,13 +7,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func (r *Runtime) StartRun(ctx context.Context, in prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *Runtime) StartRun(ctx context.Context, in authoring.StartRun) (conversation.SegmentStream, error) {
 	if err := in.Validate(); err != nil {
 		return conversation.SegmentStream{}, fmt.Errorf("mock: %w", err)
 	}
@@ -128,7 +127,7 @@ func (r *Runtime) ResumeRun(ctx context.Context, in conversation.ResumeRun) (con
 	return stream, nil
 }
 
-func (r *Runtime) recordOpeningLocked(key replay.CommandID, operation protocol.RunCommandOperation, stream conversation.SegmentStream, sessionID string) {
+func (r *Runtime) recordOpeningLocked(key authoring.CommandID, operation protocol.RunCommandOperation, stream conversation.SegmentStream, sessionID string) {
 	r.openings[string(operation)+":"+string(key)] = protocol.RunAcceptance{
 		Type: protocol.RunAcceptanceAccepted, RunID: stream.RunID, SegmentID: stream.SegmentID,
 		SessionID: sessionID, UserItemID: stream.UserItemID,
@@ -197,7 +196,7 @@ func (r *Runtime) prepareResumeLocked(in conversation.ResumeRun) (resumePreparat
 	return resumePreparation{run: run, answers: answers, allAnswers: allAnswers, script: run.script}, nil
 }
 
-func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Message, prepared resumePreparation) (conversation.SegmentStream, error) {
+func (r *Runtime) activateResumeLocked(ctx context.Context, message *authoring.Message, prepared resumePreparation) (conversation.SegmentStream, error) {
 	run := prepared.run
 	if run.status != protocol.RunStatusWaiting {
 		return conversation.SegmentStream{}, fmt.Errorf("%w: run %s", conversation.ErrInterruptNotOpen, run.id)
@@ -243,7 +242,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Mess
 	return r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault), nil
 }
 
-func resumeRunRevisionChanges(session *sessionState, message *prompt.Message, itemEvents int) sessionRevisionChanges {
+func resumeRunRevisionChanges(session *sessionState, message *authoring.Message, itemEvents int) sessionRevisionChanges {
 	changes := sessionStatusRevisionChanges(session, protocol.SessionStatusRunning).
 		plus(sessionEventRevisionChange()).
 		plus(sessionEventRevisionChanges(itemEvents))
@@ -293,7 +292,7 @@ func (r *Runtime) recordAnswersLocked(run *runState, answers []conversation.Inte
 	}
 }
 
-func (r *Runtime) emitResumeMessageLocked(run *runState, message *prompt.Message) (string, error) {
+func (r *Runtime) emitResumeMessageLocked(run *runState, message *authoring.Message) (string, error) {
 	if message == nil {
 		return "", nil
 	}
@@ -398,7 +397,7 @@ func (r *Runtime) CancelRun(ctx context.Context, in conversation.CancelRun) (con
 	return conversation.RunCancellation{Canceled: projected, Root: projected.Clone()}, nil
 }
 
-func (r *Runtime) SteerRun(ctx context.Context, in prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (r *Runtime) SteerRun(ctx context.Context, in authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	if err := in.Validate(); err != nil {
 		return protocol.SteerRunResponse{}, fmt.Errorf("mock: %w", err)
 	}

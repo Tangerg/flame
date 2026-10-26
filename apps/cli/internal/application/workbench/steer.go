@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // PendingSteer owns an instruction and its borrowed composer attachments until
@@ -20,17 +19,17 @@ type PendingSteer struct {
 	inputDigest  inputDigest
 	inputFailure error
 	sessionID    string
-	command      prompt.SteerRun
+	command      authoring.SteerRun
 	stagedAt     time.Time
-	replay       replay.Guard
+	replay       authoring.ReplayGuard
 }
 
 type pendingSteerRecord struct {
-	InputDigest inputDigest     `json:"inputDigest,omitzero"`
-	SessionID   string          `json:"sessionId"`
-	Command     prompt.SteerRun `json:"command"`
-	StagedAt    time.Time       `json:"stagedAt"`
-	Replay      replay.Guard    `json:"replay"`
+	InputDigest inputDigest           `json:"inputDigest,omitzero"`
+	SessionID   string                `json:"sessionId"`
+	Command     authoring.SteerRun    `json:"command"`
+	StagedAt    time.Time             `json:"stagedAt"`
+	Replay      authoring.ReplayGuard `json:"replay"`
 }
 
 // SteerSourcePrefix marks a draft as a steer command. The terminal builds the draft
@@ -43,9 +42,9 @@ const SteerSourcePrefix = "/steer "
 // history, and source composer draft cannot represent different text.
 func NewPendingSteer(
 	sessionID string,
-	command prompt.SteerRun,
+	command authoring.SteerRun,
 	stagedAt time.Time,
-	replayGuard replay.Guard,
+	replayGuard authoring.ReplayGuard,
 ) (PendingSteer, error) {
 	pending := PendingSteer{
 		sessionID: sessionID,
@@ -64,7 +63,7 @@ func (p PendingSteer) Validate() error {
 	if err := p.inputDigest.validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateSessionID(p.sessionID); err != nil {
+	if err := protocol.ValidateSessionID(p.sessionID); err != nil {
 		return fmt.Errorf("pending steer: %w", err)
 	}
 	if err := p.command.Validate(); err != nil {
@@ -118,12 +117,12 @@ func restorePendingSteer(record pendingSteerRecord) (PendingSteer, error) {
 	return pending, err
 }
 
-func (p PendingSteer) SessionID() string           { return p.sessionID }
-func (p PendingSteer) CommandID() replay.CommandID { return p.command.CommandID }
-func (p PendingSteer) Command() prompt.SteerRun    { return p.command.Clone() }
-func (p PendingSteer) Message() prompt.Message     { return p.command.Message.Clone() }
-func (p PendingSteer) StagedAt() time.Time         { return p.stagedAt }
-func (p PendingSteer) Replay() replay.Guard        { return p.replay }
+func (p PendingSteer) SessionID() string              { return p.sessionID }
+func (p PendingSteer) CommandID() authoring.CommandID { return p.command.CommandID }
+func (p PendingSteer) Command() authoring.SteerRun    { return p.command.Clone() }
+func (p PendingSteer) Message() authoring.Message     { return p.command.Message.Clone() }
+func (p PendingSteer) StagedAt() time.Time            { return p.stagedAt }
+func (p PendingSteer) Replay() authoring.ReplayGuard  { return p.replay }
 
 // PendingSteers returns unsettled steer commands in stable session order.
 func (s *Store) PendingSteers() []PendingSteer {
@@ -151,7 +150,7 @@ func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 // durable composer draft into a replayable runtime command. A crash therefore
 // observes either the editable attachments or the command journal, never an
 // empty gap between them.
-func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Message, input *PreparedInput) (PendingSteer, error) {
+func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Message, input *PreparedInput) (PendingSteer, error) {
 	pending = pending.clone()
 	blocks, digest, err := input.bind(s, pending.command.Message)
 	if err != nil {
@@ -185,7 +184,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Messa
 		return PendingSteer{}, errors.New("session draft changed before steer attachment transfer")
 	}
 	if err := s.saveSessionStateRecord(
-		pending.sessionID, prompt.Message{}, s.pendingRuns[pending.sessionID],
+		pending.sessionID, authoring.Message{}, s.pendingRuns[pending.sessionID],
 		s.pendingResumePointer(pending.sessionID), s.pendingRollbackPointer(pending.sessionID), &pending,
 	); err != nil {
 		return PendingSteer{}, err
@@ -200,7 +199,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Messa
 // claimPendingSteerLocked returns the steer a settlement names. Acknowledgement
 // and rejection are the same claim asked twice, so they answer with one spelling
 // rather than each deciding for itself which steer it is finishing.
-func (s *Store) claimPendingSteerLocked(sessionID string, commandID replay.CommandID) (PendingSteer, error) {
+func (s *Store) claimPendingSteerLocked(sessionID string, commandID authoring.CommandID) (PendingSteer, error) {
 	pending, exists := s.pendingSteers[sessionID]
 	if !exists || pending.command.CommandID != commandID {
 		return PendingSteer{}, errors.New("pending steer command identity changed")
@@ -208,11 +207,11 @@ func (s *Store) claimPendingSteerLocked(sessionID string, commandID replay.Comma
 	return pending, nil
 }
 
-func (s *Store) AcknowledgePendingSteer(sessionID string, commandID replay.CommandID) error {
+func (s *Store) AcknowledgePendingSteer(sessionID string, commandID authoring.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -241,19 +240,19 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID replay.Comma
 // one durable session-aggregate replacement.
 func (s *Store) RejectPendingSteer(
 	sessionID string,
-	commandID replay.CommandID,
-	currentDraft prompt.Message,
-) (prompt.Message, error) {
+	commandID authoring.CommandID,
+	currentDraft authoring.Message,
+) (authoring.Message, error) {
 	if err := commandID.Validate(); err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
-		return prompt.Message{}, err
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
+		return authoring.Message{}, err
 	}
 	currentDraft = currentDraft.Clone()
 	if !currentDraft.IsEmpty() {
 		if err := currentDraft.Validate(); err != nil {
-			return prompt.Message{}, fmt.Errorf("current session draft: %w", err)
+			return authoring.Message{}, fmt.Errorf("current session draft: %w", err)
 		}
 	}
 
@@ -261,18 +260,18 @@ func (s *Store) RejectPendingSteer(
 	defer s.mu.Unlock()
 	pending, err := s.claimPendingSteerLocked(sessionID, commandID)
 	if err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
 	if current, present := s.drafts[sessionID]; present != !currentDraft.IsEmpty() ||
 		(present && !current.Equal(currentDraft)) {
-		return prompt.Message{}, errors.New("session draft changed before steer rejection settlement")
+		return authoring.Message{}, errors.New("session draft changed before steer rejection settlement")
 	}
 	recovered := MergeSteerAttachments(currentDraft, pending.command.Message.Attachments)
 	if err := s.saveSessionStateRecord(
 		sessionID, recovered, s.pendingRuns[sessionID],
 		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
 	); err != nil {
-		return prompt.Message{}, err
+		return authoring.Message{}, err
 	}
 	if recovered.IsEmpty() {
 		delete(s.drafts, sessionID)
@@ -285,7 +284,7 @@ func (s *Store) RejectPendingSteer(
 
 // MergeSteerAttachments preserves newer text and attachments while returning
 // each rejected attachment at most once.
-func MergeSteerAttachments(current prompt.Message, rejected []prompt.Attachment) prompt.Message {
+func MergeSteerAttachments(current authoring.Message, rejected []authoring.Attachment) authoring.Message {
 	current = current.Clone()
 	seenIDs := make(map[string]struct{}, len(current.Attachments)+len(rejected))
 	seenPaths := make(map[string]struct{}, len(current.Attachments)+len(rejected))

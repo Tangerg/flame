@@ -15,8 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -37,11 +36,11 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				if err := os.WriteFile(imagePath, []byte{0x89, 'P', 'N', 'G'}, 0o600); err != nil {
 					t.Fatal(err)
 				}
-				message := prompt.Message{Text: "inspect inputs", Attachments: []prompt.Attachment{
+				message := authoring.Message{Text: "inspect inputs", Attachments: []authoring.Attachment{
 					{ID: "notes", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 14},
 					{ID: "pixel", Kind: protocol.ContentBlockImage, Name: "pixel.png", Path: imagePath, MimeType: "image/png", Size: 4},
 				}}
-				const commandID replay.CommandID = "cli_0123456789abcdef0123456789abcdef"
+				const commandID authoring.CommandID = "cli_0123456789abcdef0123456789abcdef"
 				var first []byte
 				calls := 0
 				capture := func(request any, key, namespace string) error {
@@ -91,17 +90,17 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				if err != nil {
 					t.Fatal(err)
 				}
-				guard, err := replay.NewProtectedGuard(compatibleReplayNamespace, time.Now().Add(time.Hour))
+				guard, err := authoring.NewProtectedGuard(compatibleReplayNamespace, time.Now().Add(time.Hour))
 				if err != nil {
 					t.Fatal(err)
 				}
-				start := prompt.StartRun{CommandID: commandID, SessionID: "ses_1", Message: message,
-					Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
+				start := authoring.StartRun{CommandID: commandID, SessionID: "ses_1", Message: message,
+					Options: authoring.RunOptions{Provider: "mock", Model: "balanced"},
 				}
 				if method == "start" {
 					if err := store.StagePendingRun(workbench.PendingRun{
 						State: workbench.PendingRunQueued, Command: start,
-						Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
+						Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
 					}); err != nil {
 						t.Fatal(err)
 					}
@@ -134,11 +133,11 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 						Interrupts: []conversation.Interrupt{approval}, Replay: guard,
 					}, prepared)
 				case "steer":
-					draft := prompt.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
+					draft := authoring.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
 					if err := store.SaveDraft("ses_1", draft); err != nil {
 						t.Fatal(err)
 					}
-					pending, createErr := workbench.NewPendingSteer("ses_1", prompt.SteerRun{
+					pending, createErr := workbench.NewPendingSteer("ses_1", authoring.SteerRun{
 						CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: message, Input: input,
 					}, time.Now(), guard)
 					if createErr != nil {

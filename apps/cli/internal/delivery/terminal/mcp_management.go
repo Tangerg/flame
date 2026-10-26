@@ -44,13 +44,13 @@ func mcpServersDocument(servers []protocol.MCPServer) (readerDocument, error) {
 	if len(servers) == 0 {
 		return paragraphDocument("MCP servers", "none configured", []string{"No MCP servers are configured."}), nil
 	}
-	sections := make([]ToolSection, 0, len(servers))
+	sections := make([]toolSection, 0, len(servers))
 	for _, server := range servers {
 		detail, err := mcpServerDetail(server)
 		if err != nil {
 			return readerDocument{}, err
 		}
-		sections = append(sections, ToolSection{
+		sections = append(sections, toolSection{
 			Title: mcp.ServerLabel(server.ID) + " · " + mcpStateLabel(server.Status), Style: toolSectionCode,
 			Text: detail,
 		})
@@ -198,7 +198,7 @@ func (a *app) mcpToolsReaderQuery(server *protocol.MCPServerID) runtimeReaderQue
 					return readerDocument{}, err
 				}
 				if len(exposure.DisabledTools) > 0 {
-					document.Sections = append(document.Sections, ToolSection{Title: "Disabled tools · " + mcp.ServerLabel(id), Style: toolSectionParagraph, Text: strings.Join(exposure.DisabledTools, ", ")})
+					document.Sections = append(document.Sections, toolSection{Title: "Disabled tools · " + mcp.ServerLabel(id), Style: toolSectionParagraph, Text: strings.Join(exposure.DisabledTools, ", ")})
 				}
 			}
 			return document, nil
@@ -214,10 +214,10 @@ func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (r
 	if len(tools) == 0 {
 		return paragraphDocument("MCP tools", detail, []string{"No MCP tools match this server filter."}), nil
 	}
-	sections := make([]ToolSection, 0, len(tools)*2)
+	sections := make([]toolSection, 0, len(tools)*2)
 	for _, tool := range tools {
 		title := mcp.ServerLabel(tool.Server) + "/" + tool.Name
-		sections = append(sections, ToolSection{Title: title, Style: toolSectionParagraph, Text: tool.Description})
+		sections = append(sections, toolSection{Title: title, Style: toolSectionParagraph, Text: tool.Description})
 		if len(tool.NameConflicts) > 0 {
 			sources := make([]string, 0, len(tool.NameConflicts))
 			for _, ref := range tool.NameConflicts {
@@ -227,14 +227,14 @@ func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (r
 				}
 				sources = append(sources, source)
 			}
-			sections = append(sections, ToolSection{Title: "Excluded from model tools", Style: toolSectionParagraph, Text: tool.ModelName + " conflicts with " + strings.Join(sources, ", ")})
+			sections = append(sections, toolSection{Title: "Excluded from model tools", Style: toolSectionParagraph, Text: tool.ModelName + " conflicts with " + strings.Join(sources, ", ")})
 		}
 		if tool.InputSchema != nil {
 			schema, err := json.Marshal(tool.InputSchema, jsontext.WithIndent("  "), json.Deterministic(true))
 			if err != nil {
 				return readerDocument{}, fmt.Errorf("format MCP tool %s input schema: %w", title, err)
 			}
-			sections = append(sections, ToolSection{Title: "Input schema", Style: toolSectionCode, Language: "json", Text: string(schema)})
+			sections = append(sections, toolSection{Title: "Input schema", Style: toolSectionCode, Language: "json", Text: string(schema)})
 		}
 	}
 	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}, nil

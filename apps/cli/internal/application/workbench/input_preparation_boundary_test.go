@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *testing.T) {
@@ -17,7 +17,7 @@ func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *tes
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	pending := steerTestPending(t, "ses_preparing", steerTestAttachment(t.TempDir()))
-	source := prompt.Message{Text: "/steer " + pending.Message().Text, Attachments: pending.Message().Attachments}
+	source := authoring.Message{Text: "/steer " + pending.Message().Text, Attachments: pending.Message().Attachments}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}

@@ -1,4 +1,4 @@
-package replay
+package authoring
 
 import (
 	"testing"

@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (
@@ -20,22 +20,22 @@ const (
 	MaximumDocumentBytes = 64 << 20
 )
 
-func ParseDocumentFormat(value string) (runtimeprotocol.ExportFormat, error) {
+func ParseDocumentFormat(value string) (protocol.ExportFormat, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "md", "markdown":
-		return runtimeprotocol.ExportFormatMarkdown, nil
+		return protocol.ExportFormatMarkdown, nil
 	case "json":
-		return runtimeprotocol.ExportFormatJSON, nil
+		return protocol.ExportFormatJSON, nil
 	default:
 		return "", fmt.Errorf("export format %q is unsupported; use markdown or json", strings.TrimSpace(value))
 	}
 }
 
-func documentExtension(format runtimeprotocol.ExportFormat) string {
+func documentExtension(format protocol.ExportFormat) string {
 	switch format {
-	case runtimeprotocol.ExportFormatMarkdown:
+	case protocol.ExportFormatMarkdown:
 		return ".md"
-	case runtimeprotocol.ExportFormatJSON:
+	case protocol.ExportFormatJSON:
 		return ".json"
 	default:
 		return ""
@@ -45,11 +45,11 @@ func documentExtension(format runtimeprotocol.ExportFormat) string {
 // Document is an immutable Runtime-authored export. JSON documents are
 // round-trippable; Markdown documents are human-readable projections only.
 type Document struct {
-	format runtimeprotocol.ExportFormat
+	format protocol.ExportFormat
 	body   []byte
 }
 
-func NewDocument(format runtimeprotocol.ExportFormat, body []byte) (Document, error) {
+func NewDocument(format protocol.ExportFormat, body []byte) (Document, error) {
 	body, err := validateDocumentBody(format, body)
 	if err != nil {
 		return Document{}, err
@@ -57,9 +57,9 @@ func NewDocument(format runtimeprotocol.ExportFormat, body []byte) (Document, er
 	return Document{format: format, body: slices.Clone(body)}, nil
 }
 
-func validateDocumentBody(format runtimeprotocol.ExportFormat, body []byte) ([]byte, error) {
+func validateDocumentBody(format protocol.ExportFormat, body []byte) ([]byte, error) {
 	switch format {
-	case runtimeprotocol.ExportFormatMarkdown, runtimeprotocol.ExportFormatJSON:
+	case protocol.ExportFormatMarkdown, protocol.ExportFormatJSON:
 	default:
 		return nil, fmt.Errorf("session document format %q is invalid", format)
 	}
@@ -73,15 +73,15 @@ func validateDocumentBody(format runtimeprotocol.ExportFormat, body []byte) ([]b
 	if !utf8.Valid(body) {
 		return nil, errors.New("session document is not valid UTF-8")
 	}
-	if format == runtimeprotocol.ExportFormatJSON && !jsontext.Value(body).IsValid() {
+	if format == protocol.ExportFormatJSON && !jsontext.Value(body).IsValid() {
 		return nil, errors.New("session artifact is not valid JSON")
 	}
 	return body, nil
 }
 
-func (d Document) Format() runtimeprotocol.ExportFormat { return d.format }
-func (d Document) Extension() string                    { return documentExtension(d.format) }
-func (d Document) Bytes() []byte                        { return slices.Clone(d.body) }
+func (d Document) Format() protocol.ExportFormat { return d.format }
+func (d Document) Extension() string             { return documentExtension(d.format) }
+func (d Document) Bytes() []byte                 { return slices.Clone(d.body) }
 
 func (d Document) Validate() error {
 	_, err := validateDocumentBody(d.format, d.body)
@@ -89,16 +89,16 @@ func (d Document) Validate() error {
 }
 
 func (d Document) Importable() bool {
-	return d.format == runtimeprotocol.ExportFormatJSON && d.Validate() == nil
+	return d.format == protocol.ExportFormatJSON && d.Validate() == nil
 }
 
 type ExportRequest struct {
 	SessionID string
-	Format    runtimeprotocol.ExportFormat
+	Format    protocol.ExportFormat
 }
 
 func (e ExportRequest) Validate() error {
-	if err := (runtimeprotocol.ExportSessionRequest{SessionID: e.SessionID, Format: e.Format}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.ExportSessionRequest{SessionID: e.SessionID, Format: e.Format})); err != nil {
 		return fmt.Errorf("export session: %w", err)
 	}
 	return nil

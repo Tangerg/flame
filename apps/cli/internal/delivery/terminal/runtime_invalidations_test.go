@@ -628,10 +628,7 @@ func (r *runtimeChangeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
 	if r.supported != nil {
 		return slices.Contains(r.supported, topic)
 	}
-	return slices.Contains([]protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-	}, topic)
+	return slices.Contains([]protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged}, topic)
 }
 
 func (r *runtimeChangeSourceStub) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {
@@ -783,13 +780,7 @@ func TestRuntimeChangeMonitorBacksOffRepeatedEmptyStreams(t *testing.T) {
 func TestRuntimeChangeMonitorPartitionsTopicsAtTheNegotiatedLimit(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	supported := []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged,
-		protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged,
-		protocol.TopicInterruptsChanged,
-		protocol.TopicSkillsChanged,
-	}
+	supported := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged, protocol.TopicSkillsChanged}
 	source := &partitionedRuntimeChangeSourceStub{
 		supported:     supported,
 		registrations: make(chan runtimeSubscriptionRegistration, 3),
@@ -855,10 +846,7 @@ func TestRuntimeChangeMonitorResyncsOnlyThePartitionWithASequenceGap(t *testing.
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		},
+		supported:     []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged},
 		registrations: make(chan runtimeSubscriptionRegistration, 2),
 	}
 	resyncs := make(chan []protocol.RuntimeTopic, 3)
@@ -901,10 +889,7 @@ func TestRuntimeChangeMonitorAssignsTheWorkspaceWatchToOnePartition(t *testing.T
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		},
+		supported:     []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged},
 		registrations: make(chan runtimeSubscriptionRegistration, 5),
 	}
 	var reads atomic.Int32
@@ -951,10 +936,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
-		},
+		supported:     []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicSkillsChanged, protocol.TopicHooksChanged},
 		registrations: make(chan runtimeSubscriptionRegistration, 3),
 	}
 	var fileReads atomic.Int32
@@ -1416,10 +1398,7 @@ func TestExternalWorkspaceChangeRebindsTheRuntimeWatch(t *testing.T) {
 	service := &workspacePathRecordingService{workspaceServiceStub: newWorkspaceServiceStub(), paths: make(chan string, 4)}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 4),
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		},
+		supported: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged},
 	}
 	host, stop := runUIWithRuntimeChangeServices(t, backend, service, source, "ses_demo_1")
 	host.Shows(t, "Ask flame")
@@ -1506,10 +1485,7 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 	case <-t.Context().Done():
 		t.Fatal("runtime invalidation subscription was not opened")
 	}
-	wantTopics := []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-	}
+	wantTopics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged}
 	if !slices.Equal(subscription.Topics, wantTopics) || len(subscription.Watches) != 0 {
 		t.Fatalf("subscription = %+v", subscription)
 	}
@@ -1540,9 +1516,7 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 		t.Fatal("sessions.changed did not trigger an authoritative session read")
 	}
 
-	for index, topic := range []protocol.RuntimeTopic{
-		protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-	} {
+	for index, topic := range []protocol.RuntimeTopic{protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged} {
 		baseline = backend.reads.Load()
 		drainSignals(backend.readSignal)
 		event := changefeed.Event{
@@ -1911,10 +1885,7 @@ func TestRuntimeChangeMonitorTurnsASequenceGapIntoFullResync(t *testing.T) {
 		t.Fatalf("events = %+v, want only the contiguous frame before the gap", events)
 	}
 	if len(resyncs) != 2 || !slices.Equal(resyncs[0], resyncs[1]) ||
-		!slices.Equal(resyncs[0], []protocol.RuntimeTopic{
-			protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		}) {
+		!slices.Equal(resyncs[0], []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged}) {
 		t.Fatalf("resyncs = %+v", resyncs)
 	}
 }

@@ -1,5 +1,5 @@
 // Package prompt owns CLI-authored messages, options and immutable command input.
-package prompt
+package authoring
 
 import (
 	"errors"

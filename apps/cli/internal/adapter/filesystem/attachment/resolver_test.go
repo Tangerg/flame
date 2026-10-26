@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -46,7 +46,7 @@ func newFixtureResolver(t *testing.T, root string) *Resolver {
 	return resolver
 }
 
-func resolveFixture(t *testing.T, resolver *Resolver, path string) prompt.Attachment {
+func resolveFixture(t *testing.T, resolver *Resolver, path string) authoring.Attachment {
 	t.Helper()
 	attachment, err := resolver.Resolve(t.Context(), path)
 	if err != nil {
@@ -55,7 +55,7 @@ func resolveFixture(t *testing.T, resolver *Resolver, path string) prompt.Attach
 	return attachment
 }
 
-func requireTextAttachment(t *testing.T, got prompt.Attachment, canonical string) {
+func requireTextAttachment(t *testing.T, got authoring.Attachment, canonical string) {
 	t.Helper()
 	if got.ID == "" || got.Kind != protocol.ContentBlockText || got.Name != "docs/notes.md" || got.Path != canonical || got.MimeType != "text/markdown" || got.Size != 8 {
 		t.Fatalf("attachment = %+v", got)
@@ -157,7 +157,7 @@ func TestCompleteCountsDirectoriesTowardTheVisitBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	search := completionSearch{
-		ctx: t.Context(), root: root, query: "budget", maxBytes: prompt.MaxAttachmentBytes,
+		ctx: t.Context(), root: root, query: "budget", maxBytes: authoring.MaxAttachmentBytes,
 		maxVisited: 2,
 	}
 	if err := search.walk(); err != nil {
@@ -176,7 +176,7 @@ func TestCompleteBoundsOneDirectoryBeforeRanking(t *testing.T) {
 		}
 	}
 	search := completionSearch{
-		ctx: t.Context(), root: root, query: "match", maxBytes: prompt.MaxAttachmentBytes,
+		ctx: t.Context(), root: root, query: "match", maxBytes: authoring.MaxAttachmentBytes,
 		maxVisited: 2,
 	}
 	if err := search.walk(); err != nil {

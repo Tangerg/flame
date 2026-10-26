@@ -23,7 +23,7 @@ func (a *app) RecordFeedback(argument string) error {
 		SessionID: a.session.current.ID, RunID: runID, ItemID: itemID,
 		Rating: rating, Text: strings.TrimSpace(note),
 	}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return err
 	}
 	a.status.note("recording feedback")
@@ -52,7 +52,7 @@ func (a *app) RecordFeedback(argument string) error {
 
 func parseFeedbackRating(value string) (protocol.FeedbackRating, error) {
 	rating := protocol.FeedbackRating(strings.TrimSpace(value))
-	if err := (protocol.FeedbackRequest{Rating: rating}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.FeedbackRequest{Rating: rating})); err != nil {
 		return "", err
 	}
 	return rating, nil

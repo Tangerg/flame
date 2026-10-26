@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t *testing.T) {
-	for _, cause := range []error{conversation.ErrCommandConflict, replay.ErrCommandInputUnavailable, errors.Join(replay.ErrCommandNotDispatched, errors.New("local failure"))} {
+	for _, cause := range []error{conversation.ErrCommandConflict, authoring.ErrCommandInputUnavailable, errors.Join(authoring.ErrCommandNotDispatched, errors.New("local failure"))} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			store, err := workbench.OpenMemory(workbench.Config{})
 			if err != nil {
@@ -48,7 +47,7 @@ func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t 
 
 type unavailableAttachmentRuntime struct{ *steeringRuntime }
 
-func (r unavailableAttachmentRuntime) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
+func (r unavailableAttachmentRuntime) PrepareInput(ctx context.Context, message authoring.Message) ([]protocol.ContentBlock, error) {
 	if len(message.Attachments) != 0 {
 		return nil, os.ErrNotExist
 	}
@@ -102,7 +101,7 @@ type pausedInputRuntime struct {
 	release  chan struct{}
 }
 
-func (r *pausedInputRuntime) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
+func (r *pausedInputRuntime) PrepareInput(ctx context.Context, message authoring.Message) ([]protocol.ContentBlock, error) {
 	if len(message.Attachments) == 0 {
 		return r.Runtime.PrepareInput(ctx, message)
 	}
@@ -153,7 +152,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				host.Type(text)
 				host.Press(input.Enter)
 				awaitSignal(t, backend.entered, "attachment preparation")
-				var originalID replay.CommandID
+				var originalID authoring.CommandID
 				if command == "start" {
 					observer := workbenchForHost()
 					queued := observer.PendingRuns(sessionID)

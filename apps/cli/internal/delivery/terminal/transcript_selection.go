@@ -377,6 +377,6 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	}
 	return readerTarget{document: readerDocument{
 		Title:    title,
-		Sections: []ToolSection{{Style: toolSectionCode, Text: value}},
+		Sections: []toolSection{{Style: toolSectionCode, Text: value}},
 	}}, true
 }

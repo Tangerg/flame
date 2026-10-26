@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type modelConfigBinding interface {
@@ -143,7 +143,7 @@ func (r *Connection) UpdateProvider(ctx context.Context, update models.UpdatePro
 }
 
 func (r *Connection) TestProvider(ctx context.Context, providerID string) (protocol.ProviderTestOutcome, error) {
-	if err := protocol.ValidateProviderIdentity(providerID); err != nil {
+	if err := flamemodel.ValidateProviderIdentity(providerID); err != nil {
 		return "", fmt.Errorf("test provider: %w", err)
 	}
 	result, err := r.modelConfig.TestProvider(ctx, protocol.TestProviderRequest{Provider: providerID}, r.callOptions())

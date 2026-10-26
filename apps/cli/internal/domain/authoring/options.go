@@ -1,10 +1,11 @@
-package prompt
+package authoring
 
 import (
 	"errors"
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -20,10 +21,10 @@ type RunOptions struct {
 // untrusted input this boundary owns.
 func (r RunOptions) Validate() error {
 	var problems []error
-	if err := protocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
+	if err := model.ValidateSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
 		problems = append(problems, err)
 	}
-	if err := r.Generation.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(r.Generation); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {

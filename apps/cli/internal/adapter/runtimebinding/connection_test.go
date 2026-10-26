@@ -2,8 +2,9 @@ package runtimebinding
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"testing"
+
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )

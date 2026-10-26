@@ -5,7 +5,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 var (
@@ -23,13 +23,13 @@ func (r draftRevision) successor() (draftRevision, bool) {
 }
 
 type draftRepository interface {
-	SaveDraft(string, prompt.Message) error
+	SaveDraft(string, authoring.Message) error
 }
 
 type draftSnapshot struct {
 	revision  draftRevision
 	sessionID string
-	message   prompt.Message
+	message   authoring.Message
 }
 
 type draftPersistenceResult struct {
@@ -78,7 +78,7 @@ func newDraftPersistence(repository draftRepository, notify func(draftPersistenc
 // Schedule records the latest complete authoring value without blocking the
 // caller on filesystem latency. A snapshot is cloned at this boundary because
 // attachment slices remain owned by the UI model.
-func (d *draftPersistence) Schedule(sessionID string, message prompt.Message) error {
+func (d *draftPersistence) Schedule(sessionID string, message authoring.Message) error {
 	if sessionID == "" {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (d *draftPersistence) Schedule(sessionID string, message prompt.Message) er
 // Flush supersedes older pending work and waits until every older write has
 // finished before saving snapshot. This ordering prevents an older writer from
 // winning a rename race after a session transition has committed newer state.
-func (d *draftPersistence) Flush(sessionID string, message prompt.Message) error {
+func (d *draftPersistence) Flush(sessionID string, message authoring.Message) error {
 	if sessionID == "" {
 		return nil
 	}
@@ -151,7 +151,7 @@ func (d *draftPersistence) Close() error {
 	}
 }
 
-func (d *draftPersistence) reserve(sessionID string, message prompt.Message) (draftSnapshot, error) {
+func (d *draftPersistence) reserve(sessionID string, message authoring.Message) (draftSnapshot, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.closed {

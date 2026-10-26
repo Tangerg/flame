@@ -70,9 +70,7 @@ func TestWorkspaceAdapterProjectsVersionControlUnavailability(t *testing.T) {
 	stub := &workspaceBindingStub{changesErr: protocol.ErrVcsUnavailable}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureGit: {Enabled: true},
-		}),
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {Enabled: true}}),
 	}
 
 	_, err := runtime.Changes(t.Context(), "/workspace")
@@ -182,9 +180,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureGit: {Enabled: true},
-		}),
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {Enabled: true}}),
 	}
 
 	resolved, err := runtime.Resolve(t.Context(), workspace.ResolveRequest{Path: "/workspace"})
@@ -272,9 +268,7 @@ func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
 	runtime := &Connection{
 		workspaces: &workspaceBindingStub{changes: protocol.NewPage([]protocol.WorkspaceFileChange{change, change})},
 		meta:       requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureGit: {Enabled: true},
-		}),
+		profile:    profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {Enabled: true}}),
 	}
 
 	_, err := runtime.Changes(t.Context(), "/workspace")
@@ -383,9 +377,7 @@ func TestWorkspaceUnpageableListsRejectContinuation(t *testing.T) {
 			t.Parallel()
 			runtime := &Connection{workspaces: test.stub, meta: requestMeta("test")}
 			if test.name == "changes" {
-				runtime.profile = profileWithFeatures(t, map[string]protocol.FeatureCapability{
-					protocol.FeatureGit: {Enabled: true},
-				})
+				runtime.profile = profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureGit: {Enabled: true}})
 			}
 			err := test.call(t.Context(), runtime)
 			if err == nil || !strings.Contains(err.Error(), "continuation cursor") {

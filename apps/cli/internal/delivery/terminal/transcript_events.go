@@ -5,31 +5,29 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/oolong/components/headless"
 )
 
-func (t *transcriptView) Apply(event conversation.Event, registry *extensions.Registry) error {
-	return t.apply("", event, registry)
+func (t *transcriptView) Apply(event conversation.Event) error {
+	return t.apply("", event)
 }
 
-func (t *transcriptView) ApplyRunEvent(envelope conversation.RunEvent, registry *extensions.Registry) error {
+func (t *transcriptView) ApplyRunEvent(envelope conversation.RunEvent) error {
 	if started, ok := envelope.Event.(conversation.SegmentStarted); ok {
 		t.history.Observe(started.Run)
 	}
-	return t.apply(envelope.RunID, envelope.Event, registry)
+	return t.apply(envelope.RunID, envelope.Event)
 }
 
-func (t *transcriptView) apply(runID string, event conversation.Event, registry *extensions.Registry) error {
+func (t *transcriptView) apply(runID string, event conversation.Event) error {
 	switch e := event.(type) {
 	case conversation.BlockStarted:
 		if e.Block.Kind == conversation.BlockAssistant || e.Block.Kind == conversation.BlockReasoning {
 			return t.begin(e.Block)
 		}
 		if e.Block.Kind == conversation.BlockTool {
-			return t.beginTool(e.Block, registry)
+			return t.beginTool(e.Block)
 		}
 		t.sealToolGroup()
 	case conversation.BlockDelta:
@@ -42,9 +40,9 @@ func (t *transcriptView) apply(runID string, event conversation.Event, registry 
 		// Tool arguments are provisional JSON and progress belongs in the status
 		// chrome. Neither creates an authoritative transcript block.
 	case conversation.CustomEvent:
-		return t.appendCustom(runID, e, registry)
+		// Custom payloads remain available in NDJSON; they do not create transcript blocks.
 	case conversation.BlockCompleted:
-		return t.complete(e.Block, registry)
+		return t.complete(e.Block)
 	case conversation.SegmentFinished:
 		if e.Run.Status == protocol.RunStatusFinished {
 			t.settleRun(runID)
@@ -53,37 +51,6 @@ func (t *transcriptView) apply(runID string, event conversation.Event, registry 
 		}
 	}
 	return nil
-}
-
-func (t *transcriptView) appendCustom(runID string, event conversation.CustomEvent, registry *extensions.Registry) error {
-	for _, presenter := range registry.Values(CustomEventPresenters) {
-		if presenter.Name != event.Name {
-			continue
-		}
-		rendered, err := presentCustomSafely(presenter, BlockPresentation{
-			Theme: t.theme, Glyphs: t.glyphs, Look: t.look, Syntax: t.syntax,
-			Tools: registry.Values(ToolPresenters), Speaker: "runtime", Image: t.presentImage,
-		}, event)
-		if err != nil {
-			return err
-		}
-		t.sealToolGroup()
-		for _, block := range rendered {
-			id := t.append(block)
-			t.history.Append(runID, id)
-		}
-		return nil
-	}
-	return nil
-}
-
-func presentCustomSafely(presenter CustomEventPresenter, presentation BlockPresentation, event conversation.CustomEvent) (rendered []headless.Block, err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("terminal transcript: custom presenter for %q panicked: %v", presenter.Name, recovered)
-		}
-	}()
-	return presenter.Present(presentation, event), nil
 }
 
 func (t *transcriptView) begin(block conversation.Block) error {
@@ -150,7 +117,7 @@ func (t *transcriptView) deltaTool(key string, delta conversation.BlockDelta) er
 	return nil
 }
 
-func (t *transcriptView) complete(block conversation.Block, registry *extensions.Registry) error {
+func (t *transcriptView) complete(block conversation.Block) error {
 	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, live := t.textStreams[key]; live {
 		return t.completeStream(block)
@@ -161,7 +128,7 @@ func (t *transcriptView) complete(block conversation.Block, registry *extensions
 	if block.Kind == conversation.BlockQuestion && t.revealAnsweredQuestion(block) {
 		return nil
 	}
-	return t.appendCompleted(block, registry)
+	return t.appendCompleted(block)
 }
 
 func (t *transcriptView) completeStream(block conversation.Block) error {

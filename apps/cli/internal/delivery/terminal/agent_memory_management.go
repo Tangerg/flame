@@ -51,7 +51,7 @@ func agentMemoryDocument(target conversation.MemoryTarget, items []memory.Item) 
 	if len(items) == 0 {
 		return paragraphDocument(title, detail, []string{"No active or pending memory is stored in this scope."})
 	}
-	sections := make([]ToolSection, 0, len(items)*2)
+	sections := make([]toolSection, 0, len(items)*2)
 	for _, item := range items {
 		state := string(item.Status)
 		if item.Pinned {
@@ -72,8 +72,8 @@ func agentMemoryDocument(target conversation.MemoryTarget, items []memory.Item) 
 			metadata = append(metadata, "day      "+item.Day)
 		}
 		sections = append(sections,
-			ToolSection{Title: state, Style: toolSectionParagraph, Text: item.Content, Links: true},
-			ToolSection{Title: "Provenance", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
+			toolSection{Title: state, Style: toolSectionParagraph, Text: item.Content, Links: true},
+			toolSection{Title: "Provenance", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
 		)
 	}
 	return readerDocument{Title: title, Detail: detail, Sections: sections}

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -106,16 +106,16 @@ func (p RollbackPreview) DroppedCount() int {
 }
 
 func (p RollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) error {
-	return validateBefore(p.journal("", replay.UnprotectedGuard(), time.Time{}), snapshot)
+	return validateBefore(p.journal("", flameauthoring.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
 func (p RollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
-	return validateApplied(p.journal("", replay.UnprotectedGuard(), time.Time{}), snapshot)
+	return validateApplied(p.journal("", flameauthoring.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
 func (p RollbackPreview) journal(
-	commandID replay.CommandID,
-	replayGuard replay.Guard,
+	commandID flameauthoring.CommandID,
+	replayGuard flameauthoring.ReplayGuard,
 	stagedAt time.Time,
 ) workbench.PendingSessionRollback {
 	pending := workbench.PendingSessionRollback{
@@ -158,7 +158,7 @@ func Rollback(
 	}
 	commandID := mutation.NewCommandID()
 	stagedAt := policy.Now()
-	replayGuard := replay.UnprotectedGuard()
+	replayGuard := flameauthoring.UnprotectedGuard()
 	if preview.request.RestoresFiles() {
 		replayGuard, err = policy.NewGuardAt(stagedAt)
 		if err != nil {

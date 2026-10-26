@@ -4,8 +4,7 @@ import (
 	"iter"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -45,10 +44,10 @@ type InterruptAnswer struct {
 }
 
 type ResumeRun struct {
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 	RunID     string
 	Answers   []InterruptAnswer
-	Message   *prompt.Message
+	Message   *authoring.Message
 	Input     []protocol.ContentBlock `json:"-"`
 }
 
@@ -63,7 +62,7 @@ func (r ResumeRun) Equal(other ResumeRun) bool {
 		return false
 	}
 	return slices.EqualFunc(r.Answers, other.Answers, func(left, right InterruptAnswer) bool {
-		return left.ItemID == right.ItemID && AnswerEqual(left.Answer, right.Answer)
+		return left.ItemID == right.ItemID && answerEqual(left.Answer, right.Answer)
 	})
 }
 
@@ -88,7 +87,7 @@ func (r ResumeRun) Clone() ResumeRun {
 }
 
 type CancelRun struct {
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 	RunID     string
 	Reason    string
 }

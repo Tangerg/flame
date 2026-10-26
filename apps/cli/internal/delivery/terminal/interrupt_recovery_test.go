@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -22,7 +22,7 @@ type invalidEventAfterInterruptRuntime struct {
 
 func (i invalidEventAfterInterruptRuntime) StartRun(
 	ctx context.Context,
-	command prompt.StartRun,
+	command authoring.StartRun,
 ) (conversation.SegmentStream, error) {
 	stream, err := i.Runtime.StartRun(ctx, command)
 	if err != nil {
@@ -118,7 +118,7 @@ func TestStreamFailureRetiresTheObsoleteInterruptProjection(t *testing.T) {
 			}
 			host.Type("/plugins")
 			host.Press(input.Enter)
-			host.Shows(t, "terminal.core@1.0.0")
+			host.Shows(t, "No command plugins installed")
 			snapshot, err := backend.GetSession(t.Context(), <-started)
 			active, found := snapshot.ActiveRun()
 			if err != nil || !found || active.Status != protocol.RunStatusWaiting {

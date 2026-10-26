@@ -15,9 +15,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 const maximumCLIConfigBytes int64 = 256 << 10
@@ -157,12 +155,12 @@ func selectConfigSource(cmd *cobra.Command, explicitPath string) (*selectedConfi
 }
 
 func readConfigFile(path string) ([]byte, error) {
-	file, opened, err := fileinput.Open(path, maximumCLIConfigBytes)
+	file, opened, err := filesystem.OpenFile(path, maximumCLIConfigBytes)
 	if err != nil {
 		return nil, err
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, maximumCLIConfigBytes+1))
-	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+	verifyErr := filesystem.VerifyPathVersion(file, opened, path)
 	closeErr := file.Close()
 	if readErr != nil {
 		return nil, readErr
@@ -174,7 +172,7 @@ func readConfigFile(path string) ([]byte, error) {
 		return nil, closeErr
 	}
 	if int64(len(content)) > maximumCLIConfigBytes {
-		return nil, fileinput.SizeLimitError{
+		return nil, filesystem.FileSizeLimitError{
 			Size: int64(len(content)), Limit: maximumCLIConfigBytes,
 		}
 	}
@@ -227,7 +225,7 @@ func newConfigCommand(v *viper.Viper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return render.WriteIndentedJSON(cmd.OutOrStdout(), config)
+			return writeIndentedJSON(cmd.OutOrStdout(), config)
 		},
 	})
 	config.AddCommand(&cobra.Command{

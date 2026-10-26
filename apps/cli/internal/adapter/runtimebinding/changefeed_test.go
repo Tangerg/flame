@@ -37,9 +37,7 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 		profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
 	discovery := runtime.profile.Discovery()
-	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
-		protocol.FeatureFileWatch: {Enabled: true},
-	}
+	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureFileWatch: {Enabled: true}}
 	runtime.profile = requireProfile(t, &discovery, nil)
 	request := changefeed.Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
@@ -142,9 +140,7 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 			}
 			if len(test.subscription.Watches) != 0 {
 				discovery := runtime.profile.Discovery()
-				discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
-					protocol.FeatureFileWatch: {Enabled: true},
-				}
+				discovery.Capabilities.Features = map[string]protocol.FeatureCapability{protocol.FeatureFileWatch: {Enabled: true}}
 				runtime.profile = requireProfile(t, &discovery, nil)
 			}
 			stream, err := runtime.Subscribe(t.Context(), test.subscription)

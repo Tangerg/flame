@@ -8,11 +8,11 @@ import (
 	"slices"
 	"strings"
 
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // Clone returns an independently owned problem. It is safe on nil.
-func Clone(problem *runtimeprotocol.ProblemData) *runtimeprotocol.ProblemData {
+func Clone(problem *protocol.ProblemData) *protocol.ProblemData {
 	if problem == nil {
 		return nil
 	}
@@ -26,7 +26,7 @@ func Clone(problem *runtimeprotocol.ProblemData) *runtimeprotocol.ProblemData {
 }
 
 // Equal reports whether two optional problems carry the same information.
-func Equal(left, right *runtimeprotocol.ProblemData) bool {
+func Equal(left, right *protocol.ProblemData) bool {
 	if left == nil || right == nil {
 		return left == right
 	}
@@ -39,7 +39,7 @@ func Equal(left, right *runtimeprotocol.ProblemData) bool {
 }
 
 // Message returns the most useful concise explanation for status lines.
-func Message(problem *runtimeprotocol.ProblemData, fallback string) string {
+func Message(problem *protocol.ProblemData, fallback string) string {
 	if problem == nil {
 		return fallback
 	}
@@ -55,7 +55,7 @@ func Message(problem *runtimeprotocol.ProblemData, fallback string) string {
 // String returns a complete, single-line human projection. Machine consumers
 // marshal ProblemData directly and therefore retain the same information
 // without parsing this text.
-func String(problem *runtimeprotocol.ProblemData) string {
+func String(problem *protocol.ProblemData) string {
 	if problem == nil {
 		return ""
 	}

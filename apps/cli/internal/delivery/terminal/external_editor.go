@@ -12,8 +12,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/mattn/go-shellwords"
 )
@@ -46,8 +46,8 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if d == nil || len(d.command) == 0 {
 		return "", errors.New("external editor is unavailable")
 	}
-	if len(original) > prompt.MaxMessageTextBytes {
-		return "", fmt.Errorf("editor draft exceeds %d bytes", prompt.MaxMessageTextBytes)
+	if len(original) > authoring.MaxMessageTextBytes {
+		return "", fmt.Errorf("editor draft exceeds %d bytes", authoring.MaxMessageTextBytes)
 	}
 	temporary, err := os.CreateTemp("", "flame-prompt-*.md")
 	if err != nil {
@@ -89,15 +89,15 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if err := validateEditedDraft(source); err != nil {
 		return "", err
 	}
-	file, opened, err := fileinput.OpenExpected(path, source, prompt.MaxMessageTextBytes)
+	file, opened, err := filesystem.OpenFileExpected(path, source, authoring.MaxMessageTextBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrChanged):
+		case errors.Is(err, filesystem.ErrChanged):
 			return "", errors.New("edited draft changed while it was being opened")
-		case errors.Is(err, fileinput.ErrNotRegular):
+		case errors.Is(err, filesystem.ErrNotRegular):
 			return "", errors.New("edited draft is not a regular file")
-		case errors.Is(err, fileinput.ErrTooLarge):
-			return "", fmt.Errorf("edited draft exceeds %d bytes", prompt.MaxMessageTextBytes)
+		case errors.Is(err, filesystem.ErrFileTooLarge):
+			return "", fmt.Errorf("edited draft exceeds %d bytes", authoring.MaxMessageTextBytes)
 		default:
 			return "", fmt.Errorf("open edited draft: %w", err)
 		}
@@ -106,15 +106,15 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if err := validateEditedDraft(opened); err != nil {
 		return "", err
 	}
-	content, err := io.ReadAll(io.LimitReader(file, prompt.MaxMessageTextBytes+1))
+	content, err := io.ReadAll(io.LimitReader(file, authoring.MaxMessageTextBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read edited draft: %w", err)
 	}
-	if len(content) > prompt.MaxMessageTextBytes {
-		return "", fmt.Errorf("edited draft exceeds %d bytes", prompt.MaxMessageTextBytes)
+	if len(content) > authoring.MaxMessageTextBytes {
+		return "", fmt.Errorf("edited draft exceeds %d bytes", authoring.MaxMessageTextBytes)
 	}
-	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return "", errors.New("edited draft changed while it was being read")
 		}
 		return "", fmt.Errorf("verify edited draft after reading: %w", err)
@@ -129,8 +129,8 @@ func validateEditedDraft(info os.FileInfo) error {
 	if !info.Mode().IsRegular() {
 		return errors.New("edited draft is not a regular file")
 	}
-	if info.Size() > prompt.MaxMessageTextBytes {
-		return fmt.Errorf("edited draft exceeds %d bytes", prompt.MaxMessageTextBytes)
+	if info.Size() > authoring.MaxMessageTextBytes {
+		return fmt.Errorf("edited draft exceeds %d bytes", authoring.MaxMessageTextBytes)
 	}
 	return nil
 }

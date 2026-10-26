@@ -5,7 +5,7 @@
 // block identities needed to route deltas, NDJSON writes each event directly, and
 // ResultJSON retains only final assistant prose. None keeps a full transcript;
 // holding the whole conversation in memory is the TUI's job.
-package render
+package cmd
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -31,10 +31,10 @@ const maxToolOutputLines = 12
 // is waiting for. Everything else is held until its block completes and then
 // printed as a labeled unit — a marker prefix cannot survive being interleaved
 // with a live token feed.
-type Text struct {
+type textRenderer struct {
 	w     io.Writer
 	err   error
-	scope runScope
+	scope outputRunScope
 
 	// streaming contains assistant blocks whose ordered deltas are written
 	// straight through until authoritative completion reconciles the result.
@@ -60,8 +60,8 @@ type pendingTextBlock struct {
 }
 
 // NewText builds a plain-text renderer over w.
-func NewText(w io.Writer) *Text {
-	return &Text{
+func newTextRenderer(w io.Writer) *textRenderer {
+	return &textRenderer{
 		w: w, streaming: make(map[string]*plainTextStream),
 		pending: make(map[string]*pendingTextBlock), seen: make(map[string]struct{}),
 		shown: make(map[string]struct{}),
@@ -71,7 +71,7 @@ func NewText(w io.Writer) *Text {
 // Begin binds subsequent live and recovered output to the accepted run. Text
 // does not print the identity, but retaining it prevents a cold read from
 // accidentally selecting a newer run in the same session.
-func (t *Text) Begin(run conversation.Run, _ prompt.RunOptions) error {
+func (t *textRenderer) Begin(run conversation.Run, _ authoring.RunOptions) error {
 	if t.err != nil {
 		return t.err
 	}
@@ -88,7 +88,7 @@ func (t *Text) Begin(run conversation.Run, _ prompt.RunOptions) error {
 
 // Render writes one event. The first error is remembered and returned by every
 // later call, so a caller may render a whole run and check once.
-func (t *Text) Render(envelope conversation.RunEvent) error {
+func (t *textRenderer) Render(envelope conversation.RunEvent) error {
 	if t.err != nil {
 		return t.err
 	}
@@ -104,7 +104,7 @@ func (t *Text) Render(envelope conversation.RunEvent) error {
 	return t.err
 }
 
-func (t *Text) renderEvent(envelope conversation.RunEvent) {
+func (t *textRenderer) renderEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		// A run's identity is machinery, not content.
@@ -127,12 +127,12 @@ func (t *Text) renderEvent(envelope conversation.RunEvent) {
 }
 
 // Close ends the output on its own line.
-func (t *Text) Close() error {
+func (t *textRenderer) Close() error {
 	t.endLine()
 	return t.err
 }
 
-func (t *Text) begin(b conversation.Block) {
+func (t *textRenderer) begin(b conversation.Block) {
 	key := conversation.BlockKey(b.RunID, b.ID)
 	switch b.Kind {
 	case conversation.BlockAssistant:
@@ -151,7 +151,7 @@ func (t *Text) begin(b conversation.Block) {
 	}
 }
 
-func (t *Text) delta(runID string, d conversation.BlockDelta) {
+func (t *textRenderer) delta(runID string, d conversation.BlockDelta) {
 	key := conversation.BlockKey(runID, d.BlockID)
 	if stream := t.streaming[key]; stream != nil {
 		if err := stream.text.Apply(d); err != nil {
@@ -167,7 +167,7 @@ func (t *Text) delta(runID string, d conversation.BlockDelta) {
 	}
 }
 
-func (t *Text) finish(b conversation.Block) {
+func (t *textRenderer) finish(b conversation.Block) {
 	key := conversation.BlockKey(b.RunID, b.ID)
 	if _, duplicate := t.seen[key]; duplicate {
 		return
@@ -197,7 +197,7 @@ func (t *Text) finish(b conversation.Block) {
 // Reconcile replaces missing streamed facts with an authoritative cold-read
 // projection after replay is no longer possible. Already rendered blocks and
 // interrupts are not printed twice.
-func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
+func (t *textRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
 	}
@@ -237,7 +237,7 @@ func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 	return t.err
 }
 
-func (t *Text) resume(block conversation.Block) {
+func (t *textRenderer) resume(block conversation.Block) {
 	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, present := t.streaming[key]; present {
 		return
@@ -248,7 +248,7 @@ func (t *Text) resume(block conversation.Block) {
 	t.begin(block)
 }
 
-func (t *Text) showInterrupt(interrupt conversation.Interrupt) {
+func (t *textRenderer) showInterrupt(interrupt conversation.Interrupt) {
 	key := conversation.BlockKey(conversation.InterruptRunID(interrupt), conversation.InterruptItemID(interrupt))
 	if _, duplicate := t.shown[key]; duplicate {
 		return
@@ -257,7 +257,7 @@ func (t *Text) showInterrupt(interrupt conversation.Interrupt) {
 	t.interrupted(interrupt)
 }
 
-func (t *Text) completedText(block conversation.Block) string {
+func (t *textRenderer) completedText(block conversation.Block) string {
 	if block.Text != "" {
 		return block.Text
 	}
@@ -267,7 +267,7 @@ func (t *Text) completedText(block conversation.Block) string {
 	return ""
 }
 
-func (t *Text) renderCompletedBlock(b conversation.Block, text string) {
+func (t *textRenderer) renderCompletedBlock(b conversation.Block, text string) {
 	switch b.Kind {
 	case conversation.BlockUser:
 		t.userBlock(b, text)
@@ -292,7 +292,7 @@ func (t *Text) renderCompletedBlock(b conversation.Block, text string) {
 	}
 }
 
-func (t *Text) userBlock(block conversation.Block, text string) {
+func (t *textRenderer) userBlock(block conversation.Block, text string) {
 	t.blank()
 	if text != "" {
 		t.block("› ", text)
@@ -302,7 +302,7 @@ func (t *Text) userBlock(block conversation.Block, text string) {
 	}
 }
 
-func (t *Text) proseBlock(block conversation.Block, text string) {
+func (t *textRenderer) proseBlock(block conversation.Block, text string) {
 	t.blank()
 	if t.scope.isChild(block.RunID) {
 		t.line("subagent · " + block.RunID)
@@ -312,13 +312,13 @@ func (t *Text) proseBlock(block conversation.Block, text string) {
 	t.showImages(block.Images)
 }
 
-func (t *Text) showImages(images []conversation.InlineImage) {
+func (t *textRenderer) showImages(images []conversation.InlineImage) {
 	for _, image := range images {
 		t.line("  @ " + image.Name + " (" + image.MIMEType + ", " + strconv.Itoa(len(image.Data)) + " bytes)")
 	}
 }
 
-func (t *Text) tool(b conversation.Block) {
+func (t *textRenderer) tool(b conversation.Block) {
 	call := b.Tool
 	if call == nil {
 		return
@@ -334,7 +334,7 @@ func (t *Text) tool(b conversation.Block) {
 	t.toolVerdict(call)
 }
 
-func (t *Text) toolHeader(call *conversation.ToolCall) {
+func (t *textRenderer) toolHeader(call *conversation.ToolCall) {
 	head := "● " + textToolName(call)
 	if call.Safety != "" {
 		head += " · " + string(call.Safety)
@@ -349,7 +349,7 @@ func (t *Text) toolHeader(call *conversation.ToolCall) {
 	t.line(head)
 }
 
-func (t *Text) toolBody(call *conversation.ToolCall) {
+func (t *textRenderer) toolBody(call *conversation.ToolCall) {
 	if call.Output != "" {
 		lines := strings.Split(strings.TrimRight(call.Output, "\n"), "\n")
 		shown := min(len(lines), maxToolOutputLines)
@@ -365,7 +365,7 @@ func (t *Text) toolBody(call *conversation.ToolCall) {
 	}
 }
 
-func (t *Text) toolVerdict(call *conversation.ToolCall) {
+func (t *textRenderer) toolVerdict(call *conversation.ToolCall) {
 	// The verdict goes last, under what it is a verdict on.
 	mark := "✓"
 	switch call.Status {
@@ -420,13 +420,13 @@ func textToolPrimary(call *conversation.ToolCall) string {
 	return call.Summary
 }
 
-func (t *Text) diff(d string) {
+func (t *textRenderer) diff(d string) {
 	for l := range strings.SplitSeq(strings.TrimRight(d, "\n"), "\n") {
 		t.line("  " + l)
 	}
 }
 
-func (t *Text) plan(items []protocol.PlanStep) {
+func (t *textRenderer) plan(items []protocol.PlanStep) {
 	if len(items) == 0 {
 		return
 	}
@@ -447,7 +447,7 @@ func (t *Text) plan(items []protocol.PlanStep) {
 	}
 }
 
-func (t *Text) interrupted(interrupt conversation.Interrupt) {
+func (t *textRenderer) interrupted(interrupt conversation.Interrupt) {
 	t.blank()
 	switch item := interrupt.(type) {
 	case conversation.Approval:
@@ -469,7 +469,7 @@ func (t *Text) interrupted(interrupt conversation.Interrupt) {
 	}
 }
 
-func (t *Text) segmentFinished(runID string, event conversation.SegmentFinished) {
+func (t *textRenderer) segmentFinished(runID string, event conversation.SegmentFinished) {
 	root := t.scope.isRoot(runID)
 	switch {
 	case event.Run.Status == protocol.RunStatusFinished:
@@ -489,7 +489,7 @@ func (t *Text) segmentFinished(runID string, event conversation.SegmentFinished)
 	}
 }
 
-func (t *Text) finished(run conversation.Run) {
+func (t *textRenderer) finished(run conversation.Run) {
 	t.blank()
 	if run.Outcome.Status != protocol.OutcomeCompleted {
 		msg := string(run.Outcome.Status)
@@ -501,7 +501,7 @@ func (t *Text) finished(run conversation.Run) {
 	t.showUsage(run.Usage)
 }
 
-func (t *Text) showUsage(u conversation.Usage) {
+func (t *textRenderer) showUsage(u conversation.Usage) {
 	parts := []string{"↑ " + format.Thousands(u.InputTokens), "↓ " + format.Thousands(u.OutputTokens)}
 	if u.CacheReadTokens > 0 {
 		parts = append(parts, "cached "+format.Thousands(u.CacheReadTokens))
@@ -524,7 +524,7 @@ func (t *Text) showUsage(u conversation.Usage) {
 // The indent counts runes, not bytes: the markers here are multi-byte and
 // single-width, so a byte count would over-indent every continuation line by the
 // marker's encoded length.
-func (t *Text) block(prefix, text string) {
+func (t *textRenderer) block(prefix, text string) {
 	indent := strings.Repeat(" ", utf8.RuneCountInString(prefix))
 	first := true
 	for l := range strings.SplitSeq(strings.TrimRight(text, "\n"), "\n") {
@@ -537,20 +537,20 @@ func (t *Text) block(prefix, text string) {
 	}
 }
 
-func (t *Text) line(s string) {
+func (t *textRenderer) line(s string) {
 	t.write(s)
 	t.endLine()
 }
 
 // blank opens a visual gap before a new unit, without stacking gaps.
-func (t *Text) blank() {
+func (t *textRenderer) blank() {
 	t.endLine()
 	t.write("\n")
 	t.column = false
 }
 
 // endLine closes the current line if one is open.
-func (t *Text) endLine() {
+func (t *textRenderer) endLine() {
 	if !t.column {
 		return
 	}
@@ -558,7 +558,7 @@ func (t *Text) endLine() {
 	t.column = false
 }
 
-func (t *Text) write(s string) {
+func (t *textRenderer) write(s string) {
 	if t.err != nil || s == "" {
 		return
 	}

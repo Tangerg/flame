@@ -11,7 +11,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
@@ -212,8 +212,8 @@ func validateKeys(keys map[string][]string) []error {
 	return problems
 }
 
-func (c Config) RunOptions() (prompt.RunOptions, error) {
-	options := prompt.RunOptions{Provider: c.Provider, Model: c.Model}
+func (c Config) RunOptions() (authoring.RunOptions, error) {
+	options := authoring.RunOptions{Provider: c.Provider, Model: c.Model}
 	return options, options.Validate()
 }
 

@@ -57,9 +57,8 @@ func validateDependencies(pluginID string, dependencies []string) error {
 func validateCapabilities(pluginID string, capabilities []Capability) error {
 	seen := make(map[Capability]struct{}, len(capabilities))
 	for _, capability := range capabilities {
-		name := string(capability)
-		if !pluginIDPattern.MatchString(name) {
-			return fmt.Errorf("extensions: plugin %q has invalid capability %q", pluginID, capability)
+		if capability != CommandsCapability {
+			return fmt.Errorf("extensions: plugin %q has unsupported command capability %q", pluginID, capability)
 		}
 		if _, duplicate := seen[capability]; duplicate {
 			return fmt.Errorf("extensions: plugin %q repeats capability %q", pluginID, capability)

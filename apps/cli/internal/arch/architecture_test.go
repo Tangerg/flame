@@ -25,7 +25,6 @@ type ring uint8
 
 const (
 	ringUnknown ring = iota
-	ringMechanism
 	ringDomain
 	ringApplication
 	ringAdapter
@@ -121,11 +120,9 @@ func mayImportRuntime(relative, imported string) bool {
 		return true
 	}
 	switch imported {
-	case sdkPath + "/protocol", sdkPath + "/capability", sdkPath + "/exactint", sdkPath + "/exactjson":
+	case sdkPath + "/protocol", sdkPath + "/extension", sdkPath + "/exactint", sdkPath + "/jsonvalue", sdkPath + "/model":
 		return true
-	case sdkPath + "/storage/advisorylock":
-		return strings.HasPrefix(relative, "internal/adapter/filesystem/")
-	case sdkPath + "/fileinput":
+	case sdkPath + "/filesystem":
 		ring := ringOf(relative)
 		return ring == ringAdapter || ring == ringDelivery
 	case localRuntimePath:
@@ -142,28 +139,28 @@ func TestRuntimeImportBoundaries(t *testing.T) {
 	}{
 		{consumer: "main.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/application/settings/config.go", imported: localRuntimePath, allowed: true},
-		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/capability", allowed: true},
-		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/capability", allowed: true},
-		{consumer: "internal/delivery/cmd/plugins.go", imported: sdkPath + "/capability", allowed: true},
+		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/extension", allowed: true},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/extension", allowed: true},
+		{consumer: "internal/delivery/cmd/plugins.go", imported: sdkPath + "/extension", allowed: true},
 		{consumer: "internal/application/workbench/installed_memory_commands.go", imported: sdkPath + "/plugin"},
-		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/storage/sqlite"},
+		{consumer: "internal/application/workbench/installed_commands.go", imported: sdkPath + "/sqlite"},
 		{consumer: "main.go", imported: runtimePath},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath, allowed: true},
 		{consumer: "internal/adapter/runtimebinding/connection.go", imported: localRuntimePath, allowed: true},
 		{consumer: "internal/adapter/filesystem/store.go", imported: localRuntimePath},
-		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: sdkPath + "/storage/advisorylock", allowed: true},
-		{consumer: "internal/application/workbench/store.go", imported: sdkPath + "/storage/advisorylock"},
-		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/storage/advisorylock"},
+		{consumer: "internal/adapter/filesystem/statefile/store.go", imported: sdkPath + "/filesystem", allowed: true},
+		{consumer: "internal/application/workbench/store.go", imported: sdkPath + "/filesystem"},
+		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/filesystem"},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/exactint", allowed: true},
-		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/exactjson", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/jsonvalue", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/protocol", allowed: true},
 		{consumer: "internal/domain/conversation/session.go", imported: localRuntimePath},
 		{consumer: "internal/application/agent/session/create.go", imported: localRuntimePath},
 		{consumer: "internal/delivery/cmd/sessions.go", imported: localRuntimePath},
 		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath},
-		{consumer: "internal/adapter/filesystem/attachment/resolver.go", imported: sdkPath + "/fileinput", allowed: true},
-		{consumer: "internal/delivery/terminal/external_editor.go", imported: sdkPath + "/fileinput", allowed: true},
-		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/fileinput"},
+		{consumer: "internal/adapter/filesystem/attachment/resolver.go", imported: sdkPath + "/filesystem", allowed: true},
+		{consumer: "internal/delivery/terminal/external_editor.go", imported: sdkPath + "/filesystem", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: sdkPath + "/filesystem"},
 	} {
 		if allowed := mayImportRuntime(test.consumer, test.imported); allowed != test.allowed {
 			t.Errorf("%s importing %s: allowed = %v, want %v", test.consumer, test.imported, allowed, test.allowed)
@@ -331,9 +328,6 @@ func ringOf(relative string) ring {
 		return ringComposition
 	case packageWithin(relative, "internal/arch"):
 		return ringComposition
-	case packageWithin(relative, "internal/exactint"),
-		packageWithin(relative, "internal/exactjson"):
-		return ringMechanism
 	case packageWithin(relative, "internal/domain"):
 		return ringDomain
 	case packageWithin(relative, "internal/application"):
@@ -361,16 +355,14 @@ func mayDependOn(from, to ring) bool {
 		return false
 	}
 	switch from {
-	case ringMechanism:
-		return false
 	case ringDomain:
-		return to == ringMechanism
+		return false
 	case ringApplication:
-		return to == ringDomain || to == ringMechanism
+		return to == ringDomain
 	case ringAdapter:
-		return to == ringApplication || to == ringDomain || to == ringMechanism
+		return to == ringApplication || to == ringDomain
 	case ringDelivery:
-		return to == ringAdapter || to == ringApplication || to == ringDomain || to == ringMechanism
+		return to == ringAdapter || to == ringApplication || to == ringDomain
 	case ringTestSupport, ringComposition:
 		return true
 	default:

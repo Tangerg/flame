@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// runScope protects a renderer from mixing unrelated streams while allowing a
+// outputRunScope protects a renderer from mixing unrelated streams while allowing a
 // root stream to carry events from its negotiated child-run tree.
-type runScope struct {
+type outputRunScope struct {
 	rootID  string
 	members map[string]conversation.RunLineage
 }
 
-func (r *runScope) bind(run conversation.Run) error {
+func (r *outputRunScope) bind(run conversation.Run) error {
 	if err := run.Validate(); err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func (r *runScope) bind(run conversation.Run) error {
 	return nil
 }
 
-func (r *runScope) accept(envelope conversation.RunEvent) error {
+func (r *outputRunScope) accept(envelope conversation.RunEvent) error {
 	if started, opening := envelope.Event.(conversation.SegmentStarted); opening {
 		return r.acceptSegmentStarted(envelope.RunID, started.Run)
 	}
@@ -39,7 +39,7 @@ func (r *runScope) accept(envelope conversation.RunEvent) error {
 	return validateRunEventOwnership(envelope)
 }
 
-func (r *runScope) acceptSegmentStarted(envelopeRunID string, run conversation.Run) error {
+func (r *outputRunScope) acceptSegmentStarted(envelopeRunID string, run conversation.Run) error {
 	if run.ID != envelopeRunID {
 		return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelopeRunID)
 	}
@@ -83,7 +83,7 @@ func validateRunEventOwnership(envelope conversation.RunEvent) error {
 	return nil
 }
 
-func (r *runScope) restore(snapshot conversation.SessionSnapshot, rootID string) error {
+func (r *outputRunScope) restore(snapshot conversation.SessionSnapshot, rootID string) error {
 	run, exists := snapshot.RunByID(rootID)
 	if !exists {
 		return fmt.Errorf("run %s is absent from the snapshot", rootID)
@@ -99,19 +99,19 @@ func (r *runScope) restore(snapshot conversation.SessionSnapshot, rootID string)
 	return nil
 }
 
-func (r *runScope) contains(runID string) bool {
+func (r *outputRunScope) contains(runID string) bool {
 	_, exists := r.members[runID]
 	return exists
 }
 
-func (r *runScope) isRoot(runID string) bool { return runID != "" && runID == r.rootID }
+func (r *outputRunScope) isRoot(runID string) bool { return runID != "" && runID == r.rootID }
 
-func (r *runScope) isChild(runID string) bool {
+func (r *outputRunScope) isChild(runID string) bool {
 	lineage, exists := r.members[runID]
 	return exists && !lineage.IsRoot()
 }
 
-func (r *runScope) ensureMembers() {
+func (r *outputRunScope) ensureMembers() {
 	if r.members == nil {
 		r.members = make(map[string]conversation.RunLineage)
 	}

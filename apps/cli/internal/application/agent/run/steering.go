@@ -9,13 +9,13 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	flameauthoring "github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type steerRuntime interface {
-	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	SteerRun(context.Context, flameauthoring.SteerRun) (protocol.SteerRunResponse, error)
 }
 
 // ErrSteerReplayUnavailable reports a durable steer whose outcome can no
@@ -28,8 +28,8 @@ var ErrSteerReplayUnavailable = errors.New("steer replay guarantee is unavailabl
 func StageSteer(
 	authoring *workbench.Store,
 	sessionID string,
-	request prompt.SteerRun,
-	sourceDraft prompt.Message,
+	request flameauthoring.SteerRun,
+	sourceDraft flameauthoring.Message,
 	policy mutation.ReplayPolicy,
 	input *workbench.PreparedInput,
 ) (workbench.PendingSteer, error) {

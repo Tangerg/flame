@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 )
 
 // Source discovers plugins without deciding their load order or lifecycle.
-// A source can represent compiled built-ins, an embedding host, or another
-// trust boundary with its own validation and loading mechanism.
+// The executable adapter owns manifest and process-boundary validation.
 type Source interface {
 	ID() string
 	Discover(context.Context) (SourceResult, error)
@@ -20,27 +18,6 @@ type Source interface {
 type SourceResult struct {
 	Plugins []Plugin
 	Issues  []error
-}
-
-// StaticSource is the concrete source for compiled and host-injected plugins.
-type StaticSource struct {
-	Name    string
-	Plugins []Plugin
-}
-
-func (s StaticSource) ID() string {
-	if name := strings.TrimSpace(s.Name); name != "" {
-		return name
-	}
-	return "static"
-}
-
-func (s StaticSource) Discover(context.Context) (SourceResult, error) {
-	out := make([]Plugin, len(s.Plugins))
-	for i, plugin := range s.Plugins {
-		out[i] = clonePlugin(plugin)
-	}
-	return SourceResult{Plugins: out}, nil
 }
 
 // SourceIssue isolates one failed source while allowing independent sources to

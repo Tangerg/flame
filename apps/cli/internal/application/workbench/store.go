@@ -12,10 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // ErrUnavailable rejects a workflow without the workbench it needs to retain
@@ -44,9 +43,9 @@ type Config struct {
 
 // Stash is an explicitly named prompt snapshot.
 type Stash struct {
-	ID        string         `json:"id"`
-	CreatedAt time.Time      `json:"createdAt"`
-	Message   prompt.Message `json:"message"`
+	ID        string            `json:"id"`
+	CreatedAt time.Time         `json:"createdAt"`
+	Message   authoring.Message `json:"message"`
 }
 
 func (s Stash) Validate() error {
@@ -68,13 +67,13 @@ func (s Stash) Validate() error {
 // draft value as an ownership precondition: it completes an interrupted move
 // only while that exact draft still occupies the source session.
 type stashTransfer struct {
-	SessionID string         `json:"sessionId"`
-	Draft     prompt.Message `json:"draft"`
-	Stash     Stash          `json:"stash"`
+	SessionID string            `json:"sessionId"`
+	Draft     authoring.Message `json:"draft"`
+	Stash     Stash             `json:"stash"`
 }
 
 func (s stashTransfer) validate() error {
-	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
+	if err := protocol.ValidateSessionID(s.SessionID); err != nil {
 		return fmt.Errorf("stash transfer: %w", err)
 	}
 	if err := s.Draft.Validate(); err != nil {
@@ -101,7 +100,7 @@ type Workspace struct {
 }
 
 func (w Workspace) Validate() error {
-	if err := (runtimeprotocol.WorkspaceRef{Path: w.Path}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.WorkspaceRef{Path: w.Path})); err != nil {
 		return fmt.Errorf("workspace reference: %w", err)
 	}
 	if w.LastOpened.IsZero() {
@@ -115,8 +114,9 @@ func (w Workspace) Validate() error {
 // make the history half of outbox settlement idempotent across process or
 // filesystem failure between the two durable files.
 type historyEntry struct {
-	prompt.Message
-	CommandID replay.CommandID `json:"commandId,omitzero"`
+	authoring.Message
+
+	CommandID authoring.CommandID `json:"commandId,omitzero"`
 }
 
 // Store owns CLI authoring persistence and lifetime. Every mutating method
@@ -130,7 +130,7 @@ type Store struct {
 	now               func() time.Time
 	random            io.Reader
 	history           []historyEntry
-	drafts            map[string]prompt.Message
+	drafts            map[string]authoring.Message
 	stashes           []Stash
 	workspaces        []Workspace
 	pendingRuns       map[string][]PendingRun
@@ -188,7 +188,7 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 		workspaceCapacity: workspaceCapacity,
 		now:               config.Now,
 		random:            config.Random,
-		drafts:            make(map[string]prompt.Message),
+		drafts:            make(map[string]authoring.Message),
 		pendingRuns:       make(map[string][]PendingRun),
 		pendingResumes:    make(map[string]PendingResume),
 		pendingRollbacks:  make(map[string]PendingSessionRollback),
@@ -218,10 +218,10 @@ func (s *Store) Close() error {
 }
 
 // History returns detached prompts in oldest-to-newest order.
-func (s *Store) History() []prompt.Message {
+func (s *Store) History() []authoring.Message {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	messages := make([]prompt.Message, len(s.history))
+	messages := make([]authoring.Message, len(s.history))
 	for index, entry := range s.history {
 		messages[index] = entry.Clone()
 	}
@@ -229,7 +229,7 @@ func (s *Store) History() []prompt.Message {
 }
 
 // Remember records a submitted or deliberately cleared prompt.
-func (s *Store) Remember(message prompt.Message) error {
+func (s *Store) Remember(message authoring.Message) error {
 	message = message.Clone()
 	if message.IsEmpty() {
 		return nil
@@ -253,7 +253,7 @@ func (s *Store) Remember(message prompt.Message) error {
 
 // Draft returns a detached session-specific prompt without consuming it.
 // Open owns durable decoding, so reads from an opened Store cannot fail.
-func (s *Store) Draft(sessionID string) (prompt.Message, bool) {
+func (s *Store) Draft(sessionID string) (authoring.Message, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	draft := s.drafts[sessionID]
@@ -261,8 +261,8 @@ func (s *Store) Draft(sessionID string) (prompt.Message, bool) {
 }
 
 // SaveDraft atomically replaces a session draft, or removes it when empty.
-func (s *Store) SaveDraft(sessionID string, message prompt.Message) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	message = message.Clone()
@@ -285,7 +285,7 @@ func (s *Store) SaveDraft(sessionID string, message prompt.Message) error {
 
 // newStash mints the value both stash entry points store. They differ in what
 // else the write moves, not in what a stash is.
-func (s *Store) newStash(message prompt.Message) (Stash, error) {
+func (s *Store) newStash(message authoring.Message) (Stash, error) {
 	message = message.Clone()
 	if message.IsEmpty() {
 		return Stash{}, errors.New("cannot stash an empty prompt")
@@ -302,7 +302,7 @@ func (s *Store) newStash(message prompt.Message) (Stash, error) {
 }
 
 // StashPrompt preserves a prompt independently of its session draft.
-func (s *Store) StashPrompt(message prompt.Message) (Stash, error) {
+func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
 	stash, err := s.newStash(message)
 	if err != nil {
 		return Stash{}, err
@@ -322,8 +322,8 @@ func (s *Store) StashPrompt(message prompt.Message) (Stash, error) {
 // A durable intent makes the cross-file move restart-safe; synchronous failure
 // restores the complete pre-transaction stash collection so capacity eviction
 // cannot turn compensation into data loss.
-func (s *Store) StashDraft(sessionID string, message prompt.Message) (Stash, error) {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, error) {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
 	}
 	stash, err := s.newStash(message)
@@ -350,7 +350,7 @@ func (s *Store) StashDraft(sessionID string, message prompt.Message) (Stash, err
 		}
 		return Stash{}, err
 	}
-	if err := s.saveSessionState(sessionID, prompt.Message{}, s.pendingRuns[sessionID]); err != nil {
+	if err := s.saveSessionState(sessionID, authoring.Message{}, s.pendingRuns[sessionID]); err != nil {
 		rollbackErr := s.save(stashesName, previous)
 		if rollbackErr != nil {
 			s.stashes = next
@@ -415,7 +415,7 @@ func (s *Store) recoverStashTransfer() error {
 			s.stashes = next
 		}
 		if present {
-			if err := s.saveSessionState(transfer.SessionID, prompt.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
+			if err := s.saveSessionState(transfer.SessionID, authoring.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
 				return fmt.Errorf("retire recovered session draft: %w", err)
 			}
 			delete(s.drafts, transfer.SessionID)
@@ -494,7 +494,7 @@ func (s *Store) Workspaces() []Workspace {
 }
 
 func validateHistory(history []historyEntry) error {
-	seen := make(map[replay.CommandID]struct{}, len(history))
+	seen := make(map[authoring.CommandID]struct{}, len(history))
 	for index, entry := range history {
 		if err := entry.Validate(); err != nil {
 			return fmt.Errorf("entry %d: %w", index+1, err)
@@ -549,7 +549,7 @@ func validateWorkspaces(workspaces []Workspace) error {
 // History and the session aggregate are separate durable records, so this half
 // is published as soon as it is saved: a failed session replacement can then
 // retry by command identity without a second entry.
-func (s *Store) recordPromptHistoryLocked(commandID replay.CommandID, message prompt.Message) error {
+func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message authoring.Message) error {
 	next := cloneHistory(s.history)
 	index := slices.IndexFunc(next, func(entry historyEntry) bool {
 		return entry.CommandID == commandID
@@ -572,7 +572,7 @@ func (s *Store) recordPromptHistoryLocked(commandID replay.CommandID, message pr
 // recent unpinned ones up to capacity. A history already within capacity needs
 // no special case: every entry is either pinned or among the last capacity many.
 func (s *Store) trimHistory(history []historyEntry) []historyEntry {
-	pinned := make(map[replay.CommandID]struct{})
+	pinned := make(map[authoring.CommandID]struct{})
 	for _, commands := range s.pendingRuns {
 		for _, pending := range commands {
 			pinned[pending.Command.CommandID] = struct{}{}
@@ -667,7 +667,7 @@ func clonePendingResume(pending PendingResume) PendingResume {
 	return pending
 }
 
-func pendingRunIndex(commands []PendingRun, commandID replay.CommandID) int {
+func pendingRunIndex(commands []PendingRun, commandID authoring.CommandID) int {
 	return slices.IndexFunc(commands, func(command PendingRun) bool { return command.Command.CommandID == commandID })
 }
 

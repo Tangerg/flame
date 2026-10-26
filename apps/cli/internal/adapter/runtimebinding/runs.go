@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -34,20 +33,20 @@ func (r *Connection) GetRunAcceptance(ctx context.Context, query protocol.GetRun
 	return *result, nil
 }
 
-func (r *Connection) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+func (r *Connection) StartRun(ctx context.Context, input authoring.StartRun) (conversation.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	if err := r.requireInputCapabilities(input.Message); err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	request := protocol.StartRunRequest{
 		SessionID: input.SessionID, Input: content,
@@ -88,29 +87,29 @@ func generationParamsPresent(value protocol.GenerationParams) bool {
 
 func (r *Connection) ResumeRun(ctx context.Context, input conversation.ResumeRun) (conversation.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	request := protocol.ResumeRunRequest{RunID: input.RunID, Responses: make([]protocol.InterruptResponse, 0, len(input.Answers))}
 	for _, answer := range input.Answers {
 		projected, err := projectAnswer(answer)
 		if err != nil {
-			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 		}
 		request.Responses = append(request.Responses, projected)
 	}
 	if input.Message != nil {
 		if err := r.requireInputCapabilities(*input.Message); err != nil {
-			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 		}
 		content, err := input.Message.PreparedInput(input.Input)
 		if err != nil {
-			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 		}
 		request.Input = content
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	ack, events, err := r.runs.ResumeRun(ctx, request, options)
 	if err != nil {
@@ -263,20 +262,20 @@ func (r *Connection) CancelRun(ctx context.Context, input conversation.CancelRun
 	return projected, nil
 }
 
-func (r *Connection) SteerRun(ctx context.Context, input prompt.SteerRun) (protocol.SteerRunResponse, error) {
+func (r *Connection) SteerRun(ctx context.Context, input authoring.SteerRun) (protocol.SteerRunResponse, error) {
 	if err := input.Validate(); err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	if err := r.requireInputCapabilities(input.Message); err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", authoring.ErrCommandNotDispatched, err)
 	}
 	receipt, err := r.runs.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID: input.RunID, ExpectedSegmentID: input.SegmentID, Input: content,

@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type workspaceBinding interface {
@@ -156,7 +155,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 		if err := context.Cause(ctx); err != nil {
 			return workspace.FileListing{}, err
 		}
-		cursor := cursors.Current()
+		cursor := cursors.cursor()
 		page, err := r.workspaces.ListWorkspaceFiles(ctx, protocol.ListFilesRequest{
 			Workspace: protocol.WorkspaceRef{Path: request.Workspace}, Path: request.Path, Glob: request.Glob,
 			Recursive: request.Recursive, IncludeIgnored: request.IncludeIgnored,
@@ -195,7 +194,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 			}
 			result.Entries = append(result.Entries, projected)
 		}
-		more, err := cursors.Advance(page.NextCursor)
+		more, err := cursors.advance(page.NextCursor)
 		if err != nil {
 			return workspace.FileListing{}, err
 		}

@@ -8,16 +8,17 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 type Session struct {
 	ID              string
 	Title           string
-	Status          runtimeprotocol.SessionStatus
+	Status          protocol.SessionStatus
 	Provider        string
 	Model           string
 	ReasoningEffort string
@@ -58,7 +59,7 @@ type ModelRef struct {
 
 const modelRefSeparator = "/"
 
-func NewModelRef(provider, model string) (ModelRef, error) {
+func newModelRef(provider, model string) (ModelRef, error) {
 	ref := ModelRef{Provider: provider, Model: model}
 	if err := ref.Validate(); err != nil {
 		return ModelRef{}, err
@@ -71,11 +72,11 @@ func ParseModelRef(value string) (ModelRef, error) {
 	if !found {
 		return ModelRef{}, fmt.Errorf("model identity must use provider%smodel form", modelRefSeparator)
 	}
-	return NewModelRef(provider, model)
+	return newModelRef(provider, model)
 }
 
 func (m ModelRef) Validate() error {
-	if err := runtimeprotocol.ValidateModelSelection(m.Provider, m.Model, ""); err != nil {
+	if err := flamemodel.ValidateSelection(m.Provider, m.Model, ""); err != nil {
 		return err
 	}
 	if strings.Contains(m.Provider, modelRefSeparator) {
@@ -107,7 +108,7 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if strings.ContainsRune(s.Search, 0) {
 		return SessionQuery{}, errors.New("session query: search contains NUL")
 	}
-	if err := (runtimeprotocol.ListSessionsRequest{Search: s.Search}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree((protocol.ListSessionsRequest{Search: s.Search})); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
 	}
 	s.Workspace = strings.TrimSpace(s.Workspace)
@@ -129,8 +130,8 @@ type SessionSnapshot struct {
 	Session    Session
 	Transcript []Block
 	Runs       []Run
-	Plan       *runtimeprotocol.Plan
-	Goal       *runtimeprotocol.Goal
+	Plan       *protocol.Plan
+	Goal       *protocol.Goal
 	Interrupts []Interrupt
 }
 
@@ -147,7 +148,7 @@ func (s SessionSnapshot) LatestRun() (Run, bool) {
 // ActiveRun returns the sole running or waiting root run, when one exists.
 func (s SessionSnapshot) ActiveRun() (Run, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() && run.Status != runtimeprotocol.RunStatusFinished {
+		if run.Lineage.IsRoot() && run.Status != protocol.RunStatusFinished {
 			return run.Clone(), true
 		}
 	}
@@ -276,7 +277,7 @@ func (s *snapshotRuns) index(sessionID string, runs []Run) (int, error) {
 			continue
 		}
 		lastRootIndex = i
-		if run.Status == runtimeprotocol.RunStatusFinished {
+		if run.Status == protocol.RunStatusFinished {
 			continue
 		}
 		if s.activeIndex >= 0 {
@@ -315,13 +316,13 @@ func (s snapshotRuns) validateChildLineage(run Run, position int) error {
 	if s.position[parent.ID] >= position {
 		return fmt.Errorf("session snapshot: child run %s precedes parent %s", run.ID, parent.ID)
 	}
-	if root.Status == runtimeprotocol.RunStatusFinished && run.Status != runtimeprotocol.RunStatusFinished {
+	if root.Status == protocol.RunStatusFinished && run.Status != protocol.RunStatusFinished {
 		return fmt.Errorf("session snapshot: child run %s outlives finished root %s", run.ID, root.ID)
 	}
-	if root.Status == runtimeprotocol.RunStatusRunning && run.Status == runtimeprotocol.RunStatusWaiting {
+	if root.Status == protocol.RunStatusRunning && run.Status == protocol.RunStatusWaiting {
 		return fmt.Errorf("session snapshot: child run %s is waiting beneath running root %s", run.ID, root.ID)
 	}
-	if root.Status == runtimeprotocol.RunStatusWaiting && run.Status == runtimeprotocol.RunStatusRunning {
+	if root.Status == protocol.RunStatusWaiting && run.Status == protocol.RunStatusRunning {
 		return fmt.Errorf("session snapshot: child run %s is running beneath waiting root %s", run.ID, root.ID)
 	}
 	return nil
@@ -343,7 +344,7 @@ func (s SessionSnapshot) validateReferences(transcript snapshotTranscript, runs 
 			rootID = run.ID
 		}
 		active := s.Runs[runs.activeIndex]
-		if rootID != active.ID || run.Status == runtimeprotocol.RunStatusFinished {
+		if rootID != active.ID || run.Status == protocol.RunStatusFinished {
 			return fmt.Errorf("session snapshot: running block %s belongs to inactive run %s", block.ID, block.RunID)
 		}
 	}
@@ -356,14 +357,14 @@ func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs s
 	}
 	active := s.Runs[runs.activeIndex]
 	switch active.Status {
-	case runtimeprotocol.RunStatusRunning:
-		if s.Session.Status != runtimeprotocol.SessionStatusRunning {
+	case protocol.RunStatusRunning:
+		if s.Session.Status != protocol.SessionStatusRunning {
 			return fmt.Errorf("session snapshot: running run has session status %s", s.Session.Status)
 		}
 		if len(s.Interrupts) != 0 {
 			return errors.New("session snapshot: running run carries pending interrupts")
 		}
-	case runtimeprotocol.RunStatusWaiting:
+	case protocol.RunStatusWaiting:
 		return s.validateWaitingLifecycle(active, transcript, runs)
 	}
 	return nil
@@ -376,14 +377,14 @@ func (s SessionSnapshot) validateIdleLifecycle(transcript snapshotTranscript) er
 	if len(s.Interrupts) != 0 {
 		return errors.New("session snapshot: idle session carries pending interrupts")
 	}
-	if s.Session.Status != runtimeprotocol.SessionStatusIdle {
+	if s.Session.Status != protocol.SessionStatusIdle {
 		return fmt.Errorf("session snapshot: session status is %s without an active run", s.Session.Status)
 	}
 	return nil
 }
 
 func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapshotTranscript, runs snapshotRuns) error {
-	if s.Session.Status != runtimeprotocol.SessionStatusWaiting {
+	if s.Session.Status != protocol.SessionStatusWaiting {
 		return fmt.Errorf("session snapshot: waiting run has session status %s", s.Session.Status)
 	}
 	if err := ValidateInterrupts(s.Interrupts); err != nil {
@@ -398,7 +399,7 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 		if run.Lineage.IsRoot() {
 			rootID = run.ID
 		}
-		if !runExists || rootID != active.ID || run.Status != runtimeprotocol.RunStatusWaiting {
+		if !runExists || rootID != active.ID || run.Status != protocol.RunStatusWaiting {
 			return fmt.Errorf("session snapshot: waiting interrupt references inactive run %s", runID)
 		}
 		if !exists {
@@ -428,7 +429,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
-		if active.Status == runtimeprotocol.RunStatusWaiting {
+		if active.Status == protocol.RunStatusWaiting {
 			next.interrupts = CloneInterrupts(snapshot.Interrupts)
 		} else {
 			next.recovery = recoveryColdTail
@@ -449,7 +450,7 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 		return fmt.Errorf("restore attached snapshot: %w", err)
 	}
 	active, ok := snapshot.ActiveRun()
-	if !ok || active.Status != runtimeprotocol.RunStatusRunning {
+	if !ok || active.Status != protocol.RunStatusRunning {
 		return errors.New("restore attached snapshot: snapshot has no running run")
 	}
 	if active.ID != stream.RunID || active.ActiveSegmentID != stream.SegmentID {
@@ -491,7 +492,7 @@ type UpdateSession struct {
 }
 
 func (u UpdateSession) Validate() error {
-	if err := runtimeprotocol.ValidateSessionID(u.SessionID); err != nil {
+	if err := protocol.ValidateSessionID(u.SessionID); err != nil {
 		return fmt.Errorf("session update: %w", err)
 	}
 	if u.Title == nil && u.Workspace == nil && u.Model == nil && u.Favorite == nil {
@@ -521,11 +522,11 @@ type ForkSession struct {
 }
 
 func (f ForkSession) Validate() error {
-	if err := runtimeprotocol.ValidateSessionID(f.SessionID); err != nil {
+	if err := protocol.ValidateSessionID(f.SessionID); err != nil {
 		return fmt.Errorf("session fork: %w", err)
 	}
 	if f.FromRunID != "" {
-		if err := runtimeprotocol.ValidateRunID(f.FromRunID); err != nil {
+		if err := protocol.ValidateRunID(f.FromRunID); err != nil {
 			return fmt.Errorf("session fork: %w", err)
 		}
 	}
@@ -539,7 +540,7 @@ func (f ForkSession) Validate() error {
 // is optional for one-shot callers; durable clients set it so an interrupted
 // acknowledgement can be recovered without issuing a second mutation.
 type DeleteSession struct {
-	CommandID replay.CommandID
+	CommandID authoring.CommandID
 	SessionID string
 }
 

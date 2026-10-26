@@ -1,9 +1,8 @@
-package prompt
+package authoring
 
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -13,10 +12,10 @@ import (
 func (m Message) PreparedInput(input []protocol.ContentBlock) ([]protocol.ContentBlock, error) {
 	if input == nil {
 		if len(m.Attachments) != 0 {
-			return nil, replay.ErrCommandInputUnavailable
+			return nil, ErrCommandInputUnavailable
 		}
 		if !m.HasText() {
-			return nil, fmt.Errorf("%w: message is empty", replay.ErrCommandInputUnavailable)
+			return nil, fmt.Errorf("%w: message is empty", ErrCommandInputUnavailable)
 		}
 		return []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: m.Text}}, nil
 	}
@@ -25,22 +24,22 @@ func (m Message) PreparedInput(input []protocol.ContentBlock) ([]protocol.Conten
 		want++
 	}
 	if len(input) != want {
-		return nil, fmt.Errorf("%w: content count does not match message", replay.ErrCommandInputUnavailable)
+		return nil, fmt.Errorf("%w: content count does not match message", ErrCommandInputUnavailable)
 	}
 	offset := 0
 	if m.HasText() {
 		if input[0] != (protocol.ContentBlock{Type: protocol.ContentBlockText, Text: m.Text}) {
-			return nil, fmt.Errorf("%w: text does not match message", replay.ErrCommandInputUnavailable)
+			return nil, fmt.Errorf("%w: text does not match message", ErrCommandInputUnavailable)
 		}
 		offset = 1
 	}
 	for index, attachment := range m.Attachments {
 		block := input[offset+index]
 		if block.Type != attachment.Kind || (block.Type == protocol.ContentBlockImage && block.Mime != attachment.MimeType) {
-			return nil, fmt.Errorf("%w: attachment %d does not match message", replay.ErrCommandInputUnavailable, index+1)
+			return nil, fmt.Errorf("%w: attachment %d does not match message", ErrCommandInputUnavailable, index+1)
 		}
-		if err := block.ValidateWire(); err != nil {
-			return nil, fmt.Errorf("%w: attachment %d: %w", replay.ErrCommandInputUnavailable, index+1, err)
+		if err := protocol.ValidateWireTree(block); err != nil {
+			return nil, fmt.Errorf("%w: attachment %d: %w", ErrCommandInputUnavailable, index+1, err)
 		}
 
 	}

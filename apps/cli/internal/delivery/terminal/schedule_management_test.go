@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
 
@@ -40,7 +40,7 @@ type blockingScheduleRunService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (b *blockingScheduleRunService) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	var input struct {
 		ID string `json:"ID"`
 	}
@@ -110,8 +110,8 @@ func (s *scheduleServiceStub) update(request schedule.UpdateV1Input) (schedule.C
 }
 
 func boundScheduleRequest(method string, input any) (protocol.CallPluginRequest, error) {
-	encoded, err := jsoninput.Encode(input)
-	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: capability.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: string(encoded.JSON())}, err
+	encoded, err := jsonvalue.Encode(input)
+	return protocol.CallPluginRequest{InstallationID: "12345678-1234-1234-1234-123456789abc", Digest: "1111111111111111111111111111111111111111111111111111111111111111", Contribution: "schedules-provider", Contract: schedule.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Input: string(encoded.JSON())}, err
 }
 func (s *scheduleServiceStub) PrepareCreate(_ context.Context, request schedule.CreateV1Input) (protocol.CallPluginRequest, error) {
 	return boundScheduleRequest(schedule.CreateV1Method, request)
@@ -127,7 +127,7 @@ func (s *scheduleServiceStub) DecodeCreate(reply *protocol.CallPluginResponse) (
 	return value, nil
 }
 
-func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.CallPluginRequest, _ authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	if request.Method == schedule.CreateV1Method {
 		var input schedule.CreateV1Input
 		if err := json.Unmarshal([]byte(request.Input), &input); err != nil {
@@ -137,7 +137,7 @@ func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.Cal
 		if err != nil {
 			return nil, err
 		}
-		output, err := jsoninput.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, CWD: input.CWD, Cron: row.Cron, ModelSelection: input.ModelSelection, NextRunAt: row.NextRunAt, CreatedAt: row.CreatedAt, Revision: row.Revision})
+		output, err := jsonvalue.Encode(schedule.CreateV1Output{ID: row.ID, Title: row.Title, Instructions: row.Instructions, CWD: input.CWD, Cron: row.Cron, ModelSelection: input.ModelSelection, NextRunAt: row.NextRunAt, CreatedAt: row.CreatedAt, Revision: row.Revision})
 		return &protocol.CallPluginResponse{Output: string(output.JSON())}, err
 	}
 	if request.Method == schedule.UpdateV1Method {
@@ -149,7 +149,7 @@ func (s *scheduleServiceStub) CallPlugin(_ context.Context, request protocol.Cal
 		if err != nil {
 			return nil, err
 		}
-		encoded, err := jsoninput.Encode(value)
+		encoded, err := jsonvalue.Encode(value)
 		return &protocol.CallPluginResponse{Output: string(encoded.JSON())}, err
 	}
 	var input struct {

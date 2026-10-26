@@ -4,8 +4,8 @@ import (
 	"context"
 	"slices"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -44,7 +44,7 @@ func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.Plug
 	return value, nil
 }
 
-func (r *Connection) RetirePluginCommand(ctx context.Context, request protocol.PluginCommandRequest, commandID replay.CommandID) error {
+func (r *Connection) RetirePluginCommand(ctx context.Context, request protocol.PluginCommandRequest, commandID authoring.CommandID) error {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return err
@@ -67,12 +67,12 @@ func (r *Connection) ListPluginCompositions(ctx context.Context) ([]protocol.Plu
 	return values, nil
 }
 
-func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, commandID replay.CommandID) (*protocol.PluginComposition, error) {
+func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, commandID authoring.CommandID) (*protocol.PluginComposition, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
-	expected, err := capability.Parse([]byte(request.Contract))
+	expected, err := extension.ParseCapability([]byte(request.Contract))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (r *Connection) SetPluginComposition(ctx context.Context, request protocol.
 	if value == nil || !slices.Equal(value.Members, request.Members) {
 		return nil, runtimeContractViolation("set plugin composition returned another member order")
 	}
-	actual, err := capability.Parse([]byte(value.Contract))
+	actual, err := extension.ParseCapability([]byte(value.Contract))
 	if err != nil || actual.Identity() != expected.Identity() {
 		return nil, runtimeContractViolation("set plugin composition returned another contract")
 	}
@@ -114,7 +114,7 @@ func (r *Connection) ResolvePluginRequirements(ctx context.Context, request prot
 	return requireCompletePage("resolve plugin requirements", page)
 }
 
-func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID replay.CommandID) (*protocol.CallPluginResponse, error) {
+func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, commandID authoring.CommandID) (*protocol.CallPluginResponse, error) {
 	options := protocol.PluginCallOptions{RequestMeta: r.callOptions().RequestMeta}
 	if commandID != "" {
 		command, err := r.commandOptionsFor(commandID)
@@ -135,9 +135,9 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 		return nil, runtimeContractViolation("plugin call returned invalid response: %v", err)
 	}
 	if result.Failure != nil {
-		return nil, &capability.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return nil, &extension.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
-	contract, err := capability.Parse([]byte(request.Contract))
+	contract, err := extension.ParseCapability([]byte(request.Contract))
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (r *Connection) ListPluginProviders(ctx context.Context) ([]protocol.Plugin
 	return values, nil
 }
 
-func (r *Connection) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, commandID replay.CommandID) (*protocol.PluginProviderSelection, error) {
+func (r *Connection) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, commandID authoring.CommandID) (*protocol.PluginProviderSelection, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (r *Connection) ListPlugins(ctx context.Context) ([]protocol.PluginInstalla
 	}
 	return installations, nil
 }
-func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func (r *Connection) InstallPlugin(ctx context.Context, request protocol.Install
 	value, err := r.plugins.InstallPlugin(ctx, request, options)
 	return pluginResult("install plugin", "", value, err)
 }
-func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePlug
 	value, err := r.plugins.StagePlugin(ctx, request, options)
 	return pluginResult("stage plugin", request.InstallationID, value, err)
 }
-func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -221,7 +221,7 @@ func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginRe
 	value, err := r.plugins.SelectPlugin(ctx, request, options)
 	return pluginResult("select plugin", request.InstallationID, value, err)
 }
-func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -229,7 +229,7 @@ func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.Confi
 	value, err := r.plugins.ConfigurePlugin(ctx, request, options)
 	return pluginResult("configure plugin", request.InstallationID, value, err)
 }
-func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.S
 	value, err := r.plugins.SetPluginEnablement(ctx, request, options)
 	return pluginResult("set plugin enablement", request.InstallationID, value, err)
 }
-func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID replay.CommandID) error {
+func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID authoring.CommandID) error {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 type sessionSnapshotRecord struct {
 	Session    sessionFrame       `json:"session"`
 	Transcript []blockFrame       `json:"transcript"`
-	Runs       []runFrame         `json:"runs"`
+	Runs       []runJSONFrame     `json:"runs"`
 	Plan       *planSnapshotFrame `json:"plan,omitzero"`
 	Interrupts []interruptJSON    `json:"interrupts,omitempty"`
 }
@@ -42,7 +42,7 @@ type workspaceFrame struct {
 	Availability string `json:"availability"`
 }
 
-type runFrame struct {
+type runJSONFrame struct {
 	ID               string    `json:"id"`
 	SessionID        string    `json:"sessionId"`
 	SpawnedByBlockID string    `json:"spawnedByBlockId,omitzero"`
@@ -80,42 +80,42 @@ func encodePlanSnapshot(plan *protocol.Plan) *planSnapshotFrame {
 }
 
 type runPageRecord struct {
-	Items      []runFrame `json:"items"`
-	NextCursor string     `json:"nextCursor,omitzero"`
+	Items      []runJSONFrame `json:"items"`
+	NextCursor string         `json:"nextCursor,omitzero"`
 }
 
 type runCancellationRecord struct {
-	Canceled runFrame `json:"canceled"`
-	Root     runFrame `json:"root"`
+	Canceled runJSONFrame `json:"canceled"`
+	Root     runJSONFrame `json:"root"`
 }
 
 // WriteSessionJSON writes one session using the same field contract as session
 // pages and cold snapshots.
-func WriteSessionJSON(w io.Writer, session conversation.Session) error {
-	return WriteJSONLine(w, encodeSession(session))
+func writeSessionJSON(w io.Writer, session conversation.Session) error {
+	return writeJSONLine(w, encodeSession(session))
 }
 
 // WriteSessionPageJSON writes a validated runtime page without losing its
 // opaque continuation cursor.
-func WriteSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
+func writeSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
 	record := sessionPageRecord{Items: make([]sessionFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
 	for _, session := range page.Items {
 		record.Items = append(record.Items, encodeSession(session))
 	}
-	return WriteJSONLine(w, record)
+	return writeJSONLine(w, record)
 }
 
 // WriteSessionSnapshotJSON writes the CLI's stable cold-read JSON projection.
 // Domain values intentionally carry no encoding tags, so this adapter owns the
 // external field names instead of leaking a delivery format into the core.
-func WriteSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot) error {
+func writeSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("render session snapshot: %w", err)
 	}
 	record := sessionSnapshotRecord{
 		Session:    encodeSession(snapshot.Session),
 		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
-		Runs:       make([]runFrame, 0, len(snapshot.Runs)),
+		Runs:       make([]runJSONFrame, 0, len(snapshot.Runs)),
 		Plan:       encodePlanSnapshot(snapshot.Plan),
 		Interrupts: encodeInterrupts(snapshot.Interrupts),
 	}
@@ -125,7 +125,7 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot
 	for _, run := range snapshot.Runs {
 		record.Runs = append(record.Runs, encodeRun(run))
 	}
-	return WriteJSONLine(w, record)
+	return writeJSONLine(w, record)
 }
 
 func encodeSession(session conversation.Session) sessionFrame {
@@ -143,36 +143,36 @@ func encodeSession(session conversation.Session) sessionFrame {
 
 // WriteRunJSON writes one durable run projection using the same field contract
 // as runs embedded in a session snapshot.
-func WriteRunJSON(w io.Writer, run conversation.Run) error {
+func writeRunJSON(w io.Writer, run conversation.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("render run: %w", err)
 	}
-	return WriteJSONLine(w, encodeRun(run))
+	return writeJSONLine(w, encodeRun(run))
 }
 
-func WriteRunPageJSON(w io.Writer, page conversation.RunPage) error {
+func writeRunPageJSON(w io.Writer, page conversation.RunPage) error {
 	if err := page.Validate(); err != nil {
 		return fmt.Errorf("render run page: %w", err)
 	}
-	record := runPageRecord{Items: make([]runFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
+	record := runPageRecord{Items: make([]runJSONFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
 	for _, run := range page.Items {
 		record.Items = append(record.Items, encodeRun(run))
 	}
-	return WriteJSONLine(w, record)
+	return writeJSONLine(w, record)
 }
 
-func WriteRunCancellationJSON(w io.Writer, result conversation.RunCancellation) error {
+func writeRunCancellationJSON(w io.Writer, result conversation.RunCancellation) error {
 	if err := result.Validate(); err != nil {
 		return fmt.Errorf("render run cancellation: %w", err)
 	}
-	return WriteJSONLine(w, runCancellationRecord{
+	return writeJSONLine(w, runCancellationRecord{
 		Canceled: encodeRun(result.Canceled),
 		Root:     encodeRun(result.Root),
 	})
 }
 
-func encodeRun(run conversation.Run) runFrame {
-	encoded := runFrame{
+func encodeRun(run conversation.Run) runJSONFrame {
+	encoded := runJSONFrame{
 		ID: run.ID, SessionID: run.SessionID,
 		SpawnedByBlockID: run.Lineage.SpawnedByBlockID(),
 		ParentRunID:      run.Lineage.ParentRunID(), RootRunID: run.Lineage.RootRunID(),

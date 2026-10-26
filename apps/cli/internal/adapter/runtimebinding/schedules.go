@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -37,8 +36,8 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 		return nil, err
 	}
 	for {
-		cursor := cursors.Current()
-		input, err := jsoninput.Encode(schedule.ListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
+		cursor := cursors.cursor()
+		input, err := jsonvalue.Encode(schedule.ListV1Input{Cursor: cursor, Limit: new(int64(schedulePageLimit))})
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +61,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]schedule.CreateV1Output, 
 			seenIDs[row.ID] = struct{}{}
 			schedules = append(schedules, schedule.CreateV1Output(row))
 		}
-		more, err := cursors.Advance(page.NextCursor)
+		more, err := cursors.advance(page.NextCursor)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +79,7 @@ func (r *Connection) PrepareCreate(ctx context.Context, request schedule.CreateV
 		}
 		request.CWD = resolved.Path
 	}
-	input, err := jsoninput.Encode(request)
+	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -109,7 +108,7 @@ func (r *Connection) PrepareUpdate(ctx context.Context, request schedule.UpdateV
 		}
 		request.CWD = new(resolved.Path)
 	}
-	input, err := jsoninput.Encode(request)
+	input, err := jsonvalue.Encode(request)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -128,7 +127,7 @@ func (r *Connection) DecodeUpdate(expectedID string, reply *protocol.CallPluginR
 }
 
 func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(schedule.DeleteV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsonvalue.Encode(schedule.DeleteV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
@@ -136,19 +135,19 @@ func (r *Connection) PrepareDelete(ctx context.Context, id string) (protocol.Cal
 }
 
 func (r *Connection) PrepareRunNow(ctx context.Context, id string) (protocol.CallPluginRequest, error) {
-	input, err := jsoninput.Encode(schedule.RunNowV1Input{ID: strings.TrimSpace(id)})
+	input, err := jsonvalue.Encode(schedule.RunNowV1Input{ID: strings.TrimSpace(id)})
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
 	return r.prepareSchedulesCommand(ctx, schedule.RunNowV1Method, input)
 }
 
-func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, input jsoninput.Input) (protocol.CallPluginRequest, error) {
+func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, input jsonvalue.Value) (protocol.CallPluginRequest, error) {
 	bound, err := r.selectedInstalledCall(ctx, schedule.CapabilityJSON, schedule.ListV1Method)
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	contract, err := capability.Parse([]byte(bound.Contract))
+	contract, err := extension.ParseCapability([]byte(bound.Contract))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}

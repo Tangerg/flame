@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 )
 
-func presentUser(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentUser(p blockPresentation, block conversation.Block) []headless.Block {
 	body := strings.TrimSpace(block.Text)
 	if len(block.Attachments) > 0 {
 		lines := make([]string, 0, len(block.Attachments))
@@ -27,8 +27,8 @@ func presentUser(p BlockPresentation, block conversation.Block) []headless.Block
 	return []headless.Block{newUserMessageBlock(p.Theme, speaker, body)}
 }
 
-func presentMarkdown(speaker string) func(BlockPresentation, conversation.Block) []headless.Block {
-	return func(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentMarkdown(speaker string) func(blockPresentation, conversation.Block) []headless.Block {
+	return func(p blockPresentation, block conversation.Block) []headless.Block {
 		label := speaker
 		if p.Speaker != "" {
 			label = p.Speaker
@@ -51,21 +51,21 @@ func presentMarkdown(speaker string) func(BlockPresentation, conversation.Block)
 	}
 }
 
-func presentTool(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentTool(p blockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{newToolBlock(p, block)}
 }
 
-func presentQuestion(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentQuestion(p blockPresentation, block conversation.Block) []headless.Block {
 	if block.Question == nil {
 		return nil
 	}
 	return []headless.Block{newQuestionBlock(p.Theme, p.Glyphs, *block.Question)}
 }
 
-func presentNotice(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentNotice(p blockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
 }
 
-func presentFailure(p BlockPresentation, block conversation.Block) []headless.Block {
+func presentFailure(p blockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{presentError(p.Theme, block.Text)}
 }

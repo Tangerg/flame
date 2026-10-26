@@ -1,4 +1,4 @@
-package render
+package cmd
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -23,11 +23,11 @@ const (
 
 // ResultJSON folds a streamed run into one final JSON object. It retains only
 // assistant prose and terminal metadata; callers that need every event use [NDJSON].
-type ResultJSON struct {
+type resultJSONRenderer struct {
 	out   io.Writer
 	err   error
 	phase resultPhase
-	scope runScope
+	scope outputRunScope
 	frame resultFrame
 	prose assistantProse
 }
@@ -106,13 +106,13 @@ type resultFrame struct {
 }
 
 // NewResultJSON builds a renderer that emits at most one JSON result from Close.
-func NewResultJSON(w io.Writer) *ResultJSON {
-	return &ResultJSON{out: w}
+func newResultJSONRenderer(w io.Writer) *resultJSONRenderer {
+	return &resultJSONRenderer{out: w}
 }
 
 // Begin records the accepted run before its first subscription opens, so a
 // transport failure can still produce a useful incomplete result.
-func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) error {
+func (r *resultJSONRenderer) Begin(run conversation.Run, options authoring.RunOptions) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -137,7 +137,7 @@ func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) erro
 }
 
 // Render folds one validated event into the final result.
-func (r *ResultJSON) Render(envelope conversation.RunEvent) error {
+func (r *resultJSONRenderer) Render(envelope conversation.RunEvent) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -162,7 +162,7 @@ func (r *ResultJSON) Render(envelope conversation.RunEvent) error {
 
 // Reconcile replaces the folded result with durable cold-read values after the
 // runtime reports that the live segment can no longer be replayed.
-func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
+func (r *resultJSONRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -212,7 +212,7 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	return nil
 }
 
-func (r *ResultJSON) fold(envelope conversation.RunEvent) {
+func (r *resultJSONRenderer) fold(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		if !event.Run.Lineage.IsRoot() {
@@ -259,14 +259,14 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 	}
 }
 
-func (r *ResultJSON) begin(block conversation.Block) {
+func (r *resultJSONRenderer) begin(block conversation.Block) {
 	if block.Kind != conversation.BlockAssistant {
 		return
 	}
 	r.prose.begin(block)
 }
 
-func (r *ResultJSON) complete(block conversation.Block) {
+func (r *resultJSONRenderer) complete(block conversation.Block) {
 	if block.Kind != conversation.BlockAssistant {
 		return
 	}
@@ -274,7 +274,7 @@ func (r *ResultJSON) complete(block conversation.Block) {
 	r.appendImages(block.Images)
 }
 
-func (r *ResultJSON) appendImages(images []conversation.InlineImage) {
+func (r *resultJSONRenderer) appendImages(images []conversation.InlineImage) {
 	for _, image := range images {
 		r.frame.Images = append(r.frame.Images, imageFrame{
 			ID: image.ID, Name: image.Name, MIMEType: image.MIMEType,
@@ -285,7 +285,7 @@ func (r *ResultJSON) appendImages(images []conversation.InlineImage) {
 
 // Close emits one object after at least a run.started event. It is idempotent;
 // failures before a run starts leave stdout empty.
-func (r *ResultJSON) Close() error {
+func (r *resultJSONRenderer) Close() error {
 	if r.phase == resultClosed {
 		return r.err
 	}
@@ -295,6 +295,6 @@ func (r *ResultJSON) Close() error {
 		return r.err
 	}
 	r.frame.Text = r.prose.text()
-	r.err = WriteJSONLine(r.out, r.frame)
+	r.err = writeJSONLine(r.out, r.frame)
 	return r.err
 }

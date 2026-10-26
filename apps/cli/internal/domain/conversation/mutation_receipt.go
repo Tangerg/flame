@@ -8,7 +8,7 @@ import (
 // but its receipt violated the client contract. Receipt retains every usable
 // identity from that response so callers can clean up the accepted mutation
 // without replaying user intent under a new command identity.
-type AcceptedMutationError struct {
+type acceptedMutationError struct {
 	receipt SegmentStream
 	cause   error
 }
@@ -17,12 +17,12 @@ func NewAcceptedMutationError(receipt SegmentStream, cause error) error {
 	if cause == nil {
 		return nil
 	}
-	return &AcceptedMutationError{receipt: receipt, cause: cause}
+	return &acceptedMutationError{receipt: receipt, cause: cause}
 }
 
-func (a *AcceptedMutationError) Error() string { return a.cause.Error() }
+func (a *acceptedMutationError) Error() string { return a.cause.Error() }
 
-func (a *AcceptedMutationError) Unwrap() error { return a.cause }
+func (a *acceptedMutationError) Unwrap() error { return a.cause }
 
 // RetiredOpeningError confirms historical acceptance without granting access
 // to any material that now reuses the original Run identity.
@@ -40,7 +40,7 @@ func AcceptedMutationReceipt(err error) (SegmentStream, bool) {
 	if retired, ok := errors.AsType[*RetiredOpeningError](err); ok {
 		return retired.receipt, true
 	}
-	accepted, ok := errors.AsType[*AcceptedMutationError](err)
+	accepted, ok := errors.AsType[*acceptedMutationError](err)
 	if !ok {
 		return SegmentStream{}, false
 	}

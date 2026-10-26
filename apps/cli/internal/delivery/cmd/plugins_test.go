@@ -3,14 +3,15 @@ package cmd
 import (
 	"context"
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -20,7 +21,7 @@ type pluginCommandFixture struct {
 	pluginRuntime
 	calls       int
 	received    protocol.InstallPluginRequest
-	command     replay.CommandID
+	command     authoring.CommandID
 	provider    protocol.SelectPluginProviderRequest
 	composition protocol.SetPluginCompositionRequest
 	lookup      protocol.PluginCommandRequest
@@ -32,7 +33,7 @@ func (f *pluginCommandFixture) ListPluginCompositions(context.Context) ([]protoc
 	return []protocol.PluginComposition{{Contract: f.composition.Contract, Members: f.composition.Members}}, nil
 }
 
-func (f *pluginCommandFixture) SetPluginComposition(_ context.Context, request protocol.SetPluginCompositionRequest, id replay.CommandID) (*protocol.PluginComposition, error) {
+func (f *pluginCommandFixture) SetPluginComposition(_ context.Context, request protocol.SetPluginCompositionRequest, id authoring.CommandID) (*protocol.PluginComposition, error) {
 	f.calls++
 	f.composition, f.command = request, id
 	return &protocol.PluginComposition{Contract: request.Contract, Members: request.Members}, nil
@@ -80,7 +81,7 @@ func TestPluginCompositionCommandsKeepExplicitOrderAndMutationIdentity(t *testin
 	}
 }
 
-func (f *pluginCommandFixture) SelectPluginProvider(_ context.Context, request protocol.SelectPluginProviderRequest, id replay.CommandID) (*protocol.PluginProviderSelection, error) {
+func (f *pluginCommandFixture) SelectPluginProvider(_ context.Context, request protocol.SelectPluginProviderRequest, id authoring.CommandID) (*protocol.PluginProviderSelection, error) {
 	f.calls++
 	f.provider = request
 	f.command = id
@@ -100,17 +101,17 @@ func TestPluginProviderSelectionPreservesExplicitBindingAndCommandIdentity(t *te
 	}
 }
 
-func (f *pluginCommandFixture) InstallPlugin(_ context.Context, in protocol.InstallPluginRequest, id replay.CommandID) (*protocol.PluginInstallation, error) {
+func (f *pluginCommandFixture) InstallPlugin(_ context.Context, in protocol.InstallPluginRequest, id authoring.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
 	f.received = in
 	f.command = id
 	return &protocol.PluginInstallation{ID: "installed", Source: in.Source}, nil
 }
-func (f *pluginCommandFixture) SetPluginEnablement(_ context.Context, in protocol.SetPluginEnablementRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
+func (f *pluginCommandFixture) SetPluginEnablement(_ context.Context, in protocol.SetPluginEnablementRequest, _ authoring.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
 	return &protocol.PluginInstallation{ID: in.InstallationID, Enabled: in.Enabled}, nil
 }
-func (f *pluginCommandFixture) ConfigurePlugin(_ context.Context, in protocol.ConfigurePluginRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
+func (f *pluginCommandFixture) ConfigurePlugin(_ context.Context, in protocol.ConfigurePluginRequest, _ authoring.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
 	var disabledServers, disabledSkills []string
 	for name, change := range in.ServerChanges {
@@ -210,7 +211,7 @@ func TestPluginCommandPreservesReviewedRequestAndReplayIdentity(t *testing.T) {
 	}
 }
 
-func (f *pluginCommandFixture) UninstallPlugin(_ context.Context, _ protocol.PluginRequest, id replay.CommandID) error {
+func (f *pluginCommandFixture) UninstallPlugin(_ context.Context, _ protocol.PluginRequest, id authoring.CommandID) error {
 	f.calls++
 	f.command = id
 	return nil
@@ -230,7 +231,7 @@ func (f *pluginCommandFixture) GetPluginCommand(_ context.Context, query protoco
 	return &f.original, nil
 }
 
-func (f *pluginCommandFixture) RetirePluginCommand(_ context.Context, query protocol.PluginCommandRequest, id replay.CommandID) error {
+func (f *pluginCommandFixture) RetirePluginCommand(_ context.Context, query protocol.PluginCommandRequest, id authoring.CommandID) error {
 	f.calls++
 	f.lookup, f.command = query, id
 	return nil
@@ -255,16 +256,16 @@ func TestPluginGetCommandReadsOriginalIdentityWithoutMutation(t *testing.T) {
 		Scale float64 `json:"scale"`
 	}, struct {
 		Saved bool `json:"saved"`
-	}](pluginsdk.MethodConfig{Name: "test.retained/save.v1", Kind: capability.Mutation, Target: "installation", Description: "Retain one authored input."})
+	}](pluginsdk.MethodConfig{Name: "test.retained/save.v1", Kind: extension.Mutation, Target: "installation", Description: "Retain one authored input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := capability.New(capability.Config{Reference: "test.retained", Composition: capability.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "test.retained", Composition: extension.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: capability.Target{Scope: "installation", Reference: installation}}
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: string(contract.Identity().JSON()), Method: method.Name(), Input: `{"scale":1.0,"value":18446744073709551615}`, Target: extension.Target{Scope: "installation", Reference: installation}}
 	query := protocol.PluginCommandRequest{Namespace: "idp_" + strings.Repeat("1", 32), Key: "retained-web-command"}
 	encoded, err := json.Marshal(query)
 	if err != nil {

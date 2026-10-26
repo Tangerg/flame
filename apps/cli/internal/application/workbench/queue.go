@@ -7,9 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/queue"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
 var ErrDispatchCanceling = errors.New("queued prompt is awaiting cancellation")
@@ -20,7 +18,7 @@ var ErrDispatchCanceling = errors.New("queued prompt is awaiting cancellation")
 type Queue struct {
 	mu    sync.Mutex
 	store *Store
-	fifo  *queue.Queue
+	fifo  *authoring.Queue
 }
 
 func NewQueue(store *Store) (*Queue, error) {
@@ -32,48 +30,48 @@ func NewQueue(store *Store) (*Queue, error) {
 	if store.closed {
 		return nil, errors.New("prompt queue requires an open workbench")
 	}
-	return &Queue{store: store, fifo: queue.New()}, nil
+	return &Queue{store: store, fifo: authoring.NewQueue()}, nil
 }
 
 // EnqueueCommand transfers a prompt out of its draft and into both queue
 // representations before a caller may start Runtime delivery.
-func (q *Queue) EnqueueCommand(commandID replay.CommandID, sessionID string, message prompt.Message, options prompt.RunOptions) (queue.Entry, error) {
+func (q *Queue) EnqueueCommand(commandID authoring.CommandID, sessionID string, message authoring.Message, options authoring.RunOptions) (authoring.QueueEntry, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	before := q.fifo.State(sessionID)
 	entry, err := q.fifo.EnqueueCommand(commandID, sessionID, message, options)
 	if err != nil {
-		return queue.Entry{}, err
+		return authoring.QueueEntry{}, err
 	}
 	if err := q.store.StagePendingRun(PendingRun{
-		State: PendingRunQueued, Replay: replay.UnprotectedGuard(),
-		CancelReplay: replay.UnprotectedGuard(),
-		Command:      prompt.StartRun{CommandID: commandID, SessionID: sessionID, Message: message.Clone(), Options: options.Clone()},
+		State: PendingRunQueued, Replay: authoring.UnprotectedGuard(),
+		CancelReplay: authoring.UnprotectedGuard(),
+		Command:      authoring.StartRun{CommandID: commandID, SessionID: sessionID, Message: message.Clone(), Options: options.Clone()},
 	}); err != nil {
-		return queue.Entry{}, q.rollback(sessionID, before, err)
+		return authoring.QueueEntry{}, q.rollback(sessionID, before, err)
 	}
 	return entry, nil
 }
 
-func (q *Queue) Snapshot(sessionID string) queue.Snapshot {
+func (q *Queue) Snapshot(sessionID string) authoring.QueueSnapshot {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.Snapshot(sessionID)
 }
 
-func (q *Queue) State(sessionID string) queue.State {
+func (q *Queue) State(sessionID string) authoring.QueueState {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.State(sessionID)
 }
 
-func (q *Queue) BeginDispatch(sessionID string) (queue.Entry, bool) {
+func (q *Queue) BeginDispatch(sessionID string) (authoring.QueueEntry, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.BeginDispatch(sessionID)
 }
 
-func (q *Queue) Dispatching(sessionID string) (queue.Entry, bool) {
+func (q *Queue) Dispatching(sessionID string) (authoring.QueueEntry, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.Dispatching(sessionID)
@@ -85,19 +83,19 @@ func (q *Queue) ReleaseDispatch(sessionID string) bool {
 	return q.fifo.ReleaseDispatch(sessionID)
 }
 
-func (q *Queue) Hold(sessionID string, id queue.EntryID) error {
+func (q *Queue) Hold(sessionID string, id authoring.QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.Hold(sessionID, id)
 }
 
-func (q *Queue) Release(sessionID string, id queue.EntryID) error {
+func (q *Queue) Release(sessionID string, id authoring.QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.fifo.Release(sessionID, id)
 }
 
-func (q *Queue) Update(sessionID string, id queue.EntryID, message prompt.Message) error {
+func (q *Queue) Update(sessionID string, id authoring.QueueEntryID, message authoring.Message) error {
 	return q.commit(sessionID, func() error {
 		if err := q.fifo.Update(sessionID, id, message, mutation.NewCommandID()); err != nil {
 			return err
@@ -106,24 +104,24 @@ func (q *Queue) Update(sessionID string, id queue.EntryID, message prompt.Messag
 	})
 }
 
-func (q *Queue) Remove(sessionID string, id queue.EntryID) (queue.Entry, error) {
-	var removed queue.Entry
+func (q *Queue) Remove(sessionID string, id authoring.QueueEntryID) (authoring.QueueEntry, error) {
+	var removed authoring.QueueEntry
 	err := q.commit(sessionID, func() error {
 		var err error
 		removed, err = q.fifo.Remove(sessionID, id)
 		return err
 	})
 	if err != nil {
-		return queue.Entry{}, err
+		return authoring.QueueEntry{}, err
 	}
 	return removed, nil
 }
 
-func (q *Queue) Move(sessionID string, id queue.EntryID, offset int) error {
+func (q *Queue) Move(sessionID string, id authoring.QueueEntryID, offset int) error {
 	return q.commit(sessionID, func() error { return q.fifo.Move(sessionID, id, offset) })
 }
 
-func (q *Queue) Promote(sessionID string, id queue.EntryID) error {
+func (q *Queue) Promote(sessionID string, id authoring.QueueEntryID) error {
 	return q.commit(sessionID, func() error { return q.fifo.Promote(sessionID, id) })
 }
 
@@ -133,11 +131,11 @@ func (q *Queue) Restore(sessionID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	pending := q.store.PendingRuns(sessionID)
-	commands := make([]prompt.StartRun, len(pending))
+	commands := make([]authoring.StartRun, len(pending))
 	for index, entry := range pending {
 		commands[index] = entry.Command.Clone()
 	}
-	var dispatching replay.CommandID
+	var dispatching authoring.CommandID
 	if len(pending) > 0 && pending[0].State != PendingRunQueued {
 		dispatching = pending[0].Command.CommandID
 	}
@@ -164,13 +162,13 @@ func (q *Queue) DispatchCanceling(sessionID string) bool {
 }
 
 // A later FIFO head cannot inherit an earlier command's acknowledgement.
-func (q *Queue) SettleDispatch(sessionID string, commandID replay.CommandID) (queue.Entry, bool, error) {
+func (q *Queue) SettleDispatch(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	entry, ok := q.fifo.Dispatching(sessionID)
 	if ok && entry.CommandID == commandID {
 		if pending, found := q.pendingRun(sessionID, commandID); found && pending.State == PendingRunCanceling {
-			return queue.Entry{}, false, ErrDispatchCanceling
+			return authoring.QueueEntry{}, false, ErrDispatchCanceling
 		}
 	}
 	return q.retire(sessionID, commandID)
@@ -179,28 +177,28 @@ func (q *Queue) SettleDispatch(sessionID string, commandID replay.CommandID) (qu
 // Retire closes the exact accepted, recovered or canceled opening. History and
 // outbox ownership commit before releasing its reservation, including retries
 // after history alone committed during an earlier failed settlement.
-func (q *Queue) Retire(sessionID string, commandID replay.CommandID) (queue.Entry, bool, error) {
+func (q *Queue) Retire(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.retire(sessionID, commandID)
 }
 
-func (q *Queue) retire(sessionID string, commandID replay.CommandID) (queue.Entry, bool, error) {
+func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
 	entry, dispatching := q.fifo.Dispatching(sessionID)
 	_, pending := q.pendingRun(sessionID, commandID)
-	present := slices.ContainsFunc(q.fifo.Snapshot(sessionID).Entries, func(entry queue.Entry) bool { return entry.CommandID == commandID })
+	present := slices.ContainsFunc(q.fifo.Snapshot(sessionID).Entries, func(entry authoring.QueueEntry) bool { return entry.CommandID == commandID })
 	if !present && !pending {
-		return queue.Entry{}, false, nil
+		return authoring.QueueEntry{}, false, nil
 	}
 	if !dispatching {
-		return queue.Entry{}, false, errors.New("dispatching prompt command ownership was released before settlement")
+		return authoring.QueueEntry{}, false, errors.New("dispatching prompt command ownership was released before settlement")
 	}
 	if entry.CommandID != commandID {
-		return queue.Entry{}, false, errors.New("dispatching prompt command identity changed")
+		return authoring.QueueEntry{}, false, errors.New("dispatching prompt command identity changed")
 	}
 	if pending {
 		if err := q.store.AcknowledgePendingRun(sessionID, commandID); err != nil {
-			return queue.Entry{}, false, err
+			return authoring.QueueEntry{}, false, err
 		}
 	}
 	retired, err := q.fifo.RetireCommand(sessionID, commandID)
@@ -209,7 +207,7 @@ func (q *Queue) retire(sessionID string, commandID replay.CommandID) (queue.Entr
 
 // RequeueDispatch is valid only after Runtime definitively refused this exact
 // command. The durable replacement owns the new identity before FIFO release.
-func (q *Queue) RequeueDispatch(sessionID string, commandID replay.CommandID) error {
+func (q *Queue) RequeueDispatch(sessionID string, commandID authoring.CommandID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	entry, ok := q.fifo.Dispatching(sessionID)
@@ -223,7 +221,7 @@ func (q *Queue) RequeueDispatch(sessionID string, commandID replay.CommandID) er
 	return q.fifo.RequeueDispatch(sessionID, commandID, replacement)
 }
 
-func (q *Queue) pendingRun(sessionID string, commandID replay.CommandID) (PendingRun, bool) {
+func (q *Queue) pendingRun(sessionID string, commandID authoring.CommandID) (PendingRun, bool) {
 	for _, pending := range q.store.PendingRuns(sessionID) {
 		if pending.Command.CommandID == commandID {
 			return pending, true
@@ -257,14 +255,14 @@ func (q *Queue) persist(sessionID string) error {
 			continue
 		}
 		commands = append(commands, PendingRun{
-			State: PendingRunQueued, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
-			Command: prompt.StartRun{CommandID: entry.CommandID, SessionID: entry.SessionID, Message: entry.Message.Clone(), Options: entry.Options.Clone()},
+			State: PendingRunQueued, Replay: authoring.UnprotectedGuard(), CancelReplay: authoring.UnprotectedGuard(),
+			Command: authoring.StartRun{CommandID: entry.CommandID, SessionID: entry.SessionID, Message: entry.Message.Clone(), Options: entry.Options.Clone()},
 		})
 	}
 	return q.store.SavePendingRuns(sessionID, commands)
 }
 
-func (q *Queue) rollback(sessionID string, before queue.State, cause error) error {
+func (q *Queue) rollback(sessionID string, before authoring.QueueState, cause error) error {
 	if err := q.fifo.RestoreState(sessionID, before); err != nil {
 		return errors.Join(cause, fmt.Errorf("restore prompt queue: %w", err))
 	}

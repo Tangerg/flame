@@ -7,9 +7,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	runtimeprotocol "github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 // SessionDeletionPhase separates an unacknowledged runtime mutation from a
@@ -26,14 +26,14 @@ const (
 // Prepared records retain the stable runtime command identity; confirmed
 // records remain only while obsolete CLI-local state still needs cleanup.
 type PendingSessionDeletion struct {
-	Phase     SessionDeletionPhase `json:"phase"`
-	CommandID replay.CommandID     `json:"commandId,omitzero"`
-	SessionID string               `json:"sessionId"`
-	Replay    replay.Guard         `json:"replay"`
+	Phase     SessionDeletionPhase  `json:"phase"`
+	CommandID authoring.CommandID   `json:"commandId,omitzero"`
+	SessionID string                `json:"sessionId"`
+	Replay    authoring.ReplayGuard `json:"replay"`
 }
 
 func (p PendingSessionDeletion) validate() error {
-	if err := runtimeprotocol.ValidateSessionID(p.SessionID); err != nil {
+	if err := protocol.ValidateSessionID(p.SessionID); err != nil {
 		return fmt.Errorf("session deletion: %w", err)
 	}
 	switch p.Phase {
@@ -96,7 +96,7 @@ func (s *Store) PendingSessionDeletion(sessionID string) (PendingSessionDeletion
 // StageSessionDeletion durably owns a deletion and the exact runtime command
 // that may replay it after process restart. Repeating the exact command is
 // idempotent; another identity cannot replace an unsettled outcome.
-func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayGuard replay.Guard) error {
+func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayGuard authoring.ReplayGuard) error {
 	if err := request.Validate(); err != nil {
 		return err
 	}
@@ -132,8 +132,8 @@ func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayG
 
 // RejectSessionDeletion retires a prepared journal after the runtime
 // definitively reports that the session still exists and was not deleted.
-func (s *Store) RejectSessionDeletion(sessionID string, commandID replay.CommandID) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) RejectSessionDeletion(sessionID string, commandID authoring.CommandID) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -158,8 +158,8 @@ func (s *Store) RejectSessionDeletion(sessionID string, commandID replay.Command
 // local tombstone, then retires all CLI-owned state. Once the tombstone is
 // durable, physical cleanup is best-effort: an undeletable old aggregate can
 // no longer be observed and will be retried on the next Open.
-func (s *Store) ConfirmSessionDeletion(sessionID string, commandID replay.CommandID) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+func (s *Store) ConfirmSessionDeletion(sessionID string, commandID authoring.CommandID) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -176,7 +176,7 @@ func (s *Store) ConfirmSessionDeletion(sessionID string, commandID replay.Comman
 // finish removing its old aggregate and tombstone first, preventing a later
 // import with the same session ID from inheriting obsolete local state.
 func (s *Store) ActivateSessionState(sessionID string) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -209,7 +209,7 @@ func (s *Store) ActivateSessionState(sessionID string) error {
 // mutations because each rewrites the same durable aggregate. A failure between
 // them would expose a partially retired session after restart.
 func (s *Store) RetireSessionState(sessionID string) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
 	s.mu.Lock()
@@ -224,7 +224,7 @@ func (s *Store) retireSessionStateLocked(sessionID string, pending PendingSessio
 	}
 	confirmed := PendingSessionDeletion{
 		Phase: SessionDeletionConfirmed, CommandID: pending.CommandID, SessionID: sessionID,
-		Replay: replay.UnprotectedGuard(),
+		Replay: authoring.UnprotectedGuard(),
 	}
 	if pending.Phase != SessionDeletionConfirmed {
 		next := cloneSessionDeletions(s.sessionDeletions)

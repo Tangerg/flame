@@ -40,7 +40,7 @@ type ResolveRequest struct {
 
 func (r ResolveRequest) Validate() error {
 	if r.Path != "" {
-		return (protocol.WorkspaceRef{Path: r.Path}).ValidateWire()
+		return protocol.ValidateWireTree((protocol.WorkspaceRef{Path: r.Path}))
 	}
 	return nil
 }

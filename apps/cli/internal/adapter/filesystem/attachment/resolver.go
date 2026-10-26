@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/packages/go-sdk/fileinput"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/core/fuzzy"
 )
@@ -69,18 +69,18 @@ func New(root string) (*Resolver, error) {
 	} else if !errors.Is(evalErr, os.ErrNotExist) {
 		return nil, fmt.Errorf("attachment: resolve workspace symlinks: %w", evalErr)
 	}
-	return &Resolver{root: abs, maxBytes: prompt.MaxAttachmentBytes}, nil
+	return &Resolver{root: abs, maxBytes: authoring.MaxAttachmentBytes}, nil
 }
 
 // Resolve validates and classifies one explicit path. Symlinks are resolved so
 // identity and duplicate detection refer to the same underlying file.
-func (r *Resolver) Resolve(ctx context.Context, input string) (prompt.Attachment, error) {
+func (r *Resolver) Resolve(ctx context.Context, input string) (authoring.Attachment, error) {
 	if err := context.Cause(ctx); err != nil {
-		return prompt.Attachment{}, err
+		return authoring.Attachment{}, err
 	}
 	canonical, info, header, err := r.inspect(input)
 	if err != nil {
-		return prompt.Attachment{}, err
+		return authoring.Attachment{}, err
 	}
 	return r.project(canonical, info, header)
 }
@@ -94,7 +94,7 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("attachment: resolve %q: %w", input, err)
 	}
-	file, info, err := fileinput.Open(canonical, r.maxBytes)
+	file, info, err := filesystem.OpenFile(canonical, r.maxBytes)
 	if err != nil {
 		return "", nil, nil, attachmentOpenError(input, r.maxBytes, err)
 	}
@@ -103,8 +103,8 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	if err != nil {
 		return "", nil, nil, err
 	}
-	if err := fileinput.VerifyPathVersion(file, info, canonical); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
+	if err := filesystem.VerifyPathVersion(file, info, canonical); err != nil {
+		if errors.Is(err, filesystem.ErrChanged) {
 			return "", nil, nil, fmt.Errorf("attachment: %q changed while it was being inspected", input)
 		}
 		return "", nil, nil, fmt.Errorf("attachment: verify %q after inspection: %w", input, err)
@@ -118,12 +118,12 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 
 func attachmentOpenError(input string, maximumBytes int64, err error) error {
 	switch {
-	case errors.Is(err, fileinput.ErrChanged):
+	case errors.Is(err, filesystem.ErrChanged):
 		return fmt.Errorf("attachment: %q changed while it was being opened", input)
-	case errors.Is(err, fileinput.ErrNotRegular):
+	case errors.Is(err, filesystem.ErrNotRegular):
 		return fmt.Errorf("%w: %s", ErrNotRegular, input)
-	case errors.Is(err, fileinput.ErrTooLarge):
-		var limit fileinput.SizeLimitError
+	case errors.Is(err, filesystem.ErrFileTooLarge):
+		var limit filesystem.FileSizeLimitError
 		if errors.As(err, &limit) {
 			return fmt.Errorf(
 				"%w: %s is %s (limit %s)",
@@ -145,11 +145,11 @@ func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {
 	return header[:n], nil
 }
 
-func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (prompt.Attachment, error) {
+func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (authoring.Attachment, error) {
 	mimeType := classifyMIME(canonical, header)
 	kind, supported := attachmentKind(mimeType)
 	if !supported {
-		return prompt.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
+		return authoring.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
 	}
 	name := filepath.Base(canonical)
 	if relative, ok := r.relative(canonical); ok {
@@ -160,7 +160,7 @@ func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (p
 		size:          info.Size(),
 		modifiedAt:    info.ModTime().UnixNano(),
 	}).digest()
-	return prompt.Attachment{
+	return authoring.Attachment{
 		ID: "att_" + hex.EncodeToString(digest[:8]), Kind: kind, Name: filepath.ToSlash(name),
 		Path: canonical, MimeType: mimeType, Size: info.Size(),
 	}, nil
@@ -280,7 +280,7 @@ func readCompletionDirectory(root *os.Root, name string, maximumEntries int) (_ 
 	if maximumEntries <= 0 {
 		return nil, nil
 	}
-	directory, _, err := fileinput.OpenDirectoryAt(root, name)
+	directory, _, err := filesystem.OpenDirectoryAt(root, name)
 	if err != nil {
 		return nil, err
 	}
