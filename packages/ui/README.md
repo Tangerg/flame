@@ -136,6 +136,10 @@ Section headings and form legends use the smaller, semibold supporting role;
 record identities retain the main text role within each group.
 Management filters use the shared `lg` size for both search and selection; compact
 workbench controls keep their own smaller roles.
+`Disclosure` keeps content lazy by default. A sustained reader can opt into
+`keepMounted` to preserve its local reading state; the primitive still hides
+the closed content from keyboard and accessibility navigation.
+
 `RecordHeading` groups identity, state and the main action. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. Its optional
 `stickyHeader` keeps that same complete summary beneath the enclosing Panel's

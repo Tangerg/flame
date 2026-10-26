@@ -55,6 +55,12 @@ progress updates retain the same reader and native position. Task lifecycle
 and automatic retirement remain with the producing task store; the existing readout
 owns percentage clamping.
 
+Goal stop-reason details use the shared named keyboard reader inside their existing
+disclosure. Original line breaks and the viewport cap remain; Tab enters the
+explanation, and keyboard scrolling can reach every recorded requirement.
+The retained disclosure body preserves native reading position through close and
+reopen; the primitive excludes it from the closed keyboard and accessible scope.
+
 Recorded Tool failures retain their original line breaks, blank lines and indentation
 in both standalone and grouped rows, with long values wrapping inside the reading
 column. Captured text, status, disclosure, actions and source-return ownership stay

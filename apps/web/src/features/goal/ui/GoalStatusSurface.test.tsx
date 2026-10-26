@@ -308,7 +308,9 @@ describe("Goal status surface", () => {
       name: "The agent reported that it cannot continue.",
     });
     expect(explanation.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByText(/Provide the release target/)).toBeNull();
+    expect(
+      screen.queryByRole("region", { name: "The agent reported that it cannot continue." }),
+    ).toBeNull();
     fireEvent.click(explanation);
     expect(explanation.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByText(/Provide the release target/)).toBeTruthy();
@@ -332,6 +334,48 @@ describe("Goal status surface", () => {
     expect(screen.queryByText("Waiting for your answer or approval.")).toBeNull();
     expect(screen.getByText("Pursuing goal")).toBeTruthy();
     expect(model.resumeGoal).not.toHaveBeenCalled();
+  });
+
+  it("keeps a named keyboard reader focused when the current explanation changes", () => {
+    const detail = "Choose an explicit release target.\n\n  保留原始原因和缩进。";
+    model.goal = {
+      ...model.goal,
+      status: "blocked",
+      reason: { code: "blockedByModel", detail },
+    };
+    const { rerender } = render(<GoalStatusSurface />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "The agent reported that it cannot continue." }),
+    );
+    const reader = screen.getByRole<HTMLElement>("region", {
+      name: "The agent reported that it cannot continue.",
+    });
+    expect(reader.tabIndex).toBe(0);
+    expect(reader.textContent).toBe(detail);
+    act(() => reader.focus());
+
+    model.goal = {
+      ...model.goal,
+      reason: {
+        code: "runStartFailed",
+        detail: "The captured target was unavailable.\nFinal detail.",
+      },
+    };
+    rerender(<GoalStatusSurface />);
+
+    const currentReader = screen.getByRole("region", { name: "A new run could not be started." });
+    expect(currentReader).toBe(reader);
+    expect(currentReader.textContent).toBe("The captured target was unavailable.\nFinal detail.");
+    expect(document.activeElement).toBe(currentReader);
+    expect(model.resumeGoal).not.toHaveBeenCalled();
+
+    const explanation = screen.getByRole("button", { name: "A new run could not be started." });
+    fireEvent.click(explanation);
+    expect(currentReader.isConnected).toBe(true);
+    fireEvent.click(explanation);
+    expect(screen.getByRole("region", { name: "A new run could not be started." })).toBe(
+      currentReader,
+    );
   });
 
   it("keeps an old Goal explanation out of a replacement Session", () => {

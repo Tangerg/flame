@@ -114,6 +114,7 @@ export function Disclosure({
   open,
   defaultOpen,
   onOpenChange,
+  keepMounted,
   variant = "plain",
   actions,
   stickyHeader = false,
@@ -124,6 +125,7 @@ export function Disclosure({
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  keepMounted?: boolean;
   variant?: "plain" | "row";
   actions?: ReactNode;
   stickyHeader?: boolean;
@@ -256,6 +258,7 @@ export function Disclosure({
         {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
       </div>
       <CollapsiblePrimitive.Panel
+        keepMounted={keepMounted}
         {...stylex.props(
           styles.content,
           variant === "row" && styles.rowContent,

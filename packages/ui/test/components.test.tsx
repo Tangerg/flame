@@ -1060,6 +1060,31 @@ describe("shared controls", () => {
     await screen.findByText("Recorded evidence");
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
   });
+  it("retains an opted-in disclosure reader outside the closed accessible scope", async () => {
+    render(
+      <Disclosure title="Read reason" defaultOpen keepMounted>
+        <ScrollRegion label="Recorded reason">
+          Complete recorded requirements
+        </ScrollRegion>
+      </Disclosure>,
+    );
+    const reader = screen.getByRole("region", { name: "Recorded reason" });
+    const trigger = screen.getByRole("button", { name: "Read reason" });
+
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("region", { name: "Recorded reason" }),
+      ).toBeNull();
+    });
+    expect(reader.isConnected).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole("region", { name: "Recorded reason" })).toBe(
+      reader,
+    );
+  });
   it("keeps checkbox changes at the controlled consumer", () => {
     const change = vi.fn();
     render(

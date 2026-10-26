@@ -5,7 +5,7 @@ import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { Icon } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
-import { Button, Disclosure, IconButton, vocab } from "@flame/ui";
+import { Button, Disclosure, IconButton, ScrollRegion, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
@@ -92,7 +92,6 @@ const gs = stylex.create({
   },
   reasonDetail: {
     maxHeight: "20vh",
-    overflow: "auto",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
   },
@@ -250,8 +249,14 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       {goal.reason && (
         <div data-slot="goal-stop-reason" {...stylex.props(gs.reason, vocab.muted)}>
           {goal.reason.detail ? (
-            <Disclosure title={t(GOAL_REASON_I18N[goal.reason.code].label)}>
-              <div {...stylex.props(gs.reasonDetail)}>{goal.reason.detail}</div>
+            <Disclosure title={t(GOAL_REASON_I18N[goal.reason.code].label)} keepMounted>
+              <ScrollRegion
+                label={t(GOAL_REASON_I18N[goal.reason.code].label)}
+                styles={gs.reasonDetail}
+                data-focus-inset=""
+              >
+                {goal.reason.detail}
+              </ScrollRegion>
             </Disclosure>
           ) : (
             <span>{t(GOAL_REASON_I18N[goal.reason.code].label)}</span>

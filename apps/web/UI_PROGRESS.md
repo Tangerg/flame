@@ -1,15 +1,17 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Loaded client-plugin errors now show their complete message, provide a named keyboard stack reader and report clipboard outcomes. Clearing transient errors returns to the list title; native reading/copy/clear/return and draft continuation qualify the change below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Goal stop reasons now have a named keyboard reader and retain their native reading position through disclosure close/reopen. Native reason/source/return, objective cancellation and draft continuation qualify the change below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/plugin-error-reading-1026`. Loaded-plugin error qualification uses
-frozen base `74026e0085b71e5f2be0652ea86b710b03db3dc7`; see Loaded client-plugin
-error reading below. Find refresh implementation
+is on `codex/goal-reason-reading-1026`. Goal stop-reason qualification uses frozen
+base `fac2a7db7c398a13779d044b3fd0f55ff767cce3`; see Goal stop-reason reading below.
+Loaded-plugin error implementation `1d8bfdd8084171aac8a330f18e1df840fee0229c` and
+receipt `fac2a7db7c398a13779d044b3fd0f55ff767cce3` remain published and retired.
+Find refresh implementation
 `ca19ef60a53d962f0f9c11fe8f489b662b71568c` and receipt
 `74026e0085b71e5f2be0652ea86b710b03db3dc7` remain published and retired.
 Selected-task implementation `c51f370baef7e2d3ebd08dbfba5e9abde9af1c40`
@@ -488,6 +490,145 @@ evidence. The actual Wails observations below establish that behavior.
 
 Continue with another observed conversation → material → return path on current
 main; do not turn this completed rail/read task into an unrelated redesign.
+
+### Goal stop-reason reading
+
+The inspected task is read the reply and retained draft → expand the stopped
+Goal's reason → read every recorded requirement → close/reopen → inspect the
+reply's source file → return to its source → inspect/cancel the objective editor
+→ continue the original draft. Goal lifecycle actions, status, elapsed age and
+editor command semantics retain their existing owners. No business command is
+submitted by native qualification.
+
+Frozen `fac2a7db7c398a13779d044b3fd0f55ff767cce3` actual Wails shows a **180 px**
+reason viewport over **1,580 px** of text, with `tabIndex=-1` and no named region.
+Tab goes directly from its disclosure to Composer; End leaves the reason at zero.
+Native wheel reaches **1,400 px** and reveals the final requirement. This is a
+confirmed keyboard/pointer task difference. The first named-reader candidate
+then exposes the separate lifetime gap: closing/reopening resets its native
+wheel position **899 → 0 px** because Disclosure unmounts its body.
+
+`apps/web/src/features/goal/ui/GoalStatusSurface.tsx:252` now uses the existing
+`ScrollRegion` and the reason code's existing translated title. It preserves the
+original text, newlines, wrapping, 20vh cap and subdued supporting role. The
+shared component owns overflow, keyboard entry and the inset focus indicator;
+the redundant local overflow declaration is removed. The existing Disclosure
+opts into `keepMounted`, which `packages/ui/src/disclosure.tsx:261` passes to its
+Base UI Panel. Other consumers retain default lazy mounting. There is no manual
+scroll cache, new focus state, effect, timer, listener, theme or string catalog.
+Hidden content leaves the primitive's keyboard and accessible scope while the
+same DOM reader preserves native position on reopen. Existing Goal/Session
+generation retirement still ends the old task.
+
+Recon follows AGENTS.md, PROJECT_RULES.md, DEVELOPMENT.md and the Web/Desktop,
+shared UI and visual READMEs. Implementation retains React, Base UI, StyleX,
+existing semantic tokens and the established Goal tray. All six better-interface
+owner skills were loaded. Fresh read-only HeroUI Disclosure separates its trigger
+and content; Arc ScrollArea names a focusable viewport. ZCode ErrorBoundary
+informs readable cause/diagnostic grouping without moving recovery offscreen;
+its raw stack is not keyboard proof. Installed Base UI's `keepMounted`/hidden
+contract supplies the actual shared lifetime. The [Radix Collapsible reference](https://www.radix-ui.com/primitives/docs/components/collapsible)
+supports explicit expansion; it does not prove scrolling a descendant in Flame.
+Existing ChatGPT and Ace studies retain their recorded boundaries. Both Ace case
+pages reopen; the Alpaca image fetch fails, and no fresh image-ranking or
+award-completion claim is made.
+
+| Domain        | Inspected evidence                                                                                           | Scoped result and limit                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Accessibility | Named reason reader; native Tab/Home/End/Page Down, closed-content Tab exclusion, source and editor returns  | Keyboard gap resolved; AX and visible rings inspected, VoiceOver speech not verified          |
+| Layout        | Existing Goal/Composer tray, 20vh reader, 1440 × 900 and native half-window/200% tasks                       | Explanation and actions remain reachable; fresh 320 px viewport not qualified                 |
+| Writing       | Existing localized status, reason, source, objective and Cancel vocabulary                                   | No new copy; displayed reason remains authoritative                                           |
+| Typography    | Original whitespace/indentation/CJK and long path at 14/18 px with 200% reading                              | Preserved in the exercised themes and constraints                                             |
+| Colors        | Actual reason #4c4c4c on #f5f5f5 and #a3a3a3 on #0f0f0f; native Orange/blue/purple rings                     | Measured text ratios 7.87:1 and 7.59:1; warm scene inspected visually, no new all-token claim |
+| UI            | Explicit inline disclosure, retained reader, hidden-content exclusion, source return and editor cancellation | Complete native tasks pass, including observer-free repeat; no new motion                     |
+
+#### Resolved findings
+
+| Severity | Domain        | Location                                                          | Before                                                    | After                                                       | Why                                                                                  |
+| -------- | ------------- | ----------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| HIGH     | Accessibility | `apps/web/src/features/goal/ui/GoalStatusSurface.tsx:253`         | Long stop reason scrolls only through a pointer path      | Existing named keyboard reader reaches the complete reason  | A keyboard user must reach the same requirements before deciding to continue (2.1.1) |
+| MEDIUM   | UI            | `packages/ui/src/disclosure.tsx:261`; `GoalStatusSurface.tsx:252` | Close removes the sustained reader and loses its position | This caller opts into the primitive's retained, hidden body | Preserve local reading continuity without creating a second position owner           |
+
+#### Verification
+
+- Unchanged Goal baseline passes **1 file / 26 tests**. The added named-reader
+  regression fails against that source (**1 fail / 26 pass**). It checks literal
+  whitespace, keyboard entry, current-reason naming and focus through an accepted
+  explanation update. The final case also retains the reader through close/open.
+  Shared coverage checks retained DOM, closed accessible exclusion and the same
+  reader on reopen; the existing default-lazy case remains intact.
+- The initial retained-body run passes **72** shared component cases but fails
+  **1 / 159** Web cases: its old text query assumes closed content is absent from
+  the DOM. Since retention is the intentional contract change, that assertion now
+  checks the closed reader's accessible absence. Native Tab independently proves
+  its exclusion. The final affected Web run passes **9 files / 159 tests**.
+- Final `npm run check --workspace @flame/ui` passes build, source/test typechecks,
+  lint, formatting, **8 files / 129 tests**, and the independent packed UI/icons
+  consumer. All **16** selected Web gates and serial `make check-native` pass
+  after the last product edit (**52.99 s**); native includes ordinary Web staging
+  and Desktop test/vet/build. Both final private asset builds pass. Existing
+  linker, loader and chunk warnings remain non-failing. The earlier named-reader
+  native build/check success does not substitute for this final shared check.
+- Final EN/light/14 px/Flame Orange/full motion: one Tab enters the reason.
+  Page Down reaches **144 px**, retained through close/reopen. End reaches
+  **1,408 px**, revealing the last recorded requirement. Close hides the body
+  from AX; native Tab reaches the original Composer, and reopen retains that end.
+  Source `store.go:4` → file → Escape restores the exact source action and reason
+  position. Objective editor → Cancel restores Edit goal and that reason position.
+  The original draft continues as
+  `Continue after reading why the goal stopped. — continued`.
+- Final ZH/dark/18 px/custom #5191ff/motion off: at Actual Size the reader is
+  **180 / 2,088 px** high and **552 / 552 px** wide. Native Left placement and
+  twenty Zoom In actions give **561 × 475 CSS px / 200%**. The test-only fixture
+  navigation is explicitly collapsed; its earlier expanded strip is not product
+  viewport evidence. The actual product reader is **95 / 2,114 px** high and
+  **471 / 471 px** wide; document width equals **561 px**. End reaches **2,019 px**.
+  Home and native wheel establish a **475 px** position, retained through
+  close/Tab-to-Composer/reopen and full-width source-file/Escape return. Objective
+  cancellation also preserves it. The same draft continues as
+  `阅读目标停止原因后继续这段草稿。 已核对。`.
+- Independent clean DE/18 px/warm #eee7db/purple #7f52ff/motion off omits the
+  passive observer. Native pixels/AX repeat End to the visible last requirement,
+  close/Tab-to-Composer/reopen at that last requirement, then half-window/200%
+  reading with the longer localized disclosure, full-width source/Escape return,
+  objective cancellation and continued draft
+  `Nach dem Lesen des Stoppgrunds weiterschreiben. Geprüft.`. This is independent
+  interaction/pixel evidence, not DOM geometry measurement. Both zoomed apps
+  restore Actual Size; all apps exit through native Quit.
+
+Private captured Goal input passes through production `runtimeGoalMaterial` and
+the existing accepted shared-view refresh boundary inside the canonical workspace
+fixture. It adds no alternative Goal store or UI lifecycle. The passive observer
+only reports current geometry, focus and normalized sRGB colors. Kept hidden
+readers report zero layout dimensions while closed; only reopened measurements
+establish retained position. No production input, scroll or focus implementation
+is instrumented or replaced. Native goal Clear/Resume/Save, live Runtime reason
+events, provider execution, VoiceOver speech, OS IME, RTL, other-platform GUI and
+a fresh 320 px viewport remain not verified. Browser visual suites, performance
+benchmarks, unchanged broad Runtime/CLI suites, Claude CLI and subagents do not run.
+No protocol, persisted-data or external-consumer migration is required; the
+optional shared prop is additive and all other Disclosure callers retain their
+prior mounting contract.
+
+| Goal CHECK        | Scoped result                                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| Typography        | Complete recorded whitespace and long paths read at 14/18 px and native 200%                       |
+| Whitespace        | Existing tray and token spacing remain; the shared reader adds its standard reading inset          |
+| Visual hierarchy  | Goal identity/actions, concise reason trigger and supporting detail retain distinct roles          |
+| Color             | Existing semantic roles, measured reason-text pairs and visible Orange/custom focus remain         |
+| Motion            | Full/off-motion tasks pass; primitive expansion remains the only motion owner                      |
+| Micro-interaction | Keyboard reading, close/reopen position, closed Tab exclusion, source return and cancellation pass |
+| Responsive        | Native half-window/200% reading retains the complete task; no fresh 320 px claim                   |
+| Originality       | Approved Flame tray/brand and quiet reading vocabulary remain; no decorative template added        |
+
+**Verdict: Approve for the inspected flow and recorded states.** Both findings
+are resolved. This remains **progress**, not whole-product or award-tier
+completion. Accepted **5,784 non-Markdown inputs** have SHA-256
+`269a29cd1fe97956d3f986416fb1dea4a0b5dc305b9b10732fcd79acec207f12`;
+**1,196** final compiled assets, **11** product ESM resources and **three** fresh
+read-only references are frozen. Publication and exact retirement remain to be
+recorded below. Continue from a fresh complete reading/Dock task; do not reopen
+the qualified Goal rail or reason flow without a new finding.
 
 ## Reference products and example images
 
