@@ -126,15 +126,63 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	}
 }
 
+type userWire struct {
+	Login string `json:"login"`
+}
+
+func author(user *userWire) string {
+	if user == nil {
+		return ""
+	}
+	return user.Login
+}
+
+func pagination(page int64, limit int) url.Values {
+	return url.Values{"page": {strconv.FormatInt(page, 10)}, "per_page": {strconv.Itoa(limit)}}
+}
+
+type page[T any] struct {
+	rows []T
+	next *int64
+}
+
+func admitRows[W, R any](rows []W, limit int, admit func(W) (R, error)) ([]R, error) {
+	if rows == nil || len(rows) > limit {
+		return nil, errors.New("github: page must be an array within the requested limit")
+	}
+	result := make([]R, len(rows))
+	for i, row := range rows {
+		var err error
+		result[i], err = admit(row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func readPage[W, R any](ctx context.Context, c *connector, path string, parameters url.Values, current int64, limit int, admit func(W) (R, error)) (page[R], error) {
+	return query(ctx, c, path, parameters, func(result response) (page[R], error) {
+		var wire []W
+		if err := json.Unmarshal(result.body, &wire); err != nil {
+			return page[R]{}, err
+		}
+		rows, err := admitRows(wire, limit, admit)
+		if err != nil {
+			return page[R]{}, err
+		}
+		next, err := nextPage(result.links, current)
+		return page[R]{rows: rows, next: next}, err
+	})
+}
+
 type issueWire struct {
-	Number int64     `json:"number"`
-	Title  string    `json:"title"`
-	Body   *string   `json:"body"`
-	State  rpc.State `json:"state"`
-	URL    string    `json:"html_url"`
-	User   *struct {
-		Login string `json:"login"`
-	} `json:"user"`
+	Number      int64     `json:"number"`
+	Title       string    `json:"title"`
+	Body        *string   `json:"body"`
+	State       rpc.State `json:"state"`
+	URL         string    `json:"html_url"`
+	User        *userWire `json:"user"`
 	PullRequest *struct{} `json:"pull_request"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -143,12 +191,9 @@ func (wire issueWire) admit(repository repository) (rpc.Issue, error) {
 	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
 		return rpc.Issue{}, errors.New("github: invalid issue representation")
 	}
-	result := rpc.Issue{Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
+	result := rpc.Issue{Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
 	if wire.Body != nil {
 		result.Body = *wire.Body
-	}
-	if wire.User != nil {
-		result.Author = wire.User.Login
 	}
 	return result, nil
 }
@@ -160,32 +205,8 @@ func (c *connector) listIssues(ctx context.Context, input rpc.ListInput) (rpc.Is
 	}
 	parameters := url.Values{"state": {string(input.State)}, "page": {strconv.FormatInt(input.Page, 10)}, "per_page": {strconv.Itoa(input.Limit)}, "sort": {"updated"}, "direction": {"desc"}}
 	path := repository.apiPath() + "/issues"
-	return query(ctx, c, path, parameters, func(result response) (rpc.IssuePage, error) {
-		var wire []issueWire
-		if err := json.Unmarshal(result.body, &wire); err != nil {
-			return rpc.IssuePage{}, err
-		}
-		if wire == nil {
-			return rpc.IssuePage{}, errors.New("github: issue page must be an array")
-		}
-		if len(wire) > input.Limit {
-			return rpc.IssuePage{}, errors.New("github: issue page exceeds the requested limit")
-		}
-		page := rpc.IssuePage{Issues: make([]rpc.Issue, len(wire))}
-		for i, row := range wire {
-			var err error
-			page.Issues[i], err = row.admit(repository)
-			if err != nil {
-				return rpc.IssuePage{}, err
-			}
-		}
-		next, err := nextPage(result.links, input.Page)
-		if err != nil {
-			return rpc.IssuePage{}, err
-		}
-		page.NextPage = next
-		return page, nil
-	})
+	page, err := readPage(ctx, c, path, parameters, input.Page, input.Limit, func(wire issueWire) (rpc.Issue, error) { return wire.admit(repository) })
+	return rpc.IssuePage{Issues: page.rows, NextPage: page.next}, err
 }
 
 func nextPage(header string, current int64) (*int64, error) {

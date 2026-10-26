@@ -35,6 +35,24 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 			return upstream(200, "["+issueJSON+"]", http.Header{"Link": {`<https://api.github.com/repositories/123/issues?page=2&per_page=2>; rel="next", <https://api.github.com/repositories/123/issues?page=9&per_page=2>; rel="last"`}}), nil
 		case "/repos/owner/repo/issues/42":
 			return upstream(200, issueJSON, nil), nil
+		case "/repos/owner/repo/pulls":
+			return upstream(200, "["+pullJSON+"]", nil), nil
+		case "/repos/owner/repo/pulls/42":
+			return upstream(200, pullJSON, nil), nil
+		case "/repos/owner/repo/pulls/42/files":
+			return upstream(200, "["+changedFileJSON+"]", nil), nil
+		case "/repos/owner/repo/issues/42/comments":
+			return upstream(200, "["+commentJSON+"]", nil), nil
+		case "/repos/owner/repo/pulls/42/reviews":
+			return upstream(200, "["+reviewJSON+"]", nil), nil
+		case "/repos/owner/repo/pulls/42/comments":
+			return upstream(200, "["+reviewCommentJSON+"]", nil), nil
+		case "/repos/owner/repo/commits/head-sha/check-runs":
+			return upstream(200, `{"total_count":1,"check_runs":[`+checkJSON+"]}", nil), nil
+		case "/repos/owner/repo/check-runs/44/annotations":
+			return upstream(200, "["+annotationJSON+"]", nil), nil
+		case "/repos/owner/repo/commits/head-sha/statuses":
+			return upstream(200, "["+statusJSON+"]", nil), nil
 		case "/repos/owner/repo/contents/README.md":
 			encoded, err := json.Marshal(map[string]any{"type": "file", "path": "README.md", "sha": "sha", "html_url": "https://github.com/owner/repo/blob/main/README.md", "size": 4, "encoding": "base64", "content": base64.StdEncoding.EncodeToString([]byte("text"))})
 			if err != nil {
@@ -83,6 +101,15 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		{contracts.List.Name(), "list_issues", rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 2}},
 		{contracts.Issue.Name(), "get_issue", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
 		{contracts.File.Name(), "read_file", rpc.FileInput{Repository: "owner/repo", Path: "README.md"}},
+		{contracts.Pulls.Name(), "list_pull_requests", rpc.PullListInput{ListInput: rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 10}}},
+		{contracts.Pull.Name(), "get_pull_request", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
+		{contracts.PullFiles.Name(), "list_pull_request_files", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Comments.Name(), "list_issue_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Reviews.Name(), "list_pull_request_reviews", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.ReviewComments.Name(), "list_pull_request_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Checks.Name(), "list_check_runs", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
+		{contracts.Annotations.Name(), "list_check_annotations", rpc.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
+		{contracts.Statuses.Name(), "list_commit_statuses", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
 	} {
 		input, err := jsonvalue.Encode(test.input)
 		if err != nil {

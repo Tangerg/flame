@@ -8,12 +8,84 @@
     "output": "schema.json#/$defs/Method_flame_2egithub_2fget_2dissue_2ev1Output"
   },
   {
+    "name": "flame.github/get-pull-request.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read a pull request's head/base SHAs, draft/merge state and change counts. A missing mergeable value means GitHub has not computed it. Use the head SHA for subsequent commit checks.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-check-annotations.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of line-level diagnostics for a check run ID returned by list_check_runs. Preserves paths, ranges, severity and original diagnostic text.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-check-runs.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of latest check runs with upstream status, conclusion and diagnostic text. GitHub limits this endpoint to the most recent 1000 check suites. Use the exact PR head SHA, list_check_annotations for line diagnostics, and list_commit_statuses for external CI.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-commit-statuses.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of commit statuses, including external CI that is not represented by check runs. Use an exact PR head SHA when assessing a revision.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-issue-comments.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of discussion comments on an issue or pull request. Inline code review comments are returned by list_pull_request_comments.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Output"
+  },
+  {
     "name": "flame.github/list-issues.v1",
     "kind": "query",
     "target": "installation",
     "description": "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.",
     "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissues_2ev1Input",
     "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dissues_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-pull-request-comments.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of inline PR review comments with diff context, commit identity, reply parent and available line positions. Missing current positions can indicate outdated comments.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-pull-request-files.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one live page of PR file changes and available patches. An absent patch is not an empty diff. GitHub exposes at most 3000 files; limitReached means the list may be incomplete. Read repository files at an exact PR head/base SHA when needed.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-pull-request-reviews.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one page of PR reviews with their upstream state, commit and submitted time, including pending and dismissed reviews.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Output"
+  },
+  {
+    "name": "flame.github/list-pull-requests.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List one page of pull requests with head/base refs and SHAs, optionally filtered by base or owner:branch head.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output"
   },
   {
     "name": "flame.github/read-file.v1",

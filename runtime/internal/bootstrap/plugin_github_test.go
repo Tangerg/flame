@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -61,7 +62,10 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 		t.Fatalf("GitHub secret declaration is invalid: %+v", installed.Selected)
 	}
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "github"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	ready := func(tools []protocol.MCPTool) bool {
+		return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "get_issue" })
+	}
+	r.poMCPTools(server, ready)
 	configure := func(value *string, key string) *protocol.PluginInstallation {
 		t.Helper()
 		change := protocol.PluginValueChange{Type: protocol.PluginValueClear}
@@ -76,7 +80,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if err != nil || strings.Contains(string(encoded), token) || configured.InputStates["token"].Type != protocol.PluginInputConfigured {
 		t.Fatalf("secret inspection leaked or lost presence: %s, %v", encoded, err)
 	}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(server, ready)
 	empty := ""
 	configure(&empty, "configure-empty-github-token")
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerFailed)
@@ -84,7 +88,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if cleared.InputStates["token"].Type != protocol.PluginInputUnset {
 		t.Fatal("clearing the credential did not restore explicit public access")
 	}
-	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	tools := r.poMCPTools(server, ready)
 	for _, tool := range tools {
 		if tool.Name == "get_issue" {
 			name.Store(tool.ModelName)
