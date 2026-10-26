@@ -25,9 +25,28 @@ The native Taskfile delegates this shared graph to the root and owns platform
 compilation, icon packaging, bundle metadata and signing steps. Packaging inputs
 under `build/` are source. Deliveries are under `out/desktop/<platform>`.
 
-The existing hand-written native bridge validates incoming/outgoing values with
-Zod and Go contracts. Keep this as one bridge implementation. Browser uses its
-own host adapter; selecting a remote Runtime does not grant native filesystem
+The actual exported `DesktopHost` receiver methods own the native IPC entrance.
+`internal/bridge` owns its pure wire types, typed notification constants and value
+refinements. `cmd/bridgegen` reads those declarations without compiling Wails,
+reuses the public Go SDK's Schema/TypeScript renderer and emits the Web method,
+type and Zod projection. Unsupported types or schema keywords fail generation.
+The notification permission projection is generated in Web foundation so Browser
+does not depend on the native platform adapter.
+
+From `apps/desktop`, regenerate the bridge with:
+
+```sh
+go run ./cmd/bridgegen --source . --receiver DesktopHost \
+  --out ../web/src/platform/desktop.generated.ts \
+  --foundation ../web/src/foundation/notificationAuthorization.ts
+go test ./cmd/bridgegen ./internal/bridge
+```
+
+These pure generator checks run on Linux as well as macOS. Full service binding
+and native I/O still require `make check-native` on macOS. The Web adapter owns
+bootstrap caching, endpoint normalization, cancellation translation and unmeasured
+window geometry; the generator does not replace those behaviors. Browser uses its
+own host adapter. Selecting a remote Runtime does not grant native filesystem
 identity to server paths. Runtime owns provider credentials and execution.
 
 Vite owns frontend HMR at the one `VITE_PORT` selected by the Taskfile. Wails

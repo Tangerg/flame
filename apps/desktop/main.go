@@ -5,6 +5,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 
+	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -20,8 +21,8 @@ func main() {
 	host.usePathOpener(app.Browser)
 	host.useNotifications(wailsNotifications{
 		service: notifications.New(),
-		opened: func(target string) {
-			app.Event.Emit(notificationOpenedEvent, target)
+		opened: func(target bridge.NotificationTarget) {
+			app.Event.Emit(bridge.NotificationOpenedEvent, target)
 		},
 	})
 	host.useRevealer(func() {

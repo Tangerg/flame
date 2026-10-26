@@ -14,25 +14,9 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
+	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
-
-type LocalRuntimeConnection struct {
-	Endpoint   string `json:"endpoint"`
-	LocalToken string `json:"localToken,omitempty"`
-}
-
-type DesktopBootstrap struct {
-	LocalRuntime LocalRuntimeConnection `json:"localRuntime"`
-}
-
-// Geometry uses CSS pixels from the window top-left. Measured zeroes mean fullscreen;
-// Measured false means the platform supplied no geometry, so CSS keeps its defaults.
-type WindowChrome struct {
-	ControlsCentreY   float64 `json:"controlsCentreY"`
-	ControlsInlineEnd float64 `json:"controlsInlineEnd"`
-	Measured          bool    `json:"measured"`
-}
 
 type nativeWindow interface {
 	NativeWindow() unsafe.Pointer
@@ -61,7 +45,7 @@ type pathOpener interface {
 }
 
 // Every exported method becomes a Wails IPC entry point. Keep composition setters
-// unexported; TestDesktopHostBinds checks the exposed method set.
+// unexported; bridgegen derives its contract from these actual declarations.
 type DesktopHost struct {
 	localRuntimeEndpoint   string
 	localTokenPath         string
@@ -167,15 +151,15 @@ func defaultDesktopHost() (*DesktopHost, error) {
 }
 
 // Fullscreen transitions rebuild the native titlebar, so cached geometry would be stale.
-func (d *DesktopHost) WindowChrome() WindowChrome {
+func (d *DesktopHost) WindowChrome() bridge.WindowChrome {
 	if d.window == nil {
-		return WindowChrome{}
+		return bridge.WindowChrome{}
 	}
 	controlsCentreY, controlsInlineEnd, measured := nativeWindowChrome(d.window.NativeWindow())
 	if !measured {
-		return WindowChrome{}
+		return bridge.WindowChrome{}
 	}
-	return WindowChrome{
+	return bridge.WindowChrome{
 		ControlsCentreY:   controlsCentreY,
 		ControlsInlineEnd: controlsInlineEnd,
 		Measured:          true,
@@ -307,13 +291,13 @@ func validateTextFilename(name string) error {
 	return nil
 }
 
-func (d *DesktopHost) Bootstrap() (DesktopBootstrap, error) {
+func (d *DesktopHost) Bootstrap() (bridge.DesktopBootstrap, error) {
 	token, err := d.localToken()
 	if err != nil {
-		return DesktopBootstrap{}, err
+		return bridge.DesktopBootstrap{}, err
 	}
-	return DesktopBootstrap{
-		LocalRuntime: LocalRuntimeConnection{Endpoint: d.localRuntimeEndpoint, LocalToken: token},
+	return bridge.DesktopBootstrap{
+		LocalRuntime: bridge.LocalRuntimeConnection{Endpoint: d.localRuntimeEndpoint, LocalToken: token},
 	}, nil
 }
 

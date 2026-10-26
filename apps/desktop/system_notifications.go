@@ -6,40 +6,16 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
-
-// notificationOpenedEvent carries the Target of a notification the user clicked back
-// to the frontend, which owns what opening it means.
-const notificationOpenedEvent = "desktop:notification-opened"
-
-// NotificationAuthorization is what the platform lets the app do, as the frontend
-// names it. The platform answers only "allowed" or "not allowed", so before a request
-// "not allowed" is reported as not yet decided, and after a refused request as denied.
-type NotificationAuthorization string
-
-const (
-	NotificationsUnsupported NotificationAuthorization = "unsupported"
-	NotificationsUndecided   NotificationAuthorization = "default"
-	NotificationsGranted     NotificationAuthorization = "granted"
-	NotificationsDenied      NotificationAuthorization = "denied"
-)
-
-// DesktopNotification is one message for the platform notification centre. Target
-// is opaque to the host: it comes back unchanged when the user clicks the message.
-type DesktopNotification struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Body   string `json:"body,omitempty"`
-	Target string `json:"target,omitempty"`
-}
 
 type systemNotifications interface {
 	start(ctx context.Context) error
 	authorized() (bool, error)
 	requestAuthorization() (bool, error)
-	send(notification DesktopNotification) error
+	send(notification bridge.DesktopNotification) error
 }
 
 // wailsNotifications adapts Wails' native notification service. It is started by
@@ -47,7 +23,7 @@ type systemNotifications interface {
 // own methods become IPC entry points.
 type wailsNotifications struct {
 	service *notifications.NotificationService
-	opened  func(target string)
+	opened  func(target bridge.NotificationTarget)
 }
 
 func (w wailsNotifications) start(ctx context.Context) error {
@@ -59,8 +35,10 @@ func (w wailsNotifications) start(ctx context.Context) error {
 		if result.Response.ActionIdentifier != notifications.DefaultActionIdentifier {
 			return
 		}
-		if target, ok := result.Response.UserInfo["target"].(string); ok && target != "" {
-			w.opened(target)
+		if target, ok := result.Response.UserInfo["target"].(string); ok {
+			if admitted, err := bridge.NewNotificationTarget(target); err == nil {
+				w.opened(admitted)
+			}
 		}
 	})
 	return w.service.ServiceStartup(ctx, application.ServiceOptions{})
@@ -74,7 +52,7 @@ func (w wailsNotifications) requestAuthorization() (bool, error) {
 	return w.service.RequestNotificationAuthorization()
 }
 
-func (w wailsNotifications) send(notification DesktopNotification) error {
+func (w wailsNotifications) send(notification bridge.DesktopNotification) error {
 	return w.service.SendNotification(notifications.NotificationOptions{
 		ID:    notification.ID,
 		Title: notification.Title,
@@ -102,42 +80,42 @@ func (d *DesktopHost) ServiceStartup(ctx context.Context, _ application.ServiceO
 	return nil
 }
 
-func (d *DesktopHost) NotificationAuthorization() (NotificationAuthorization, error) {
+func (d *DesktopHost) NotificationAuthorization() (bridge.NotificationAuthorization, error) {
 	if !d.notificationsReady.Load() {
-		return NotificationsUnsupported, nil
+		return bridge.NotificationsUnsupported, nil
 	}
 	allowed, err := d.notifications.authorized()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: check notification authorization: %w", err)
 	}
 	if allowed {
-		return NotificationsGranted, nil
+		return bridge.NotificationsGranted, nil
 	}
-	return NotificationsUndecided, nil
+	return bridge.NotificationsUndecided, nil
 }
 
 // RequestNotificationAuthorization asks the platform once; a refusal the user made
 // earlier comes back as denied without a prompt.
-func (d *DesktopHost) RequestNotificationAuthorization() (NotificationAuthorization, error) {
+func (d *DesktopHost) RequestNotificationAuthorization() (bridge.NotificationAuthorization, error) {
 	if !d.notificationsReady.Load() {
-		return NotificationsUnsupported, nil
+		return bridge.NotificationsUnsupported, nil
 	}
 	allowed, err := d.notifications.requestAuthorization()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: request notification authorization: %w", err)
 	}
 	if allowed {
-		return NotificationsGranted, nil
+		return bridge.NotificationsGranted, nil
 	}
-	return NotificationsDenied, nil
+	return bridge.NotificationsDenied, nil
 }
 
-func (d *DesktopHost) SendNotification(notification DesktopNotification) error {
+func (d *DesktopHost) SendNotification(notification bridge.DesktopNotification) error {
 	if !d.notificationsReady.Load() {
 		return errors.New("desktop host: system notifications are unavailable")
 	}
-	if notification.ID == "" || notification.Title == "" {
-		return errors.New("desktop host: a notification needs an id and a title")
+	if err := bridge.ValidateNotification(notification); err != nil {
+		return fmt.Errorf("desktop host: notification: %w", err)
 	}
 	if err := d.notifications.send(notification); err != nil {
 		return fmt.Errorf("desktop host: send notification: %w", err)
