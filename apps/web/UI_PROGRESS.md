@@ -12429,6 +12429,67 @@ Delivery: implementation `2d96c7a37699e0ef83489689ceda61e52a891871` is pushed
 to remote `main`. A fresh `ls-remote` matched that exact commit; the owned checkout
 was clean with zero unpushed commits. This in-place receipt adds no product change.
 
+### Native activation follow-up
+
+A bounded follow-up on local base
+`d5b2098274c818d022ff9ec62920b5dd7a046b7e` tests the hypothesis that
+activating a member without keyboard-focus transfer could bypass ToolGroup's
+existing engagement policy. The historical pointer observation elsewhere in this
+record is not assumed to establish that behavior in the current composition.
+
+The fresh four-file baseline passes **25 tests**. Two temporary synthetic cases
+then fail with seven existing ToolGroup tests passing: they dispatch click without
+focus delivery and settle the sibling. Native evidence does not reproduce that
+premise. Physical pointer activation and a separately observed indexed native
+activation both focus the member row. In the completed native route, the canonical
+item-completed event removes the running summary while the group, member, Result
+and member focus remain. The synthetic cases are removed rather than promoted to
+a reproduced defect; their exact diff is retained in the private evidence archive.
+All original tests and product sources remain byte-identical to the baseline.
+
+Actual Wails, English/light/14 px/Flame Orange/contrast 25/motion off, at
+**1440 × 900 CSS px**: original draft → automatically opened group → native member
+activation → sibling completion → Result remains open → wheel reading reaches
+the captured tail at **scrollTop 479** → original draft continuation → explicit
+parent closure all pass. The continued draft is exactly
+`Read while keeping the draft active. Continue with the same evidence.`.
+The passive observer records no window errors. Focus and pointer engagement retain
+the existing owner; there is no new pin, callback, handler or focus policy.
+
+The private input passes through the existing Runtime item adapter and Agent fold;
+its timer only supplies a later canonical item-completed fact. Its source is
+rendered as captured JSON, so this follow-up does not qualify file-envelope
+unwrapping or 54-row pagination. The initial thirty-second sample missed the
+activation window and is excluded. A physical-pointer sample qualifies focus
+transfer only; the separate native-activation sample observes the ninety-second
+completion and qualifies retention. The earlier capture named after-settle still
+shows a running sibling and is not used as post-completion evidence; only the
+capture/log following the recorded clock event establishes that transition.
+
+Read-only ZCode ToolLayout separates trigger updates from its automatic completion
+effect; its policy is not copied. HeroUI's actual Accordion stories establish
+trigger/panel anatomy, not this native lifecycle. Better-interface's evidence rule
+is the reason to retain the current implementation. No new full-domain visual,
+narrow/200%, Chinese, VoiceOver, OS IME, live Tool execution, browser-suite or
+performance qualification is claimed. The private native builds pass in **12.19 s**
+for the serial prerequisite/test/assets/host chain and **6.01 s** for the corrected
+clock host. The preceding supported product gates remain historical; unchanged
+source bytes do not justify rerunning or relabeling those gates as fresh results.
+
+All **six owned PIDs** are dead. The exact application is unregistered; three new
+output/cache roots, two bundle-specific Library entries and one bundle-temporary
+directory are removed. All **39 output-presence baselines**, four original files,
+six Library-presence baselines, **5,832 non-Markdown inputs**, eleven installed
+resources and three read-only references remain preserved. The private root is
+absent. In-memory archival round-trips **34 UTF-8 records / nine capture digests**;
+gzip SHA-256 is
+`88cf0f122d23c0a14aa4d41e5bf114e256c334d0c71aeb6b88382ed01407ffcd`.
+
+This is a local documentation-only qualification, not another ToolGroup repair
+or whole-product Goal CHECK acceptance. Continue with other material tasks. Revisit
+this hypothesis only with a current native or assistive activation that actually
+opens a member without focus delivery and then loses its content on settlement.
+
 ### Member disclosure and canonical narrative evidence
 
 `ToolGroupMember.tsx` now projects its existing `disclosable` / `disclosed`
