@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
@@ -18,21 +19,35 @@ import (
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
-// Captured execution remains in the private queue. Stable identities locate that
-// original capture after process loss without another route or result owner.
-func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command pluginsdk.Command[rpc.ItemInput]) (result app.RunReference, err error) {
+func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
+	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	if invocation.ID != command.ID {
+		return app.RunReference{}, errors.New("schedules: manual command differs from its calling owner")
+	}
+	input, err := command.RequestInput()
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	return captureManual(ctx, db, store, connect, manualCommand{id: command.ID, input: command.Input, admitted: input})
+}
+
+type manualCommand struct {
+	id       string
+	input    rpc.ItemInput
+	admitted jsonvalue.Value
+}
+
+// A logical caller and its private receipt command have distinct identities.
+// The queue retains both so recovery never guesses a Tool's command namespace.
+func captureManual(ctx context.Context, db *sql.DB, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
 	invocation, err := pluginsdk.InvocationFromContext(ctx)
 	if err != nil {
 		return result, err
 	}
-	if invocation.ID != command.ID {
-		return result, errors.New("schedules: manual command differs from its calling owner")
-	}
-	input, err := command.RequestInput()
-	if err != nil {
-		return result, err
-	}
-	identityInput, err := json.Marshal([2]string{invocation.Target.Reference, command.ID})
+	identityInput, err := json.Marshal([2]string{invocation.Target.Reference, command.id})
 	if err != nil {
 		return result, err
 	}
@@ -44,7 +59,7 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 	var original []byte
 	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		var err error
-		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, rpc.RunNow, command.ID, input, func(ctx context.Context) error {
+		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, rpc.RunNow, command.id, command.admitted, func(ctx context.Context) error {
 			_, err := pluginsdk.CallbackFromContext(ctx)
 			return err
 		})
@@ -58,9 +73,9 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 			captured, err = store.CapturedRun(ctx, runID)
 			return err
 		}
-		definition, err := store.Get(ctx, command.Input.ID)
+		definition, err := store.Get(ctx, command.input.ID)
 		if err == nil {
-			captured, err = definition.ManualRun(sessionID, runID, time.Now(), invocation)
+			captured, err = definition.ManualRun(command.id, sessionID, runID, time.Now(), invocation)
 		}
 		if err == nil {
 			return store.QueueManual(ctx, captured)
@@ -82,7 +97,7 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 	if prepared == nil {
 		return pluginsdk.DecodeReply[app.RunReference](original)
 	}
-	if captured.Invocation() != invocation || captured.ScheduleID() != command.Input.ID || captured.SessionID() != sessionID {
+	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != command.input.ID || captured.SessionID() != sessionID {
 		return result, errors.New("schedules: manual request differs from its original capture")
 	}
 	runs, close, err := connectRuntime(ctx, db, connect)

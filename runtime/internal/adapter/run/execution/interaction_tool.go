@@ -118,7 +118,17 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		if err != nil {
 			return toolcontract.Result{}, o.projectionFailure(err)
 		}
-		prepared = runs.ToolCallPrepared{Start: start, Context: checkpoint}
+		server, _, _ := proof.Tool.MCP()
+		installation, _ := server.Origin().Installation()
+		calling, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
+		if err != nil {
+			return toolcontract.Result{}, err
+		}
+		caller, err := toolset.CaptureToolCaller(o.inner, calling)
+		if err != nil {
+			return toolcontract.Result{}, err
+		}
+		prepared = runs.ToolCallPrepared{Start: start, Context: checkpoint, Caller: caller}
 	}
 	if err := o.session.commitFact(ctx, member, prepared); err != nil {
 		return toolcontract.Result{}, o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))

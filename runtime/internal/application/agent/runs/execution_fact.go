@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"slices"
 	"time"
 
@@ -194,6 +195,7 @@ type ToolCallPrepared struct {
 	executionFactBase
 	Start   ToolCallStarted
 	Context ExecutorCheckpoint
+	Caller  plugin.ToolCaller
 }
 
 type CompactionBoundary struct {

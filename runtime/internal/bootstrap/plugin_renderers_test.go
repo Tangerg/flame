@@ -18,14 +18,21 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-tool-component").(*protocol.PluginInstallation)
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 24 {
+	if len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("admission: %+v", installed.Selected)
 	}
 	var component protocol.PluginClientComponent
+	webBrowse := false
 	for _, value := range installed.Selected.Components {
+		if value.ID == "web-browse" && value.Selector != nil && value.Selector.Type == protocol.PluginRendererToolName && value.Selector.Name == "web_browse" {
+			webBrowse = true
+		}
 		if value.ID == "grep" {
 			component = value
 		}
+	}
+	if !webBrowse {
+		t.Fatal("captured web page continuation has no installed result renderer")
 	}
 	if component.Selector == nil || component.Selector.Type != protocol.PluginRendererToolName || component.Selector.Name != "grep" || component.Scope != "toolResult" || component.Placement != "toolResultRenderer" {
 		t.Fatalf("selector: %+v", component)

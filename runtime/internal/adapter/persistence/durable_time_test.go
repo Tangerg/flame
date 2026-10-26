@@ -97,7 +97,7 @@ func TestExecutionRecordsRejectUnrepresentableTimesBeforeWriting(t *testing.T) {
 			if err := newModelInvocationStore(db).StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "model_call", at, run.ModelConversation); err == nil {
 				t.Error("Model attempt with unrepresentable start time was written")
 			}
-			if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_call", "tool_item", at); err == nil {
+			if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_call", "tool_item", at, nil); err == nil {
 				t.Error("Tool attempt with unrepresentable start time was written")
 			}
 			if err := newChildRunStartReservationStore(db).Reserve(t.Context(), ChildRunStartReservationRecord{

@@ -3,6 +3,7 @@ package toolset
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -68,6 +69,30 @@ func (t identifiedTool) ToolRef() tool.Ref                       { return t.ref 
 func (t identifiedTool) SourceFingerprint() flameidentity.Digest { return t.fingerprint }
 
 type realizedSource interface{ SourceConfig() mcp.ServerConfig }
+
+func CaptureToolCaller(executable toolcontract.Tool, invocation extension.Invocation) (plugin.ToolCaller, error) {
+	ref, err := Identify(executable)
+	if err != nil {
+		return plugin.ToolCaller{}, err
+	}
+	source, found, err := toolcontract.Capability[realizedSource](executable)
+	if err != nil {
+		return plugin.ToolCaller{}, err
+	}
+	if !found {
+		return plugin.ToolCaller{}, fmt.Errorf("toolset: installed Tool has no captured source")
+	}
+	config := source.SourceConfig()
+	server, _, mcp := ref.MCP()
+	if !mcp || server != config.ID() {
+		return plugin.ToolCaller{}, fmt.Errorf("toolset: installed Tool differs from its captured server")
+	}
+	release, authority, installed := config.Source.Release()
+	if !installed {
+		return plugin.ToolCaller{}, fmt.Errorf("toolset: Tool has no installed caller")
+	}
+	return plugin.NewToolCaller(plugin.ToolCallerSnapshot{Invocation: invocation, Tool: ref, Release: release, Authority: authority})
+}
 
 // InstallationDependency reports the installation release an executable realizes.
 // The release comes from the executable's own connection configuration, never

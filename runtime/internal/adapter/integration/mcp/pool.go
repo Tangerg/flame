@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -31,13 +30,17 @@ var callbackPayloadLimits = pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, M
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
-	commands  *plugins.Commands
+	commands  invocationRestorer
 	registry  sourceRegistry
 	inner     *connections
 	prepare   ToolPreparation
 	publish   invalidation.Publish
 	lifetime  context.Context
 	callbacks *pluginsdk.Callbacks
+}
+
+type invocationRestorer interface {
+	RestoreInvocation(context.Context, extension.Invocation) (context.Context, error)
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -51,7 +54,7 @@ func Open(
 	callbacks *pluginsdk.Callbacks,
 	prepare ToolPreparation,
 	publish invalidation.Publish,
-	commands *plugins.Commands,
+	commands invocationRestorer,
 ) (*Pool, error) {
 	if lo.IsNil(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
@@ -180,7 +183,7 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 				var ref pluginsdk.CallbackRef
 				var closeRPC func()
 				if background {
-					if p.commands == nil {
+					if lo.IsNil(p.commands) {
 						return errors.New("mcp: background role requires original invocation routing")
 					}
 					ref, closeRPC, err = p.callbacks.OpenRPCWithInvocation(calling, session, limits, func(ctx context.Context, invocation extension.Invocation) (context.Context, error) {

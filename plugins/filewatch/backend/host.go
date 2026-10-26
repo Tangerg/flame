@@ -53,7 +53,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 		return err
 	}
 	start := protocol.StartRunRequest{
-		NewSession: &protocol.RunSessionOpening{SessionID: capture.SessionID, RunID: capture.RunID, Title: capture.Trigger.Title, Workspace: protocol.WorkspaceRef{Path: capture.Trigger.Workspace}},
+		NewSession: &protocol.RunSessionOpening{SessionID: capture.SessionID, RunID: capture.RunID, Title: capture.Trigger.Title, Workspace: &protocol.WorkspaceRef{Path: capture.Trigger.Workspace}},
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: input}},
 		Provider:   capture.Trigger.Provider, Model: capture.Trigger.Model, ReasoningEffort: capture.Trigger.ReasoningEffort,
 	}

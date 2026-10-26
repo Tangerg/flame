@@ -23,7 +23,7 @@ func TestInvocationJournalsDistinguishEpochSettlementFromNoSettlement(t *testing
 	if err := models.StartModelInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_model", startedAt, rundomain.ModelConversation); err != nil {
 		t.Fatal(err)
 	}
-	if err := tools.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_tool", "item_tool", startedAt); err != nil {
+	if err := tools.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "call_tool", "item_tool", startedAt, nil); err != nil {
 		t.Fatal(err)
 	}
 	reader, err := NewModelInvocationReader(models)

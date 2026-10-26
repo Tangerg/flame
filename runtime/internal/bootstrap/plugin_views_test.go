@@ -225,7 +225,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	if err != nil || readErr != nil || string(body) != string(authored) {
 		t.Fatalf("schedule component bytes: %v, %v", err, readErr)
 	}
-	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, scheduleToolsReady)
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
 		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
 	}

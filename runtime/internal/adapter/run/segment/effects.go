@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -130,6 +131,7 @@ type toolInvocationJournal interface {
 		ctx context.Context,
 		sessionID, runID, segmentID, callID, itemID string,
 		startedAt time.Time,
+		caller *plugin.ToolCaller,
 	) error
 	CompleteToolInvocation(
 		ctx context.Context,

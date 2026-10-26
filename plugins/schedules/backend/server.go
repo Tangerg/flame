@@ -47,7 +47,8 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	if err != nil {
 		return nil, err
 	}
-	modelTools, err := buildSchedules(toolCommands{coordinator: coordinator, db: db})
+	commands := toolCommands{coordinator: coordinator, db: db, store: store, connect: connect}
+	modelTools, err := buildSchedules(commands, commands.RunNow)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +141,8 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 type toolCommands struct {
 	coordinator *app.Coordinator
 	db          *sql.DB
+	store       store
+	connect     runConnector
 }
 
 func (t toolCommands) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
@@ -163,6 +166,38 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	}
 	return schedule.Restore(value)
 }
+func (t toolCommands) Update(ctx context.Context, input app.UpdateCommand) (schedule.Schedule, error) {
+	id, err := pluginsdk.ToolCommandID(ctx)
+	if err != nil {
+		return schedule.Schedule{}, decodeError(err)
+	}
+	admitted, err := pluginsdk.RequestInput(ctx)
+	if err != nil {
+		return schedule.Schedule{}, decodeError(err)
+	}
+	value, err := pluginstorage.Command(ctx, t.db, rpc.Update, id, input, admitted, classify, func(ctx context.Context, input app.UpdateCommand) (schedule.Snapshot, error) {
+		value, err := t.coordinator.Update(ctx, input)
+		return value.Snapshot(), err
+	})
+	if err != nil {
+		return schedule.Schedule{}, decodeError(err)
+	}
+	return schedule.Restore(value)
+}
+
+func (t toolCommands) RunNow(ctx context.Context, input rpc.ItemInput) (app.RunReference, error) {
+	id, err := pluginsdk.ToolCommandID(ctx)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	admitted, err := pluginsdk.RequestInput(ctx)
+	if err != nil {
+		return app.RunReference{}, err
+	}
+	value, err := captureManual(ctx, t.db, t.store, t.connect, manualCommand{id: id, input: input, admitted: admitted})
+	return value, decodeError(err)
+}
+
 func (t toolCommands) Delete(ctx context.Context, id string) error {
 	invocation, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {

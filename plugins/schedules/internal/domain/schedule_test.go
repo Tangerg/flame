@@ -218,7 +218,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	if request.Snapshot().OccurrenceID != occurrence.ID() || request.SessionID() != "ses_due" || request.RunID() != "run_due" {
 		t.Fatalf("durable RunRequest identities were not preserved")
 	}
-	manual, err := edited.ManualRun("ses_manual", "run_manual", dueAt, testInvocation())
+	manual, err := edited.ManualRun("manual-command", "ses_manual", "run_manual", dueAt, testInvocation())
 	if err != nil {
 		t.Fatalf("ManualRun: %v", err)
 	}

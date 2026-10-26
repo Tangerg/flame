@@ -227,6 +227,8 @@ func currentSchema() []string {
 			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
 		// Attempts retain their Segment identity across waits; the final Tool Item
 		// cannot reconstruct the execution intervals that preceded continuation.
+		`CREATE TABLE IF NOT EXISTS installed_tool_callers (call_id TEXT PRIMARY KEY, caller_json TEXT NOT NULL CHECK(json_valid(caller_json)))`,
+		`CREATE TRIGGER IF NOT EXISTS immutable_installed_tool_caller BEFORE UPDATE ON installed_tool_callers BEGIN SELECT RAISE(ABORT,'installed Tool caller is immutable'); END`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS tool_invocations (
 			call_id     TEXT    NOT NULL,
 			item_id     TEXT    NOT NULL,

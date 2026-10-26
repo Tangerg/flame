@@ -38,8 +38,8 @@ the mutation transaction. Former call-context input, completed-only, digest-only
 without mutation; retain the old directory separately and use a fresh directory
 for this breaking change.
 
-The optional public Tool-result query projects the original `create_schedule`
-receipt inside this backend, using the same normal output/failure codecs. Core
+The optional public Tool-result query projects original create, update, delete and
+manual Run Tool receipts inside this backend, using the same normal output/failure codecs. Core
 never decodes a private Schedule record. The query matches the original Tool name,
 logical identity and admitted input digest; edits and deletion do not rewrite its
 historical output. Unsupported Tool reads remain absent evidence. No replay or
@@ -116,6 +116,39 @@ human reads even when the reply fails. The notice carries no facts; the next que
 Use [the local build workflow](../README.md). Backend source lives in
 [`backend`](backend) in the independent first-party Go module. Verify from `plugins` with the workspace
 enabled: `go test ./...`, `go vet ./...`, and `go build ./...`.
+
+## Model management
+
+The installed tools expose `list_schedules`, `create_schedule`, `update_schedule`,
+`delete_schedule` and `run_schedule`. List/create/update return the current domain
+revision. Updates require that observed `expected_revision` and enter the same
+Coordinator/Domain edit as typed operations. Omitted fields are retained; explicit
+empty title/workspace or `enabled: false` are real patches. Pausing stops future
+cron claims without deleting identity or rewriting captured/accepted work. A
+revision conflict requires a fresh read and a new edit decision.
+
+Cron uses UTC unless the expression includes a `CRON_TZ=Area/City` prefix, such as
+`CRON_TZ=Asia/Shanghai 0 9 * * *`. The existing Domain parser owns this meaning,
+including supported standard descriptors. There is no separate timezone setting.
+
+`run_schedule` takes the same `ID` input as the public manual operation; use the
+exact `schedule_id` from a list result. It returns accepted `SessionID`/`RunID`,
+which do not claim execution has completed. Creation, edits, deletion and manual
+Runs retain original raw inputs and private receipts. Outcome queries do not
+reissue mutations or read a later definition to reconstruct a historical result.
+
+The private manual capture now retains `CommandID` separately from its original
+caller invocation: a Tool's receipt uses its qualified command identity while
+Runtime attribution keeps the actual logical caller. Restart resumes that exact
+command and captured execution, including after definition deletion. The previous
+manual table without this invariant is refused before mutation; retain that data
+directory separately and use a fresh Schedules directory. No implicit conversion
+or command-identity inference is performed.
+
+Runtime retains the installed model caller's original routing evidence before
+tool dispatch. A lost Core opening acknowledgement can therefore be reconciled
+after restart and deletion of the requesting Session, without changing the
+captured caller or replaying a confirmed opening.
 
 ## Public manual operation
 

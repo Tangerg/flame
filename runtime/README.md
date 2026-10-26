@@ -2,6 +2,26 @@
 
 Flame Runtime is the local product backend for Flame. It owns durable agent semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol.
 
+Atomic Session/Run openings admit an omitted workspace and use the same default
+workspace projection as ordinary Session creation. An explicitly supplied empty
+workspace remains invalid. Acceptance lookup retains the original omission and
+request identity; retries do not resolve a different default into that request.
+
+Installed model Tool dispatch commits its immutable caller/source alongside the
+original pre-call observation. `installed_tool_callers` retains only logical
+caller, installed Tool, release and source authority, independently of transient
+checkpoints and deleted Session/Run material. Background restoration checks that
+exact evidence against the authenticated current Actor; it cannot invent another
+caller, borrow a replacement release or resurrect a completed execution member.
+Published commands retain their existing routing owner. Neither record contains
+a plugin business result. The additional private routing schema requires a fresh
+Runtime data directory; incompatible directories are refused without conversion
+and must be retained separately.
+
+Post-segment maintenance captures its finishing Session and workspace explicitly.
+A new root opened by another Run's plugin call cannot inherit that caller's
+Session, Goal or physical-model invocation for detached title generation.
+
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
 Scope's public contracts own framework behavior. Tool discovery implements

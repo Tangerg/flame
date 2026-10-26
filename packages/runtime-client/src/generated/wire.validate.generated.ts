@@ -3478,7 +3478,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
-  }, ["runId", "sessionId", "title", "workspace"]),
+  }, ["runId", "sessionId", "title"]),
   RunStatus: enumOf(["running", "waiting", "finished"]),
   RunSummary: allOf([
     object({

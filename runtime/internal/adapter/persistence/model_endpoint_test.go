@@ -246,7 +246,7 @@ func TestEndpointAssociatesOnlyExplicitActiveModelOrToolOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_owner", "item_owner", draft.CreatedAt); err != nil {
+	if err := newToolInvocationStore(db).StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID, "tool_owner", "item_owner", draft.CreatedAt, nil); err != nil {
 		t.Fatal(err)
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original independent request")))

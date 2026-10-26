@@ -245,7 +245,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	}
 	toolStartedAt := createdAt.Add(3 * time.Second)
 	if startToolInvocationErr := toolInvocations.StartToolInvocation(
-		ctx, "session", "run_lost", "segment", "tool_call_lost", toolItem.ID(), toolStartedAt,
+		ctx, "session", "run_lost", "segment", "tool_call_lost", toolItem.ID(), toolStartedAt, nil,
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}

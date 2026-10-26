@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
@@ -14,8 +13,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
+	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -26,7 +25,20 @@ type createScheduleArgs struct {
 	Provider        string `json:"provider,omitempty" jsonschema_description:"Model provider id. Set together with model only when the user explicitly chose both; otherwise omit both."`
 	Model           string `json:"model,omitempty" jsonschema_description:"Model id. Set together with provider only when the user explicitly chose both; otherwise omit both."`
 	ReasoningEffort string `json:"reasoning_effort,omitempty" jsonschema_description:"Optional reasoning intensity supported by the selected model. Omit to use the provider default."`
-	Cron            string `json:"cron" jsonschema:"minLength=1" jsonschema_description:"Five-field cron expression: minute hour day-of-month month day-of-week."`
+	Cron            string `json:"cron" jsonschema:"minLength=1" jsonschema_description:"Five-field cron (minute hour day-of-month month day-of-week), evaluated in UTC unless prefixed with CRON_TZ=Area/City, for example CRON_TZ=Asia/Shanghai 0 9 * * *."`
+}
+
+type updateScheduleArgs struct {
+	ScheduleID       string  `json:"schedule_id" jsonschema:"minLength=1"`
+	ExpectedRevision uint64  `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"The revision returned by list_schedules, create_schedule or update_schedule. Refresh after a revision conflict."`
+	Title            *string `json:"title,omitzero"`
+	Instructions     *string `json:"instructions,omitzero"`
+	WorkspacePath    *string `json:"workspace_path,omitzero"`
+	Provider         *string `json:"provider,omitzero" jsonschema_description:"Set with model only when the user chooses an exact pair; set both to empty strings to restore Runtime defaults."`
+	Model            *string `json:"model,omitzero"`
+	ReasoningEffort  *string `json:"reasoning_effort,omitzero"`
+	Cron             *string `json:"cron,omitzero" jsonschema_description:"Five-field cron evaluated in UTC unless prefixed with CRON_TZ=Area/City."`
+	Enabled          *bool   `json:"enabled,omitzero" jsonschema_description:"False pauses future cron occurrences; already captured or accepted work is retained."`
 }
 
 type deleteScheduleArgs struct {
@@ -52,6 +64,7 @@ type scheduleDeleteResponse struct {
 
 type scheduleView struct {
 	ScheduleID      string `json:"schedule_id"`
+	Revision        uint64 `json:"revision"`
 	Title           string `json:"title,omitempty"`
 	Instructions    string `json:"instructions"`
 	WorkspacePath   string `json:"workspace_path,omitempty"`
@@ -68,20 +81,27 @@ type scheduleView struct {
 type scheduleManagement interface {
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
 	Create(ctx context.Context, draft scheduledomain.Draft) (scheduledomain.Schedule, error)
+	Update(ctx context.Context, command scheduleapp.UpdateCommand) (scheduledomain.Schedule, error)
 	Delete(ctx context.Context, id string) error
 }
 
-type scheduleManagementTools struct{ coordinator scheduleManagement }
+type scheduleManagementTools struct {
+	coordinator scheduleManagement
+	manual      func(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error)
+}
 
-func buildSchedules(coordinator scheduleManagement) ([]toolcontract.Tool, error) {
+func buildSchedules(coordinator scheduleManagement, manual func(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
 	if lo.IsNil(coordinator) {
 		return nil, errors.New("schedules: tool coordinator is required")
 	}
-	t := &scheduleManagementTools{coordinator: coordinator}
+	if manual == nil {
+		return nil, errors.New("schedules: manual Run operation is required")
+	}
+	t := &scheduleManagementTools{coordinator: coordinator, manual: manual}
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
 			Name:        "list_schedules",
-			Description: "List recurring Agent Run schedules and their ids, instructions, cron expressions, model choices, and next-run state. Use this before deleting or replacing a schedule when its exact id is unknown.",
+			Description: "List recurring Agent Run schedules and their ids, revisions, instructions, cron expressions, model choices, and next-run state. Cron uses UTC unless it has a CRON_TZ=Area/City prefix. Read the current revision before editing.",
 		},
 		t.list,
 	)
@@ -99,17 +119,31 @@ func buildSchedules(coordinator scheduleManagement) ([]toolcontract.Tool, error)
 	if err != nil {
 		return nil, err
 	}
+	update, err := toolcontract.NewFunc[updateScheduleArgs, scheduleResponse](
+		toolcontract.FuncConfig{Name: updateScheduleTool, Description: "Edit or pause/resume an existing recurring schedule using its observed revision. Omitted fields stay unchanged; supplied empty title/workspace clears them. Retains the schedule identity and captured work. Use only for changes the user requests."},
+		t.update,
+	)
+	if err != nil {
+		return nil, err
+	}
 	deleteSchedule, err := toolcontract.NewFunc[deleteScheduleArgs, scheduleDeleteResponse](
 		toolcontract.FuncConfig{
-			Name:        "delete_schedule",
-			Description: "Permanently delete one recurring Agent Run schedule by its exact schedule_id. Use list_schedules first when the id is uncertain. To change a schedule, delete it and create the replacement explicitly.",
+			Name:        deleteScheduleTool,
+			Description: "Permanently delete one recurring Agent Run schedule by its exact schedule_id when the user requests removal. Captured and accepted work is retained. Use update_schedule to edit or pause a definition.",
 		},
 		t.delete,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return []toolcontract.Tool{list, create, deleteSchedule}, nil
+	manualRun, err := toolcontract.NewFunc[rpc.ItemInput, scheduleapp.RunReference](
+		toolcontract.FuncConfig{Name: runScheduleTool, Description: "Immediately run an existing schedule once, only when the user asks. Set ID to the exact schedule_id from list_schedules. Captures its current definition through the same durable manual Run operation; returned SessionID and RunID identify accepted work, not completed execution."},
+		t.run,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return []toolcontract.Tool{list, create, update, deleteSchedule, manualRun}, nil
 }
 
 func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs) (scheduleListResponse, error) {
@@ -151,30 +185,41 @@ func (in createScheduleArgs) draft() (scheduledomain.Draft, error) {
 	}, nil
 }
 
-// createOutput shares the normal Tool's output codec with read-only recovery.
-func createOutput(created scheduledomain.Schedule) (chat.ToolOutput, error) {
-	encoded, err := json.Marshal(scheduleResponse{Schedule: viewSchedule(created)})
+func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleArgs) (scheduleResponse, error) {
+	value, err := s.coordinator.Update(ctx, scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}})
 	if err != nil {
-		return chat.ToolOutput{}, err
+		return scheduleResponse{}, commandFailure(updateScheduleTool, err)
 	}
-	return chat.NewJSONToolOutput(encoded)
+	return scheduleResponse{Schedule: viewSchedule(value)}, nil
+}
+
+func (s *scheduleManagementTools) run(ctx context.Context, in rpc.ItemInput) (scheduleapp.RunReference, error) {
+	value, err := s.manual(ctx, in)
+	return value, commandFailure(runScheduleTool, err)
 }
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {
 	if err := s.coordinator.Delete(ctx, in.ScheduleID); err != nil {
-		return scheduleDeleteResponse{}, commandFailure("delete_schedule", err)
+		return scheduleDeleteResponse{}, commandFailure(deleteScheduleTool, err)
 	}
 	return scheduleDeleteResponse(in), nil
 }
 
-// commandFailure preserves receipted refusals while storage failures stay unknown.
-// createScheduleTool names the create tool; the receipt-replay gate matches on it.
-const createScheduleTool = "create_schedule"
+const (
+	createScheduleTool = "create_schedule"
+	updateScheduleTool = "update_schedule"
+	deleteScheduleTool = "delete_schedule"
+	runScheduleTool    = "run_schedule"
+)
 
+// Command refusals are definite; unknown storage or acceptance failures are not.
 func commandFailure(name string, cause error) error {
+	if cause == nil {
+		return nil
+	}
 	err := fmt.Errorf("%s: %w", name, cause)
 	_, receipted := errors.AsType[*extension.Refusal](err)
-	if errors.Is(err, scheduleapp.ErrRefused) || receipted {
+	if errors.Is(err, scheduleapp.ErrRefused) || receipted || classify(cause) != "" {
 		return pluginsdk.DefiniteToolFailure(err)
 	}
 	return err
@@ -183,6 +228,7 @@ func commandFailure(name string, cause error) error {
 func viewSchedule(sc scheduledomain.Schedule) scheduleView {
 	return scheduleView{
 		ScheduleID:      sc.ID(),
+		Revision:        sc.Revision(),
 		Title:           sc.Title(),
 		Instructions:    sc.Instructions(),
 		WorkspacePath:   sc.CWD(),

@@ -108,7 +108,9 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err := json.Unmarshal(original.Details, &details); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(details, normal.StructuredContent) {
+	observed, encodeErr := jsonvalue.Encode(details)
+	expected, expectedErr := jsonvalue.Encode(normal.StructuredContent)
+	if encodeErr != nil || expectedErr != nil || observed != expected {
 		t.Fatalf("receipt output differs from the normal Tool output: %+v / %+v", original.Details, normal.StructuredContent)
 	}
 	page, err := list.Call(t.Context(), rpc.ListInput{})

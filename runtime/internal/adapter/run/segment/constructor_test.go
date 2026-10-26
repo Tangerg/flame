@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -191,7 +192,7 @@ func (inertModelInvocations) MarkModelInvocationUnknown(context.Context, string,
 
 type inertToolInvocations struct{}
 
-func (inertToolInvocations) StartToolInvocation(context.Context, string, string, string, string, string, time.Time) error {
+func (inertToolInvocations) StartToolInvocation(context.Context, string, string, string, string, string, time.Time, *plugin.ToolCaller) error {
 	return nil
 }
 

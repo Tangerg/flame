@@ -183,10 +183,11 @@ type RunOutcome struct {
 
 // RunSessionOpening captures a Session and Run created in one keyed acceptance.
 type RunSessionOpening struct {
-	SessionID string       `json:"sessionId"`
-	RunID     string       `json:"runId"`
-	Title     string       `json:"title"`
-	Workspace WorkspaceRef `json:"workspace"`
+	SessionID string `json:"sessionId"`
+	RunID     string `json:"runId"`
+	Title     string `json:"title"`
+	// Omission uses Runtime's default, matching ordinary Session creation.
+	Workspace *WorkspaceRef `json:"workspace,omitzero"`
 }
 
 // StartRunRequest addresses exactly one existing Session or atomic new opening.

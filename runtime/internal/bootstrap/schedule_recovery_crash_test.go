@@ -121,7 +121,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 		installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))
 		server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-		r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+		r.poMCPTools(server, scheduleToolsReady)
 		session, err := api.CreateSession(t.Context(), protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}})
 		if err != nil {
 			t.Fatal(err)

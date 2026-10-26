@@ -76,7 +76,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return toolEnvironment{}, err
 	}
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, commands)
+	callers, err := pluginservices.NewCallerRestorer(commands, cfg.stores.ToolInvocations)
+	if err != nil {
+		return toolEnvironment{}, err
+	}
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, callers)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}

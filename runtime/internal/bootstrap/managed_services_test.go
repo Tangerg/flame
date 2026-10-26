@@ -58,7 +58,7 @@ func TestScheduleModelToolCommitsToBackendAndInvalidatesHumanReads(t *testing.T)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(server, scheduleToolsReady)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	subscription := r.endpoint.Invoke(ctx, delivery.RuntimeSubscribe, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{protocol.TopicPluginDataChanged}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -155,7 +155,7 @@ func TestScheduleManualCommandReplaysAcceptedRunAcrossDisableAndRestart(t *testi
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "@hourly", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
@@ -347,7 +347,7 @@ func TestScheduleLostCreateReplyReplaysAfterRevocationAndRestart(t *testing.T) {
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	request := scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured schedule", Instructions: "inspect captured work", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath})
@@ -390,7 +390,7 @@ func TestScheduleRunNowReplyLossRetainsAcceptanceAfterRestartAndSessionDeletion(
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
@@ -455,7 +455,7 @@ func TestScheduleLostRunNowReplyRetainsCapturedWorkOnStartup(t *testing.T) {
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(&server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured title", Instructions: "captured instructions", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)
@@ -534,7 +534,7 @@ func TestScheduleRunNowMissingReceiptRetainsUncertaintyWithoutCreatingRun(t *tes
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "captured", Instructions: "inspect", Cron: "0 0 1 1 *"}), "create")
 	request := scheduleRunRequest(r, saved.ID)

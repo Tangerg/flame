@@ -334,7 +334,7 @@ func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 			}
 			if err := newToolInvocationStore(database).StartToolInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID,
-				"tool_call_pending", "item_call_pending", startedAt,
+				"tool_call_pending", "item_call_pending", startedAt, nil,
 			); err != nil {
 				t.Fatalf("start Tool invocation: %v", err)
 			}

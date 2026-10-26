@@ -50,7 +50,7 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		Acceptance:     runCommandIdentity(ctx),
 	}
 	if in.NewSession != nil {
-		command.NewSession = &runs.SessionOpening{SessionID: in.NewSession.SessionID, RunID: in.NewSession.RunID, Title: in.NewSession.Title, CWD: in.NewSession.Workspace.Path}
+		command.NewSession = &runs.SessionOpening{SessionID: in.NewSession.SessionID, RunID: in.NewSession.RunID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace)}
 	}
 	if actor, present := operation.ActorFrom(ctx); present {
 		command.Actor = &actor
