@@ -285,6 +285,9 @@ The Desktop visual fixture renders the library with the real Flame appearance ow
 Field `invalid` owns both error styling and the accessible invalid state. Search
 clear actions require an explicit localized label. Compact controls retain a
 24px minimum target; hover effects run only on hover-capable pointers.
+Invalid fields retain their validation border while the document focus rule adds
+the existing outset ring for keyboard focus. Valid fields keep their own focused
+border, and pointer focus keeps the existing field skin.
 Text buttons wrap long labels and grow vertically within their available width;
 size tokens define their minimum height. Standalone icon controls retain square
 geometry. Within a flex row, joined controls share the row's actual height and

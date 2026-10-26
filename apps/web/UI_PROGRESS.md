@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -72,7 +72,10 @@ reading. The subsequent save-feedback follow-up shows the command reason before
 its captured image description; both inspected native 200% scenes reach the
 complete feedback tail and return to the original draft. Palette text now reads
 over its own feedback wash, including paper bounds, with precise channel values;
-see Semantic text on painted feedback. These local commits have not been pushed or merged into the primary checkout.
+see Semantic text on painted feedback. The shared invalid-field follow-up keeps
+validation and keyboard focus independently visible through correction, cancel,
+source return and continued drafting; see Invalid fields and keyboard focus.
+These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -1291,8 +1294,9 @@ four appearances, seven accents, three contrast values, all paper modes, ten tex
 roles and both focus/control edges. Existing nonfatal build/linker warnings remain.
 
 Verdict: **Approve for these interaction fills and settings-return tasks**.
-The whole-product award-level goal remains open; invalid-focus combinations and
-new reading/Dock task evidence remain future scoped work.
+The whole-product award-level goal remains open. The subsequent invalid-field
+qualification appears below; new reading/Dock task evidence remains future
+scoped work.
 
 All **9** recorded PIDs are dead and three bundles are unregistered. Cleanup
 removes four new checkout output/cache roots, six bundle Library paths and three
@@ -1306,6 +1310,117 @@ twelve module artifacts, four probe artifacts and three native hashes; SHA-256
 `8813d4807c6d0aea329a3da2412281a219e1d54db827f0f653ee27479aed2fc8`.
 The repair remains local; primary checkout, user data and read-only references
 are preserved.
+
+### Invalid fields and keyboard focus
+
+At frozen base `047e1c72c88bd66cbaed46cd82f53abd547cacef`, the actual Wails
+JSON-import field retains the same validation border before and after keyboard
+focus. The document rule excludes every `data-chrome-focus` control, while the
+field's own focus-border rule excludes invalid fields. The result is no distinct
+focus perimeter (`outline-style: none`) even with `:focus-visible` true and
+pointer mode false. This finding concerns the perimeter; the native text caret
+can still be present.
+
+The existing document focus owner now includes invalid chrome-focus controls and
+limits its chrome suppression to valid controls. Invalid fields retain the
+validation border and gain the existing **1.5 px outset outline / 1 px offset**
+for keyboard focus. Valid fields keep their own focused border; pointer focus
+retains the existing skin. The fix adds no token, handler, competing field state
+or business lifecycle. `packages/ui/test/field-focus.test.tsx` exercises exported
+TextField and TextArea against the actual built stylesheet, including correction
+to valid input and pointer focus. The package README records that contract.
+
+The scope is shared React 19/StyleX field chrome and its existing MCP settings
+consumers, under AGENTS, PROJECT_RULES, DEVELOPMENT and the module READMEs.
+Read-only HeroUI input/textarea styles separate focus and invalid styling;
+better-interface and its six domain skills guide this review. Reference source
+is design evidence, not native Flame qualification.
+
+| Domain        | Evidence inspected                                                                                 | Result                                                |
+| ------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Accessibility | Shared focus/invalid rules, labeled exported fields, native Tab/Shift+Tab/Escape and source return | One perimeter finding repaired; inspected paths clear |
+| Colors        | Existing focus and validation tokens, measured native light and dark adjacent planes               | Clear for the measured pairs below                    |
+| Layout        | Existing modal body/footer, native 200% scrolling and error reachability                           | Clear in inspected tasks; no layout change            |
+| Typography    | EN 14 px and ZH 18 px configuration, error and Composer reading                                    | Clear in inspected tasks; scale retained              |
+| UI            | Focus/invalid coexistence, pointer-to-keyboard transition and error retirement                     | Clear in inspected states; no motion change           |
+| Writing       | Existing parse/preflight and timeout validation text                                               | Clear for these recovery tasks; no copy change        |
+
+| Severity         | Domain        | Location                                                     | Before                                                   | After                                                                         | Why                                                               |
+| ---------------- | ------------- | ------------------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| MEDIUM, repaired | Accessibility | `packages/ui/src/globals.css`, document keyboard focus rules | Invalid boxed fields have no distinct focused perimeter. | Existing outset ring accompanies the validation border during keyboard focus. | Users can locate the active field without losing its error state. |
+
+Passed native tasks use the unchanged production settings command and real
+shared fields in isolated Wails fixtures:
+
+- EN/light/14 px/Flame Orange/contrast 25: retain a Composer draft, enter MCP
+  settings and import malformed JSON, return to the field with Shift+Tab, switch
+  pointer focus to keyboard focus, and correct the draft to `{}`. The invalid
+  textarea paints focus `rgb(216, 98, 49)` over adjacent `[253, 253, 253]`,
+  **3.6148231366057693:1**, while retaining validation `rgb(180, 46, 53)`.
+  The existing Add server form's invalid numeric timeout `0` has the same
+  distinct perimeter and ratio; correction to `60` retires validation. Cancel
+  restores Add server, import Escape restores its opener, and settings close
+  returns to Files. The retained draft continues exactly as
+  `Keep the configuration review draft. Continue after checking.`.
+- ZH/dark/18 px/`#ffe066`/contrast 100/Xuan: local preflight rejects
+  `{"mcpServers":{"reading-review":{}}}` with its existing missing-command/URL
+  message. Normal-size keyboard focus preserves validation. Native Actual Size
+  and twenty Zoom In actions establish **200% / 720 × 450 CSS px**. The invalid
+  field paints focus `rgb(255, 224, 102)` over `[49, 49, 49]`,
+  **9.977348831050827:1**, with validation `rgb(255, 211, 208)`. Its body scroll
+  reaches the complete error and lower outline while the footer remains
+  available; Tab/Shift+Tab preserves the task. Correction to `{}` and Escape
+  restore the opener. Settings close preserves the original draft, which
+  continues exactly as `核对配置后继续。 已核对，继续。`.
+
+Only painted solid outlines supply the focus contrast measurements. The passive
+observer reads styles and geometry; all UI actions use native CUA input. The
+local parse and preflight rejections do not create a server or invoke an actual
+server command. No valid import, Save/Test, Send or live Runtime/provider
+mutation is exercised. The 200% field scrolls within its existing modal body;
+this is reachability evidence, not a claim that the whole tall field fits at
+once. VoiceOver, OS IME, forced colors, RTL, other platforms and arbitrary
+literal-token themes are not newly qualified.
+
+Baseline prerequisites, **3 Web files / 43 tests**, **1 UI file / 72 tests**,
+assets and native build pass in **18.01 s**. The final regression against the
+exact original stylesheet fails its two keyboard cases while both pointer cases
+pass (**2 failed / 2 passed**, **2.22 s** wrapper). Early harness attempts fail
+before providing a usable counterexample: URL loading, CSS shorthand variables,
+selector whitespace and a pre-focus computed-style cache require a filesystem
+path, a concrete test host color, normalized whitespace and labeled field lookup.
+These host adaptations leave the exported controls and selectors under test.
+The confirmed original-versus-final result supersedes those attempts.
+
+Final **14-command / 58.54 s** serial verification passes: `npm run check
+--workspace @flame/ui` (**9 files / 133 tests**, typecheck, lint, format and one
+independent packed-package consumer), **8 Web files / 78 tests** covering MCP
+recovery, pending fields and component composition/lifecycle, all eleven resource
+builds, Web/plugin typechecks, lint, design-system/styles/chrome/resource checks,
+candidate assets and both native builds. `make check-native` passes in
+**29.69 s**, including Desktop Go test/vet/build, Web staging and the Wails native
+build. Existing nonfatal linker/deployment-target and bundle-size warnings remain.
+A missing-script preparation attempt exits before running checks and supplies no
+product result. No browser visual suite, performance benchmark, Claude CLI or
+subagent runs.
+
+All **25** recorded PIDs are dead and three bundles are unregistered. Cleanup
+removes eight new checkout output/cache roots, six owned Library paths and three
+bundle temp directories. The original native-check binary and UI test-results
+file are restored. All **39** output-presence baselines, **4** original files,
+**18** Library baselines, **5,830** accepted non-Markdown inputs, eleven installed
+resources and the two read-only references pass preservation checks before and
+after root deletion. The private root `flame-invalid-focus-1027-U3f4dL` is absent.
+Verified in-memory gzip retains **129** flat UTF-8 records, **56** screenshot
+digests, 598 assets per baseline/candidate, twelve immutable module artifacts,
+native bundle hashes and the preservation maps; SHA-256
+`1fc8a098a09630502061e211ed8aa765c18b9da154dd5477928322fa8b0a44a7`.
+The primary checkout, user data and unrelated processes remain untouched.
+
+Verdict: **Approve for these invalid-field focus and settings-return tasks**.
+This local repair qualifies the inspected domains and states only. The complete
+award-level UI goal remains open; subsequent work needs fresh task evidence.
+No remote push or primary checkout integration occurs.
 
 ### Appearance labels and search
 
