@@ -10768,7 +10768,13 @@ in-memory archive retains **68** flat UTF-8 records and **25** screenshot digest
 its verified gzip SHA-256 is
 `0d5b0f605aa3b03087bed97687caf70bedafe4d3b1454c66a687e6f6d3662598`.
 The primary checkout, user data, compiler caches, dependencies and unrelated
-processes remain untouched. Publication is pending the final main synchronization.
+processes remain untouched.
+
+Delivery: implementation `0e523350ef2c54985271cdbe22e344ff58921cba` is pushed to remote `main`.
+The one publication-time fetch had no incoming main commits; no merge or repeated
+validation was needed. Independent `ls-remote` matches the implementation, and
+the owned checkout is clean with zero unpushed commits. This in-place delivery
+receipt changes no accepted product or fixture source.
 
 ### Recorded Tool failure layout
 
