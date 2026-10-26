@@ -463,6 +463,37 @@ it("opens only a unique admitted client diagnostics contribution", async () => {
   expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
 });
 
+it.each([0, 2])(
+  "retains the diagnostics source when %i renderers require the catalog",
+  async (count) => {
+    await contributeForTest((ctx) => {
+      for (let index = 0; index < count; index++) {
+        ctx.contribute(WORKSPACE_VIEW, {
+          id: "package:diagnostics:" + index,
+          title: "Diagnostics " + index,
+          material: "diagnostics",
+          dock: "workspace",
+          component: () => null,
+        });
+      }
+    });
+    const source = document.createElement("button");
+    document.body.append(source);
+    source.focus();
+    try {
+      openWorkspaceClientDiagnostics(testClient.workspace.access, source);
+      expect(testClient.navigation.get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+      expect(testClient.workspace.dock.store.getState().inspection).toMatchObject({
+        viewId: WORKSPACE_DOCK_CATALOG,
+        origin: source,
+        activeElement: source,
+      });
+    } finally {
+      source.remove();
+    }
+  },
+);
+
 it("keeps a presented Files page while its tree and line navigation change the file", () => {
   testClient.navigation.go({ session: "session", view: "file", dock: "diff" });
   openWorkspaceFile(testClient.workspace.access, "src/tree.ts");

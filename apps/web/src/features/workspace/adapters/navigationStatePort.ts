@@ -154,12 +154,14 @@ export function createWorkspaceNavigation(
     },
     reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
     collapseDock: () => navigation.go({ dock: null }),
-    showDock: (defaultViewId, presentation = "dock") => {
+    showDock: (defaultViewId, presentation = "dock", origin) => {
       const target =
         (presentation === "main" ? navigation.get().dock : null) ??
         useContextDockStore.getState().dockTabToShow(defaultViewId);
-      if (presentation === "main") navigation.go({ view: target });
-      else showDockView(target, "alone");
+      if (presentation === "main") {
+        inspectFrom(target, origin);
+        navigation.go({ view: target });
+      } else showDockView(target, "alone", origin);
     },
     closeView: (id) => {
       if (navigation.get().view === id) selectChat();

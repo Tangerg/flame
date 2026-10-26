@@ -1,6 +1,7 @@
 import { type IconName } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Button } from "@flame/ui";
+import { type MouseEventHandler } from "react";
 export function BannerAction({
   icon,
   label,
@@ -12,7 +13,7 @@ export function BannerAction({
 }: {
   icon?: IconName;
   label: string;
-  onClick: () => void;
+  onClick: MouseEventHandler<HTMLButtonElement>;
   primary?: boolean;
   tone?: "negative" | "warning";
   disabled?: boolean;

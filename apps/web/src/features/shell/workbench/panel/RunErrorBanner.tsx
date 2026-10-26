@@ -133,12 +133,14 @@ export function RunErrorBanner() {
               <BannerAction
                 icon="history"
                 label={t("runError.action.context")}
-                onClick={showWorkspaceDock.bind(null, workspaceAccess)}
+                onClick={(event) =>
+                  showWorkspaceDock(workspaceAccess, undefined, event.currentTarget)
+                }
               />
               <BannerAction
                 icon="activity"
                 label={t("runError.action.diagnostics")}
-                onClick={openDiagnosticsView.bind(null, workspaceAccess)}
+                onClick={(event) => openDiagnosticsView(workspaceAccess, event.currentTarget)}
               />
             </div>
           </div>

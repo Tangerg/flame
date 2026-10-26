@@ -79,7 +79,11 @@ export interface WorkspaceNavigationPort {
   closeAllDockViews(): void;
   reorderDockView(id: string, toIndex: number): void;
   collapseDock(): void;
-  showDock(defaultViewId: string, presentation?: WorkspaceViewPresentation): void;
+  showDock(
+    defaultViewId: string,
+    presentation?: WorkspaceViewPresentation,
+    origin?: HTMLElement,
+  ): void;
   closeView(id: string): void;
   activeViewId(): string | null;
   dock(): WorkspaceDockSnapshot;

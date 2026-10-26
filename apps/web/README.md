@@ -125,6 +125,13 @@ content retain their complete text and actions while leaving room for the reply
 and Composer. An empty stack collapses; error recovery and dismissal retain their
 existing owners.
 
+Run-error Inspect context and Diagnostics actions capture their actual source
+button in the existing Workspace inspection path. Their selected material opens
+beside the conversation when it fits and full width otherwise. Back or unhandled
+Escape restores the original action; programmatic navigation keeps its existing
+presentation policy. Diagnostics still opens the catalog when no unique renderer
+is admitted.
+
 Image galleries keep the complete captured description in a named, keyboard
 scroll region. The header takes its natural height, and long descriptions stay
 bounded while the existing image viewport fits the remaining space. Selection

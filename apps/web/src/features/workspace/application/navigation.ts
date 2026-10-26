@@ -178,8 +178,9 @@ export function collapseWorkspaceDock(workspaceAccess: WorkspaceAccess): void {
 export function showWorkspaceDock(
   workspaceAccess: WorkspaceAccess,
   presentation?: WorkspaceViewPresentation,
+  origin?: HTMLElement,
 ): void {
-  workspaceAccess.navigation.showDock(WORKSPACE_DOCK_CATALOG, presentation);
+  workspaceAccess.navigation.showDock(WORKSPACE_DOCK_CATALOG, presentation, origin);
 }
 
 export function toggleWorkspaceDock(workspaceAccess: WorkspaceAccess): void {
@@ -267,11 +268,15 @@ export function openWorkspaceSubagentRun(
   workspaceAccess.navigation.openSubagentRun(runId, origin);
 }
 
-export function openWorkspaceClientDiagnostics(workspaceAccess: WorkspaceAccess): void {
+export function openWorkspaceClientDiagnostics(
+  workspaceAccess: WorkspaceAccess,
+  origin?: HTMLElement,
+): void {
   const views = lookupExtensionPoint(WORKSPACE_VIEW).filter(
     (view) => view.material === "diagnostics",
   );
   workspaceAccess.navigation.openViewInDock(
     views.length === 1 ? views[0]!.id : WORKSPACE_DOCK_CATALOG,
+    origin,
   );
 }

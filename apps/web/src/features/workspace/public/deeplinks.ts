@@ -3,8 +3,8 @@ import {
   openWorkspaceView,
   openWorkspaceClientDiagnostics,
 } from "@/features/workspace/application/navigation";
-export function openDiagnosticsView(workspaceAccess: WorkspaceAccess): void {
-  openWorkspaceClientDiagnostics(workspaceAccess);
+export function openDiagnosticsView(workspaceAccess: WorkspaceAccess, origin?: HTMLElement): void {
+  openWorkspaceClientDiagnostics(workspaceAccess, origin);
 }
 
 export function openSettingsView(workspaceAccess: WorkspaceAccess): void {

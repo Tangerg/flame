@@ -15435,8 +15435,8 @@ reaching 190%; fresh process/AX/geometry observations establish that state befor
 the remaining two increments, rather than replaying the sequence. Escape in the
 full-width generic diagnostics material does not return; its explicit Close
 control supplies the accepted return. No automatic material reveal is claimed
-for the narrow Diagnostics action. That action-to-reading transition is a
-concrete follow-up candidate; it is outside this stack allocation repair.
+for the narrow Diagnostics action. That action-to-reading transition is repaired in Recovery material entry and
+source return below; it was outside this stack allocation repair.
 
 Baseline prerequisites, **3 files / 25 tests**, assets and native build pass in
 **16.55 s**. Both new owner regressions fail on the unchanged host (**2 failed /
@@ -15477,6 +15477,125 @@ tasks**. The whole-product goal remains open. The user's requested fetch/merge
 finds remote main `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9` already included,
 with zero incoming commits. This batch stays on the owned local branch; no push
 or primary checkout edit occurs. Further work needs fresh observed value.
+
+### Recovery material entry and source return
+
+At frozen base `f03194444c37d7bc1d1902d927090afa0f75cb0e`, actual Wails
+EN/light/14 px at **720 × 450 CSS px / 200%** confirms the follow-up above.
+Activating the error's Diagnostics selects `package:visual:diagnostics`, but
+Conversation and the collapsed full-width opener remain visible. Focus stays on
+Diagnostics; the selected material and its reading controls are absent from AX.
+The draft is retained, so the missing transition is presentation/source intent.
+
+`RunErrorBanner` now passes each actual action button to the existing Workspace
+inspection path. `BannerAction` exposes its existing native click event instead
+of erasing that contract to a zero-argument callback. Diagnostics forwards the
+optional origin through its public entry and unique-renderer lookup. Context
+opening forwards it through `showDock`, where the existing memory policy still
+chooses the target. The navigation adapter records that source through its
+existing `inspectFrom` boundary. Explicit main presentation accepts the same
+source; origin-free navigation retains its existing behavior.
+
+The existing ChatPanel geometry now has the information it already requires to
+show the same material beside Conversation or full width. Its existing focus
+and return owners supply entry, Back, unhandled Escape, later-focus guards and
+Session retirement. No new viewport state, popup, navigation history, focus
+listener, timer or persisted representation is introduced. Run recovery,
+countdown, accepted Retry, dismissal, current-panel choice, contribution
+admission, drafts and retained readers keep their owners. Zero or multiple
+admitted diagnostics renderers still select the catalog, now with their source.
+
+Read-only ZCode `SidePaneTabTrigger.tsx:99–135,166–190` keeps owned activation
+separate from close; its custom-div and pointer suppression are not copied.
+`AnimatedSidePanePanel.tsx` supplies a viewport-intersection layout reference,
+not proof of Flame's return behavior. HeroUI's actual Alert parts preserve a
+structured action surface. Prior Radix focus/source, ChatGPT material identity
+and Ace composition research remain context for the established inspection
+model. Flame's actual source, composed tests and native actions provide proof.
+
+| Domain        | Review and outcome                                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Accessibility | Actual source button, focused material, Back/unhandled Escape and exact source return; inspected EN/ZH paths clear      |
+| Layout        | Native Dock at full size and 363 px after physical resize; full pane at 720 × 450 and 560 × 364 / 200%                  |
+| Writing       | Existing object, action and return names; no visible copy or localization change                                        |
+| Typography    | EN 14 px / ZH 18 px; error whitespace and complete eight-line source fixture remain readable                            |
+| Colors        | Existing light/Orange and dark/pale-accent focus, selection and reading planes retained; contrast not remeasured        |
+| UI polish     | Immediate action-to-material transition, retained reader and source feedback; visual system and reduced motion retained |
+
+| Severity         | Owner                                          | Before                                                                                                   | After                                                                    | Why                                                                                        |
+| ---------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| MEDIUM, repaired | Run-error action origin / Workspace navigation | Narrow activation changes a hidden selection and requires another opener; wide entry lacks source return | One action reveals the material with existing focus and return semantics | Recovery inspection must enter the requested information and preserve the authoring source |
+
+Passed actual Wails tasks:
+
+- EN/light/14 px/Flame Orange: native paste authors
+  `Keep the recovery navigation draft.`. Ordinary Tab/End reaches the error's
+  actions. Inspect context enters Files in the Dock and focuses its region;
+  double-click opens the actual eight-line `go.mod` fixture. Escape restores
+  the original Inspect context button. Diagnostics enters its real contributed
+  material and Escape restores that exact Diagnostics button. Twenty native
+  Zoom In actions establish **720 × 450 / 200%**; activating Diagnostics directly
+  presents the full pane, focused, with Back to conversation. After return,
+  Inspect context preserves the currently selected Diagnostics material. A
+  separate native Back activation restores Inspect context. Continued paste
+  produces `Keep the recovery navigation draft. Continue after checking.`.
+- ZH/dark/18 px/`#ffe066`/contrast 100: native corner dragging changes the window
+  from **1440 × 900** to **1121 × 729**, leaving a **363 px Dock**. Inspect
+  context enters Files; its `go.mod` reader survives native 200% zoom as the
+  full-pane material at **560 × 364 CSS px**. Native reader focus and End reveal
+  line eight, while the material identity and source-return header remain.
+  Escape restores 查看上下文. Tab/Return enters Diagnostics directly, focused,
+  with 返回对话. Actual Size returns it to the Dock; Escape restores 诊断.
+  Continued paste produces `核对恢复材料后继续。 已核对，继续。`.
+
+A combined Back AX-click/Return action reopens the restored source; it is not
+used as a one-step return result. The accepted single Back activation is
+separately observed. An attempted window expansion reports
+`windowNotFoundAtPosition`; fresh AX confirms the same live material before
+Actual Size. Only the successful physical shrink and native zoom/restoration
+above are qualified. No app restart or action replay follows that tool error.
+The private adapter invokes production window chrome; its passive observer
+reads layout/focus/draft state only. CUA supplies all native interaction.
+
+Baseline prerequisites, **3 files / 123 tests**, assets and native build pass in
+**17.17 s**. All four new composed cases fail on the unchanged implementation
+in **3.02 s**: both narrow targets are inaccessible, and both wide entries leave
+focus at the source. They use the actual banner, navigation and ChatPanel with
+controlled Runtime input, a registered editable material and an authored draft.
+Final **6 files / 156 tests** pass in **10.88 s**, covering both widths/actions,
+retained reader/draft nodes, edited material through reopening, source Back and
+Escape, zero/two-renderer catalog fallback, existing recovery, navigation,
+inspection, Session ownership and notification allocation. No test or valid
+assertion is weakened. Happy DOM's controlled width is not native geometry proof.
+
+An initial formatter wrapper drops the leading character of its first path and
+stops before tests (**0.73 s**); corrected explicit paths pass formatting and
+**4 files / 127 tests** in **11.57 s**. The final **14-command / 68.56 s** serial
+chain passes formatting, six-file tests, typecheck/lint, design-system/chrome,
+published-boundary/layer/port-surface and resource guards, candidate assets and
+two native builds. `make check-native` passes in **31.16 s**, including production
+Web staging and Desktop Go test/vet/build/Wails build. Existing nonfatal linker
+and bundle-size notices remain. No browser visual suite, performance benchmark,
+Claude CLI, subagent, live Runtime/provider mutation or Send runs. VoiceOver,
+OS IME, RTL, other-platform GUI, full-motion timing, new contrast measurements
+and live recovery persistence remain outside this isolated acceptance.
+
+All **8** recorded PIDs are dead; three exact bundles are unregistered. Seven
+new checkout output/cache roots, six owned Library paths and three bundle-temp
+directories are removed; the original native-check binary is restored. All
+**39** output-presence baselines, **4** original files, **18** Library baselines,
+**5,831** accepted non-Markdown inputs, eleven installed resources and four
+read-only references remain preserved before and after private-root deletion.
+`flame-recovery-entry-1027-GyKKw3` is absent. Verified in-memory gzip retains
+**66** flat UTF-8 records, **32** capture digests, 598 assets per baseline/candidate,
+twelve module artifacts, bundle hashes and preservation maps; SHA-256
+`21cf944029a7bd80d1c694dfadb5568bd676af0ada52406a23c23e113a985cce`.
+
+Verdict: **Approve for explicit recovery-material entry and these source-return
+tasks**. This completes the prior notice batch's observed follow-up. The full
+UI goal remains open; subsequent work needs fresh task/visual evidence. The
+owned local branch alone receives this batch; no push or primary checkout edit
+occurs, and main is not repeatedly synchronized or revalidated.
 
 ## Sidebar / navigation surface audit
 
