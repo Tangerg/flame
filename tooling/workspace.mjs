@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -495,7 +496,9 @@ async function trackedSources(repository) {
     .filter((p) => p && existsSync(join(repository, p)));
 }
 export async function checkGenerated() {
-  const scratch = await mkdtemp(join(tmpdir(), "flame-generated-"));
+  const scratch = await realpath(
+    await mkdtemp(join(tmpdir(), "flame-generated-")),
+  );
   try {
     for (const file of await trackedSources(root)) {
       const target = join(scratch, file);
