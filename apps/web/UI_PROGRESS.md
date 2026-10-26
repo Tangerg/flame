@@ -10985,8 +10985,18 @@ archive round-trips **67** UTF-8 records, **19** screenshot digests and **four**
 native-binary digests; gzip SHA-256 is
 `8be6aa83e169c7ed20abecf579bbe47c9493c01bd300cf906309b52e0179bd1b`.
 Final preservation validates the accepted source/resource/output/original-file
-hashes and dead processes after root retirement. Implementation publication and
-its normal-hook preservation receipt follow. The overall UI goal remains active.
+hashes and dead processes after root retirement.
+
+Implementation `5c3bb3107b88a0044f12a6d5f66b18dcae2bed71` is committed with normal
+Prettier and workspace-lint hooks and pushed normally as HEAD:main. Independent
+ls-remote confirms that exact remote main object. The publication-time fetch and
+merge still find `e78bfcef0f1b41e536a42152aab71cc1e724bfc2` with **Already up to
+date**; no source or dependency changed and no merge-only validation is repeated.
+The owned checkout is clean with **0 / 0** ahead/behind after implementation
+publication. Post-hook and post-push preservation recheck all 5,784 accepted
+source hashes, 11 resources, 36 output baselines, three original files, 12 dead
+processes and the absent private root. This documentation receipt follows as a
+separate normal commit and push. The overall UI goal remains active.
 
 ### Recorded Skill pages
 
