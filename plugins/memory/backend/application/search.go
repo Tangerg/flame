@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"slices"
 
-	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 // Returned items transfer ownership so read ordering cannot mutate store state.

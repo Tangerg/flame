@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 func Open(ctx context.Context, path string) (*sql.DB, error) {

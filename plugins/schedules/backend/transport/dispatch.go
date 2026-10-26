@@ -8,8 +8,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 )
 
 type RunHost interface {

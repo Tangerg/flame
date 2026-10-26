@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/google/uuid"
 )
 

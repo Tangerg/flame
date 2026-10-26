@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 type RunReference struct{ SessionID, RunID string }

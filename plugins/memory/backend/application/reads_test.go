@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 func TestManagementContinuationSurvivesDeletedAnchorAndEarlierInsertion(t *testing.T) {

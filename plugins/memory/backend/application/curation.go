@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"slices"
 
-	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 // Ledger appends do not publish a generation; only a winning Reconcile invalidates public reads.

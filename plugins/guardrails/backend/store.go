@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 )
 
 type store struct{ db *sql.DB }

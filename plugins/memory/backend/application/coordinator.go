@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	domain "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 type RootResolver interface {

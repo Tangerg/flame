@@ -6,11 +6,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/plugins/knowledgebase/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/google/uuid"
 )
 

@@ -8,8 +8,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 // Claim must persist both cursor and occurrence so returned work survives restart.

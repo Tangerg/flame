@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 	modeltext "github.com/Tangerg/flame/packages/go-sdk/model/text"
+	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/dependency"
 	"github.com/Tangerg/flame/packages/go-sdk/optional"
 	"github.com/Tangerg/flame/packages/go-sdk/resourceid"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 const (

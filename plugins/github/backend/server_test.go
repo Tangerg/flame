@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

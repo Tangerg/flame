@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	sdk "github.com/Tangerg/go-sdk/mcp"

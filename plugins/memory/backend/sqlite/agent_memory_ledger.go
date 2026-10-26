@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error) {

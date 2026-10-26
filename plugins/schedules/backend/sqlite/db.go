@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 

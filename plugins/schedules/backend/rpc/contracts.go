@@ -3,10 +3,10 @@ package rpc
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/schedules/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/contractgen --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	app "github.com/Tangerg/flame/plugins/schedules/backend/application"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 // CapabilityReference is the exact reference the Runtime binds this feature under;

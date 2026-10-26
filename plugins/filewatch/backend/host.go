@@ -8,8 +8,8 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 )
 
 type runHost struct{ client *runtimeclient.Client }

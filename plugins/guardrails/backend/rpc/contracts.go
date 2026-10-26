@@ -6,10 +6,10 @@ package rpc
 import (
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	guardrail "github.com/Tangerg/flame/plugins/guardrails/backend/domain"
 )
 
 type ReplaceInput struct {

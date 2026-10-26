@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 )
 
 func openTestStore(t *testing.T, directory string) *Store {

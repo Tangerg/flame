@@ -8,8 +8,8 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 )
 
 const (

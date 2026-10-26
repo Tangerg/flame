@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 func TestListPagePreservesScheduleMillisecondCoordinates(t *testing.T) {

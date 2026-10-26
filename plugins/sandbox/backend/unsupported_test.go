@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 )
 
 func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {

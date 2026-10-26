@@ -4,10 +4,10 @@ package rpc
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/memory/backend/cmd/contracts --caller-json ../../package/io.github.tangerg.flame/contracts/caller-policy.generated.json > /dev/null"
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 type Contracts struct {

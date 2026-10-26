@@ -12,12 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
-	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	sandbox "github.com/Tangerg/flame/plugins/sandbox/backend/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/backend/rpc"
 )
 
 func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t *testing.T) {

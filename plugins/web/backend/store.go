@@ -6,8 +6,8 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 )
 
 type store struct{ db *sql.DB }

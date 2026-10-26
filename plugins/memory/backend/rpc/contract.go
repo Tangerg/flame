@@ -9,10 +9,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/invopop/jsonschema"
 
-	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 const (

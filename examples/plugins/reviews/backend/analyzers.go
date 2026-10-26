@@ -9,9 +9,9 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/point"
 	"github.com/Tangerg/scope/core/jsonschema"
 )

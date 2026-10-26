@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/backend/domain"
 	"github.com/Tangerg/flame/plugins/modelrouter/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

@@ -14,10 +14,10 @@ import (
 
 	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
-	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
+	scheduleapp "github.com/Tangerg/flame/plugins/schedules/backend/application"
+	scheduledomain "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 

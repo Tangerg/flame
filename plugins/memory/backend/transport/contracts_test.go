@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	rpc "github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {

@@ -5,11 +5,11 @@ import (
 
 	workspacepaths "github.com/Tangerg/flame/packages/go-sdk/workspace"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 const (

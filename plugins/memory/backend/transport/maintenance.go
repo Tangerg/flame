@@ -7,10 +7,10 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 	app "github.com/Tangerg/flame/plugins/memory/backend/application"
 	memory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	"github.com/Tangerg/flame/plugins/memory/backend/rpc"
-	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
 )
 
 // Only publication is transactional here. Ledger facts survive failed model

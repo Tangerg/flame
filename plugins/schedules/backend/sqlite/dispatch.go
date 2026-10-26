@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 func (s *ScheduleStore) CapturedRun(ctx context.Context, id string) (schedule.RunRequest, error) {

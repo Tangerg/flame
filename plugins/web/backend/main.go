@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

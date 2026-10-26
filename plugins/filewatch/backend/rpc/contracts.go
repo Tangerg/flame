@@ -5,10 +5,10 @@ package rpc
 import (
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 )
 
 type ConfigureInput struct {

@@ -8,8 +8,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 )
 
 type store struct{ db *sql.DB }

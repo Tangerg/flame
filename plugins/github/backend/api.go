@@ -14,9 +14,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 )
 
 const (

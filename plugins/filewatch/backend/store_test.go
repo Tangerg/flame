@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/backend/domain"
 	"github.com/Tangerg/flame/plugins/filewatch/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	"github.com/google/uuid"
 )
 

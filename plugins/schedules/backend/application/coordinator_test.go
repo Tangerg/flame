@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 type allowModels struct{}

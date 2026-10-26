@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/plugins/github/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"

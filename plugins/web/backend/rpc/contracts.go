@@ -5,9 +5,9 @@ package rpc
 import (
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/scope/tools/web"
 )
 

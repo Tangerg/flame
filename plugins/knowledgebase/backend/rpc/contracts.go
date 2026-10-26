@@ -9,11 +9,11 @@ import (
 
 	"github.com/invopop/jsonschema"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	"github.com/Tangerg/flame/packages/go-sdk/exactjson"
 	"github.com/Tangerg/flame/packages/go-sdk/idempotency"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/backend/domain"
 )
 
 type ImportInput struct {

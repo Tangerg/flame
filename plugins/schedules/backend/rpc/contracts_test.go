@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
 )
 
 func TestGeneratedCapabilityMatchesTheActualMethodOwner(t *testing.T) {

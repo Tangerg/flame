@@ -6,8 +6,8 @@ import (
 	_ "embed"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 )
 
 //go:embed contracts/capability.json

@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
-	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/storage/directories"
+	rpc "github.com/Tangerg/flame/plugins/schedules/backend/rpc"
+	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

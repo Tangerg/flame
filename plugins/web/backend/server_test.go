@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	capture "github.com/Tangerg/flame/plugins/web/backend/domain"
 	"github.com/Tangerg/flame/plugins/web/backend/rpc"
-	"github.com/Tangerg/flame/packages/go-sdk/capability"
-	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/tools/web"
 )

@@ -10,8 +10,8 @@ import (
 	"math"
 	"time"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	agentmemory "github.com/Tangerg/flame/plugins/memory/backend/domain"
 )
 
 func newMemoryItemID() agentmemory.ItemID {

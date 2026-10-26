@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	sqlitebase "github.com/Tangerg/flame/packages/go-sdk/storage/sqlite"
+	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 )
 
 var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())

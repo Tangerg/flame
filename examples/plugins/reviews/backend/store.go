@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/jsoninput"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/scope/core/jsonschema"
 
 	_ "modernc.org/sqlite"

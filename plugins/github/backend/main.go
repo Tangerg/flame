@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	"github.com/Tangerg/flame/packages/go-sdk/storage/advisorylock"
+	resource "github.com/Tangerg/flame/plugins/github/backend/domain"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 

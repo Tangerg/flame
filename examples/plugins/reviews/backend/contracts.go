@@ -8,8 +8,8 @@ package reviews
 //go:generate sh -c "go run ./cmd/contracts --analyzer-capability > ../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"
 
 import (
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/capability"
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 )
 
 type Contracts struct {

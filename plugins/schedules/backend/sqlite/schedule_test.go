@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	schedule "github.com/Tangerg/flame/plugins/schedules/backend/domain"
 	"github.com/Tangerg/flame/plugins/schedules/backend/internal/testsupport"
 	"github.com/Tangerg/flame/plugins/schedules/backend/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/google/uuid"
 )
 
