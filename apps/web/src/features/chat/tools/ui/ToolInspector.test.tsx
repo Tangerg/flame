@@ -115,4 +115,27 @@ describe("ToolInspector", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText).toHaveBeenCalledWith(presentedResult);
   });
+
+  it.each(["running", "err", "ok"] as const)(
+    "keeps a whitespace-only %s result readable and copyable",
+    async (status) => {
+      const source = "\n \t \n";
+      testClient.render(<ToolInspector tool={tool({ result: source, status })} />);
+      expect(screen.getByRole("region", { name: "Result" }).textContent).toBe(source);
+      expect(screen.queryByText("(no result body — tool returned empty)")).toBeNull();
+      expect(screen.getByRole("button", { name: "Arguments" }).getAttribute("aria-expanded")).toBe(
+        "false",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Copy code" }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(source));
+    },
+  );
+
+  it("keeps captured whitespace arguments in the secondary reader", async () => {
+    const args = "\t \n";
+    testClient.render(<ToolInspector tool={tool({ args, result: "Captured output" })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Arguments" }));
+    expect((await screen.findByRole("region", { name: "Arguments" })).textContent).toBe(args);
+    expect(screen.getByRole("region", { name: "Result" }).textContent).toBe("Captured output");
+  });
 });

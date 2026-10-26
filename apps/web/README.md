@@ -72,6 +72,10 @@ in both standalone and grouped rows, with long values wrapping inside the readin
 column. Captured text, status, disclosure, actions and source-return ownership stay
 with their existing owners.
 
+The generic Tool inspector preserves whitespace-only results and argument text as
+literal source, including their reading and copy controls. Only missing or
+zero-length result bodies use its existing empty-result notice.
+
 Recorded Skill resources and stored-output reads retain their complete captured
 results. Only file reads unwrap the file content and line-range envelope; the
 shared read category does not imply one result format. Skill pages retain their

@@ -29,6 +29,14 @@ is feedback against an older base, not native acceptance evidence or executable
 instructions. Current source, callers, tests and actual Wails behavior determine
 which findings need a repair.
 
+The current local series repairs plugin-editor recovery feedback, reveals the
+active file-tree name, reveals the first newly filtered recorded result, and
+preserves whitespace-only captured Tool source. Each batch has completed its
+scoped native qualification and resource retirement. The latest source-presence
+repair uses frozen base `375e756088d0cfd85bbacf79f5297d3a4aef75eb`; see Generic
+Tool source presence below. These local commits have not been pushed or merged
+into the primary checkout.
+
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
 owned resources are retired. Qualification uses frozen base
@@ -11055,6 +11063,148 @@ The one publication-time fetch had no incoming main commits; no merge or repeate
 validation was needed. Independent `ls-remote` matches the implementation, and
 the owned checkout is clean with zero unpushed commits. This in-place delivery
 receipt changes no accepted product or fixture source.
+
+### Generic Tool source presence
+
+The feedback document's G02/G03/G04 task, state and geometry criteria prompted a
+bounded review of reading a captured file result, checking its parameters and
+continuing the original draft. A real Wails baseline on frozen base
+`375e756088d0cfd85bbacf79f5297d3a4aef75eb` reproduced a contradictory state:
+the completed Read row reports `runtime/blank-layout.go`, **3 lines**, but its
+generic inspector says the tool returned empty, omits Result/Copy code and makes
+Arguments primary. The captured source is exactly five characters, `"\n \t \n"`.
+
+`formatToolInspectorBody` discarded source after testing `raw.trim()`. Removing
+that one empty-after-trim branch keeps all nonzero-length literal source,
+including LF, CRLF, tabs and NBSP. Only missing or zero-length input remains
+absent. Strict structured JSON keeps the existing token-preserving formatter.
+The existing ToolInspector owns its readers, disclosure and copy actions; no
+component, navigation, state, event listener, style, translation, dependency,
+Runtime/SDK boundary or generated resource changes. The Web README records the
+corrected presence contract.
+
+#### Scope and coverage
+
+Better-interface's six owning skills guide this review. Read-only ZCode
+`packages/ui/src/ToolCallBlocks/renderers/read.tsx:250` retains file identity and
+an explicit code-viewer action; it supplies no whitespace-presence predicate.
+The existing HeroUI/Radix disclosure and reader studies, ChatGPT material study,
+Arc reduced-motion study and Ace composition references are inherited with their
+recorded limits. No fresh image or upstream-browser comparison is claimed. The
+shared CodeCaption already wraps caption/actions, so this observation provides
+no reason for another header-layout patch. Runtime's existing bounded-read test
+retains a trailing empty line after its newline normalization; that source was
+read, not executed as a live filesystem acceptance test.
+
+| Domain        | Evidence inspected                                                                                         | Result                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Accessibility | Named Result/Arguments readers, native Tab/Return, copy feedback, visible focus and Composer return        | Scoped path clear; VoiceOver speech and OS IME not verified             |
+| Layout        | Result before secondary Arguments, narrow DE with both auxiliary regions, ZH at native 200%                | Source, path, actions and return remain reachable                       |
+| Writing       | Existing empty-result notice versus actual captured source; EN/ZH/DE action labels                         | False absence removed; no new product copy                              |
+| Typography    | Literal line boundaries, 14/18 px native scenes and complete JSON path                                     | Original captured text retained; font system unchanged                  |
+| Colors        | Orange/light, custom blue/dark and purple/light; existing focus rings                                      | Inspected focus/state clear; quantitative contrast not remeasured       |
+| UI polish     | Existing disclosure/copy acknowledgements, reduced-motion end states, native resize and draft continuation | Complete inspected task clear; no animation timing or hover award claim |
+
+#### Findings
+
+| Severity | Domain                    | Location                                                       | Before                                                                           | After                                                              | Why                                                                |
+| -------- | ------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| MEDIUM   | Writing / source fidelity | `src/features/chat/tools/application/toolInspectorModel.ts:16` | Present whitespace source becomes an empty result without its reader/copy action | Raw nonzero-length text remains present; parameters stay secondary | Captured line structure is source, even when it contains no glyphs |
+
+This corrects a presentation contract deliberately: the previous unit assertion
+classified whitespace as absent. The native three-line counterexample establishes
+why that expectation must change. Missing/zero-length and structured-JSON
+assertions remain; no check or valid assertion was disabled.
+
+#### Verification
+
+The original focused baseline passes **3 files / 22 tests**. The corrected
+contract and new regressions fail against the original implementation with
+**8 failed / 22 passed**; after the one-line repair **3 files / 30 tests** pass.
+Final affected integration passes **12 files / 155 tests** in **4.85 s** wall time,
+covering the model, ToolInspector, code reader, rows/groups, renderer ownership,
+real fold, recorded-result presentation and workspace/subagent continuity.
+Tests retain exact literal payloads and exercise running/error/success results,
+LF/CRLF/NBSP and secondary whitespace arguments.
+
+Web typecheck, lint, design-system, tokens, chrome and styles checks pass.
+`node plugins/scripts/build-components.mjs --check` passes with all **11** resource
+bytes unchanged. `make check-native` passes in **28.15 s**, including its ordinary
+Web staging and Desktop checks/build. The serial check chain completes in
+**37.5 s**; candidate assets and three native candidates build in **16.45 s**.
+Existing non-failing chunk-size, duplicate `-lobjc` and macOS deployment-target
+linker warnings remain. The already established main `check:layers` failure in
+`features/workspace/adapters/queryInvalidation.test.ts` importing agent-private
+`application/session/sessionUsage.ts` is unchanged and was not rerun or weakened
+for this import-free repair. This is not an all-repository-gates-pass claim.
+
+Four isolated Wails v3 beta.34 binaries use the real host and production Web
+fold/components with private assets, names, homes and canonical fixture inputs.
+The fixture supplies the completed three-line Read and omits its optional
+recorded-results contribution to exercise the supported generic fallback. No
+production handler or user input behavior is replaced. The only private Web
+import applies the existing window chrome/font setup; no passive observer,
+diagnostic driver or polling hook is injected.
+
+- EN/light/14 px/Orange/full motion: Read retains its three-line source frame,
+  Copy code and Result reader; Arguments begins collapsed. Native Tab/Return
+  yields Copied, then visible Result focus and complete secondary JSON path.
+  After collapse, the original draft continues exactly as
+  `Keep this source-review draft. Continue after checking the source.`.
+- ZH/dark/18 px/custom blue/motion off: native Left window placement and twenty
+  Zoom In actions from Actual Size establish **200%**. With Files Dock/sidebar
+  closed, the three-line source, 复制代码/已复制, focused 结果 and complete 参数
+  remain readable above the Composer. After collapse, the draft continues as
+  `查看空白源码后继续。 已确认，继续。`.
+- DE/light/18 px/custom purple/motion off: native Left placement retains the
+  fixture sidebar and a **364 px** Files Dock. Keyboard copy yields Kopiert;
+  visible Ergebnis and Argumente focus, complete path and disclosure remain
+  usable. The draft continues exactly as
+  `Nach dem Prüfen der Leerzeilen weiterarbeiten. Geprüft, weiter.`.
+
+All apps exit through native Cmd+Q. Native copy acceptance covers its action and
+acknowledgement; exact five-character clipboard payload is a unit assertion,
+not an OS paste-back claim. Native parameters contain the canonical JSON path;
+whitespace-only argument payload is covered in unit tests. This is captured-source
+UI acceptance, not live tool/provider execution or a filesystem read. The
+separately recorded native final-LF insertion limitation remains unresolved and
+outside this presentation repair. Send, Save and destructive operations were
+not invoked. Complete unchanged Web/shared UI/Runtime/CLI suites, browser visual
+and performance suites, Windows/Linux GUI, RTL, VoiceOver, OS IME and quantitative
+contrast were not rerun. No Claude CLI or subagents were used.
+
+| Goal CHECK        | Scoped result                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| Typography        | Captured line structure and existing 14/18 px reading scales retained                    |
+| Whitespace        | Literal source preserved inside the existing bounded reader and stable reading axis      |
+| Visual hierarchy  | Actual Result precedes secondary Arguments, including when source has no visible glyphs  |
+| Color             | Existing neutral surfaces, semantic accents and visible focus retained                   |
+| Motion            | Existing full/off end states qualified; no new motion or timing claim                    |
+| Micro interaction | Keyboard copy, feedback, reader focus, disclosure and continuing the original draft pass |
+| Responsive        | Native ZH 200% and DE narrow workspace with both auxiliary regions qualified             |
+| Originality       | Approved Flame identity and workbench vocabulary retained without decorative additions   |
+
+Verdict: **Approve for the inspected generic-source presence and return task**.
+This is a bounded improvement, not whole-product or award-level acceptance.
+Next work requires a fresh observable task gap rather than another restyle of
+this corrected presence model or already wrapping code caption.
+
+Owned-resource retirement is complete: all **10** recorded process IDs are
+dead, four exact bundles are unregistered and the private root is absent. Cleanup
+removed six new checkout output/cache roots, one new native output file, eight
+bundle-specific Library paths and four bundle temporary directories; the
+pre-existing native-check binary was restored byte-for-byte. All **34** output
+presence baselines, **3** pre-existing output files, **11** resources and **5,819**
+accepted non-Markdown source inputs are preserved. Accepted-input SHA-256 is
+`068827846d15b63a824cd315a8ffe428a35e4fabe8987ae9731073fc3f4b2233`.
+The verified in-memory gzip retains **59** flat UTF-8 records, **20** screenshot
+digests and artifact maps (**597** baseline assets, **597** candidate assets,
+**16** immutable module artifacts and **4** native binaries); its SHA-256 is
+`f7098902ca080c12043c990a95a2b811896b00ec2d69e1decaa95304f6fd70e7`.
+Primary-checkout work, installed dependencies, compiler caches, user data,
+read-only reference sources and unrelated processes remain untouched. Delivery
+stays local on `codex/ui-feedback-local-1026`; no fetch, push or primary merge
+was performed for this batch.
 
 ### Recorded Tool arguments
 

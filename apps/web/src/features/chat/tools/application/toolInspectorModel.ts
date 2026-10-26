@@ -14,7 +14,6 @@ export interface ToolInspectorModel {
 export function formatToolInspectorBody(raw: string | undefined): ToolInspectorBody {
   if (!raw) return emptyBody();
   const trimmed = raw.trim();
-  if (!trimmed) return emptyBody();
   if (!looksStructured(trimmed) || !isStrictJson(trimmed)) return { text: raw, isJson: false };
   return { text: formatJSONText(trimmed), isJson: true };
 }

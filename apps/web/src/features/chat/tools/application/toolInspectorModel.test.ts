@@ -116,9 +116,13 @@ describe("formatToolInspectorBody", () => {
     expect(formatToolInspectorBody('"text"')).toEqual(literal('"text"'));
   });
 
-  it("treats empty or whitespace-only bodies as absent", () => {
+  it("treats only missing or zero-length bodies as absent", () => {
     expect(formatToolInspectorBody(undefined)).toEqual({ text: "", isJson: false });
-    expect(formatToolInspectorBody(" \n\t ")).toEqual({ text: "", isJson: false });
+    expect(formatToolInspectorBody("")).toEqual({ text: "", isJson: false });
+  });
+
+  it.each([" \n\t ", "\r\n", "\u00a0"])("preserves whitespace source %j verbatim", (source) => {
+    expect(formatToolInspectorBody(source)).toEqual(literal(source));
   });
 });
 
@@ -146,6 +150,14 @@ describe("toolInspectorModel", () => {
       args: '{"id":9007199254740993}',
       result: '{"offset":-0,"offset":1e400}',
       status: "ok",
+    });
+  });
+
+  it("keeps whitespace-only arguments and result present", () => {
+    expect(toolInspectorModel({ args: "\t ", result: "\n \t \n", status: "ok" })).toEqual({
+      args: literal("\t "),
+      result: literal("\n \t \n"),
+      showNoResult: false,
     });
   });
 });
