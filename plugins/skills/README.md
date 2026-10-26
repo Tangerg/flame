@@ -39,7 +39,11 @@ handles page navigation.
 Archive/restore and approve/reject use the ordinary public commands. No optimistic
 business result is created. Unknown acknowledgement retains the original mutation
 key and retry closure and blocks another command or catalog change until reconciled.
-Cross-window/Runtime-generation journal recovery remains a final integration item.
+The Runtime client journal retains unresolved command identities across client
+replacement. Repeating the same method and exact inspected input with that retained
+journal reuses its original key and Runtime store namespace. A different Runtime
+store refuses that original command. The component's visible pending form lasts
+for its mounted lifetime; it does not create a separate receipt or journal owner.
 
 When an accepted read removes a focused catalog row, focus returns to the catalog
 search. Focus already moved to another control, including an open document, is
