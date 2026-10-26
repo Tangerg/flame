@@ -44,6 +44,7 @@ import {
 import {
   PROTOCOL_VERSION,
   type MCPServerID,
+  type MCPTool,
   type RequestMeta,
   type RunEvent,
   type RuntimeEvent,
@@ -782,17 +783,21 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
-    await awaitMCPTools(server, feature === "memory" ? 1 : 3);
+    await awaitMCPTools(server, (tools) =>
+      tools.some(
+        (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+      ),
+    );
     return installation;
   };
 
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
-    count: number,
+    ready: (tools: MCPTool[]) => boolean,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
     const deadline = Date.now() + defaultTestDeadlineMilliseconds;
-    while ((await client.mcp.listTools(server)).data.length !== count) {
+    while (!ready((await client.mcp.listTools(server)).data)) {
       if (Date.now() >= deadline)
         throw new Error(
           `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
@@ -806,7 +811,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     for (const [feature, installation] of managedOwners) {
       await awaitMCPTools(
         { origin: { type: "installation", installationId: installation.id }, name: feature },
-        feature === "memory" ? 1 : 3,
+        (tools) =>
+          tools.some(
+            (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+          ),
       );
     }
   };
@@ -3170,7 +3178,9 @@ for await (const line of lines) {
     await awaitManagedOwners();
 
     await Promise.all(
-      [...capturedSources.values()].map(({ server, count }) => awaitMCPTools(server, count)),
+      [...capturedSources.values()].map(({ server, count }) =>
+        awaitMCPTools(server, (tools) => tools.length === count),
+      ),
     );
 
     const restored = await client.runs.get(runId);
@@ -3816,7 +3826,7 @@ for await (const line of lines) {
         servers: [serverId],
       });
     }
-    await awaitMCPTools(serverId, 1);
+    await awaitMCPTools(serverId, (tools) => tools.some((tool) => tool.name === "ping"));
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
       data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
