@@ -626,9 +626,38 @@ are resolved. This remains **progress**, not whole-product or award-tier
 completion. Accepted **5,784 non-Markdown inputs** have SHA-256
 `269a29cd1fe97956d3f986416fb1dea4a0b5dc305b9b10732fcd79acec207f12`;
 **1,196** final compiled assets, **11** product ESM resources and **three** fresh
-read-only references are frozen. Publication and exact retirement remain to be
-recorded below. Continue from a fresh complete reading/Dock task; do not reopen
-the qualified Goal rail or reason flow without a new finding.
+read-only references are frozen. Publication and exact retirement are recorded
+below. Continue from a fresh complete reading/Dock task; do not reopen the
+qualified Goal rail or reason flow without a new finding.
+
+**Delivery receipt**
+
+Implementation `cda3e1b6f7fd5709c7fd443b64121356f0b0826a` is published to remote
+main. The single publication fetch finds no incoming commit beyond frozen main
+`fac2a7db7c398a13779d044b3fd0f55ff767cce3`; no unrelated validation loop is
+started. Normal formatting and workspace-lint hooks pass and preserve the
+accepted product inputs. Independent `ls-remote` matches the implementation;
+the owned checkout is clean and ahead/behind is **0 / 0**.
+
+All **17** recorded processes are dead. Independent process-table and native
+registration queries find no owned command or any of the four apps. Cleanup
+removes **eight** new checkout output paths, **eight** owned Library paths and
+**four** bundle-temp paths. All **36** output-presence baselines and exact
+inventories of **three** original files are restored, including the original
+native-check binary and shared UI test cache. All **11** product ESM resources
+and **three** fresh read-only reference hashes match. Primary parallel work,
+user data, dependencies and shared compiler/package caches remain preserved.
+
+The guarded private root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-goal-reason-1026-5MwOu6`
+is absent. Its independently round-trip-verified in-memory archive retains
+**96 UTF-8 files**, **36 screenshot digests**, original/native binary metadata,
+source/asset maps, original and intermediate failures, and publication/retirement
+proofs; gzip SHA-256
+`64b8734ad4146b1e9d0b8ddfb470b5a5ed7ccde3aa2867254dc9c5a482a90180`.
+Post-retirement verification preserves all **5,784** non-Markdown inputs and
+their hash above. This documentation-only receipt changes no qualified product
+source. The continuous UI goal remains active.
 
 ## Reference products and example images
 
