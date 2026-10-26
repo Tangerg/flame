@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -64,7 +64,9 @@ source-presence repairs retain their corresponding sections. Image descriptions 
 through gallery selection, qualified under Image descriptions and bounded gallery
 reading. The subsequent save-feedback follow-up shows the command reason before
 its captured image description; both inspected native 200% scenes reach the
-complete feedback tail and return to the original draft. These local commits have not been pushed or merged into the primary checkout.
+complete feedback tail and return to the original draft. Palette text now reads
+over its own feedback wash, including paper bounds, with precise channel values;
+see Semantic text on painted feedback. These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -1120,6 +1122,107 @@ Installed dependencies, global compiler/npm caches, read-only references, user
 data, unrelated processes and the primary parallel checkout remain untouched.
 This documentation receipt changes no accepted product input; its publication
 is followed by fresh remote, cleanliness and preservation checks.
+
+### Semantic text on painted feedback
+
+At frozen base `fce4e2d949e50536f12e36df5bd673088f4aa0c1`, actual Wails
+EN/light/14 px/pale accent/contrast 0 exposes file-action failure text at
+**4.108316:1**. The palette qualifies semantic ink on bare reading planes but
+does not account for the translucent feedback wash above them. A second
+counterexample shows why rounded paint is insufficient: `#fbd381` on fractional
+RGB `(100.2, 94.4, 80.8)` measures **4.495985:1**, while its rounded background
+incorrectly yields **4.517971:1**.
+
+`kit/palette.ts:51,98` now owns both the published wash opacity and the backgrounds
+used to qualify its semantic ink. `kit/legibility.ts:8,29,34` keeps composed sRGB
+channels fractional through luminance and contrast evaluation. Paper bounds use
+that same compositor; the existing scale takes the palette's established solid
+fill and reads against bare and painted planes. All callers and tests migrate
+together. Five startup ink values in `styles/globals.css` mirror the default
+palette. Canvas/neutral planes, solid fills, wash opacity and paper artwork retain
+their values. No component overrides, status state, command lifecycle, Runtime
+contract or portable resource changes.
+
+The refreshed [Radix role guidance](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale)
+distinguishes text, component and solid backgrounds; its APCA example does not
+qualify Flame's custom composites. [WCAG 1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+requires the unrounded foreground/background pair to meet the normal-text
+threshold. Better-colors and accessibility guide the measurements; layout,
+writing, typography and UI guidance retain the existing task composition. Earlier
+HeroUI, Arc, Ace and award-reference qualifications remain unchanged.
+
+| Severity | Owner                             | Before                                                           | After                                              | Impact                                            |
+| -------- | --------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| HIGH     | Palette text and painted feedback | Native 14 px failure copy measures 4.108316:1 on its tinted fill | Same-condition native copy measures 4.698666:1     | Required failure context remains readable (1.4.3) |
+| HIGH     | Contrast/composite precision      | Channel rounding turns 4.495985 into a false pass                | Raw channel values remain intact through the check | The guard rejects real threshold failures         |
+
+Final native acceptance uses the unchanged production file and feedback owners:
+
+- EN/light/14 px/`#ffe066`/contrast 0/motion off: source-file entry from the reply,
+  keyboard Show in Finder and its controlled failure retain the exact object.
+  `rgb(183,49,56)` measures **4.698666:1** in the ordinary Dock. Actual Size then
+  twenty native Zoom In actions establish **200% / 720 × 450 CSS px**; the same
+  copy measures **4.777698:1** in the main presentation. Close has visible keyboard
+  focus. Enter closes feedback; reverse Tab and Enter return to the original
+  `runtime/internal/session/store.go:4` trigger. The exact draft continues as
+  `Keep the file review draft. Continue after checking.`.
+- ZH/dark/18 px/blue/contrast 100/motion off/Xuan 5: Tab from the Composer reaches
+  the width separator; Home confirms a **320 px Dock**. Complete failure text and
+  Close remain visible. The actual SVG raster has alpha bounds **0–0.2**. Composing
+  those bounds through the painted ancestor chain gives a conservative text
+  contrast range of **5.553086–10.021727:1** for `rgb(255,211,208)`. This is a
+  raster-bound calculation, not an antialiased glyph-pixel ratio. Keyboard Close
+  and source return pass; the exact draft continues as
+  `核对文件反馈后继续。 已核对，继续。`.
+
+A private public local-workspace capability input enables the existing actions;
+the unchanged Browser host returns false. No Finder/file operation, live
+Runtime/provider mutation or Send occurs. The passive observer reads styles,
+geometry and off-DOM texture raster bounds; CUA supplies every UI action. All
+apps exit with Cmd+Q. An initial English Home attempt retains Close focus and
+width 523, so it supplies no 320 px qualification; the confirmed ZH path above
+does. Final builds and captures supersede intermediate candidate measurements.
+
+Baseline passes **4 files / 254 tests**, prerequisites, assets and native build
+in **16.50 s**. The new painted-surface regression fails on original production
+(**16 failed / 127 skipped**, 1.50 s wrapper). The precision regression then
+rejects the rounded candidate (**1 failed / 28 skipped**, 1.31 s). Final production
+passes **17 files / 370 tests** and Web typecheck. After a lint-safe expected
+constant correction, all **30** legibility tests and the remaining lint,
+design-system, tokens, chrome, styles, classes, assets, two native builds and
+precise probe pass in a serial **12-command / 11.42 s** continuation. The default
+mirror mismatch is repaired, and no assertion or guard is weakened. Early probe
+startup attempts lack esbuild or StyleX compilation; the accepted probe uses the
+repository's actual Vite visual configuration without installing dependencies.
+
+The separate exact-channel probe checks **1,320** declared combinations with
+**zero** pairs below 4.5:1; its minimum is **4.501856247741862:1**. The earlier
+rounded probe's green result is superseded: raw evaluation found five repeated
+instances of the warning-color counterexample. Palette regressions additionally
+cover four appearances, seven accents, three contrast preferences, all four paper
+modes and the five semantic washes. Existing non-failing build/linker warnings
+remain qualified.
+
+Verdict: **Approve for these semantic feedback colors and file-return tasks**.
+Typography, spacing, task hierarchy, motion and Flame composition retain their
+owners; the inspected responsive and keyboard paths remain usable. This is
+scoped progress across the goal dimensions, not whole-product or award-level
+acceptance. Selected/selected-hover and invalid-focus combinations need separate
+task evidence. Arbitrary literal-token package themes, VoiceOver, OS IME, RTL,
+other platforms and broad native/Runtime/CLI suites are not newly qualified.
+No browser visual suite, performance benchmark, Claude CLI or subagent runs.
+
+All **16** recorded PIDs are dead; three bundles are unregistered and the private
+root is absent. Three new checkout output/cache roots, six bundle Library paths
+and three bundle temp directories are removed. All **34** output-presence
+baselines, **3** pre-existing files, **18** Library baselines, **5,829** accepted
+non-Markdown inputs and eleven unchanged installed resources are preserved.
+Verified in-memory gzip retains **103** flat UTF-8 records, **39** screenshot
+digests, 598 assets per baseline/candidate, 12 immutable module artifacts, four
+probe artifacts and three native hashes; SHA-256
+`4d12f3791073e4957e2c69732c5db2aa9ffbf124d649a9a53e9e18a097f0f1ec`.
+Read-only references, user data, the primary checkout and unrelated processes
+remain untouched. This repair is committed locally; no push occurs.
 
 ### Appearance labels and search
 

@@ -50,6 +50,13 @@ Palette themes include the material's opacity bound in their existing text and
 focus contrast calculations. Forced colors suppress the image. No texture layer
 intercepts input or selection.
 
+Palette-derived semantic text accounts for its translucent feedback wash on every
+reading plane, including paper bounds. The same palette owner publishes the wash
+opacity and computes its painted backgrounds; the shared sRGB compositor also
+bounds paper. Composite channels stay fractional through the contrast check,
+so rounding cannot turn a failing pair into a pass. Status fills, the selected
+accent and paper artwork retain their existing values.
+
 The workspace host retains mounted view layout when switching Dock tabs. Inactive
 views are invisible, inert and excluded from the accessibility tree. The existing
 viewport keeps its native reading position without a second scroll-state cache;

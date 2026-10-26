@@ -1,10 +1,23 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
-import { WCAG_AA_TEXT, controlEdge, focusRing, legibleMix } from "@/features/theme/kit/legibility";
+import {
+  WCAG_AA_TEXT,
+  compositeColor,
+  controlEdge,
+  focusRing,
+  legibleMix,
+} from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
 import { paperTextureBackgrounds } from "@/features/theme/kit/paperTexture";
-import { hueScale, neutralScale, solidInk, step, type Scale } from "@/features/theme/kit/scale";
+import {
+  hueScale,
+  neutralScale,
+  solidFill,
+  solidInk,
+  step,
+  type Scale,
+} from "@/features/theme/kit/scale";
 import { SCHEME_ICON, inkTracksLadder } from "@/features/theme/kit/tokens";
 interface ThemePalette {
   background?: string;
@@ -34,6 +47,10 @@ const STATUS_SEED = {
   success: "#30a46c",
   info: "#0090ff",
 } as const;
+
+const WASH_OPACITY = 0.1;
+const wash = (tone: "accent" | keyof typeof STATUS_SEED) =>
+  `color-mix(in srgb, var(--tone-${tone}) ${WASH_OPACITY * 100}%, transparent)`;
 
 const PLANE_STEP: Record<
   Scheme,
@@ -78,7 +95,11 @@ export function paletteThemeContribution(
     : [];
   const textPlanes = [sunken, elevated, ...paperPlanes];
   const backgrounds = [canvas, drawer, surface, elevated, sunken, ...paperPlanes];
-  const scale = (color: string) => hueScale(color, scheme, canvas, textPlanes);
+  const scale = (color: string) => {
+    const solid = solidFill(color);
+    const washedPlanes = backgrounds.map((plane) => compositeColor(solid, plane, WASH_OPACITY));
+    return hueScale(solid, scheme, canvas, [...textPlanes, ...washedPlanes]);
+  };
   const accent = scale(seed);
   const status = {
     negative: scale(STATUS_SEED.negative),
@@ -110,6 +131,7 @@ export function paletteThemeContribution(
       "color-accent-text": step(accent, 11),
       "color-accent-strong": step(accent, 12),
       "tone-accent": solid,
+      "color-accent-wash": wash("accent"),
 
       "color-bg": canvas,
       "color-drawer": drawer,
@@ -137,6 +159,10 @@ export function paletteThemeContribution(
       "tone-warning": step(status.warning, 9),
       "tone-success": step(status.success, 9),
       "tone-info": step(status.info, 9),
+      "color-negative-wash": wash("negative"),
+      "color-warning-wash": wash("warning"),
+      "color-success-wash": wash("success"),
+      "color-info-wash": wash("info"),
 
       "color-cta": solid,
       "color-cta-hover": step(accent, 10),

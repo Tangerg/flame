@@ -1,6 +1,6 @@
 import { type PaperTexture } from "@/features/theme/kit/appearance";
 import { type Scheme } from "@/lib/appearance";
-import { colord } from "colord";
+import { compositeColor, type RgbColor } from "@/features/theme/kit/legibility";
 
 const PAPERS = {
   xuan: { frequency: "0.42 0.55", octaves: 3, seed: 7 },
@@ -30,20 +30,13 @@ export function paperTextureBackgrounds(
   strength: number,
   scheme: Scheme,
   planes: readonly string[],
-): string[] {
+): RgbColor[] {
   if (texture === "off") return [];
   const { grain, fiber } = paperOpacity(texture, strength);
   // Both image layers use the same ink; their combined ceiling bounds text contrast.
   const alpha = 1 - (1 - grain) * (1 - fiber);
-  const ink = scheme === "dark" ? 255 : 0;
-  return planes.map((plane) => {
-    const { r, g, b } = colord(plane).toRgb();
-    return colord({
-      r: r * (1 - alpha) + ink * alpha,
-      g: g * (1 - alpha) + ink * alpha,
-      b: b * (1 - alpha) + ink * alpha,
-    }).toHex();
-  });
+  const ink = scheme === "dark" ? "#ffffff" : "#000000";
+  return planes.map((plane) => compositeColor(ink, plane, alpha));
 }
 
 export function paperTextureImage(texture: PaperTexture, strength: number, scheme: Scheme): string {

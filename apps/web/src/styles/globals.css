@@ -114,7 +114,7 @@
 :root {
   --color-accent: #fb6e30;
   --color-accent-line: #f2aa8e;
-  --color-accent-text: #b74300;
+  --color-accent-text: #ae3f00;
   --color-accent-strong: #592108;
 
   --color-bg: #f5f5f5;
@@ -165,10 +165,10 @@
   --scrollbar-thumb: color-mix(in oklab, var(--color-text) 17%, transparent);
   --scrollbar-thumb-strong: color-mix(in oklab, var(--color-text) 28%, transparent);
 
-  --color-negative: #be383e;
-  --color-warning: #886400;
-  --color-info: #0e6bbb;
-  --color-success: #10784b;
+  --color-negative: #b42e35;
+  --color-warning: #856200;
+  --color-info: #0062b0;
+  --color-success: #006f43;
 
   --tone-negative: #d83b43;
   --tone-warning: #ffc53d;

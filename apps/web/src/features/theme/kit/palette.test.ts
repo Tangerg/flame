@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { colord } from "colord";
 import { type Scheme } from "@/lib/appearance";
-import { WCAG_AA_NON_TEXT, WCAG_AA_TEXT, contrastRatio } from "@/features/theme/kit/legibility";
+import { declaredInCss } from "@/test/stylesheet";
+import {
+  WCAG_AA_NON_TEXT,
+  WCAG_AA_TEXT,
+  contrastRatio,
+  type ContrastColor,
+  type RgbColor,
+} from "@/features/theme/kit/legibility";
 import { toOklch } from "@/features/theme/kit/oklab";
 import {
   paletteThemeContribution,
@@ -20,6 +28,23 @@ const tokensOf = (subject: PaletteTheme, accent = "#0485f7", contrast = 25) =>
   paletteThemeContribution(subject, accent, contrast).tokens!;
 
 const restingInk = (token: string) => token.match(/(#[0-9a-f]{6})\)$/i)?.[1] ?? token;
+
+function washedPlane(tokens: Record<string, string>, tone: string, plane: ContrastColor): RgbColor {
+  const property = `color-${tone}-wash`;
+  const paint = tokens[property] ?? declaredInCss(`--${property}`);
+  const parts = paint?.match(
+    /^color-mix\(in srgb,\s*var\(--(tone-[a-z]+)\)\s+([\d.]+)%,\s*transparent\)$/,
+  );
+  if (!parts) throw new Error(`Unmeasured feedback paint: ${paint}`);
+  const ink = colord(tokens[parts[1]!]!).toRgb();
+  const base = typeof plane === "string" ? colord(plane).toRgb() : plane;
+  const alpha = Number(parts[2]) / 100;
+  return {
+    r: ink.r * alpha + base.r * (1 - alpha),
+    g: ink.g * alpha + base.g * (1 - alpha),
+    b: ink.b * alpha + base.b * (1 - alpha),
+  };
+}
 
 const NEUTRAL_ROLES = [
   "color-bg",
@@ -53,6 +78,42 @@ const APPEARANCES: ReadonlyArray<[string, PaletteTheme]> = [
 ];
 
 describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => {
+  it.each(["off", "xuan", "cotton", "grain"] as const)(
+    "keeps semantic text readable over its painted %s feedback",
+    (paperTexture) => {
+      for (const contrast of [0, 25, 100]) {
+        for (const accent of ACCENTS) {
+          const t = paletteThemeContribution(subject, accent, contrast, {
+            paperTexture,
+            paperTextureStrength: 5,
+          }).tokens!;
+          const planes: ContrastColor[] = [
+            "color-bg",
+            "color-drawer",
+            "color-surface",
+            "color-elevated",
+            "color-sunken",
+          ].map((name) => t[name]!);
+          planes.push(
+            ...paperTextureBackgrounds(paperTexture, 5, subject.scheme, [
+              t["color-bg"]!,
+              t["color-drawer"]!,
+              t["color-surface"]!,
+            ]),
+          );
+          for (const tone of ["accent", "negative", "warning", "success", "info"]) {
+            const ink = t[tone === "accent" ? "color-accent-text" : `color-${tone}`]!;
+            for (const plane of planes)
+              expect(
+                contrastRatio(ink, washedPlane(t, tone, plane)),
+                `${tone} on ${plane}, ${subject.scheme}, ${paperTexture}, ${contrast}, ${accent}`,
+              ).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+          }
+        }
+      }
+    },
+  );
+
   it("restores every plain token when paper is Off", () => {
     expect(
       paletteThemeContribution(subject, "#fb6e30", 25, {
@@ -84,7 +145,7 @@ describe.each(APPEARANCES)("paper reading contrast in %s", (_label, subject) => 
               "color-cta-hover",
             ])
               expect(t[name]).toBe(plain[name]);
-            const planes = [
+            const planes: ContrastColor[] = [
               "color-bg",
               "color-drawer",
               "color-surface",

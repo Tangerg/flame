@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   contrastRatio,
+  compositeColor,
   controlEdge,
   focusRing,
   inkOnFill,
@@ -9,6 +10,18 @@ import {
   WCAG_AA_TEXT,
 } from "@/features/theme/kit/legibility";
 import { mixOklab } from "@/features/theme/kit/oklab";
+describe("compositeColor", () => {
+  it("keeps either opaque endpoint at its own alpha", () => {
+    expect(compositeColor("#d83b43", "#f5f5f5", 0)).toEqual({ r: 245, g: 245, b: 245 });
+    expect(compositeColor("#d83b43", "#f5f5f5", 1)).toEqual({ r: 216, g: 59, b: 67 });
+  });
+
+  it("measures the sRGB overlay used by feedback and paper", () => {
+    expect(compositeColor("#ff0000", "#0000ff", 0.5)).toEqual({ r: 127.5, g: 0, b: 127.5 });
+    expect(compositeColor("#000000", "#ffffff", 0.1)).toEqual({ r: 229.5, g: 229.5, b: 229.5 });
+  });
+});
+
 describe("contrastRatio", () => {
   it("spans black to white at the ratio the criterion names", () => {
     expect(contrastRatio("#000000", "#ffffff")).toBeCloseTo(21, 5);
@@ -25,6 +38,16 @@ describe("contrastRatio", () => {
   it("is the linearised measure, not perceived brightness", () => {
     expect(contrastRatio("#ffe066", "#ffffff")).toBeLessThan(1.6);
     expect(contrastRatio("#ffe066", "#000000")).toBeGreaterThan(13);
+  });
+
+  it("retains fractional channels when a painted pair falls just below AA", () => {
+    const painted = { r: 100.2, g: 94.4, b: 80.8 };
+    expect(contrastRatio("#fbd381", painted)).toBeCloseTo(4.495985291554665, 10);
+    expect(contrastRatio("#fbd381", painted)).toBeLessThan(WCAG_AA_TEXT);
+  });
+
+  it("uses the linear sRGB branch for fractional channels below its threshold", () => {
+    expect(contrastRatio({ r: 10.2, g: 10.2, b: 10.2 }, "#000000")).toBeCloseTo(1.061919504644, 11);
   });
 });
 

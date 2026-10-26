@@ -4,6 +4,7 @@ import {
   WCAG_AA_TEXT,
   contrastRatio,
   inkOnFill,
+  type ContrastColor,
 } from "@/features/theme/kit/legibility";
 import { fromOklch, mixOklab, toOklch, type Oklch } from "@/features/theme/kit/oklab";
 export type Scale = readonly string[];
@@ -55,7 +56,12 @@ function solidHover(solid: string, scheme: Scheme, chroma: number): string {
   return fromOklch({ ...tone, l: tone.l + awayFromInk * Math.abs(shift), c: chroma });
 }
 
-function legibleTone(start: Oklch, planes: readonly string[], required: number, away: number) {
+function legibleTone(
+  start: Oklch,
+  planes: readonly ContrastColor[],
+  required: number,
+  away: number,
+) {
   let color = fromOklch(start);
   for (
     let l = start.l;
@@ -67,12 +73,11 @@ function legibleTone(start: Oklch, planes: readonly string[], required: number, 
 }
 
 export function hueScale(
-  seed: string,
+  solid: string,
   scheme: Scheme,
   canvas: string,
-  textPlanes: readonly string[],
+  textPlanes: readonly ContrastColor[],
 ): Scale {
-  const solid = solidFill(seed);
   const { c, h } = toOklch(solid);
   const lightness = HUE_LIGHTNESS[scheme];
   const chroma = HUE_CHROMA[scheme];
