@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -40,7 +40,8 @@ filter action that reveals the result beginning; refresh, retained details and
 editor return preserve existing reading. Each batch has completed its scoped
 native qualification and resource retirement. The latest Schedules repair uses
 frozen base `4bd7535cafd5f306612dab618f73ba0aca9f1003`; see Schedules filter
-arrival and retained reading below. The preceding Skills composition/query and
+arrival and retained reading and its Immediate Escape follow-up below. The
+preceding Skills composition/query and
 source-presence repairs retain their corresponding sections. These local
 commits have not been pushed or merged into the primary checkout.
 
@@ -3732,6 +3733,91 @@ module artifacts and **4** native binaries); SHA-256 is
 The primary parallel checkout, user data, installed dependencies, compiler caches
 and unrelated processes remain untouched. Delivery stays local on
 `codex/ui-feedback-local-1026`.
+
+#### Immediate Escape follow-up
+
+A bounded follow-up at frozen base
+`1214df4bc39ae51a5fe3c3ed9645e6feba7858e1` does not reproduce the single DE
+click/Escape observation above. Its original event-delivery cause remains
+unclassified. This receipt does not claim a repair or close the broader native
+input/IME feedback. Production sources and all eleven installed resources remain
+byte-identical; no new handler, retry, focus delay or state is justified by the
+available evidence.
+
+The traced owners are shared SearchField clearing, the Schedules filter action,
+Base UI Select dismissal and the enclosing material's bubbling return handler.
+The workspace shortcut excludes editable fields. Exact local Wails v3 beta.34
+`webview_window_darwin.m:86` forwards native window keys and
+`:123` retains ordinary cancellation; this source alone does not establish
+where the earlier key went. Existing read-only ZCode list-return evidence remains
+limited to reading continuity. The better-accessibility evidence rule and the
+existing shared keyboard contract guide this investigation; prior visual-reference
+qualifications remain unchanged.
+
+A fresh owned Wails app uses the same eighty ordinary Schedule records and actual
+production controls in DE/light/18 px/custom purple/motion off. At a true 320 px
+Dock and native Left window placement, four immediate click/Escape sequences
+clear Runtime, keep Disabled and retain input focus: from scrolled details,
+another expanded record, the original Composer, and a just-dismissed status menu.
+The open menu's own Escape closes it without changing the query. Pointer clearing
+and Escape from the keyboard-focused clear button both return to the search
+field. The original draft continues exactly as
+`Nach der Zeitplanprüfung weiterarbeiten. Geprüft, weiter.`.
+
+The private observation import only records native focus, pointer, input,
+composition and relevant key events; a private host endpoint writes these bounded
+records to its owned log. It never changes control state, prevents an event,
+drives focus/scroll or replaces production input handlers. All six observed
+Escape presses are trusted, keyCode 27 and non-composing: four target the query,
+one targets the open option and one targets its clear button. Capture snapshots
+precede shared handling. The collector's `settled` label is only its queued
+microtask snapshot, not proof React handling completed; actual AX captures verify
+the resulting values and focus.
+
+A second launch removes that observation import. All 596 rebuilt Web asset hashes
+match the preceding batch's accepted candidate exactly; the unused private host
+log endpoint receives no events. Two further immediate click/Escape sequences
+clear Runtime after expanded-detail scrolling: All statuses at 523 px, then
+Disabled at 320 px. These passes bound the current finding; they cannot explain
+or invalidate the original failure. Native events are exercised exclusively
+through CUA. No Save, Run now, mutation, Delete or Send is invoked.
+
+Existing regression checks pass serially: shared UI components, **1 file / 72
+tests**, and Schedules presentation/reading plus ChatPanel inspection, **3 files /
+106 tests**; the two-command chain takes **51.06 s**. No assertions or test
+contracts change. The first private asset attempt stops in **2.55 s** because
+retired UI styles have not been rebuilt; existing icon/UI prerequisites followed
+by assets and native compilation pass in **19.30 s**. The final assets without
+the observation import build in **8.45 s**. Known chunk-size and duplicate-library
+warnings are non-failing.
+
+Typography, whitespace, hierarchy, color, motion and originality reuse the
+unchanged accepted surfaces. This follow-up adds keyboard/micro-interaction and
+523/320 px native evidence only. ZH/EN, 200%, RTL, VoiceOver speech, real OS IME,
+quantitative contrast, motion timing, live command/provider/persistence behavior
+and full native/Runtime/CLI suites are not rerun. Prior qualifications and the
+pre-existing main layer-check limitation remain in force. No browser visual or
+performance suite, Claude CLI, subagent, main synchronization, push or primary
+integration runs. The whole-product award-level goal remains open.
+
+Verdict: **no actionable production defect reproduced in this bounded follow-up**.
+Keep the original exception qualified and continue UI work from fresh task
+evidence rather than adding speculative keyboard handling.
+
+Owned retirement is complete: all **6** recorded process IDs are dead, one exact
+bundle is unregistered and its root is absent. Four newly created checkout
+output/cache roots, two bundle Library paths and one bundle temporary directory
+are removed. All **34** output-presence baselines, **3** pre-existing files,
+**6** Library-presence baselines, **5,819** non-Markdown sources, eleven installed
+resources and four read-only references are preserved; one test-result cache is
+restored from its verified original bytes. The in-memory gzip retains **71**
+flat UTF-8 records, **37** screenshot digests and artifact maps (596 per observed
+and unobserved build, 16 immutable module artifacts and one native binary), with
+verified round-trip SHA-256
+`e6d8b376ff55b6b3fce416757b383e0902ca807d8bc348ffcf85e9de31eade1d`.
+Delivery remains local on `codex/ui-feedback-local-1026`; the primary parallel
+checkout, user data, installed dependencies, compiler caches and unrelated
+processes remain untouched.
 
 ### Selected task identity at constrained widths
 
