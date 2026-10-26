@@ -24,6 +24,7 @@ export const fr: Record<string, string> = {
   "result.search": "Recherche dans le résultat",
   "result.filter": "Filtrer le résultat",
   "result.region": "Résultat",
+  "result.morePages": "Pages suivantes",
   "result.line": "Ligne ",
   "result.countRows": "{{shown}} sur {{total}} lignes",
   "result.countMatches": "{{shown}} sur {{total}} correspondances",

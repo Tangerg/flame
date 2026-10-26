@@ -1,17 +1,19 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-26. Stored-output reads retain their result identity and complete text; Skill resources retain literal history or complete current pages, including continuation. Native result/resource/Dock/return and draft paths qualify the read-family projection repair below. The whole-product UI goal remains in progress.
+Updated: 2026-10-26. Recorded Skill pages separate readable summaries and content from their continuation. Native catalog/instruction/resource reading, Find, related-material return and continued drafts qualify the presentation repair below. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/stored-output-identity-1026`. Read-family evidence implementation
-`feff7ca5d735aa3fb104b0e01bae5c127973e023` is published to remote main and its
-owned resources are retired. Qualification uses frozen base
-`1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see Read-family evidence and
-stored-output identity below. Canonical Tool-evidence implementation
+is on `codex/recorded-skill-pages-1026`. Recorded Skill-page qualification uses
+frozen base `e7fba9fcfa3567f9e3fb67ba4dcec468676b537d`; see Recorded Skill pages
+below. Read-family evidence implementation
+`feff7ca5d735aa3fb104b0e01bae5c127973e023` and receipt
+`e7fba9fcfa3567f9e3fb67ba4dcec468676b537d` remain published and retired. Their
+qualification uses base `1304b6b6421a104d26959d0d3b8b205a0ccb0832`; see
+Read-family evidence and stored-output identity below. Canonical Tool-evidence implementation
 `0e523350ef2c54985271cdbe22e344ff58921cba` and receipt
 `1304b6b6421a104d26959d0d3b8b205a0ccb0832` remain published and retired.
 Goal stop-reason implementation
@@ -10781,6 +10783,187 @@ validation was needed. Independent `ls-remote` matches the implementation, and
 the owned checkout is clean with zero unpushed commits. This in-place delivery
 receipt changes no accepted product or fixture source.
 
+### Recorded Skill pages
+
+Actual Wails with the selected Scope tools/skills **v0.57.1** page contracts
+reproduces the catalogue as a compact JSON source line and instructions as prose
+containing escaped newlines and cursor fields. Those fields are retained after
+the preceding fold repair, but their hierarchy does not support reading a Skill.
+The old XML/string fixtures cannot qualify the current producer.
+
+The recorded-result component now recognizes the exact current list/text page
+shapes by Skill Tool identity. Summaries reuse RecordSummary/RecordBody; loaded
+instructions reuse prose and resource content keeps numbered, page-local source
+lines. Nonfinal pages keep a translated **More pages** cue in CodeCaption, outside
+local Find, and their complete next_cursor remains separate source metadata.
+Copy result writes the exact captured page string; reader selection copies the
+presented material. An empty complete catalogue retains its empty result during
+Find. Unknown members, invalid shapes and unsafe cursor numbers retain the full
+source. Existing literal instructions and historical XML decoding remain readable.
+
+The captured transcript remains the only authority. No cursor is minted, page
+fetched, separate calls concatenated, instruction executed, or full-document
+completeness inferred. Existing local filtering, paging, focus, Copy, disclosure
+and material/navigation owners stay in place. Runtime, protocol, SDK, commands,
+theme tokens, brand and shared UI source are unchanged. The owned component
+builder regenerates only tool-results' packaged ESM; the other ten resources
+retain their original hashes.
+
+#### Scope and coverage
+
+This better-interface review covers final reply → Skill catalogue/instructions
+or resource page → local Find → related material → return → continued draft.
+It excludes live execution/pagination and incoming cursor identity on later
+recorded calls. Stack remains React, Base UI, shared @flame/ui, StyleX and semantic
+tokens. Recon includes AGENTS, PROJECT_RULES, DEVELOPMENT, Web/native/visual and
+tool-results READMEs, the existing architecture/design guidance and this record.
+All six owning better skills and their common review format were read.
+
+Fresh read-only Scope page.go/tool.go establish list/text pages, UTF-8 content and
+snapshot-bound cursors. The canonical fixture now has a two-summary page with
+offset **2** and an instruction page with byte offset **216**, using hashes from
+the producer's snapshot algorithm. ZCode's actual Skill renderer separates its
+identity and captured body; its text-trimming/fallback policy is not copied.
+HeroUI's list-box implementation delegates selectable-list behavior to React Aria;
+Flame's recorded summaries are inert evidence and do not acquire selection or
+a new listbox. Existing ChatGPT artifact-context, HeroUI/Arc disclosure, Radix
+keyboard/color and Ace composition studies retain their earlier limits. No new
+artwork or award-level comparison is claimed.
+
+| Domain        | Evidence inspected                                                                                                                               | Result                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Accessibility | Native named readers, Find/Escape and reader shortcut, four-Tab related-file entry, resizer and Dock tab keys; inert-content and selection tests | Changed tasks pass; VoiceOver and OS IME are not verified                                      |
+| Layout        | Native catalogue/body/cursor grouping, half-window at 200%, wrapped complete snapshot, related full-width file and 320 px Dock                   | Content and page scope remain reachable in inspected scenes                                    |
+| Writing       | Current Scope page fields, empty versus filtered result, all eight page-cue catalogs, original Copy content                                      | Page scope is explicit without claiming that a recorded page is the whole Skill                |
+| Typography    | Shared RecordSummary/RecordBody/RecordMeta and source roles; sampled catalogue body 14 px/21.7 px, cue 13 px/21.125 px, weight 400               | Existing hierarchy now applies to decoded content; font system unchanged                       |
+| Colors        | Native light catalogue cue #4c4c4c on #fdfdfd and dark resource cue #a3a3a3 on #1e1e1e; Orange, blue/dark and purple/warm scenes                 | Measured cue pairs 8.44:1 and 6.60:1; light body 16.93:1                                       |
+| UI polish     | Bounded result frame, persistent page cue while filtering, actual wheel chaining, reduced-motion end states, return and exact drafts             | Existing surfaces and interactions remain coherent; motion timing is not exhaustively replayed |
+
+#### Findings
+
+| Severity | Domain              | Location                                                   | Before                                                                                                          | After                                                                                   | Why                                                                                                             |
+| -------- | ------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| MEDIUM   | Layout / typography | `plugins/tool-results/component/component.tsx:232`, `:255` | Current list pages fall through the XML decoder and instruction pages render their serialized envelope as prose | Exact current pages reuse summary/body or source roles, with continuation separate      | Reading should expose names, descriptions and paragraphs before supporting metadata                             |
+| MEDIUM   | Writing / scope     | `plugins/tool-results/component/component.tsx:464`, `:639` | Continuation is buried in JSON and an empty current catalogue reads as serialized data                          | Page cue stays in the caption through filtering; complete empty catalogues remain empty | A local filter must not imply that one captured page is complete or that recorded emptiness is a filter failure |
+
+Both findings are resolved in the accepted candidate. There is no new focusable
+control, state owner, dependency, HTML renderer or Tool action.
+
+#### Verification
+
+The original focused baseline passes **3 files / 73 tests** in **1.81 s**. Added
+page/copy cases expose **9 failures / 80 passes** against the original renderer;
+its accepted replacement is restored byte-for-byte after that check. The focused
+candidate passes **89 tests**. Coverage includes readable/inert names and content,
+blank lines, empty versus absent material, complete cursors, page cues during
+filtering, empty catalogue recovery, raw Copy, presented-range Copy and full
+source preservation for malformed or extended shapes. Canonical fixture pages
+pass through the real fold. Initial test typing/lint issues are corrected before
+final checks; no gate, assertion or timeout is weakened.
+
+Final serial verification passes **28 files / 396 tests**, Web typecheck/lint/format,
+design-system/token/chrome guards, and plugin typecheck/lint/format/i18n. All
+**11** component resources pass the builder's deterministic check. Final
+**make check-native** passes Desktop test/vet/build and the supported Wails
+build. The final gate and three private native builds take **65.77 s**; private
+passive-observer asset refresh takes **2.86 s** without product-source changes.
+Binaries are arm64, minimum macOS **13.0**, SDK **26.5**. Non-failing duplicate
+-library/SDK linker and fixture chunk-size warnings remain separate. Full
+unchanged Runtime/CLI/Web/shared-UI, backend/author suites, browser visual suites
+and benchmarks were not rerun.
+
+Actual Wails/CUA acceptance uses the production host, canonical fold and registered
+packaged result renderer. The private Go overlay changes assets, product identity
+and fixture URL only. EN/ZH add a hidden, nonfocusable passive measurement group;
+DE independently omits it. The observer's complete cue samples support the
+reported color/font pairs; truncated geometry tails and a light sample explicitly
+labelled Skills are not attributed to the later instruction frame. Native input,
+scrolling, focus, zoom and navigation are not replaced. Only raised-window
+evidence matching the current UI qualifies visual state. An interrupted German
+sequence is not accepted; the final bounded native round trip checks tab selection
+and the retained query on both legs.
+
+- EN/light/14 px/Orange: two distinct Skill summaries and the full cursor appear;
+  **trace-flaky** filtering retains More pages. The same list call is inspected in
+  Trajectory, then Files returns with the query intact. Escape restores all rows;
+  the native Find shortcut re-enters that reader. Loaded instructions have real
+  line breaks with their continuation separate. The draft continues exactly as
+  `Continue after reading this Skill page. Ready.`.
+- ZH/dark/18 px/custom blue/reduced motion: native Move & Resize → Left and
+  twenty Zoom In actions from Actual Size qualify a half-window at **200%**.
+  **snapshot** filtering retains 后续还有内容. Full-width Files is entered, four
+  actual Tabs reach its named source reader and End reaches line 8. Close returns
+  to the retained query. Escape and native End/Home reach the complete wrapped
+  snapshot and first three decoded resource lines. The draft continues exactly as
+  `读完技能这一页后继续。 已核对。`; Actual Size is restored before Quit.
+- DE/light/18 px/custom purple/warm/reduced motion, without diagnostic DOM: six
+  actual Tabs from a nonempty Composer reach the Dock resizer; Home selects
+  **320 px**. Catalogue and instructions retain their readable body and complete
+  continuation. Native wheel input over the fitting instruction reader reaches
+  the final reply. With **invariant** filtering active, native tab-arrow navigation
+  goes Files → Trajectory → Files and retains the query; Escape restores body and
+  cursor. The initial draft continues exactly as
+  `Nach dem Lesen dieser Skill-Seite weiterarbeiten. Geprüft.`.
+
+All native instances exit through Cmd+Q. These are isolated recorded facts and
+explicit fixture presentation, not live Scope/Runtime pagination or producer
+execution. Send, Save, Resume and destructive commands are not invoked. Current
+empty/malformed and historical formats have automated coverage, not a complete
+native state matrix. Incoming continued-page identity, 320 px whole-window width,
+RTL, VoiceOver, OS IME, clipboard contents and other-platform GUI are not verified.
+The earlier native input, clicked-reader traversal and hidden-zoom limits remain
+scoped; no repair is claimed for them. No Claude CLI or subagent is used.
+
+The accepted **5,784** non-Markdown source hashes are frozen at
+`d6bedc08c9c858e6077732ad1a22b1d8ce076d9808232bc1b8c635fac6c1893b`.
+Each of the three private asset maps has **600** files. The accepted generated
+tool-results resource is
+`0c3c522f40177e06f9fd343561fc6480593d3cd8659fff2e9e906a2a87c2e610`;
+the other ten resources and four fresh read-only references are unchanged.
+
+The explicit request to merge latest main is completed in this batch: fetch,
+independent ls-remote and merge resolve to
+`e7fba9fcfa3567f9e3fb67ba4dcec468676b537d` with **Already up to date**.
+The primary checkout's main commit
+`88098fa9f8a06d3e875047dd6c678d27279a2a96` is already an ancestor. All 14
+then-modified UI paths and their source hashes are preserved. No merge-only
+validation loop or primary-checkout edit is introduced.
+
+| Goal CHECK        | Scoped result                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Typography        | Shared summary/body/source roles apply to decoded page content; native reading and wrapping inspected             |
+| Whitespace        | Existing within-entry and between-entry spacing separates summaries, paragraphs and continuation                  |
+| Visual hierarchy  | Reply, operation/object, readable page and supporting cursor remain distinct                                      |
+| Color             | Page-cue contrast measured in light/dark; custom themes and Orange preserved                                      |
+| Motion            | Reduced-motion scenes retain page/disclosure/selection state; no timing award claim                               |
+| Micro interaction | Local Find, page cue, Escape, reader shortcut, native wheel, related-material return and exact drafts qualified   |
+| Responsive        | Native half-window/200%, complete wrapped snapshot and keyboard 320 px Dock qualified                             |
+| Originality       | Flame workbench and approved brand retained; no decorative rail, illustration or competing component system added |
+
+Verdict: **Approve for recorded Skill-page presentation and the inspected tasks**.
+This is not whole-product award-level acceptance. Next, trace the scope of
+incoming cursors on continued Skill calls: name-specific argument summaries can
+suppress those arguments. Reproduce first/middle/final captured pages before
+changing that separate projection boundary; this batch does not qualify it.
+
+Owned resources are retired. All **17** recorded process IDs are dead and the
+four unique app bundles are unregistered. Cleanup removes seven newly created
+checkout outputs/caches, eight owned Library paths and four owned bundle-temporary
+paths, restores the exact pre-existing native-check binary and retains all
+**36** output-presence baselines and **three** original files byte-for-byte.
+The exact owned root
+`/private/var/folders/d5/z_zd9f0n35v9d5lclp27rdv40000gn/T/flame-ui-skill-pages-1026-jN6ZEK`
+is absent after UID/device/inode/birth verification. The in-memory archive
+round-trips **84** UTF-8 records, **19** screenshot digests and **four** native
+binary digests; gzip SHA-256 is
+`71de888108b35dec72dfef3f178a5cf1e429269f13865732e703744d4e4d401c`. Final preservation confirms all
+5,784 accepted non-Markdown source hashes, 11 accepted resources, 36 output
+baselines, three original files and 17 dead processes. The four read-only
+references match, and the primary parallel checkout and user data are preserved.
+
+Implementation publication and its independent remote proof follow in the final
+delivery receipt.
+
 ### Read-family evidence and stored-output identity
 
 Actual Wails reproduced a completed read_tool_result showing no result body,
@@ -10926,9 +11109,9 @@ fresh read-only reference files match their accepted hashes.
 Verdict: **Approve for the changed read-result contract and inspected tasks**.
 This restores complete evidence; it does not certify every Skill renderer, fetch
 additional historical pages or complete the whole-product award-level goal.
-Continue from the current Scope page/list contracts when inspecting remaining
-Skill instruction/discovery tasks; historical XML/string fixtures alone cannot
-qualify those current interfaces.
+Current Scope instruction/discovery page presentation is qualified in Recorded
+Skill pages above; historical XML/string fixtures alone do not qualify those
+current interfaces.
 
 Owned resources are retired. All **15** recorded process IDs are dead; the four
 unique app bundles are unregistered. Cleanup removes seven newly created checkout

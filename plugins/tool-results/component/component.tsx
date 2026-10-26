@@ -22,6 +22,7 @@ import {
   IconButton,
   Metadata,
   RecordBody,
+  RecordMeta,
   copyWholeReader,
   RecordSummary,
   selectAllInReader,
@@ -45,7 +46,13 @@ type Row =
   | { kind: "notice"; body: string };
 
 type ResultContent =
-  | { kind: "rows"; label: string; rows: Row[] }
+  | {
+      kind: "rows";
+      label: string;
+      rows: Row[];
+      continues?: boolean;
+      emptyMessage?: string;
+    }
   | { kind: "output"; text: string }
   | { kind: "changes"; changes: Record<string, unknown>[] };
 
@@ -77,6 +84,65 @@ function sourceRows(source: string, start = 1): Row[] {
 
 function proseRows(body: string): Row[] {
   return [{ kind: "prose", body }];
+}
+
+interface SkillPage {
+  content?: string;
+  skills?: { name: string; description: string }[];
+  next_cursor?: { offset: number; snapshot: string };
+}
+
+function skillPage(
+  source: string,
+  member: "content" | "skills",
+): SkillPage | undefined {
+  const page = parsed(source);
+  if (
+    !Object.hasOwn(page, member) ||
+    Object.keys(page).some((key) => key !== member && key !== "next_cursor")
+  )
+    return undefined;
+  if (member === "content" && typeof page.content !== "string")
+    return undefined;
+  if (
+    member === "skills" &&
+    (!Array.isArray(page.skills) ||
+      !page.skills.every((skill) => {
+        const value = record(skill);
+        return (
+          Object.keys(value).length === 2 &&
+          typeof value.name === "string" &&
+          typeof value.description === "string"
+        );
+      }))
+  )
+    return undefined;
+  if (page.next_cursor !== undefined) {
+    const cursor = record(page.next_cursor);
+    if (
+      Object.keys(cursor).length !== 2 ||
+      typeof cursor.offset !== "number" ||
+      !Number.isSafeInteger(cursor.offset) ||
+      cursor.offset <= 0 ||
+      typeof cursor.snapshot !== "string" ||
+      !/^[0-9a-f]{64}$/i.test(cursor.snapshot)
+    )
+      return undefined;
+  }
+  return page as SkillPage;
+}
+
+function skillPageRows(page: SkillPage, rows: Row[]): Row[] {
+  return page.next_cursor
+    ? [
+        ...rows,
+        {
+          kind: "located",
+          location: "next_cursor",
+          body: JSON.stringify(page.next_cursor, null, 2),
+        },
+      ]
+    : rows;
 }
 
 function xmlElements(element: Element): Element[] | undefined {
@@ -164,24 +230,47 @@ function resultContent(tool: CapturedToolResult, t: Translate): ResultContent {
         rows: proseRows(source),
       };
     case "load_skill":
+    case "read_skill_resource": {
+      const page = skillPage(source, "content");
+      const body = page?.content ?? source;
+      const rows =
+        tool.name === "load_skill" ? proseRows(body) : sourceRows(body);
       return {
         kind: "rows",
-        label: t("caption.instructions"),
-        rows: proseRows(source),
+        label: t(
+          tool.name === "load_skill"
+            ? "caption.instructions"
+            : "caption.result",
+        ),
+        rows: page ? skillPageRows(page, rows) : rows,
+        continues: page?.next_cursor !== undefined,
       };
+    }
     case "search_memory":
       return {
         kind: "rows",
         label: t("caption.memories"),
         rows: proseRows(source),
       };
-    case "list_skills":
+    case "list_skills": {
+      const page = skillPage(source, "skills");
       return {
         kind: "rows",
         label: t("caption.skills"),
-        rows: skillRows(source, t),
+        rows: page
+          ? skillPageRows(
+              page,
+              page.skills!.map((skill) => ({
+                kind: "entry",
+                title: skill.name,
+                body: skill.description,
+              })),
+            )
+          : skillRows(source, t),
+        continues: page?.next_cursor !== undefined,
+        emptyMessage: t("skills.empty"),
       };
-    case "read_skill_resource":
+    }
     case "read_tool_result":
     case "search_tools":
     case "lsp":
@@ -279,11 +368,15 @@ function RecordedRows({
   label,
   source,
   recorded,
+  continues,
+  emptyMessage,
   t,
 }: {
   label: string;
   source: string;
   recorded: Row[];
+  continues?: boolean;
+  emptyMessage?: string;
   t: Translate;
 }) {
   const [finding, setFinding] = useState(false);
@@ -368,6 +461,7 @@ function RecordedRows({
           labels={resultActions(t, t("result.copy"))}
           wrappable={false}
         >
+          {continues && <RecordMeta>{t("result.morePages")}</RecordMeta>}
           {recorded.length > RESULT_PAGE_ROWS && (
             <span role="status" style={{ fontVariantNumeric: "tabular-nums" }}>
               {filter
@@ -542,7 +636,7 @@ function RecordedRows({
               </div>
             ))}
             {!recorded.length ? (
-              <Metadata>{t("result.empty")}</Metadata>
+              <Metadata>{emptyMessage ?? t("result.empty")}</Metadata>
             ) : (
               !matching.length && <Metadata>{t("result.noMatches")}</Metadata>
             )}
@@ -641,6 +735,8 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
       label={content.label}
       source={tool!.result!}
       recorded={content.rows}
+      continues={content.continues}
+      emptyMessage={content.emptyMessage}
       t={t}
     />
   );

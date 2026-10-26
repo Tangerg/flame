@@ -19,6 +19,7 @@ export const ko: Record<string, string> = {
   "result.search": "결과 검색",
   "result.filter": "결과 필터",
   "result.region": "결과",
+  "result.morePages": "다음 페이지 있음",
   "result.line": "줄 ",
   "result.countRows": "{{shown}} / {{total}}행",
   "result.countMatches": "{{shown}} / {{total}}건 일치",

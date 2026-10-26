@@ -240,6 +240,153 @@ it("decodes skill summary entities once, keeps descriptions inert and reports tr
   expectInert(result);
 });
 
+it("presents the current Skill list page as complete summaries with its recorded continuation", () => {
+  const page = {
+    skills: [
+      { name: "review-diff", description: "Keep &amp; and <img src=x onerror=alert(1)> literal." },
+      { name: "trace-flaky-test", description: "Find the shared state.\nKeep the second line." },
+    ],
+    next_cursor: { offset: 2, snapshot: "a".repeat(64) },
+  };
+  render(<RecordedResult context={capturedContext("list_skills", JSON.stringify(page))} />);
+  const result = screen.getByRole("region", { name: "Result" });
+  for (const skill of page.skills) {
+    expect(within(result).getByText(skill.name, { exact: true })).toBeTruthy();
+    expect(
+      within(result).getByText(skill.description, { exact: true, normalizer: (value) => value })
+        .tagName,
+    ).toBe("P");
+  }
+  expect(result.querySelector("pre")?.textContent).toBe(JSON.stringify(page.next_cursor, null, 2));
+  expect(
+    screen.getByText("More pages", { exact: true }).closest("[data-slot='code-caption']"),
+  ).toBeTruthy();
+  expectInert(result);
+
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "trace-flaky" } });
+  expect(result.textContent).not.toContain("review-diff");
+  expect(result.textContent).toContain(page.skills[1]!.description);
+  expect(screen.getByText("More pages", { exact: true })).toBeTruthy();
+  fireEvent.change(field, { target: { value: page.next_cursor.snapshot } });
+  expect(result.querySelector("pre")?.textContent).toBe(JSON.stringify(page.next_cursor, null, 2));
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(document.activeElement).toBe(result);
+  expect(result.textContent).toContain("review-diff");
+});
+
+it("keeps a complete empty Skill page distinct from locally hidden summaries", () => {
+  render(<RecordedResult context={capturedContext("list_skills", '{"skills":[]}')} />);
+  const result = screen.getByRole("region", { name: "Result" });
+  expect(result.textContent).toBe("No skills were returned.");
+  expect(screen.queryByText("More pages", { exact: true })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Find" }));
+  const field = screen.getByRole("searchbox", { name: "Filter result" });
+  fireEvent.change(field, { target: { value: "anything" } });
+  expect(result.textContent).toBe("No skills were returned.");
+  expect(result.textContent).not.toContain("Close find");
+  fireEvent.keyDown(field, { key: "Escape" });
+  expect(result.textContent).toBe("No skills were returned.");
+});
+
+it.each(["load_skill", "read_skill_resource"])(
+  "%s reads current page content without turning continuation into instruction text",
+  (name) => {
+    const content = "Keep <script>markup</script> literal.\n\n\tRead the next paragraph.\n";
+    const page = { content, next_cursor: { offset: 81, snapshot: "b".repeat(64) } };
+    render(<RecordedResult context={capturedContext(name, JSON.stringify(page))} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    expect(Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent)).toEqual(
+      name === "load_skill" ? [content, "next_cursor"] : ["next_cursor"],
+    );
+    expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent)).toEqual([
+      ...(name === "read_skill_resource" ? content.split("\n").map((line) => line || " ") : []),
+      JSON.stringify(page.next_cursor, null, 2),
+    ]);
+    expect(within(result).getByText("next_cursor", { exact: true })).toBeTruthy();
+    expect(screen.getByText("More pages", { exact: true })).toBeTruthy();
+    expectInert(result);
+  },
+);
+
+it.each(["load_skill", "read_skill_resource"])(
+  "%s leaves complete content and empty content literal without a continuation marker",
+  (name) => {
+    for (const content of ["First line.\n\nLast line.\n", ""]) {
+      const rendered = render(
+        <RecordedResult context={capturedContext(name, JSON.stringify({ content }))} />,
+      );
+      const result = screen.getByRole("region", { name: "Result" });
+      expect(
+        Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent),
+      ).toEqual(name === "load_skill" ? [content || " "] : []);
+      expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent)).toEqual(
+        name === "read_skill_resource" ? content.split("\n").map((line) => line || " ") : [],
+      );
+      expect(screen.queryByText("More pages", { exact: true })).toBeNull();
+      rendered.unmount();
+    }
+  },
+);
+
+it.each(["list_skills", "load_skill", "read_skill_resource"])(
+  "%s copies the exact recorded page rather than reconstructing its JSON",
+  async (name) => {
+    const page =
+      name === "list_skills"
+        ? { skills: [{ name: "review", description: "Read the diff." }] }
+        : { content: "Keep this body.\n" };
+    const source =
+      JSON.stringify({ ...page, next_cursor: { offset: 20, snapshot: "c".repeat(64) } }, null, 2) +
+      "\n";
+    const writeText = vi.fn(async () => {});
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    try {
+      render(<RecordedResult context={capturedContext(name, source)} />);
+      fireEvent.click(screen.getByRole("button", { name: "Copy result" }));
+      await act(async () => {});
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(source);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it.each(["list_skills", "load_skill", "read_skill_resource"])(
+  "%s preserves every byte of unknown or malformed page shapes",
+  (name) => {
+    const body =
+      name === "list_skills"
+        ? { skills: [{ name: "review", description: "Keep this summary." }] }
+        : { content: "Keep every byte.\n" };
+    const values = [
+      { ...body, extra: "Do not discard this field." },
+      { ...body, next_cursor: null },
+      { ...body, next_cursor: { offset: 1, snapshot: "invalid" } },
+      { ...body, next_cursor: { offset: 1, snapshot: "d".repeat(64), extra: "Keep me." } },
+      { ...body, next_cursor: { offset: Number.MAX_SAFE_INTEGER + 1, snapshot: "d".repeat(64) } },
+      name === "list_skills"
+        ? { skills: [{ name: "review", description: "Keep this.", unknown: "Keep that too." }] }
+        : { content: { text: "Keep this object complete." } },
+    ];
+    for (const value of values) {
+      const source = JSON.stringify(value, null, 2);
+      const rendered = render(<RecordedResult context={capturedContext(name, source)} />);
+      const result = screen.getByRole("region", { name: "Result" });
+      expect(
+        Array.from(result.querySelectorAll("p"), (paragraph) => paragraph.textContent),
+      ).toEqual(name === "load_skill" ? [source] : []);
+      expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent)).toEqual(
+        name === "load_skill" ? [] : source.split("\n"),
+      );
+      expect(screen.queryByText("More pages", { exact: true })).toBeNull();
+      expectInert(result);
+      rendered.unmount();
+    }
+  },
+);
+
 it("distinguishes an empty skill list from a result where no summary fit", () => {
   const results = [
     [
@@ -746,6 +893,28 @@ it.each([
     name: "load_skill",
     result: "Keep \u001b[1m literal\n\nin prose",
     copied: "Keep \u001b[1m literal\n\nin prose",
+  },
+  {
+    name: "list_skills",
+    result: JSON.stringify({
+      skills: [{ name: "review", description: "Read the diff.\nKeep its context." }],
+    }),
+    copied: "review\nRead the diff.\nKeep its context.",
+  },
+  {
+    name: "load_skill",
+    result: JSON.stringify({
+      content: "Keep this body.\n",
+      next_cursor: { offset: 16, snapshot: "e".repeat(64) },
+    }),
+    copied:
+      "Keep this body.\n\nnext_cursor\n" +
+      JSON.stringify({ offset: 16, snapshot: "e".repeat(64) }, null, 2),
+  },
+  {
+    name: "read_skill_resource",
+    result: JSON.stringify({ content: "First line.\n\nLast line.\n" }),
+    copied: "First line.\n\nLast line.\n",
   },
 ])("copies whole $name result rows as their recorded text", ({ name, result, copied }) => {
   render(<RecordedResult context={capturedContext(name, result)} />);

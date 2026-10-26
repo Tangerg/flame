@@ -420,23 +420,36 @@ const LIST_SKILLS_CALL = settledTool(
   "item_agentic_list_skills",
   "list_skills",
   {},
-  [
-    "<available_skills>",
-    "<skill><name>review-diff</name><description>Read a change the way a reviewer does, worst risk first.</description></skill>",
-    "<skill><name>trace-flaky-test</name><description>Find the shared state behind a test that passes alone.</description></skill>",
-    "</available_skills>",
-  ].join("\n"),
+  {
+    skills: [
+      {
+        name: "review-diff",
+        description: "Read a change the way a reviewer does, worst risk first.",
+      },
+      {
+        name: "trace-flaky-test",
+        description: "Find the shared state behind a test that passes alone.",
+      },
+    ],
+    next_cursor: {
+      offset: 2,
+      snapshot: "861f411f0c0bf55ee4fe9596dc8e23ea96dd61243d2cb09e26191ed32cf3fee3",
+    },
+  },
 );
 
 const LOAD_SKILL_CALL = settledTool(
   "item_agentic_load_skill",
   "load_skill",
   { name: "review-diff" },
-  [
-    "Start from the riskiest hunk, not the first one.",
-    "Name the invariant the change could break, then look for the test that would catch it.",
-    "A diff with no test change is a claim that nothing observable changed. Check it.",
-  ].join("\n"),
+  {
+    content:
+      "Start from the riskiest hunk, not the first one.\nName the invariant the change could break, then look for the test that would catch it.\nA diff with no test change is a claim that nothing observable changed. Check it.",
+    next_cursor: {
+      offset: 216,
+      snapshot: "a83a887aee84d11218a8dbfc69e4f1a35325ba7ccffaa894284945f0363bfd5e",
+    },
+  },
 );
 
 const ENTER_PLAN_CALL = settledTool(

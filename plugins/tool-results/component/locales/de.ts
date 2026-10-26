@@ -22,6 +22,7 @@ export const de: Record<string, string> = {
   "result.search": "Ergebnissuche",
   "result.filter": "Ergebnis filtern",
   "result.region": "Ergebnis",
+  "result.morePages": "Weitere Seiten",
   "result.line": "Zeile ",
   "result.countRows": "{{shown}} von {{total}} Zeilen",
   "result.countMatches": "{{shown}} von {{total}} Treffern",

@@ -19,6 +19,7 @@ export const zhTW: Record<string, string> = {
   "result.search": "結果搜尋",
   "result.filter": "篩選結果",
   "result.region": "結果",
+  "result.morePages": "後續還有內容",
   "result.line": "行 ",
   "result.countRows": "{{shown}} / {{total}} 行",
   "result.countMatches": "{{shown}} / {{total}} 處符合",

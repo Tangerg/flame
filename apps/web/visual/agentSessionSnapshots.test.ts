@@ -9,6 +9,38 @@ import {
   projectRuntimeAgentSnapshot,
 } from "./agentSessionSnapshots";
 describe("the visual agent fixtures", () => {
+  it("retains the current Skill list and instruction pages through the real fold", () => {
+    const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-agentic"];
+    const view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
+    const list = JSON.parse(view.toolCalls.item_agentic_list_skills!.result!);
+    const instructions = JSON.parse(view.toolCalls.item_agentic_load_skill!.result!);
+
+    expect(list).toEqual({
+      skills: [
+        {
+          name: "review-diff",
+          description: "Read a change the way a reviewer does, worst risk first.",
+        },
+        {
+          name: "trace-flaky-test",
+          description: "Find the shared state behind a test that passes alone.",
+        },
+      ],
+      next_cursor: {
+        offset: 2,
+        snapshot: "861f411f0c0bf55ee4fe9596dc8e23ea96dd61243d2cb09e26191ed32cf3fee3",
+      },
+    });
+    expect(instructions).toEqual({
+      content:
+        "Start from the riskiest hunk, not the first one.\nName the invariant the change could break, then look for the test that would catch it.\nA diff with no test change is a claim that nothing observable changed. Check it.",
+      next_cursor: {
+        offset: 216,
+        snapshot: "a83a887aee84d11218a8dbfc69e4f1a35325ba7ccffaa894284945f0363bfd5e",
+      },
+    });
+  });
+
   it("projects stored-output identity and the complete original read window", () => {
     const snapshot = RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-tail"];
     const recorded = snapshot.items.find((item) => item.id === "item_last_read_tool_result");

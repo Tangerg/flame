@@ -24,6 +24,7 @@ export const es: Record<string, string> = {
   "result.search": "Búsqueda en el resultado",
   "result.filter": "Filtrar resultado",
   "result.region": "Resultado",
+  "result.morePages": "Más páginas",
   "result.line": "Línea ",
   "result.countRows": "{{shown}} de {{total}} filas",
   "result.countMatches": "{{shown}} de {{total}} coincidencias",

@@ -19,6 +19,7 @@ export const ja: Record<string, string> = {
   "result.search": "結果検索",
   "result.filter": "結果を絞り込む",
   "result.region": "結果",
+  "result.morePages": "続きあり",
   "result.line": "行 ",
   "result.countRows": "{{shown}} / {{total}} 行",
   "result.countMatches": "{{shown}} / {{total}} 件一致",

@@ -20,6 +20,7 @@ export const en: Record<string, string> = {
   "result.search": "Result search",
   "result.filter": "Filter result",
   "result.region": "Result",
+  "result.morePages": "More pages",
   "result.line": "Line ",
   "result.countRows": "{{shown}} of {{total}} rows",
   "result.countMatches": "{{shown}} of {{total}} matches",

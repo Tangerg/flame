@@ -57,8 +57,16 @@ neither failure nor a write.
 Known literal answers, instructions and source results are classified by Tool
 identity before inspecting normalized result shapes. JSON-looking text stays
 complete rather than being mistaken for a different Tool's result envelope.
-Skill summaries decode the producer's XML text once and retain its truncation
-notice. Unknown or malformed summary formats remain complete source text.
+Current Skill pages separate summaries or instruction/resource content from their
+recorded continuation. A nonfinal page keeps a More pages cue in the caption,
+including during Find, and the complete next_cursor as source metadata. Copy
+result retains the exact original page; reader selection copies the presented
+content. Empty complete catalogs remain empty during Find. Historical XML
+summaries still decode once with their recorded truncation notice, and literal
+instructions remain literal. Unknown members or malformed page shapes retain the
+complete source instead of silently dropping fields. This component never fetches
+a page, concatenates separate Tool calls or treats a captured page as the full
+Skill catalog or document.
 Result viewports contain horizontal overscroll and let vertical scrolling continue
 through the transcript when the result reaches its edge or fits without scrolling.
 Explicit expansion transfers focus once to the new output viewport after its
