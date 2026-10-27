@@ -2,9 +2,10 @@ package plugin
 
 import (
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -24,22 +25,22 @@ type ModelContextResult struct {
 	Messages []chat.Message `json:"messages"`
 }
 
-func ModelContextMethod() (*Method[ModelContextRequest, ModelContextResult], error) {
-	return NewMethod[ModelContextRequest, ModelContextResult](MethodConfig{Name: "flame.model-context/contribute.v2", Kind: extension.Query, Target: "call", Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
+func ModelContextMethod() (*qimumcp.Method[ModelContextRequest, ModelContextResult], error) {
+	return qimumcp.NewMethod[ModelContextRequest, ModelContextResult](qimumcp.MethodConfig{Name: "flame.model-context/contribute.v2", Kind: portable.Query, Target: "call", Description: "Contribute additional system context using the captured request and its original user input before capacity admission."})
 }
 
 // ModelContextContract orders independent context contributions before the final
 // request is admitted. It grants no next proxy, model call or route replacement.
-func ModelContextContract() (*extension.Capability, error) { return modelContextContract() }
+func ModelContextContract() (*portable.Capability, error) { return modelContextContract() }
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelContextContract = sync.OnceValues(func() (*extension.Capability, error) {
+var modelContextContract = sync.OnceValues(func() (*portable.Capability, error) {
 	method, err := ModelContextMethod()
 	if err != nil {
 		return nil, err
 	}
-	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.model-context.v2", Composition: extension.Decoration, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-context.v2", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
 })
 
 func (r ModelContextResult) Validate() error {

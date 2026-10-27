@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 )
 
 var ErrClosed = errors.New("runtime client: closed")
@@ -95,7 +95,7 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 // ConnectCallback uses the ordinary typed Runtime binding over a captured
 // backend call. Its connection never uses a proxy, follows a redirect or
 // changes the owning call. Closing observation does not cancel an accepted Run.
-func ConnectCallback(ctx context.Context, ref pluginsdk.CallbackRef) (*Client, error) {
+func ConnectCallback(ctx context.Context, ref qimumcp.CallbackRef) (*Client, error) {
 	if err := ref.Validate(); err != nil {
 		return nil, err
 	}

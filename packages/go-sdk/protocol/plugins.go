@@ -1,6 +1,6 @@
 package protocol
 
-import "github.com/Tangerg/flame/packages/go-sdk/extension"
+import "github.com/Tangerg/flame/qimu/portable"
 
 // PluginCommandRequest addresses original routing without another copy of input.
 type PluginCommandRequest struct {
@@ -13,13 +13,13 @@ type PluginCommandRequest struct {
 // Contracts and feature values cross Core as JSON text because their numeric
 // ranges and original receipt lexemes belong to the feature, not a JS number.
 type CallPluginRequest struct {
-	InstallationID string           `json:"installationId"`
-	Digest         string           `json:"digest"`
-	Contribution   string           `json:"contribution"`
-	Contract       string           `json:"contract"`
-	Method         string           `json:"method"`
-	Input          string           `json:"input"`
-	Target         extension.Target `json:"target"`
+	InstallationID string          `json:"installationId"`
+	Digest         string          `json:"digest"`
+	Contribution   string          `json:"contribution"`
+	Contract       string          `json:"contract"`
+	Method         string          `json:"method"`
+	Input          string          `json:"input"`
+	Target         portable.Target `json:"target"`
 }
 
 type CallPluginResponse struct {
@@ -388,7 +388,7 @@ type PluginPointReference struct {
 
 type ResolvePluginPointRequest struct {
 	Contract   string                 `json:"contract"`
-	Target     extension.Target       `json:"target"`
+	Target     portable.Target        `json:"target"`
 	Attributes string                 `json:"attributes"`
 	Order      []PluginPointReference `json:"order"`
 }

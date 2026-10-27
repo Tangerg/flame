@@ -1,4 +1,4 @@
-package jsonvalue_test
+package protocol_test
 
 import (
 	"encoding/json/jsontext"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 func TestTypedWireDecoderPreservesOpaqueNumericEvidence(t *testing.T) {

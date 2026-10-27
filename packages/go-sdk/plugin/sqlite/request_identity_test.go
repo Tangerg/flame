@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -29,11 +29,11 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	connect := func() (*sdk.ClientSession, *sdk.ServerSession) {
 		t.Helper()
 		server := sdk.NewServer(&sdk.Implementation{Name: "owner"}, nil)
-		binding, err := pluginsdk.NewBackend(server)
+		binding, err := qimumcp.NewBackend(server)
 		if err != nil {
 			t.Fatal(err)
 		}
-		method, err := pluginsdk.NewMethod[input, string](pluginsdk.MethodConfig{Name: "update", Kind: extension.Mutation, Target: "installation", Description: "update"})
+		method, err := qimumcp.NewMethod[input, string](qimumcp.MethodConfig{Name: "update", Kind: portable.Mutation, Target: "installation", Description: "update"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 			t.Fatal(err)
 		}
 		client := sdk.NewClient(&sdk.Implementation{Name: "caller"}, nil)
-		if err := pluginsdk.RegisterClient(client); err != nil {
+		if err := qimumcp.RegisterClient(client); err != nil {
 			t.Fatal(err)
 		}
 		a, b := sdk.NewInMemoryTransports()
@@ -71,7 +71,7 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	binding, err := pluginsdk.Resolve(t.Context(), session, "update")
+	binding, err := qimumcp.Resolve(t.Context(), session, "update")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,13 +94,13 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 	db = reopened
 	t.Cleanup(func() { _ = reopened.Close() })
 	session, _ = connect()
-	if value, found, err := pluginsdk.ReadReceipt[jsontext.Value, string](t.Context(), session, "original", "update", jsontext.Value(` { "n":1.0, "z":"same" } `)); err != nil || !found || value != "saved" {
+	if value, found, err := qimumcp.ReadReceipt[jsontext.Value, string](t.Context(), session, "original", "update", jsontext.Value(` { "n":1.0, "z":"same" } `)); err != nil || !found || value != "saved" {
 		t.Fatalf("original raw receipt = %q, %t, %v", value, found, err)
 	}
-	if _, _, err := pluginsdk.ReadReceipt[input, string](t.Context(), session, "original", "update", input{N: 1, Z: "same"}); err == nil {
+	if _, _, err := qimumcp.ReadReceipt[input, string](t.Context(), session, "original", "update", input{N: 1, Z: "same"}); err == nil {
 		t.Fatal("decoded DTO replaced original numeric identity")
 	}
-	binding, err = pluginsdk.Resolve(t.Context(), session, "update")
+	binding, err = qimumcp.Resolve(t.Context(), session, "update")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,20 +123,42 @@ func TestReceiptRetainsOriginalRawInputAcrossTypedConversionAndRestart(t *testin
 
 func TestReceiptRegistrationRequiresACommandMethod(t *testing.T) {
 	server := sdk.NewServer(&sdk.Implementation{Name: "command-admission"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
-	query, err := pluginsdk.NewMethod[struct{}, string](pluginsdk.MethodConfig{Name: "read", Kind: extension.Query, Target: "installation", Description: "read"})
+	query, err := qimumcp.NewMethod[struct{}, string](qimumcp.MethodConfig{Name: "read", Kind: portable.Query, Target: "installation", Description: "read"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, method := range []*pluginsdk.Method[struct{}, string]{nil, query} {
+	for _, method := range []*qimumcp.Method[struct{}, string]{nil, query} {
 		if err := RegisterCommand(backend, nil, method, nil, func(context.Context, *sdk.ServerSession, struct{}) (string, error) { return "unexpected", nil }); err == nil {
 			t.Fatal("receipt registration accepted a non-command method")
 		}
 	}
-	if err := backend.Publish(); err == nil {
-		t.Fatal("refused registration left a live export")
+	if err := backend.Publish(); err != nil {
+		t.Fatal(err)
+	}
+	client := sdk.NewClient(&sdk.Implementation{Name: "registration-observer"}, nil)
+	if err := qimumcp.RegisterClient(client); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sdk.NewInMemoryTransports()
+	owner, err := server.Connect(t.Context(), a, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	session, err := client.Connect(t.Context(), b, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	description, err := qimumcp.Describe(t.Context(), session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(description.Methods) != 0 || len(description.Capabilities) != 0 {
+		t.Fatalf("refused registration left a live export: %+v", description)
 	}
 }

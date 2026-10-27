@@ -11,13 +11,15 @@ import (
 	"testing"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 	if encoded := os.Getenv("FLAME_TEST_MODEL_STREAM_CALLBACK"); encoded != "" {
-		var ref pluginsdk.CallbackRef
+		var ref qimumcp.CallbackRef
 		if err := json.Unmarshal([]byte(encoded), &ref); err != nil {
 			t.Fatal(err)
 		}
@@ -48,14 +50,16 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 		}
 		return
 	}
-	host := pluginsdk.NewCallbacks()
+	host := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	var calls atomic.Int32
 	base := chat.StreamerFunc(func(_ context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
@@ -85,7 +89,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 	}
 	order := []chat.StreamMiddleware{prefix("first "), prefix("second ")}
 	remaining := chat.WrapStream(base, order...)
-	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := pluginsdk.NewModelStreamCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		if command.ID != "frozen-model-call" {
 			return func(yield func(*chat.ResponseDelta, error) bool) { yield(nil, errors.New("call identity replaced")) }
 		}
@@ -95,7 +99,7 @@ func TestExecutableConsumesFrozenRemainingModelStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	order[0] = prefix("replacement ")
-	ref, release, err := host.Open(t.Context(), session, pluginsdk.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"path/filepath"
 	"testing"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
 func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
@@ -34,10 +33,10 @@ func TestPreparedCommandRetainsUnknownAdmissionAcrossRestart(t *testing.T) {
 	if pending, reply, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil); err != nil || pending == nil || pending.NewlyAdmitted() || len(reply) != 0 {
 		t.Fatalf("pending command lost its reconciliation-only admission: %v, %s, %v", pending, reply, err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "changed", "original", input, nil); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed method=%v", err)
 	}
-	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, _, err := AdmitCommand(t.Context(), db, "maintain", "original", receiptInput(t, "changed"), nil); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed input=%v", err)
 	}
 	if _, err := Command(t.Context(), db, "maintain", "original", "input", input, nil, func(context.Context, string) (string, error) {
@@ -59,7 +58,7 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outcome, err := pluginsdk.EncodeReply("saved", nil, nil)
+	outcome, err := qimumcp.EncodeReply("saved", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,12 +92,12 @@ func TestPreparedCompletionIsAtomicWithItsMutationAndImmutable(t *testing.T) {
 	if err := prepared.Complete(t.Context(), reply); err != nil {
 		t.Fatal(err)
 	}
-	other, err := pluginsdk.EncodeReply("different", nil, nil)
+	other, err := qimumcp.EncodeReply("different", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	changed := other.JSON()
-	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, extension.ErrInvocationConflict) {
+	if err := prepared.Complete(t.Context(), changed); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("completed outcome changed: %v", err)
 	}
 	duplicate, original, err := AdmitCommand(t.Context(), db, "maintain", "original", input, nil)
