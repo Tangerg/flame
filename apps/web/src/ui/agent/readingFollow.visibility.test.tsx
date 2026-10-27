@@ -152,6 +152,76 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
+  it("keeps returned focus beyond its CSS disclosure clearance", () => {
+    const s = scenario();
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.viewport.scrollTop = 200;
+    s.viewport.scrollLeft = 23;
+    s.shape.top = 250;
+    s.target.style.scrollMarginTop = "48px";
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.bounds().top).toBe(68);
+    expect(s.viewport.scrollLeft).toBe(23);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("uses a changed CSS clearance when focused content reflows", () => {
+    const s = scenario();
+    s.target.style.scrollMarginTop = "48px";
+    s.shape.top = 90;
+    s.resize(s.content);
+    expect(s.viewport.scrollTop).toBe(0);
+
+    s.target.style.scrollMarginTop = "96px";
+    s.resize(s.content);
+
+    expect(s.bounds().top).toBe(116);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps visible focus when its margin extends outside a disclosure's clipping box", () => {
+    const s = scenario();
+    s.target.style.scrollMarginTop = "96px";
+    s.nested.style.overflowY = "hidden";
+    s.nested.scrollTop = 4;
+    fireEvent.scroll(s.nested);
+    s.shape.height = 240;
+
+    s.resize();
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps the clearance start when the complete focus area exceeds the reading frame", () => {
+    const s = scenario();
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.viewport.scrollTop = 200;
+    s.shape.height = 123;
+    s.shape.top = 250;
+    s.target.style.scrollMarginTop = "56.5px";
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.bounds().top).toBeGreaterThanOrEqual(76.5);
+    expect(s.bounds().top).toBeLessThan(77.5);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("reserves the focused control's CSS end margin above the Composer", () => {
+    const s = scenario();
+    s.target.style.scrollMarginBottom = "32px";
+    s.shape.height = 240;
+    s.shape.top = 145;
+
+    s.resize();
+
+    expect(s.bounds().bottom).toBe(128);
+    expect(document.activeElement).toBe(s.target);
+  });
+
   it("keeps the same focused target through successive resizes when scroll precedes ResizeObserver", () => {
     const s = scenario();
     s.shape.height = 300;
@@ -162,6 +232,21 @@ describe("reading focus geometry", () => {
     fireEvent.scroll(s.viewport);
     s.resize();
     expect(s.bounds().bottom).toBeLessThanOrEqual(160);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("preserves the witness when a reflow-only scroll precedes the content resize", () => {
+    const s = scenario();
+    s.shape.height = 300;
+    s.shape.top = 190;
+    s.resize();
+    expect(s.viewport.scrollTop).toBe(0);
+
+    s.shape.top = 225;
+    fireEvent.scroll(s.viewport);
+    s.resize(s.content);
+
+    expect(s.bounds().bottom).toBeLessThanOrEqual(220);
     expect(document.activeElement).toBe(s.target);
   });
 

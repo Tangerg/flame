@@ -168,6 +168,13 @@ Composer clearance after window or page-zoom changes. Pointer focus keeps its
 pressed position; modal completion continues to own focus restoration.
 Reveals use absolute instant offsets so WebKit's painted reading position agrees
 with layout after native page zoom.
+They include the target's CSS scroll margins while testing actual content against
+ancestor clips. Native scroll notifications without a changed reading offset do
+not retire focus before pending content reflow is observed. Disclosure clearance
+persists while the native menu owns focus. Goal identities use a root-relative
+preferred width so native zoom does not add a redundant action row. The existing
+Steer action and input placeholder carry running-turn intent without a separate
+paragraph beneath the draft.
 
 Product object menus reuse their target owner's displayed identity: view and
 session titles, message authors, and complete entry paths for files. Nested

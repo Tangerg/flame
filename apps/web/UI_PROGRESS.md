@@ -55,11 +55,11 @@ the primary checkout. The latest repeated request is checked against a fresh
 remote fetch with the same result while completing the file-header, project-choice
 and subagent-action batches below. Both local main and the freshly fetched remote
 still identify `e616e1a4c`; no incoming commits or new integration checks are needed.
-The latest requested fetch, from local base `36474d48`, again resolves to that
+The latest requested fetch, from local base `d327dd07`, again resolves to that
 same remote commit. `git merge --no-edit origin/main` reports `Already up to date`.
 No merge commit, push, primary-checkout write or new integration verification is
-needed. The in-flight fixture correction below is committed locally before
-resuming another UI task.
+needed. The fixture correction is committed locally at `d327dd07`; the reading
+clearance and native-reflow follow-up below builds on that verified base.
 
 The current local series repairs plugin-editor recovery feedback, reveals the
 active file-tree name, reveals the first newly filtered recorded result, and
@@ -96,6 +96,12 @@ Subagent cancellation controls now reference their existing visible task identit
 see Subagent cancellation target context.
 Remembered-rule removal now continues local keyboard focus into the remaining
 list or its empty context; see Rule removal and keyboard continuity.
+Sticky Tool summaries now retain their CSS reading clearance through native
+resize, zoom and source return. Zero-displacement scroll notifications no longer
+discard the focused reading witness before content reflow. The Goal tray retains
+its preferred width under native zoom, and the Composer's existing Steer action
+carries intent without a repeated paragraph; see Sticky disclosure clearance and
+reading space.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -14049,6 +14055,118 @@ return work remains intact.
 **Approve** for the changed reading-focus geometry and inspected native task
 paths across the six domains. The continuous goal remains active; this is not
 whole-application or award-tier completion.
+
+### Sticky disclosure clearance and reading space
+
+The current flow is recorded Tool source → current file → source return → continued
+authoring, on local base `d327dd07`. The previous fixture-category correction's
+unclassified current-file activation is not promoted to a navigation defect:
+fresh native Return and physical pointer activation both select the correct path,
+and Back restores the source action. The fixture still supplies canned current-file
+content. Identity, header and return are qualified; real filesystem content is not.
+Read-only ZCode's Read renderer passes its captured file identity to its existing
+preview callback. Flame retains its own Runtime projection and navigation owner.
+The Desktop/docs feedback's G02/G04 flow, repository design/ownership instructions,
+and the six better-* domains guide this bounded review.
+
+The actual defect is focused reading behind fixed chrome. At **560 × 364 CSS px /
+200%**, the original English action is at **y 69.99–93.99** beneath a summary ending
+at **94.5**; center hit testing reaches that summary. The reader now consumes the
+target's existing CSS scroll margins while testing its actual box against ancestor
+clips. Clearance remains declared while the native menu owns focus. There is no
+per-Tool offset, focus retry, delayed activation or second scroll owner.
+
+A private Chinese trace establishes another cause: after a viewport frame update,
+text reflow moves the focused action beyond the safe edge, then a native scroll
+notification arrives with **scrollTop still 0**, before content ResizeObserver.
+Re-witnessing at that notification discarded the target. The existing reader now
+compares the observed viewport offset; a notification without movement cannot
+replace the pending geometry witness. Actual outer and nested scrolling and wheel
+retirement retain their contracts. The stored offset is an observation of the
+viewport, not an independently advanced reading position.
+
+Native measurements also show the Goal identity's `24ch` basis increasing from
+**208.03 to 416.72 px** under zoom, forcing an unnecessary action row. `13rem`
+retains a **208 px** preference and ordinary flex wrapping. The repeated steering
+paragraph is removed; the existing localized Steer action and placeholder already
+express its meaning. Its unused style, controller projection/arguments and eight
+locale keys are retired together. Submission captures, attachments, composition,
+Run commands, Goal lifecycle and feedback are unchanged.
+
+| Domain        | Inspected evidence                                                                                        | Scoped result                                                 |
+| ------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Accessibility | Real keyboard action focus, pointer file entry, named return, local Find/Escape and native continuation   | Focused action remains visible; VoiceOver speech not verified |
+| Layout        | Wide and pointer-resized native windows; 560 × 364 / 200%; measured summary, Goal and Composer rectangles | Sticky obstruction and redundant Goal row resolved            |
+| Writing       | Existing EN/ZH Steer labels and placeholders; removed duplicate paragraph across eight locales            | No new copy or action vocabulary                              |
+| Typography    | EN 14 px and ZH 18 px; complete source identity in the current-file reader; root-relative Goal basis      | Existing font scale retained                                  |
+| Color         | Existing light/Orange and dark/custom-yellow/contrast-100 tokens and focus styling                        | No color change; rendered contrast not remeasured             |
+| UI polish     | Existing disclosure, focus perimeter, one-line tray and immediate owned scrolling, motion off             | No new decoration or animation; full-motion replay not run    |
+
+| Severity | Domain        | Location                                               | Before                                                                               | After                                                             | Why                                                     |
+| -------- | ------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| HIGH     | Accessibility | `ui/agent/readingFollow.ts`, sticky activity clearance | A retained action can sit behind a summary or Composer after geometry changes        | CSS margin-aware reading and displacement-aware witness retention | A focused task action must remain visibly reachable     |
+| MEDIUM   | Layout        | `features/goal/ui/GoalStatusSurface.tsx`               | Native zoom doubles the observed preferred basis and consumes another row            | Stable 13rem preference, same controls and wrap policy            | Preserve scarce reading space                           |
+| MEDIUM   | Writing       | `features/composer/ui/Composer.tsx`                    | A paragraph repeats the already named running-turn action below every nonempty draft | Existing action/placeholder carry intent                          | Remove repetition without removing the action's meaning |
+
+Verification:
+
+- Four CSS-clearance regressions fail on original source with **22 existing tests
+  passing**. The traced zero-displacement ordering separately fails before its
+  repair with **27 passing**. Six new cases cover margins, actual ancestor clips,
+  oversized focus and content reflow. Final scoped checks pass **9 files / 223
+  tests**, types and lint in an **11.76 s** serial test/type/lint/assets chain.
+  The first margin-only candidate passed tests but failed native acceptance and
+  was rejected; its false clipping witness and later Chinese ordering failure
+  are not reported as passes. Removing retired controller arguments resolves
+  two genuine unused-argument type errors without suppressing checks.
+- `make check-native` passes in **27.72 s**. The first full Web command passes
+  type/lint/format and **418 files / 3,842 tests**, then its Runtime suite cannot
+  start because the prepared Node **24.22.1** archive is absent; its **49 skipped
+  tests** are an environment failure, not accepted coverage. The repository's
+  canonical companion preparer verifies the pinned archive and executable hashes
+  in **8.96 s**. That suite then passes **49/49** in **52.05 s**. All **22 remaining
+  Web gates** and a final private build pass in the **81.43 s** continuation.
+  Together the runs qualify **419 files / 3,891 tests**; the original full command
+  is not relabeled as a single successful run, and the 418 passed files are not
+  needlessly repeated. Existing bundle-size and duplicate `-lobjc` warnings remain
+  non-failing. Final **598 assets**, **5,832 non-Markdown inputs**, eleven resources
+  and three read-only references match after the production gates and native use.
+- Final actual Wails uses English/light/14 px/Flame Orange/contrast 25 and
+  Chinese/dark/18 px/custom yellow `#ffe066`/contrast 100, both paper/motion off.
+  Each starts wide, pointer-resizes to **1121 × 729**, and completes twenty native
+  Zoom In commands to **560 × 364 / 200%**. The same current-file action remains
+  focused and visible at **y 126.79 EN / 137.74 ZH**, beyond summary bottoms
+  **94.5 / 105**. Goal rows measure **32 / 34 px**, with the same 208 px basis.
+  English Find accepts `flushLocked`; Escape returns Result focus and observed
+  reverse Tab reaches Copy result → Find → current file. Physical pointer entry
+  and Back preserve source focus. Chinese Return opens the file; ordinary body
+  wheel exposes its lower rows with the header retained, then Back restores the
+  source action. Actual Size and native paste continue the drafts exactly as
+  `Keep this draft while reading the file. Continue from this source.` and
+  `保留草稿，核对当前文件。 继续核对。`. Both final passive reports have no window errors.
+- Final assets contain no private witness trace. A stale baseline capture handle
+  reactivated an additional owned native instance; that capture is excluded and
+  process inventory finds and retires it. Final captures take an explicit app
+  handle and final launches use fresh private homes. A read-only status probe
+  timeout resets its orchestration REPL; disk evidence is recovered without
+  restarting completed checks. No live Tool/Run command, browser visual suite,
+  performance benchmark, OS IME, VoiceOver, other-platform GUI, fresh 320 px,
+  child GUI geometry or whole-product Goal CHECK acceptance is claimed.
+
+All **23 owned process generations** have exited, and the three exact applications
+are unregistered. Seven new output/cache roots, six bundle-specific Library
+entries, three bundle-temporary directories and the prepared Node archive are
+removed. The overwritten native-check binary is restored from its verified
+original. All **39 output-presence baselines**, four original file hashes,
+eighteen Library-presence baselines, 5,832 accepted source inputs, eleven installed
+resources and three read-only references remain preserved. The preexisting
+Node-artifact cache directory is retained. The private root is absent. Its
+in-memory capsule round-trips **117 UTF-8 records / 36 capture digests**, gzip
+SHA-256 `b40b62c63eca874d91f456837e6924b2b089fd9debee7bda9948b7f9a259cfab`.
+
+**Approve** for this bounded reading/return/continued-authoring flow, with the
+unverified domains and scenarios above retained. The batch stays local under the
+user's current policy; the broader UI goal remains active.
 
 ## Connection token draft intent
 

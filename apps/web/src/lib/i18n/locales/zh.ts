@@ -1046,7 +1046,6 @@ export const zh: Record<string, string> = {
   "tool.open.worktreeDiff": "打开工作区差异",
   "message.user.unfold": "显示完整消息",
   "message.user.fold": "收起",
-  "composer.steer.hint": "发送后会补充到正在运行的任务中。",
   "message.mermaid.fit": "适应窗口",
   "message.mermaid.zoomIn": "放大图表",
   "message.mermaid.zoomOut": "缩小图表",

@@ -1025,7 +1025,7 @@ html.theme-dark {
   will-change: transform;
 }
 
-[data-activity-clearance] :where(:focus) {
+[data-activity-clearance] :where(*) {
   scroll-margin-block-start: calc(
     var(--panel-controls-height, 0px) + var(--disclosure-header-height, 0px) +
       var(--layout-control-gap)

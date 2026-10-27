@@ -1095,7 +1095,6 @@ export const ko: Record<string, string> = {
   "tool.open.worktreeDiff": "작업 트리 변경 사항 열기",
   "message.user.unfold": "전체 메시지 보기",
   "message.user.fold": "접기",
-  "composer.steer.hint": "보내면 지금 실행 중인 작업에 추가됩니다.",
   "message.mermaid.fit": "맞춤",
   "message.mermaid.zoomIn": "다이어그램 확대",
   "message.mermaid.zoomOut": "다이어그램 축소",

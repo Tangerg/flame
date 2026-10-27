@@ -1050,7 +1050,6 @@ export const zhTW: Record<string, string> = {
   "tool.open.worktreeDiff": "開啟工作區差異",
   "message.user.unfold": "顯示完整訊息",
   "message.user.fold": "收合",
-  "composer.steer.hint": "送出後會補充到正在執行的任務中。",
   "message.mermaid.fit": "符合視窗",
   "message.mermaid.zoomIn": "放大圖表",
   "message.mermaid.zoomOut": "縮小圖表",

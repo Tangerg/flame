@@ -63,7 +63,7 @@ const gs = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1,
   },
-  identity: { minWidth: 0, flex: "1 1 24ch" },
+  identity: { minWidth: 0, flex: "1 1 13rem" },
   summary: {
     flexWrap: "nowrap",
     justifyContent: "flex-start",

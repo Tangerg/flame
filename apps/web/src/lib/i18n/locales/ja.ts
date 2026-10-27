@@ -1112,7 +1112,6 @@ export const ja: Record<string, string> = {
   "tool.open.worktreeDiff": "作業ツリーの差分を開く",
   "message.user.unfold": "メッセージ全体を表示",
   "message.user.fold": "折りたたむ",
-  "composer.steer.hint": "送信すると、実行中のタスクに追加されます。",
   "message.mermaid.fit": "全体表示",
   "message.mermaid.zoomIn": "図を拡大",
   "message.mermaid.zoomOut": "図を縮小",

@@ -1132,7 +1132,6 @@ export const en: Record<string, string> = {
   "tool.open.worktreeDiff": "Open the working-tree diff",
   "message.user.unfold": "Show full message",
   "message.user.fold": "Show less",
-  "composer.steer.hint": "Sending adds this to the task that is running now.",
   "message.mermaid.fit": "Fit",
   "message.mermaid.zoomIn": "Zoom in diagram",
   "message.mermaid.zoomOut": "Zoom out diagram",

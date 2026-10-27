@@ -8,7 +8,6 @@ import {
   type SyntheticEvent,
 } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type ComposerImage, type PastedText } from "@/features/composer/public/attachments";
 import { type AgentInput } from "@/features/agent/public/input";
 import { imageFiles } from "@/features/composer/public/input";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
@@ -18,7 +17,6 @@ import {
 } from "@/features/composer/application/fileMentions";
 import { handleSuggestionKey } from "@/features/composer/application/suggestions";
 import { useSlashSuggestions } from "@/features/composer/application/slashSuggestions";
-import { hasSendableContent } from "@/features/composer/domain/sendIntent";
 import { useIsCurrentRootRunning } from "@/features/agent/public/run";
 import { COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -42,8 +40,6 @@ interface Args {
   onChange: (value: string) => void;
   captureSubmission: () => ComposerSubmission;
   onSend: (input: AgentInput) => boolean;
-  images: readonly ComposerImage[];
-  pastes: readonly PastedText[];
   onAddImages: (files: File[]) => void;
   onAddPaste: (text: string) => void;
   acceptsImages: boolean;
@@ -54,8 +50,6 @@ export function useComposerInputController({
   onChange,
   captureSubmission,
   onSend,
-  images,
-  pastes,
   onAddImages,
   onAddPaste,
   acceptsImages,
@@ -91,7 +85,6 @@ export function useComposerInputController({
   const knownPaths = useKnownWorkspacePaths(cwd, value.includes("@"));
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
-  const steering = running && hasSendableContent({ value, images, pastes });
   const submit = useCallback(
     () =>
       submitComposer({
@@ -193,7 +186,6 @@ export function useComposerInputController({
     slash,
     knownPaths,
     placeholder,
-    steering,
     handleChange,
     clearCompositionCommit,
     handleCompositionStart,

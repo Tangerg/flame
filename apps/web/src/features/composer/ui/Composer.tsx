@@ -17,7 +17,6 @@ import { ComposerDropCue, useComposerImageDrop } from "@/features/composer/ui/Co
 import { useComposerInputController } from "@/features/composer/ui/useComposerInputController";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { type as typeStep } from "@flame/ui/tokens.stylex";
 interface Props {
   onSend: (input: AgentInput) => boolean;
   value: string;
@@ -57,7 +56,6 @@ export function Composer({
     slash,
     knownPaths,
     placeholder,
-    steering,
     handleChange,
     clearCompositionCommit,
     handleCompositionStart,
@@ -72,8 +70,6 @@ export function Composer({
     onChange,
     captureSubmission,
     onSend,
-    images,
-    pastes,
     onAddImages,
     onAddPaste,
     acceptsImages,
@@ -128,15 +124,6 @@ export function Composer({
           autosize
           className={stylex.props(composerStyles.editor).className}
         />
-        {steering && (
-          <p
-            data-slot="composer-steer-hint"
-            aria-live="polite"
-            {...stylex.props(composerStyles.steerHint, typeStep.uiXs)}
-          >
-            {t("composer.steer.hint")}
-          </p>
-        )}
       </div>
       <AgentComposerFooter>
         <Slot name="composer.toolbar.start" />

@@ -5,8 +5,22 @@ type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopSc
 // Native zoom reports fractional CSS pixels.
 const EDGE_TOLERANCE = 0.5;
 
-function withinSafeReading(target: Element, viewport: HTMLElement) {
+function readingTargetBounds(target: Element) {
   const bounds = target.getBoundingClientRect();
+  const style = getComputedStyle(target);
+  const start = parseFloat(style.scrollMarginTop) || 0;
+  const end = parseFloat(style.scrollMarginBottom) || 0;
+  return {
+    top: bounds.top - start,
+    bottom: bounds.bottom + end,
+    height: bounds.height + start + end,
+    marginStart: start,
+    marginEnd: end,
+  };
+}
+
+function withinSafeReading(target: Element, viewport: HTMLElement) {
+  const bounds = readingTargetBounds(target);
   let { top, bottom } = safeReadingBounds(viewport);
   for (
     let parent = target.parentElement;
@@ -15,8 +29,9 @@ function withinSafeReading(target: Element, viewport: HTMLElement) {
   ) {
     if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(parent).overflowY)) {
       const clip = parent.getBoundingClientRect();
-      top = Math.max(top, clip.top);
-      bottom = Math.min(bottom, clip.bottom);
+      // Scroll margins reserve viewport space; ancestor clips still test the actual target.
+      top = Math.max(top, clip.top - bounds.marginStart);
+      bottom = Math.min(bottom, clip.bottom + bounds.marginEnd);
     }
   }
   if (bottom <= top || bounds.top < top - EDGE_TOLERANCE) return false;
@@ -40,10 +55,12 @@ export function useReadingFocusVisibility(
     const content = contentRef.current;
     if (!attached || !viewport || !content) return;
     let frame = safeReadingBounds(viewport);
+    let observedScrollTop = viewport.scrollTop;
     let witness: Element | null = null;
     let pressedTarget: Element | null = null;
     const remember = () => {
       frame = safeReadingBounds(viewport);
+      observedScrollTop = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
       witness =
         active &&
@@ -58,12 +75,18 @@ export function useReadingFocusVisibility(
     };
     const onScroll = (event: Event) => {
       const next = safeReadingBounds(viewport);
-      // WebKit can emit a geometry-induced scroll before ResizeObserver delivers the new frame.
-      if (
-        event.target === viewport &&
-        (next.top !== frame.top || next.bottom !== frame.bottom || next.width !== frame.width)
-      )
-        return;
+      // Native zoom can notify before its frame or content reflow is observed, without moving.
+      if (event.target === viewport) {
+        const moved = viewport.scrollTop !== observedScrollTop;
+        observedScrollTop = viewport.scrollTop;
+        if (
+          !moved ||
+          next.top !== frame.top ||
+          next.bottom !== frame.bottom ||
+          next.width !== frame.width
+        )
+          return;
+      }
       remember();
     };
     const reveal = () => {
@@ -81,7 +104,7 @@ export function useReadingFocusVisibility(
         return;
       }
       if (withinSafeReading(target, viewport)) return;
-      const bounds = target.getBoundingClientRect();
+      const bounds = readingTargetBounds(target);
       const { top, bottom } = frame;
       if (bottom <= top) return;
       const alignStart = bounds.height > bottom - top || bounds.top < top;
@@ -161,7 +184,7 @@ export function stopFollowOnReadingFocus(
   if (target === event.currentTarget || !viewport?.contains(target) || !state.isAtBottom) return;
   const movement = state.targetScrollTop - viewport.scrollTop;
   if (movement <= 0) return;
-  const bounds = target.getBoundingClientRect();
+  const bounds = readingTargetBounds(target);
   const { top, bottom } = safeReadingBounds(viewport);
   // Native focus can reveal its target before a queued resize-follow tick.
   if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();
@@ -205,7 +228,7 @@ export function prepareDisclosureReading(
     !(trigger.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING)
   )
     return;
-  const bounds = trigger.getBoundingClientRect();
+  const bounds = readingTargetBounds(trigger);
   const { top, bottom } = safeReadingBounds(viewport);
   if (bounds.top >= top && bounds.bottom <= bottom) return;
   if (state.isAtBottom) stopScroll();

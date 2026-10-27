@@ -1160,7 +1160,6 @@ export const de: Record<string, string> = {
   "tool.open.worktreeDiff": "Arbeitsbaum-Diff öffnen",
   "message.user.unfold": "Ganze Nachricht zeigen",
   "message.user.fold": "Weniger zeigen",
-  "composer.steer.hint": "Senden fügt dies der laufenden Aufgabe hinzu.",
   "message.mermaid.fit": "Einpassen",
   "message.mermaid.zoomIn": "Diagramm vergrößern",
   "message.mermaid.zoomOut": "Diagramm verkleinern",
