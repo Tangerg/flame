@@ -43,6 +43,17 @@ Each active settings tab panel owns its scroll viewport and keyboard focus.
 Shared Select closes when Base UI reports its trigger fully clipped; dismissal
 keeps the current value and viewport position, then returns focus to that panel.
 
+Settings categories mount on first visit and retain their inline inputs and pending
+feedback for the lifetime of the open Settings view. Inactive categories retain
+layout and native reading position while invisible and inert; their visibility
+boundary retires menus and dialogs. Closing the view or removing
+a category unmounts that pane. Installation sources belong to the current Runtime
+operations generation: replacement clears the source, a failed install keeps it
+editable, and an accepted install clears it. Pending exposes its busy state;
+successful settlement retains the action's focus when clearing the source makes
+that action unavailable. Category navigation does not create another draft store
+or command owner.
+
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
 retain the focused control as the reading target.

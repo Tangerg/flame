@@ -19,10 +19,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
-context are published to main as `f9241b46b`, with receipt `8a16a1824`. The paired
-Diff reading batch has completed module/native qualification and cleanup under
-**Paired replacement reading and layout continuity** below. Next trace plugin
-installation draft retention and Run receipt navigation against current owners.
+context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
+Diff reading is published as `3a5cdba36`. The Settings task batch has completed
+module/native qualification and cleanup under **Unfinished settings tasks and
+native return continuity** below. Next trace Schedules Run receipt navigation
+against the current component and Host navigation contracts.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -17011,6 +17012,117 @@ optimistic revert, ServerForm immutable-name + no-echo, provider draft stores,
 theme single-owner, plugins operations-generation ownership. The index-containing
 keys in `HooksPane`/`PackageManager` combine the index with stable ids on
 stateless rows — no reachable corruption.
+
+### Unfinished settings tasks and native return continuity
+
+The 2026-10-28 batch starts from published `3a5cdba36` and follows the supplied
+review's installation-source loss. Scope is the Settings category lifetime and
+one complete task: preserve an inline installation draft, visit Appearance,
+return, handle installation settlement, close Settings and continue Composer.
+Other categories inherit the same panel lifetime; their individual editors are
+not all separately qualified in this batch.
+
+HeroUI's local Tabs implementation delegates panel semantics to its primitive.
+Flame retains Base UI, StyleX and its existing visibility collaborator. The
+measured Dock precedent supplies the WebKit layout-retention approach. No new
+draft cache, command owner, listener, theme value or dependency is introduced.
+
+`src/ui/atoms/vertical-tabs.tsx:125` mounts a category on its first visit and keeps
+that instance until the Settings view or category retires. Unvisited panes stay
+unmounted. Visited panes share the existing grid cell; inactive panes retain
+layout while invisible, inert and excluded from the accessible scope. Their
+existing `ContentVisibility` boundary retires portalled menus and dialogs. The
+native scrollport remains the reading-position owner.
+
+`src/features/plugins/ui/PackageManager.tsx:85` binds the installation source to
+the current operations signal. Replacement clears that input; the existing abort
+guard keeps a late completion from clearing another generation's draft. Failed
+installation retains editable source, while acceptance clears it. The action
+exposes busy state and uses the shared primitive's focusable-disabled contract
+after success. It retains its own focus without moving focus from a later task.
+Runtime admission, mutation handles, catalog reads and recovery remain unchanged.
+
+| Domain        | Evidence inspected                                                                                   | Result within this task                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Accessibility | Base UI tab/panel relationships, hidden scope, busy marker, native Tab/Home/End and settlement focus | Keyboard and AX scope pass; VoiceOver speech not run                                    |
+| Layout        | Shared grid placement, native category scrollports, field reveal at 200% zoom                        | Reading position stays 100px in light and 37px in the small dark scene                  |
+| Writing       | Existing source, install, error and accepted-result labels; English and Chinese flow                 | No new copy; original source, failure and accepted package identity stay clear          |
+| Typography    | Literal-input attributes, native 14px/18px Unicode source and horizontal field access                | Original characters and selection survive; the source end remains reachable             |
+| Colors        | Opaque painted input pairs in the native light and dark scenes                                       | Unselected input text measures 14.32:1 light and 13.38:1 dark; existing tokens retained |
+| UI            | Quiet filled fields, both font menus, visited-only mounting and clean native control                 | Popups retire on category change; focus, source and return remain stable                |
+
+| Severity | Domain        | Location                                         | Before                                                                              | After                                                                                | Why                                                                 |
+| -------- | ------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| MEDIUM   | Layout        | `src/ui/atoms/vertical-tabs.tsx:125`             | Category switching unmounts unfinished input and pending feedback                   | Retain visited panes for the open Settings view                                      | Continue the same task without retyping or losing its pending state |
+| MEDIUM   | Layout        | `src/ui/atoms/vertical-tabs.tsx:96`              | The initial retained implementation still removes layout; native scroll moves 100→0 | Stack the retained panes while hiding their interaction and paint                    | Preserve the existing native scrollport rather than cache positions |
+| MEDIUM   | Accessibility | `src/features/plugins/ui/PackageManager.tsx:124` | Successful clearing makes the native button disabled and drops focus to BODY        | Expose busy state and retain the settled action's focus through the shared primitive | Keep keyboard continuity without asynchronous focus reassignment    |
+| MEDIUM   | UI            | `src/features/plugins/ui/PackageManager.tsx:85`  | An installation source survives replacement of its Runtime operation generation     | Scope the input to that generation and retire it on replacement                      | Keep an unfinished source associated with its intended receiver     |
+
+Verification passed:
+
+- The initial seven-case regression fails **five cases** against published
+  source and passes the two existing lifecycle boundaries. Final focused tests
+  pass **three files / 40 tests**, including the seven new cases and settlement
+  focus assertions. The test belongs to Plugins and consumes Settings through
+  its public surface; no private cross-context import or guard exception remains.
+- Final `npm run check --workspace @flame/web` passes uninterrupted:
+  **427 files / 4,031 tests** in **138.55 s**, followed by the complete module
+  boundary, style, locale, resource, bundle and module-link gates. The earlier
+  test-fixture type/boundary failures are corrected before this final run.
+- Final `make check-native` passes current staging, Desktop Go test/vet/build
+  and the supported production Wails build. The existing duplicate `-lobjc`
+  linker warning remains in the successful log. Shared UI, SDK, Runtime and all
+  twelve tracked component resources retain their existing source; no migration.
+- Six private Wails generations include two native defect reproductions and one
+  private-accent setup correction. Three scenes qualify the final source:
+  light English 14px/default Orange, dark Chinese 18px/custom `#7C5CFC` in a
+  small window at native 200% zoom, and the pinned Orange clean control.
+- Native input identity and Unicode selection survive category changes. The
+  initial WebKit scroll reset **100→0** becomes **100→100**; the final zoomed
+  scene retains **37→37** and selection **7–9**. Its reported viewport is
+  **560×364 CSS pixels**, DPR 4. Tab reveals the full focused field; native
+  horizontal source access reaches scrollLeft 5 and the complete value.
+- Both font menus retire when their category becomes inactive and stay closed
+  on return. A delayed installation admits one command despite native Enter
+  and Space attempts. After acceptance, the original disabled action remains
+  focused; completion while another category has focus leaves it there.
+  Hidden failure preserves the source and a corrected retry succeeds.
+- Closing Settings releases the unfinished installation source. Cmd+L continues
+  `Keep this conversation draft. Continue after settings.` and, in the zoomed
+  scene, `中文对话草稿。设置后继续。`. Reopening Settings starts with empty source.
+- The clean native control removes the additional observer. Both builds contain
+  **608 assets**, with all **606 non-HTML assets** byte-identical; only the two
+  HTML entries differ. Native before/after screenshots retain the same reading
+  position, installation settlement retains focus, and
+  `Clean control draft. Resumed.` continues. It emits **zero** new observation
+  records. Pin every scene preference, including accent, across private launches.
+
+These are deterministic Runtime-client inputs in an actual Wails application.
+They do not install or enable a real package, qualify production bootstrap or
+replace the user's installed release. Runtime operation replacement is covered
+by the component regression rather than a live connection change. VoiceOver
+speech, fresh forced-colors/RTL OS checks, unsupported 320px native width,
+browser suites and performance benchmarks are not run.
+
+Cleanup is complete. All six native generations are stopped, the exact bundle is
+unregistered and the private observer is closed. Seven new checkout output/cache
+roots, the prepared Node archive, two owned Library directories and one app temp
+directory are removed. Four original files and their 0644 modes are restored.
+All **14** output-presence baselines, **five** Library/temp baselines and
+**5,918** frozen non-Markdown source inputs pass preservation checks;
+**5,915** inputs outside this source change remain identical. The private root
+is absent. The primary checkout, shared caches and read-only references are
+preserved. Prepare the managed Node artifact before the next offline Runtime gate.
+
+The round-trip-verified in-memory gzip retains **51** flat UTF-8 records,
+**107** observations, six generation boundaries, four **608-file** asset maps,
+baseline/qualified-source maps, original-file hashes and the native/cleanup
+receipts. It is **1,769,850 bytes**, SHA-256:
+`cb3f80652fb1bccdd239de182348001a753a95ba6689c3ff29d0a9e872bf0cc0`.
+
+**Approve** this inspected Settings installation and return flow. Whole-product
+review continues. Next trace Schedules' structured Run receipt and the Host's
+existing Session/Run navigation owner before choosing a public component action.
 
 ## Command palette / shortcuts audit
 

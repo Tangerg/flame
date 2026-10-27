@@ -81,9 +81,11 @@ export function PackageManager() {
   const catalogTitle = useRef<HTMLSpanElement>(null);
   const retained = catalog.data !== undefined && catalog.data.length > 0;
   const realization = packages.useFailure();
-  const [source, setSource] = useState("");
-  const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
   const operations = packages.useOperations();
+  const [draft, setDraft] = useState({ signal: operations?.signal, source: "" });
+  if (draft.signal !== operations?.signal) setDraft({ signal: operations?.signal, source: "" });
+  const source = draft.source;
+  const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
   const { feedback, reset, run } = useAsyncFeedback(operations?.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
@@ -93,7 +95,7 @@ export function PackageManager() {
       const installation = await operations.install({ source });
       if (operations.signal.aborted) return { ok: true };
       setInstalled({ signal: operations.signal, name: installation.selected.name });
-      setSource("");
+      setDraft({ signal: operations.signal, source: "" });
       await catalog.refetch();
       return { ok: true };
     }, t("packages.install"));
@@ -109,7 +111,7 @@ export function PackageManager() {
             onChange={(event) => {
               reset();
               setInstalled(undefined);
-              setSource(event.target.value);
+              setDraft({ signal: operations?.signal, source: event.target.value });
             }}
             autoCapitalize="none"
             autoCorrect="off"
@@ -119,6 +121,8 @@ export function PackageManager() {
           <Button
             variant="primary"
             pending={busy}
+            aria-busy={busy || undefined}
+            focusableWhenDisabled={feedback.state === "ok"}
             disabled={!source || !operations}
             onClick={() => void install()}
           >

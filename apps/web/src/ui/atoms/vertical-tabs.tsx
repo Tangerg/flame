@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import {
   color,
@@ -13,7 +13,7 @@ import {
 } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
-import { ItemHighlight, HoverTrack, useHoverTrackItem, vocab } from "@flame/ui";
+import { ContentVisibility, ItemHighlight, HoverTrack, useHoverTrackItem, vocab } from "@flame/ui";
 import { SectionLabel } from "@/ui/atoms/section-label";
 interface VerticalTabItem {
   id: string;
@@ -93,6 +93,8 @@ const styles = stylex.create({
   highlight: { borderRadius: radius.row },
   glyph: { flexShrink: 0 },
   page: {
+    gridColumn: { default: 2, "@container (max-width: 40rem)": 1 },
+    gridRow: { default: 1, "@container (max-width: 40rem)": 2 },
     minHeight: 0,
     minWidth: 0,
     overflowY: "auto",
@@ -101,6 +103,7 @@ const styles = stylex.create({
     backgroundColor: surface.canvas,
     backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
   },
+  inactive: { visibility: "hidden" },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
 });
 
@@ -116,6 +119,23 @@ function RailTab({ item }: { item: VerticalTabItem }) {
       {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
       <span {...stylex.props(vocab.truncate)}>{item.label}</span>
     </TabsPrimitive.Tab>
+  );
+}
+
+function RetainedPanel({ item, active }: { item: VerticalTabItem; active: boolean }) {
+  const [visited, setVisited] = useState(active);
+  if (active && !visited) setVisited(true);
+  return (
+    <TabsPrimitive.Panel
+      value={item.id}
+      aria-label={item.label}
+      keepMounted={visited}
+      hidden={false}
+      aria-hidden={!active || undefined}
+      {...stylex.props(styles.page, !active && styles.inactive)}
+    >
+      <ContentVisibility visible={active}>{item.content}</ContentVisibility>
+    </TabsPrimitive.Panel>
   );
 }
 
@@ -168,14 +188,7 @@ export function VerticalTabs({
           </TabsPrimitive.List>
         </div>
         {items.map((item) => (
-          <TabsPrimitive.Panel
-            key={item.id}
-            value={item.id}
-            aria-label={item.label}
-            {...stylex.props(styles.page)}
-          >
-            {item.content}
-          </TabsPrimitive.Panel>
+          <RetainedPanel key={item.id} item={item} active={item.id === value} />
         ))}
       </TabsPrimitive.Root>
     </div>
