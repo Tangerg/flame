@@ -12,6 +12,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -68,7 +69,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			input := rpc.ReplaceInput{ExpectedRevision: 1, Phrases: []string{secret}}
+			input := wire.ReplaceInput{ExpectedRevision: 1, Phrases: []string{secret}}
 			summary, err := replace.CallCommand(ctx, "edit-policy", input)
 			if err != nil || summary.Revision != 2 || summary.ProtectedPhraseCount != 1 {
 				t.Fatalf("policy command/replay: %+v %v", summary, err)

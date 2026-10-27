@@ -9,10 +9,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/qimu"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -107,9 +105,6 @@ func (o *CallComposition) activationsUnder(ctx context.Context, bindings []plugi
 			activation, err = o.calls.pool.InstallationActivation(ctx, binding.ServerID)
 		}
 		if err != nil {
-			if errors.Is(err, mcp.ErrUnavailable) {
-				return nil, errors.Join(plugin.ErrUnavailable, err)
-			}
 			return nil, err
 		}
 		if !slices.Contains(activation.Dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}) {
@@ -123,14 +118,7 @@ func (o *CallComposition) activationsUnder(ctx context.Context, bindings []plugi
 			return nil, err
 		}
 		if err := o.calls.framework.ValidateBindingUnder(ctx, original); err != nil {
-			switch {
-			case errors.Is(err, qimu.ErrUnavailable), errors.Is(err, qimu.ErrFenced):
-				return nil, errors.Join(plugin.ErrUnavailable, err)
-			case errors.Is(err, qimu.ErrStaleBinding):
-				return nil, errors.Join(plugin.ErrStale, err)
-			default:
-				return nil, err
-			}
+			return nil, plugins.FrameworkError(err)
 		}
 		activations = append(activations, activation)
 	}

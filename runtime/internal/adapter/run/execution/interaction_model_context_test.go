@@ -156,6 +156,9 @@ func (*contextCaptureComposition) ResolveToolProposals(context.Context) ([]plugi
 }
 
 func (*contextCaptureComposition) Pending([]plugins.ContributionBinding) bool { return false }
+func (*contextCaptureComposition) RestorationFailure([]plugins.ContributionBinding) (bool, error) {
+	return false, nil
+}
 func (*contextCaptureComposition) ValidateToolProposals(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }

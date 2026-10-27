@@ -127,15 +127,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
-	endpoint := acceptedCommandEndpoint(t, api, stores)
-	// Mirror production delivery: publish the callback RPC, then run the deferred
-	// uncertain-execution revival that depends on background plugin sessions.
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		t.Fatal(err)
-	}
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	endpoint := host.Endpoint()
 	if phase == "commit" || phase == "edited" {
 		r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 		installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))

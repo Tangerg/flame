@@ -12,14 +12,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
-func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command qimumcp.Command[rpc.ItemInput]) (app.RunReference, error) {
+func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command qimumcp.Command[wire.ItemInput]) (app.RunReference, error) {
 	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
@@ -36,7 +36,7 @@ func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, 
 
 type manualCommand struct {
 	id       string
-	input    rpc.ItemInput
+	input    wire.ItemInput
 	admitted jsonvalue.Value
 }
 
@@ -59,7 +59,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 	var original []byte
 	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		var err error
-		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, rpc.RunNow, command.id, command.admitted, func(ctx context.Context) error {
+		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, wire.RunNow, command.id, command.admitted, func(ctx context.Context) error {
 			_, err := qimumcp.CallbackFromContext(ctx)
 			return err
 		})

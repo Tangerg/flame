@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2efilewatch_2fconfigure_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_5fConfigureInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput"
     },
     "Method_flame_2efilewatch_2fconfigure_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fSnapshot"
     },
     "Method_flame_2efilewatch_2fevent_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_5fEventInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput"
     },
     "Method_flame_2efilewatch_2fevent_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fEvent"
@@ -39,42 +39,6 @@
     },
     "Method_flame_2efilewatch_2fstatus_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_5fConfigureInput": {
-      "additionalProperties": false,
-      "properties": {
-        "expectedRevision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "trigger": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft"
-        }
-      },
-      "required": [
-        "expectedRevision"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_5fEventInput": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "maxLength": 256,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fCapture": {
       "additionalProperties": false,
@@ -331,6 +295,42 @@
       "required": [
         "revision",
         "phase"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fConfigureInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "trigger": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fDraft"
+        }
+      },
+      "required": [
+        "expectedRevision"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_5fEventInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
       ],
       "type": "object"
     },

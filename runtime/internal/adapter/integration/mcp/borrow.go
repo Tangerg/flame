@@ -74,7 +74,8 @@ type borrowContextKey struct{}
 
 // BorrowActivation restores only the original approved graph. The catalog's
 // current role choices cannot retarget a durable command or waiting Run.
-func (p *Pool) BorrowActivation(ctx context.Context, id mcpserver.ID, activation plugin.Activation) (*BorrowedSession, error) {
+func (p *Pool) BorrowActivation(ctx context.Context, id mcpserver.ID, activation plugin.Activation) (_ *BorrowedSession, err error) {
+	defer func() { err = connectionError(id, err) }()
 	if p.installed == nil {
 		return nil, ErrUnavailable
 	}

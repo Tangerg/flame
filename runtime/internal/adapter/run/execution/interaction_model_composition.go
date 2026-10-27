@@ -17,6 +17,7 @@ import (
 
 type interactionCallComposition interface {
 	Pending([]plugins.ContributionBinding) bool
+	RestorationFailure([]plugins.ContributionBinding) (bool, error)
 	ResolveToolProposals(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateToolProposals(context.Context, []plugins.ContributionBinding) error
 	PrepareToolProposal(context.Context, []plugins.ContributionBinding, chat.ToolCall) (chat.ToolCall, error)

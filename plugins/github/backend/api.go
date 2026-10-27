@@ -14,7 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
@@ -177,15 +177,15 @@ func readPage[W, R any](ctx context.Context, c *connector, path string, paramete
 }
 
 type issueWire struct {
-	ID          int64     `json:"id"`
-	Number      int64     `json:"number"`
-	Title       string    `json:"title"`
-	Body        *string   `json:"body"`
-	State       rpc.State `json:"state"`
-	URL         string    `json:"html_url"`
-	User        *userWire `json:"user"`
-	PullRequest *struct{} `json:"pull_request"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          int64              `json:"id"`
+	Number      int64              `json:"number"`
+	Title       string             `json:"title"`
+	Body        *string            `json:"body"`
+	State       contractwire.State `json:"state"`
+	URL         string             `json:"html_url"`
+	User        *userWire          `json:"user"`
+	PullRequest *struct{}          `json:"pull_request"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 	Labels      []struct {
 		Name string `json:"name"`
 	} `json:"labels"`
@@ -193,24 +193,24 @@ type issueWire struct {
 	StateReason *string    `json:"state_reason"`
 }
 
-func (wire issueWire) admit(repository repository) (rpc.Issue, error) {
-	if wire.ID <= 0 || wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
-		return rpc.Issue{}, errors.New("github: invalid issue representation")
+func (wire issueWire) admit(repository repository) (contractwire.Issue, error) {
+	if wire.ID <= 0 || wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != contractwire.Open && wire.State != contractwire.Closed {
+		return contractwire.Issue{}, errors.New("github: invalid issue representation")
 	}
 	if wire.Labels == nil || wire.Assignees == nil {
-		return rpc.Issue{}, errors.New("github: issue metadata arrays are missing")
+		return contractwire.Issue{}, errors.New("github: issue metadata arrays are missing")
 	}
-	result := rpc.Issue{ID: wire.ID, Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
+	result := contractwire.Issue{ID: wire.ID, Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
 	result.Labels, result.Assignees, result.StateReason = make([]string, len(wire.Labels)), make([]string, len(wire.Assignees)), wire.StateReason
 	for i, label := range wire.Labels {
 		if !textPresent(label.Name) {
-			return rpc.Issue{}, errors.New("github: issue label name is missing")
+			return contractwire.Issue{}, errors.New("github: issue label name is missing")
 		}
 		result.Labels[i] = label.Name
 	}
 	for i, assignee := range wire.Assignees {
 		if !textPresent(assignee.Login) {
-			return rpc.Issue{}, errors.New("github: issue assignee login is missing")
+			return contractwire.Issue{}, errors.New("github: issue assignee login is missing")
 		}
 		result.Assignees[i] = assignee.Login
 	}
@@ -220,15 +220,15 @@ func (wire issueWire) admit(repository repository) (rpc.Issue, error) {
 	return result, nil
 }
 
-func (c *connector) listIssues(ctx context.Context, input rpc.ListInput) (rpc.IssuePage, error) {
+func (c *connector) listIssues(ctx context.Context, input contractwire.ListInput) (contractwire.IssuePage, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.IssuePage{}, err
+		return contractwire.IssuePage{}, err
 	}
 	parameters := url.Values{"state": {string(input.State)}, "page": {strconv.FormatInt(input.Page, 10)}, "per_page": {strconv.Itoa(input.Limit)}, "sort": {"updated"}, "direction": {"desc"}}
 	path := repository.apiPath() + "/issues"
-	page, err := readPage(ctx, c, path, parameters, input.Page, input.Limit, func(wire issueWire) (rpc.Issue, error) { return wire.admit(repository) })
-	return rpc.IssuePage{Issues: page.rows, NextPage: page.next}, err
+	page, err := readPage(ctx, c, path, parameters, input.Page, input.Limit, func(wire issueWire) (contractwire.Issue, error) { return wire.admit(repository) })
+	return contractwire.IssuePage{Issues: page.rows, NextPage: page.next}, err
 }
 
 func nextPage(header string, current int64) (*int64, error) {
@@ -263,37 +263,37 @@ func nextPage(header string, current int64) (*int64, error) {
 	return nil, nil
 }
 
-func (c *connector) getIssue(ctx context.Context, input rpc.IssueInput) (rpc.Issue, error) {
+func (c *connector) getIssue(ctx context.Context, input contractwire.IssueInput) (contractwire.Issue, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.Issue{}, err
+		return contractwire.Issue{}, err
 	}
-	return query(ctx, c, repository.apiPath()+"/issues/"+strconv.FormatInt(input.Number, 10), nil, func(result response) (rpc.Issue, error) {
+	return query(ctx, c, repository.apiPath()+"/issues/"+strconv.FormatInt(input.Number, 10), nil, func(result response) (contractwire.Issue, error) {
 		var wire issueWire
 		if err := json.Unmarshal(result.body, &wire); err != nil {
-			return rpc.Issue{}, err
+			return contractwire.Issue{}, err
 		}
 		if wire.Number != input.Number {
-			return rpc.Issue{}, errors.New("github: returned issue number differs")
+			return contractwire.Issue{}, errors.New("github: returned issue number differs")
 		}
 		return wire.admit(repository)
 	})
 }
 
-func (c *connector) readFile(ctx context.Context, input rpc.FileInput) (rpc.File, error) {
+func (c *connector) readFile(ctx context.Context, input contractwire.FileInput) (contractwire.File, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.File{}, err
+		return contractwire.File{}, err
 	}
 	path, err := newFilePath(input.Path)
 	if err != nil {
-		return rpc.File{}, err
+		return contractwire.File{}, err
 	}
 	parameters := url.Values{}
 	if input.Ref != nil {
 		parameters.Set("ref", *input.Ref)
 	}
-	return query(ctx, c, repository.apiPath()+"/contents/"+path.apiPath(), parameters, func(result response) (rpc.File, error) {
+	return query(ctx, c, repository.apiPath()+"/contents/"+path.apiPath(), parameters, func(result response) (contractwire.File, error) {
 		var wire struct {
 			Type     string `json:"type"`
 			Path     string `json:"path"`
@@ -304,33 +304,33 @@ func (c *connector) readFile(ctx context.Context, input rpc.FileInput) (rpc.File
 			Content  string `json:"content"`
 		}
 		if strings.HasPrefix(strings.TrimSpace(string(result.body)), "[") {
-			return rpc.File{}, refused("not_file", "resource is a directory")
+			return contractwire.File{}, refused("not_file", "resource is a directory")
 		}
 		if err := json.Unmarshal(result.body, &wire); err != nil {
-			return rpc.File{}, err
+			return contractwire.File{}, err
 		}
 		if wire.Type == "" {
-			return rpc.File{}, errors.New("github: incomplete file representation")
+			return contractwire.File{}, errors.New("github: incomplete file representation")
 		}
 		if wire.Type != "file" {
-			return rpc.File{}, refused("not_file", "resource is not a regular file")
+			return contractwire.File{}, refused("not_file", "resource is not a regular file")
 		}
 		if wire.Encoding == "" || wire.Size == nil || *wire.Size < 0 {
-			return rpc.File{}, errors.New("github: incomplete file representation")
+			return contractwire.File{}, errors.New("github: incomplete file representation")
 		}
 		if *wire.Size > maxFileBytes || wire.Encoding != "base64" {
-			return rpc.File{}, refused("unsupported_file", "file must be base64 content up to one MiB")
+			return contractwire.File{}, refused("unsupported_file", "file must be base64 content up to one MiB")
 		}
 		content, err := base64.StdEncoding.DecodeString(wire.Content)
 		if err != nil {
-			return rpc.File{}, err
+			return contractwire.File{}, err
 		}
 		if int64(len(content)) != *wire.Size || wire.Path != input.Path || wire.SHA == "" || wire.URL == "" {
-			return rpc.File{}, errors.New("github: inconsistent file representation")
+			return contractwire.File{}, errors.New("github: inconsistent file representation")
 		}
 		if !utf8.Valid(content) {
-			return rpc.File{}, refused("binary_file", "file content is not UTF-8")
+			return contractwire.File{}, refused("binary_file", "file content is not UTF-8")
 		}
-		return rpc.File{Repository: repository.String(), Path: wire.Path, SHA: wire.SHA, URL: wire.URL, Text: string(content)}, nil
+		return contractwire.File{Repository: repository.String(), Path: wire.Path, SHA: wire.SHA, URL: wire.URL, Text: string(content)}, nil
 	})
 }

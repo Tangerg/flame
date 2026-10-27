@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "Method_flame_2eknowledgebase_2fdelete_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fDocumentInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput"
     },
     "Method_flame_2eknowledgebase_2fdelete_2ev1Output": {
       "type": "boolean"
     },
     "Method_flame_2eknowledgebase_2fimport_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fImportInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput"
     },
     "Method_flame_2eknowledgebase_2fimport_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
@@ -25,19 +25,19 @@
       "type": "array"
     },
     "Method_flame_2eknowledgebase_2fread_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fReadInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput"
     },
     "Method_flame_2eknowledgebase_2fread_2ev1Output": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fDocumentRead"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead"
     },
     "Method_flame_2eknowledgebase_2freindex_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fDocumentInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput"
     },
     "Method_flame_2eknowledgebase_2freindex_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9kb21haW4_5fHeader"
     },
     "Method_flame_2eknowledgebase_2fsearch_2ev1Input": {
-      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fSearchInput"
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput"
     },
     "Method_flame_2eknowledgebase_2fsearch_2ev1Output": {
       "items": {
@@ -45,7 +45,7 @@
       },
       "type": "array"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fDocumentInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentInput": {
       "additionalProperties": false,
       "properties": {
         "expectedRevision": {
@@ -70,7 +70,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fDocumentRead": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fDocumentRead": {
       "additionalProperties": false,
       "properties": {
         "document": {
@@ -86,7 +86,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fImportInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fImportInput": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -109,7 +109,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fReadInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fReadInput": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -123,7 +123,7 @@
       ],
       "type": "object"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_5fSearchInput": {
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_5fSearchInput": {
       "additionalProperties": false,
       "properties": {
         "limit": {

@@ -12,6 +12,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/sqlite"
 )
@@ -46,27 +47,27 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 		}, nil
 	})
 	content := knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide", Text: strings.Repeat("正文🙂", 400)}
-	input := rpc.ImportInput{Content: content}
+	input := wire.ImportInput{Content: content}
 	admitted, _ := jsonvalue.Encode(input)
 	original, err := library.importDocument(t.Context(), contracts.Import.Name(), "import", input, admitted)
 	if err != nil {
 		t.Fatal(err)
 	}
 	space = "space-b"
-	read, err := library.read(t.Context(), rpc.ReadInput{ID: content.ID})
+	read, err := library.read(t.Context(), wire.ReadInput{ID: content.ID})
 	if err != nil || read.Text != content.Text || read.Document != original || calls != 1 {
 		t.Fatalf("reading original text required a matching embedding role: %+v calls=%d %v", read, calls, err)
 	}
-	if _, err := library.search(t.Context(), rpc.SearchInput{Query: "正文", Limit: 1}); !errors.Is(err, knowledge.ErrEmbeddingSpace) {
+	if _, err := library.search(t.Context(), wire.SearchInput{Query: "正文", Limit: 1}); !errors.Is(err, knowledge.ErrEmbeddingSpace) {
 		t.Fatalf("changed space was searched as if compatible: %v", err)
 	}
-	reindex := rpc.DocumentInput{ID: content.ID, ExpectedRevision: original.Revision}
+	reindex := wire.DocumentInput{ID: content.ID, ExpectedRevision: original.Revision}
 	reindexJSON, _ := jsonvalue.Encode(reindex)
 	rebuilt, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindex, reindexJSON)
 	if err != nil || rebuilt.Revision != original.Revision+1 || rebuilt.Space != space || strings.Join(captured, "") != content.Text {
 		t.Fatalf("reindex did not use the captured stored text: %+v %v", rebuilt, err)
 	}
-	if matches, err := library.search(t.Context(), rpc.SearchInput{Query: "正文", Limit: 1}); err != nil || len(matches) != 1 || matches[0].Document != rebuilt {
+	if matches, err := library.search(t.Context(), wire.SearchInput{Query: "正文", Limit: 1}); err != nil || len(matches) != 1 || matches[0].Document != rebuilt {
 		t.Fatalf("reindex did not restore retrieval: %+v %v", matches, err)
 	}
 	before := calls
@@ -82,14 +83,14 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	}
 	t.Cleanup(func() { _ = reopened.db.Close() })
 	library.store = reopened
-	read, err = library.read(t.Context(), rpc.ReadInput{ID: content.ID})
+	read, err = library.read(t.Context(), wire.ReadInput{ID: content.ID})
 	if err != nil || read.Text != content.Text || read.Document != rebuilt {
 		t.Fatalf("reindex changed the original content: %+v %v", read, err)
 	}
 	if replay, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "reindex", reindex, reindexJSON); err != nil || !reflect.DeepEqual(replay, rebuilt) || calls != before {
 		t.Fatalf("restart repeated reindex: %+v calls=%d %v", replay, calls, err)
 	}
-	current := rpc.DocumentInput{ID: content.ID, ExpectedRevision: rebuilt.Revision}
+	current := wire.DocumentInput{ID: content.ID, ExpectedRevision: rebuilt.Revision}
 	currentJSON, _ := jsonvalue.Encode(current)
 	duringEmbedding = func() {
 		duringEmbedding = nil
@@ -107,7 +108,7 @@ func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing
 	if _, err := library.reindexDocument(t.Context(), contracts.Reindex.Name(), "racing", current, currentJSON); !errors.Is(err, knowledge.ErrRevisionConflict) {
 		t.Fatalf("reindex overwrote a later human revision: %v", err)
 	}
-	read, err = library.read(t.Context(), rpc.ReadInput{ID: content.ID})
+	read, err = library.read(t.Context(), wire.ReadInput{ID: content.ID})
 	if err != nil || read.Text != "a concurrent human edit" || read.Document.Revision != rebuilt.Revision+1 {
 		t.Fatalf("publication lost the human edit: %+v %v", read, err)
 	}

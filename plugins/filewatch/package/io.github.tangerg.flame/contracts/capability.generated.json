@@ -11,28 +11,6 @@
       "description": "Replace or rearm the trigger at its current revision; omitting trigger disables observation. Configuration acceptance does not claim a live watch. Captured work remains immutable.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_ConfigureInput": {
-            "additionalProperties": false,
-            "properties": {
-              "expectedRevision": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "minimum": 1,
-                "type": "integer"
-              },
-              "trigger": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
-              }
-            },
-            "required": [
-              "expectedRevision"
-            ],
-            "type": "object"
-          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft": {
             "additionalProperties": false,
             "properties": {
@@ -79,6 +57,28 @@
               "instructions",
               "provider",
               "model"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_ConfigureInput": {
+            "additionalProperties": false,
+            "properties": {
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "trigger": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_Draft"
+              }
+            },
+            "required": [
+              "expectedRevision"
             ],
             "type": "object"
           }
@@ -209,7 +209,7 @@
       "description": "Read one retained observation and its complete original dispatch capture.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_EventInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL3dpcmU_EventInput": {
             "additionalProperties": false,
             "properties": {
               "id": {

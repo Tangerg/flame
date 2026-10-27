@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -15,12 +16,15 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 		t.Run(first+" first", func(t *testing.T) {
 			r := poMCPOpen(t, poMCPConfig(t))
 			installed := map[string]*protocol.PluginInstallation{}
+			sources := map[string]string{}
 			install := func(name string) {
 				t.Helper()
-				source, err := filepath.Abs("../../../examples/plugins/composition/" + name + "/package")
-				if err != nil {
+				source := t.TempDir()
+				if err := os.CopyFS(source, os.DirFS(filepath.Join("../../../examples/plugins/composition", name, "package"))); err != nil {
 					t.Fatal(err)
 				}
+				authorPluginPackage(t, source)
+				sources[name] = source
 				row := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+name).(*protocol.PluginInstallation)
 				if len(row.Selected.Diagnostics) != 0 || len(row.Selected.Servers) != 0 {
 					t.Fatalf("independent component admission: %+v", row.Selected)
@@ -89,11 +93,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			refused(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: provider.ID, Enabled: true}, "reenable-provider")
 			resolve("consumer", "panels", 1)
-			source, err := filepath.Abs("../../../examples/plugins/composition/provider/package")
-			if err != nil {
-				t.Fatal(err)
-			}
-			staged := stageCommandReplacement(t, r, provider, source)
+			staged := stageCommandReplacement(t, r, provider, sources["provider"])
 			if resolve("consumer", "panels", 1).Data[0].Digest != provider.Selected.Digest {
 				t.Fatal("staging advanced selected membership")
 			}

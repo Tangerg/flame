@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 )
@@ -25,7 +26,7 @@ func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	contracts, _ := rpc.NewContracts()
-	input := rpc.ExecuteInput{Script: "exit 0", TimeoutMillis: 1000}
+	input := wire.ExecuteInput{Script: "exit 0", TimeoutMillis: 1000}
 	encoded, _ := jsonvalue.Encode(input)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "unavailable", input, encoded)

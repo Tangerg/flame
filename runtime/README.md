@@ -118,6 +118,11 @@ automatic conversion exists. Existing Core/backend wire versions and business
 receipt formats are unchanged. Startup defers an original waiting probe while a
 captured contributor's existing connection is still being admitted, without
 waiting for its handshake or replaying work.
+Later recovery reads that connection attempt's conclusion for the exact retained
+binding. A proved original restoration failure loses the waiting tree; catalog
+absence or another graph's failure supplies no such conclusion. Interrupted
+activation waits, storage reads and unconfirmed process recovery retain their
+causes without turning uncertainty into source loss.
 
 Waiting recovery also preserves calls whose provider omitted usage. Run metrics
 retain reported usage and unknown pricing; a later known report does not erase

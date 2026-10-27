@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
@@ -54,15 +54,15 @@ func TestPullReadsPreserveUnknownAndUnavailableUpstreamFacts(t *testing.T) {
 			return nil, nil
 		}
 	}))
-	list, err := c.listPulls(t.Context(), rpc.PullListInput{ListInput: rpc.ListInput{Repository: "Owner/Repo", State: "closed", Page: 2, Limit: 10}, Base: new("release/v2"), Head: new("contributor:topic")})
+	list, err := c.listPulls(t.Context(), contractwire.PullListInput{ListInput: contractwire.ListInput{Repository: "Owner/Repo", State: "closed", Page: 2, Limit: 10}, Base: new("release/v2"), Head: new("contributor:topic")})
 	if err != nil || len(list.PullRequests) != 1 || list.NextPage == nil || *list.NextPage != 3 {
 		t.Fatalf("pull list = %+v, %v", list, err)
 	}
-	pull, err := c.getPull(t.Context(), rpc.IssueInput{Repository: "owner/repo", Number: 42})
+	pull, err := c.getPull(t.Context(), contractwire.IssueInput{Repository: "owner/repo", Number: 42})
 	if err != nil || pull.Head.SHA != "head-sha" || pull.Base.SHA != "base-sha" || pull.Head.Repository != nil || pull.Mergeable != nil || !pull.Draft || pull.ChangedFiles == nil || *pull.ChangedFiles != 2 {
 		t.Fatalf("PR revision or unavailable facts changed: %+v, %v", pull, err)
 	}
-	files, err := c.listPullFiles(t.Context(), rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10})
+	files, err := c.listPullFiles(t.Context(), contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10})
 	if err != nil || len(files.Files) != 2 {
 		t.Fatalf("files = %+v, %v", files, err)
 	}
@@ -85,7 +85,7 @@ func TestPullFileCeilingCannotLookLikeAnUnboundedContinuation(t *testing.T) {
 		body, err := json.Marshal(rows)
 		return upstream(200, string(body), http.Header{"Link": {`<https://api.github.com/repos/owner/repo/pulls/42/files?page=31>; rel="next"`}}), err
 	}))
-	input := rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 30, Limit: 100}
+	input := contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 30, Limit: 100}
 	page, err := c.listPullFiles(t.Context(), input)
 	if err != nil || !page.LimitReached || page.NextPage != nil || len(page.Files) != 100 {
 		t.Fatalf("ceiling page = %+v, %v", page, err)
@@ -98,15 +98,15 @@ func TestPullFileCeilingCannotLookLikeAnUnboundedContinuation(t *testing.T) {
 }
 
 func TestReviewQueriesRejectMalformedPayloadsBeforeConditionalCaching(t *testing.T) {
-	thread := rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 1}
-	commit := rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 1}
+	thread := contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 1}
+	commit := contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 1}
 	for _, test := range []struct {
 		name string
 		body string
 		call func(*connector) error
 	}{
 		{"null pull list", "null", func(c *connector) error {
-			_, err := c.listPulls(t.Context(), rpc.PullListInput{ListInput: rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 1}})
+			_, err := c.listPulls(t.Context(), contractwire.PullListInput{ListInput: contractwire.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 1}})
 			return err
 		}},
 		{"wrong PR identity", strings.Replace(pullJSON, `"number":42`, `"number":43`, 1), func(c *connector) error { _, err := c.getPull(t.Context(), thread.IssueInput); return err }},
@@ -119,7 +119,7 @@ func TestReviewQueriesRejectMalformedPayloadsBeforeConditionalCaching(t *testing
 		{"null checks", `{"total_count":0,"check_runs":null}`, func(c *connector) error { _, err := c.listChecks(t.Context(), commit); return err }},
 		{"inconsistent check count", `{"total_count":0,"check_runs":[` + checkJSON + "]}", func(c *connector) error { _, err := c.listChecks(t.Context(), commit); return err }},
 		{"reversed annotation range", "[" + strings.Replace(annotationJSON, `"end_line":4`, `"end_line":3`, 1) + "]", func(c *connector) error {
-			_, err := c.listAnnotations(t.Context(), rpc.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 1})
+			_, err := c.listAnnotations(t.Context(), contractwire.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 1})
 			return err
 		}},
 		{"null status page", "null", func(c *connector) error { _, err := c.listStatuses(t.Context(), commit); return err }},
@@ -169,7 +169,7 @@ func TestReviewAndCheckReadsRetainDiagnosticContext(t *testing.T) {
 		}
 		return upstream(200, body, nil), nil
 	}))
-	thread := rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}
+	thread := contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}
 	comments, err := c.listComments(t.Context(), thread)
 	if err != nil || len(comments.Comments) != 1 || comments.Comments[0].Author != "" || comments.Comments[0].Body != "Please check this" {
 		t.Fatalf("discussion = %+v, %v", comments, err)
@@ -182,12 +182,12 @@ func TestReviewAndCheckReadsRetainDiagnosticContext(t *testing.T) {
 	if err != nil || len(inline.Comments) != 1 || inline.Comments[0].Line != nil || inline.Comments[0].OriginalLine == nil || *inline.Comments[0].OriginalLine != 7 || inline.Comments[0].InReplyTo == nil || *inline.Comments[0].InReplyTo != 32 || inline.Comments[0].OriginalCommitID != "old-head-sha" {
 		t.Fatalf("outdated inline context = %+v, %v", inline, err)
 	}
-	commit := rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}
+	commit := contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}
 	checks, err := c.listChecks(t.Context(), commit)
 	if err != nil || len(checks.CheckRuns) != 1 || checks.CheckRuns[0].HeadSHA != "head-sha" || checks.CheckRuns[0].Conclusion != nil || checks.CheckRuns[0].Status != "in_progress" || checks.CheckRuns[0].AnnotationsCount != 1 {
 		t.Fatalf("unfinished check = %+v, %v", checks, err)
 	}
-	annotations, err := c.listAnnotations(t.Context(), rpc.CheckInput{Repository: "owner/repo", CheckRunID: checks.CheckRuns[0].ID, Page: 1, Limit: 10})
+	annotations, err := c.listAnnotations(t.Context(), contractwire.CheckInput{Repository: "owner/repo", CheckRunID: checks.CheckRuns[0].ID, Page: 1, Limit: 10})
 	if err != nil || len(annotations.Annotations) != 1 || annotations.Annotations[0].StartLine != 4 || annotations.Annotations[0].Level != "failure" || annotations.Annotations[0].Message != "Unexpected value" || annotations.Annotations[0].RawDetails == nil {
 		t.Fatalf("line diagnostic = %+v, %v", annotations, err)
 	}

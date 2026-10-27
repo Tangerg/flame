@@ -15,8 +15,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -336,6 +336,6 @@ func (m *memoryScheduleRegistry) RecordRun(context.Context, scheduledomain.RunRe
 	return nil
 }
 
-func unexpectedManualRun(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error) {
+func unexpectedManualRun(context.Context, wire.ItemInput) (scheduleapp.RunReference, error) {
 	return scheduleapp.RunReference{}, errors.New("unexpected manual Run")
 }

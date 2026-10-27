@@ -14,8 +14,8 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -52,11 +52,11 @@ func newRunner(db *sql.DB, scratch string, home homeRead) (*runner, error) {
 	return &runner{db: db, scratch: scratch, home: home}, nil
 }
 
-func (r *runner) limits() rpc.Limits {
-	return rpc.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
+func (r *runner) limits() wire.Limits {
+	return wire.Limits{Available: processsandbox.Available(), Platform: runtime.GOOS, MaxScriptBytes: sandbox.MaxScriptBytes, MaxTimeoutMillis: sandbox.MaxTimeoutMillis, RetainedBytesPerStream: processsandbox.MaxCommandOutputBytes}
 }
 
-func (r *runner) execute(ctx context.Context, method, id string, input rpc.ExecuteInput, original jsonvalue.Value) (sandbox.Result, error) {
+func (r *runner) execute(ctx context.Context, method, id string, input wire.ExecuteInput, original jsonvalue.Value) (sandbox.Result, error) {
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, nil)
 	if err != nil {
 		return sandbox.Result{}, err

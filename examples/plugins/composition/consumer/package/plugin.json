@@ -1,6 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "example.composition.consumer",
+  "version": "1.0.0",
   "extensions": {
     "io.github.tangerg.flame": {
       "declaration": "io.github.tangerg.flame/declaration.json"

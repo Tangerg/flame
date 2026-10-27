@@ -26,6 +26,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build response-loss backend: %s: %v", output, err)
 	}
+	authorPluginPackage(t, source)
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)

@@ -20,7 +20,6 @@ import (
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -44,25 +43,10 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		t.Fatal(err)
 	}
 	cfg.chatResolver = testChatResolver(client)
-	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
-	t.Cleanup(r.close)
-	handler, err := flamehttp.NewRPCHandler(endpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
 	opening := make(chan protocol.StartRunResponse, 1)
 	var withheld atomic.Bool
-	mux := http.NewServeMux()
-	for _, route := range flamehttp.Contract().Endpoints {
-		if route.Kind != flamehttp.EndpointKindRPC {
-			continue
-		}
-		mux.Handle(route.Method+" "+route.Path, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+	r := poMCPOpenWithCallbackRPC(t, cfg, func(handler http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 			body, err := io.ReadAll(request.Body)
 			if err != nil {
 				t.Error(err)
@@ -85,11 +69,8 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 				return
 			}
 			handler.ServeHTTP(w, request)
-		}))
-	}
-	if err := host.application.callbacks.PublishRPC(mux); err != nil {
-		t.Fatal(err)
-	}
+		})
+	})
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "filewatch"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	contracts, err := portable.ParseCapability([]byte(testsupport.FilewatchCapabilityJSON))

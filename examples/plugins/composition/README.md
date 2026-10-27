@@ -25,10 +25,22 @@ make setup
 npm run typecheck --workspace @flame/composition-example
 npm run build --workspace @flame/composition-example
 npm run check:resources --workspace @flame/composition-example
+mkdir -p out/plugins/composition
+mkdir out/plugins/composition/consumer out/plugins/composition/provider
+cp -R examples/plugins/composition/consumer/package/. out/plugins/composition/consumer/
+cp -R examples/plugins/composition/provider/package/. out/plugins/composition/provider/
+go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/composition/consumer"
+go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/composition/provider"
 ```
 
-Install the `consumer/package` and `provider/package` directories with the ordinary
-Plugins UI or `plugins install`, then enable them. Open **CompositionBoard**. The board shows the
+Use new output directories for each release. The original `pluginpack` builder
+projects the source metadata into Qimu's `manifest.json` and `plugin.lock.json`;
+the source directories are not installable releases. These packages contain only
+portable component resources, so no native build target is required.
+
+Install the built `out/plugins/composition/consumer` and
+`out/plugins/composition/provider` directories with the ordinary Plugins UI or
+`plugins install`, then enable them. Open **CompositionBoard**. The board shows the
 Provider panel containing Consumer's inspector, wrapped by two actual Provider
 frames. **Use contributed summary** selects the independent summary. The board
 owns that local selection and explicit frame order; it does not persist another

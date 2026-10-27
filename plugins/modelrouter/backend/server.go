@@ -9,6 +9,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
+	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -36,7 +37,7 @@ func newServer(store *store) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReplaceInput) (routing.Snapshot, error) {
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ReplaceInput) (routing.Snapshot, error) {
 			return store.replace(ctx, input.ExpectedRevision, input.Rules)
 		}),
 		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (routing.Snapshot, error) {

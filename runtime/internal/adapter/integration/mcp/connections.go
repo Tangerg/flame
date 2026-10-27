@@ -26,6 +26,7 @@ type server struct {
 	tools   []Executable          // last tool set proved on this session
 	state   mcpserver.ConnectionState
 	failure mcpserver.ConnectionFailure // set exactly while state is failed
+	cause   error
 
 	// oauth is either a restored durable OAuth handler or the handler obtained by
 	// a successful [connections.Authorize]. nil until a saved session exists or
@@ -39,14 +40,15 @@ func (s *server) name() mcpserver.ID { return s.id }
 
 // settle is the only writer of the live outcome, so the session, tool set,
 // state and failure category always describe the same attempt.
-func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state mcpserver.ConnectionState, failure mcpserver.ConnectionFailure) {
+func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state mcpserver.ConnectionState, failure mcpserver.ConnectionFailure, cause error) {
 	if state != mcpserver.ConnectionConnected {
 		session, tools = nil, nil
 	}
 	if state != mcpserver.ConnectionFailed {
 		failure = ""
+		cause = nil
 	}
-	s.session, s.tools, s.state, s.failure = session, tools, state, failure
+	s.session, s.tools, s.state, s.failure, s.cause = session, tools, state, failure, cause
 }
 
 type shutdownAttempt struct {

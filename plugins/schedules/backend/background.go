@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/google/uuid"
@@ -149,11 +148,11 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 	}
 	dispatchStore := app.DispatchStore(store)
 	if _, manual := request.ManualRecord(); manual {
-		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, rpc.RunNow, request.CommandID())
+		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, wire.RunNow, request.CommandID())
 		if err != nil {
 			return app.RunReference{}, err
 		}
-		var item rpc.ItemInput
+		var item wire.ItemInput
 		if err := json.Unmarshal(input.JSON(), &item, json.RejectUnknownMembers(true)); err != nil {
 			return app.RunReference{}, err
 		}

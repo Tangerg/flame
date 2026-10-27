@@ -71,13 +71,17 @@ including after terminal execution or Runtime restart. Selecting a new release
 can reconcile captured work only through its original available current contract;
 former incompatible routes are not converted or retargeted.
 
-`plugins/schedules/internal/contract/contracts.go` is the typed method
-source used by actual server registration and query consumers. Its generated
-canonical capability, Schema, method references and TypeScript data maps live
-under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
-with `go generate ./plugins/schedules/internal/contract`; the public
-`qimu/cmd/qimu contract` command projects those same methods. The package builder copies this namespace into the
-compiled package. Do not hand-edit generated artifacts or duplicate schemas.
+`contractgen/` is the original Go publisher of the Schedules contract. Handwritten
+DTOs and schema hooks live in `internal/wire`; `internal/contract` binds the
+published `contracts/contract.generated.go` descriptor for server registration
+and query consumers. Its generated canonical capability, Schema, method references
+and TypeScript data maps live under `io.github.tangerg.flame/contracts` in this
+package. Run `make generate` from the repository root to update the original
+publisher before package and client projections. An exported author uses local
+`go generate` to refresh those projections from the published descriptor; relocating
+its implementation types does not define another contract. The package builder
+copies this namespace into the compiled package. Do not hand-edit generated
+artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the
 complete contract and declared export, including runNow, and captures the
 contribution/export and complete capability for original command recovery. Public

@@ -346,7 +346,7 @@ func ownTestSession(t *testing.T, session *sdkmcp.ClientSession, config ServerCo
 		t.Fatal(err)
 	}
 	current := &server{id: config.ID(), config: config}
-	current.settle(session, nil, mcpserver.ConnectionConnected, "")
+	current.settle(session, nil, mcpserver.ConnectionConnected, "", nil)
 	owner.servers = []*server{current}
 	t.Cleanup(func() {
 		if err := owner.shutdown(context.Background()); err != nil {

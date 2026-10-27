@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -38,7 +38,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := tool.NewFunc(tool.FuncConfig{Name: "search_knowledge", Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input rpc.SearchInput) ([]knowledge.Match, error) {
+	search, err := tool.NewFunc(tool.FuncConfig{Name: "search_knowledge", Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
 		return modelResult(library.search(ctx, input))
 	})
 	if err != nil {
@@ -48,7 +48,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	read, err := tool.NewFunc(tool.FuncConfig{Name: "read_knowledge_document", Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input rpc.ReadInput) (rpc.DocumentRead, error) {
+	read, err := tool.NewFunc(tool.FuncConfig{Name: "read_knowledge_document", Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
 		return modelResult(library.read(ctx, input))
 	})
 	if err != nil {
@@ -59,30 +59,30 @@ func newServer(library *library) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, library.store.db),
-		contracts.Import.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ImportInput]) (knowledge.Header, error) {
+		contracts.Import.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ImportInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return knowledge.Header{}, err
 			}
 			return library.importDocument(ctx, contracts.Import.Name(), command.ID, command.Input, input)
 		}),
-		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.DocumentInput]) (knowledge.Header, error) {
+		contracts.Reindex.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.DocumentInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return knowledge.Header{}, err
 			}
 			return library.reindexDocument(ctx, contracts.Reindex.Name(), command.ID, command.Input, input)
 		}),
-		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.DocumentInput) (bool, error) {
+		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (bool, error) {
 			return library.store.delete(ctx, input.ID, input.ExpectedRevision)
 		}),
 		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) ([]knowledge.Header, error) {
 			return library.list(ctx)
 		}),
-		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ReadInput]) (rpc.DocumentRead, error) {
+		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ReadInput]) (wire.DocumentRead, error) {
 			return library.read(ctx, command.Input)
 		}),
-		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.SearchInput]) ([]knowledge.Match, error) {
+		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.SearchInput]) ([]knowledge.Match, error) {
 			return library.search(ctx, command.Input)
 		}),
 		contextMethod.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
@@ -120,7 +120,7 @@ func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRe
 	query := input.UserMessage.Text()
 	runes := []rune(query)
 	query = string(runes[max(0, len(runes)-knowledge.MaxQueryRunes):])
-	matches, err := l.search(ctx, rpc.SearchInput{Query: query, Limit: 4})
+	matches, err := l.search(ctx, wire.SearchInput{Query: query, Limit: 4})
 	if err != nil {
 		return pluginsdk.ModelContextResult{}, err
 	}

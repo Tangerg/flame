@@ -12,6 +12,7 @@ import (
 
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -106,7 +107,7 @@ func TestTypedAndModelToolsShareSearchFetchBrowseAndDefiniteReadFailure(t *testi
 	if err := json.Unmarshal(fetched.JSON(), &page); err != nil {
 		t.Fatal(err)
 	}
-	compare(contracts.Browse.Name(), "web_browse", rpc.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
+	compare(contracts.Browse.Name(), "web_browse", wire.BrowseInput{SnapshotID: page.SnapshotID, Limit: 8192})
 	fail = true
 	failed, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "web_fetch", Arguments: web.FetchRequest{URL: "https://example.test"}, Meta: meta})
 	if err != nil || !failed.IsError {

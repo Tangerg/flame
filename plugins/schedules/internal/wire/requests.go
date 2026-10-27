@@ -1,8 +1,7 @@
-package contract
+package wire
 
 import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
@@ -24,15 +23,19 @@ type UpdateInput struct {
 	Enabled          *bool   `json:"Enabled,omitzero"`
 	ModelSelection   ModelPatch
 }
+
 type ListInput struct {
 	Cursor string
 	Limit  *int `json:"Limit,omitzero"`
 }
+
 type Page struct {
 	Rows       []schedule.Snapshot
 	NextCursor string
 }
+
 type ItemInput struct{ ID string }
+
 type Ack struct{}
 
 type ModelPatch struct {

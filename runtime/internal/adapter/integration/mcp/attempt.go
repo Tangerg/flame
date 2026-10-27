@@ -76,7 +76,7 @@ func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 		start: make(chan struct{}), done: make(chan struct{}),
 	}
 	target.attempt = attempt
-	target.settle(nil, nil, mcpserver.ConnectionConnecting, "")
+	target.settle(nil, nil, mcpserver.ConnectionConnecting, "", nil)
 	c.publishToolsLocked(name)
 	c.attempts.Add(1)
 	go attempt.run()
@@ -108,7 +108,7 @@ func (a *attempt) run() {
 			// Detach by attempt identity; a stale source read cannot remove its successor.
 			c.removeLocked(a.target)
 		} else {
-			a.target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
+			a.target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration, a.err)
 			a.target.attempt = nil
 			c.publishToolsLocked(a.target.id)
 		}
@@ -173,10 +173,10 @@ func (c *connections) currentAttempt(attempt *attempt) bool {
 	return c.find(attempt.target.name()) == attempt.target && attempt.target.attempt == attempt
 }
 
-func (c *connections) failAttempt(attempt *attempt, failure mcpserver.ConnectionFailure) {
+func (c *connections) failAttempt(attempt *attempt, failure mcpserver.ConnectionFailure, cause error) {
 	c.mu.Lock()
 	if c.currentAttempt(attempt) {
-		attempt.target.settle(nil, nil, mcpserver.ConnectionFailed, failure)
+		attempt.target.settle(nil, nil, mcpserver.ConnectionFailed, failure, cause)
 		attempt.target.attempt = nil
 		c.publishToolsLocked(attempt.target.id)
 	}

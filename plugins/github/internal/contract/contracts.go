@@ -3,162 +3,142 @@ package contract
 //go:generate sh -c "go run github.com/Tangerg/flame/plugins/github/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
-	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
+	published "github.com/Tangerg/flame/plugins/github/contracts"
+	"github.com/Tangerg/flame/plugins/github/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 )
 
-type State string
-
-const (
-	Open   State = "open"
-	Closed State = "closed"
-)
-
-func (State) JSONSchemaEnum() []string { return []string{string(Open), string(Closed)} }
-
-type Filter string
-
-func (Filter) JSONSchemaEnum() []string { return []string{string(Open), string(Closed), "all"} }
-
-type ListInput struct {
-	Repository string `json:"repository" jsonschema:"minLength=3,maxLength=256"`
-	State      Filter `json:"state"`
-	Page       int64  `json:"page" jsonschema:"minimum=1"`
-	Limit      int    `json:"limit" jsonschema:"minimum=1,maximum=100"`
-}
-
-type IssueInput struct {
-	Repository string `json:"repository" jsonschema:"minLength=3,maxLength=256"`
-	Number     int64  `json:"number" jsonschema:"minimum=1"`
-}
-
-type FileInput struct {
-	Repository string  `json:"repository" jsonschema:"minLength=3,maxLength=256"`
-	Path       string  `json:"path" jsonschema:"minLength=1,maxLength=4096"`
-	Ref        *string `json:"ref,omitzero" jsonschema:"minLength=1,maxLength=1024"`
-}
-
-type Issue struct {
-	ID          int64     `json:"id" jsonschema:"minimum=1"`
-	Repository  string    `json:"repository"`
-	Number      int64     `json:"number" jsonschema:"minimum=1"`
-	Title       string    `json:"title"`
-	Body        string    `json:"body"`
-	State       State     `json:"state"`
-	URL         string    `json:"url"`
-	Author      string    `json:"author"`
-	PullRequest bool      `json:"pullRequest"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	Labels      []string  `json:"labels"`
-	Assignees   []string  `json:"assignees"`
-	StateReason *string   `json:"stateReason,omitzero"`
-}
-
-type IssuePage struct {
-	Issues   []Issue `json:"issues"`
-	NextPage *int64  `json:"nextPage,omitzero"`
-}
-
-type File struct {
-	Repository string `json:"repository"`
-	Path       string `json:"path"`
-	SHA        string `json:"sha"`
-	URL        string `json:"url"`
-	Text       string `json:"text"`
-}
-
 type Contracts struct {
 	Capability          *portable.Capability
-	List                *qimumcp.Method[ListInput, IssuePage]
-	Issue               *qimumcp.Method[IssueInput, Issue]
-	File                *qimumcp.Method[FileInput, File]
-	Pulls               *qimumcp.Method[PullListInput, PullPage]
-	Pull                *qimumcp.Method[IssueInput, PullRequest]
-	PullFiles           *qimumcp.Method[ThreadInput, FilePage]
-	Comments            *qimumcp.Method[ThreadInput, CommentPage]
-	Reviews             *qimumcp.Method[ThreadInput, ReviewPage]
-	ReviewComments      *qimumcp.Method[ThreadInput, ReviewCommentPage]
-	Checks              *qimumcp.Method[CommitInput, CheckPage]
-	Annotations         *qimumcp.Method[CheckInput, AnnotationPage]
-	Statuses            *qimumcp.Method[CommitInput, StatusPage]
-	CreateIssue         *qimumcp.Method[CreateIssueInput, Issue]
-	UpdateIssue         *qimumcp.Method[UpdateIssueInput, Issue]
-	CreateComment       *qimumcp.Method[CreateCommentInput, Comment]
-	UpdateComment       *qimumcp.Method[UpdateCommentInput, Comment]
-	DeleteComment       *qimumcp.Method[CommentInput, DeletedComment]
-	CreatePull          *qimumcp.Method[CreatePullInput, PullRequest]
-	SubmitReview        *qimumcp.Method[SubmitReviewInput, Review]
-	MergePull           *qimumcp.Method[MergePullInput, MergeResult]
-	CreateReviewComment *qimumcp.Method[CreateReviewCommentInput, ReviewComment]
-	ReplyReviewComment  *qimumcp.Method[ReplyReviewCommentInput, ReviewComment]
-	UpdateReviewComment *qimumcp.Method[UpdateCommentInput, ReviewComment]
-	DeleteReviewComment *qimumcp.Method[CommentInput, DeletedComment]
+	List                *qimumcp.Method[wire.ListInput, wire.IssuePage]
+	Issue               *qimumcp.Method[wire.IssueInput, wire.Issue]
+	File                *qimumcp.Method[wire.FileInput, wire.File]
+	Pulls               *qimumcp.Method[wire.PullListInput, wire.PullPage]
+	Pull                *qimumcp.Method[wire.IssueInput, wire.PullRequest]
+	PullFiles           *qimumcp.Method[wire.ThreadInput, wire.FilePage]
+	Comments            *qimumcp.Method[wire.ThreadInput, wire.CommentPage]
+	Reviews             *qimumcp.Method[wire.ThreadInput, wire.ReviewPage]
+	ReviewComments      *qimumcp.Method[wire.ThreadInput, wire.ReviewCommentPage]
+	Checks              *qimumcp.Method[wire.CommitInput, wire.CheckPage]
+	Annotations         *qimumcp.Method[wire.CheckInput, wire.AnnotationPage]
+	Statuses            *qimumcp.Method[wire.CommitInput, wire.StatusPage]
+	CreateIssue         *qimumcp.Method[wire.CreateIssueInput, wire.Issue]
+	UpdateIssue         *qimumcp.Method[wire.UpdateIssueInput, wire.Issue]
+	CreateComment       *qimumcp.Method[wire.CreateCommentInput, wire.Comment]
+	UpdateComment       *qimumcp.Method[wire.UpdateCommentInput, wire.Comment]
+	DeleteComment       *qimumcp.Method[wire.CommentInput, wire.DeletedComment]
+	CreatePull          *qimumcp.Method[wire.CreatePullInput, wire.PullRequest]
+	SubmitReview        *qimumcp.Method[wire.SubmitReviewInput, wire.Review]
+	MergePull           *qimumcp.Method[wire.MergePullInput, wire.MergeResult]
+	CreateReviewComment *qimumcp.Method[wire.CreateReviewCommentInput, wire.ReviewComment]
+	ReplyReviewComment  *qimumcp.Method[wire.ReplyReviewCommentInput, wire.ReviewComment]
+	UpdateReviewComment *qimumcp.Method[wire.UpdateCommentInput, wire.ReviewComment]
+	DeleteReviewComment *qimumcp.Method[wire.CommentInput, wire.DeletedComment]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.List, err = readMethod[ListInput, IssuePage]("list-issues", "Read one explicit page of repository issues and pull requests, exposing the next page number supplied by GitHub.")
+	c.Capability, err = portable.ParseCapability([]byte(published.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Issue, err = readMethod[IssueInput, Issue]("get-issue", "Read one GitHub issue or pull request by its repository and issue number.")
+	c.List, err = qimumcp.ImplementMethod[wire.ListInput, wire.IssuePage](c.Capability, published.ListIssuesV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.File, err = readMethod[FileInput, File]("read-file", "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.")
+	c.Issue, err = qimumcp.ImplementMethod[wire.IssueInput, wire.Issue](c.Capability, published.GetIssueV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Pulls, err = readMethod[PullListInput, PullPage]("list-pull-requests", "List one page of pull requests with head/base refs and SHAs, optionally filtered by base or owner:branch head.")
+	c.File, err = qimumcp.ImplementMethod[wire.FileInput, wire.File](c.Capability, published.ReadFileV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Pull, err = readMethod[IssueInput, PullRequest]("get-pull-request", "Read a pull request's head/base SHAs, draft/merge state and change counts. A missing mergeable value means GitHub has not computed it. Use the head SHA for subsequent commit checks.")
+	c.Pulls, err = qimumcp.ImplementMethod[wire.PullListInput, wire.PullPage](c.Capability, published.ListPullRequestsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.PullFiles, err = readMethod[ThreadInput, FilePage]("list-pull-request-files", "Read one live page of PR file changes and available patches. An absent patch is not an empty diff. GitHub exposes at most 3000 files; limitReached means the list may be incomplete. Read repository files at an exact PR head/base SHA when needed.")
+	c.Pull, err = qimumcp.ImplementMethod[wire.IssueInput, wire.PullRequest](c.Capability, published.GetPullRequestV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Comments, err = readMethod[ThreadInput, CommentPage]("list-issue-comments", "Read one page of discussion comments on an issue or pull request. Inline code review comments are returned by list_pull_request_comments.")
+	c.PullFiles, err = qimumcp.ImplementMethod[wire.ThreadInput, wire.FilePage](c.Capability, published.ListPullRequestFilesV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Reviews, err = readMethod[ThreadInput, ReviewPage]("list-pull-request-reviews", "Read one page of PR reviews with their upstream state, commit and submitted time, including pending and dismissed reviews.")
+	c.Comments, err = qimumcp.ImplementMethod[wire.ThreadInput, wire.CommentPage](c.Capability, published.ListIssueCommentsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.ReviewComments, err = readMethod[ThreadInput, ReviewCommentPage]("list-pull-request-comments", "Read one page of inline PR review comments with diff context, commit identity, reply parent and available line positions. Missing current positions can indicate outdated comments.")
+	c.Reviews, err = qimumcp.ImplementMethod[wire.ThreadInput, wire.ReviewPage](c.Capability, published.ListPullRequestReviewsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Checks, err = readMethod[CommitInput, CheckPage]("list-check-runs", "Read one page of latest check runs with upstream status, conclusion and diagnostic text. GitHub limits this endpoint to the most recent 1000 check suites. Use the exact PR head SHA, list_check_annotations for line diagnostics, and list_commit_statuses for external CI.")
+	c.ReviewComments, err = qimumcp.ImplementMethod[wire.ThreadInput, wire.ReviewCommentPage](c.Capability, published.ListPullRequestCommentsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Annotations, err = readMethod[CheckInput, AnnotationPage]("list-check-annotations", "Read one page of line-level diagnostics for a check run ID returned by list_check_runs. Preserves paths, ranges, severity and original diagnostic text.")
+	c.Checks, err = qimumcp.ImplementMethod[wire.CommitInput, wire.CheckPage](c.Capability, published.ListCheckRunsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Statuses, err = readMethod[CommitInput, StatusPage]("list-commit-statuses", "Read one page of commit statuses, including external CI that is not represented by check runs. Use an exact PR head SHA when assessing a revision.")
+	c.Annotations, err = qimumcp.ImplementMethod[wire.CheckInput, wire.AnnotationPage](c.Capability, published.ListCheckAnnotationsV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	writes, err := c.writeMethods()
+	c.Statuses, err = qimumcp.ImplementMethod[wire.CommitInput, wire.StatusPage](c.Capability, published.ListCommitStatusesV1Method)
 	if err != nil {
 		return Contracts{}, err
 	}
-	methods := []portable.MethodDescriptor{c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor(), c.Pulls.Descriptor(), c.Pull.Descriptor(), c.PullFiles.Descriptor(), c.Comments.Descriptor(), c.Reviews.Descriptor(), c.ReviewComments.Descriptor(), c.Checks.Descriptor(), c.Annotations.Descriptor(), c.Statuses.Descriptor()}
-	c.Capability, err = portable.NewCapability(portable.CapabilityConfig{Reference: "flame.github.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, append(methods, writes...)...)
-	return c, err
-}
-
-func readMethod[P, R any](name, description string) (*qimumcp.Method[P, R], error) {
-	return qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: description})
+	c.CreateIssue, err = qimumcp.ImplementMethod[wire.CreateIssueInput, wire.Issue](c.Capability, published.CreateIssueV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.UpdateIssue, err = qimumcp.ImplementMethod[wire.UpdateIssueInput, wire.Issue](c.Capability, published.UpdateIssueV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.CreateComment, err = qimumcp.ImplementMethod[wire.CreateCommentInput, wire.Comment](c.Capability, published.CreateIssueCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.UpdateComment, err = qimumcp.ImplementMethod[wire.UpdateCommentInput, wire.Comment](c.Capability, published.UpdateIssueCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.DeleteComment, err = qimumcp.ImplementMethod[wire.CommentInput, wire.DeletedComment](c.Capability, published.DeleteIssueCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.CreatePull, err = qimumcp.ImplementMethod[wire.CreatePullInput, wire.PullRequest](c.Capability, published.CreatePullRequestV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.SubmitReview, err = qimumcp.ImplementMethod[wire.SubmitReviewInput, wire.Review](c.Capability, published.SubmitPullRequestReviewV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.MergePull, err = qimumcp.ImplementMethod[wire.MergePullInput, wire.MergeResult](c.Capability, published.MergePullRequestV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.CreateReviewComment, err = qimumcp.ImplementMethod[wire.CreateReviewCommentInput, wire.ReviewComment](c.Capability, published.CreatePullRequestCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.ReplyReviewComment, err = qimumcp.ImplementMethod[wire.ReplyReviewCommentInput, wire.ReviewComment](c.Capability, published.ReplyPullRequestCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.UpdateReviewComment, err = qimumcp.ImplementMethod[wire.UpdateCommentInput, wire.ReviewComment](c.Capability, published.UpdatePullRequestCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.DeleteReviewComment, err = qimumcp.ImplementMethod[wire.CommentInput, wire.DeletedComment](c.Capability, published.DeletePullRequestCommentV1Method)
+	if err != nil {
+		return Contracts{}, err
+	}
+	return c, nil
 }

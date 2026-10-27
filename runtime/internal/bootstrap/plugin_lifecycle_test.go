@@ -67,18 +67,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(ctx); err != nil {
-			t.Error(err)
-		}
-	})
+	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	invoke := func(method delivery.Name, input any, key string) delivery.Result {
 		t.Helper()
@@ -190,19 +179,12 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("waiting dependency switch: %v", blocked.Failure)
 	}
-	endpoint.BeginShutdown()
-	if err = endpoint.AwaitShutdown(ctx); err != nil {
-		t.Fatal(err)
-	}
 	if err = host.Close(); err != nil {
 		t.Fatal(err)
 	}
 	reopenPluginStores(t, &cfg)
 	host, api = buildPluginProtocolRuntime(t, cfg)
-	endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	endpoint = host.Endpoint()
 	replayed = must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
 	if replayed.ID != installed.ID {
 		t.Fatal("cold replay created another installation")

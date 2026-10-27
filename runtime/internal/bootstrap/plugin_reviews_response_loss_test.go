@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -428,6 +429,9 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal("command replay replaced uncertain execution")
 	}
 	runtime.close()
+	if err := cfg.stores.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	encoded, err := os.ReadFile(evidencePath)
 	if err != nil {
@@ -561,6 +565,16 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := backend.Close(); err != nil {
 		t.Fatal(err)
 	}
+	cfg.stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := cfg.stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	cfg.providerRegistry = cfg.stores.Providers
 	runtime = poMCPOpen(t, cfg)
 	restored := runtime.must(delivery.RunsGet, protocol.GetRunRequest{RunID: runID}, "").(*protocol.RunRef)
 	if !reflect.DeepEqual(restored.Outcome, finished.Outcome) || modelCalls.Load() != 2 {

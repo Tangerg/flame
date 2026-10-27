@@ -11,7 +11,7 @@
       "description": "Read a bounded page of a previously captured snapshot by ID and Unicode codepoint offset. This reads captured material without network I/O; an evicted snapshot is refused.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL2NvbnRyYWN0_BrowseInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvd2ViL2ludGVybmFsL3dpcmU_BrowseInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {

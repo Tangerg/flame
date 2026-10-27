@@ -12,13 +12,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledb "github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -116,15 +116,15 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if encodeErr != nil || expectedErr != nil || observed != expected {
 		t.Fatalf("receipt output differs from the normal Tool output: %+v / %+v", original.Details, normal.StructuredContent)
 	}
-	page, err := list.Call(t.Context(), rpc.ListInput{})
+	page, err := list.Call(t.Context(), wire.ListInput{})
 	if err != nil || len(page.Rows) != 1 {
 		t.Fatalf("created schedules: %+v,%v", page, err)
 	}
 	updated := "edited title"
-	if _, err := update.CallCommand(t.Context(), "edit", rpc.UpdateInput{ID: page.Rows[0].ID, ExpectedRevision: page.Rows[0].Revision, Title: &updated}); err != nil {
+	if _, err := update.CallCommand(t.Context(), "edit", wire.UpdateInput{ID: page.Rows[0].ID, ExpectedRevision: page.Rows[0].Revision, Title: &updated}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := remove.CallCommand(t.Context(), "delete", rpc.ItemInput{ID: page.Rows[0].ID}); err != nil {
+	if _, err := remove.CallCommand(t.Context(), "delete", wire.ItemInput{ID: page.Rows[0].ID}); err != nil {
 		t.Fatal(err)
 	}
 	historical, err := lookup("original", string(arguments))
@@ -174,7 +174,7 @@ func TestOriginalCreateResultIsHistoricalAndReadOnly(t *testing.T) {
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM schedules`).Scan(&schedules); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, rpc.Create).Scan(&creates); err != nil {
+	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM commands WHERE method=?`, wire.Create).Scan(&creates); err != nil {
 		t.Fatal(err)
 	}
 	if schedules != 0 || creates != 2 {

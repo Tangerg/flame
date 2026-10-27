@@ -301,5 +301,5 @@ func (c requirementCatalog) plan(ctx context.Context, host *qimu.Host, root plug
 	}
 	unit := qimu.UnitRef{InstallationID: qimu.InstallationID(root.Installation.ID().String()), Release: qimu.Digest(root.Selected.Digest().String()), UnitID: BackendUnit(server)}
 	plan, err := host.PlanUnit(ctx, "", unit, choices)
-	return plan, frameworkError(err)
+	return plan, FrameworkError(err)
 }

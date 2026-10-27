@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -99,7 +99,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple apple apple"}}
+	input := wire.ImportInput{Content: knowledge.Content{ID: "fruit", Title: "Fruit guide", Source: "docs/fruit.md", Text: "apple apple apple"}}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := rpc.SearchInput{Query: "apple", Limit: 2}
+	query := wire.SearchInput{Query: "apple", Limit: 2}
 	queryJSON, err := jsonvalue.Encode(query)
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	beforeRead := calls.Load()
-	read, err := readMethod.Call(t.Context(), rpc.ReadInput{ID: input.Content.ID})
+	read, err := readMethod.Call(t.Context(), wire.ReadInput{ID: input.Content.ID})
 	if err != nil || read.Text != input.Content.Text || read.Document.Revision != 1 {
 		t.Fatalf("typed original read: %+v %v", read, err)
 	}
@@ -149,7 +149,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err := readMeta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model-read", Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
-	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: rpc.ReadInput{ID: input.Content.ID}, Meta: readMeta})
+	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ReadInput{ID: input.Content.ID}, Meta: readMeta})
 	if err != nil || readResult.IsError {
 		t.Fatalf("model original read without an embedding callback: %+v %v", readResult, err)
 	}
@@ -157,7 +157,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	var modelRead rpc.DocumentRead
+	var modelRead wire.DocumentRead
 	if err := json.Unmarshal(encodedRead, &modelRead); err != nil || modelRead != read || calls.Load() != beforeRead {
 		t.Fatalf("model and typed reads diverged or performed embedding: %+v calls=%d %v", modelRead, calls.Load(), err)
 	}
@@ -216,7 +216,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	deleteInput, err := jsonvalue.Encode(rpc.DocumentInput{ID: "fruit", ExpectedRevision: 1})
+	deleteInput, err := jsonvalue.Encode(wire.DocumentInput{ID: "fruit", ExpectedRevision: 1})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -98,18 +99,18 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 		method, tool string
 		input        any
 	}{
-		{contracts.List.Name(), "list_issues", rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 2}},
-		{contracts.Issue.Name(), "get_issue", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
-		{contracts.File.Name(), "read_file", rpc.FileInput{Repository: "owner/repo", Path: "README.md"}},
-		{contracts.Pulls.Name(), "list_pull_requests", rpc.PullListInput{ListInput: rpc.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 10}}},
-		{contracts.Pull.Name(), "get_pull_request", rpc.IssueInput{Repository: "owner/repo", Number: 42}},
-		{contracts.PullFiles.Name(), "list_pull_request_files", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Comments.Name(), "list_issue_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Reviews.Name(), "list_pull_request_reviews", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.ReviewComments.Name(), "list_pull_request_comments", rpc.ThreadInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
-		{contracts.Checks.Name(), "list_check_runs", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
-		{contracts.Annotations.Name(), "list_check_annotations", rpc.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
-		{contracts.Statuses.Name(), "list_commit_statuses", rpc.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
+		{contracts.List.Name(), "list_issues", contractwire.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 2}},
+		{contracts.Issue.Name(), "get_issue", contractwire.IssueInput{Repository: "owner/repo", Number: 42}},
+		{contracts.File.Name(), "read_file", contractwire.FileInput{Repository: "owner/repo", Path: "README.md"}},
+		{contracts.Pulls.Name(), "list_pull_requests", contractwire.PullListInput{ListInput: contractwire.ListInput{Repository: "owner/repo", State: "all", Page: 1, Limit: 10}}},
+		{contracts.Pull.Name(), "get_pull_request", contractwire.IssueInput{Repository: "owner/repo", Number: 42}},
+		{contracts.PullFiles.Name(), "list_pull_request_files", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Comments.Name(), "list_issue_comments", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Reviews.Name(), "list_pull_request_reviews", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.ReviewComments.Name(), "list_pull_request_comments", contractwire.ThreadInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, Page: 1, Limit: 10}},
+		{contracts.Checks.Name(), "list_check_runs", contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
+		{contracts.Annotations.Name(), "list_check_annotations", contractwire.CheckInput{Repository: "owner/repo", CheckRunID: 44, Page: 1, Limit: 10}},
+		{contracts.Statuses.Name(), "list_commit_statuses", contractwire.CommitInput{Repository: "owner/repo", Ref: "head-sha", Page: 1, Limit: 10}},
 	} {
 		input, err := jsonvalue.Encode(test.input)
 		if err != nil {
@@ -139,7 +140,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 			t.Fatalf("typed/Tool %s diverged: %s, %s, %v", test.tool, typed.String(), model.String(), err)
 		}
 		if test.tool == "list_issues" {
-			var page rpc.IssuePage
+			var page contractwire.IssuePage
 			if err := json.Unmarshal(typed.JSON(), &page); err != nil || page.NextPage == nil || *page.NextPage != 2 {
 				t.Fatalf("GitHub's canonical repository-ID pagination was lost: %+v, %v", page, err)
 			}
@@ -150,7 +151,7 @@ func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.IssueInput{Repository: "owner/repo", Number: 42}
+	input := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)

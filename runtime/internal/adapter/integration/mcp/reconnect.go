@@ -85,13 +85,13 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 	cfg.HandshakeTimeout = mcpserver.HandshakeTimeout{}
 	flow, err := newOAuthFlow(ctx)
 	if err != nil {
-		c.failAttempt(attempt, mcpserver.FailureAuthorization)
+		c.failAttempt(attempt, mcpserver.FailureAuthorization, err)
 		return err
 	}
 	defer func() { err = errors.Join(err, flow.close(ctx)) }()
 	handler, err := newOAuthHandler(ctx, flow, c.lifetime, c.oauthSessions, cfg.OAuthTarget())
 	if err != nil {
-		c.failAttempt(attempt, mcpserver.FailureAuthorization)
+		c.failAttempt(attempt, mcpserver.FailureAuthorization, err)
 		return err
 	}
 	cfg.OAuthHandler = handler
@@ -161,12 +161,12 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	}
 	if err != nil {
 		state, failure := failedStatus(err, step)
-		attempt.target.settle(nil, nil, state, failure)
+		attempt.target.settle(nil, nil, state, failure, err)
 		if state == mcpserver.ConnectionNeedsAuth {
 			attempt.target.oauth = nil
 		}
 	} else {
-		attempt.target.settle(session, verifiedTools, mcpserver.ConnectionConnected, "")
+		attempt.target.settle(session, verifiedTools, mcpserver.ConnectionConnected, "", nil)
 		if keepHandler {
 			attempt.target.oauth = cfg.OAuthHandler // keep the authorized handler for this session's reconnects
 		}
@@ -230,7 +230,7 @@ func (c *connections) refuse(ctx context.Context, name mcpserver.ID, failure mcp
 		target.attempt = nil
 	}
 	withdrawn := target.session
-	target.settle(nil, nil, mcpserver.ConnectionFailed, failure)
+	target.settle(nil, nil, mcpserver.ConnectionFailed, failure, nil)
 	c.retireSessionLocked(withdrawn)
 	c.publishToolsLocked(name)
 	c.mu.Unlock()

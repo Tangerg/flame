@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -23,24 +22,13 @@ import (
 
 func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) {
 	t.Setenv("FLAME_HOME", t.TempDir())
-	host, api, stores := openProtocolRuntimeWithStores(t, newReplyStub("unused"))
+	host, _, stores := openProtocolRuntimeWithStores(t, newReplyStub("unused"))
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(ctx); err != nil {
-			t.Error(err)
-		}
-	})
+	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	created := endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{}, options)
 	if created.Failure != nil {

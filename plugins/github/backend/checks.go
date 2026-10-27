@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
 type checkWire struct {
@@ -28,11 +28,11 @@ type checkWire struct {
 	} `json:"output"`
 }
 
-func (wire checkWire) admit() (rpc.CheckRun, error) {
+func (wire checkWire) admit() (contractwire.CheckRun, error) {
 	if wire.ID <= 0 || wire.Name == "" || wire.HeadSHA == "" || wire.Status == "" || wire.Output == nil || wire.Output.AnnotationsCount == nil || *wire.Output.AnnotationsCount < 0 {
-		return rpc.CheckRun{}, errors.New("github: incomplete check run representation")
+		return contractwire.CheckRun{}, errors.New("github: incomplete check run representation")
 	}
-	result := rpc.CheckRun{ID: wire.ID, Name: wire.Name, HeadSHA: wire.HeadSHA, Status: wire.Status, Conclusion: wire.Conclusion, URL: wire.URL, StartedAt: wire.StartedAt, CompletedAt: wire.CompletedAt, AnnotationsCount: *wire.Output.AnnotationsCount}
+	result := contractwire.CheckRun{ID: wire.ID, Name: wire.Name, HeadSHA: wire.HeadSHA, Status: wire.Status, Conclusion: wire.Conclusion, URL: wire.URL, StartedAt: wire.StartedAt, CompletedAt: wire.CompletedAt, AnnotationsCount: *wire.Output.AnnotationsCount}
 	if wire.Output.Title != nil {
 		result.Title = *wire.Output.Title
 	}
@@ -45,31 +45,31 @@ func (wire checkWire) admit() (rpc.CheckRun, error) {
 	return result, nil
 }
 
-func (c *connector) listChecks(ctx context.Context, input rpc.CommitInput) (rpc.CheckPage, error) {
+func (c *connector) listChecks(ctx context.Context, input contractwire.CommitInput) (contractwire.CheckPage, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.CheckPage{}, err
+		return contractwire.CheckPage{}, err
 	}
 	parameters := pagination(input.Page, input.Limit)
 	parameters.Set("filter", "latest")
 	path := repository.apiPath() + "/commits/" + url.PathEscape(input.Ref) + "/check-runs"
-	return query(ctx, c, path, parameters, func(result response) (rpc.CheckPage, error) {
+	return query(ctx, c, path, parameters, func(result response) (contractwire.CheckPage, error) {
 		var wire struct {
 			TotalCount *int64      `json:"total_count"`
 			CheckRuns  []checkWire `json:"check_runs"`
 		}
 		if err := json.Unmarshal(result.body, &wire); err != nil {
-			return rpc.CheckPage{}, err
+			return contractwire.CheckPage{}, err
 		}
 		if wire.TotalCount == nil || *wire.TotalCount < int64(len(wire.CheckRuns)) {
-			return rpc.CheckPage{}, errors.New("github: inconsistent check run count")
+			return contractwire.CheckPage{}, errors.New("github: inconsistent check run count")
 		}
 		rows, err := admitRows(wire.CheckRuns, input.Limit, checkWire.admit)
 		if err != nil {
-			return rpc.CheckPage{}, err
+			return contractwire.CheckPage{}, err
 		}
 		next, err := nextPage(result.links, input.Page)
-		return rpc.CheckPage{CheckRuns: rows, NextPage: next}, err
+		return contractwire.CheckPage{CheckRuns: rows, NextPage: next}, err
 	})
 }
 
@@ -85,24 +85,24 @@ type annotationWire struct {
 	RawDetails  *string `json:"raw_details"`
 }
 
-func (wire annotationWire) admit() (rpc.Annotation, error) {
+func (wire annotationWire) admit() (contractwire.Annotation, error) {
 	if wire.Path == "" || wire.StartLine < 1 || wire.EndLine < wire.StartLine || wire.Level == "" || wire.Message == nil {
-		return rpc.Annotation{}, errors.New("github: incomplete check annotation")
+		return contractwire.Annotation{}, errors.New("github: incomplete check annotation")
 	}
 	if wire.StartColumn != nil && *wire.StartColumn < 1 || wire.EndColumn != nil && *wire.EndColumn < 1 {
-		return rpc.Annotation{}, errors.New("github: invalid check annotation column")
+		return contractwire.Annotation{}, errors.New("github: invalid check annotation column")
 	}
-	return rpc.Annotation{Path: wire.Path, StartLine: wire.StartLine, EndLine: wire.EndLine, StartColumn: wire.StartColumn, EndColumn: wire.EndColumn, Level: wire.Level, Message: *wire.Message, Title: wire.Title, RawDetails: wire.RawDetails}, nil
+	return contractwire.Annotation{Path: wire.Path, StartLine: wire.StartLine, EndLine: wire.EndLine, StartColumn: wire.StartColumn, EndColumn: wire.EndColumn, Level: wire.Level, Message: *wire.Message, Title: wire.Title, RawDetails: wire.RawDetails}, nil
 }
 
-func (c *connector) listAnnotations(ctx context.Context, input rpc.CheckInput) (rpc.AnnotationPage, error) {
+func (c *connector) listAnnotations(ctx context.Context, input contractwire.CheckInput) (contractwire.AnnotationPage, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.AnnotationPage{}, err
+		return contractwire.AnnotationPage{}, err
 	}
 	path := repository.apiPath() + "/check-runs/" + strconv.FormatInt(input.CheckRunID, 10) + "/annotations"
 	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, annotationWire.admit)
-	return rpc.AnnotationPage{Annotations: page.rows, NextPage: page.next}, err
+	return contractwire.AnnotationPage{Annotations: page.rows, NextPage: page.next}, err
 }
 
 type statusWire struct {
@@ -115,19 +115,19 @@ type statusWire struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (wire statusWire) admit() (rpc.CommitStatus, error) {
+func (wire statusWire) admit() (contractwire.CommitStatus, error) {
 	if wire.ID <= 0 || wire.State == "" || wire.Context == "" || wire.CreatedAt.IsZero() || wire.UpdatedAt.IsZero() {
-		return rpc.CommitStatus{}, errors.New("github: incomplete commit status representation")
+		return contractwire.CommitStatus{}, errors.New("github: incomplete commit status representation")
 	}
-	return rpc.CommitStatus{ID: wire.ID, State: wire.State, Context: wire.Context, Description: wire.Description, URL: wire.URL, CreatedAt: wire.CreatedAt, UpdatedAt: wire.UpdatedAt}, nil
+	return contractwire.CommitStatus{ID: wire.ID, State: wire.State, Context: wire.Context, Description: wire.Description, URL: wire.URL, CreatedAt: wire.CreatedAt, UpdatedAt: wire.UpdatedAt}, nil
 }
 
-func (c *connector) listStatuses(ctx context.Context, input rpc.CommitInput) (rpc.StatusPage, error) {
+func (c *connector) listStatuses(ctx context.Context, input contractwire.CommitInput) (contractwire.StatusPage, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return rpc.StatusPage{}, err
+		return contractwire.StatusPage{}, err
 	}
 	path := repository.apiPath() + "/commits/" + url.PathEscape(input.Ref) + "/statuses"
 	page, err := readPage(ctx, c, path, pagination(input.Page, input.Limit), input.Page, input.Limit, statusWire.admit)
-	return rpc.StatusPage{Statuses: page.rows, NextPage: page.next}, err
+	return contractwire.StatusPage{Statuses: page.rows, NextPage: page.next}, err
 }

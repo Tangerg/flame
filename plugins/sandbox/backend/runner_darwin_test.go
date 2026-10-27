@@ -15,6 +15,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 )
@@ -31,7 +32,7 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 	}
 	t.Setenv("FLAME_SANDBOX_SECRET", "parent-credential")
 	quote := func(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'" }
-	input := rpc.ExecuteInput{Script: "printf inside > private-file; test ! -r " + quote(secret) + " || exit 91; if printf changed > " + quote(outside) + "; then exit 92; fi; printf '%s' \"${FLAME_SANDBOX_SECRET-unset}\"; exit 7", TimeoutMillis: 3000}
+	input := wire.ExecuteInput{Script: "printf inside > private-file; test ! -r " + quote(secret) + " || exit 91; if printf changed > " + quote(outside) + "; then exit 92; fi; printf '%s' \"${FLAME_SANDBOX_SECRET-unset}\"; exit 7", TimeoutMillis: 3000}
 	encoded, _ := jsonvalue.Encode(input)
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -74,19 +75,19 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 	if err != nil || !reflect.DeepEqual(replay, result) || calls != 1 {
 		t.Fatalf("replay repeated execution: %+v %v calls=%d", replay, err, calls)
 	}
-	changed := rpc.ExecuteInput{Script: "exit 0", TimeoutMillis: 3000}
+	changed := wire.ExecuteInput{Script: "exit 0", TimeoutMillis: 3000}
 	changedJSON, _ := jsonvalue.Encode(changed)
 	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", changed, changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("accepted identity changed script: %v", err)
 	}
-	binary := rpc.ExecuteInput{Script: "printf '\\377'", TimeoutMillis: 3000}
+	binary := wire.ExecuteInput{Script: "printf '\\377'", TimeoutMillis: 3000}
 	binaryJSON, _ := jsonvalue.Encode(binary)
 	output, err := runner.execute(t.Context(), contracts.Execute.Name(), "binary", binary, binaryJSON)
 	raw, decodeErr := base64.StdEncoding.DecodeString(output.Stdout.Content)
 	if err != nil || decodeErr != nil || output.Stdout.Encoding != sandbox.Base64 || string(raw) != "\xff" {
 		t.Fatalf("binary stdout was replaced: %+v %v %v", output, err, decodeErr)
 	}
-	deadline := rpc.ExecuteInput{Script: "sleep 10 & wait", TimeoutMillis: 100}
+	deadline := wire.ExecuteInput{Script: "sleep 10 & wait", TimeoutMillis: 100}
 	deadlineJSON, _ := jsonvalue.Encode(deadline)
 	timed, err := runner.execute(t.Context(), contracts.Execute.Name(), "deadline", deadline, deadlineJSON)
 	if err != nil || timed.Status != sandbox.TimedOut || timed.DurationMillis > 3000 {
@@ -106,7 +107,7 @@ func TestUnknownNativeCommandCannotAcquireANewHostReadAfterRestart(t *testing.T)
 	read := func(context.Context) (string, error) { calls++; return "", cause }
 	runner, _ := newRunner(db, filepath.Join(data, "scratch"), read)
 	contracts, _ := rpc.NewContracts()
-	input := rpc.ExecuteInput{Script: "printf should-not-run", TimeoutMillis: 1000}
+	input := wire.ExecuteInput{Script: "printf should-not-run", TimeoutMillis: 1000}
 	encoded, _ := jsonvalue.Encode(input)
 	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "unknown", input, encoded); !errors.Is(err, cause) {
 		t.Fatalf("unexpected failure became a refusal: %v", err)
@@ -123,7 +124,7 @@ func TestUnknownNativeCommandCannotAcquireANewHostReadAfterRestart(t *testing.T)
 	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "unknown", input, encoded); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls != 1 {
 		t.Fatalf("unknown admission repeated work: %v calls=%d", err, calls)
 	}
-	invalid := rpc.ExecuteInput{Script: "printf before\x00after", TimeoutMillis: 1000}
+	invalid := wire.ExecuteInput{Script: "printf before\x00after", TimeoutMillis: 1000}
 	invalidJSON, _ := jsonvalue.Encode(invalid)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "invalid", invalid, invalidJSON)

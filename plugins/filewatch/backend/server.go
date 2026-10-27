@@ -9,6 +9,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -29,7 +30,7 @@ func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
-		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
+		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 			return store.configure(ctx, input.ExpectedRevision, input.Trigger)
 		}),
 		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (filewatch.Snapshot, error) {
@@ -39,7 +40,7 @@ func newServer(store *store) (*sdk.Server, *qimumcp.Backend, error) {
 		contracts.Events.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) ([]filewatch.Header, error) {
 			return store.headers(ctx)
 		}),
-		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.EventInput]) (filewatch.Event, error) {
+		contracts.Event.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.EventInput]) (filewatch.Event, error) {
 			return store.event(ctx, command.Input.ID)
 		}),
 		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (filewatch.Status, error) {

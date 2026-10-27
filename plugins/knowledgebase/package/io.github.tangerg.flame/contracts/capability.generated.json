@@ -11,7 +11,7 @@
       "description": "Delete a document and its index at the inspected revision.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_DocumentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_DocumentInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -74,7 +74,7 @@
       "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_ImportInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_ImportInput": {
             "additionalProperties": false,
             "properties": {
               "content": {
@@ -317,7 +317,7 @@
       "description": "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_ReadInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_ReadInput": {
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -348,7 +348,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_DocumentRead": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_DocumentRead": {
             "additionalProperties": false,
             "properties": {
               "document": {
@@ -433,7 +433,7 @@
       "description": "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_DocumentInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_DocumentInput": {
             "additionalProperties": false,
             "properties": {
               "expectedRevision": {
@@ -583,7 +583,7 @@
       "description": "Retrieve cited chunks from indexed user documents through the configured embedding role.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9jb250cmFjdA_SearchInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl_SearchInput": {
             "additionalProperties": false,
             "properties": {
               "limit": {

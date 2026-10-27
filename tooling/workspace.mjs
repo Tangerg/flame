@@ -187,6 +187,44 @@ export async function generate(repository = root) {
       env,
       true,
     );
+    const plugins = join(repository, "plugins");
+    const publishers = (await readdir(plugins, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .sort((left, right) => left.name.localeCompare(right.name));
+    for (const publisher of publishers) {
+      if (
+        publisher.name === "memory" ||
+        !existsSync(join(plugins, publisher.name, "contractgen", "main.go"))
+      )
+        continue;
+      const descriptor = join(temporary, `${publisher.name}.json`);
+      await writeFile(
+        descriptor,
+        run(
+          "go",
+          ["run", `./${publisher.name}/contractgen`],
+          plugins,
+          env,
+          true,
+        ),
+      );
+      go(
+        [
+          "run",
+          "github.com/Tangerg/flame/qimu/cmd/qimu",
+          "contract",
+          "--feature",
+          descriptor,
+          "--out",
+          "",
+          "--go-out",
+          `${publisher.name}/contracts/contract.generated.go`,
+          "--go-package",
+          "contracts",
+        ],
+        "plugins",
+      );
+    }
     go(["generate", "./..."], "plugins");
     go(
       [

@@ -247,7 +247,7 @@
       "description": "Delete one schedule definition.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ItemInput": {
             "additionalProperties": false,
             "properties": {
               "ID": {
@@ -274,7 +274,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_Ack": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_Ack": {
             "additionalProperties": false,
             "properties": {},
             "type": "object"
@@ -293,7 +293,7 @@
       "description": "List current schedule definitions and revisions.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ListInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ListInput": {
             "additionalProperties": false,
             "properties": {
               "Cursor": {
@@ -361,25 +361,6 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_Page": {
-            "additionalProperties": false,
-            "properties": {
-              "NextCursor": {
-                "type": "string"
-              },
-              "Rows": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot"
-                },
-                "type": "array"
-              }
-            },
-            "required": [
-              "Rows",
-              "NextCursor"
-            ],
-            "type": "object"
-          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot": {
             "additionalProperties": false,
             "properties": {
@@ -436,6 +417,25 @@
               "Revision"
             ],
             "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_Page": {
+            "additionalProperties": false,
+            "properties": {
+              "NextCursor": {
+                "type": "string"
+              },
+              "Rows": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg_Snapshot"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "Rows",
+              "NextCursor"
+            ],
+            "type": "object"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -465,7 +465,7 @@
       "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ItemInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ItemInput": {
             "additionalProperties": false,
             "properties": {
               "ID": {
@@ -533,7 +533,7 @@
       "description": "Change one schedule using its inspected revision.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ModelPatch": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch": {
             "additionalProperties": false,
             "properties": {
               "Model": {
@@ -548,7 +548,7 @@
             },
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_UpdateInput": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_UpdateInput": {
             "additionalProperties": false,
             "properties": {
               "CWD": {
@@ -576,7 +576,7 @@
                 "type": "string"
               },
               "ModelSelection": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ModelPatch"
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch"
               },
               "Title": {
                 "type": "string"
@@ -618,7 +618,7 @@
             "type": "string"
           },
           "ModelSelection": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2NvbnRyYWN0_ModelPatch"
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU_ModelPatch"
           },
           "Title": {
             "type": "string"

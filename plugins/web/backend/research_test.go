@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	"github.com/Tangerg/scope/tools/web"
 )
 
@@ -51,7 +51,7 @@ func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction
 	}
 	defer store.db.Close()
 	research.store = store
-	continued, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Offset: *first.NextOffset, Limit: capture.MaxPageRunes})
+	continued, err := research.browse(t.Context(), wire.BrowseInput{SnapshotID: first.SnapshotID, Offset: *first.NextOffset, Limit: capture.MaxPageRunes})
 	if err != nil || first.Content+continued.Content != strings.Repeat("知识", 5000) || calls != 2 {
 		t.Fatalf("offline snapshot continuation: %+v %v", continued, err)
 	}
@@ -66,13 +66,13 @@ func TestFreshFetchAndOfflineBrowseRetainTheirOwnSnapshotAcrossReopenAndEviction
 		}
 		latestID = document.Snapshot().ID
 	}
-	if _, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: first.SnapshotID, Limit: 1}); !errors.Is(err, capture.ErrNotFound) || calls != 2 {
+	if _, err := research.browse(t.Context(), wire.BrowseInput{SnapshotID: first.SnapshotID, Limit: 1}); !errors.Is(err, capture.ErrNotFound) || calls != 2 {
 		t.Fatalf("eviction silently fetched another version: %v calls=%d", err, calls)
 	}
 	if _, err := store.db.ExecContext(t.Context(), `UPDATE snapshots SET snapshot='{"id":"forged"}' WHERE id=?`, latestID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := research.browse(t.Context(), rpc.BrowseInput{SnapshotID: latestID, Limit: 1}); !errors.Is(err, errStoredSnapshot) {
+	if _, err := research.browse(t.Context(), wire.BrowseInput{SnapshotID: latestID, Limit: 1}); !errors.Is(err, errStoredSnapshot) {
 		t.Fatalf("corrupt cache became another snapshot: %v", err)
 	}
 }

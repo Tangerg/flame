@@ -9,6 +9,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -40,7 +41,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input rpc.ExecuteInput) (sandbox.Result, error) {
+	execute, err := tool.NewFunc(tool.FuncConfig{Name: executeTool, Description: contracts.Execute.Descriptor().Description}, func(ctx context.Context, input wire.ExecuteInput) (sandbox.Result, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
 			return sandbox.Result{}, err
@@ -64,14 +65,14 @@ func newServer(runner *runner) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, runner.db),
-		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ExecuteInput]) (sandbox.Result, error) {
+		contracts.Execute.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.ExecuteInput]) (sandbox.Result, error) {
 			original, err := command.RequestInput()
 			if err != nil {
 				return sandbox.Result{}, err
 			}
 			return runner.execute(ctx, contracts.Execute.Name(), command.ID, command.Input, original)
 		}),
-		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (rpc.Limits, error) {
+		contracts.Limits.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, qimumcp.Command[struct{}]) (wire.Limits, error) {
 			return runner.limits(), nil
 		}),
 		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {

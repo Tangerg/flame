@@ -10,6 +10,7 @@ import (
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -98,7 +99,7 @@ func TestGeneratedSchedulesContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := list.Call(t.Context(), rpc.ListInput{}); err != nil {
+	if _, err := list.Call(t.Context(), wire.ListInput{}); err != nil {
 		t.Fatal(err)
 	}
 }

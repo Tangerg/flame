@@ -190,7 +190,8 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 				if mode == "failed-proposal" {
 					waitCallContributorState(t, r, contributor.ID, protocol.MCPServerFailed)
-					if err := r.host.application.recoverUncertainExecutions(t.Context()); err != nil {
+					// Startup can defer this probe while its captured source connects.
+					if err := r.host.application.workers.recovery.ReconcileStartup(t.Context()); err != nil {
 						t.Fatal(err)
 					}
 				}

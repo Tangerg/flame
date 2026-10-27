@@ -83,6 +83,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			host.lifetime.delivery = endpoint
 			restarted := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 			defer restarted.close()
 			waitStartupSignal(t, entered, "restarted blocked connection")

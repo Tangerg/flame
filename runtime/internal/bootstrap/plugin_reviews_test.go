@@ -45,6 +45,7 @@ func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build review backend: %s, %v", output, err)
 	}
+	authorPluginPackage(t, source)
 	return source
 }
 

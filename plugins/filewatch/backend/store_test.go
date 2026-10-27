@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/google/uuid"
@@ -25,12 +24,12 @@ func fixtureDraft() filewatch.Draft {
 
 func configureFixture(t *testing.T, s *store, revision int64, draft *filewatch.Draft) filewatch.Snapshot {
 	t.Helper()
-	input := rpc.ConfigureInput{ExpectedRevision: revision, Trigger: draft}
+	input := wire.ConfigureInput{ExpectedRevision: revision, Trigger: draft}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
+	value, err := pluginstorage.Command(t.Context(), s.db, "configure", uuid.NewString(), input, admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 		return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 	})
 	if err != nil {
@@ -91,13 +90,13 @@ func TestCaptureSurvivesDefinitionChangesAndReceiptReplay(t *testing.T) {
 	if pending, err := s.pending(t.Context()); err != nil || len(pending) != 0 {
 		t.Fatalf("confirmed intent remained pending: %v %v", pending, err)
 	}
-	input := rpc.ConfigureInput{ExpectedRevision: 3, Trigger: &draft}
+	input := wire.ConfigureInput{ExpectedRevision: 3, Trigger: &draft}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)
 	}
 	invoke := func() (filewatch.Snapshot, error) {
-		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", input, admitted, classify, func(ctx context.Context, input rpc.ConfigureInput) (filewatch.Snapshot, error) {
+		return pluginstorage.Command(t.Context(), s.db, "configure", "original-command", input, admitted, classify, func(ctx context.Context, input wire.ConfigureInput) (filewatch.Snapshot, error) {
 			return s.configure(ctx, input.ExpectedRevision, input.Trigger)
 		})
 	}

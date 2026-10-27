@@ -133,6 +133,11 @@ The query does not change the review or create another receipt store.
 Build and install the analyzer following [its instructions](analyzer/README.md).
 Enable it before activating Reviews so it is in Reviews' frozen optional setup
 collection. Reload Reviews when deliberately changing that collection.
+Disabling a captured analyzer retires its dependent Reviews instance. The Point
+directory then reports no current analyzer, while a new backend call refuses the
+unavailable original setup. Reenabling the analyzer does not authorize an old
+catalog observation to borrow a replacement instance: explicitly reconnect
+Reviews and discover its new instance before making another call.
 Call `io.github.tangerg.flame.examples/reviews.analyzers` on
 `review-operations` through `plugins call`, with the selected Reviews installation,
 digest, generated capability descriptor, an installation target and `{}` input.

@@ -9,7 +9,7 @@ Build `go build -o plugins/filewatch/bin/filewatch ./plugins/filewatch/backend`,
 then install the package and enable its declared background contribution through
 the ordinary plugin lifecycle. The public generated contract exports `get`,
 `configure`, `status`, `events` and `event` under `flame.filewatch.v1`. Regenerate with
-`go generate ./plugins/filewatch/internal/contract`.
+`make generate`.
 
 `configure` replaces the inspected revision with one trigger; omitting `trigger`
 disables observation. Use an available canonical workspace returned by
@@ -65,3 +65,13 @@ Accepted intents continue reconciliation even after the rule is disabled. An
 unavailable model or refused Run opening stays pending with `dispatchError` rather
 than changing its selection or inventing success. Uninstalling a package removes
 its activation; preserve its private data to retain pending work.
+
+## Contract publication
+
+The plugin's `contractgen/` program owns its Portable definition. `make generate`
+from the repository root refreshes `contracts/contract.generated.go` before the
+package and client projections. Handwritten DTOs and schema hooks in
+`internal/wire` remain independent of that generated descriptor. The backend and
+exported author implementation bind the published contract with `ImplementMethod`;
+an author's local `go generate` refreshes projections without redefining identity
+from relocated Go types.

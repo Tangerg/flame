@@ -12,7 +12,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -154,7 +154,7 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 		if err != nil {
 			return nil, err
 		}
-		if len(encoded) > rpc.MaxWriteBytes {
+		if len(encoded) > contractwire.MaxWriteBytes {
 			return nil, refused("invalid_input", "write payload exceeds one MiB")
 		}
 	}

@@ -77,5 +77,15 @@ embedding/commit remains unconfirmed; absence of a receipt cannot authorize repl
 Database corruption is a protocol failure, not a business refusal.
 
 Generate contracts from the repository workspace with
-`go generate ./plugins/knowledgebase/internal/contract`. Run the backend's tests from
+`make generate`. Run the backend's tests from
 the workspace with `go test ./plugins/knowledgebase/backend/... -count=1`.
+
+## Contract publication
+
+The plugin's `contractgen/` program owns its Portable definition. `make generate`
+from the repository root refreshes `contracts/contract.generated.go` before the
+package and client projections. Handwritten DTOs and schema hooks in
+`internal/wire` remain independent of that generated descriptor. The backend and
+exported author implementation bind the published contract with `ImplementMethod`;
+an author's local `go generate` refreshes projections without redefining identity
+from relocated Go types.

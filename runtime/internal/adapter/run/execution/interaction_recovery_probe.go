@@ -111,6 +111,12 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 			}
 			return runs.WaitingResumption{}, err
 		}
+		if definite, err := i.config.CallComposition.RestorationFailure(bindings); err != nil {
+			if definite {
+				return unresumable(ctx, continuation, runs.LossConfigurationChanged, "captured contribution restoration failed", err)
+			}
+			return runs.WaitingResumption{}, err
+		}
 	}
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
 	assembled, err := i.assembleInteraction(ctx, ref, start, &state)

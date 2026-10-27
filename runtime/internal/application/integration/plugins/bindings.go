@@ -64,7 +64,7 @@ func SelectedContribution(ctx context.Context, host *qimu.Host, store Store, sel
 		return ContributionBinding{}, false, err
 	}
 	if err := host.CheckSource(ctx, source); err != nil {
-		return ContributionBinding{}, false, frameworkError(err)
+		return ContributionBinding{}, false, FrameworkError(err)
 	}
 	return binding, true, nil
 }

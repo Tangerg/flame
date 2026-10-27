@@ -40,23 +40,7 @@ type poMCPRuntime struct {
 func poMCPOpen(t *testing.T, cfg assemblyConfig) *poMCPRuntime {
 	t.Helper()
 	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
-	if err != nil {
-		_ = host.Close()
-		t.Fatal(err)
-	}
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		_ = host.Close()
-		t.Fatal(err)
-	}
-	// Uncertain-execution revival is the post-callback-RPC recovery phase production
-	// runs after publishing delivery (instance.go). A reopen after a crash relies on
-	// it to reconcile the Run left in flight.
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		_ = host.Close()
-		t.Fatal(err)
-	}
-	runtime := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
+	runtime := &poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}
 	t.Cleanup(runtime.close)
 	return runtime
 }
@@ -69,6 +53,7 @@ func buildPluginProtocolRuntime(t *testing.T, cfg assemblyConfig) (*Instance, *d
 		_ = host.Close()
 		t.Fatalf("build plugin delivery handler: %v", err)
 	}
+	startTestRuntime(t, host, api, cfg.stores)
 	return host, api
 }
 
@@ -86,12 +71,6 @@ func (r *poMCPRuntime) close() {
 		return
 	}
 	r.closed = true
-	r.endpoint.BeginShutdown()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := r.endpoint.AwaitShutdown(ctx); err != nil {
-		r.t.Error(err)
-	}
 	if err := r.host.Close(); err != nil {
 		r.t.Error(err)
 	}

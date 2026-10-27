@@ -260,7 +260,7 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 		p.t.Fatal("timed out waiting for first model call")
 	}
 
-	commandEndpoint := acceptedCommandEndpoint(p.t, p.api, p.stores)
+	commandEndpoint := p.host.Endpoint()
 	options := acceptedCommandOptions()
 	options.IdempotencyKey = "protocol-lifecycle-steer"
 	options.RequestMeta.ClientCapabilities.InterruptTypes = []protocol.InterruptType{protocol.InterruptQuestion}
@@ -559,7 +559,25 @@ func buildProtocolRuntime(t *testing.T, cfg assemblyConfig, cwd string) (*Instan
 		_ = host.Close()
 		t.Fatalf("build protocol server: %v", err)
 	}
+	startTestRuntime(t, host, api, cfg.stores)
 	return host, api
+}
+
+func startTestRuntime(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle) {
+	t.Helper()
+	info, err := api.Discover(t.Context())
+	if err != nil {
+		t.Fatal(errors.Join(err, host.Close()))
+	}
+	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, info.Capabilities.Limits.Idempotency.Namespace, stores.ValidateDirectory)
+	if err != nil {
+		t.Fatal(errors.Join(err, host.Close()))
+	}
+	host.lifetime.delivery = endpoint
+	// Accepted work can resume only after its original callback RPC is available.
+	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+		t.Fatal(errors.Join(err, host.Close()))
+	}
 }
 
 func assembleTestRuntime(t *testing.T, cfg assemblyConfig) *Instance {

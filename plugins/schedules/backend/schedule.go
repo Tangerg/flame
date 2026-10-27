@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/lo"
-
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	"github.com/Tangerg/flame/qimu/portable"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/samber/lo"
 )
 
 type createScheduleArgs struct {
@@ -87,10 +86,10 @@ type scheduleManagement interface {
 
 type scheduleManagementTools struct {
 	coordinator scheduleManagement
-	manual      func(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error)
+	manual      func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)
 }
 
-func buildSchedules(coordinator scheduleManagement, manual func(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
+func buildSchedules(coordinator scheduleManagement, manual func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
 	if lo.IsNil(coordinator) {
 		return nil, errors.New("schedules: tool coordinator is required")
 	}
@@ -136,7 +135,7 @@ func buildSchedules(coordinator scheduleManagement, manual func(context.Context,
 	if err != nil {
 		return nil, err
 	}
-	manualRun, err := toolcontract.NewFunc[rpc.ItemInput, scheduleapp.RunReference](
+	manualRun, err := toolcontract.NewFunc[wire.ItemInput, scheduleapp.RunReference](
 		toolcontract.FuncConfig{Name: runScheduleTool, Description: "Immediately run an existing schedule once, only when the user asks. Set ID to the exact schedule_id from list_schedules. Captures its current definition through the same durable manual Run operation; returned SessionID and RunID identify accepted work, not completed execution."},
 		t.run,
 	)
@@ -193,7 +192,7 @@ func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleA
 	return scheduleResponse{Schedule: viewSchedule(value)}, nil
 }
 
-func (s *scheduleManagementTools) run(ctx context.Context, in rpc.ItemInput) (scheduleapp.RunReference, error) {
+func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduleapp.RunReference, error) {
 	value, err := s.manual(ctx, in)
 	return value, commandFailure(runScheduleTool, err)
 }

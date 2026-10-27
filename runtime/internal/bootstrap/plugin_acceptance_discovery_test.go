@@ -110,21 +110,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(ctx); err != nil {
-			t.Error(err)
-		}
-	})
+	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	must := func(method delivery.Name, input any, key string) any {
 		t.Helper()

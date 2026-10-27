@@ -199,7 +199,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	}
 	_, err = c.framework.Install(ctx, qimu.InstallationConfig{ID: qimu.InstallationID(id.String()), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
 	if err != nil {
-		return Inspection{}, frameworkError(err)
+		return Inspection{}, FrameworkError(err)
 	}
 	committed := plugin.Snapshot{Installation: installation, Selected: published}
 	unreclaimed := c.Reclaim(ctx)
@@ -330,7 +330,7 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 		return Inspection{}, err
 	}
 	if err := c.framework.Update(ctx, expected, qimu.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
-		return Inspection{}, frameworkError(err)
+		return Inspection{}, FrameworkError(err)
 	}
 	changed, err := installation.ChangedServers(snapshot.Installation, snapshot.Selected, after)
 	if err != nil {
@@ -374,7 +374,7 @@ func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID)
 		return err
 	}
 	if err := c.framework.Uninstall(ctx, qimu.InstallationID(id.String())); err != nil {
-		return frameworkError(err)
+		return FrameworkError(err)
 	}
 	withdrawErr := c.connections.WithdrawInstallation(servers)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})

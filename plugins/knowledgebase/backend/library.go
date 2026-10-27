@@ -8,8 +8,8 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/google/uuid"
@@ -40,14 +40,14 @@ func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {
 	return &library{store: store, resolve: resolve}, nil
 }
 
-func (l *library) importDocument(ctx context.Context, method, id string, input rpc.ImportInput, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) importDocument(ctx context.Context, method, id string, input wire.ImportInput, admitted jsonvalue.Value) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(context.Context) (knowledge.Draft, int64, error) {
 		draft, err := knowledge.NewDraft(input.Content)
 		return draft, input.ExpectedRevision, err
 	})
 }
 
-func (l *library) reindexDocument(ctx context.Context, method, id string, input rpc.DocumentInput, admitted jsonvalue.Value) (knowledge.Header, error) {
+func (l *library) reindexDocument(ctx context.Context, method, id string, input wire.DocumentInput, admitted jsonvalue.Value) (knowledge.Header, error) {
 	return l.indexDocument(ctx, method, id, admitted, func(ctx context.Context) (knowledge.Draft, int64, error) {
 		document, err := l.store.read(ctx, input.ID)
 		if err != nil {
@@ -93,15 +93,15 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 	})
 }
 
-func (l *library) read(ctx context.Context, input rpc.ReadInput) (rpc.DocumentRead, error) {
+func (l *library) read(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
 	document, err := l.store.read(ctx, input.ID)
 	if err != nil {
-		return rpc.DocumentRead{}, err
+		return wire.DocumentRead{}, err
 	}
 	if document.Header().Revision == 0 {
-		return rpc.DocumentRead{}, knowledge.ErrNotFound
+		return wire.DocumentRead{}, knowledge.ErrNotFound
 	}
-	return rpc.DocumentRead{Document: document.Header(), Text: document.Content().Text}, nil
+	return wire.DocumentRead{Document: document.Header(), Text: document.Content().Text}, nil
 }
 
 func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {
@@ -116,7 +116,7 @@ func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {
 	return headers, nil
 }
 
-func (l *library) search(ctx context.Context, input rpc.SearchInput) ([]knowledge.Match, error) {
+func (l *library) search(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
 	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > knowledge.MaxQueryRunes || input.Limit < 1 || input.Limit > knowledge.MaxResults {
 		return nil, errors.New("knowledge base: a bounded query and result limit are required")
 	}

@@ -49,7 +49,15 @@ no old executable, alias or automatic retargeting. Finish waiting work captured
 by an older build with that original build. The method-selectable HTTP tool keeps
 its separately owned host allowlist.
 
-Regenerate contracts with `go generate ./plugins/web/internal/contract`.
+Regenerate contracts with `make generate`.
 Provider contracts: [Scope web](https://github.com/Tangerg/scope/tree/main/tools/web),
 [Jina Reader](https://jina.ai/reader/) and
 [Tavily Search](https://docs.tavily.com/documentation/api-reference/endpoint/search).
+
+The maintainer-only `contractgen` command owns the capability descriptor. It
+derives schemas from the domain and pure wire declarations. `make generate`
+updates `contracts/contract.generated.go` from that owner before refreshing package
+projections. Backend bindings consume the exact published descriptor through Qimu.
+An independent author module's `go generate` refreshes package projections from
+that descriptor; it does not derive another contract from relocated implementation
+types.

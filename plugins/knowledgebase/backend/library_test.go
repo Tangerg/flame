@@ -3,16 +3,18 @@ package main
 import (
 	"context"
 	"errors"
+	"path/filepath"
+	"sync/atomic"
+	"testing"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
-	"path/filepath"
-	"sync/atomic"
-	"testing"
 )
 
 func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *testing.T) {
@@ -44,7 +46,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.ImportInput{Content: knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
+	input := wire.ImportInput{Content: knowledge.Content{ID: "guide", Title: "Guide", Source: "docs/guide.md", Text: "A source-owned document."}}
 	admitted, err := jsonvalue.Encode(input)
 	if err != nil {
 		t.Fatal(err)

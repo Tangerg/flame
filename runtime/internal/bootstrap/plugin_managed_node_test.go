@@ -39,7 +39,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 		t.Fatal(err)
 	}
 	for name, body := range map[string]string{
-		"plugin.json":                              `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"managed-probe","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
+		"plugin.json":                              `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"managed-probe","version":"1.0.0","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/contract.json":    string(descriptor),
 		"io.github.tangerg.flame/declaration.json": `{"protocol":"` + pluginsdk.DeclarationProtocol + `","managedBackends":[{"id":"managed","runtime":"node","entry":"start.mjs"}],"contributions":[{"id":"probe","server":"managed","export":"probe","contract":"io.github.tangerg.flame/contract.json"}]}`,
 	} {
@@ -51,6 +51,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 			t.Fatal(err)
 		}
 	}
+	authorPluginPackage(t, source)
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
 	var toolName string

@@ -12,6 +12,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -55,7 +56,7 @@ func TestTypedAndModelExecutionShareAdmissionAndOriginalToolReceipt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := rpc.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
+	input := wire.ExecuteInput{Script: "printf sandbox-result; exit 3", TimeoutMillis: 3000}
 	encoded, _ := jsonvalue.Encode(input)
 	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "typed", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "sandbox"}})
 	if err != nil {

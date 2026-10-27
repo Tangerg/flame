@@ -7,6 +7,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -71,7 +72,7 @@ func newServer(research *research) (*sdk.Server, error) {
 		contracts.Fetch.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[web.FetchRequest]) (capture.Page, error) {
 			return research.fetchPage(ctx, command.Input)
 		}),
-		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.BrowseInput]) (capture.Page, error) {
+		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[wire.BrowseInput]) (capture.Page, error) {
 			return research.browse(ctx, command.Input)
 		}),
 		backend.BindCapability("web", contracts.Capability),

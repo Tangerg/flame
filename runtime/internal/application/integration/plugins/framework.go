@@ -296,7 +296,9 @@ func ContributionSource(binding ContributionBinding) (qimu.ExportRef, error) {
 	return qimu.ExportRef{InstallationID: qimu.InstallationID(binding.InstallationID.String()), Release: qimu.Digest(binding.Digest.String()), UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
-func frameworkError(err error) error {
+// FrameworkError gives Core failures one Flame category without losing their
+// original cause at installation, binding, or execution boundaries.
+func FrameworkError(err error) error {
 	switch {
 	case errors.Is(err, qimu.ErrDependencyCycle), errors.Is(err, qimu.ErrInvalid), errors.Is(err, qimu.ErrContractMismatch):
 		return errors.Join(plugin.ErrInvalid, err)

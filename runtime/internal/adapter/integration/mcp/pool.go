@@ -181,7 +181,15 @@ func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.shutdown(ctx)
 }
 
-func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (*BorrowedSession, error) {
+func connectionError(id mcpserver.ID, err error) error {
+	if _, installed := id.Origin().Installation(); installed && errors.Is(err, ErrUnavailable) && !errors.Is(err, plugin.ErrUnavailable) {
+		return errors.Join(plugin.ErrUnavailable, err)
+	}
+	return err
+}
+
+func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (_ *BorrowedSession, err error) {
+	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
 		return nil, err
@@ -196,7 +204,8 @@ func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (*BorrowedSes
 	return p.inner.borrowSession(ctx, session)
 }
 
-func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (plugin.Activation, error) {
+func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
+	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Definition(ctx, id)
 	if err != nil {
 		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
@@ -214,7 +223,8 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (plu
 	return p.inner.activation(session)
 }
 
-func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (*BorrowedSession, error) {
+func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (_ *BorrowedSession, err error) {
+	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
 		return nil, err
@@ -231,7 +241,8 @@ func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authorit
 
 // SessionActor captures only the registry source realized by this exact live
 // session. The Run transaction rechecks its immutable authority before commit.
-func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (operation.Actor, error) {
+func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (_ operation.Actor, err error) {
+	defer func() { err = connectionError(id, err) }()
 	borrowed, _ := ctx.Value(borrowContextKey{}).(*BorrowedSession)
 	if borrowed == nil || borrowed.managed == nil || borrowed.session != expected || borrowed.ctx.Err() != nil || ctx.Err() != nil {
 		return operation.Actor{}, ErrUnavailable

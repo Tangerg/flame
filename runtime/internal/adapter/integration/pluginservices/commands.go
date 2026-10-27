@@ -272,7 +272,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 				return plugins.CommandAdmission{}, err
 			}
 			if err := c.framework.ValidateBindingUnder(ctx, originalBinding); err != nil {
-				return plugins.CommandAdmission{}, err
+				return plugins.CommandAdmission{}, plugins.FrameworkError(err)
 			}
 			return plugins.CommandAdmission{Binding: current, Activation: activation}, nil
 		}, capture)

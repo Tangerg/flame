@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	models "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -73,7 +73,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := exported.Method(rpc.RunNow)
+	method, err := exported.Method(wire.RunNow)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(rpc.ItemInput{ID: definition.ID()})
+	input, err := jsonvalue.Encode(wire.ItemInput{ID: definition.ID()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPublicRunNowOwnsCaptureAndOriginalAcceptanceReceipt(t *testing.T) {
 	if err != nil || retained.Snapshot() != captured.Snapshot() {
 		t.Fatalf("deleted definition changed captured work: %v", err)
 	}
-	changed, err := jsonvalue.Encode(rpc.ItemInput{ID: "sch_other"})
+	changed, err := jsonvalue.Encode(wire.ItemInput{ID: "sch_other"})
 	if err != nil {
 		t.Fatal(err)
 	}

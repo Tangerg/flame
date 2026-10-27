@@ -1,6 +1,8 @@
-package contract
+package wire
 
-import "time"
+import (
+	"time"
+)
 
 type PullListInput struct {
 	ListInput

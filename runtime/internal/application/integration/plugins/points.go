@@ -55,7 +55,7 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 		if len(declaration.PointValues) > 0 {
 			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: qimu.Digest(snapshot.Selected.Digest().String()), UnitID: PointValuesUnit}
 			if _, err := host.ActivateUnit(ctx, "", unit); err != nil {
-				return nil, frameworkError(err)
+				return nil, FrameworkError(err)
 			}
 		}
 	}
@@ -71,11 +71,11 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 	}
 	snapshot, err := host.Snapshot(ctx, point.Ref())
 	if err != nil {
-		return nil, frameworkError(err)
+		return nil, FrameworkError(err)
 	}
 	candidates, err := qimu.Candidates(snapshot, point)
 	if err != nil {
-		return nil, frameworkError(err)
+		return nil, FrameworkError(err)
 	}
 	bindings := make(map[string]PointBinding, len(candidates))
 	selectedByKey := make(map[string]qimu.Candidate[jsonvalue.Value, jsonvalue.Value], len(candidates))
@@ -126,14 +126,14 @@ func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *p
 	}
 	selection, err := qimu.Select(snapshot, point, "flame-point/1", selected...)
 	if err != nil {
-		return nil, frameworkError(err)
+		return nil, FrameworkError(err)
 	}
 	plan, err := qimu.Capture(snapshot, selection.Ref())
 	if err != nil {
-		return nil, frameworkError(err)
+		return nil, FrameworkError(err)
 	}
 	if err := host.Admission().Admit(ctx, func(admitted context.Context) error { return host.ValidateSelectionUnder(admitted, plan) }); err != nil {
-		return nil, frameworkError(err)
+		return nil, FrameworkError(err)
 	}
 	return result, nil
 }

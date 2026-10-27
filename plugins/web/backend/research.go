@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/tools/web"
 )
@@ -83,7 +83,7 @@ func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (captu
 	return document.Page(0, capture.MaxPageRunes)
 }
 
-func (r *research) browse(ctx context.Context, input rpc.BrowseInput) (capture.Page, error) {
+func (r *research) browse(ctx context.Context, input wire.BrowseInput) (capture.Page, error) {
 	document, err := r.store.read(ctx, input.SnapshotID)
 	if err != nil {
 		return capture.Page{}, err

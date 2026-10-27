@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
+import { runtime } from "@flame/backend-sdk";
 import {
   Backend,
   Capability,
   parseJSON,
   type CapabilityDescriptor,
-} from "@flame/backend-sdk";
+} from "@qimu/node";
 
 console.info("managed conformance initialized");
 const contract = new Capability(
@@ -20,7 +21,7 @@ backend.implement(
   contract.method("fixture.usage"),
   (value) => value as { sinceDays: number },
   async (context, input) => {
-    const host = await context.runtime();
+    const host = await runtime(context);
     return parseJSON(
       await host.queryJSON("usage.summary", input, { signal: context.signal }),
     );
@@ -40,7 +41,7 @@ backend.tool(
       !context.invocation.parent
     )
       throw new Error("fixture: original tool invocation is required");
-    const host = await context.runtime();
+    const host = await runtime(context);
     const summary = await host.queryJSON(
       "usage.summary",
       {},

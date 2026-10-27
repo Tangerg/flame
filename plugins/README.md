@@ -68,7 +68,12 @@ Runtime. Raw source directories without these files are not installable releases
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
 Package namespaces contain projections of their owner's canonical contracts.
-Memory binds the public SDK contract; Schedules defines its own feature methods.
+Memory binds the public SDK contract. Each other native feature keeps its Go
+contract definition in its own `contractgen/` publisher and carries the generated
+`contracts/contract.generated.go` descriptor beside its implementation. Pure
+`internal/wire` DTOs and schema hooks do not import that generated projection.
+Runtime bindings use `ImplementMethod` against the published descriptor; moving
+an implementation to another Go module cannot advance the contract identity.
 Run `make generate` from the repository root after changing definitions. It
 publishes consumer contracts before backend, CLI and component projections;
 the package builder copies those namespace resources into the output.
@@ -131,9 +136,11 @@ module, DTO source or compiler. Their kit carries packed `@qimu/sdk`,
 lock and prebuilt development-only
 contract generators and `pluginpack` release builder. Backend and component sources use separate TypeScript programs
 projected from this repository's respective compiler configurations.
-New features publish one owned descriptor; implementations of
-existing consumer contracts reuse the
-published exact schemas. Memory uses the public
+New features publish one owned descriptor; implementations of existing consumer
+contracts reuse the published exact schemas. Native feature kits carry their
+original `contracts/` projection, while `contractgen/` stays with the publisher.
+Author `go generate` refreshes package and UI projections from that descriptor,
+not from schemas re-derived after moving the implementation types. Memory uses the public
 [`go-sdk/plugin/memory`](../packages/go-sdk/plugin/memory/README.md) contract, so its
 author namespace cannot redefine the host's role. Go
 production and tool dependencies are vendored from immutable workspace-member
@@ -251,4 +258,9 @@ backend resources and component together, then build and explicitly select the
 complete new release. Former Go paths and schema aliases are not retained.
 Descriptor-owned contracts, including Saved usage reports, keep their published
 opaque definition names. Memory's implementation binds its canonical SDK contract;
-only the separate canonical publisher can advance that contract.
+only the separate canonical publisher can advance that contract. Native private
+feature publishers follow the same ownership rule within their own plugin:
+`make generate` runs the original `contractgen/` programs before regenerating
+implementation, package and client projections. An exported author module binds
+the published descriptor; it cannot redefine the original named contract merely
+by deriving equivalent-looking schemas from its relocated local types.

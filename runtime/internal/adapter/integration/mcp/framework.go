@@ -79,7 +79,7 @@ func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedS
 	}
 	binding, err := plan.Snapshot()
 	if err != nil {
-		return nil, err
+		return nil, plugins.FrameworkError(err)
 	}
 	retained, err := s.bindings(ctx)
 	if err != nil {
@@ -102,19 +102,19 @@ func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedS
 				continue
 			}
 			if err := s.waitRetired(ctx, original); err != nil {
-				return nil, err
+				return nil, plugins.FrameworkError(err)
 			}
-			if _, err := s.host.ActivateBinding(ctx, "", original); err != nil {
-				return nil, err
+			if attempted, err := s.host.ActivateBinding(ctx, "", original); err != nil {
+				return nil, failedRestoration(ctx, activation, attempted, errors.Join(err, s.host.Admission().RecoveryError()))
 			}
 			break
 		}
 	}
 	if err := s.waitRetired(ctx, binding); err != nil {
-		return nil, err
+		return nil, plugins.FrameworkError(err)
 	}
 	if _, err := s.host.ActivatePlan(ctx, "", plan); err != nil {
-		return nil, err
+		return nil, plugins.FrameworkError(err)
 	}
 	return s.acquireBinding(ctx, id, binding)
 }
@@ -141,6 +141,7 @@ func (s *Installed) waitRetired(ctx context.Context, binding qimu.BindingSnapsho
 }
 
 func (s *Installed) acquireBinding(ctx context.Context, id mcpserver.ID, binding qimu.BindingSnapshot) (_ *installedSession, err error) {
+	defer func() { err = plugins.FrameworkError(err) }()
 	installation, found := id.Origin().Installation()
 	if !found {
 		return nil, plugin.ErrInvalid
