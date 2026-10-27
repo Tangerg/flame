@@ -1,10 +1,15 @@
-const generatedOrLiteral = (file) =>
-  /(?:\.generated\.|\/generated\/|\/runtime\/contract\/|\/package\/.*\/(?:components|contracts)\/)/.test(
-    file,
-  );
+import { getFileInfo } from "prettier";
+
+const ignorePath = new URL("../.prettierignore", import.meta.url);
+
 export default {
-  "*.{ts,tsx,mjs,js,json,md,css,html,yml,yaml}": (files) => {
-    const maintained = files.filter((file) => !generatedOrLiteral(file));
+  "*.{ts,tsx,mjs,js,json,md,css,html,yml,yaml}": async (files) => {
+    const ignored = await Promise.all(
+      files.map(
+        async (file) => (await getFileInfo(file, { ignorePath })).ignored,
+      ),
+    );
+    const maintained = files.filter((_, index) => !ignored[index]);
     return maintained.length
       ? [
           `prettier --write ${maintained.map((file) => JSON.stringify(file)).join(" ")}`,

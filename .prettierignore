@@ -7,3 +7,5 @@ out/
 apps/desktop/assets/web/
 runtime/contract/
 **/package/**/contracts/
+qimu/jsonvalue/testdata/values.json
+runtime/testdata/plugin-values.json
