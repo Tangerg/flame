@@ -112,7 +112,7 @@ func registerWrite[P, R any](backend *pluginsdk.Backend, tools *[]tool.Tool, rec
 		}
 		value, err := decodeWriteReply[R](contract, receipt.Reply)
 		if err != nil {
-			failure, known := errors.AsType[*tool.Failure](writeFailure(err))
+			failure, known := tool.ClassifyFailure(writeFailure(err))
 			if !known {
 				return pluginsdk.ToolReceipt{}, err
 			}
@@ -137,7 +137,10 @@ func writeFailure(err error) error {
 		return err
 	}
 	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
-	return errors.Join(failure, failureErr, err)
+	if failureErr != nil {
+		return errors.Join(failureErr, err)
+	}
+	return failure
 }
 
 func (c *connector) sendWrite(ctx context.Context, method, path string, payload any, status int) (body []byte, err error) {

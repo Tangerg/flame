@@ -3,15 +3,16 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/scope/core v0.57.1
+	github.com/Tangerg/scope/core v0.58.0
 	github.com/invopop/jsonschema v0.14.0
 	modernc.org/sqlite v1.61.0
 )
 
 require (
-	github.com/Tangerg/scope/mcp v0.57.1 // indirect
+	github.com/Tangerg/scope/mcp v0.58.0 // indirect
+	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect

@@ -9,36 +9,36 @@ require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/go-sdk v1.8.1-scope.3 // indirect
-	github.com/Tangerg/scope/a2a v0.57.1 // indirect
-	github.com/Tangerg/scope/agent v0.57.1 // indirect
-	github.com/Tangerg/scope/core v0.57.1 // indirect
-	github.com/Tangerg/scope/mcp v0.57.1 // indirect
-	github.com/Tangerg/scope/models/alibaba v0.57.1 // indirect
-	github.com/Tangerg/scope/models/anthropic v0.57.1 // indirect
-	github.com/Tangerg/scope/models/azureopenai v0.57.1 // indirect
-	github.com/Tangerg/scope/models/catalog v0.57.1 // indirect
-	github.com/Tangerg/scope/models/deepseek v0.57.1 // indirect
-	github.com/Tangerg/scope/models/fireworks v0.57.1 // indirect
-	github.com/Tangerg/scope/models/google v0.57.1 // indirect
-	github.com/Tangerg/scope/models/groq v0.57.1 // indirect
-	github.com/Tangerg/scope/models/huggingface v0.57.1 // indirect
-	github.com/Tangerg/scope/models/minimax v0.57.1 // indirect
-	github.com/Tangerg/scope/models/mistral v0.57.1 // indirect
-	github.com/Tangerg/scope/models/moonshot v0.57.1 // indirect
-	github.com/Tangerg/scope/models/openai v0.57.1 // indirect
-	github.com/Tangerg/scope/models/openrouter v0.57.1 // indirect
-	github.com/Tangerg/scope/models/perplexity v0.57.1 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.57.1 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.57.1 // indirect
-	github.com/Tangerg/scope/models/together v0.57.1 // indirect
-	github.com/Tangerg/scope/models/xai v0.57.1 // indirect
-	github.com/Tangerg/scope/models/xiaomi v0.57.1 // indirect
-	github.com/Tangerg/scope/models/zhipu v0.57.1 // indirect
-	github.com/Tangerg/scope/otel v0.57.1 // indirect
-	github.com/Tangerg/scope/otel/agent v0.57.1 // indirect
-	github.com/Tangerg/scope/skills v0.57.1 // indirect
-	github.com/Tangerg/scope/tools v0.57.1 // indirect
-	github.com/Tangerg/scope/tools/skills v0.57.1 // indirect
+	github.com/Tangerg/scope/a2a v0.58.0 // indirect
+	github.com/Tangerg/scope/agent v0.58.0 // indirect
+	github.com/Tangerg/scope/core v0.58.0 // indirect
+	github.com/Tangerg/scope/mcp v0.58.0 // indirect
+	github.com/Tangerg/scope/models/alibaba v0.58.0 // indirect
+	github.com/Tangerg/scope/models/anthropic v0.58.0 // indirect
+	github.com/Tangerg/scope/models/azureopenai v0.58.0 // indirect
+	github.com/Tangerg/scope/models/catalog v0.58.0 // indirect
+	github.com/Tangerg/scope/models/deepseek v0.58.0 // indirect
+	github.com/Tangerg/scope/models/fireworks v0.58.0 // indirect
+	github.com/Tangerg/scope/models/google v0.58.0 // indirect
+	github.com/Tangerg/scope/models/groq v0.58.0 // indirect
+	github.com/Tangerg/scope/models/huggingface v0.58.0 // indirect
+	github.com/Tangerg/scope/models/minimax v0.58.0 // indirect
+	github.com/Tangerg/scope/models/mistral v0.58.0 // indirect
+	github.com/Tangerg/scope/models/moonshot v0.58.0 // indirect
+	github.com/Tangerg/scope/models/openai v0.58.0 // indirect
+	github.com/Tangerg/scope/models/openrouter v0.58.0 // indirect
+	github.com/Tangerg/scope/models/perplexity v0.58.0 // indirect
+	github.com/Tangerg/scope/models/protocol/anthropic v0.58.0 // indirect
+	github.com/Tangerg/scope/models/protocol/openai v0.58.0 // indirect
+	github.com/Tangerg/scope/models/together v0.58.0 // indirect
+	github.com/Tangerg/scope/models/xai v0.58.0 // indirect
+	github.com/Tangerg/scope/models/xiaomi v0.58.0 // indirect
+	github.com/Tangerg/scope/models/zhipu v0.58.0 // indirect
+	github.com/Tangerg/scope/otel v0.58.0 // indirect
+	github.com/Tangerg/scope/otel/agent v0.58.0 // indirect
+	github.com/Tangerg/scope/skills v0.58.0 // indirect
+	github.com/Tangerg/scope/tools v0.58.0 // indirect
+	github.com/Tangerg/scope/tools/skills v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.7.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
@@ -128,9 +128,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.2
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
-	github.com/Tangerg/flame/runtime v0.1.0-schedules.20261027.2
+	github.com/Tangerg/flame/runtime v0.1.0-scope.20261027.1
 	github.com/Tangerg/oolong/components v0.25.0
 	github.com/Tangerg/oolong/core v0.25.0
 	github.com/Tangerg/oolong/highlight v0.25.0

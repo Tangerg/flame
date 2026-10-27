@@ -143,12 +143,8 @@ func modelPricingText(pricing protocol.ModelPricing) string {
 	rates := []string{
 		"input $" + formatModelRate(pricing.InputUSDPerMillionTokens) + "/M",
 		"output $" + formatModelRate(pricing.OutputUSDPerMillionTokens) + "/M",
-	}
-	if pricing.CacheReadUSDPerMillionTokens > 0 {
-		rates = append(rates, "cache read $"+formatModelRate(pricing.CacheReadUSDPerMillionTokens)+"/M")
-	}
-	if pricing.CacheWriteUSDPerMillionTokens > 0 {
-		rates = append(rates, "cache write $"+formatModelRate(pricing.CacheWriteUSDPerMillionTokens)+"/M")
+		"cache read $" + formatModelRate(pricing.CacheReadUSDPerMillionTokens) + "/M",
+		"cache write $" + formatModelRate(pricing.CacheWriteUSDPerMillionTokens) + "/M",
 	}
 	return strings.Join(rates, " · ")
 }

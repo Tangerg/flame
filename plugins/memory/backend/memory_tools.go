@@ -252,7 +252,7 @@ func memoryToolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptR
 	}
 	value, err := pluginsdk.DecodeReply[jsontext.Value](receipt.Reply)
 	if err != nil {
-		failure, known := errors.AsType[*tool.Failure](memoryToolFailure(input.Method, err))
+		failure, known := tool.ClassifyFailure(memoryToolFailure(input.Method, err))
 		if !known {
 			return pluginsdk.ToolReceipt{}, err
 		}

@@ -47,7 +47,8 @@
     "v0.1.0-memory.20261027.1": "b278bcbd77e5cf3016953f063a8e9899b3b636aa",
     "v0.1.0-memory.20261027.2": "268129204e52bf37e69ccf1e2569a5e86ec17ec2",
     "v0.1.0-schedules.20261027.1": "d5ec4c8c99bda765066db589173d73c15476a1b7",
-    "v0.1.0-schedules.20261027.2": "0f4fea9f696afda7088eeeb97fc0924ea61499d1"
+    "v0.1.0-schedules.20261027.2": "0f4fea9f696afda7088eeeb97fc0924ea61499d1",
+    "v0.1.0-scope.20261027.1": "73dcc9b69e685da999bb5b4c2c8cc72dc31ff42f"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",

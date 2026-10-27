@@ -41,7 +41,7 @@ func toolReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest
 		if classify(err) == "" {
 			return pluginsdk.ToolReceipt{}, err
 		}
-		failure, known := errors.AsType[*toolcontract.Failure](commandFailure(remote, decodeError(err)))
+		failure, known := toolcontract.ClassifyFailure(commandFailure(remote, decodeError(err)))
 		if !known {
 			return pluginsdk.ToolReceipt{}, err
 		}

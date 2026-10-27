@@ -1,7 +1,7 @@
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.2 h1:osRH2xjxJp6LCKrx/N5TvcP+VluB4WpnQ4Vhr/ANEoQ=
-github.com/Tangerg/flame/packages/go-sdk v0.1.0-schedules.20261027.2/go.mod h1:0IJ4UKfynAQHmKrZkftyfplLcDEebopLuqHA3DX7oMQ=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1 h1:lnN3lyGCnmQ35W8/7zg9BNVHpqpkFhHdEaYOmFdDDLE=
+github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1/go.mod h1:fpnldcFotPrl0TXzCMrYq2/XXhiYyjZ8hLkhBcTqeyM=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1 h1:ePjJ67B5EfJJSw16thu5IA/tMoM45lBNYovPyiiO8v8=
 github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1/go.mod h1:k7GImwPntRgT/FNYEO+2Bx351W/ULxJUH2cU0y3zKRg=
 github.com/adrg/xdg v0.5.3 h1:xRnxJXne7+oWDatRhR1JLnvuccuIeCoBu2rtuLqQB78=

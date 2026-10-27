@@ -102,7 +102,10 @@ func modelResult[T any](value T, err error) (T, error) {
 		return value, err
 	}
 	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: chat.NewTextToolOutput(err.Error()), Cause: err})
-	return value, errors.Join(failure, failureErr, err)
+	if failureErr != nil {
+		return value, errors.Join(failureErr, err)
+	}
+	return value, failure
 }
 
 func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRequest) (pluginsdk.ModelContextResult, error) {
