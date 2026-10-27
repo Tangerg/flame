@@ -18,11 +18,11 @@ below. The latest resumed goal restores verified batch publication to main.
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`. The targeted Diff read batch starts from
-clean published `f36312041`, following Dock repair `307b65135`, its delivery
-receipt `9b7f6319a` and the native drag input diagnosis. Its implementation,
-native qualification and cleanup are recorded under **Targeted Diff reads and
-accepted comparison context** below. The user resumed the paused goal.
+is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
+context are published to main as `f9241b46b`, following native qualification and
+cleanup recorded under **Targeted Diff reads and accepted comparison context**
+below. The next scoped investigation is the supplied review's split replacement
+pairing and word-level reading issue. The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -18272,6 +18272,13 @@ observation records, ten generation boundaries, three **608-file** asset maps,
 source/original-file maps, native reading-room and contrast evidence, and the
 clean-control receipt. It is **2,061,449 bytes**, SHA-256:
 `2b0e5a67998f14a3b2715b58bf28d9997cba7e4244b14d03b085795ed02bb224`.
+
+The final publication fetch finds no incoming main commits. Source commit
+`f9241b46b00701f056b8601dc86df46b9054bd78` is pushed by a normal fast-forward to
+`refs/heads/main`; `ls-remote` confirms that exact revision. The owned checkout
+is clean with zero unpushed commits before this documentation receipt. The
+commit hook passes formatting and all workspace lint commands, and all 5,916
+frozen non-Markdown source inputs still match the native-qualified source.
 
 **Approve** the inspected targeted Diff reading and recovery flow. No HIGH
 finding remains in that scope. This is not a whole-product award-tier claim.
