@@ -4,10 +4,10 @@ go 1.27.3
 
 require (
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
-	github.com/Tangerg/scope/core v0.57.1
-	github.com/Tangerg/scope/mcp v0.57.1
-	github.com/Tangerg/scope/models/catalog v0.57.1
-	github.com/Tangerg/scope/tools v0.57.1
+	github.com/Tangerg/scope/core v0.58.0
+	github.com/Tangerg/scope/mcp v0.58.0
+	github.com/Tangerg/scope/models/catalog v0.58.0
+	github.com/Tangerg/scope/tools v0.58.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
