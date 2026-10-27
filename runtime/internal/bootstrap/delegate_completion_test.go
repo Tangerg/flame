@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -48,24 +47,13 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 		},
 	}}
-	host, api, stores := openProtocolRuntimeWithStores(t, model)
+	host, _, _ := openProtocolRuntimeWithStores(t, model)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: ctx, IdempotencyStore: stores.Idempotency})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(cleanup); err != nil {
-			t.Error(err)
-		}
-	})
+	endpoint := host.Endpoint()
 	created := endpoint.Invoke(ctx, delivery.SessionsCreate, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "independent child completion",
 	}, options)

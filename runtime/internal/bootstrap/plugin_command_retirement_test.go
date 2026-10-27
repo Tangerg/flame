@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -33,6 +33,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -53,7 +54,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatal(err)
 	}
 	contribution := installed.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 	options := delivery.Options{IdempotencyKey: "prepared-review"}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := r.endpoint.Invoke(ctx, delivery.PluginsCall, request, options)
@@ -71,7 +72,8 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	}
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
+	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
 	wrongStore := lookup
@@ -86,7 +88,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatalf("retirement not publicly observable: %+v", result)
 	}
 	r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-retirement")
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
 		t.Fatalf("retired command was replayed: %+v", result)
 	}

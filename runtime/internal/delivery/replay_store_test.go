@@ -3,11 +3,10 @@ package delivery
 import (
 	"bytes"
 	"context"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"sync"
 	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 type memoryIdempotencyStore struct {
@@ -37,7 +36,7 @@ func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint strin
 	stored, ok := m.records[key]
 	if ok {
 		if stored.Fingerprint != fingerprint {
-			return operation.ReplayRecord{}, false, extension.ErrInvocationConflict
+			return operation.ReplayRecord{}, false, portable.ErrInvocationConflict
 		}
 		stored.Payload = bytes.Clone(stored.Payload)
 		return stored.ReplayRecord, false, nil
@@ -55,7 +54,7 @@ func (m *memoryIdempotencyStore) Complete(_ context.Context, record operation.Re
 		return operation.ErrClaimLost
 	}
 	if stored.Fingerprint != record.Fingerprint {
-		return extension.ErrInvocationConflict
+		return portable.ErrInvocationConflict
 	}
 	if len(stored.Payload) != 0 {
 		if !time.Now().Before(stored.expiresAt) {

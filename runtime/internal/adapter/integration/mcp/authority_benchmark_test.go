@@ -4,40 +4,36 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	chat "github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
 )
 
-type idleTool struct{}
-
-func (idleTool) Definition() chat.ToolDefinition { return chat.ToolDefinition{Name: "idle"} }
-func (idleTool) Call(context.Context, toolcontract.Invocation) (toolcontract.Result, error) {
-	return toolcontract.Result{}, nil
-}
-
-// BenchmarkAuthorizedToolCall measures the per-call source authorization of one
-// tool of an installation that declares several stdio servers.
-func BenchmarkAuthorizedToolCall(b *testing.B) {
+// BenchmarkInstalledSourceAdmission measures the source verification that each
+// tool call performs, independently of transport latency or tool execution.
+func BenchmarkInstalledSourceAdmission(b *testing.B) {
 	const servers = 8
 	source := b.TempDir()
 	var declared []string
 	files := map[string]string{}
 	for index := range servers {
-		declared = append(declared, fmt.Sprintf(`"server%d":{"type":"stdio","command":"sh","args":["${PLUGIN_ROOT}/server%d/run.sh"],"cwd":"./server%d"}`, index, index, index))
-		files[fmt.Sprintf("server%d/run.sh", index)] = "exit 0"
+		declared = append(declared, fmt.Sprintf(`"server%d":{"type":"stdio","command":"./server%d/run","cwd":"./server%d"}`, index, index, index))
+		files[fmt.Sprintf("server%d/run", index)] = "#!/bin/sh\nexit 0\n"
 	}
-	files["plugin.json"] = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"bench.authority"}`
-	files["json"] = `{"$schema":"` + pluginpackage.MCPSchema + `","mcpServers":{` + strings.Join(declared, ",") + `}}`
+	files["plugin.json"] = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"bench.authority","version":"1.0.0"}`
+	files["mcp.json"] = `{"$schema":"` + pluginpackage.MCPSchema + `","mcpServers":{` + strings.Join(declared, ",") + `}}`
 	for index := range 4 {
 		files[fmt.Sprintf("data-%d.bin", index)] = strings.Repeat("x", 1<<20)
 	}
@@ -50,22 +46,26 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+	if _, err := pluginpackage.BuildRelease(b.Context(), source, pluginpackage.BuildTarget{OS: runtime.GOOS, Arch: runtime.GOARCH}, io.Discard); err != nil {
+		b.Fatal(err)
+	}
 	db, err := persistencefixture.Open(b, b.Context(), filepath.Dir(filepath.Join(b.TempDir(), "flame.db")))
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { _ = db.Close() })
-	directory := filepath.Join(b.TempDir(), "plugins", "releases")
-	b.Cleanup(func() {
-		_ = filepath.WalkDir(directory, func(path string, entry os.DirEntry, err error) error {
-			if err == nil && entry.IsDir() {
-				return os.Chmod(path, 0700)
-			}
-			return err
-		})
+	directory := filepath.Join(b.TempDir(), "plugins")
+	content, err := distribution.Open(distribution.Config{
+		Directory: filepath.Join(directory, "releases"), Admission: db.Admission,
+		Trust:    func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
+		Retained: func(context.Context, qimu.Digest) (bool, error) { return true, nil },
 	})
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { _ = content.Close(context.Background()) })
 	catalog := db.PluginReleases
-	releases, err := pluginpackage.New(directory, catalog)
+	releases, err := pluginpackage.New(content, filepath.Join(directory, "data"), catalog)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -81,13 +81,14 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 		b.Fatal(err)
 	}
 	installations := db.Installations
-	if err := installations.Save(b.Context(), installation); err != nil {
+	framework := pluginhost.New(b, db.Bundle)
+	if err := framework.Apply(b.Context(), installation); err != nil {
 		b.Fatal(err)
 	}
 	if err := releases.Prepare(b.Context(), installation, release); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(db.MCPServers, installations, releases, db.ProviderSelections, db.PluginCompositions)
+	registry, err := plugins.NewRegistry(framework.Host, db.MCPServers, installations, releases, db.ProviderSelections, db.PluginCompositions)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -95,15 +96,9 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	server, _, err := registry.Dispatchable(b.Context(), id)
-	if err != nil {
-		b.Fatal(err)
-	}
-	config := ServerConfig{Server: server.Clone()}
-	authorized := authorizedTool{Tool: idleTool{}, registry: registry, config: config}
 	for b.Loop() {
-		if _, err := authorized.Call(b.Context(), toolcontract.Invocation{}); err != nil {
-			b.Fatal(err)
+		if server, found, err := registry.Dispatchable(b.Context(), id); err != nil || !found || !server.Enabled {
+			b.Fatalf("source admission: found=%v enabled=%v error=%v", found, server.Enabled, err)
 		}
 	}
 }

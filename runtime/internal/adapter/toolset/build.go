@@ -11,9 +11,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	scopea2a "github.com/Tangerg/scope/a2a"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that
@@ -47,6 +49,7 @@ type BuildConfig struct {
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
 	MCPToolDisabled func(tool.Ref) bool
+	RestoreMCP      func(context.Context, []tool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 
 	// SandboxShell opts the shell tools into per-command OS isolation: each
 	// command runs in an in-place jail rooted at its own cwd (workspace-write
@@ -210,6 +213,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		CodeIntel:       codeIntel,
 		ReadTracker:     tracker,
 		MCPToolDisabled: config.MCPToolDisabled,
+		RestoreMCP:      config.RestoreMCP,
 	})
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build resolver: %w", err)

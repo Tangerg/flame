@@ -25,6 +25,7 @@ type runtimePaths struct {
 	defaultWorkspacePath string
 	dataDirectory        localruntime.DataDirectory
 	firstPartyDirectory  string
+	runnerExecutable     string
 	launchDirectory      string
 }
 
@@ -63,8 +64,13 @@ func resolveRuntimePaths() (runtimePaths, error) {
 	if err != nil {
 		return runtimePaths{}, err
 	}
+	runnerExecutable, err := localruntime.RunnerExecutable(executable)
+	if err != nil {
+		return runtimePaths{}, err
+	}
 	return runtimePaths{
 		firstPartyDirectory:  firstPartyDirectory,
+		runnerExecutable:     runnerExecutable,
 		userHome:             userHome,
 		defaultWorkspacePath: userHome,
 		dataDirectory:        dataDirectory,
@@ -95,6 +101,7 @@ func bootstrapRuntimeWithBuildID(
 		DefaultWorkspacePath: paths.defaultWorkspacePath,
 		DataDirectory:        paths.dataDirectory.Path(),
 		FirstPartyDirectory:  paths.firstPartyDirectory,
+		RunnerExecutable:     paths.runnerExecutable,
 		ConfigDirectories: []string{
 			filepath.Join(paths.launchDirectory, "config"),
 			paths.dataDirectory.Path(),

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-24.1` · 101 methods
+Protocol `2026-10-24.1` · 104 methods
 
 ## Methods
 
@@ -65,6 +65,9 @@ Protocol `2026-10-24.1` · 101 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.openBrowserRealm` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
+| `plugins.acquireComponent` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
+| `plugins.closeBrowserRealm` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.getCommand` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.retireCommand` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.stream` | extension | stream | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
@@ -117,6 +120,7 @@ Protocol `2026-10-24.1` · 101 methods
 
 | name | kind | method | path | authentication | response statuses | response | projects |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `pluginControl` | pluginControl | `POST` | `/v2/qimu` | pluginRealm | 200, 401, 409, 503 | — | — |
 | `pluginResources` | resource | `GET` | `/v2/plugin-resources/{lease}/*` | resourceLease | 200, 410 | — | `plugins.readResource` |
 | `rpc` | rpc | `POST` | `/v2/rpc` | localToken | 200, 202, 204 | — | — |
 | `info` | sidecar | `GET` | `/v2/info` | none | 200 | `schema.json#/$defs/RuntimeInfo` | — |
@@ -980,6 +984,15 @@ TypeScript validator from this single registry projection.
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `OpenPluginBrowserRealmRequest` | `operationId` | `nonEmpty` |
+| `OpenPluginBrowserRealmRequest` | `resumeToken` | `nonEmpty` |
+| `AcquirePluginComponentRequest` | `operationId` | `nonEmpty` |
+| `AcquirePluginComponentRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginBrowserSession` | `credential` | `nonEmpty` |
+| `PluginBrowserSession` | `controlEndpoint` | `nonEmpty` |
+| `PluginBrowserSession` | `maximumMessageBytes` | `positive` |
+| `PluginBrowserSession` | `proofCapacity` | `positive` |
+| `PluginBrowserSession` | `pollIntervalMilliseconds` | `positive` |
 | `PluginClientComponent` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `contribution` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginClientComponent` | `material` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
@@ -1251,6 +1264,9 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.openBrowserRealm` | always | `plugins` |
+| `plugins.acquireComponent` | always | `plugins` |
+| `plugins.closeBrowserRealm` | always | `plugins` |
 | `plugins.getCommand` | always | `plugins` |
 | `plugins.retireCommand` | always | `plugins` |
 | `plugins.stream` | always | `plugins` |

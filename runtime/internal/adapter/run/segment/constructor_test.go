@@ -147,6 +147,14 @@ func mustNewEffects(cfg Config) *Effects {
 	if lo.IsNil(cfg.Tx) {
 		cfg.Tx = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	}
+	if cfg.PluginBindings == nil {
+		cfg.PluginBindings = func(ctx context.Context, _ string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
+			if len(checkpoint.Bindings) != 0 || len(checkpoint.Resources) != 0 {
+				return errors.New("fixture must provide the original plugin binding authority")
+			}
+			return cfg.Tx(ctx, fn)
+		}
+	}
 	effects, err := New(cfg)
 	if err != nil {
 		panic(err)

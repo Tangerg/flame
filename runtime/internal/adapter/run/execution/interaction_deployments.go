@@ -362,18 +362,18 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	group domaintool.Group,
 	checkpoint *interactionCheckpointState,
 ) (toolset.Manifest, error) {
-	var captured []domaintool.Ref
+	var retained *toolset.Retained
 	if checkpoint != nil {
-		var found bool
-		captured, found = checkpoint.mcpManifests[group]
+		captured, found := checkpoint.mcpManifests[group]
 		if !found {
 			return toolset.Manifest{}, errors.New("execution: captured Tool group is missing")
 		}
+		retained = &toolset.Retained{MCP: captured, Bindings: checkpoint.bindings, Resources: checkpoint.resources}
 	}
 	if i.config.ToolResolver == nil {
 		return toolset.Manifest{}, nil
 	}
-	manifest, err := i.config.ToolResolver.Manifest(ctx, group, captured)
+	manifest, err := i.config.ToolResolver.Manifest(ctx, group, retained)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("execution: resolve Interaction %s Tools: %w", group, err)
 	}

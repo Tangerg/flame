@@ -3,18 +3,20 @@ package plugins
 import (
 	"context"
 	"testing"
+
+	"github.com/Tangerg/flame/qimu"
 )
 
 type constructionContext struct{ context.Context }
 
 func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 	type collaborators struct {
-		lifetime     context.Context
-		store        Store
-		catalog      catalog
-		packages     packages
-		connections  connections
-		dependencies dependencies
+		lifetime    context.Context
+		store       Store
+		catalog     catalog
+		packages    packages
+		connections connections
+		host        *qimu.Host
 	}
 	for _, test := range []struct {
 		name   string
@@ -30,13 +32,12 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 		{"typed nil packages", func(c *collaborators) { c.packages = (*installationPackages)(nil) }},
 		{"connections", func(c *collaborators) { c.connections = nil }},
 		{"typed nil connections", func(c *collaborators) { c.connections = (*installationConnections)(nil) }},
-		{"dependencies", func(c *collaborators) { c.dependencies = nil }},
-		{"typed nil dependencies", func(c *collaborators) { c.dependencies = (*installationDependencies)(nil) }},
+		{"host", func(c *collaborators) { c.host = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			c := collaborators{t.Context(), &installationMemory{}, releaseMemory{}, installationPackages{}, installationConnections{}, &installationDependencies{}}
+			c := collaborators{t.Context(), &installationMemory{}, releaseMemory{}, installationPackages{}, installationConnections{}, testFramework(t, nil)}
 			test.remove(&c)
-			coordinator, err := New(c.lifetime, c.store, c.catalog, c.packages, c.connections, c.dependencies, nil)
+			coordinator, err := New(c.lifetime, c.host, c.store, c.catalog, c.packages, c.connections, nil)
 			if err == nil || coordinator != nil {
 				t.Fatalf("invalid coordinator constructed: %v, %v", coordinator, err)
 			}
@@ -46,7 +47,7 @@ func TestCoordinatorRejectsMissingCollaborators(t *testing.T) {
 
 func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 	for _, selections := range []SelectionStore{nil, (*requirementSelections)(nil)} {
-		if registry, err := NewRegistry(userMemory{}, &installationMemory{}, &singleServerPackages{}, selections, &requirementCompositions{}); err == nil || registry != nil {
+		if registry, err := NewRegistry(testFramework(t, nil), userMemory{}, &installationMemory{}, &singleServerPackages{}, selections, &requirementCompositions{}); err == nil || registry != nil {
 			t.Fatalf("missing selection store constructed a registry: %v, %v", registry, err)
 		}
 	}
@@ -64,7 +65,7 @@ func TestRegistryRejectsMissingCollaborators(t *testing.T) {
 		{"typed nil packages", userMemory{}, &installationMemory{}, (*singleServerPackages)(nil)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			registry, err := NewRegistry(test.user, test.installations, test.packages, requirementSelections{}, &requirementCompositions{})
+			registry, err := NewRegistry(testFramework(t, nil), test.user, test.installations, test.packages, requirementSelections{}, &requirementCompositions{})
 			if err == nil || registry != nil {
 				t.Fatalf("invalid registry constructed: %v, %v", registry, err)
 			}

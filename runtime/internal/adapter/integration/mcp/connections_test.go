@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
@@ -106,7 +106,7 @@ func (catalogTool) Call(context.Context, toolcontract.Invocation) (toolcontract.
 }
 
 func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
-	c := &connections{lifetime: t.Context(), client: newClient()}
+	c := newTestConnections(t)
 	if err := c.shutdown(t.Context()); err != nil {
 		t.Fatalf("Shutdown: %v", err)
 	}
@@ -1094,7 +1094,8 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 // not re-add the server as a failed or connecting ghost.
 func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
 	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.invalid/mcp"}}
-	c := &connections{lifetime: t.Context(), client: newClient(), servers: []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}}
+	c := newTestConnections(t)
+	c.servers = []*server{{id: config.ID(), config: config, state: mcpserver.ConnectionFailed, failure: mcpserver.FailureConnection}}
 	published := false
 	c.setToolSink(func([]Executable, []mcpserver.ID, []mcpserver.ID) { published = true })
 	ctx, supersede := context.WithCancel(t.Context())
@@ -1158,7 +1159,7 @@ func mustLaunch(t testing.TB, config ServerConfig) *launchPermit {
 
 // Transport invariants use the same validated ledger and startup ordering as Pool.
 func openConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *pluginsdk.Callbacks, client *sdkmcp.Client,
+	configuration func(context.Context, mcpserver.ID) (*launchPermit, error), callbacks *qimumcp.Callbacks, client *sdkmcp.Client,
 ) (*connections, error) {
 	c, err := newConnections(ctx, lifetime, servers, oauthSessions, callbacks, client)
 	if err != nil {
@@ -1171,3 +1172,12 @@ func openConnections(ctx, lifetime context.Context, servers []ServerConfig, oaut
 }
 
 var errUnknownTestServer = errors.New("test source is unknown")
+
+func newTestConnections(t testing.TB) *connections {
+	t.Helper()
+	owner, err := newConnections(t.Context(), t.Context(), nil, nil, nil, newClient())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return owner
+}

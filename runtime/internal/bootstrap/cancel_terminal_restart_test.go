@@ -56,7 +56,7 @@ func TestCancelAndNaturalCompletionPreserveTerminalAcrossRestart(t *testing.T) {
 			case <-time.After(lifecycleWaitBudget(t)):
 				t.Fatal("model did not begin")
 			}
-			endpoint := acceptedCommandEndpoint(t, api, stores)
+			endpoint := host.Endpoint()
 			options := acceptedCommandOptions()
 			options.IdempotencyKey = "cancel-original"
 			options.RequestMeta.ClientCapabilities.InterruptTypes = []protocol.InterruptType{protocol.InterruptQuestion}

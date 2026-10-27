@@ -25,9 +25,10 @@ type Server struct {
 	corsOrigins  []string
 	healthProbes []*healthProbeRunner
 
-	rpc       http.Handler
-	resources http.Handler
-	web       http.Handler
+	rpc           http.Handler
+	resources     http.Handler
+	pluginControl http.Handler
+	web           http.Handler
 
 	httpServer   *http.Server
 	handlerCtx   context.Context
@@ -41,6 +42,9 @@ type Config struct {
 	// Endpoint is the Runtime instance's binding-neutral operation entrypoint.
 	// Required. HTTP never constructs a second policy pipeline.
 	Endpoint *delivery.Endpoint
+
+	// PluginControl authenticates Qimu Realm credentials independently of RPC.
+	PluginControl http.Handler
 
 	// Addr is the listen address (":8080", "127.0.0.1:0", ...). Required.
 	Addr string
@@ -106,16 +110,17 @@ func NewServer(cfg Config) (*Server, error) {
 	}
 	handlerCtx, stopHandlers := context.WithCancel(context.Background())
 	s := &Server{
-		serverID:     serverID,
-		localToken:   cfg.LocalToken,
-		corsOrigins:  slices.Clone(cfg.CORSOrigins),
-		healthProbes: newHealthProbeRunners(cfg.HealthProbes),
-		rpc:          rpc,
-		resources:    NewPluginResourceHandler(cfg.Endpoint),
-		web:          cfg.WebApplication,
-		handlerCtx:   handlerCtx,
-		stopHandlers: stopHandlers,
-		info:         newInfoResponse(cfg.ServerInfo),
+		serverID:      serverID,
+		localToken:    cfg.LocalToken,
+		corsOrigins:   slices.Clone(cfg.CORSOrigins),
+		healthProbes:  newHealthProbeRunners(cfg.HealthProbes),
+		rpc:           rpc,
+		resources:     NewPluginResourceHandler(cfg.Endpoint),
+		pluginControl: cfg.PluginControl,
+		web:           cfg.WebApplication,
+		handlerCtx:    handlerCtx,
+		stopHandlers:  stopHandlers,
+		info:          newInfoResponse(cfg.ServerInfo),
 	}
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,

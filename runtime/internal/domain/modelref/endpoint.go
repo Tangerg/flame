@@ -2,13 +2,14 @@ package modelref
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/qimu/portable"
 	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
@@ -38,7 +39,7 @@ func (k EndpointKind) Validate() error {
 type EndpointInvocation struct {
 	ID        string
 	Kind      EndpointKind
-	Caller    extension.Invocation
+	Caller    portable.Invocation
 	Provider  string
 	Model     string
 	SessionID string
@@ -58,7 +59,7 @@ func (i EndpointInvocation) Validate() error {
 	if err := ValidateInvocationID(i.ID); err != nil {
 		return err
 	}
-	if err := i.Caller.Validate(); err != nil {
+	if err := extension.ValidateInvocation(i.Caller); err != nil {
 		return err
 	}
 	if i.Caller.Target.Scope != extension.ScopeCall || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {

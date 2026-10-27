@@ -112,7 +112,11 @@ func TestResolverRetainsCapturedMCPAuthorityBeforeDiscovery(t *testing.T) {
 		{"captured read", []domaintool.Ref{read}, true, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, test.captured)
+			var retained *Retained
+			if test.captured != nil {
+				retained = &Retained{MCP: test.captured}
+			}
+			manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, retained)
 			if err != nil {
 				t.Fatal(err)
 			}

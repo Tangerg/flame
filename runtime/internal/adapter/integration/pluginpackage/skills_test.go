@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -32,6 +32,58 @@ func TestSkillResourceReadPreservesFormatOwnerFailure(t *testing.T) {
 	content, err := mustPackageSkills(t, releases, store).ReadSkillResource(t.Context(), plugin.Dependency{}, "Invalid", "SKILL.md")
 	if len(content) != 0 || !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, sdk.ErrNameInvalid) {
 		t.Fatalf("invalid Skill name = (%q, %v), want no content and format owner cause", content, err)
+	}
+}
+
+func TestRetainedSkillSourceIgnoresNewConflictingInstallations(t *testing.T) {
+	releases, store, _ := testReleaseStore(t)
+	install := func(instructions string) plugin.Dependency {
+		t.Helper()
+		document := "---\nname: review\ndescription: Review a result\n---\n" + instructions + "\n"
+		source := writePackage(t, map[string]string{"plugin.json": portableManifest, "skills/review/SKILL.md": document})
+		release, err := publishPackage(t.Context(), releases, source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		installation, err := plugin.New(testsupport.InstallationID(t), source, release)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := installation.Enable(release); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Save(t.Context(), installation); err != nil {
+			t.Fatal(err)
+		}
+		return installation.Dependency()
+	}
+	original := install("Original retained instructions.")
+	skills := mustPackageSkills(t, releases, store)
+	_, captured, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, nil)
+	if err != nil || !slices.Equal(captured, []plugin.Dependency{original}) {
+		t.Fatalf("capture = %+v, %v", captured, err)
+	}
+	install("Later conflicting instructions.")
+	fresh, err := promptsource.ListSkills(t.Context(), "", "", skills)
+	if err != nil || len(fresh.Skills) != 0 || len(fresh.Diagnostics) != 1 {
+		t.Fatalf("fresh catalog did not preserve its own conflict: %+v, %v", fresh, err)
+	}
+	restored, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, captured)
+	if err != nil || !slices.Equal(dependencies, captured) {
+		t.Fatalf("restore changed its retained source: %+v, %v", dependencies, err)
+	}
+	content, err := restored.Load(t.Context(), "review")
+	if err != nil || content.Instructions != "Original retained instructions.\n" {
+		t.Fatalf("original content was replaced: %+v, %v", content, err)
+	}
+	empty, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, []plugin.Dependency{})
+	if err != nil || empty != nil || len(dependencies) != 0 {
+		t.Fatalf("empty retained selection admitted new content: %+v, %+v, %v", empty, dependencies, err)
+	}
+	wrong := original
+	wrong.Digest = testsupport.Digest("not the retained release")
+	if _, err := skills.SkillBundles(t.Context(), []plugin.Dependency{wrong}); !errors.Is(err, plugin.ErrStale) {
+		t.Fatalf("missing exact release selected a replacement: %v", err)
 	}
 }
 
@@ -65,6 +117,12 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					}
 				} else {
 					release, err := publishPackage(t.Context(), releases, source)
+					if strings.IndexFunc(name, func(r rune) bool { return r > 127 }) >= 0 {
+						if !errors.Is(err, distribution.ErrInvalid) {
+							t.Fatalf("nonportable package path admitted: %v", err)
+						}
+						return
+					}
 					if err != nil {
 						t.Fatalf("Skill admission = %+v, %v", release, err)
 					}
@@ -94,7 +152,7 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					if err != nil || len(discovery.Skills) != 0 {
 						t.Fatalf("noncanonical Skill was discovered: %+v, %v", discovery, err)
 					}
-					model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil)
+					model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil, nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -117,7 +175,7 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 				if err != nil || detail.Instructions != "Inspect the results.\n" {
 					t.Fatalf("Skill detail contradicted admission: %+v, %v", detail, err)
 				}
-				model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil)
+				model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -192,7 +250,7 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 			if !strings.Contains(catalog.Diagnostics[0].Detail, "unavailable") || strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") {
 				t.Fatalf("unavailable package was misdiagnosed: %+v", catalog.Diagnostics[0])
 			}
-			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", mustPackageSkills(t, releases, store), nil)
+			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", mustPackageSkills(t, releases, store), nil, nil)
 			if err != nil || len(dependencies) != 2 || !slices.ContainsFunc(dependencies, func(d plugin.Dependency) bool { return d.Digest == broken.Digest() }) {
 				t.Fatalf("unavailable selected package lost its execution binding: %+v, %v", dependencies, err)
 			}
@@ -229,7 +287,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	skills := mustPackageSkills(t, releases, store)
-	bundles, err := skills.SkillBundles(t.Context())
+	bundles, err := skills.SkillBundles(t.Context(), nil)
 	if err != nil || len(bundles) != 1 {
 		t.Fatalf("skill bundles = %+v, %v", bundles, err)
 	}
@@ -242,7 +300,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		t.Fatalf("skill document = %q, %v", content, err)
 	}
 	t.Run("oversized resource", func(t *testing.T) {
-		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, filesystem.ErrFileTooLarge) || len(content) != 0 {
+		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, distribution.ErrCapacity) || len(content) != 0 {
 			t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
 		}
 	})
@@ -256,7 +314,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 			t.Fatalf("canceled resource read = %d bytes, %v; want cancellation class and cause", len(content), err)
 		}
 	})
-	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil)
+	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +355,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err := os.WriteFile(filename, []byte(strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes+1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, domainskills.ErrDocumentTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, filesystem.ErrFileTooLarge) || len(content) != 0 {
-		t.Fatalf("oversized document = %d bytes, %v", len(content), err)
+	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || len(content) != 0 {
+		t.Fatalf("mutated oversized document escaped original integrity: %d bytes, %v", len(content), err)
 	}
 }

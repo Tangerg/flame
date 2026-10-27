@@ -32,7 +32,7 @@ type resolvedSkills struct {
 	byName map[string]selectedSkill
 }
 
-func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (*resolvedSkills, error) {
+func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, retained []plugin.Dependency) (*resolvedSkills, error) {
 	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
 	if err != nil {
 		return nil, err
@@ -43,10 +43,12 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages 
 	}
 	var bundles []PackageSkillBundle
 	if packages != nil {
-		bundles, err = packages.SkillBundles(ctx)
+		bundles, err = packages.SkillBundles(ctx, retained)
 		if err != nil {
 			return nil, err
 		}
+	} else if len(retained) != 0 {
+		return nil, workspaceapp.ErrSkillUnavailable
 	}
 	if project == nil && user == nil && len(bundles) == 0 {
 		return nil, nil

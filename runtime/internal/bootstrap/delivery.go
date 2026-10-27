@@ -2,10 +2,12 @@ package bootstrap
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"time"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -18,12 +20,14 @@ import (
 // receives its own consumer config; startup recovery and worker composition
 // remain inside Bootstrap.
 type runtimeApplication struct {
+	pluginsReady     <-chan struct{}
+	pluginControl    http.Handler
 	delivery         delivery.HandlerConfig
 	sessions         *sessions.Coordinator
 	workers          runtimeWorkers
 	idempotencyStore operation.ReplayStore
-	callbacks        *pluginsdk.Callbacks
-	modelCallbacks   []pluginsdk.Callback
+	callbacks        *qimumcp.Callbacks
+	modelCallbacks   []qimumcp.Callback
 	// recoverUncertainExecutions resolves crash-uncertain executions and
 	// reconciles abandoned ownership. It queries live plugin sessions, which a
 	// background plugin cannot serve until the callback RPC is published, so its
@@ -101,6 +105,25 @@ func (h *runtimeApplication) startWorkers(ctx context.Context) workerJoins {
 	recoveryDone := make(chan struct{})
 	go func() {
 		defer close(recoveryDone)
+		select {
+		case <-ctx.Done():
+			return
+		case <-h.pluginsReady:
+		}
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			if err := h.recoverUncertainExecutions(ctx); err == nil {
+				break
+			} else if ctx.Err() == nil {
+				slog.ErrorContext(ctx, "runtime: original startup recovery is pending", "error", err)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
 		h.workers.recovery.RunWorker(ctx)
 	}()
 	return workerJoins{recovery: recoveryDone}

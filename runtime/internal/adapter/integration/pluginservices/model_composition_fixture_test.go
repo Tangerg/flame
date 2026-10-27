@@ -1,24 +1,20 @@
 package pluginservices
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func installedCallCompositionFixture(t *testing.T, contract *extension.Capability, members []string, register func(*pluginsdk.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
+func installedCallCompositionFixture(t *testing.T, contract *portable.Capability, members []string, register func(*qimumcp.Backend), handlers ...http.Handler) (*CallComposition, *toolInstallationStore) {
 	t.Helper()
 	name := testsupport.ServerName("observer")
 	contributions := make([]plugin.Contribution, len(members))
@@ -42,7 +38,7 @@ func installedCallCompositionFixture(t *testing.T, contract *extension.Capabilit
 	}
 	store := &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "installed-model-composition"}, nil)
-	backend, err := pluginsdk.NewBackend(remote)
+	backend, err := qimumcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,34 +52,19 @@ func installedCallCompositionFixture(t *testing.T, contract *extension.Capabilit
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
-	callbacks := pluginsdk.NewCallbacks()
+	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	if len(handlers) > 0 {
 		if err := callbacks.PublishRPC(handlers[0]); err != nil {
 			t.Fatal(err)
 		}
 	}
-	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
-	attempt, err := pool.BeginConnect(t.Context(), server.ID())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer attempt.Close()
-	if err := attempt.Run(); err != nil {
-		t.Fatal(err)
-	}
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
+	managed := newManagedFixture(t, store, server, callbacks, nil)
+	pool := managed.Pool
+	db := managed.Stores
 	compositions := db.PluginCompositions
 	selections := db.ProviderSelections
-	if contract.Descriptor().Composition == extension.Selection {
+	if contract.Descriptor().Composition == portable.Selection {
 		choice, err := plugin.NewProviderSelection(plugin.SelectionRecord{Role: contract.Descriptor().Reference, Installation: installation.ID(), Contribution: plugin.ContributionID(members[0])})
 		if err != nil {
 			t.Fatal(err)
@@ -104,17 +85,30 @@ func installedCallCompositionFixture(t *testing.T, contract *extension.Capabilit
 			t.Fatal(err)
 		}
 	}
-	routing, err := plugins.NewCommands(db.PluginCommands, plugins.NewAdmission())
+	routing, err := plugins.NewCommands(db.PluginCommands, db.Admission)
 	if err != nil {
 		t.Fatal(err)
 	}
-	calls, err := NewCommandCalls(store, selections, compositions, pool, routing, nil)
+	calls, err := NewCommandCalls(managed.Host, store, selections, compositions, pool, routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	composition, err := NewCallComposition(calls, callbacks, plugins.NewAdmission())
+	composition, err := NewCallComposition(calls, callbacks, db.Admission)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return composition, store
+}
+
+func captureTestContributionBindings(t *testing.T, composition *CallComposition, bindings []plugins.ContributionBinding) []plugins.ContributionBinding {
+	t.Helper()
+	activations, err := composition.Activations(t.Context(), bindings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	captured, err := plugins.BindActivations(bindings, activations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return captured
 }

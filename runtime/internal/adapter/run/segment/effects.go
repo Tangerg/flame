@@ -216,6 +216,10 @@ type childRunStartReservationStore interface {
 // transactor rather than silently weakening atomicity.
 type Transactor func(ctx context.Context, fn func(context.Context) error) error
 
+// BindingTransactor admits the checkpoint's original plugin references in the
+// same stable transaction as the product receipt. It never executes a plugin.
+type BindingTransactor func(context.Context, string, runs.ExecutorCheckpoint, func(context.Context) error) error
+
 // ConversationStore appends root execution context and resolves the watermark
 // recorded by a terminal Run. Both operations join the event transaction.
 type conversationStore interface {
@@ -247,6 +251,7 @@ type Config struct {
 	ExecutorCheckpoints   executorCheckpointStore
 	ChildRunStarts        childRunStartReservationStore
 	Tx                    Transactor
+	PluginBindings        BindingTransactor
 	RememberedRules       rememberedRuleStore
 	AcceptedContinuations acceptedContinuationStore
 }
@@ -273,6 +278,7 @@ type Effects struct {
 	executorCheckpoints   executorCheckpointStore
 	childRunStarts        childRunStartReservationStore
 	tx                    Transactor
+	pluginBindings        BindingTransactor
 	rememberedRules       rememberedRuleStore
 	acceptedContinuations acceptedContinuationStore
 }
@@ -317,6 +323,7 @@ func New(cfg Config) (*Effects, error) {
 		{"goal run recorder", cfg.GoalRuns},
 		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
+		{"plugin binding transactor", cfg.PluginBindings},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {
@@ -342,6 +349,7 @@ func New(cfg Config) (*Effects, error) {
 		executionTrees:        cfg.ExecutionTrees,
 		childRunStarts:        cfg.ChildRunStarts,
 		tx:                    cfg.Tx,
+		pluginBindings:        cfg.PluginBindings,
 		rememberedRules:       cfg.RememberedRules,
 		acceptedContinuations: cfg.AcceptedContinuations,
 	}, nil

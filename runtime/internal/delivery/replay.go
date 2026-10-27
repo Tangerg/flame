@@ -8,12 +8,11 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"log/slog"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"go.opentelemetry.io/otel/trace"
+	"log/slog"
 )
 
 // storedOutcome carries no layout version. It decodes strictly against the
@@ -46,7 +45,7 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store %s replay: %w", method.Meta.Name, err))
 		}
 		switch {
-		case errors.Is(err, extension.ErrInvocationConflict):
+		case errors.Is(err, portable.ErrInvocationConflict):
 			return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		case errors.Is(err, operation.ErrOutcomePending):
 			return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, operation.ErrOutcomePending.Error()))

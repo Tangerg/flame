@@ -34,14 +34,15 @@ import (
 
 flameruntime "github.com/Tangerg/flame/runtime"
 runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-"github.com/Tangerg/flame/packages/go-sdk/extension"
-"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+"github.com/Tangerg/flame/qimu/portable"
+"github.com/Tangerg/flame/qimu/jsonvalue"
 "github.com/Tangerg/flame/packages/local-runtime"
 modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+qimumcp "github.com/Tangerg/flame/qimu/mcp"
 pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-sqlitebase "github.com/Tangerg/flame/packages/go-sdk/sqlite"
+sqlitebase "github.com/Tangerg/flame/qimu/sqlite"
 "github.com/Tangerg/flame/packages/go-sdk/protocol"
 "github.com/Tangerg/scope/core/chat"
 )
@@ -60,25 +61,25 @@ var _ = protocol.DecodeRequest
 var _ = pluginsdk.CallTextEmbedding
 var _ = pluginsdk.NewTextEmbeddingCallback
 var _ = pluginsdk.RegisterTools
-var _ = pluginsdk.RegisterClient
-var _ = (*pluginsdk.Method[string, string]).CallCommand
-var _ pluginsdk.Command[string]
-var _ = pluginsdk.NewMethod[struct{}, string]
-var _ = pluginsdk.NewStreamingMethod[struct{}, uint64, bool]
-var _ extension.MethodDescriptor
-var _ = pluginsdk.NewBinding
-var _ = pluginsdk.Resolve
-var _ *pluginsdk.Binding
+var _ = qimumcp.RegisterClient
+var _ = (*qimumcp.Method[string, string]).CallCommand
+var _ qimumcp.Command[string]
+var _ = qimumcp.NewMethod[struct{}, string]
+var _ = qimumcp.NewStreamingMethod[struct{}, uint64, bool]
+var _ portable.MethodDescriptor
+var _ = qimumcp.NewBinding
+var _ = qimumcp.Resolve
+var _ *qimumcp.Binding
 var _ = jsonvalue.Encode[struct{}]
 var _ = pluginsdk.ReadToolReceipt
-var _ = pluginsdk.RequestInput
-var _ = pluginsdk.NewCallbacks
-var _ pluginsdk.CallbackRef
-var _ = extension.AdmitPoint
+var _ = qimumcp.RequestInput
+var _ = qimumcp.NewCallbacks
+var _ qimumcp.CallbackRef
+var _ = portable.AdmitPoint
 var _ = runtimeclient.ResolvePointValues[struct{}]
 
 func TestLocalContractAdmission(t *testing.T) {
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.com/records", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "records/read", Kind: extension.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.com/records", Composition: portable.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "records/read", Kind: portable.Query, Target: "installation", Input: []byte("{\"type\":\"object\"}"), Output: []byte("{\"type\":\"string\"}")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func TestPublicToolCollaboratorsHaveNoFeatureDependency(t *testing.T) {
  actual, err := pluginsdk.ToolContextFromContext(ctx)
  if err != nil || actual != want { t.Fatalf("public Tool context = %+v, %v", actual, err) }
  method, err := pluginsdk.TextEmbeddingMethod()
- if err != nil || method.Descriptor().Kind != extension.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
+ if err != nil || method.Descriptor().Kind != portable.Mutation || method.Descriptor().Target != "call" { t.Fatalf("public embedding contract = %+v, %v", method, err) }
 }
 
 func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
@@ -140,9 +141,9 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
   })
   if err != nil || !value { t.Fatalf("owned command = %v, %v", value, err) }
  }
- receipt, err := pluginstorage.ReadReceipt(t.Context(), db, pluginsdk.ReceiptRequest{ID: "original", Method: "records.update", InputDigest: input.Digest()})
+ receipt, err := pluginstorage.ReadReceipt(t.Context(), db, qimumcp.ReceiptRequest{ID: "original", Method: "records.update", InputDigest: input.Digest()})
  if err != nil || !receipt.Found { t.Fatalf("public owner read = %+v, %v", receipt, err) }
- value, err := pluginsdk.DecodeReply[bool](receipt.Reply)
+ value, err := qimumcp.DecodeReply[bool](receipt.Reply)
  if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
  projected, err := pluginsdk.NewToolReceipt(chat.NewTextToolOutput("owned"), false)
  if err != nil || !projected.Found || projected.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
@@ -152,7 +153,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
    calls++
    return false, nil
  })
- if !errors.Is(err, extension.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
+ if !errors.Is(err, portable.ErrInvocationConflict) { t.Fatalf("changed identity lacks public conflict category: %v", err) }
  var count int
  if err := db.QueryRowContext(t.Context(), "SELECT count(*) FROM records").Scan(&count); err != nil { t.Fatal(err) }
  if calls != 1 || count != 1 { t.Fatalf("receipt repeated business mutation: calls=%d records=%d", calls, count) }
@@ -167,7 +168,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
 	}
 	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
-	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)))
+	workspace := fmt.Sprintf("go 1.27.3\n\nuse (\n%q\n%q\n%q\n%q\n%q\n)\n", filepath.ToSlash(directory), filepath.ToSlash(root), filepath.ToSlash(dependencyModuleRoot(t, sdkModulePath)), filepath.ToSlash(dependencyModuleRoot(t, localRuntimeModulePath)), filepath.ToSlash(dependencyModuleRoot(t, qimuModulePath)))
 	writeConsumerFile(t, filepath.Join(directory, "go.work"), workspace)
 	dependencies := exec.CommandContext(t.Context(), "go", "list", "-deps", runtimeModulePath)
 	dependencies.Dir = directory

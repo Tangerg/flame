@@ -22,6 +22,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 			entered := make(chan struct{}, 4)
 			settled := make(chan struct{}, 4)
 			backend := sdk.NewServer(&sdk.Implementation{Name: "blocked-plugin"}, nil)
+			publishTestBackend(t, backend)
 			backend.AddTool(&sdk.Tool{Name: "record", InputSchema: map[string]any{"type": "object"}}, func(context.Context, *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				return &sdk.CallToolResult{}, nil
 			})
@@ -51,14 +52,16 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 			first := poMCPOpen(t, cfg)
 			source := poMCPPackage(t, map[string]string{
 				"plugin.json": poMCPManifest,
-				"mcp.json":    fmt.Sprintf(`{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":%q},"healthy":{"type":"streamable-http","url":%q}}}`, transport.URL, healthyURL),
+				"mcp.json":    fmt.Sprintf(`{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":%s,"healthy":%s}}`, testMCPServerJSON(t, transport.URL), testMCPServerJSON(t, healthyURL)),
 			})
+			authorPluginPackage(t, source)
 			installed := poMCPActivate(first, source)
 			if len(installed.Selected.Servers) != 2 {
 				t.Fatalf("fixture backend was not admitted: %+v", installed.Selected)
 			}
 			waitStartupSignal(t, entered, "initial blocked connection")
 			first.close()
+			reopenPluginStores(t, &cfg)
 			waitStartupSignal(t, settled, "initial connection retirement")
 
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -80,6 +83,7 @@ func TestEnabledPluginCannotBlockRuntimeManagementAfterRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			host.lifetime.delivery = endpoint
 			restarted := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 			defer restarted.close()
 			waitStartupSignal(t, entered, "restarted blocked connection")

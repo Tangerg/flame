@@ -10,8 +10,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -21,7 +24,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 	for _, mode := range []string{"valid", "invalid", "failure"} {
 		t.Run(mode, func(t *testing.T) {
 			composition, bindings, store := installedContextFixture(t, mode)
-			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-context"}})
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "original-context"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -42,7 +45,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 			if !reflect.DeepEqual(request, before) {
 				t.Fatal("contributor changed caller-owned request")
 			}
-			store.snapshot.Installation.Disable()
+			store.disable(t)
 			if _, err := composition.PrepareContext(ctx, bindings, selection, request, nil); err == nil {
 				t.Fatal("withdrawn context contributor executed")
 			}
@@ -52,7 +55,7 @@ func TestInstalledModelContextPreservesOriginalQueryAndRejectsInvalidOrWithdrawn
 
 func TestInstalledModelContextComposesInCapturedOrder(t *testing.T) {
 	composition, bindings, _ := installedContextFixture(t, "ordered")
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "original-context"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,10 +84,10 @@ func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plu
 	if mode == "ordered" {
 		members = append(members, "second")
 	}
-	observer, store := installedCallCompositionFixture(t, contract, members, func(backend *pluginsdk.Backend) {
+	observer, store := installedCallCompositionFixture(t, contract, members, func(backend *qimumcp.Backend) {
 		method, _ := pluginsdk.ModelContextMethod()
-		if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
-			invocation, err := pluginsdk.InvocationFromContext(ctx)
+		if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelContextRequest]) (pluginsdk.ModelContextResult, error) {
+			invocation, err := qimumcp.InvocationFromContext(ctx)
 			if err != nil || !strings.HasPrefix(invocation.ID, "original-context") || invocation.Target.Reference != invocation.ID || command.ID != "" {
 				return pluginsdk.ModelContextResult{}, errors.New("original query attribution lost")
 			}
@@ -115,5 +118,5 @@ func installedContextFixture(t *testing.T, mode string) (*CallComposition, []plu
 	if err != nil || len(bindings) != len(members) {
 		t.Fatalf("composition resolve: %+v %v", bindings, err)
 	}
-	return observer, bindings, store
+	return observer, captureTestContributionBindings(t, observer, bindings), store
 }

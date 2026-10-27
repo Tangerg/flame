@@ -27,7 +27,7 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	if failure := invoke(); failure == nil {
 		t.Fatal("lost request appeared successful")
 	}
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(server, memoryToolsReady)
 	if failure := invoke(); failure == nil || !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("missing receipt was settled or resubmitted: %v", failure)
@@ -39,20 +39,26 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 }
 
-func reopenCommandRuntime(t *testing.T, r *poMCPRuntime, cfg *assemblyConfig) *poMCPRuntime {
+func reopenPluginRuntime(t *testing.T, r *poMCPRuntime, cfg *assemblyConfig) *poMCPRuntime {
 	t.Helper()
 	r.close()
+	reopenPluginStores(t, cfg)
+	return poMCPOpen(t, *cfg)
+}
+
+func reopenPluginStores(t *testing.T, cfg *assemblyConfig) {
+	t.Helper()
+	directory := cfg.stores.DataDirectory
 	if err := cfg.stores.Close(); err != nil {
 		t.Fatal(err)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: directory})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = stores.Close() })
 	cfg.stores = stores
 	cfg.providerRegistry = stores.Providers
-	return poMCPOpen(t, *cfg)
 }
 
 func stageCommandReplacement(t *testing.T, r *poMCPRuntime, installed *protocol.PluginInstallation, source string) *protocol.PluginInstallation {
@@ -69,6 +75,7 @@ func stageCommandReplacement(t *testing.T, r *poMCPRuntime, installed *protocol.
 	if err := os.WriteFile(manifest, append(data, '\n'), 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, candidate)
 	staged := r.must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: candidate}, "stage-candidate").(*protocol.PluginInstallation)
 	if staged.Staged == nil || staged.Staged.Digest == installed.Selected.Digest {
 		t.Fatal("fixture did not stage distinct bytes")
@@ -91,7 +98,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "replacement-install").(*protocol.PluginInstallation)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "replacement-enable")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: second.ID, Contribution: "memory-provider"}, "replacement-provider")
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(server(second.ID), memoryToolsReady)
 	replay := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {

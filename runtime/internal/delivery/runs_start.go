@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"slices"
 
@@ -159,7 +160,7 @@ func wireRunStartErr(err error) error {
 		return protocol.NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy
-	case errors.Is(err, runs.ErrInstallationChanged):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, qimu.ErrStaleBinding):
 		return pluginChanged(err)
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound

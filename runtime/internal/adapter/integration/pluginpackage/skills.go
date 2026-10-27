@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -37,15 +37,36 @@ func NewSkills(releases *Releases, installations skillInstallations) (*Skills, e
 	}
 	return &Skills{releases: releases, installations: installations}, nil
 }
-func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillBundle, error) {
-	installations, err := s.installations.List(ctx)
-	if err != nil {
-		return nil, err
+func (s *Skills) SkillBundles(ctx context.Context, retained []plugin.Dependency) ([]promptsource.PackageSkillBundle, error) {
+	var installations []plugin.Snapshot
+	if retained == nil {
+		var err error
+		installations, err = s.installations.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if err := plugin.ValidateDependencies(retained); err != nil {
+			return nil, err
+		}
+		for _, dependency := range retained {
+			snapshot, found, err := s.installations.Get(ctx, dependency.InstallationID)
+			if err != nil {
+				return nil, err
+			}
+			if !found || snapshot.Installation.Dependency() != dependency {
+				return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrStale)
+			}
+			installations = append(installations, snapshot)
+		}
 	}
 	var bundles []promptsource.PackageSkillBundle
 	for _, snapshot := range installations {
 		installation, release := snapshot.Installation, snapshot.Selected
 		if !installation.Enabled() {
+			if retained != nil {
+				return nil, workspaceapp.ErrSkillUnavailable
+			}
 			continue
 		}
 		enabled, err := installation.EnabledSkills(release)
@@ -53,6 +74,9 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 			return nil, err
 		}
 		if len(enabled) == 0 {
+			if retained != nil {
+				return nil, workspaceapp.ErrSkillUnavailable
+			}
 			continue
 		}
 		root, err := s.releases.Root(release.Digest())

@@ -11,8 +11,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
@@ -20,6 +21,9 @@ import (
 // Managed plugin processes open their private stores separately.
 type Bundle struct {
 	db                *sql.DB
+	Qimu              *sqlite.Store
+	Admission         *qimu.Admission
+	PluginUses        *sqlite.Owner
 	closeOnce         sync.Once
 	closeErr          error
 	validateDirectory func() error
@@ -27,9 +31,10 @@ type Bundle struct {
 	DataDirectory string
 	// IdempotencyNamespace identifies the exact durable replay store without
 	// exposing its database path or contents.
-	IdempotencyNamespace operation.ReplayNamespace
-	Transactor           func(context.Context, func(context.Context) error) error
-	ReadSnapshot         func(context.Context, func(context.Context) error) error
+	IdempotencyNamespace   operation.ReplayNamespace
+	Transactor             func(context.Context, func(context.Context) error) error
+	ReadSnapshot           func(context.Context, func(context.Context) error) error
+	CommitPluginReferences PluginReferenceTransactor
 
 	Sessions              *SessionStore
 	Runs                  *RunStore
@@ -89,15 +94,21 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if chmodErr := os.Chmod(config.DataDirectory, 0o700); chmodErr != nil {
 		return nil, fmt.Errorf("persistence: protect data directory %q: %w", config.DataDirectory, chmodErr)
 	}
-	db, err := openDatabase(ctx, dataDirectory.DatabasePath())
+	store, admission, err := openFrameworkDatabase(ctx, dataDirectory.DatabasePath())
 	if err != nil {
 		return nil, err
 	}
+	db := store.Database()
 	idempotencyNamespace, err := idempotencyNamespace(ctx, db)
 	if err != nil {
-		return nil, errors.Join(err, db.Close())
+		return nil, errors.Join(err, store.Close())
 	}
-	return &Bundle{
+	uses, err := store.Owner("flame")
+	if err != nil {
+		return nil, errors.Join(err, store.Close())
+	}
+	bundle := &Bundle{
+		Qimu: store, Admission: admission, PluginUses: uses,
 		validateDirectory:    config.ValidateDirectory,
 		db:                   db,
 		DataDirectory:        config.DataDirectory,
@@ -125,7 +136,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		MCPServers:            newMCPServerStore(db),
 		Installations:         newInstallationStore(db),
 		PluginReleases:        newReleaseStore(db),
-		PluginCommands:        newPluginCommandStore(db),
+		PluginCommands:        newPluginCommandStore(db, nil),
 		ProviderSelections:    newProviderSelectionStore(db),
 		PluginCompositions:    newCompositionStore(db),
 		ChatHistory:           newMessageStore(db),
@@ -143,7 +154,11 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ToolResults:           newToolResultStore(db),
 		Idempotency:           newIdempotencyStore(db),
 		AcceptedContinuations: newAcceptedContinuationStore(db),
-	}, nil
+	}
+	bundle.PluginCommands.commit = bundle.commitPluginWrite
+	bundle.CommitPluginReferences = bundle.commitPluginReferences
+	bundle.ExecutorCheckpoints.admission = admission
+	return bundle, nil
 }
 
 // Ping reports whether the shared SQLite handle can still serve a statement.
@@ -173,8 +188,8 @@ func (b *Bundle) Close() error {
 		return nil
 	}
 	b.closeOnce.Do(func() {
-		if b.db != nil {
-			b.closeErr = b.db.Close()
+		if b.Qimu != nil {
+			b.closeErr = b.Qimu.Close()
 		}
 	})
 	return b.closeErr

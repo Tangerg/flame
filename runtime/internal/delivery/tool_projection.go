@@ -4,7 +4,7 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/scope/core/chat"
 )
 

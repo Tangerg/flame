@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -55,10 +55,10 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	if !extension.ValidExportName(value.Export) {
+	if !portable.ValidExportName(value.Export) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution export %q", value.Export)
 	}
-	contract, err := extension.ParseCapability(value.Contract.JSON())
+	contract, err := portable.ParseCapability(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid contribution contract: %v", err)
 	}
@@ -72,7 +72,7 @@ func (b *Builder) AdmitContribution(value Contribution) error {
 			return refuse(DiagnosticInvalidDependencies, "duplicate dependency %q", requirement.ID)
 		}
 		seen[requirement.ID] = true
-		required, err := extension.ParseCapability(requirement.Contract.JSON())
+		required, err := portable.ParseCapability(requirement.Contract.JSON())
 		if err != nil {
 			return refuse(DiagnosticInvalidDependencies, "invalid dependency %q contract: %v", requirement.ID, err)
 		}
@@ -103,7 +103,7 @@ func (r Release) Contribution(id ContributionID) (Contribution, bool) {
 	}
 	return r.declaration.Contributions[index].clone(), true
 }
-func (r Release) HasImplementation(server mcpserver.ServerName, required *extension.Capability) bool {
+func (r Release) HasImplementation(server mcpserver.ServerName, required *portable.Capability) bool {
 	return required != nil && slices.ContainsFunc(r.declaration.Contributions, func(value Contribution) bool {
 		return value.Server == server && value.Contract == required.Identity()
 	})

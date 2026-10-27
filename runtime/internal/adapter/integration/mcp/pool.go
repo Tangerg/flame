@@ -4,16 +4,14 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"fmt"
 	"iter"
-	"maps"
-	"slices"
-	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -25,7 +23,7 @@ import (
 )
 
 // callbackPayloadLimits caps a plugin callback's request and response bodies at 4 MiB.
-var callbackPayloadLimits = pluginsdk.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+var callbackPayloadLimits = qimumcp.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
 
 // Pool owns connection lifetime. Every new connection obtains its configuration
 // from the source owner; retained configurations describe only existing sessions.
@@ -36,11 +34,12 @@ type Pool struct {
 	prepare   ToolPreparation
 	publish   invalidation.Publish
 	lifetime  context.Context
-	callbacks *pluginsdk.Callbacks
+	callbacks *qimumcp.Callbacks
+	installed *Installed
 }
 
 type invocationRestorer interface {
-	RestoreInvocation(context.Context, extension.Invocation) (context.Context, error)
+	RestoreInvocation(context.Context, portable.Invocation) (context.Context, error)
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -51,10 +50,10 @@ func Open(
 	lifetime context.Context,
 	servers []mcpserver.Server,
 	oauthSessions oauthSessionStore, registry sourceRegistry,
-	callbacks *pluginsdk.Callbacks,
+	callbacks *qimumcp.Callbacks,
 	prepare ToolPreparation,
 	publish invalidation.Publish,
-	commands invocationRestorer,
+	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
 	if lo.IsNil(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
@@ -63,9 +62,9 @@ func Open(
 	for index, server := range servers {
 		configs[index] = ServerConfig{Server: server.Clone()}
 	}
-	pool := &Pool{commands: commands, registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks}
+	pool := &Pool{commands: commands, registry: registry, prepare: prepare, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
 	client := newClient()
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		return nil, err
 	}
 	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks, client)
@@ -104,6 +103,20 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 }
 
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launchPermit, error) {
+	if _, managed := name.Origin().Installation(); managed {
+		if p.installed == nil {
+			return nil, errors.New("mcp: installed backend requires Qimu")
+		}
+		value, err := p.installed.acquire(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		server, found, err := p.registry.Dispatchable(ctx, name)
+		if err != nil || !found {
+			return nil, errors.Join(ErrUnavailable, err, value.close())
+		}
+		return &launchPermit{claim: &launchClaim{pending: &launch{config: ServerConfig{Server: server}, managed: value, retire: value.close, admission: admission{Bindings: value.projection.bindings}}}}, nil
+	}
 	connection, err := p.registry.Connection(ctx, name)
 	if err != nil {
 		if errors.Is(err, mcpapp.ErrUnknownServer) || errors.Is(err, mcpapp.ErrServerDisabled) {
@@ -111,175 +124,35 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 		}
 		return nil, err
 	}
-	var retire func() error
-	if connection.Retire != nil {
-		retire = connection.Retire.Close
-	}
-	activationCtx, cancelActivation := context.WithCancel(p.lifetime)
-	var releaseRPC func()
-	var rpcMu sync.Mutex
-	retireSource := retire
-	retire = func() error {
-		cancelActivation()
-		rpcMu.Lock()
-		release := releaseRPC
-		releaseRPC = nil
-		rpcMu.Unlock()
-		if release != nil {
-			release()
-		}
-		if retireSource != nil {
-			return retireSource()
-		}
-		return nil
-	}
-	var stdio *stdioLaunch
-	if connection.Stdio != nil {
-		executable := connection.Stdio
-		stdio = &stdioLaunch{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}
-	}
-	var admit func(context.Context, *sdk.ClientSession) error
-	if len(connection.Exports) > 0 {
-		exports := make([]pluginsdk.CapabilityExport, 0, len(connection.Exports))
-		for _, name := range slices.Sorted(maps.Keys(connection.Exports)) {
-			identity := connection.Exports[name]
-			contract, err := extension.ParseCapability(identity.JSON())
-			if err != nil {
-				if retire != nil {
-					err = errors.Join(err, retire())
-				}
-				return nil, err
-			}
-			exports = append(exports, pluginsdk.CapabilityExport{Name: name, Contract: contract.Descriptor()})
-		}
-		admit = func(ctx context.Context, session *sdk.ClientSession) error {
-			if err := pluginsdk.VerifyCapabilities(ctx, session, exports); err != nil {
-				return err
-			}
-			if err := p.waitRequirements(ctx, connection); err != nil {
-				return err
-			}
-			values, err := setupContributions(connection)
-			if err != nil {
-				return err
-			}
-			var metadata sdk.ParamsBase
-			background := slices.ContainsFunc(connection.Contributions, func(value plugin.Contribution) bool { return value.Background })
-			if background || len(connection.Requirements.Snapshot()) > 0 {
-				if p.callbacks == nil {
-					return errors.New("mcp: declared collaborators require Runtime callbacks")
-				}
-				if err := p.callbacks.WaitRPC(ctx); err != nil {
-					return err
-				}
-				release, authority, _ := connection.Server.Source.Release()
-				installation, _ := connection.Server.ID().Origin().Installation()
-				actor, err := operation.NewActor(installation.String(), release.String(), authority.String(), connection.Server.Name.String())
-				if err != nil {
-					return err
-				}
-				calling := operation.WithActor(activationCtx, actor.WithBindings(connection.Requirements))
-				limits := callbackPayloadLimits
-				var ref pluginsdk.CallbackRef
-				var closeRPC func()
-				if background {
-					if lo.IsNil(p.commands) {
-						return errors.New("mcp: background role requires original invocation routing")
-					}
-					ref, closeRPC, err = p.callbacks.OpenRPCWithInvocation(calling, session, limits, func(ctx context.Context, invocation extension.Invocation) (context.Context, error) {
-						ctx, err := p.commands.RestoreInvocation(ctx, invocation)
-						if err != nil {
-							return nil, err
-						}
-						return pluginsdk.WithInvocation(ctx, invocation)
-					})
-				} else {
-					ref, closeRPC, err = p.callbacks.OpenRPC(calling, session, limits)
-				}
-				if err != nil {
-					return err
-				}
-				rpcMu.Lock()
-				if err := activationCtx.Err(); err != nil {
-					rpcMu.Unlock()
-					closeRPC()
-					return err
-				}
-				releaseRPC = closeRPC
-				rpcMu.Unlock()
-				metadata, err = pluginsdk.CallbackMetadata(ref)
-				if err != nil {
-					return err
-				}
-			}
-			if err := pluginsdk.SetUp(ctx, session, values, metadata); err != nil {
-				return err
-			}
-			return pluginsdk.Activate(ctx, session)
-		}
-	}
-	return newLaunch(ServerConfig{Server: connection.Server}, stdio, retire, admission{Run: admit, Bindings: connection.Requirements})
+	return newLaunch(ServerConfig{Server: connection.Server}, nil, nil, admission{})
 }
 
 func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {
 	return p.inner.refuse(ctx, name, failure)
 }
 
-func (p *Pool) waitRequirements(ctx context.Context, connection mcpapp.Launch) error {
-	for _, required := range connection.Requirements.Snapshot() {
-		if required.Optional {
-			continue
-		}
-		for _, binding := range required.Bindings {
-			origin, err := mcpserver.InstallationOrigin(binding.Provider.InstallationID)
-			if err != nil {
-				return err
-			}
-			id, err := mcpserver.NewID(origin, binding.Server)
-			if err != nil {
-				return err
-			}
-			if id == connection.Server.ID() {
-				continue
-			}
-			server, found, err := p.registry.Dispatchable(ctx, id)
-			if err != nil {
-				return err
-			}
-			digest, _, managed := server.Source.Release()
-			if !found || !server.Enabled || !managed || digest != binding.Provider.Digest {
-				return fmt.Errorf("mcp: required dependency %s/%s: %w", required.Contribution, required.ID, plugin.ErrUnavailable)
-			}
-			if _, err := p.inner.waitSession(ctx, server); err != nil {
-				return fmt.Errorf("mcp: required dependency %s/%s: %w", required.Contribution, required.ID, err)
-			}
-		}
-	}
-	return nil
-}
-
-func setupContributions(connection mcpapp.Launch) ([]pluginsdk.SetupContribution, error) {
-	values := make([]pluginsdk.SetupContribution, 0, len(connection.Contributions))
+func setupContributions(connection mcpapp.Launch) ([]qimumcp.SetupContribution, error) {
+	values := make([]qimumcp.SetupContribution, 0, len(connection.Contributions))
 	for _, contribution := range connection.Contributions {
-		value := pluginsdk.SetupContribution{ID: contribution.ID.String(), Export: contribution.Export, Requires: []pluginsdk.SetupDependency{}}
+		value := qimumcp.SetupContribution{ID: contribution.ID.String(), Export: contribution.Export, Requires: []qimumcp.SetupDependency{}}
 		if contribution.Background {
 			installation, found := connection.Server.ID().Origin().Installation()
 			if !found {
 				return nil, errors.New("mcp: background role requires an installed entry")
 			}
-			value.Background = &extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}
+			value.Background = &portable.Target{Scope: extension.ScopeInstallation, Reference: installation.String()}
 		}
 		for _, required := range connection.Requirements.Snapshot() {
 			if required.Contribution != contribution.ID {
 				continue
 			}
-			contract, err := extension.ParseCapability(required.Contract.JSON())
+			contract, err := portable.ParseCapability(required.Contract.JSON())
 			if err != nil {
 				return nil, err
 			}
-			dependency := pluginsdk.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []pluginsdk.SetupBinding{}}
+			dependency := qimumcp.SetupDependency{ID: required.ID.String(), Contract: contract.Descriptor(), Optional: required.Optional, Bindings: []qimumcp.SetupBinding{}}
 			for _, binding := range required.Bindings {
-				dependency.Bindings = append(dependency.Bindings, pluginsdk.SetupBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
+				dependency.Bindings = append(dependency.Bindings, qimumcp.SetupBinding{InstallationID: binding.Provider.InstallationID.String(), Digest: binding.Provider.Digest.String(), Contribution: binding.Contribution.String(), Contract: contract.Descriptor()})
 			}
 			value.Requires = append(value.Requires, dependency)
 		}
@@ -308,7 +181,15 @@ func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.shutdown(ctx)
 }
 
-func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.ClientSession, error) {
+func connectionError(id mcpserver.ID, err error) error {
+	if _, installed := id.Origin().Installation(); installed && errors.Is(err, ErrUnavailable) && !errors.Is(err, plugin.ErrUnavailable) {
+		return errors.Join(plugin.ErrUnavailable, err)
+	}
+	return err
+}
+
+func (p *Pool) BorrowSession(ctx context.Context, id mcpserver.ID) (_ *BorrowedSession, err error) {
+	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
 		return nil, err
@@ -316,24 +197,34 @@ func (p *Pool) ServiceSession(ctx context.Context, id mcpserver.ID) (*sdk.Client
 	if !found || !descriptor.Enabled {
 		return nil, ErrUnavailable
 	}
-	return p.inner.serviceSession(ctx, descriptor)
+	session, err := p.inner.serviceSession(ctx, descriptor)
+	if err != nil {
+		return nil, err
+	}
+	return p.inner.borrowSession(ctx, session)
 }
 
-func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (plugin.Activation, error) {
-	session, err := p.ServiceSession(ctx, id)
-	var activation plugin.Activation
-	if err == nil {
-		activation, err = p.inner.activation(session)
+func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
+	defer func() { err = connectionError(id, err) }()
+	descriptor, found, err := p.registry.Definition(ctx, id)
+	if err != nil {
+		return plugin.Activation{}, errors.Join(plugin.ErrUnavailable, err)
 	}
-	if errors.Is(err, ErrUnavailable) {
-		// Availability is known at this capture boundary. Callers still retain
-		// uncertainty when dispatch may already have occurred.
-		err = errors.Join(plugin.ErrUnavailable, err)
+	if !found || !descriptor.Enabled {
+		return plugin.Activation{}, ErrUnavailable
 	}
-	return activation, err
+	session, err := p.inner.serviceSession(ctx, descriptor)
+	if err != nil {
+		return plugin.Activation{}, err
+	}
+	// Capturing a graph is a read of the catalog's original observation. Its
+	// new business owner validates and retains it under the shared admission;
+	// this projection must not acquire a nested execution Use.
+	return p.inner.activation(session)
 }
 
-func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (*sdk.ClientSession, error) {
+func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authority flameidentity.Digest) (_ *BorrowedSession, err error) {
+	defer func() { err = connectionError(id, err) }()
 	descriptor, found, err := p.registry.Dispatchable(ctx, id)
 	if err != nil {
 		return nil, err
@@ -341,42 +232,32 @@ func (p *Pool) BoundServiceSession(ctx context.Context, id mcpserver.ID, authori
 	if !found || !descriptor.Enabled || descriptor.AuthorityFingerprint() != authority {
 		return nil, ErrUnavailable
 	}
-	return p.inner.waitSession(ctx, descriptor)
+	session, err := p.inner.waitSession(ctx, descriptor)
+	if err != nil {
+		return nil, err
+	}
+	return p.inner.borrowSession(ctx, session)
 }
 
 // SessionActor captures only the registry source realized by this exact live
 // session. The Run transaction rechecks its immutable authority before commit.
-func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (operation.Actor, error) {
-	descriptor, found, err := p.registry.Dispatchable(ctx, id)
-	if err != nil {
-		return operation.Actor{}, err
-	}
-	if !found || !descriptor.Enabled {
+func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (_ operation.Actor, err error) {
+	defer func() { err = connectionError(id, err) }()
+	borrowed, _ := ctx.Value(borrowContextKey{}).(*BorrowedSession)
+	if borrowed == nil || borrowed.managed == nil || borrowed.session != expected || borrowed.ctx.Err() != nil || ctx.Err() != nil {
 		return operation.Actor{}, ErrUnavailable
 	}
-	current, err := p.inner.serviceSession(ctx, descriptor)
-	if err != nil || current != expected {
-		return operation.Actor{}, errors.Join(ErrUnavailable, err)
-	}
-	release, authority, managed := descriptor.Source.Release()
-	if !managed {
+	actor := borrowed.managed.actor()
+	installation, managed := id.Origin().Installation()
+	if !managed || actor.InstallationID() != installation || actor.Server() != id.Name() {
 		return operation.Actor{}, ErrUnavailable
 	}
-	installation, _ := id.Origin().Installation()
-	actor, err := operation.NewActor(installation.String(), release.String(), authority.String(), descriptor.Name.String())
-	if err != nil {
-		return operation.Actor{}, err
-	}
-	bindings, err := p.inner.requirements(expected)
-	if err != nil {
-		return operation.Actor{}, err
-	}
-	return actor.WithBindings(bindings), nil
+	return actor, nil
 }
 
 // OpenRPC preserves the invoking call while applying this backend's frozen
 // dependency authority. Retirement is owned by the same session ledger.
-func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginsdk.Callback) (sdk.ParamsBase, func(), error) {
+func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...qimumcp.Callback) (sdk.ParamsBase, func(), error) {
 	if p.callbacks == nil {
 		return sdk.ParamsBase{}, nil, errors.New("mcp: Runtime callbacks are unavailable")
 	}
@@ -388,7 +269,7 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	if err != nil {
 		return sdk.ParamsBase{}, nil, err
 	}
-	metadata, err := pluginsdk.CallbackMetadata(ref)
+	metadata, err := qimumcp.CallbackMetadata(ref)
 	if err != nil {
 		release()
 		return sdk.ParamsBase{}, nil, err
@@ -400,18 +281,22 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 // connection generation is refused rather than handed a stale backend's authority.
 func (p *Pool) toolHost(executable Executable) ToolHost {
 	return func(ctx context.Context) (sdk.ParamsBase, func(), error) {
-		session, err := executable.CallbackSession()
+		borrowed, err := executable.BorrowSession(ctx)
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
 		}
-		return p.OpenRPC(ctx, executable.SourceConfig().ID(), session)
+		metadata, release, err := p.OpenRPC(borrowed.Context(), executable.SourceConfig().ID(), borrowed.Session())
+		if err != nil {
+			return sdk.ParamsBase{}, nil, errors.Join(err, borrowed.Close())
+		}
+		return metadata, func() { release(); _ = borrowed.Close() }, nil
 	}
 }
 
-func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *pluginsdk.Binding, command string, input jsonvalue.Value, metadata sdk.ParamsBase) iter.Seq2[pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error] {
-	return func(yield func(pluginsdk.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
+func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, binding *qimumcp.Binding, command string, input jsonvalue.Value, metadata sdk.ParamsBase) iter.Seq2[qimumcp.StreamValue[jsontext.Value, jsontext.Value], error] {
+	return func(yield func(qimumcp.StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		if _, err := p.SessionActor(ctx, id, session); err != nil {
-			yield(pluginsdk.StreamValue[jsontext.Value, jsontext.Value]{}, err)
+			yield(qimumcp.StreamValue[jsontext.Value, jsontext.Value]{}, err)
 			return
 		}
 		for value, err := range binding.StreamWithMetadata(ctx, p.callbacks, callbackPayloadLimits, command, input, metadata) {

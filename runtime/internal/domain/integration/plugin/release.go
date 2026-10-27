@@ -363,15 +363,25 @@ func (b *Builder) Release(digest identity.Digest) (Release, error) {
 	if err := digest.Validate(); err != nil {
 		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
 	}
+	declaration, err := b.Declaration()
+	if err != nil {
+		return Release{}, err
+	}
+	return Release{digest: digest, declaration: declaration}, nil
+}
+
+// Declaration finishes metadata admission without inventing a release identity.
+// Author tooling binds the result only after Qimu has computed the manifest.
+func (b *Builder) Declaration() (Declaration, error) {
 	if len(b.declaration.Diagnostics) > maxDiagnostics {
-		return Release{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)
+		return Declaration{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)
 	}
 	for index, diagnostic := range b.declaration.Diagnostics {
 		if err := diagnostic.Validate(); err != nil {
-			return Release{}, fmt.Errorf("diagnostic %d: %w", index, err)
+			return Declaration{}, fmt.Errorf("diagnostic %d: %w", index, err)
 		}
 	}
-	return Release{digest: digest, declaration: b.declaration.clone()}, nil
+	return b.declaration.clone(), nil
 }
 
 func (b *Builder) release() Release { return Release{declaration: b.declaration} }

@@ -1383,9 +1383,9 @@ type staticInteractionTools struct {
 
 var _ interactionToolResolver = (*toolset.Resolver)(nil)
 
-func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, capturedMCP []domaintool.Ref) (toolset.Manifest, error) {
+func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, retained *toolset.Retained) (toolset.Manifest, error) {
 	manifest, err := identifyTestManifest(s.manifest, s.identities...)
-	if err != nil || capturedMCP == nil {
+	if err != nil || retained == nil {
 		return manifest, err
 	}
 	for _, group := range []*[]toolcontract.Tool{&manifest.Visible, &manifest.Deferred} {
@@ -1395,7 +1395,7 @@ func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, 
 			if err != nil {
 				return toolset.Manifest{}, err
 			}
-			if _, _, mcp := ref.MCP(); mcp && !slices.Contains(capturedMCP, ref) {
+			if _, _, mcp := ref.MCP(); mcp && !slices.Contains(retained.MCP, ref) {
 				continue
 			}
 			selected = append(selected, executable)
@@ -1412,7 +1412,7 @@ type scopeRecordingInteractionTools struct {
 	ok         bool
 }
 
-func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaintool.Group, _ []domaintool.Ref) (toolset.Manifest, error) {
+func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaintool.Group, _ *toolset.Retained) (toolset.Manifest, error) {
 	s.scope, s.ok = executionctx.Scope(ctx)
 	return identifyTestManifest(s.manifest, s.identities...)
 }

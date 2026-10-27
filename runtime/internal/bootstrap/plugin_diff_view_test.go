@@ -105,8 +105,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	wrong = read
 	wrong.Mode = "invalid"
 	refuse(delivery.WorkspaceDiffGet, wrong, protocol.ErrInvalidParams)
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	compare()
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-diff")
 	refuse(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)

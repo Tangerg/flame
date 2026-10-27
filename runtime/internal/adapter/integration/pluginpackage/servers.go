@@ -10,9 +10,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -26,11 +27,11 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 	if !installation.Enabled() {
 		return nil
 	}
-	root, _, err := r.verifiedRoot(ctx, release.Digest())
+	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
 	if err != nil {
 		return fmt.Errorf("pluginpackage: prepare release %s: %w", release.Digest(), err)
 	}
-	if err := root.Close(); err != nil {
+	if err := lease.Close(); err != nil {
 		return fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
 	}
 	var failures error
@@ -52,7 +53,7 @@ func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installatio
 // are never inspected: a call or a connection pays for its own target alone.
 // Enablement is reported, not enforced; refusing a disabled server belongs to
 // the registry's caller, and a disabled server is never prepared or realized.
-func (r *Releases) Server(ctx context.Context, installation *plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (mcpserver.Server, bool, error) {
+func (r *Releases) Server(ctx context.Context, installation *plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (_ mcpserver.Server, _ bool, err error) {
 	declaration := release.Declaration()
 	index := slices.IndexFunc(declaration.Servers, func(server plugin.Server) bool { return server.Name == local })
 	if index < 0 {
@@ -71,15 +72,16 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	if reach != plugins.Dispatchable {
 		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: unknown server reach %d", reach)
 	}
-	root, _, err := r.verifiedRoot(ctx, release.Digest())
+	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
 	if err != nil {
 		if cause := cancellation.Err(ctx); cause != nil {
 			return mcpserver.Server{}, false, errors.Join(err, cause)
 		}
 		return mcpserver.Server{}, false, fmt.Errorf("%w: verify release %s: %w", plugin.ErrUnavailable, release.Digest(), err)
 	}
-	if err := root.Close(); err != nil {
-		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	if _, err := selectedVariant(lease.Release().Manifest, declared.Name); err != nil {
+		return mcpserver.Server{}, false, err
 	}
 	if err := realizeBackend(ctx, server, declared, dir, data); err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
@@ -87,22 +89,23 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	return server, true, nil
 }
 func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Server) (err error) {
-	host, err := os.OpenRoot(filepath.Dir(r.directory))
+	host, err := os.OpenRoot(filepath.Dir(r.dataDirectory))
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open plugin host directory: %w", err)
 	}
 	defer func() { err = errors.Join(err, host.Close()) }()
-	if err := host.Mkdir("data", 0700); err != nil && !errors.Is(err, os.ErrExist) {
+	namespaceName := filepath.Base(r.dataDirectory)
+	if err := host.Mkdir(namespaceName, 0700); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("pluginpackage: create data namespace: %w", err)
 	}
-	info, err := host.Lstat("data")
+	info, err := host.Lstat(namespaceName)
 	if err != nil {
 		return fmt.Errorf("pluginpackage: inspect data namespace: %w", err)
 	}
 	if !info.IsDir() {
 		return errors.New("pluginpackage: data namespace is not a directory")
 	}
-	namespace, err := host.OpenRoot("data")
+	namespace, err := host.OpenRoot(namespaceName)
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open data namespace: %w", err)
 	}
@@ -159,31 +162,33 @@ func (r *Releases) Definitions(ctx context.Context, installation *plugin.Install
 
 // Realize observes executable bytes and backends without advancing desired
 // configuration or live connections. Each backend has its own observed outcome.
-func (r *Releases) Realize(ctx context.Context, installation *plugin.Installation, release plugin.Release) (plugins.Realization, error) {
+func (r *Releases) Realize(ctx context.Context, installation *plugin.Installation, release plugin.Release) (_ plugins.Realization, err error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	root, verifyErr := r.currentRoot(ctx, release.Digest())
+	lease, verifyErr := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
 	if cause := cancellation.Err(ctx); cause != nil {
 		cause = errors.Join(cause, verifyErr)
-		if root != nil {
-			cause = errors.Join(cause, root.Close())
+		if lease != nil {
+			cause = errors.Join(cause, lease.Close())
 		}
 		return plugins.Realization{}, cause
 	}
 	if verifyErr != nil {
 		return plugins.Realization{Release: plugins.ReleaseUnavailable}, nil
 	}
-	if err := root.Close(); err != nil {
-		return plugins.Realization{}, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
-	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
 	result := plugins.Realization{Release: plugins.ReleaseAvailable}
 	data := r.dataRoot(installation.ID())
 	declaration := release.Declaration()
 	for _, declared := range declaration.Servers {
 		if err := cancellation.Err(ctx); err != nil {
 			return plugins.Realization{}, err
+		}
+		if _, err := selectedVariant(lease.Release().Manifest, declared.Name); err != nil {
+			result.UnavailableBackends = append(result.UnavailableBackends, declared.Name)
+			continue
 		}
 		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
 		if err != nil || realizeBackend(ctx, server, declared, dir, data) != nil {
@@ -204,7 +209,7 @@ func declaredServer(installation *plugin.Installation, release plugin.Release, d
 }
 
 func (r *Releases) dataRoot(id identity.InstallationID) string {
-	return filepath.Join(filepath.Dir(r.directory), "data", id.String())
+	return filepath.Join(r.dataDirectory, id.String())
 }
 
 func unchangedDataRoot(data string) error {

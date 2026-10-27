@@ -61,16 +61,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 	}
 	host, api := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, model), home)
 	defer host.Close()
-	endpoint := acceptedCommandEndpoint(t, api, stores)
-	// Reopen runs the production recovery order: publish the callback RPC, then
-	// revive uncertain executions, so a steer that crashed mid-commit is reconciled
-	// to its terminal Run before the receipt is read.
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		t.Fatal(err)
-	}
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	endpoint := host.Endpoint()
 	options := acceptedCommandOptions()
 	options.IdempotencyKey = steerCrashKey
 	input := []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "retain this original steer"}}

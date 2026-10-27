@@ -17,7 +17,7 @@ import (
 
 func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ bool, resultErr error) {
 	var zero runs.UncertainExecutionPlan
-	if active.Run.State() != run.Running || !active.Run.Lineage().IsRoot() || active.Run.SessionID() != active.Session.ID() || !i.acceptsBuild(active.Context.BuildID) || len(active.Context.Installations) == 0 {
+	if active.Run.State() != run.Running || !active.Run.Lineage().IsRoot() || active.Run.SessionID() != active.Session.ID() || !i.acceptsBuild(active.Context.BuildID) || len(active.Context.Dependencies()) == 0 {
 		return zero, false, nil
 	}
 	if err := active.Context.ValidateOwnership(active.Context.RootMemberID, active.Run.SessionID()); err != nil {
@@ -171,7 +171,11 @@ func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, act
 				return zero, false, errors.New("execution: retained request differs from its captured attribution")
 			}
 		}
-		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority)
+		activation, err := originalToolActivation(*proof, checkpoint.bindings)
+		if err != nil {
+			return zero, false, err
+		}
+		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority, activation)
 		if err != nil {
 			return zero, false, err
 		}
@@ -228,7 +232,10 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 		return runs.ExecutorRef{}, err
 	}
 	defer finish()
-	assembly, abandon := i.installations.Begin()
+	assembly, abandon, err := i.installations.Begin()
+	if err != nil {
+		return runs.ExecutorRef{}, err
+	}
 	defer abandon()
 	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
 	if err != nil {
@@ -265,7 +272,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, conti
 	session.state.restoreTree = checkpoint.tree
 	session.state.boundary = interactionBoundaryRecovery
 	session.state.dispatchReady = make(chan struct{})
-	if err := i.installations.Publish(ctx, assembly, session.installationDependencies(), func() error { return i.sessions.register(session) }); err != nil {
+	if err := i.installations.Publish(ctx, assembly, dependencyInstallations(session.installationDependencies()), func() error { return i.sessions.register(session) }); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil

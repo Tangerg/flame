@@ -21,7 +21,9 @@ type PackageSkillBundle struct {
 	Skills     []plugin.Skill
 }
 type PackageSkills interface {
-	SkillBundles(context.Context) ([]PackageSkillBundle, error)
+	// nil selects the current catalog; a non-nil slice restores only those
+	// exact retained content sources, including an explicitly empty set.
+	SkillBundles(context.Context, []plugin.Dependency) ([]PackageSkillBundle, error)
 	ReadSkillResource(context.Context, plugin.Dependency, string, string) ([]byte, error)
 }
 type packageSkillSource struct {

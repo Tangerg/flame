@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/portable"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -47,12 +47,12 @@ type serverRead struct {
 }
 
 func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *testing.T) {
-	contract := requirementContract(t, "consumer", extension.Collection)
-	dependency := requirementContract(t, "model", extension.Selection)
+	contract := requirementContract(t, "consumer", portable.Collection)
+	dependency := requirementContract(t, "model", portable.Selection)
 	root := requirementSnapshot(t, testsupport.InstallationID(t), "consumer", contract, plugin.Requirement{ID: "model", Contract: dependency.Identity()})
 	store := requirementInstallations{snapshots: []plugin.Snapshot{root}}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(userMemory{}, store, packages, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, store), userMemory{}, store, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestRegistryRefusesMissingRequiredBindingBeforeAcquiringLaunchResources(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := registry.Connection(t.Context(), id); !errors.Is(err, plugin.ErrUnavailable) {
+	if _, err := registry.BackendPlan(t.Context(), id); !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("missing binding admitted a launch: %v", err)
 	}
 	if len(packages.reads) != 0 || !root.Installation.ServerEnabled(id.Name()) {
@@ -87,7 +87,7 @@ func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 	} {
 		for _, operation := range []string{"definition", "dispatchable", "connection"} {
 			t.Run(failure.name+"/"+operation, func(t *testing.T) {
-				registry, err := NewRegistry(userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
+				registry, err := NewRegistry(testFramework(t, nil), userMemory{}, &installationMemory{getErr: failure.err}, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -97,7 +97,7 @@ func TestRegistryReadFailuresCannotWithdrawInstallationSources(t *testing.T) {
 				case "dispatchable":
 					_, _, err = registry.Dispatchable(t.Context(), id)
 				case "connection":
-					_, err = registry.Connection(t.Context(), id)
+					_, err = registry.BackendPlan(t.Context(), id)
 				}
 				if !errors.Is(err, failure.err) || errors.Is(err, mcpapp.ErrUnknownServer) {
 					t.Fatalf("registry %s = %v, want retained read failure without source withdrawal", operation, err)
@@ -123,7 +123,7 @@ func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, store), userMemory{}, store, &singleServerPackages{}, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Transport: mcpserver.TransportStdio, Command: "paused"},
 	}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(users, installations, packages, requirementSelections{}, &requirementCompositions{})
+	registry, err := NewRegistry(testFramework(t, installations), users, installations, packages, requirementSelections{}, &requirementCompositions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,12 +263,31 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 				}
 			}
 			packages.reads = nil
-			server, err := registry.Connection(t.Context(), tt.id)
-			if !errors.Is(err, tt.refusal) || (tt.refusal == nil && server.Server.ID() != tt.id) {
-				t.Fatalf("connection = %+v, %v; want %v", server, err, tt.refusal)
-			}
-			if tt.packageAt && (len(packages.reads) != 1 || packages.reads[0] != (serverRead{tt.id.Name(), Declared})) {
-				t.Fatalf("connection package reads = %+v, want only the connection target", packages.reads)
+			if _, installed := tt.id.Origin().Installation(); installed {
+				plan, err := registry.BackendPlan(t.Context(), tt.id)
+				if !errors.Is(err, tt.refusal) {
+					t.Fatalf("backend plan = %+v, %v; want %v", plan, err, tt.refusal)
+				}
+				if tt.refusal == nil {
+					binding, err := plan.Snapshot()
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(binding.UnitRoots) != 1 || binding.UnitRoots[0].UnitID != BackendUnit(tt.id.Name()) {
+						t.Fatalf("backend root = %+v", binding.UnitRoots)
+					}
+				}
+				if len(packages.reads) != 0 {
+					t.Fatal("pure binding capture acquired launch resources")
+				}
+				if _, err := registry.Connection(t.Context(), tt.id); !errors.Is(err, plugin.ErrInvalid) {
+					t.Fatalf("installed source escaped Qimu: %v", err)
+				}
+			} else {
+				server, err := registry.Connection(t.Context(), tt.id)
+				if !errors.Is(err, tt.refusal) || (tt.refusal == nil && server.Server.ID() != tt.id) {
+					t.Fatalf("user connection = %+v, %v; want %v", server, err, tt.refusal)
+				}
 			}
 		})
 	}

@@ -7,6 +7,9 @@ import (
 	"slices"
 	"testing"
 	"testing/synctest"
+	"time"
+
+	"github.com/Tangerg/flame/qimu"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -110,7 +113,7 @@ func (p installationPackages) Materialize(ctx context.Context, source string) (C
 	}
 	return candidateRelease{release: release}, nil
 }
-func (installationPackages) Reclaim(context.Context, []identity.Digest) error { return nil }
+func (installationPackages) Reclaim(context.Context) error { return nil }
 func (p installationPackages) Prepare(ctx context.Context, installation *plugin.Installation, _ plugin.Release) error {
 	if p.prepare != nil {
 		return p.prepare(ctx, installation)
@@ -128,45 +131,18 @@ func (p installationPackages) Realize(ctx context.Context, i *plugin.Installatio
 }
 
 type installationDependencies struct {
-	held             bool
+	admission        *qimu.Admission
 	inUse            bool
 	executionChanged bool
 }
 
-func (d *installationDependencies) ChangeInstallation(ctx context.Context, _ identity.InstallationID, admission ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
-	if d.inUse && admission == RequireQuiescent {
-		return plugin.ErrInUse
+func (d *installationDependencies) requireReleased(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := d.admission.Under(ctx, func() error { return nil }); err != nil {
+		t.Fatalf("external operation retained installation admission: %v", err)
 	}
-	return d.UnderAdmission(ctx, func(held []plugin.Dependency) error {
-		var err error
-		d.executionChanged, err = change(held)
-		return err
-	})
-}
-
-func (d *installationDependencies) UnderAdmission(_ context.Context, step func([]plugin.Dependency) error) error {
-	d.held = true
-	defer func() { d.held = false }()
-	return step(nil)
-}
-
-type admittedInstallationStore struct {
-	*installationMemory
-	dependencies *installationDependencies
-}
-
-func (s admittedInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
-	if !s.dependencies.held {
-		return nil, errors.New("capacity read outside installation admission")
-	}
-	return s.installationMemory.List(ctx)
-}
-
-func (s admittedInstallationStore) Save(ctx context.Context, i *plugin.Installation) error {
-	if !s.dependencies.held {
-		return errors.New("installation write outside installation admission")
-	}
-	return s.installationMemory.Save(ctx, i)
 }
 
 type installationConnections struct {
@@ -203,16 +179,14 @@ func installationFixture(t *testing.T) (*installationMemory, *installationDepend
 func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	connections := installationConnections{reconcile: func(ctx context.Context, _ []mcpserver.ID) error {
-		if dependencies.held {
-			t.Fatal("external reconcile retained executable admission")
-		}
+		dependencies.requireReleased(t)
 		current, found, err := store.Get(ctx, id)
 		if err != nil || !found || !current.Installation.Enabled() {
 			t.Fatal("realization preceded durable enablement")
 		}
 		return errors.New("supervisor is closing")
 	}}
-	c, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,16 +223,14 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 			}
 			var notices []invalidation.Resource
 			publish := func(notice invalidation.Notice) {
-				if dependencies.held {
-					t.Fatal("publication retained installation admission")
-				}
+				dependencies.requireReleased(t)
 				current, found, err := store.Get(t.Context(), id)
 				if err != nil || !found || current.Installation.Enabled() != test.state {
 					t.Fatalf("publication preceded durable state: %+v, %v", current, err)
 				}
 				notices = append(notices, notice.Resource)
 			}
-			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, publish)
+			coordinator, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -300,9 +272,7 @@ func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
 			store.removeErr = test.removeErr
 			var notices []invalidation.Resource
 			publish := func(notice invalidation.Notice) {
-				if dependencies.held {
-					t.Fatal("publication retained installation admission")
-				}
+				dependencies.requireReleased(t)
 				if _, found, err := store.Get(t.Context(), id); err != nil || found {
 					t.Fatalf("publication preceded durable removal: %v", err)
 				}
@@ -312,7 +282,7 @@ func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
 				withdraw:  func([]mcpserver.ID) error { return test.withdraw },
 				reconcile: func(context.Context, []mcpserver.ID) error { return nil },
 			}
-			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, publish)
+			coordinator, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, publish)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -347,7 +317,7 @@ func TestListingPreservesCancellationInsteadOfProjectingUnavailability(t *testin
 		cancel(cause)
 		return Realization{}, context.Cause(ctx)
 	}}
-	c, err := New(t.Context(), store, catalog, packages, installationConnections{}, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +332,7 @@ func TestListingReportsUnavailableReleaseWithoutLosingTheInstallation(t *testing
 	packages := installationPackages{realize: func(context.Context, *plugin.Installation) (Realization, error) {
 		return Realization{Release: ReleaseUnavailable}, nil
 	}}
-	c, err := New(t.Context(), store, catalog, packages, installationConnections{}, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +355,7 @@ func TestPresentationIsAdmittedOnlyForAnActiveAvailableRelease(t *testing.T) {
 		return Realization{Release: ReleaseAvailable}, nil
 	}}
 	connections := installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}
-	c, err := New(t.Context(), store, catalog, packages, connections, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,13 +393,13 @@ func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	if err != nil || !found {
 		t.Fatal(err)
 	}
-	c, err := New(t.Context(), store, catalog, installationPackages{prepare: func(context.Context, *plugin.Installation) error {
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{prepare: func(context.Context, *plugin.Installation) error {
 		t.Fatal("stale configuration reached preparation")
 		return nil
 	}}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error {
 		t.Fatal("stale configuration reached reconciliation")
 		return nil
-	}}, dependencies, nil)
+	}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,9 +425,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 	reconciled := false
 	packages := installationPackages{
 		prepare: func(ctx context.Context, installation *plugin.Installation) error {
-			if dependencies.held {
-				t.Fatal("package preparation retained executable admission")
-			}
+			dependencies.requireReleased(t)
 			current, found, err := store.Get(ctx, id)
 			if err != nil || !found || !current.Installation.Enabled() || !installation.Enabled() {
 				t.Fatal("package preparation preceded durable enablement")
@@ -472,7 +440,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 		reconciled = true
 		return nil
 	}}
-	c, err := New(t.Context(), store, catalog, packages, connections, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,15 +459,13 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 func TestUninstallWithdrawsDurablyBeforeFailedCleanup(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	connections := installationConnections{reconcile: func(ctx context.Context, _ []mcpserver.ID) error {
-		if dependencies.held {
-			t.Fatal("cleanup retained executable admission")
-		}
+		dependencies.requireReleased(t)
 		if _, found, err := store.Get(ctx, id); err != nil || found {
 			t.Fatalf("uninstalled source can be restored: %v", err)
 		}
 		return errors.New("retirement failed")
 	}}
-	c, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -508,10 +474,9 @@ func TestUninstallWithdrawsDurablyBeforeFailedCleanup(t *testing.T) {
 	}
 }
 
-// The live catalog is a projection of the committed installation: its
-// superseded tools are withdrawn inside the admission critical section, after
-// the durable write, so no Run admitted after the change can freeze them.
-func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
+// Qimu withdraws authoritative sources at the commit; consumer presentation
+// updates run afterward and may reenter the application owner.
+func TestFrameworkAuthorityIsWithdrawnBeforeConsumerProjection(t *testing.T) {
 	for _, operation := range []string{"disable", "uninstall"} {
 		t.Run(operation, func(t *testing.T) {
 			store, dependencies, id, catalog := installationFixture(t)
@@ -522,9 +487,7 @@ func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
 					if !changing {
 						return nil
 					}
-					if !dependencies.held {
-						t.Fatal("withdrawal ran outside installation admission")
-					}
+					dependencies.requireReleased(t)
 					current, found, err := store.Get(t.Context(), id)
 					switch operation {
 					case "disable":
@@ -540,16 +503,14 @@ func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
 					return nil
 				},
 				reconcile: func(_ context.Context, names []mcpserver.ID) error {
-					if dependencies.held {
-						t.Fatal("reconciliation retained installation admission")
-					}
+					dependencies.requireReleased(t)
 					if changing && !slices.Equal(names, withdrawn) {
 						t.Fatalf("reconciled %v, withdrew %v", names, withdrawn)
 					}
 					return nil
 				},
 			}
-			c, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+			c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -586,7 +547,7 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 		return nil
 	}}
 	var err error
-	c, err = New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+	c, err = New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, connections, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,7 +600,7 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 						return selected, nil
 					}
 				}
-				c, err := New(lifetime, store, catalog, packages, connections, dependencies, nil)
+				c, err := New(lifetime, testFramework(t, store, dependencies), store, catalog, packages, connections, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -714,7 +675,7 @@ func TestCommittedInstallReturnsItsProjectionAfterRequestCancellation(t *testing
 	packages := installationPackages{
 		materialize: func(context.Context, string) (plugin.Release, error) { return selected, nil },
 		realize: func(ctx context.Context, installation *plugin.Installation) (Realization, error) {
-			if store.record == nil || store.record.ID != installation.ID() || dependencies.held {
+			if store.record == nil || store.record.ID != installation.ID() {
 				t.Fatal("projection preceded installation commit or retained admission")
 			}
 			cancelRequest(cause)
@@ -724,7 +685,7 @@ func TestCommittedInstallReturnsItsProjectionAfterRequestCancellation(t *testing
 			return Realization{Release: ReleaseAvailable}, nil
 		},
 	}
-	c, err := New(t.Context(), store, catalog, packages, installationConnections{}, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -741,14 +702,12 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 	dependencies := &installationDependencies{}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
 	catalog := releaseMemory{release.Digest(): release}
-	store := admittedInstallationStore{installationMemory: &installationMemory{catalog: catalog}, dependencies: dependencies}
+	store := &installationMemory{catalog: catalog}
 	packages := installationPackages{materialize: func(context.Context, string) (plugin.Release, error) {
-		if dependencies.held {
-			t.Fatal("package materialization held installation admission")
-		}
+		dependencies.requireReleased(t)
 		return release, nil
 	}}
-	c, err := New(t.Context(), store, catalog, packages, installationConnections{}, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, packages, installationConnections{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -761,7 +720,7 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 func TestReplacementRequiresQuiescenceButSameReleaseEnablementDoesNot(t *testing.T) {
 	store, dependencies, id, catalog := installationFixture(t)
 	dependencies.inUse = true
-	c, err := New(t.Context(), store, catalog, installationPackages{}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}, dependencies, nil)
+	c, err := New(t.Context(), testFramework(t, store, dependencies), store, catalog, installationPackages{}, installationConnections{reconcile: func(context.Context, []mcpserver.ID) error { return nil }}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -781,7 +740,10 @@ func TestReplacementRequiresQuiescenceButSameReleaseEnablementDoesNot(t *testing
 	if !store.record.Enabled || store.record.Selected != before {
 		t.Fatal("enablement changed the selected code or failed to restore availability")
 	}
-	if _, err := c.Configure(t.Context(), id, before, plugin.Configuration{}); !errors.Is(err, plugin.ErrInUse) {
+	if _, err := c.Configure(t.Context(), id, before, plugin.Configuration{}); err != nil {
+		t.Fatalf("idempotent configuration was refused: %v", err)
+	}
+	if _, err := c.Configure(t.Context(), id, before, plugin.Configuration{Servers: map[mcpserver.ServerName]plugin.ComponentChange{testsupport.ServerName("server"): plugin.DisableComponent}}); !errors.Is(err, plugin.ErrInUse) {
 		t.Fatalf("configure a depended release = %v", err)
 	}
 }

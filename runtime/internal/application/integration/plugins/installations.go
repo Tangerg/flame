@@ -1,12 +1,14 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -24,7 +26,7 @@ type catalog interface {
 // and reclaims releases, prepares backends and observes realization.
 type packages interface {
 	Materialize(context.Context, string) (Candidate, error)
-	Reclaim(context.Context, []identity.Digest) error
+	Reclaim(context.Context) error
 	Prepare(context.Context, *plugin.Installation, plugin.Release) error
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
 	ReadResource(context.Context, *plugin.Installation, string) ([]byte, error)
@@ -48,36 +50,17 @@ type connections interface {
 	ReconcileInstallation(context.Context, []mcpserver.ID) error
 }
 
-// Dependencies is the single serialization point for installation changes. It
-// runs each change atomically with execution admission, so capacity, quiescence,
-// the durable write, the withdrawal of superseded tools and release reclamation
-// are decided against one consistent state. Each step receives the canonical
-// held releases: live sessions, pending checkpoints and unresolved commands.
-// A change reports whether committed state invalidates unpublished execution,
-// independently of its quiescence requirement or a later withdrawal failure.
-type dependencies interface {
-	ChangeInstallation(context.Context, identity.InstallationID, ChangeAdmission, func(held []plugin.Dependency) (executionChanged bool, err error)) error
-	UnderAdmission(context.Context, func(held []plugin.Dependency) error) error
-}
-
-type ChangeAdmission uint8
-
-const (
-	RequireQuiescent ChangeAdmission = iota
-	AllowInUse
-)
-
 type Coordinator struct {
-	lifetime     context.Context
-	store        Store
-	catalog      catalog
-	packages     packages
-	connections  connections
-	dependencies dependencies
-	publish      invalidation.Publish
+	lifetime    context.Context
+	framework   *qimu.Host
+	store       Store
+	catalog     catalog
+	packages    packages
+	connections connections
+	publish     invalidation.Publish
 }
 
-func New(lifetime context.Context, store Store, catalog catalog, packages packages, connections connections, dependencies dependencies, publish invalidation.Publish) (*Coordinator, error) {
+func New(lifetime context.Context, host *qimu.Host, store Store, catalog catalog, packages packages, connections connections, publish invalidation.Publish) (*Coordinator, error) {
 	if lo.IsNil(lifetime) {
 		return nil, errors.New("plugins: runtime lifetime is required")
 	}
@@ -85,14 +68,15 @@ func New(lifetime context.Context, store Store, catalog catalog, packages packag
 		name  string
 		value any
 	}{
+		{"framework host", host},
 		{"installation store", store}, {"release catalog", catalog}, {"packages", packages},
-		{"connections", connections}, {"dependencies", dependencies},
+		{"connections", connections},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("plugins: %s is required", required.name)
 		}
 	}
-	return &Coordinator{lifetime: lifetime, store: store, catalog: catalog, packages: packages, connections: connections, dependencies: dependencies, publish: publish}, nil
+	return &Coordinator{lifetime: lifetime, framework: host, store: store, catalog: catalog, packages: packages, connections: connections, publish: publish}, nil
 }
 
 // Inspection projects an installation beside the catalog releases it names.
@@ -198,29 +182,27 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	if err != nil {
 		return Inspection{}, fmt.Errorf("plugins: admit installation: %w", err)
 	}
-	var committed plugin.Snapshot
-	unreclaimed, err := c.commit(ctx, id, AllowInUse, func() (bool, error) {
-		existing, err := c.store.List(ctx)
-		if err != nil {
-			return false, err
-		}
-		if len(existing) >= plugin.MaxInstallations {
-			return false, fmt.Errorf("%w: installation capacity", plugin.ErrInvalid)
-		}
-		published, err := candidate.Publish(ctx)
-		if err != nil {
-			return false, fmt.Errorf("plugins: publish release: %w", err)
-		}
-		if err := c.store.Save(ctx, installation); err != nil {
-			return false, err
-		}
-		committed = plugin.Snapshot{Installation: installation, Selected: published}
-		// A new identity has no former execution capability to invalidate.
-		return false, nil
-	})
+	published, err := candidate.Publish(ctx)
 	if err != nil {
-		return Inspection{}, errors.Join(err, unreclaimed)
+		return Inspection{}, fmt.Errorf("plugins: publish release: %w", err)
 	}
+	projection, err := ProjectFrameworkRelease(published)
+	if err != nil {
+		return Inspection{}, err
+	}
+	if err := RegisterFrameworkRelease(c.framework, projection); err != nil {
+		return Inspection{}, err
+	}
+	configuration, err := EncodeFrameworkConfiguration(installation.Snapshot())
+	if err != nil {
+		return Inspection{}, err
+	}
+	_, err = c.framework.Install(ctx, qimu.InstallationConfig{ID: qimu.InstallationID(id.String()), Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
+	if err != nil {
+		return Inspection{}, FrameworkError(err)
+	}
+	committed := plugin.Snapshot{Installation: installation, Selected: published}
+	unreclaimed := c.Reclaim(ctx)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
 	realizationCtx, finishRealization := c.realizationContext(ctx)
 	defer finishRealization()
@@ -237,53 +219,43 @@ func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, sou
 		return Inspection{}, fmt.Errorf("plugins: materialize package: %w", err)
 	}
 	defer func() { err = errors.Join(err, candidate.Discard()) }()
-	return c.change(ctx, id, AllowInUse, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
-		if err := i.Stage(selected, candidate.Release()); err != nil {
+	published, err := candidate.Publish(ctx)
+	if err != nil {
+		return Inspection{}, err
+	}
+	err = c.framework.Admission().Admit(ctx, func(admitted context.Context) error {
+		snapshot, err := c.installationSnapshot(admitted, id)
+		if err != nil {
 			return err
 		}
-		if _, err := candidate.Publish(ctx); err != nil {
-			return fmt.Errorf("plugins: publish release: %w", err)
+		if err := snapshot.Installation.Stage(snapshot.Selected, published); err != nil {
+			return err
 		}
-		return nil
+		return c.store.Stage(admitted, id, published.Digest())
 	})
+	if err != nil {
+		return Inspection{}, err
+	}
+	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
+	snapshot, err := c.installationSnapshot(ctx, id)
+	if err != nil {
+		return Inspection{}, err
+	}
+	inspection, err := c.inspect(ctx, snapshot)
+	return inspection, errors.Join(err, c.Reclaim(ctx))
 }
 
 // Reclaim removes every release nothing references, such as one whose change
 // failed after publication when the Runtime stopped before reclaiming it.
 func (c *Coordinator) Reclaim(ctx context.Context) error {
-	return c.dependencies.UnderAdmission(ctx, func(held []plugin.Dependency) error {
-		return c.reclaim(ctx, held)
-	})
-}
-
-// commit runs one change at the admission point and then, in the same critical
-// section and whether or not the change committed, reclaims every release that
-// nothing references: a refused stage or install leaves no release behind. A
-// release that cannot be reclaimed stays admitted, and so owned for the next
-// commit; that failure is returned apart from the change's, because the change
-// itself stands.
-func (c *Coordinator) commit(ctx context.Context, id identity.InstallationID, admission ChangeAdmission, change func() (executionChanged bool, err error)) (unreclaimed, err error) {
-	err = c.dependencies.ChangeInstallation(ctx, id, admission, func(held []plugin.Dependency) (bool, error) {
-		executionChanged, changeErr := change()
-		unreclaimed = c.reclaim(ctx, held)
-		return executionChanged, changeErr
-	})
-	return unreclaimed, err
-}
-
-func (c *Coordinator) reclaim(ctx context.Context, held []plugin.Dependency) error {
-	installations, err := c.store.List(ctx)
-	if err != nil {
-		return fmt.Errorf("plugins: reclaim releases: %w", err)
-	}
-	if err := c.packages.Reclaim(ctx, plugin.RetainedReleases(installationStates(installations), held)); err != nil {
+	if err := c.packages.Reclaim(ctx); err != nil {
 		return fmt.Errorf("plugins: reclaim releases: %w", err)
 	}
 	return nil
 }
 
 func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest identity.Digest) (Inspection, error) {
-	return c.change(ctx, id, RequireQuiescent, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
+	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, selected plugin.Release) error {
 		staged, err := c.named(ctx, digest)
 		if err != nil {
 			return err
@@ -295,20 +267,20 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 // Restoring availability of the same selected code does not replace a held
 // execution dependency. Selection and configuration still require quiescence.
 func (c *Coordinator) Enable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
+	return c.change(ctx, id, func(_ context.Context, i *plugin.Installation, selected plugin.Release) error {
 		return i.Enable(selected)
 	})
 }
 
 // Disable withdraws future dispatch and remains available while in use.
 func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, AllowInUse, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
+	return c.change(ctx, id, func(_ context.Context, i *plugin.Installation, _ plugin.Release) error {
 		i.Disable()
 		return nil
 	})
 }
 func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest identity.Digest, configuration plugin.Configuration) (Inspection, error) {
-	return c.change(ctx, id, RequireQuiescent, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
+	return c.change(ctx, id, func(ctx context.Context, i *plugin.Installation, _ plugin.Release) error {
 		release, err := c.named(ctx, digest)
 		if err != nil {
 			return err
@@ -316,69 +288,71 @@ func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID,
 		return i.Configure(release, configuration)
 	})
 }
-func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, admission ChangeAdmission, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
-	var reconcile []mcpserver.ID
-	var committed plugin.Snapshot
-	unreclaimed, err := c.commit(ctx, id, admission, func() (bool, error) {
-		snapshot, err := c.installationSnapshot(ctx, id)
-		if err != nil {
-			return false, err
-		}
-		installation := snapshot.Installation
-		previous, err := plugin.Restore(installation.Snapshot(), snapshot.Selected, snapshot.Staged)
-		if err != nil {
-			return false, err
-		}
-		before := snapshot.Selected
-		if err := transition(ctx, installation, before); err != nil {
-			return false, err
-		}
-		after := before
-		if installation.Selected() != before.Digest() {
-			if after, err = c.catalog.Get(ctx, installation.Selected()); err != nil {
-				return false, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
-			}
-		}
-		changed, err := installation.ChangedServers(previous, before, after)
-		if err != nil {
-			return false, err
-		}
-		for _, local := range changed {
-			server, err := installation.ServerID(local)
-			if err != nil {
-				return false, err
-			}
-			reconcile = append(reconcile, server)
-		}
-		var staged *plugin.Release
-		if digest, hasStaged := installation.Staged(); hasStaged {
-			candidate, err := c.catalog.Get(ctx, digest)
-			if err != nil {
-				return false, fmt.Errorf("plugins: read staged release %s: %w", digest, err)
-			}
-			staged = &candidate
-		}
-		if err := c.store.Save(ctx, installation); err != nil {
-			return false, err
-		}
-		committed = plugin.Snapshot{Installation: installation, Selected: after, Staged: staged}
-		// The live tool catalog follows the commit inside the same critical
-		// section: a Run assembled after it cannot see the superseded tools.
-		return installation.ExecutionChanged(previous), c.connections.WithdrawInstallation(reconcile)
-	})
-	if committed.Installation != nil {
-		c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
-	}
+func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
+	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
-		return Inspection{}, errors.Join(err, unreclaimed)
+		return Inspection{}, err
 	}
-	realizationCtx, finishRealization := c.realizationContext(ctx)
-	defer finishRealization()
+	expected, found := c.framework.Installation(qimu.InstallationID(id.String()))
+	if !found {
+		return Inspection{}, plugin.ErrNotFound
+	}
+	configuration, err := EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
+	if err != nil {
+		return Inspection{}, err
+	}
+	if expected.Release.String() != snapshot.Selected.Digest().String() || expected.Enabled != snapshot.Installation.Enabled() || !bytes.Equal(expected.Configuration, configuration) {
+		return Inspection{}, plugin.ErrStale
+	}
+	installation, err := plugin.Restore(snapshot.Installation.Snapshot(), snapshot.Selected, snapshot.Staged)
+	if err != nil {
+		return Inspection{}, err
+	}
+	if err := transition(ctx, installation, snapshot.Selected); err != nil {
+		return Inspection{}, err
+	}
+	after := snapshot.Selected
+	if installation.Selected() != after.Digest() {
+		after, err = c.catalog.Get(ctx, installation.Selected())
+		if err != nil {
+			return Inspection{}, err
+		}
+	}
+	projection, err := ProjectFrameworkRelease(after)
+	if err != nil {
+		return Inspection{}, err
+	}
+	if err := RegisterFrameworkRelease(c.framework, projection); err != nil {
+		return Inspection{}, err
+	}
+	configuration, err = EncodeFrameworkConfiguration(installation.Snapshot())
+	if err != nil {
+		return Inspection{}, err
+	}
+	if err := c.framework.Update(ctx, expected, qimu.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
+		return Inspection{}, FrameworkError(err)
+	}
+	changed, err := installation.ChangedServers(snapshot.Installation, snapshot.Selected, after)
+	if err != nil {
+		return Inspection{}, err
+	}
+	var reconcile []mcpserver.ID
+	for _, name := range changed {
+		server, err := installation.ServerID(name)
+		if err != nil {
+			return Inspection{}, err
+		}
+		reconcile = append(reconcile, server)
+	}
+	withdrawErr := c.connections.WithdrawInstallation(reconcile)
+	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
+	committed, err := c.installationSnapshot(ctx, id)
+	if err != nil {
+		return Inspection{}, errors.Join(err, withdrawErr)
+	}
+	realizationCtx, finish := c.realizationContext(ctx)
+	defer finish()
 	if len(reconcile) > 0 {
-		// Realization outcomes have live owners and are observed, not reported:
-		// an unprepared backend reads as unavailable in every inspection, and
-		// each connection's failure is its supervisor's status. These records
-		// keep only the operational cause for the trace.
 		if err := c.packages.Prepare(realizationCtx, committed.Installation, committed.Selected); err != nil {
 			slog.WarnContext(ctx, "committed plugin preparation failed", "installation", id, "error", err)
 		}
@@ -387,51 +361,29 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, ad
 		}
 	}
 	inspection, err := c.inspect(realizationCtx, committed)
-	if err = errors.Join(err, unreclaimed); err != nil {
-		return Inspection{}, fmt.Errorf("plugins: installation %s changed: %w", id, err)
-	}
-	return inspection, nil
+	return inspection, errors.Join(err, withdrawErr, c.Reclaim(realizationCtx))
 }
+
 func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID) error {
-	var servers []mcpserver.ID
-	removed := false
-	// Removal withdraws every artifact a waiting operation needs to resume, so
-	// it requires quiescence; Disable stays available to withdraw authority
-	// from work that is still in use.
-	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() (bool, error) {
-		snapshot, err := c.installationSnapshot(ctx, id)
-		if err != nil {
-			return false, err
-		}
-		installation := snapshot.Installation
-		servers, err = installation.ServerIDs(snapshot.Selected)
-		if err != nil {
-			return false, err
-		}
-		if err := c.store.Remove(ctx, id); err != nil {
-			return false, err
-		}
-		removed = true
-		return true, c.connections.WithdrawInstallation(servers)
-	})
-	if removed {
-		c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
-	}
+	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
-		return errors.Join(err, unreclaimed)
+		return err
 	}
-	// Removal has withdrawn admission durably and the live tools with it.
-	// Connections retains and joins teardown independently of this request,
-	// including during shutdown. Reconciliation retires exposure and status.
-	realizationCtx, finishRealization := c.realizationContext(ctx)
-	defer finishRealization()
+	servers, err := snapshot.Installation.ServerIDs(snapshot.Selected)
+	if err != nil {
+		return err
+	}
+	if err := c.framework.Uninstall(ctx, qimu.InstallationID(id.String())); err != nil {
+		return FrameworkError(err)
+	}
+	withdrawErr := c.connections.WithdrawInstallation(servers)
+	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
+	realizationCtx, finish := c.realizationContext(ctx)
+	defer finish()
 	if err := c.connections.ReconcileInstallation(realizationCtx, servers); err != nil {
 		slog.WarnContext(ctx, "removed plugin reconciliation failed", "installation", id, "error", err)
 	}
-	if unreclaimed != nil {
-		return fmt.Errorf("plugins: installation %s removed: %w", id, unreclaimed)
-	}
-	return nil
+	return errors.Join(withdrawErr, c.Reclaim(realizationCtx))
 }
 
 // A committed change must survive request cancellation. It remains inside the

@@ -16,9 +16,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/scope/core/chat"
@@ -45,6 +45,7 @@ func reviewAuthorPackage(t *testing.T, packagePath, executable string) string {
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build review backend: %s, %v", output, err)
 	}
+	authorPluginPackage(t, source)
 	return source
 }
 
@@ -142,7 +143,7 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: extension.Target{Scope: "installation", Reference: installed.ID},
+		Target: portable.Target{Scope: "installation", Reference: installed.ID},
 		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
 	}
 	call := func(key string, expected any) {
@@ -299,8 +300,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	request := approval(update)
 	// The actual backend process closes while its update is still awaiting the
 	// existing Interrupt. Its private data and the Runtime checkpoint survive.
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	accepted := invoke(delivery.RunsResume, request, "update-approved")
 	drain(accepted)
@@ -341,8 +341,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	if current := toolResult(update, "reviews_update_review"); !reflect.DeepEqual(current.Tool.Result, savedResult) {
 		t.Fatal("withdrawal changed history")
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	if current := toolResult(update, "reviews_update_review"); current.Status != protocol.ItemStatusCompleted {
 		t.Fatalf("withdrawn backend lost history: %+v", current)
 	}

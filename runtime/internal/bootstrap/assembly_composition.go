@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -29,6 +28,7 @@ import (
 // policyComposition contains the application policies that share the same
 // process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
+	framework     frameworkComposition
 	packages      *pluginpackage.Releases
 	packageSkills *pluginpackage.Skills
 	registry      *plugins.Registry
@@ -41,9 +41,9 @@ type policyComposition struct {
 	mcp           mcpEnvironment
 }
 
-func buildPolicyComposition(ctx context.Context, cfg assemblyConfig) (policyComposition, error) {
+func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, models modelEnvironment) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
-	packages, err := pluginpackage.New(filepath.Join(cfg.stores.DataDirectory, "plugins", "releases"), cfg.stores.PluginReleases)
+	packages, err := buildPluginPackages(cfg, lifetime)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -51,10 +51,11 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig) (policyComp
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
-	registry, err := plugins.NewRegistry(cfg.stores.MCPServers, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
+	framework, err := buildFramework(ctx, cfg, lifetime, packages, models.callbacks)
 	if err != nil {
 		return policyComposition{}, err
 	}
+	registry := framework.registry
 	approvalPolicy, err := approvals.NewRuntimePolicy(
 		cfg.approvalMode,
 		cfg.stores.ApprovalRules,
@@ -85,7 +86,7 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig) (policyComp
 		return policyComposition{}, err
 	}
 	return policyComposition{
-		invalidations: invalidations, packages: packages, registry: registry,
+		framework: framework, invalidations: invalidations, packages: packages, registry: registry,
 		packageSkills: packageSkills,
 		approvals:     approvalPolicy,
 		goals:         goalStore,
@@ -185,7 +186,7 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg assemblyConfig,
-	defaultSelection modelchoice.Selection,
+	modelServices modelEnvironment,
 	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -207,10 +208,6 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	modelServices, err := buildModelEnvironment(ctx, cfg, defaultSelection)
-	if err != nil {
-		return executionComposition{}, err
-	}
 	// Isolated working copies are acquired before the shell set that can run in
 	// them. The Instance's reverse teardown therefore stops every detached shell
 	// before it destroys the directories those processes use.
@@ -225,7 +222,7 @@ func buildExecutionComposition(
 		}))
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
-		registry: policy.registry, packageSkills: policy.packageSkills,
+		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
 		lifetime:       lifetime.context,
 		config:         cfg,
 		approvalPolicy: policy.approvals,
@@ -283,26 +280,24 @@ func buildExecutionComposition(
 	}
 	maxConcurrentToolCalls := 8
 	interactionConfig := executionadapter.InteractionExecutorConfig{
-		Lifetime:                lifetime.context,
-		ExecutionTrees:          cfg.stores.ExecutorCheckpoints,
-		OriginalToolResults:     toolRuntime.toolResults,
-		InstallationCheckpoints: cfg.stores.ExecutorCheckpoints,
-		Admission:               toolRuntime.admission,
-		InstallationCommands:    cfg.stores.PluginCommands,
-		BuildID:                 cfg.buildID,
-		ChatResolver:            modelServices.chatResolver,
-		ModelEvidence:           cfg.stores.ModelInvocations,
-		CallComposition:         toolRuntime.callComposition,
-		StreamModelResponses:    true,
-		MaxConcurrentToolCalls:  &maxConcurrentToolCalls,
-		ToolInterpreter:         toolInterpreter,
-		ToolPresenter:           toolset.Presenter{},
-		ToolAuthorizer:          toolAuthorizer,
-		ToolHooks:               workingContexts,
-		Maintenance:             runMaintenance,
-		ModelContextCompactor:   modelContextCompactor,
-		ModelContextState:       workingContexts,
-		LifecycleHooks:          workingContexts,
+		Lifetime:               lifetime.context,
+		ExecutionTrees:         cfg.stores.ExecutorCheckpoints,
+		OriginalToolResults:    toolRuntime.toolResults,
+		Admission:              toolRuntime.admission,
+		BuildID:                cfg.buildID,
+		ChatResolver:           modelServices.chatResolver,
+		ModelEvidence:          cfg.stores.ModelInvocations,
+		CallComposition:        toolRuntime.callComposition,
+		StreamModelResponses:   true,
+		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
+		ToolInterpreter:        toolInterpreter,
+		ToolPresenter:          toolset.Presenter{},
+		ToolAuthorizer:         toolAuthorizer,
+		ToolHooks:              workingContexts,
+		Maintenance:            runMaintenance,
+		ModelContextCompactor:  modelContextCompactor,
+		ModelContextState:      workingContexts,
+		LifecycleHooks:         workingContexts,
 	}
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
@@ -318,6 +313,9 @@ func buildExecutionComposition(
 	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Interaction executor: %w", err)
+	}
+	if err := cfg.stores.Admission.RegisterUseOwner(interactionExecutor); err != nil {
+		return executionComposition{}, err
 	}
 	lifetime.executor = interactionExecutor
 	toolRegistry, err := toolset.NewDiagnosticRegistry(cfg.defaultWorkspacePath)

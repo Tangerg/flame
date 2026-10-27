@@ -18,21 +18,7 @@ import (
 
 func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	cfg := poMCPConfig(t)
-	host, api := buildProtocolRuntime(t, cfg, cfg.defaultWorkspacePath)
-	info, err := api.Discover(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	endpoint, err := host.application.newDeliveryEndpoint(t.Context(), info.ServerInfo, cfg.stores.IdempotencyNamespace.String(), cfg.stores.ValidateDirectory)
-	if err != nil {
-		_ = host.Close()
-		t.Fatal(err)
-	}
-	r := &poMCPRuntime{t: t, host: host, endpoint: endpoint}
-	defer r.close()
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatal(err)
-	}
+	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	r.poMCPTools(server, scheduleToolsReady)

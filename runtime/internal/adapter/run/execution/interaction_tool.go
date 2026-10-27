@@ -10,8 +10,10 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -120,7 +122,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		server, _, _ := proof.Tool.MCP()
 		installation, _ := server.Origin().Installation()
-		calling, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
+		calling, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
@@ -353,11 +355,11 @@ func (o *observedInteractionTool) prepare(
 		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
 			return tool.Arguments{}, false, "", nil, plugin.ErrStale
 		}
-		invocation, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeCall, Reference: callID})
+		invocation, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeCall, Reference: callID})
 		if err != nil {
 			return tool.Arguments{}, false, "", nil, err
 		}
-		calling, err := pluginsdk.WithInvocation(ctx, invocation)
+		calling, err := qimumcp.WithInvocation(ctx, invocation)
 		if err != nil {
 			return tool.Arguments{}, false, "", nil, err
 		}
@@ -670,7 +672,11 @@ func wrapInteractionTools(
 					}
 					if found {
 						if config.OriginalToolResults != nil {
-							owned, err := config.OriginalToolResults.OwnsToolSource(ctx, ref, dependency.Digest)
+							activation, err := toolset.InstallationActivation(executable)
+							if err != nil {
+								return nil, err
+							}
+							owned, err := config.OriginalToolResults.OwnsToolSource(ctx, ref, dependency.Digest, activation)
 							if err != nil {
 								return nil, err
 							}

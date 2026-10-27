@@ -16,9 +16,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -47,6 +50,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -56,7 +60,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	request := protocol.CallPluginRequest{
 		InstallationID: installed.ID, Digest: installed.Selected.Digest,
 		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: extension.Target{Scope: "installation", Reference: installed.ID},
+		Target: portable.Target{Scope: "installation", Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := delivery.Options{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
@@ -75,7 +79,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err := json.Unmarshal(encoded, &captured); err != nil {
 		t.Fatal(err)
 	}
-	committed, err := pluginsdk.DecodeReply[jsontext.Value](captured.Response.Result)
+	committed, err := qimumcp.DecodeReply[jsontext.Value](captured.Response.Result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +104,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	replacementServer := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: replacement.ID}, Name: "reviews"}
 	r.poMCPTools(&replacementServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-original")
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
 	restored, found, err := cfg.stores.PluginCommands.Get(t.Context(), commandID)
 	if err != nil || !found || !reflect.DeepEqual(restored.Snapshot(), original.Snapshot()) {
@@ -184,13 +188,13 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.ParseCapability(data)
+	contract, err := portable.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var method string
 	for _, descriptor := range contract.Descriptor().Methods {
-		if descriptor.Kind == extension.Mutation {
+		if descriptor.Kind == portable.Mutation {
 			if method != "" {
 				t.Fatal("fixture requires one mutation")
 			}
@@ -210,7 +214,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 		command := exec.CommandContext(ctx, probe, path, filepath.Join(source, "bin", "reviews"), method, "", stage)
 		command.Env = append(os.Environ(), "PLUGIN_DATA="+privateData)
 		client := sdk.NewClient(&sdk.Implementation{Name: "capability-recovery-test"}, nil)
-		if err := pluginsdk.RegisterClient(client); err != nil {
+		if err := qimumcp.RegisterClient(client); err != nil {
 			t.Fatal(err)
 		}
 		session, err := client.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
@@ -221,7 +225,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 		return session
 	}
 	session := connect(evidence, "response")
-	bound, err := pluginsdk.ResolveCapability(ctx, session, "reviews", contract)
+	bound, err := qimumcp.ResolveCapability(ctx, session, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +239,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	}
 	if _, err := write.Invoke(ctx, "original-command", input); err == nil {
 		t.Fatal("lost acknowledgement became known success")
-	} else if _, known := errors.AsType[*extension.Refusal](err); known {
+	} else if _, known := errors.AsType[*portable.Refusal](err); known {
 		t.Fatalf("lost observation became a business refusal: %v", err)
 	}
 	_ = session.Close()
@@ -251,7 +255,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 	if err := json.Unmarshal(encoded, &captured); err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := pluginsdk.DecodeReply[jsontext.Value](captured.Response.Result)
+	accepted, err := qimumcp.DecodeReply[jsontext.Value](captured.Response.Result)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +273,7 @@ func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResen
 		t.Fatalf("probe did not witness committed business evidence: %s, %v", accepted, err)
 	}
 	restarted := connect(guard, "request")
-	original, err := pluginsdk.NewCapabilityBinding(restarted, "reviews", contract)
+	original, err := qimumcp.NewCapabilityBinding(restarted, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,20 +311,21 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	metadata, err := os.ReadFile(filepath.Join(source, "io.github.tangerg.flame", "contracts", "methods.generated.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var methods []struct {
-		Name string               `json:"name"`
-		Kind extension.MethodKind `json:"kind"`
+		Name string              `json:"name"`
+		Kind portable.MethodKind `json:"kind"`
 	}
 	if err := json.Unmarshal(metadata, &methods); err != nil {
 		t.Fatal(err)
 	}
 	var updateMethod string
 	for _, method := range methods {
-		if method.Kind == extension.Mutation {
+		if method.Kind == portable.Mutation {
 			if updateMethod != "" {
 				t.Fatal("receipt fixture requires one declared mutation")
 			}
@@ -334,7 +339,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.ParseCapability(capabilityData)
+	contract, err := portable.ParseCapability(capabilityData)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,6 +429,9 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatal("command replay replaced uncertain execution")
 	}
 	runtime.close()
+	if err := cfg.stores.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	encoded, err := os.ReadFile(evidencePath)
 	if err != nil {
@@ -445,8 +453,8 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := json.Unmarshal(encoded, &evidence); err != nil {
 		t.Fatal(err)
 	}
-	var invocation extension.Invocation
-	if err := json.Unmarshal(evidence.Request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
+	var invocation portable.Invocation
+	if err := json.Unmarshal(evidence.Request.Params.Meta[qimumcp.InvocationMetadataKey], &invocation); err != nil {
 		t.Fatal(err)
 	}
 	identity := invocation.ID
@@ -473,7 +481,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	command := exec.CommandContext(ctx, filepath.Join(source, "bin", "reviews"))
 	command.Env = append(os.Environ(), "PLUGIN_DATA="+evidence.DataDirectory)
 	mcpClient := sdk.NewClient(&sdk.Implementation{Name: "receipt-recovery-test", Version: "1"}, nil)
-	if err := pluginsdk.RegisterClient(mcpClient); err != nil {
+	if err := qimumcp.RegisterClient(mcpClient); err != nil {
 		t.Fatal(err)
 	}
 	backend, err := mcpClient.Connect(ctx, &sdk.CommandTransport{Command: command}, nil)
@@ -485,7 +493,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 			t.Error(err)
 		}
 	})
-	bound, err := pluginsdk.NewCapabilityBinding(backend, "reviews", contract)
+	bound, err := qimumcp.NewCapabilityBinding(backend, "reviews", contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,7 +528,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Fatalf("absent receipt became mutation evidence: %t, %v", found, err)
 	}
 	var inspectedMetadata sdk.Meta
-	if err := inspectedMetadata.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "new-inspected-call", Origin: extension.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
+	if err := inspectedMetadata.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "new-inspected-call", Origin: extension.Model, Parent: invocation.Parent, Target: invocation.Target}); err != nil {
 		t.Fatal(err)
 	}
 	stale, err := backend.CallTool(ctx, &sdk.CallToolParams{Name: evidence.Request.Params.Name, Arguments: evidence.Request.Params.Arguments, Meta: inspectedMetadata})
@@ -557,6 +565,16 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := backend.Close(); err != nil {
 		t.Fatal(err)
 	}
+	cfg.stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := cfg.stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	cfg.providerRegistry = cfg.stores.Providers
 	runtime = poMCPOpen(t, cfg)
 	restored := runtime.must(delivery.RunsGet, protocol.GetRunRequest{RunID: runID}, "").(*protocol.RunRef)
 	if !reflect.DeepEqual(restored.Outcome, finished.Outcome) || modelCalls.Load() != 2 {

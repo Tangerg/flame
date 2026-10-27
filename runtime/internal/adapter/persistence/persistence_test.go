@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
 func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
@@ -26,24 +28,27 @@ func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 	if bundle.IdempotencyNamespace.String() == "" {
 		t.Fatal("Open returned an empty idempotency namespace")
 	}
-	if _, statErr := os.Stat(filepath.Join(dataDirectory, "flame.db")); statErr != nil {
-		t.Fatalf("data directory does not own flame.db: %v", statErr)
+	layout, err := localruntime.DataDirectoryAt(dataDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, statErr := os.Stat(layout.DatabasePath()); statErr != nil {
+		t.Fatalf("data directory does not own the authority database: %v", statErr)
 	}
 }
 
 func TestBundleCloseIsIdempotent(t *testing.T) {
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	bundle, err := Open(t.Context(), Config{DataDirectory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	bundle := &Bundle{db: db}
 	if err := bundle.Close(); err != nil {
 		t.Fatalf("first Close: %v", err)
 	}
 	if err := bundle.Close(); err != nil {
 		t.Fatalf("second Close: %v", err)
 	}
-	if err := db.Ping(); err == nil {
+	if err := bundle.Ping(t.Context()); err == nil {
 		t.Fatal("database remained usable after Bundle.Close")
 	}
 }

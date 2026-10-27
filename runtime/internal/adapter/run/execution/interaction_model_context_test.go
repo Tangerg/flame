@@ -8,6 +8,7 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -101,7 +102,7 @@ func (c *contextCaptureComposition) PrepareContext(ctx context.Context, bindings
 	if executionctx.ModelCallsFromContext(ctx) == nil {
 		c.t.Error("context preparation has no original execution publisher")
 	}
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil || invocation.Parent == "" || invocation.Target.Reference != invocation.ID || selection != testDefaultSelection() || len(bindings) != 1 {
 		c.t.Errorf("original model/context attribution changed: %+v %v", invocation, err)
 	}
@@ -155,6 +156,9 @@ func (*contextCaptureComposition) ResolveToolProposals(context.Context) ([]plugi
 }
 
 func (*contextCaptureComposition) Pending([]plugins.ContributionBinding) bool { return false }
+func (*contextCaptureComposition) RestorationFailure([]plugins.ContributionBinding) (bool, error) {
+	return false, nil
+}
 func (*contextCaptureComposition) ValidateToolProposals(context.Context, []plugins.ContributionBinding) error {
 	return nil
 }
@@ -171,8 +175,16 @@ func (*contextCaptureComposition) PrepareInput(_ context.Context, _ []plugins.Co
 func (c *contextCaptureComposition) Activations(_ context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
 	var activations []plugin.Activation
 	for _, binding := range bindings {
-		dependencies := append(slices.Clone(c.dependencies), plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
-		activations = append(activations, plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: plugin.CompactDependencies(dependencies)})
+		var activation plugin.Activation
+		if binding.Activation != nil {
+			activation = binding.Activation.Clone()
+		} else {
+			dependencies := append(slices.Clone(c.dependencies), plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest})
+			activation = testsupport.ServerActivation("activation", binding.ServerName.String(), dependencies...)
+		}
+		if !slices.ContainsFunc(activations, activation.Equal) {
+			activations = append(activations, activation)
+		}
 	}
 	return activations, nil
 }

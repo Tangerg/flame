@@ -58,7 +58,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	}
 	choose(second, "choose-second")
 	assertUnresolvedInstallationIsHeld(t, r, first)
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r.poMCPTools(server(first), memoryToolsReady)
 	r.must(delivery.PluginsCall, request, "uncertain")
@@ -67,7 +67,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
 	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
-	r = reopenCommandRuntime(t, r, &cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(server(second), memoryToolsReady)
 	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {

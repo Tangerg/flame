@@ -2,11 +2,12 @@ package bootstrap
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
@@ -15,12 +16,15 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 		t.Run(first+" first", func(t *testing.T) {
 			r := poMCPOpen(t, poMCPConfig(t))
 			installed := map[string]*protocol.PluginInstallation{}
+			sources := map[string]string{}
 			install := func(name string) {
 				t.Helper()
-				source, err := filepath.Abs("../../../examples/plugins/composition/" + name + "/package")
-				if err != nil {
+				source := t.TempDir()
+				if err := os.CopyFS(source, os.DirFS(filepath.Join("../../../examples/plugins/composition", name, "package"))); err != nil {
 					t.Fatal(err)
 				}
+				authorPluginPackage(t, source)
+				sources[name] = source
 				row := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+name).(*protocol.PluginInstallation)
 				if len(row.Selected.Diagnostics) != 0 || len(row.Selected.Servers) != 0 {
 					t.Fatalf("independent component admission: %+v", row.Selected)
@@ -35,7 +39,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 						if order == nil {
 							order = []protocol.PluginPointReference{}
 						}
-						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: extension.Target{Scope: "installation", Reference: owner.ID}, Attributes: `{}`, Order: order}
+						return protocol.ResolvePluginPointRequest{Contract: declaration.Contract, Target: portable.Target{Scope: "installation", Reference: owner.ID}, Attributes: `{}`, Order: order}
 					}
 				}
 				t.Fatalf("missing point %s/%s", name, point)
@@ -89,11 +93,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			refused(delivery.PluginsReadResource, resource, protocol.ErrPluginDisabled)
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: provider.ID, Enabled: true}, "reenable-provider")
 			resolve("consumer", "panels", 1)
-			source, err := filepath.Abs("../../../examples/plugins/composition/provider/package")
-			if err != nil {
-				t.Fatal(err)
-			}
-			staged := stageCommandReplacement(t, r, provider, source)
+			staged := stageCommandReplacement(t, r, provider, sources["provider"])
 			if resolve("consumer", "panels", 1).Data[0].Digest != provider.Selected.Digest {
 				t.Fatal("staging advanced selected membership")
 			}

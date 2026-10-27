@@ -39,6 +39,11 @@ var closedVocabulary = sync.OnceValue(func() map[string][]string {
 })
 
 func enumValues(t reflect.Type) ([]string, bool) {
+	// An external protocol vocabulary publishes its own closed values. Reuse
+	// that declaration instead of introducing Flame-specific enum annotations.
+	if values, ok := reflect.Zero(t).Interface().(interface{ Values() []string }); ok {
+		return slices.Clone(values.Values()), true
+	}
 	switch t {
 	case reflect.TypeFor[protocol.RunProtocolFeature]():
 		return runProtocolFeatureValues(), true

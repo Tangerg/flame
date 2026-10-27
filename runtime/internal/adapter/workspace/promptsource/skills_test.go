@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -42,7 +43,7 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	if detail.Source.Scope() != domainskills.ScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
 		t.Fatalf("detail source = %+v", detail)
 	}
-	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +84,7 @@ func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
 			if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
 				t.Fatalf("partial discovery = %+v, %v", found, err)
 			}
-			source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
+			source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +118,7 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "oversized", strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes))
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +138,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	projectRoot := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, projectRoot, "project", "project instructions")
 	writeRuntimeSkill(t, userRoot, "shared", "user instructions")
-	source, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	if skill, err := source.Load(t.Context(), "shared"); err != nil || skill.Instructions != "user instructions" {
 		t.Fatalf("existing execution changed its selected bundle: %+v, %v", skill, err)
 	}
-	fresh, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil)
+	fresh, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +258,7 @@ func TestRuntimeSkillSourcesRejectEscapingProjectRoot(t *testing.T) {
 	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("ListSkills error = %v, want ErrPathOutsideRoot", err)
 	}
-	if _, _, err := OverlaySkillSource(t.Context(), workspace, "", nil, nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+	if _, _, err := OverlaySkillSource(t.Context(), workspace, "", nil, nil, nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("OverlaySkillSource error = %v, want ErrPathOutsideRoot", err)
 	}
 }
@@ -317,7 +318,7 @@ func TestRuntimeSkillSourcesRejectBrokenExistingRoots(t *testing.T) {
 			if _, err := ListSkills(t.Context(), workspace, user, nil); err == nil {
 				t.Fatal("ListSkills silently treated a broken source as absent")
 			}
-			if _, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil); err == nil {
+			if _, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil, nil); err == nil {
 				t.Fatal("OverlaySkillSource silently treated a broken source as absent")
 			}
 		})
@@ -339,7 +340,7 @@ func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +361,7 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,8 +389,19 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 
 type packageSkillFixtures []PackageSkillBundle
 
-func (p packageSkillFixtures) SkillBundles(context.Context) ([]PackageSkillBundle, error) {
-	return p, nil
+func (p packageSkillFixtures) SkillBundles(_ context.Context, retained []plugin.Dependency) ([]PackageSkillBundle, error) {
+	if retained == nil {
+		return p, nil
+	}
+	var result []PackageSkillBundle
+	for _, dependency := range retained {
+		index := slices.IndexFunc(p, func(bundle PackageSkillBundle) bool { return bundle.Dependency == dependency })
+		if index < 0 {
+			return nil, plugin.ErrStale
+		}
+		result = append(result, p[index])
+	}
+	return result, nil
 }
 func (p packageSkillFixtures) ReadSkillResource(_ context.Context, dependency plugin.Dependency, name, resource string) ([]byte, error) {
 	for _, bundle := range p {
@@ -438,7 +450,7 @@ func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
 		if err != nil || len(catalog.Diagnostics) != 1 {
 			t.Fatalf("discovery = %+v, %v", catalog, err)
 		}
-		source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", fixtures, nil)
+		source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", fixtures, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -472,7 +484,7 @@ func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T)
 			writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
 			writeRuntimeSkill(t, root, "review", "local instructions")
 			packages := packageSkillFixtures{bundle}
-			source, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil)
+			source, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil, nil)
 			if err != nil || len(dependencies) != 0 {
 				t.Fatalf("local selection = %v, %v", dependencies, err)
 			}
@@ -493,7 +505,7 @@ func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T)
 			if err != nil || len(listed) != 0 {
 				t.Fatalf("catalog switched to an unadmitted package: %+v, %v", listed, err)
 			}
-			fresh, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil)
+			fresh, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil, nil)
 			if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 				t.Fatalf("fresh selection did not admit its package: %v, %v", dependencies, err)
 			}
@@ -511,7 +523,7 @@ func TestExecutionSkillSelectionDoesNotAdmitLaterNamesOrOverrides(t *testing.T) 
 	writeRuntimeSkill(t, project, "local", "original local instructions")
 	bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
-	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", packageSkillFixtures{bundle}, nil)
+	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", packageSkillFixtures{bundle}, nil, nil)
 	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 		t.Fatalf("package selection = %v, %v", dependencies, err)
 	}
@@ -539,7 +551,7 @@ func TestSkillResourceAuthorityIsRetainedWithoutADiscoverableDocument(t *testing
 	if err := os.WriteFile(filepath.Join(bundle.Root, "review", "reference.txt"), []byte("package resource"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	source, dependencies, err := OverlaySkillSource(t.Context(), "", "", packageSkillFixtures{bundle}, nil)
+	source, dependencies, err := OverlaySkillSource(t.Context(), "", "", packageSkillFixtures{bundle}, nil, nil)
 	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
 		t.Fatalf("callable resource lost its package authority: %v, %v", dependencies, err)
 	}

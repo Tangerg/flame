@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -33,20 +32,17 @@ func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
 		response.Output.FinishReason = chat.FinishReasonLength
 		return response, nil
 	})}
-	storage, handler, ctx, home := newSessionStateE2ERuntime(t, model)
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	host, _, storage := openProtocolRuntimeWithStores(t, model)
 	stores = storage
-	endpoint, err := delivery.NewEndpoint(handler, delivery.EndpointConfig{Lifetime: ctx, IdempotencyStore: stores.Idempotency})
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(cleanup); err != nil {
-			t.Errorf("close endpoint: %v", err)
+		if err := host.Close(); err != nil {
+			t.Errorf("close runtime: %v", err)
 		}
 	})
+	ctx := t.Context()
+	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	created := endpoint.Invoke(ctx, delivery.SessionsCreate, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "truncated compaction summary",

@@ -13,7 +13,10 @@ import (
 	"syscall"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -33,7 +36,7 @@ func run(ctx context.Context) error {
 	}
 	mode, trace := os.Args[1], os.Args[2]
 	server := sdk.NewServer(&sdk.Implementation{Name: "independent-call-contributor"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return err
 	}
@@ -68,8 +71,8 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.ToolCall]) (chat.ToolCall, error) {
-		owner, err := pluginsdk.InvocationFromContext(ctx)
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.ToolCall]) (chat.ToolCall, error) {
+		owner, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil || owner.Origin != extension.Model || owner.Parent == "" || owner.ID != command.Input.ID || command.ID != "" {
 			return chat.ToolCall{}, errors.New("contributor: original Tool owner was replaced")
 		}
@@ -101,12 +104,12 @@ func run(ctx context.Context) error {
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func runDroppingStream(ctx context.Context, server *sdk.Server, backend *pluginsdk.Backend, mode, trace string) error {
-	method, err := pluginsdk.NewStreamingMethod[struct{}, string, bool](pluginsdk.MethodConfig{Name: "example.records/stream.v1", Kind: extension.Mutation, Target: "installation", Description: "Stream the captured command."})
+func runDroppingStream(ctx context.Context, server *sdk.Server, backend *qimumcp.Backend, mode, trace string) error {
+	method, err := qimumcp.NewStreamingMethod[struct{}, string, bool](qimumcp.MethodConfig{Name: "example.records/stream.v1", Kind: portable.Mutation, Target: "installation", Description: "Stream the captured command."})
 	if err != nil {
 		return err
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "example.records/streaming.v1", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "example.records/streaming.v1", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		return err
 	}
@@ -114,28 +117,28 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *plugins
 		_, err := fmt.Fprintln(os.Stdout, contract.Identity().String())
 		return err
 	}
-	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[struct{}]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
-		return func(yield func(pluginsdk.StreamValue[string, bool], error) bool) {
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[struct{}]) iter.Seq2[qimumcp.StreamValue[string, bool], error] {
+		return func(yield func(qimumcp.StreamValue[string, bool], error) bool) {
 			if err := record(ctx, trace, map[string]string{"phase": "started", "id": command.ID}); err != nil {
-				yield(pluginsdk.StreamValue[string, bool]{}, err)
+				yield(qimumcp.StreamValue[string, bool]{}, err)
 				return
 			}
-			if yield(pluginsdk.StreamValue[string, bool]{Chunk: new("witnessed output")}, nil) {
+			if yield(qimumcp.StreamValue[string, bool]{Chunk: new("witnessed output")}, nil) {
 				os.Exit(29)
 			}
 		}
 	}); err != nil {
 		return err
 	}
-	receipt, err := pluginsdk.ReceiptQuery()
+	receipt, err := qimumcp.ReceiptQuery()
 	if err != nil {
 		return err
 	}
-	if err := receipt.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.Receipt, error) {
+	if err := receipt.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
 		if err := record(ctx, trace, map[string]string{"phase": "receipt", "id": command.Input.ID}); err != nil {
-			return pluginsdk.Receipt{}, err
+			return qimumcp.Receipt{}, err
 		}
-		return pluginsdk.Receipt{}, nil
+		return qimumcp.Receipt{}, nil
 	}); err != nil {
 		return err
 	}
@@ -148,16 +151,16 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *plugins
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func runObserver(ctx context.Context, server *sdk.Server, backend *pluginsdk.Backend, layer, trace string) error {
+func runObserver(ctx context.Context, server *sdk.Server, backend *qimumcp.Backend, layer, trace string) error {
 	contract, err := pluginsdk.ModelObserverContract()
 	if err != nil {
 		return err
 	}
-	mark := func(ctx context.Context, command pluginsdk.Command[chat.Request], phase string) error {
+	mark := func(ctx context.Context, command qimumcp.Command[chat.Request], phase string) error {
 		if len(command.Input.Tools) == 0 {
 			return nil
 		}
-		owner, err := pluginsdk.InvocationFromContext(ctx)
+		owner, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil || owner.ID != command.ID || owner.Target.Reference != command.ID {
 			return errors.New("observer: original model identity was replaced")
 		}
@@ -167,11 +170,11 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginsdk.Bac
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+	if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
 		if err := mark(ctx, command, "before"); err != nil {
 			return pluginsdk.ModelResult{}, err
 		}
-		next, err := pluginsdk.CallbackFromContext(ctx)
+		next, err := qimumcp.CallbackFromContext(ctx)
 		if err != nil {
 			return pluginsdk.ModelResult{}, err
 		}
@@ -190,15 +193,15 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginsdk.Bac
 	if err != nil {
 		return err
 	}
-	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[chat.Request]) iter.Seq2[pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-		return func(yield func(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+	if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
+		return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 			if err := mark(ctx, command, "before"); err != nil {
-				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 				return
 			}
-			next, err := pluginsdk.CallbackFromContext(ctx)
+			next, err := qimumcp.CallbackFromContext(ctx)
 			if err != nil {
-				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 				return
 			}
 			for value, err := range pluginsdk.StreamModel(ctx, next, command.ID, command.Input.Clone()) {
@@ -207,7 +210,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginsdk.Bac
 				}
 			}
 			if err := mark(ctx, command, "after"); err != nil {
-				yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+				yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 			}
 		}
 	}); err != nil {

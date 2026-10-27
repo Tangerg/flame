@@ -15,6 +15,7 @@ import (
 func TestInstanceConfigRequiresExactAbsoluteHostPaths(t *testing.T) {
 	valid := InstanceConfig{
 		FirstPartyDirectory:  firstPartyPackages,
+		RunnerExecutable:     testsupport.RunnerExecutable(t),
 		UserHome:             testsupport.TempDirectory(t),
 		DefaultWorkspacePath: testsupport.TempDirectory(t),
 		DataDirectory:        testsupport.TempDirectory(t),
@@ -52,6 +53,7 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 
 	cfg := InstanceConfig{
 		FirstPartyDirectory:  firstPartyPackages,
+		RunnerExecutable:     testsupport.RunnerExecutable(t),
 		UserHome:             testsupport.TempDirectory(t),
 		DefaultWorkspacePath: testsupport.TempDirectory(t),
 		DataDirectory:        testsupport.TempDirectory(t),

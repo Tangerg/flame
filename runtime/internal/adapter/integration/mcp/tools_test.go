@@ -44,8 +44,9 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = session.Close() })
-	tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("metadata")}}, session)
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("metadata")}}
+	owner := ownTestSession(t, session, config)
+	tools, err := sourceTools(t.Context(), owner, config, session)
 	if err != nil || len(tools) != 1 {
 		t.Fatalf("discovery = %+v, %v", tools, err)
 	}
@@ -271,8 +272,9 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer session.Close()
-			tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
+			config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}
+			owner := ownTestSession(t, session, config)
+			tools, err := sourceTools(t.Context(), owner, config, session)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -332,5 +334,35 @@ func TestSourceToolsCarryTheRealizedServerIdentity(t *testing.T) {
 		if err != nil || server != config.ID() || ref.ModelName() != "catalog_lookup" {
 			t.Fatalf("tool identity = %v, %v; want server %v", ref, err, config.ID())
 		}
+	}
+}
+
+// The production connection owner retains each SDK session used by executable
+// tools; discovery-only probes intentionally cannot be invoked.
+func ownTestSession(t *testing.T, session *sdkmcp.ClientSession, config ServerConfig) *connections {
+	t.Helper()
+	owner := newTestConnections(t)
+	if err := owner.ownSessionLocked(session, func() error { return nil }, nil); err != nil {
+		t.Fatal(err)
+	}
+	current := &server{id: config.ID(), config: config}
+	current.settle(session, nil, mcpserver.ConnectionConnected, "", nil)
+	owner.servers = []*server{current}
+	t.Cleanup(func() {
+		if err := owner.shutdown(context.Background()); err != nil {
+			t.Error(err)
+		}
+	})
+	return owner
+}
+
+func TestDiscoveryProbeCannotDispatchWithoutItsSessionOwner(t *testing.T) {
+	session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(`{"type":"object"}`)})
+	tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("probe")}}, session)
+	if err != nil || len(tools) != 1 {
+		t.Fatalf("probe: %v %v", tools, err)
+	}
+	if _, err := tools[0].Call(t.Context(), toolcontract.Invocation{}); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("unowned probe dispatched: %v", err)
 	}
 }
