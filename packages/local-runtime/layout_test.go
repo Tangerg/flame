@@ -50,7 +50,7 @@ func TestDataDirectoryOwnsLocalDeploymentLayout(t *testing.T) {
 	if directory.Path() != want {
 		t.Fatalf("path = %q, want %q", directory.Path(), want)
 	}
-	if directory.DatabasePath() != filepath.Join(want, "flame.db") {
+	if directory.DatabasePath() != filepath.Join(want, "flame-qimu.db") {
 		t.Fatalf("database path = %q", directory.DatabasePath())
 	}
 	if directory.LocalTokenPath() != filepath.Join(want, "local-token") {

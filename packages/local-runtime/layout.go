@@ -15,7 +15,7 @@ const (
 	// product root. README states the layout: Runtime state lives under
 	// $FLAME_HOME/runtime.
 	runtimeStateName = "runtime"
-	databaseFilename = "flame.db"
+	databaseFilename = "flame-qimu.db"
 	localTokenName   = "local-token"
 )
 
@@ -107,4 +107,13 @@ func FirstPartyDirectory(executable string) (string, error) {
 		return "", errors.New("first-party distribution: executable must be absolute")
 	}
 	return filepath.Join(filepath.Dir(executable), "plugins"), nil
+}
+
+// RunnerExecutable names the independently running Qimu process authority in
+// the same distribution as the Runtime host.
+func RunnerExecutable(executable string) (string, error) {
+	if !filepath.IsAbs(executable) {
+		return "", errors.New("runner distribution: executable must be absolute")
+	}
+	return filepath.Join(filepath.Dir(executable), "qimu-runner"), nil
 }
