@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-28. The resumed shared-control batch is qualified on frozen base `35a35b7ff`. Resting fields now use quiet filled surfaces; pending form activation, single-value selector semantics, clipped-anchor retirement and retained-menu reopening are repaired at their existing owners. Native acceptance and cleanup are complete; publication is the remaining delivery step. The whole-product UI goal remains unfinished.
+Updated: 2026-10-28. Shared-control source commit `c435c71c9` is published to remote main and verified. Resting fields now use quiet filled surfaces; pending form activation, single-value selector semantics, clipped-anchor retirement and retained-menu reopening are repaired at their existing owners. Native acceptance and cleanup are complete. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -18,8 +18,9 @@ below. The latest resumed goal restores verified batch publication to main.
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`, synchronized with remote main
-`35a35b7ff` (the remote has no master branch). The user resumed the paused goal.
+is on `codex/ui-feedback-local-1026`. The shared-control batch uses frozen base
+`35a35b7ff` and publishes source commit `c435c71c9` to remote main; the remote has
+no master branch. The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -17922,6 +17923,16 @@ UTF-8 records and **608** private asset hashes, SHA-256
 `3a214ab06756801730d66c613f46c5d6c7c7c4a33cd89f5ab58401905cc0a660`.
 Dependencies, pre-existing caches, reference resources, user data and the primary
 checkout's parallel work remain preserved.
+
+Publication is verified: the **53** explicit owned paths are committed at
+`c435c71c98f22a0a5257f80306e9b19686360eb2` with normal formatter, workspace-lint
+and commit-message hooks. The final fetch finds no incoming main commits;
+`git push origin HEAD:main` advances main from `35a35b7ff`, and `git ls-remote`
+confirms that exact source revision. The owned checkout is clean, all **5,916**
+accepted inputs and cleanup baselines remain preserved after hooks, and the
+primary checkout remains untouched. This documentation-only receipt records that
+delivery without restarting UI or Runtime suites. Continue the supplied Dock
+tab/panel association, wide-window expansion and retained-material return tasks.
 
 Coverage is bounded to these concrete control and settings-return tasks. No
 browser suite, performance benchmark, Claude CLI, subagent, live model Send,
