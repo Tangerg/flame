@@ -70,11 +70,8 @@ func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (captu
 	if err != nil {
 		return capture.Page{}, err
 	}
-	if err := response.Validate(); err != nil {
+	if err := response.ValidateFor(prepared); err != nil {
 		return capture.Page{}, err
-	}
-	if response.Format != prepared.Format {
-		return capture.Page{}, errors.New("web: provider replaced the authored content format")
 	}
 	document, err := capture.NewDocument(capture.Content{URL: prepared.URL, Format: capture.Format(response.Format), Text: response.Content})
 	if err != nil {

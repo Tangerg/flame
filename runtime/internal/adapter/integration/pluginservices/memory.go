@@ -71,7 +71,7 @@ func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.
 	if err != nil {
 		return nil, err
 	}
-	values, err := query[memorycontract.ItemsV1Input, memorycontract.ItemsV1Output](ctx, location, session, memorycontract.ItemsV1Method, memorycontract.ItemsV1Input{Scope: scope, Project: project}, sdk.ParamsBase{})
+	values, err := query[memorycontract.ItemsV2Input, memorycontract.ItemsV2Output](ctx, location, session, memorycontract.ItemsV2Method, memorycontract.ItemsV2Input{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
 	}
-	return memoryPromptItems(memorycontract.ItemsV1Output(values))
+	return memoryPromptItems(memorycontract.ItemsV2Output(values))
 }
 func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]execution.MemoryPromptItem, error) {
 	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
@@ -111,7 +111,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	if err != nil {
 		return nil, err
 	}
-	values, err := query[memorycontract.SearchV1Input, memorycontract.SearchV1Output](ctx, location, session, memorycontract.SearchV1Method, memorycontract.SearchV1Input{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
+	values, err := query[memorycontract.SearchV2Input, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchV2Input{Project: project, Query: text, TopK: int64(topK), EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
 	}
-	return memoryPromptItems(memorycontract.ItemsV1Output(values))
+	return memoryPromptItems(memorycontract.ItemsV2Output(values))
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
 	binding, _, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
@@ -167,7 +167,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	})
 	return err
 }
-func memoryPromptItems(values memorycontract.ItemsV1Output) ([]execution.MemoryPromptItem, error) {
+func memoryPromptItems(values memorycontract.ItemsV2Output) ([]execution.MemoryPromptItem, error) {
 	items := make([]execution.MemoryPromptItem, len(values))
 	for i, value := range values {
 		if value.UpdatedAt.IsZero() {

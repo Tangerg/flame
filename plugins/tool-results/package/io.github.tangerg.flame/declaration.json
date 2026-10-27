@@ -194,6 +194,18 @@
       "export": "RecordedResult"
     },
     {
+      "id": "web-browse",
+      "title": "Web Browse",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "web_browse"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
       "id": "search-memory",
       "title": "Search Memory",
       "scope": "toolResult",

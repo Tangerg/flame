@@ -68,7 +68,7 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 			}
 			// An unavailable, absent, conflicting, or malformed receipt proves
 			// nothing about the original mutation. The Effect remains Unknown.
-			failure, knownFailure := errors.AsType[*toolcontract.Failure](queryErr)
+			failure, knownFailure := toolcontract.ClassifyFailure(queryErr)
 			if queryErr != nil && !knownFailure || output == nil {
 				if queryErr != nil {
 					slog.WarnContext(ctx, "execution: original Tool result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
@@ -76,9 +76,6 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 				continue
 			}
 			if knownFailure {
-				if err := failure.Validate(); err != nil {
-					return resolved, err
-				}
 				value := failure.Output()
 				output = &value
 			}

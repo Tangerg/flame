@@ -1,11 +1,77 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateCommentInput"
+    },
+    "Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fComment"
+    },
+    "Method_flame_2egithub_2fcreate_2dissue_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateIssueInput"
+    },
+    "Method_flame_2egithub_2fcreate_2dissue_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssue"
+    },
+    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateReviewCommentInput"
+    },
+    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewComment"
+    },
+    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreatePullInput"
+    },
+    "Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullRequest"
+    },
+    "Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommentInput"
+    },
+    "Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fDeletedComment"
+    },
+    "Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommentInput"
+    },
+    "Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fDeletedComment"
+    },
     "Method_flame_2egithub_2fget_2dissue_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssueInput"
     },
     "Method_flame_2egithub_2fget_2dissue_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssue"
+    },
+    "Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssueInput"
+    },
+    "Method_flame_2egithub_2fget_2dpull_2drequest_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullRequest"
+    },
+    "Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckInput"
+    },
+    "Method_flame_2egithub_2flist_2dcheck_2dannotations_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fAnnotationPage"
+    },
+    "Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommitInput"
+    },
+    "Method_flame_2egithub_2flist_2dcheck_2druns_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckPage"
+    },
+    "Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommitInput"
+    },
+    "Method_flame_2egithub_2flist_2dcommit_2dstatuses_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fStatusPage"
+    },
+    "Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fThreadInput"
+    },
+    "Method_flame_2egithub_2flist_2dissue_2dcomments_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommentPage"
     },
     "Method_flame_2egithub_2flist_2dissues_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fListInput"
@@ -13,11 +79,777 @@
     "Method_flame_2egithub_2flist_2dissues_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssuePage"
     },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fThreadInput"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dcomments_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewCommentPage"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fThreadInput"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dfiles_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fFilePage"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fThreadInput"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequest_2dreviews_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewPage"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullListInput"
+    },
+    "Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullPage"
+    },
+    "Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fMergePullInput"
+    },
+    "Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fMergeResult"
+    },
     "Method_flame_2egithub_2fread_2dfile_2ev1Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fFileInput"
     },
     "Method_flame_2egithub_2fread_2dfile_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fFile"
+    },
+    "Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReplyReviewCommentInput"
+    },
+    "Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewComment"
+    },
+    "Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fSubmitReviewInput"
+    },
+    "Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReview"
+    },
+    "Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fUpdateCommentInput"
+    },
+    "Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fComment"
+    },
+    "Method_flame_2egithub_2fupdate_2dissue_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fUpdateIssueInput"
+    },
+    "Method_flame_2egithub_2fupdate_2dissue_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssue"
+    },
+    "Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Input": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fUpdateCommentInput"
+    },
+    "Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Output": {
+      "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewComment"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fAnnotation": {
+      "additionalProperties": false,
+      "properties": {
+        "endColumn": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "endLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "level": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "rawDetails": {
+          "type": "string"
+        },
+        "startColumn": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "startLine",
+        "endLine",
+        "level",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fAnnotationPage": {
+      "additionalProperties": false,
+      "properties": {
+        "annotations": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fAnnotation"
+          },
+          "type": "array"
+        },
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "annotations"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fBranch": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "ref",
+        "sha"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fChangedFile": {
+      "additionalProperties": false,
+      "properties": {
+        "additions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "changes": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "deletions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "previousPath": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha",
+        "status",
+        "additions",
+        "deletions",
+        "changes"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckInput": {
+      "additionalProperties": false,
+      "properties": {
+        "checkRunId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "checkRunId",
+        "page",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckPage": {
+      "additionalProperties": false,
+      "properties": {
+        "checkRuns": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckRun"
+          },
+          "type": "array"
+        },
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "checkRuns"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCheckRun": {
+      "additionalProperties": false,
+      "properties": {
+        "annotationsCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "completedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "conclusion": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "headSha",
+        "status",
+        "url",
+        "title",
+        "summary",
+        "text",
+        "annotationsCount"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commentId"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommentPage": {
+      "additionalProperties": false,
+      "properties": {
+        "comments": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fComment"
+          },
+          "type": "array"
+        },
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "comments"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommitInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ref": {
+          "description": "Use the exact pull request head SHA to inspect checks for that revision.",
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "ref",
+        "page",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommitStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "context",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "body"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateIssueInput": {
+      "additionalProperties": false,
+      "properties": {
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "title"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreatePullInput": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "head": {
+          "description": "Existing source branch, qualified as owner:branch for a fork.",
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "headRepository": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "maintainerCanModify": {
+          "type": "boolean"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "title",
+        "head",
+        "base"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCreateReviewCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "commitId": {
+          "minLength": 1,
+          "pattern": "^[0-9a-fA-F]{40}$",
+          "type": "string"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "startSide": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "commitId",
+        "path",
+        "body",
+        "line",
+        "side"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fDeletedComment": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "const": true,
+          "type": "boolean"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "deleted"
+      ],
+      "type": "object"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fFile": {
       "additionalProperties": false,
@@ -72,14 +904,128 @@
       ],
       "type": "object"
     },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fFilePage": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fChangedFile"
+          },
+          "type": "array"
+        },
+        "limitReached": {
+          "type": "boolean"
+        },
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "files",
+        "limitReached"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fInlineComment": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "startSide": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "body",
+        "line",
+        "side"
+      ],
+      "type": "object"
+    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fIssue": {
       "additionalProperties": false,
       "properties": {
+        "assignees": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "author": {
           "type": "string"
         },
         "body": {
           "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "number": {
           "allOf": [
@@ -88,6 +1034,7 @@
               "minimum": -9223372036854775808
             }
           ],
+          "minimum": 1,
           "type": "integer"
         },
         "pullRequest": {
@@ -107,6 +1054,9 @@
           ],
           "type": "string"
         },
+        "stateReason": {
+          "type": "string"
+        },
         "title": {
           "type": "string"
         },
@@ -119,6 +1069,7 @@
         }
       },
       "required": [
+        "id",
         "repository",
         "number",
         "title",
@@ -127,7 +1078,9 @@
         "url",
         "author",
         "pullRequest",
-        "updatedAt"
+        "updatedAt",
+        "labels",
+        "assignees"
       ],
       "type": "object"
     },
@@ -227,6 +1180,753 @@
         "state",
         "page",
         "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fMergePullInput": {
+      "additionalProperties": false,
+      "properties": {
+        "commitMessage": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "commitTitle": {
+          "maxLength": 256,
+          "type": "string"
+        },
+        "headSha": {
+          "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
+          "minLength": 1,
+          "pattern": "^[0-9a-fA-F]{40}$",
+          "type": "string"
+        },
+        "mergeMethod": {
+          "allOf": [
+            {
+              "enum": [
+                "merge",
+                "squash",
+                "rebase"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "headSha",
+        "mergeMethod"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fMergeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "merged": {
+          "const": true,
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sha": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha",
+        "merged",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "head": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        },
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "state",
+        "page",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullPage": {
+      "additionalProperties": false,
+      "properties": {
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "pullRequests": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullRequest"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "pullRequests"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fPullRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "additions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "author": {
+          "type": "string"
+        },
+        "base": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fBranch"
+        },
+        "body": {
+          "type": "string"
+        },
+        "changedFiles": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "deletions": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "head": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fBranch"
+        },
+        "maintainerCanModify": {
+          "type": "boolean"
+        },
+        "mergeable": {
+          "type": "boolean"
+        },
+        "mergeableState": {
+          "type": "string"
+        },
+        "mergedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "title",
+        "body",
+        "state",
+        "url",
+        "author",
+        "draft",
+        "head",
+        "base",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReplyReviewCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "commentId",
+        "body"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReview": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "submittedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "state"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "commitId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "diffHunk": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "inReplyTo": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "originalCommitId": {
+          "type": "string"
+        },
+        "originalLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reviewId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "side": {
+          "type": "string"
+        },
+        "startLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "startSide": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "reviewId",
+        "path",
+        "diffHunk",
+        "commitId",
+        "originalCommitId",
+        "side"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewCommentPage": {
+      "additionalProperties": false,
+      "properties": {
+        "comments": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewComment"
+          },
+          "type": "array"
+        },
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "comments"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReviewPage": {
+      "additionalProperties": false,
+      "properties": {
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fReview"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "reviews"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fStatusPage": {
+      "additionalProperties": false,
+      "properties": {
+        "nextPage": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fCommitStatus"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "statuses"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fSubmitReviewInput": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "comments": {
+          "items": {
+            "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fInlineComment"
+          },
+          "type": "array"
+        },
+        "commitId": {
+          "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
+          "minLength": 1,
+          "pattern": "^[0-9a-fA-F]{40}$",
+          "type": "string"
+        },
+        "event": {
+          "allOf": [
+            {
+              "enum": [
+                "APPROVE",
+                "REQUEST_CHANGES",
+                "COMMENT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "commitId",
+        "event"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fThreadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "page",
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fUpdateCommentInput": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 65536,
+          "minLength": 1,
+          "type": "string"
+        },
+        "commentId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "commentId",
+        "body"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_5fUpdateIssueInput": {
+      "additionalProperties": false,
+      "properties": {
+        "assignees": {
+          "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "maxLength": 65536,
+          "type": "string"
+        },
+        "duplicateIssueId": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "description": "Global id returned by get_issue for the canonical duplicate, not its issue number.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "labels": {
+          "description": "Replaces the label set; [] clears it. Omit to preserve it.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "stateReason": {
+          "allOf": [
+            {
+              "enum": [
+                "completed",
+                "not_planned",
+                "duplicate",
+                "reopened"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number"
       ],
       "type": "object"
     }

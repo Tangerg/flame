@@ -315,7 +315,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV1Input{Scope: string(userTarget.Scope), Content: "integration preference"})
+	addition, err := agentMemory.PrepareAdd(t.Context(), memory.AddV2Input{Scope: string(userTarget.Scope), Content: "integration preference"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +324,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatal(err)
 	}
 	addedResult, err := agentMemory.DecodeAdd(addedReply)
-	added := memoryProjection(memory.UpdateV1Output(addedResult.Item))
+	added := memoryProjection(memory.UpdateV2Output(addedResult.Item))
 	if err != nil {
 		t.Fatalf("Add agent memory: %v", err)
 	}
@@ -333,7 +333,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateV1Input{ID: added.ID, Pinned: &pinned})
+	update, err := agentMemory.PrepareUpdate(t.Context(), memory.UpdateV2Input{ExpectedRevision: 1, ID: added.ID, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if err != nil || !updated.Pinned {
 		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
 	}
-	deletion, err := agentMemory.PrepareDelete(t.Context(), added.ID)
+	deletion, err := agentMemory.PrepareDelete(t.Context(), added.ID, updated.Revision)
 	if err != nil {
 		t.Fatalf("Prepare agent memory deletion: %v", err)
 	}

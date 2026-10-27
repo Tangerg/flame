@@ -1024,7 +1024,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	toolInvocations := db.ToolInvocations
 	toolStartedAt := createdAt.Add(500 * time.Millisecond)
 	if startToolInvocationErr := toolInvocations.StartToolInvocation(
-		ctx, "ses_1", "run_1", "seg_open", "tool_ask", "item_tool", toolStartedAt,
+		ctx, "ses_1", "run_1", "seg_open", "tool_ask", "item_tool", toolStartedAt, nil,
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}

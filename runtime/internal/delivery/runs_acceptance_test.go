@@ -21,7 +21,7 @@ func TestCapturedOpeningCollisionPreservesKnownInvalidTarget(t *testing.T) {
 }
 
 func TestAcceptanceVerifiesOriginalRequestAndActorAfterMaterialRetires(t *testing.T) {
-	request := protocol.StartRunRequest{NewSession: &protocol.RunSessionOpening{SessionID: "ses_captured", RunID: "run_captured", Title: "captured", Workspace: protocol.WorkspaceRef{Path: "/work"}}, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "original"}}}
+	request := protocol.StartRunRequest{NewSession: &protocol.RunSessionOpening{SessionID: "ses_captured", RunID: "run_captured", Title: "captured", Workspace: &protocol.WorkspaceRef{Path: "/work"}}, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "original"}}}
 	fingerprint, err := runCommandFingerprint(RunsStart, request, nil)
 	if err != nil {
 		t.Fatal(err)

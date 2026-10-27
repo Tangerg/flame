@@ -96,9 +96,8 @@ func TestSelectedModelCallsHaveIndependentRoutesBudgetsAndDurableEvidence(t *tes
 				return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-" + request.Options.Model, Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3}}}, nil
 			})
 			routing := &routedCallResolver{model: endpoint}
-			observed, err := models.NewObservedResolver(routing, db.ModelInvocations, func(_ string, _ string, _ *chat.Usage) accounting.Cost {
-				value, _ := accounting.NewCost(1.5)
-				return value
+			observed, err := models.NewObservedResolver(routing, db.ModelInvocations, func(_ string, _ string, _ *chat.Usage) (accounting.Cost, error) {
+				return accounting.NewCost(1.5)
 			})
 			if err != nil {
 				t.Fatal(err)

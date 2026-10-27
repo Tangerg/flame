@@ -34,12 +34,11 @@ func TestEndpointEvidenceSurvivesOuterObserverFailureAndHostRestart(t *testing.T
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("durable inner"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "served-model", Usage: &chat.Usage{InputTokens: 11, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, db.ModelInvocations, func(provider, served string, usage *chat.Usage) accounting.Cost {
+	resolver, err := models.NewObservedResolver(endpointResolver{model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) { calls.Add(1); return response, nil })}, db.ModelInvocations, func(provider, served string, usage *chat.Usage) (accounting.Cost, error) {
 		if provider != "anthropic" || served != "served-model" || usage.InputTokens != 11 {
 			t.Fatal("pricing replaced captured provider/served identity")
 		}
-		value, _ := accounting.NewCost(1.5)
-		return value
+		return accounting.NewCost(1.5)
 	})
 	if err != nil {
 		t.Fatal(err)

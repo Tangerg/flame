@@ -13,7 +13,7 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manual, err := scheduled.ManualRun("ses_manual", "run_manual", now, testInvocation())
+	manual, err := scheduled.ManualRun("manual-command", "ses_manual", "run_manual", now, testInvocation())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,6 +48,16 @@ func TestCapturedRunRequestRestoresOneExecutionOwner(t *testing.T) {
 				}
 			})
 		}
+	}
+	missing := manual.Snapshot()
+	missing.CommandID = ""
+	if _, err := RestoreRunRequest(missing); err == nil {
+		t.Fatal("manual capture without its original receipt command was admitted")
+	}
+	mixed := claim.Occurrence().RunRequest().Snapshot()
+	mixed.CommandID = "manual-command"
+	if _, err := RestoreRunRequest(mixed); err == nil {
+		t.Fatal("cron capture acquired a manual command owner")
 	}
 }
 

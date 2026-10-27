@@ -24,6 +24,21 @@ type DocumentInput struct {
 	ExpectedRevision int64  `json:"expectedRevision" jsonschema:"minimum=1"`
 }
 
+type ReadInput struct {
+	ID string `json:"id" jsonschema:"minLength=1"`
+}
+
+func (ReadInput) JSONSchemaExtend(schema *jsonschema.Schema) {
+	if id, ok := schema.Properties.Get("id"); ok {
+		id.MaxLength = new(uint64(knowledge.MaxIDRunes))
+	}
+}
+
+type DocumentRead struct {
+	Document knowledge.Header `json:"document"`
+	Text     string           `json:"text"`
+}
+
 func (DocumentInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 	if id, ok := schema.Properties.Get("id"); ok {
 		id.MaxLength = new(uint64(knowledge.MaxIDRunes))
@@ -47,8 +62,10 @@ func (SearchInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 type Contracts struct {
 	Capability *extension.Capability
 	Import     *pluginsdk.Method[ImportInput, knowledge.Header]
+	Reindex    *pluginsdk.Method[DocumentInput, knowledge.Header]
 	Delete     *pluginsdk.Method[DocumentInput, bool]
 	List       *pluginsdk.Method[struct{}, []knowledge.Header]
+	Read       *pluginsdk.Method[ReadInput, DocumentRead]
 	Search     *pluginsdk.Method[SearchInput, []knowledge.Match]
 }
 
@@ -56,6 +73,10 @@ func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
 	c.Import, err = pluginsdk.NewMethod[ImportInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.Reindex, err = pluginsdk.NewMethod[DocumentInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/reindex.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role."})
 	if err != nil {
 		return Contracts{}, err
 	}
@@ -71,6 +92,10 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.Import.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Search.Descriptor())
+	c.Read, err = pluginsdk.NewMethod[ReadInput, DocumentRead](pluginsdk.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O."})
+	if err != nil {
+		return Contracts{}, err
+	}
+	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.Import.Descriptor(), c.Reindex.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Read.Descriptor(), c.Search.Descriptor())
 	return c, err
 }

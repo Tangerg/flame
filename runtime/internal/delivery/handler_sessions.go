@@ -149,13 +149,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 }
 
 func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
-	// Workspace defaults to the serve directory when the
-	// client omits it for cold-start use.
-	cwd := s.serverInfo.DefaultWorkspace.Path
-	if in.Workspace != nil {
-		cwd = in.Workspace.Path
-	}
-	view, err := s.sessions.CreateView(ctx, in.Title, cwd)
+	view, err := s.sessions.CreateView(ctx, in.Title, s.sessionWorkspacePath(in.Workspace))
 	if err != nil {
 		return nil, err
 	}

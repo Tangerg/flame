@@ -27,7 +27,7 @@ func TestCapturedTriggerSurvivesRestartAndCannotBeRewritten(t *testing.T) {
 	}
 	model := testsupport.ScheduleInvocation()
 	model.ID, model.Origin, model.Parent = "original-tool", extension.Model, "run_parent"
-	manual, err := definition.ManualRun("ses_manual", "run_manual", now, model)
+	manual, err := definition.ManualRun("manual-command", "ses_manual", "run_manual", now, model)
 	if err != nil {
 		t.Fatal(err)
 	}

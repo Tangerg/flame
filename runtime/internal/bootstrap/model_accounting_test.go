@@ -23,9 +23,8 @@ func TestDispatchedUnknownModelCallInvalidatesRunTotalCost(t *testing.T) {
 	}
 	model := &knownThenUnknownModel{}
 	cfg := protocolRuntimeConfig(t, stores, model)
-	cfg.pricing = func(string, string, *chat.Usage) accounting.Cost {
-		cost, _ := accounting.NewCost(.25)
-		return cost
+	cfg.pricing = func(string, string, *chat.Usage) (accounting.Cost, error) {
+		return accounting.NewCost(.25)
 	}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {

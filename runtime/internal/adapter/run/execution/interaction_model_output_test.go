@@ -32,7 +32,7 @@ func TestInteractionBillsPersistedEndpointWhenOuterResultIsMissingOrChanged(t *t
 			provider := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return interactionUsageTextResponse("physical answer", 12, 3), nil
 			})
-			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) accounting.Cost { value, _ := accounting.NewCost(0.25); return value })
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) (accounting.Cost, error) { return accounting.NewCost(0.25) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,9 +198,8 @@ func TestOuterStreamFailureWaitsForPhysicalSettlement(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			journal := db.ModelInvocations
 			provider := budgetStopCompleteModel{text: "physical answer", usage: &chat.Usage{InputTokens: 12, OutputTokens: 3}}
-			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) accounting.Cost {
-				cost, _ := accounting.NewCost(.25)
-				return cost
+			recorded, err := modeladapter.NewObservedResolver(interactionChatResolver(provider, nil), fixtureEndpointJournal{ModelInvocationStore: journal, db: db}, func(string, string, *chat.Usage) (accounting.Cost, error) {
+				return accounting.NewCost(.25)
 			})
 			if err != nil {
 				t.Fatal(err)

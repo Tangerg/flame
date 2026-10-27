@@ -2,6 +2,7 @@
 package memory
 
 const (
+	SearchToolName         = "search_memory"
 	MaxModelInputBytes     = 524288
 	MaxModelOutputTokens   = 2048
 	MaxModelCalls          = 2

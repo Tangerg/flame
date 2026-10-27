@@ -1,31 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Method_flame_2ememory_2fadd_2ev1Input": {
+    "Method_flame_2ememory_2fadd_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddInput"
     },
-    "Method_flame_2ememory_2fadd_2ev1Output": {
+    "Method_flame_2ememory_2fadd_2ev2Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAddResult"
     },
-    "Method_flame_2ememory_2fdelete_2ev1Input": {
+    "Method_flame_2ememory_2fdelete_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput"
     },
-    "Method_flame_2ememory_2fdelete_2ev1Output": {
+    "Method_flame_2ememory_2fdelete_2ev2Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck"
     },
-    "Method_flame_2ememory_2fitems_2ev1Input": {
+    "Method_flame_2ememory_2fitems_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemsInput"
     },
-    "Method_flame_2ememory_2fitems_2ev1Output": {
+    "Method_flame_2ememory_2fitems_2ev2Output": {
       "items": {
         "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
       },
       "type": "array"
     },
-    "Method_flame_2ememory_2flist_2ev1Input": {
+    "Method_flame_2ememory_2flist_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fListInput"
     },
-    "Method_flame_2ememory_2flist_2ev1Output": {
+    "Method_flame_2ememory_2flist_2ev2Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fPage"
     },
     "Method_flame_2ememory_2fmaintain_2ev1Input": {
@@ -34,25 +34,25 @@
     "Method_flame_2ememory_2fmaintain_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fMaintenanceResult"
     },
-    "Method_flame_2ememory_2freview_2ev1Input": {
+    "Method_flame_2ememory_2freview_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fReviewInput"
     },
-    "Method_flame_2ememory_2freview_2ev1Output": {
+    "Method_flame_2ememory_2freview_2ev2Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck"
     },
-    "Method_flame_2ememory_2fsearch_2ev1Input": {
+    "Method_flame_2ememory_2fsearch_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fSearchInput"
     },
-    "Method_flame_2ememory_2fsearch_2ev1Output": {
+    "Method_flame_2ememory_2fsearch_2ev2Output": {
       "items": {
         "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
       },
       "type": "array"
     },
-    "Method_flame_2ememory_2fupdate_2ev1Input": {
+    "Method_flame_2ememory_2fupdate_2ev2Input": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fUpdateInput"
     },
-    "Method_flame_2ememory_2fupdate_2ev1Output": {
+    "Method_flame_2ememory_2fupdate_2ev2Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_5fItemSnapshot"
     },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fAck": {
@@ -129,12 +129,24 @@
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_5fItemInput": {
       "additionalProperties": false,
       "properties": {
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
         "ID": {
           "type": "string"
         }
       },
       "required": [
-        "ID"
+        "ID",
+        "ExpectedRevision"
       ],
       "type": "object"
     },
@@ -282,12 +294,24 @@
           ],
           "type": "string"
         },
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
         "ID": {
           "type": "string"
         }
       },
       "required": [
         "ID",
+        "ExpectedRevision",
         "Decision"
       ],
       "type": "object"
@@ -328,6 +352,17 @@
         "Content": {
           "type": "string"
         },
+        "ExpectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
         "ID": {
           "type": "string"
         },
@@ -336,7 +371,8 @@
         }
       },
       "required": [
-        "ID"
+        "ID",
+        "ExpectedRevision"
       ],
       "type": "object"
     },
@@ -392,6 +428,17 @@
         "Project": {
           "type": "string"
         },
+        "Revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer"
+        },
         "Scope": {
           "allOf": [
             {
@@ -425,6 +472,7 @@
       },
       "required": [
         "ID",
+        "Revision",
         "Scope",
         "Project",
         "Content",

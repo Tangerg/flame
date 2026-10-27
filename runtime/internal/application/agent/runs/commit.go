@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -99,6 +100,7 @@ func (t ToolInvocationState) String() string {
 // one canonical Tool Item. ItemID connects the operational start boundary to
 // the eventual Transcript projection without copying arguments or result data.
 type ToolInvocationCommit struct {
+	Caller     *plugin.ToolCaller
 	CallID     string
 	ItemID     string
 	SegmentID  string
@@ -108,6 +110,17 @@ type ToolInvocationCommit struct {
 }
 
 func (t ToolInvocationCommit) Validate() error {
+	if t.Caller != nil {
+		if t.State != ToolInvocationStarted {
+			return errors.New("runs: only Tool dispatch admission may capture a caller")
+		}
+		if err := t.Caller.Validate(); err != nil {
+			return err
+		}
+		if t.Caller.Snapshot().Invocation.ID != t.CallID {
+			return plugin.ErrCommandConflict
+		}
+	}
 	if err := ValidateInvocation(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
@@ -260,6 +273,11 @@ func (e EventCommit) clone() EventCommit {
 		}
 	}
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
+	for index := range e.ToolInvocations {
+		if e.ToolInvocations[index].Caller != nil {
+			e.ToolInvocations[index].Caller = new(*e.ToolInvocations[index].Caller)
+		}
+	}
 	if e.Progress != nil {
 		e.Progress = new(*e.Progress)
 	}

@@ -50,15 +50,26 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 	if err != nil {
 		return err
 	}
-	searchTool, err := newAgentMemorySearch(toolSearch{store: store})
+	searchTool, err := newAgentMemorySearch(toolSearch{store: store, roots: roots})
 	if err != nil {
 		return err
 	}
-	if err := pluginsdk.RegisterTools(server, searchTool); err != nil {
+	tools, err := buildMemoryTools(review, db)
+	if err != nil {
+		return err
+	}
+	if err := pluginsdk.RegisterTools(server, append(tools, searchTool)...); err != nil {
+		return err
+	}
+	toolReceipts, err := pluginsdk.ToolReceiptQuery()
+	if err != nil {
 		return err
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+			return memoryToolReceipt(ctx, db, command.Input)
+		}),
 		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
@@ -82,14 +93,14 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 			return rpc.AddResult{Item: item.Snapshot(), Changed: changed}, err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.UpdateInput) (memory.ItemSnapshot, error) {
-			item, err := review.Update(ctx, input.ID, input.Content, input.Pinned)
+			item, err := review.Update(ctx, input.ID, input.ExpectedRevision, input.Content, input.Pinned)
 			return item.Snapshot(), err
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Delete(ctx, input.ID)
+			return rpc.Ack{}, review.Delete(ctx, input.ID, input.ExpectedRevision)
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Review, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReviewInput) (rpc.Ack, error) {
-			return rpc.Ack{}, review.Review(ctx, input.ID, input.Decision)
+			return rpc.Ack{}, review.Review(ctx, input.ID, input.ExpectedRevision, input.Decision)
 		}),
 		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
 			input := command.Input
@@ -174,9 +185,16 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, roots app.RootR
 	return backend.Publish()
 }
 
-type toolSearch struct{ store store }
+type toolSearch struct {
+	store store
+	roots app.RootResolver
+}
 
 func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
+	project, err := s.roots.ResolveExistingDir(project)
+	if err != nil {
+		return nil, errors.Join(app.ErrWorkspaceUnavailable, err)
+	}
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
 		return nil, err

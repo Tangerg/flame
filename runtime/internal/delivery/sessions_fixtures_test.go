@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -1127,7 +1128,7 @@ func (inertRuntimeStores) MarkModelInvocationUnknown(context.Context, string, st
 	return nil
 }
 
-func (inertRuntimeStores) StartToolInvocation(context.Context, string, string, string, string, string, time.Time) error {
+func (inertRuntimeStores) StartToolInvocation(context.Context, string, string, string, string, string, time.Time, *plugin.ToolCaller) error {
 	return nil
 }
 

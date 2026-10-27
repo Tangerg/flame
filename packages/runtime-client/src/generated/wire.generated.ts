@@ -1663,7 +1663,7 @@ export interface RunSessionOpening {
   runId: string;
   sessionId: string;
   title: string;
-  workspace: WorkspaceRef;
+  workspace?: WorkspaceRef;
 }
 
 export type RunStatus = "running" | "waiting" | "finished";

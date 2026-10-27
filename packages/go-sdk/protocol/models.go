@@ -102,8 +102,8 @@ type ModelCapabilities struct {
 	StructuredOutput bool `json:"structuredOutput,omitzero"`
 }
 
-// ModelPricing describes per-million-token pricing. The primary rate
-// band; cache rates are zero when the provider doesn't price cache separately.
+// ModelPricing describes effective per-million-token prices in the primary
+// rate band. Cache rates include the catalog's input-rate default; zero is free.
 // Long-context models that reprice past a token threshold carry only their base
 // band here — full banded pricing isn't surfaced on the wire.
 type ModelPricing struct {

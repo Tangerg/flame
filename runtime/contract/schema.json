@@ -9582,8 +9582,7 @@
       "required": [
         "runId",
         "sessionId",
-        "title",
-        "workspace"
+        "title"
       ]
     },
     "RunStatus": {

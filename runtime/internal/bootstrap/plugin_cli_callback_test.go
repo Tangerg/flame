@@ -35,7 +35,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	}
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(server, scheduleToolsReady)
 	discovery := r.must(delivery.RuntimeDiscover, struct{}{}, "").(*protocol.DiscoverResponse)
 	transport, err := flamehttp.NewServer(flamehttp.Config{Endpoint: r.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, LocalToken: "cli-plugin-acceptance-token"})
 	if err != nil {

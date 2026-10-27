@@ -83,30 +83,41 @@ func (s *store) documents(ctx context.Context) ([]knowledge.Document, error) {
 	return documents, nil
 }
 
-func (s *store) replace(ctx context.Context, id string, expected int64, indexed knowledge.IndexedDraft) (knowledge.Header, error) {
+func (s *store) indexTarget(ctx context.Context, id string, expected int64) (knowledge.Document, error) {
 	var retired bool
 	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM retired_documents WHERE id=?)`, id).Scan(&retired); err != nil {
-		return knowledge.Header{}, err
+		return knowledge.Document{}, err
 	}
 	if retired {
-		return knowledge.Header{}, knowledge.ErrRetired
+		return knowledge.Document{}, knowledge.ErrRetired
 	}
 	current, err := s.read(ctx, id)
+	if err != nil {
+		return knowledge.Document{}, err
+	}
+	if err := current.CheckReplacement(expected, id); err != nil {
+		return knowledge.Document{}, err
+	}
+	if current.Header().Revision == 0 {
+		var count int
+		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM documents`).Scan(&count); err != nil {
+			return knowledge.Document{}, err
+		}
+		if count >= knowledge.MaxDocuments {
+			return knowledge.Document{}, knowledge.ErrCapacity
+		}
+	}
+	return current, nil
+}
+
+func (s *store) replace(ctx context.Context, id string, expected int64, indexed knowledge.IndexedDraft) (knowledge.Header, error) {
+	current, err := s.indexTarget(ctx, id, expected)
 	if err != nil {
 		return knowledge.Header{}, err
 	}
 	next, err := current.Replace(expected, indexed)
 	if err != nil {
 		return knowledge.Header{}, err
-	}
-	if current.Header().Revision == 0 {
-		var count int
-		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM documents`).Scan(&count); err != nil {
-			return knowledge.Header{}, err
-		}
-		if count >= knowledge.MaxDocuments {
-			return knowledge.Header{}, knowledge.ErrCapacity
-		}
 	}
 	encoded, err := json.Marshal(next.Snapshot())
 	if err != nil {
@@ -131,7 +142,7 @@ func (s *store) delete(ctx context.Context, id string, expected int64) (bool, er
 	return err == nil, err
 }
 
-func (s *store) completeImport(ctx context.Context, prepared *pluginstorage.PreparedCommand, publish func(context.Context) (knowledge.Header, error)) (knowledge.Header, error) {
+func (s *store) completeIndex(ctx context.Context, prepared *pluginstorage.PreparedCommand, publish func(context.Context) (knowledge.Header, error)) (knowledge.Header, error) {
 	var result knowledge.Header
 	var outcomeErr error
 	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {

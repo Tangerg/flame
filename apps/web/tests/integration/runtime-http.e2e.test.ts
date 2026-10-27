@@ -44,6 +44,7 @@ import {
 import {
   PROTOCOL_VERSION,
   type MCPServerID,
+  type MCPTool,
   type RequestMeta,
   type RunEvent,
   type RuntimeEvent,
@@ -782,17 +783,21 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
       origin: { type: "installation" as const, installationId: installation.id },
       name: feature,
     };
-    await awaitMCPTools(server, feature === "memory" ? 1 : 3);
+    await awaitMCPTools(server, (tools) =>
+      tools.some(
+        (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+      ),
+    );
     return installation;
   };
 
   const awaitMCPTools = async (
     server: Parameters<FlameClient["mcp"]["listTools"]>[0],
-    count: number,
+    ready: (tools: MCPTool[]) => boolean,
   ) => {
     if (!client) throw new Error("runtime client was not initialized");
     const deadline = Date.now() + defaultTestDeadlineMilliseconds;
-    while ((await client.mcp.listTools(server)).data.length !== count) {
+    while (!ready((await client.mcp.listTools(server)).data)) {
       if (Date.now() >= deadline)
         throw new Error(
           `MCP source did not become ready: ${JSON.stringify(server)}; ${processOutput}`,
@@ -806,7 +811,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     for (const [feature, installation] of managedOwners) {
       await awaitMCPTools(
         { origin: { type: "installation", installationId: installation.id }, name: feature },
-        feature === "memory" ? 1 : 3,
+        (tools) =>
+          tools.some(
+            (tool) => tool.name === (feature === "memory" ? "search_memory" : "list_schedules"),
+          ),
       );
     }
   };
@@ -1225,7 +1233,7 @@ for await (const line of lines) {
       expect(await readInstalledMemory(client, "project", workspace.path)).toContainEqual(created);
     } finally {
       await activateManagedOwner("memory");
-      if (created) await deleteInstalledMemory(client, created.id);
+      if (created) await deleteInstalledMemory(client, created.id, created.revision);
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
     }
@@ -2146,7 +2154,7 @@ for await (const line of lines) {
       streamController.signal,
     );
     const events = subscription.events[Symbol.asyncIterator]();
-    let memoryId: string | undefined;
+    let memoryRecord: Awaited<ReturnType<typeof addInstalledMemory>> | undefined;
 
     try {
       const added = await callAfterCommitLoss("plugins.call", (faultClient) =>
@@ -2156,7 +2164,7 @@ for await (const line of lines) {
           content: "agent-memory replay cutpoint",
         }),
       );
-      memoryId = added.id;
+      memoryRecord = added;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2169,10 +2177,12 @@ for await (const line of lines) {
       const updated = await callAfterCommitLoss("plugins.call", (faultClient) =>
         updateInstalledMemory(faultClient, {
           ID: added.id,
+          ExpectedRevision: added.revision,
           Content: "agent-memory replay cutpoint updated",
           Pinned: true,
         }),
       );
+      memoryRecord = updated;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2190,9 +2200,9 @@ for await (const line of lines) {
       });
 
       await callAfterCommitLoss("plugins.call", (faultClient) =>
-        deleteInstalledMemory(faultClient, added.id),
+        deleteInstalledMemory(faultClient, added.id, updated.revision),
       );
-      memoryId = undefined;
+      memoryRecord = undefined;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
@@ -2204,7 +2214,10 @@ for await (const line of lines) {
         ).data,
       ).toEqual([]);
     } finally {
-      if (memoryId) await deleteInstalledMemory(client, memoryId).catch(() => undefined);
+      if (memoryRecord)
+        await deleteInstalledMemory(client, memoryRecord.id, memoryRecord.revision).catch(
+          () => undefined,
+        );
       streamController.abort();
       await events.return?.();
     }
@@ -3165,7 +3178,9 @@ for await (const line of lines) {
     await awaitManagedOwners();
 
     await Promise.all(
-      [...capturedSources.values()].map(({ server, count }) => awaitMCPTools(server, count)),
+      [...capturedSources.values()].map(({ server, count }) =>
+        awaitMCPTools(server, (tools) => tools.length === count),
+      ),
     );
 
     const restored = await client.runs.get(runId);
@@ -3811,7 +3826,7 @@ for await (const line of lines) {
         servers: [serverId],
       });
     }
-    await awaitMCPTools(serverId, 1);
+    await awaitMCPTools(serverId, (tools) => tools.some((tool) => tool.name === "ping"));
     await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
       data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
@@ -4216,6 +4231,7 @@ for await (const line of lines) {
 
     const updated = await updateInstalledMemory(client, {
       ID: project.id,
+      ExpectedRevision: project.revision,
       Content: "project memory marker updated",
       Pinned: true,
     });
@@ -4238,15 +4254,17 @@ for await (const line of lines) {
         }),
       ],
     });
-    await expect(reviewInstalledMemory(client, project.id, "approve")).rejects.toSatisfy(
+    await expect(
+      reviewInstalledMemory(client, project.id, updated.revision, "approve"),
+    ).rejects.toSatisfy(
       (error: unknown) => error instanceof OperationFailure && error.code === "not_pending",
     );
 
-    await deleteInstalledMemory(client, project.id);
+    await deleteInstalledMemory(client, project.id, updated.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });
-    await deleteInstalledMemory(client, user.id);
+    await deleteInstalledMemory(client, user.id, user.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });

@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	json "encoding/json/v2"
+	"slices"
 	"testing"
 	"time"
 
@@ -15,6 +16,10 @@ func activateManagedPlugins(t *testing.T, connection *Connection, features ...st
 		t.Fatal(err)
 	}
 	for _, feature := range features {
+		expected := map[string]string{"memory": "search_memory", "schedules": "list_schedules"}[feature]
+		if expected == "" {
+			t.Fatalf("no required tool specified for %s", feature)
+		}
 		var installed protocol.PluginInstallation
 		for _, item := range catalog.Data {
 			if item.Selected.Name == "flame."+feature {
@@ -32,11 +37,7 @@ func activateManagedPlugins(t *testing.T, connection *Connection, features ...st
 			if err != nil {
 				t.Fatalf("read %s backend tools: %v", feature, err)
 			}
-			expected := 1
-			if feature == "schedules" {
-				expected = 3
-			}
-			if tools != nil && len(tools.Data) == expected {
+			if tools != nil && slices.ContainsFunc(tools.Data, func(value protocol.MCPTool) bool { return value.Name == expected }) {
 				break
 			}
 			servers, err := connection.mcp.ListMCPServers(t.Context(), connection.callOptions())

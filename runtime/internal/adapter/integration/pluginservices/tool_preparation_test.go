@@ -72,9 +72,14 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, contract := range []*extension.Capability{memoryContracts, schedulesContracts} {
+	for _, scenario := range []struct {
+		contract  *extension.Capability
+		name      string
+		embedding bool
+	}{{memoryContracts, memorycontract.SearchToolName, true}, {memoryContracts, "add_memory", false}, {schedulesContracts, "search", false}} {
+		contract := scenario.contract
 		role := contract.Descriptor().Reference
-		t.Run(role, func(t *testing.T) {
+		t.Run(role+"/"+scenario.name, func(t *testing.T) {
 			name := testsupport.ServerName("owner")
 			release, err := plugin.NewRelease(testsupport.Digest("1"), plugin.Declaration{Name: "example.tools", Servers: []plugin.Server{{Name: name, Transport: mcpserver.TransportStdio, Command: "echo"}}, Contributions: []plugin.Contribution{{ID: "tool-provider", Server: name, Export: "owner", Contract: contract.Identity()}}})
 			if err != nil {
@@ -107,7 +112,7 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err := pluginsdk.RegisterTools(remote); err != nil {
 				t.Fatal(err)
 			}
-			remote.AddTool(&sdk.Tool{Name: "search", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
+			remote.AddTool(&sdk.Tool{Name: scenario.name, InputSchema: jsontext.Value(`{"type":"object"}`)}, func(ctx context.Context, request *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 				calls.Add(1)
 				var invocation extension.Invocation
 				if err := json.Unmarshal(request.Params.Meta[pluginsdk.InvocationMetadataKey], &invocation); err != nil {
@@ -117,6 +122,21 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 					return nil, errors.New("original invocation metadata was lost")
 				}
 				if contract == memoryContracts {
+					if err := json.Unmarshal(request.Params.Meta[pluginsdk.ToolContextMetadataKey], &captured); err != nil {
+						return nil, err
+					}
+					if captured.CWD != "/captured/workspace" {
+						return nil, errors.New("captured Memory workspace was changed")
+					}
+					if !scenario.embedding {
+						if captured.EmbeddingSpace != "" {
+							return nil, errors.New("memory management received an embedding space")
+						}
+						if _, err := pluginsdk.CallbackFromContext(ctx); err == nil {
+							return nil, errors.New("memory management received model authority")
+						}
+						return nil, errors.New("response unavailable after dispatch")
+					}
 					var err error
 					capturedGrant, err = pluginsdk.CallbackFromContext(ctx)
 					if err != nil {
@@ -193,6 +213,11 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if err := metadata.Set("owner-meta", "retained"); err != nil {
 				t.Fatal(err)
 			}
+			if contract == memoryContracts && !scenario.embedding {
+				if err := metadata.Set(pluginsdk.CallbackMetadataKey, map[string]string{"parent": "authority"}); err != nil {
+					t.Fatal(err)
+				}
+			}
 			ctx = scopemcp.WithRequestMeta(ctx, metadata)
 			if _, err := bound.Call(ctx, invocation); err == nil || !strings.Contains(err.Error(), "response unavailable after dispatch") {
 				t.Fatalf("prepared metadata/callback did not reach the dispatch boundary: %v", err)
@@ -200,8 +225,8 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 			if calls.Load() != 1 {
 				t.Fatal("prepared call did not reach its original owner")
 			}
-			if contract == memoryContracts {
-				if embedder.calls.Load() != 1 || notices.Load() != 0 {
+			if scenario.embedding {
+				if embedder.calls.Load() != 1 || notices.Load() != 1 {
 					t.Fatal("Memory callback or feature observation escaped its owner")
 				}
 				if _, err := pluginsdk.CallTextEmbedding(t.Context(), capturedGrant, "stale-embedding", []string{"stale"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
@@ -211,11 +236,20 @@ func TestFeatureToolPreparationKeepsSourceMetadataAndCallLifetime(t *testing.T) 
 				if _, err := bound.Call(ctx, invocation); !errors.Is(err, embeddingFailure) || calls.Load() != 1 {
 					t.Fatalf("unexpected embedding failure silently fell back or reached dispatch: %v", err)
 				}
-			} else if notices.Load() != 1 {
-				t.Fatal("Schedules failed reply did not invalidate owner reads")
+			} else {
+				if notices.Load() != 1 {
+					t.Fatal("failed reply did not invalidate owner reads")
+				}
+				if contract == memoryContracts {
+					embeddingFailure = errors.New("unused embedding source failed")
+					if _, err := bound.Call(ctx, invocation); err == nil || !strings.Contains(err.Error(), "response unavailable after dispatch") || calls.Load() != 2 || embedder.calls.Load() != 0 {
+						t.Fatalf("memory management depended on embeddings: %v", err)
+					}
+				}
 			}
 			store.failure = errors.New("installation read failed")
-			if _, err := bound.Call(ctx, invocation); !errors.Is(err, store.failure) || calls.Load() != 1 {
+			before := calls.Load()
+			if _, err := bound.Call(ctx, invocation); !errors.Is(err, store.failure) || calls.Load() != before {
 				t.Fatalf("unverifiable installed source fell back to an unprepared call: %v", err)
 			}
 		})

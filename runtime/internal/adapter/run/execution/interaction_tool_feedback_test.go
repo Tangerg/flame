@@ -35,17 +35,15 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		failure *toolcontract.Failure
-		joined  error
 	}{
 		{name: "partial", failure: partial},
 		{name: "denied", failure: denied},
-		{name: "partial joined with cancellation", failure: partial, joined: context.Canceled},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 				Name: "write", Description: "Write the requested output.",
 			}, func(context.Context, struct{}) (string, error) {
-				return "", errors.Join(fmt.Errorf("tool boundary: %w", test.failure), test.joined)
+				return "", fmt.Errorf("tool boundary: %w", test.failure)
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -95,33 +93,51 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 }
 
 func TestInteractionResponseLostAfterSideEffectRemainsUnknown(t *testing.T) {
-	var writes, modelCalls, publications atomic.Int32
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "write", Description: "Commit an external write.",
-	}, func(context.Context, struct{}) (string, error) {
-		writes.Add(1)
-		return "", errors.New("connection closed before response")
+	partial, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindFailed, Cause: errors.New("partial write"),
+		Output: chat.NewTextToolOutput("one file written"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		modelCalls.Add(1)
-		return interactionToolResponse(chat.ToolCall{ID: "external_write", Name: "write", Arguments: `{}`}, 1, 1), nil
-	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
-		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
-	})
-	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if _, ok := fact.(runs.ToolResultsCommitted); ok {
-			publications.Add(1)
-		}
-		return nil
-	})
-	if writes.Load() != 1 || modelCalls.Load() != 1 || publications.Load() != 0 ||
-		len(unresolvedTerminals(events)) != 1 || len(payloadsOf[runs.ToolCallFinished](events)) != 0 {
-		t.Fatalf("uncertain write became known or was repeated: writes=%d model=%d publications=%d events=%#v", writes.Load(), modelCalls.Load(), publications.Load(), events)
+	for _, test := range []struct {
+		name  string
+		cause error
+	}{
+		{"transport loss", errors.New("connection closed before response")},
+		{"failure joined with cancellation", errors.Join(partial, context.Canceled)},
+		{"failure joined with publication loss", errors.Join(partial, errors.New("publication unconfirmed"))},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var writes, modelCalls, publications atomic.Int32
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+				Name: "write", Description: "Commit an external write.",
+			}, func(context.Context, struct{}) (string, error) {
+				writes.Add(1)
+				return "", test.cause
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				modelCalls.Add(1)
+				return interactionToolResponse(chat.ToolCall{ID: "external_write", Name: "write", Arguments: `{}`}, 1, 1), nil
+			})
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+			})
+			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+				if _, ok := fact.(runs.ToolResultsCommitted); ok {
+					publications.Add(1)
+				}
+				return nil
+			})
+			if writes.Load() != 1 || modelCalls.Load() != 1 || publications.Load() != 0 ||
+				len(unresolvedTerminals(events)) != 1 || len(payloadsOf[runs.ToolCallFinished](events)) != 0 {
+				t.Fatalf("uncertain write became known or was repeated: writes=%d model=%d publications=%d events=%#v", writes.Load(), modelCalls.Load(), publications.Load(), events)
+			}
+		})
 	}
 }
 

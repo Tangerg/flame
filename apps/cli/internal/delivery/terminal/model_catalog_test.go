@@ -75,6 +75,13 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 	}
 }
 
+func TestModelCatalogDisplaysFreeCachePrices(t *testing.T) {
+	got := modelPricingText(protocol.ModelPricing{InputUSDPerMillionTokens: 3, OutputUSDPerMillionTokens: 15})
+	if want := "input $3/M · output $15/M · cache read $0/M · cache write $0/M"; got != want {
+		t.Fatalf("free cache prices were hidden: %q, want %q", got, want)
+	}
+}
+
 func TestModelsCommandOpensTheRuntimeCatalog(t *testing.T) {
 	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New()})
 	host.Shows(t, "Ask flame")

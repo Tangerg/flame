@@ -5,7 +5,43 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
+
+func TestRevisionlessMemoryIsRefusedWithoutMigratingContent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	db, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, _, err := NewAgentMemoryStore(db).Add(t.Context(), memory.ScopeUser, "", "retained fact", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(t.Context(), `ALTER TABLE agent_memory_items DROP COLUMN revision`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if current, err := Open(t.Context(), path); err == nil {
+		_ = current.Close()
+		t.Fatal("revisionless memory was admitted")
+	} else if !strings.Contains(err.Error(), "open a fresh data directory") {
+		t.Fatalf("schema refusal: %v", err)
+	}
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	var content string
+	if err := raw.QueryRowContext(t.Context(), `SELECT content FROM agent_memory_items WHERE id=?`, item.ID().String()).Scan(&content); err != nil || content != item.Content() {
+		t.Fatalf("refusal changed original content: %q, %v", content, err)
+	}
+}
 
 func TestFormerCallContextInputIsRefusedWithoutChangingPrivateEvidence(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "memory.db")

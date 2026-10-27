@@ -5,7 +5,6 @@ import (
 	json "encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
@@ -52,47 +52,33 @@ func newAgentMemorySearch(search agentMemorySearch) (toolcontract.Tool, error) {
 	if lo.IsNil(search) {
 		return nil, errors.New("memory: tool searcher is required")
 	}
-	return toolcontract.NewFunc[agentMemorySearchRequest, string](agentMemorySearchDefinition(), (&agentMemorySearcher{search: search}).run)
+	return toolcontract.NewFunc[agentMemorySearchRequest, memoryResults](agentMemorySearchDefinition(), (&agentMemorySearcher{search: search}).run)
 }
 
 func agentMemorySearchDefinition() toolcontract.FuncConfig {
 	return toolcontract.FuncConfig{
-		Name: "search_memory",
+		Name: rpc.ModelCallerPolicy().SearchToolName,
 		Description: "Search curated long-term memory for the current project, including durable decisions, " +
 			"conventions, and user preferences from earlier work. Use it when needed context is not already in " +
-			"the prompt. Use grep for source code.",
+			"the prompt. Results include exact ids, scopes and revisions for a subsequent user-requested correction or removal. Use grep for source code.",
 	}
 }
 
-func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (string, error) {
+func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (memoryResults, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return "", pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
+		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
 	}
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
-		return "", pluginsdk.DefiniteToolFailure(err)
+		return memoryResults{}, pluginsdk.DefiniteToolFailure(err)
 	}
 	cwd := scope.CWD
-	items, err := a.search.Search(ctx, filepath.Clean(cwd), query, limit)
+	items, err := a.search.Search(ctx, cwd, query, limit)
 	if err != nil {
-		return "", pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
+		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
 	}
-	return agentMemorySearchResults(items).String(), nil
-}
-
-type agentMemorySearchResults []agentmemory.Item
-
-func (a agentMemorySearchResults) String() string {
-	if len(a) == 0 {
-		return "No relevant memories found for this project. It may not have been recorded yet."
-	}
-	var b strings.Builder
-	for i, item := range a {
-		content := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(item.Content()), "- "))
-		fmt.Fprintf(&b, "%d. %s\n", i+1, content)
-	}
-	return strings.TrimRight(b.String(), "\n")
+	return memorySearchResults(items), nil
 }
 
 func (agentMemorySearchRequest) JSONSchemaExtend(schema *jsonschema.Schema) {

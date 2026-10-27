@@ -163,26 +163,26 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	if err != nil || decodeErr != nil || !reflect.DeepEqual(body, authored) {
 		t.Fatalf("memory resource differs from admitted bytes: %v", err)
 	}
-	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}, memoryToolsReady)
 	for _, content := range []string{"first fact", "second fact"} {
-		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: content}), content)
+		r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: content}), content)
 	}
 	contracts, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	query := memorycontract.ListV1Input{Scope: "user", Limit: new(uint64(1))}
+	query := memorycontract.ListV2Input{Scope: "user", Limit: new(uint64(1))}
 	for {
-		input, err := jsonvalue.Encode(memorycontract.ListV1Input{Scope: "user", Cursor: query.Cursor, Limit: query.Limit})
+		input, err := jsonvalue.Encode(memorycontract.ListV2Input{Scope: "user", Cursor: query.Cursor, Limit: query.Limit})
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV1Method, Input: string(input.JSON()), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().JSON()), Method: memorycontract.ListV2Method, Input: string(input.JSON()), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
 		}
-		var page memorycontract.ListV1Output
+		var page memorycontract.ListV2Output
 		if err := json.Unmarshal([]byte(result.Output), &page); err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		query.Cursor = page.NextCursor
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
-	result := memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
+	result := memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
 	if !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("uninstalled Memory owner=%v", result.Failure)
 	}
@@ -225,7 +225,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	if err != nil || readErr != nil || string(body) != string(authored) {
 		t.Fatalf("schedule component bytes: %v, %v", err, readErr)
 	}
-	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(&protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}, scheduleToolsReady)
 	for index, cron := range []string{"0 * * * *", "0 9 * * *"} {
 		readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "Inspect", Instructions: "Inspect current work", Cron: cron}), fmt.Sprintf("create-%d", index))
 	}

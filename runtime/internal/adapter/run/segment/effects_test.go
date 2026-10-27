@@ -755,6 +755,7 @@ func waitString(t *testing.T, ch <-chan string) string {
 }
 
 type fakeStores struct {
+	titleOwner  chan string
 	titleScope  chan string
 	transcript  *fakeTranscript
 	interrupts  *fakeInterrupts
@@ -795,6 +796,9 @@ func (f *fakeStores) Count(context.Context, string) (int, error) {
 }
 func (*fakeStores) Write(context.Context, string, ...chat.Message) error { return nil }
 func (f *fakeStores) Generate(ctx context.Context, _ string) (string, error) {
+	if f.titleOwner != nil {
+		f.titleOwner <- executionctx.InvocationOwner(ctx)
+	}
 	if f.titleScope != nil {
 		f.titleScope <- executionctx.SessionID(ctx)
 	}
@@ -1142,5 +1146,24 @@ func TestTitleRejectsReplacingCapturedSession(t *testing.T) {
 	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "ses_original"})
 	if err := (&Finalizer{}).title(ctx, "ses_replacement", "opening"); err == nil {
 		t.Fatal("title replaced its captured Session")
+	}
+}
+
+func TestFinishingNewRootUsesItsOwnSessionForDetachedMaintenance(t *testing.T) {
+	stores := &fakeStores{session: &fakeSession{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_new", Workspace: testsupport.MustWorkspace("/new")})}, title: "New title", titleScope: make(chan string, 1), titleOwner: make(chan string, 1)}
+	finalizer := testFinalizer(stores, FinalizerConfig{})
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "ses_parent", CWD: "/parent", WorkspaceCWD: "/parent", GoalIncarnationID: "parent-goal"})
+	ctx = executionctx.WithInvocationOwner(ctx, "parent-tool-call")
+	if err := finalizer.Finish(ctx, runs.Finish{SessionID: "ses_new", RunID: "run_new", WorkspaceCWD: "/new", OpeningUserText: "new work"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitString(t, stores.titleScope); got != "ses_new" {
+		t.Fatalf("title used the requesting Session: %s", got)
+	}
+	if got := waitString(t, stores.titleOwner); got != "" {
+		t.Fatalf("detached title inherited another Run's invocation: %s", got)
+	}
+	if executionctx.SessionID(ctx) != "ses_parent" || executionctx.InvocationOwner(ctx) != "parent-tool-call" {
+		t.Fatal("maintenance rewrote its caller's context")
 	}
 }

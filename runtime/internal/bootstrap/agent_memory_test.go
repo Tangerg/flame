@@ -16,21 +16,21 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	source := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
-	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
+	r.poMCPTools(&source, memoryToolsReady)
+	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
 	content := "user correction"
 	pinned := true
-	request, err := memoryQuery(r, memorycontract.ListV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
+	request, err := memoryQuery(r, memorycontract.ListV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(memorycontract.UpdateV1Input{ID: string(item.ID), Content: &content, Pinned: &pinned})
+	input, err := json.Marshal(memorycontract.UpdateV2Input{ID: string(item.ID), ExpectedRevision: item.Revision, Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.UpdateV1Method, string(input)
+	request.Method, request.Input = memorycontract.UpdateV2Method, string(input)
 	reply := r.must(delivery.PluginsCall, request, "edit-memory").(*protocol.CallPluginResponse)
-	var edited memorycontract.UpdateV1Output
+	var edited memorycontract.UpdateV2Output
 	if err := json.Unmarshal([]byte(reply.Output), &edited); err != nil {
 		t.Fatal(err)
 	}
@@ -39,13 +39,13 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	}
 	r.close()
 	r = poMCPOpen(t, cfg)
-	r.poMCPTools(&source, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
+	r.poMCPTools(&source, memoryToolsReady)
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
 
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], edited) {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}
-	replay := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
+	replay := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
 	if replay.ID != item.ID {
 		t.Fatalf("command replay created another memory=%+v", replay)
 	}

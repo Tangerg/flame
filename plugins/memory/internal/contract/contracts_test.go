@@ -41,7 +41,7 @@ func TestPublisherSnapshotOwnsIdentityAndContentAdmission(t *testing.T) {
 	if !ok {
 		t.Fatal("update contract is absent")
 	}
-	valid := memory.ItemSnapshot{ID: memory.NewItemID([memory.ItemIDEntropyBytes]byte{1}), Scope: memory.ScopeUser, Content: strings.Repeat("界", memory.MaxContentCharacters), Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: time.Now(), UpdatedAt: time.Now(), Embedding: []float32{}}
+	valid := memory.ItemSnapshot{Revision: 1, ID: memory.NewItemID([memory.ItemIDEntropyBytes]byte{1}), Scope: memory.ScopeUser, Content: strings.Repeat("界", memory.MaxContentCharacters), Origin: memory.OriginUser, Status: memory.StatusActive, CreatedAt: time.Now(), UpdatedAt: time.Now(), Embedding: []float32{}}
 	encode := func(row memory.ItemSnapshot) []byte {
 		t.Helper()
 		data, err := json.Marshal(row)
@@ -63,6 +63,40 @@ func TestPublisherSnapshotOwnsIdentityAndContentAdmission(t *testing.T) {
 	data := strings.Replace(string(encode(valid)), valid.ID.String(), "mem_1", 1)
 	if err := method.ValidateOutput([]byte(data)); err == nil {
 		t.Fatal("publisher accepted malformed identity")
+	}
+}
+
+func TestMutationContractsRequireTheObservedRevision(t *testing.T) {
+	contracts, err := rpc.NewContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{rpc.Update, rpc.Review, rpc.Delete} {
+		method, _ := contracts.Capability.Method(name)
+		fields := map[string]any{"ID": "mem_00000000000000000000000000000001"}
+		if name == rpc.Review {
+			fields["Decision"] = "approve"
+		}
+		for _, revision := range []any{nil, uint64(0), uint64(1 << 53)} {
+			if revision != nil {
+				fields["ExpectedRevision"] = revision
+			}
+			input, err := jsonvalue.Encode(fields)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := method.ValidateInput(input); err == nil {
+				t.Fatalf("%s admitted invalid revision %v", name, revision)
+			}
+		}
+		fields["ExpectedRevision"] = 1
+		input, err := jsonvalue.Encode(fields)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := method.ValidateInput(input); err != nil {
+			t.Fatalf("%s rejected the observed revision: %v", name, err)
+		}
 	}
 }
 

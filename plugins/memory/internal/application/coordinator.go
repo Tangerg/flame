@@ -11,16 +11,19 @@ import (
 
 var ErrWorkspaceUnavailable = errors.New("memory: workspace is unavailable")
 
+var ErrInvalidInput = errors.New("memory: invalid input")
+
 type RootResolver interface {
 	ResolveExistingDir(cwd string) (string, error)
 }
 
 // Returned items transfer ownership so read ordering cannot mutate store state.
 type Store interface {
+	Get(ctx context.Context, id domain.ItemID) (domain.Item, bool, error)
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
-	Review(ctx context.Context, id domain.ItemID, decision domain.ReviewDecision, now time.Time) error
-	Update(ctx context.Context, id domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error)
-	Delete(ctx context.Context, id domain.ItemID) error
+	Review(ctx context.Context, id domain.ItemID, expectedRevision uint64, decision domain.ReviewDecision, now time.Time) error
+	Update(ctx context.Context, id domain.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (domain.Item, error)
+	Delete(ctx context.Context, id domain.ItemID, expectedRevision uint64) error
 	Add(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (item domain.Item, changed bool, err error)
 }
 
@@ -53,15 +56,34 @@ func New(cfg Config) (*Coordinator, error) {
 	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, onChange: cfg.OnChange}, nil
 }
 
-func (c *Coordinator) Review(ctx context.Context, id string, decision domain.ReviewDecision) error {
-	if _, err := decision.Result(); err != nil {
-		return err
+func (c *Coordinator) Item(ctx context.Context, scope domain.Scope, cwd, id string) (domain.Item, error) {
+	project, err := c.project(scope, cwd)
+	if err != nil {
+		return domain.Item{}, err
 	}
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return err
+		return domain.Item{}, errors.Join(ErrInvalidInput, err)
 	}
-	if err := c.store.Review(ctx, itemID, decision, c.now()); err != nil {
+	item, found, err := c.store.Get(ctx, itemID)
+	if err != nil {
+		return domain.Item{}, err
+	}
+	if !found || item.Scope() != scope || item.Project() != project || item.ValidateVisible() != nil {
+		return domain.Item{}, domain.ErrNotFound
+	}
+	return item, nil
+}
+
+func (c *Coordinator) Review(ctx context.Context, id string, expectedRevision uint64, decision domain.ReviewDecision) error {
+	if _, err := decision.Result(); err != nil {
+		return errors.Join(ErrInvalidInput, err)
+	}
+	itemID, err := domain.ParseItemID(id)
+	if err != nil {
+		return errors.Join(ErrInvalidInput, err)
+	}
+	if err := c.store.Review(ctx, itemID, expectedRevision, decision, c.now()); err != nil {
 		return err
 	}
 	if c.onChange != nil {
@@ -70,19 +92,19 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 	return nil
 }
 
-func (c *Coordinator) Update(ctx context.Context, id string, content *string, pinned *bool) (domain.Item, error) {
+func (c *Coordinator) Update(ctx context.Context, id string, expectedRevision uint64, content *string, pinned *bool) (domain.Item, error) {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return domain.Item{}, err
+		return domain.Item{}, errors.Join(ErrInvalidInput, err)
 	}
 	if content != nil {
 		canonical, err := domain.NormalizeContent(*content)
 		if err != nil {
-			return domain.Item{}, err
+			return domain.Item{}, errors.Join(ErrInvalidInput, err)
 		}
 		content = &canonical
 	}
-	item, err := c.store.Update(ctx, itemID, content, pinned, c.now())
+	item, err := c.store.Update(ctx, itemID, expectedRevision, content, pinned, c.now())
 	if err != nil {
 		return domain.Item{}, err
 	}
@@ -92,12 +114,12 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	return item, nil
 }
 
-func (c *Coordinator) Delete(ctx context.Context, id string) error {
+func (c *Coordinator) Delete(ctx context.Context, id string, expectedRevision uint64) error {
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
-		return err
+		return errors.Join(ErrInvalidInput, err)
 	}
-	if err := c.store.Delete(ctx, itemID); err != nil {
+	if err := c.store.Delete(ctx, itemID, expectedRevision); err != nil {
 		return err
 	}
 	if c.onChange != nil {
@@ -113,7 +135,7 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 	}
 	content, err = domain.NormalizeContent(content)
 	if err != nil {
-		return domain.Item{}, err
+		return domain.Item{}, errors.Join(ErrInvalidInput, err)
 	}
 	item, changed, err := c.store.Add(ctx, scope, project, content, c.now())
 	if err != nil {
@@ -129,7 +151,7 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 
 func (c *Coordinator) project(scope domain.Scope, cwd string) (string, error) {
 	if err := scope.Validate(); err != nil {
-		return "", err
+		return "", errors.Join(ErrInvalidInput, err)
 	}
 	if scope == domain.ScopeUser {
 		return "", nil

@@ -48,14 +48,14 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 		}
 		if err := store.StartToolInvocation(
 			t.Context(), "session_1", "run_1", segmentID,
-			"logical_call_1", "item_1", startedAt,
+			"logical_call_1", "item_1", startedAt, nil,
 		); err != nil {
 			t.Fatalf("start %s: %v", segmentID, err)
 		}
 		starts[index] = startedAt
 		if err := store.StartToolInvocation(
 			t.Context(), "session_1", "run_1", segmentID,
-			"logical_call_1", "item_1", startedAt.Add(time.Microsecond),
+			"logical_call_1", "item_1", startedAt.Add(time.Microsecond), nil,
 		); err == nil {
 			t.Fatalf("replaced the original start of %s", segmentID)
 		}
@@ -145,7 +145,7 @@ func TestToolInvocationReadRetainsUnsettledTerminalEvidence(t *testing.T) {
 	}
 	store := newToolInvocationStore(db)
 	if err := store.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID,
-		"call_unsettled", "item_unsettled", draft.CreatedAt); err != nil {
+		"call_unsettled", "item_unsettled", draft.CreatedAt, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := runs.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), runs, finishedRunFromDraft(draft, run.OutcomeCompleted))); err != nil {
@@ -178,7 +178,7 @@ func TestToolInvocationReadRejectsForeignOwnershipWithoutPartialEvidence(t *test
 			t.Fatal(err)
 		}
 		if err := store.StartToolInvocation(t.Context(), draft.SessionID, draft.RunID, draft.SegmentID,
-			"call_"+suffix, "item_"+suffix, draft.CreatedAt); err != nil {
+			"call_"+suffix, "item_"+suffix, draft.CreatedAt, nil); err != nil {
 			t.Fatal(err)
 		}
 	}

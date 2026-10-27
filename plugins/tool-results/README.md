@@ -69,6 +69,11 @@ instructions remain literal. Unknown members or malformed page shapes retain the
 complete source instead of silently dropping fields. This component never fetches
 a page, concatenates separate Tool calls or treats a captured page as the full
 Skill catalog or document.
+Recorded `web_fetch` and `web_browse` pages retain their URL, snapshot identity,
+Unicode range and continuation offset. A nonfinal page keeps the More pages cue
+during Find. The renderer never retrieves or joins pages. Unknown members and
+inconsistent ranges preserve the complete original source instead of hiding
+metadata or presenting a partial capture as a complete document.
 Result viewports contain horizontal overscroll and let vertical scrolling continue
 through the transcript when the result reaches its edge or fits without scrolling.
 Explicit expansion transfers focus once to the new output viewport after its

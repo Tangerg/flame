@@ -75,7 +75,7 @@ func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
 }
 
 func recordManual(ctx context.Context, store *ScheduleStore, scheduled schedule.Schedule, ranAt time.Time) error {
-	request, err := scheduled.ManualRun("ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt, testsupport.ScheduleInvocation())
+	request, err := scheduled.ManualRun("manual-command", "ses_"+uuid.NewString(), "run_"+uuid.NewString(), ranAt, testsupport.ScheduleInvocation())
 	if err != nil {
 		return err
 	}

@@ -147,17 +147,18 @@ func TestItemReviewPreservesProposalFacts(t *testing.T) {
 	} {
 		t.Run(string(test.decision), func(t *testing.T) {
 			reviewedAt := createdAt.Add(time.Minute).In(time.FixedZone("local", 8*60*60))
-			reviewed, err := proposal.Review(test.decision, reviewedAt)
+			reviewed, err := proposal.Review(proposal.Revision(), test.decision, reviewedAt)
 			if err != nil {
 				t.Fatal(err)
 			}
 			want := proposal
+			want.revision, _ = proposal.revision.Next()
 			want.status = test.status
 			want.updatedAt = reviewedAt.UTC()
 			if !reflect.DeepEqual(reviewed, want) || reviewed.validate() != nil {
 				t.Fatalf("reviewed item = %+v, want %+v", reviewed, want)
 			}
-			if _, err := reviewed.Review(ReviewApprove, reviewedAt); !errors.Is(err, ErrNotPending) {
+			if _, err := reviewed.Review(reviewed.Revision(), ReviewApprove, reviewedAt); !errors.Is(err, ErrNotPending) {
 				t.Fatalf("second review = %v, want ErrNotPending", err)
 			}
 		})
@@ -165,25 +166,25 @@ func TestItemReviewPreservesProposalFacts(t *testing.T) {
 	if proposal.status != StatusPending || !proposal.updatedAt.Equal(createdAt) {
 		t.Fatalf("review changed source proposal: %+v", proposal)
 	}
-	if _, err := proposal.Review(ReviewApprove, createdAt); err != nil {
+	if _, err := proposal.Review(proposal.Revision(), ReviewApprove, createdAt); err != nil {
 		t.Fatalf("review at current update time: %v", err)
 	}
 	for _, now := range []time.Time{{}, createdAt.Add(-time.Second)} {
-		if _, err := proposal.Review(ReviewApprove, now); err == nil {
+		if _, err := proposal.Review(proposal.Revision(), ReviewApprove, now); err == nil {
 			t.Fatalf("review accepted invalid time %v", now)
 		}
 	}
-	if _, err := proposal.Review(ReviewDecision("later"), createdAt); err == nil {
+	if _, err := proposal.Review(proposal.Revision(), ReviewDecision("later"), createdAt); err == nil {
 		t.Fatal("review accepted an unknown decision")
 	}
-	if _, err := (Item{}).Review(ReviewApprove, createdAt); err == nil {
+	if _, err := (Item{}).Review(1, ReviewApprove, createdAt); err == nil {
 		t.Fatal("review accepted an invalid item")
 	}
 	user, err := NewUserItem(testItemID(t, 'b'), ScopeUser, "", "fact", createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := user.Review(ReviewReject, createdAt); !errors.Is(err, ErrNotPending) {
+	if _, err := user.Review(user.Revision(), ReviewReject, createdAt); !errors.Is(err, ErrNotPending) {
 		t.Fatalf("user item review = %v, want ErrNotPending", err)
 	}
 }
@@ -236,7 +237,7 @@ func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
 	item.embedding = []float32{1, 2}
 	content := "new fact"
 	pinned := true
-	change, err := item.Edit(&content, &pinned, createdAt.Add(time.Hour))
+	change, err := item.Edit(item.Revision(), &content, &pinned, createdAt.Add(time.Hour))
 	if err != nil || !change.Changed() {
 		t.Fatalf("Edit = (%+v, %t, %v)", change.Item(), change.Changed(), err)
 	}
@@ -247,7 +248,7 @@ func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
 	if edited.embeddingSpace != "" || edited.embedding != nil {
 		t.Fatalf("content edit retained derived embedding: %+v", edited)
 	}
-	sameChange, err := edited.Edit(&content, &pinned, createdAt)
+	sameChange, err := edited.Edit(edited.Revision(), &content, &pinned, createdAt)
 	same := sameChange.Item()
 	if err != nil || sameChange.Changed() ||
 		same.id != edited.id || same.content != edited.content || same.pinned != edited.pinned ||
@@ -257,10 +258,10 @@ func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
 	rejected := item
 	rejected.origin = OriginAuto
 	rejected.status = StatusRejected
-	if _, err := rejected.Edit(&content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
+	if _, err := rejected.Edit(rejected.Revision(), &content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
 		t.Fatalf("rejected Edit error = %v, want ErrNotVisible", err)
 	}
-	if _, err := item.Edit(&content, nil, createdAt.Add(-time.Second)); err == nil {
+	if _, err := item.Edit(item.Revision(), &content, nil, createdAt.Add(-time.Second)); err == nil {
 		t.Fatal("Edit accepted a timestamp before the current item")
 	}
 }
@@ -274,7 +275,7 @@ func TestContentEditTransfersAutomaticMemoryToUserAuthorship(t *testing.T) {
 				t.Fatal(err)
 			}
 			if status == StatusActive {
-				item, err = item.Review(ReviewApprove, createdAt)
+				item, err = item.Review(item.Revision(), ReviewApprove, createdAt)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -285,19 +286,19 @@ func TestContentEditTransfersAutomaticMemoryToUserAuthorship(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			noOp, err := item.Edit(new(item.Content()), nil, createdAt)
+			noOp, err := item.Edit(item.Revision(), new(item.Content()), nil, createdAt)
 			if err != nil || noOp.Changed() || noOp.Item().Origin() != OriginAuto || noOp.Item().Status() != status {
 				t.Fatalf("unchanged content changed authorship: %+v, %v", noOp.Item().Snapshot(), err)
 			}
 			pinned := true
-			pinChange, err := item.Edit(nil, &pinned, createdAt.Add(time.Hour))
+			pinChange, err := item.Edit(item.Revision(), nil, &pinned, createdAt.Add(time.Hour))
 			pinOnly := pinChange.Item()
 			if err != nil || pinOnly.Origin() != OriginAuto || pinOnly.Status() != status {
 				t.Fatalf("pin changed authorship: %+v, %v", pinOnly.Snapshot(), err)
 			}
 			editedAt := createdAt.Add(24 * time.Hour)
 			content := "user correction"
-			change, err := pinOnly.Edit(&content, nil, editedAt)
+			change, err := pinOnly.Edit(pinOnly.Revision(), &content, nil, editedAt)
 			edited := change.Item()
 			if err != nil || !change.Changed() {
 				t.Fatalf("Edit = (%+v, %t, %v)", edited.Snapshot(), change.Changed(), err)

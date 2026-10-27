@@ -33,9 +33,12 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	execution := request.Execution()
 	selection := execution.ModelSelection()
 	start := protocol.StartRunRequest{
-		NewSession: &protocol.RunSessionOpening{SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title(), Workspace: protocol.WorkspaceRef{Path: execution.CWD()}},
+		NewSession: &protocol.RunSessionOpening{SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title()},
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: execution.Instructions()}},
 		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
+	}
+	if execution.CWD() != "" {
+		start.NewSession.Workspace = &protocol.WorkspaceRef{Path: execution.CWD()}
 	}
 	key := "schedules:run:" + request.RunID()
 	namespace, err := h.Namespace(ctx)

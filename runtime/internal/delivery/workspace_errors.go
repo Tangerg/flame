@@ -15,6 +15,13 @@ func workspaceRefPath(ref *protocol.WorkspaceRef) string {
 	return ref.Path
 }
 
+func (s *Handler) sessionWorkspacePath(ref *protocol.WorkspaceRef) string {
+	if ref == nil {
+		return s.serverInfo.DefaultWorkspace.Path
+	}
+	return ref.Path
+}
+
 func workspaceRefFromPath(path string) *protocol.WorkspaceRef {
 	if path == "" {
 		return nil

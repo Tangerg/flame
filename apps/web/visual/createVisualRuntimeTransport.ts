@@ -85,7 +85,7 @@ function resultFor(
       return {};
     case "plugins.call": {
       const call = request.params as CallPluginRequest;
-      if (call.method === "flame.memory/list.v1") {
+      if (call.method === "flame.memory/list.v2") {
         return { output: JSON.stringify(VISUAL_MEMORY_PAGE) };
       }
       if (call.method === "flame.schedules/list.v1") {

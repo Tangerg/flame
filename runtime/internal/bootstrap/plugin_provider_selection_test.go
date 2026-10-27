@@ -12,7 +12,7 @@ import (
 )
 
 func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t *testing.T) {
-	loss, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v1", "response")
+	loss, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v2", "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	install := func(source, key string) *protocol.PluginInstallation {
@@ -24,10 +24,10 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	server := func(value *protocol.PluginInstallation) *protocol.MCPServerID {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: value.ID}, Name: "memory"}
 	}
-	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first), memoryToolsReady)
+	r.poMCPTools(server(second), memoryToolsReady)
 	list := func() delivery.Result {
-		return memoryQueryResult(r, memorycontract.ListV1Input{Scope: "user"})
+		return memoryQueryResult(r, memorycontract.ListV2Input{Scope: "user"})
 	}
 	if response := list(); response.Failure == nil || !errors.Is(response.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("enablement chose a provider: %v", response.Failure)
@@ -49,7 +49,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 		r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: value.ID, Contribution: "memory-provider"}, key)
 	}
 	choose(first, "choose-first")
-	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "original owner's fact"})
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original owner's fact"})
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}); result.Failure == nil {
 		t.Fatal("lost response became confirmed")
 	}
@@ -60,16 +60,16 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r = reopenCommandRuntime(t, r, &cfg)
 	assertUnresolvedInstallationIsHeld(t, r, first)
-	r.poMCPTools(server(first), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(first), memoryToolsReady)
 	r.must(delivery.PluginsCall, request, "uncertain")
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
 	}
-	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
+	r.must(delivery.PluginsCall, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "selected owner's fact"}), "new-command")
 	r = reopenCommandRuntime(t, r, &cfg)
-	r.poMCPTools(server(second), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	page = readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	r.poMCPTools(server(second), memoryToolsReady)
+	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || page.Data[0].Content != "selected owner's fact" {
 		t.Fatalf("restart changed provider choice or private data: %+v", page.Data)
 	}

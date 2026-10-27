@@ -46,16 +46,16 @@ is the supported native verification and distribution platform.
 
 Run from the repository root:
 
-| Command                                 | Responsibility                                                                                                               |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies/hooks and shared assets              |
-| `make generate`                         | Invoke SDK, publisher, Host, consumer and Native generators in dependency order                                              |
-| `make check`                            | SDK source/test/tool closure guards, clean generated drift, independent Go member and npm checks                             |
-| `make check-native`                     | Stage the same Web build, test/vet/build Desktop and run its Wails macOS build                                               |
-| `make check-author`                     | Export independent author namespaces, pack JS dependencies and verify Go vendor execution without network or checkout access |
-| `make dev-web` / `make dev-desktop`     | Browser/native development of the same Web product                                                                           |
-| `make build-runtime` / `make build-cli` | Headless executable and companion plugin distribution                                                                        |
-| `make package-desktop`                  | Complete Web staging and Wails/native packaging                                                                              |
+| Command                                 | Responsibility                                                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies/hooks and shared assets                       |
+| `make generate`                         | Invoke SDK, publisher, Host, consumer and Native generators in dependency order                                                       |
+| `make check`                            | SDK source/test/tool closure guards, clean generated drift, independent Go member and npm checks                                      |
+| `make check-native`                     | Stage the same Web build, test/vet/build Desktop and run its Wails macOS build                                                        |
+| `make check-author`                     | Export independent author namespaces, pack JS dependencies and verify Go vendor execution without external network or checkout access |
+| `make dev-web` / `make dev-desktop`     | Browser/native development of the same Web product                                                                                    |
+| `make build-runtime` / `make build-cli` | Headless executable and companion plugin distribution                                                                                 |
+| `make package-desktop`                  | Complete Web staging and Wails/native packaging                                                                                       |
 
 The coordinator discovers Go members from `go.work` and npm members from root
 `workspaces`. Native requirements classify the Desktop member explicitly; a

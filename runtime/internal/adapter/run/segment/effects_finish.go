@@ -103,6 +103,8 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	if !needsSnapshot && !needsTitle {
 		return nil
 	}
+	ctx = executionctx.WithScope(ctx, runs.ExecutionScope{SessionID: fin.SessionID, CWD: fin.WorkspaceCWD, WorkspaceCWD: fin.WorkspaceCWD})
+	ctx = executionctx.WithInvocationOwner(ctx, "")
 	var errs []error
 	if needsSnapshot {
 		if err := observeSegmentMaintenance(ctx, fin, "checkpoint", func(ctx context.Context) error {

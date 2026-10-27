@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -99,7 +100,10 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 		t.Fatalf("knowledge package was not admitted: %+v", installed.Selected)
 	}
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "knowledgebase"}
-	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 2 })
+	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool {
+		return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "search_knowledge" }) &&
+			slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "read_knowledge_document" })
+	})
 	for _, tool := range tools {
 		if tool.Name == "search_knowledge" {
 			toolName.Store(tool.ModelName)
@@ -160,5 +164,16 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	encoded, err := json.Marshal(items)
 	if err != nil || strings.Contains(string(encoded), "Retrieved user reference material") {
 		t.Fatalf("context contribution became authored history: %s, %v", encoded, err)
+	}
+	beforeRead := embeddings.Load()
+	read := call(testsupport.KnowledgebaseReadV1Method, testsupport.KnowledgebaseReadV1Input{Id: "fruit"}, "")
+	var original testsupport.KnowledgebaseReadV1Output
+	if err := json.Unmarshal([]byte(read.Output), &original); err != nil || original.Text != input.Content.Text || embeddings.Load() != beforeRead {
+		t.Fatalf("installed original read performed embedding or lost text: %+v %v", original, err)
+	}
+	reindex := testsupport.KnowledgebaseReindexV1Input{Id: "fruit", ExpectedRevision: uint64(original.Document.Revision)}
+	rebuilt := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex")
+	if replay := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex"); replay.Output != rebuilt.Output || embeddings.Load() != beforeRead+1 {
+		t.Fatalf("installed reindex repeated embedding: %+v count=%d", replay, embeddings.Load())
 	}
 }

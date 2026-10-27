@@ -15,13 +15,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
+	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestSchedulesCreateListDelete(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg))
+	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -61,10 +62,63 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 
 func TestSchedulesRejectMissingManagementPort(t *testing.T) {
 	for _, coordinator := range []scheduleManagement{nil, (*scheduleapp.Coordinator)(nil)} {
-		tools, err := buildSchedules(coordinator)
+		tools, err := buildSchedules(coordinator, unexpectedManualRun)
 		if err == nil || len(tools) != 0 {
 			t.Fatalf("missing management port = (%d tools, %v)", len(tools), err)
 		}
+	}
+	if _, err := buildSchedules(newTestScheduleCoordinator(newMemoryScheduleRegistry()), nil); err == nil {
+		t.Fatal("manual Run capability was published without its owner")
+	}
+}
+
+func TestScheduleToolsEditObservedRevisionWithoutReplacingIdentity(t *testing.T) {
+	registry := newMemoryScheduleRegistry()
+	tools, err := buildSchedules(newTestScheduleCoordinator(registry), unexpectedManualRun)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byName := scheduleByName(tools)
+	created, err := callTextTool(t.Context(), byName[createScheduleTool], `{"title":"daily","instructions":"inspect","cron":"CRON_TZ=Asia/Shanghai 0 9 * * *"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var original scheduleResponse
+	if err := json.Unmarshal([]byte(created), &original); err != nil {
+		t.Fatal(err)
+	}
+	if original.Schedule.Revision != 1 {
+		t.Fatalf("creation omitted its observed revision: %+v", original)
+	}
+	listed, err := callTextTool(t.Context(), byName["list_schedules"], `{}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var page scheduleListResponse
+	if err := json.Unmarshal([]byte(listed), &page); err != nil || len(page.Schedules) != 1 || page.Schedules[0].Revision != 1 {
+		t.Fatalf("list lost the update precondition: %+v, %v", page, err)
+	}
+	updated, err := callTextTool(t.Context(), byName[updateScheduleTool], `{"schedule_id":"`+original.Schedule.ScheduleID+`","expected_revision":1,"title":"","enabled":false}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var next scheduleResponse
+	if err := json.Unmarshal([]byte(updated), &next); err != nil {
+		t.Fatal(err)
+	}
+	if next.Schedule.ScheduleID != original.Schedule.ScheduleID || next.Schedule.Revision != 2 || next.Schedule.Title != "" || next.Schedule.Enabled || next.Schedule.NextRunAt != "" || next.Schedule.Cron != original.Schedule.Cron || next.Schedule.Instructions != original.Schedule.Instructions {
+		t.Fatalf("patch changed omitted fields, lost false/empty values or replaced identity: %+v", next)
+	}
+	for _, arguments := range []string{
+		`{"schedule_id":"` + original.Schedule.ScheduleID + `","expected_revision":1,"instructions":"stale"}`,
+		`{"schedule_id":"` + original.Schedule.ScheduleID + `","expected_revision":2,"provider":"incomplete"}`,
+	} {
+		_, err := callTextTool(t.Context(), byName[updateScheduleTool], arguments)
+		requireDefiniteFailure(t, err, arguments)
+	}
+	stored, err := registry.Get(t.Context(), original.Schedule.ScheduleID)
+	if err != nil || stored.Revision() != 2 || stored.Instructions() != "inspect" {
+		t.Fatalf("refused edits changed the owner: %+v, %v", stored, err)
 	}
 }
 
@@ -82,7 +136,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 		}
 		reg.items[id] = scheduled
 	}
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg))
+	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -113,7 +167,7 @@ func TestSchedulesListIsBoundedAndContinuable(t *testing.T) {
 
 func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg))
+	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -131,7 +185,7 @@ func TestSchedulesHaveActionSpecificStrictSchemas(t *testing.T) {
 
 func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg))
+	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -149,7 +203,7 @@ func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 
 func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 	reg := newMemoryScheduleRegistry()
-	tools, err := buildSchedules(newTestScheduleCoordinator(reg))
+	tools, err := buildSchedules(newTestScheduleCoordinator(reg), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -169,7 +223,7 @@ func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
 }
 
 func TestScheduleStoreFailureStaysUnproven(t *testing.T) {
-	tools, err := buildSchedules(newTestScheduleCoordinator(failingScheduleInsert{newMemoryScheduleRegistry()}))
+	tools, err := buildSchedules(newTestScheduleCoordinator(failingScheduleInsert{newMemoryScheduleRegistry()}), unexpectedManualRun)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -280,4 +334,8 @@ func (m *memoryScheduleRegistry) Due(context.Context, time.Time, int) ([]schedul
 
 func (m *memoryScheduleRegistry) RecordRun(context.Context, scheduledomain.RunRecord) error {
 	return nil
+}
+
+func unexpectedManualRun(context.Context, rpc.ItemInput) (scheduleapp.RunReference, error) {
+	return scheduleapp.RunReference{}, errors.New("unexpected manual Run")
 }

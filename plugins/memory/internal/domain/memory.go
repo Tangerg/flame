@@ -13,8 +13,10 @@ import (
 
 	"github.com/invopop/jsonschema"
 
+	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
+	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 )
 
 const (
@@ -67,6 +69,12 @@ var ErrNotPending = errors.New("agentmemory: item is not pending review")
 var ErrNotVisible = errors.New("agentmemory: item is not visible")
 
 var ErrTargetFull = errors.New("agentmemory: target is full")
+
+var ErrInvalidRevision = errors.New("agentmemory: revision must be a positive exact integer")
+
+var ErrRevisionConflict = errors.New("agentmemory: item revision changed")
+
+var ErrDuplicateContent = errors.New("agentmemory: content already belongs to another item in this target")
 
 type Scope string
 
@@ -194,6 +202,7 @@ func (r ReviewDecision) Result() (Status, error) {
 // The handle survives content edits; curation cannot rewrite user-authored or approved content.
 type Item struct {
 	id        ItemID
+	revision  exactint.Counter
 	scope     Scope
 	project   string
 	content   string
@@ -212,6 +221,7 @@ type Item struct {
 
 type ItemSnapshot struct {
 	ID             ItemID
+	Revision       uint64 `jsonschema:"minimum=1"`
 	Scope          Scope
 	Project        string
 	Content        string
@@ -227,6 +237,9 @@ type ItemSnapshot struct {
 }
 
 func (ItemSnapshot) JSONSchemaExtend(schema *jsonschema.Schema) {
+	if revision, ok := schema.Properties.Get("Revision"); ok {
+		revision.Maximum = jsonvalue.Number(fmt.Sprint(exactint.Maximum))
+	}
 	content, ok := schema.Properties.Get("Content")
 	if ok {
 		content.Pattern = `\S`
@@ -253,8 +266,12 @@ func (c ItemChange) Changed() bool           { return c.kind != itemUnchanged }
 func (c ItemChange) DiscardsEmbedding() bool { return c.kind == itemContentAuthored }
 
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
+	revision, err := exactint.Restore(snapshot.Revision)
+	if err != nil || revision.IsZero() {
+		return Item{}, ErrInvalidRevision
+	}
 	item := Item{
-		id: snapshot.ID, scope: snapshot.Scope, project: snapshot.Project, content: snapshot.Content,
+		id: snapshot.ID, revision: revision, scope: snapshot.Scope, project: snapshot.Project, content: snapshot.Content,
 		origin: snapshot.Origin, status: snapshot.Status, pinned: snapshot.Pinned,
 		sessionID: snapshot.SessionID, day: snapshot.Day,
 		createdAt: snapshot.CreatedAt.UTC(), updatedAt: snapshot.UpdatedAt.UTC(),
@@ -268,7 +285,7 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 
 func (i Item) Snapshot() ItemSnapshot {
 	return ItemSnapshot{
-		ID: i.id, Scope: i.scope, Project: i.project, Content: i.content,
+		ID: i.id, Revision: i.revision.Value(), Scope: i.scope, Project: i.project, Content: i.content,
 		Origin: i.origin, Status: i.status, Pinned: i.pinned, SessionID: i.sessionID, Day: i.day,
 		CreatedAt: i.createdAt, UpdatedAt: i.updatedAt,
 		EmbeddingSpace: i.embeddingSpace, Embedding: slices.Clone(i.embedding),
@@ -276,6 +293,7 @@ func (i Item) Snapshot() ItemSnapshot {
 }
 
 func (i Item) ID() ItemID           { return i.id }
+func (i Item) Revision() uint64     { return i.revision.Value() }
 func (i Item) Scope() Scope         { return i.scope }
 func (i Item) Project() string      { return i.project }
 func (i Item) Content() string      { return i.content }
@@ -382,6 +400,10 @@ func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error
 	if err := instant.Validate(now); err != nil {
 		return ItemChange{}, fmt.Errorf("agentmemory: activation time: %w", err)
 	}
+	i.revision, err = i.revision.Next()
+	if err != nil {
+		return ItemChange{}, err
+	}
 	i = i.withUserContent(content, now)
 	i.pinned = false
 	i.updatedAt = now
@@ -389,7 +411,10 @@ func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error
 }
 
 // Content edits transfer authorship to the user so curation cannot undo the correction.
-func (i Item) Edit(content *string, pinned *bool, now time.Time) (ItemChange, error) {
+func (i Item) Edit(expectedRevision uint64, content *string, pinned *bool, now time.Time) (ItemChange, error) {
+	if err := i.CheckRevision(expectedRevision); err != nil {
+		return ItemChange{}, err
+	}
 	if err := i.ValidateVisible(); err != nil {
 		return ItemChange{}, fmt.Errorf("agentmemory: edit existing item: %w", err)
 	}
@@ -413,6 +438,11 @@ func (i Item) Edit(content *string, pinned *bool, now time.Time) (ItemChange, er
 	if err := instant.Validate(now); err != nil {
 		return ItemChange{}, fmt.Errorf("agentmemory: edit time: %w", err)
 	}
+	revision, err := i.revision.Next()
+	if err != nil {
+		return ItemChange{}, err
+	}
+	i.revision = revision
 	kind := itemMetadataChanged
 	if contentChanged {
 		i = i.withUserContent(canonicalContent, now)
@@ -436,7 +466,10 @@ func (i Item) withUserContent(content string, now time.Time) Item {
 	return i
 }
 
-func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
+func (i Item) Review(expectedRevision uint64, decision ReviewDecision, now time.Time) (Item, error) {
+	if err := i.CheckRevision(expectedRevision); err != nil {
+		return Item{}, err
+	}
 	status, err := decision.Result()
 	if err != nil {
 		return Item{}, err
@@ -451,6 +484,10 @@ func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
 	if err := instant.Validate(now); err != nil {
 		return Item{}, fmt.Errorf("agentmemory: review time: %w", err)
 	}
+	i.revision, err = i.revision.Next()
+	if err != nil {
+		return Item{}, err
+	}
 	i.status = status
 	i.updatedAt = now
 	return i, nil
@@ -463,6 +500,23 @@ func (i Item) ValidateVisible() error {
 	return nil
 }
 
+func (i Item) CheckRevision(expected uint64) error {
+	if expected == 0 || expected > exactint.Maximum {
+		return ErrInvalidRevision
+	}
+	if expected != i.revision.Value() {
+		return ErrRevisionConflict
+	}
+	return nil
+}
+
+func (i Item) ValidateRemoval(expectedRevision uint64) error {
+	if err := i.CheckRevision(expectedRevision); err != nil {
+		return err
+	}
+	return i.ValidateVisible()
+}
+
 func newItem(id ItemID, scope Scope, project, content string, origin Origin, status Status, now time.Time) (Item, error) {
 	content, err := NormalizeContent(content)
 	if err != nil {
@@ -470,7 +524,7 @@ func newItem(id ItemID, scope Scope, project, content string, origin Origin, sta
 	}
 	now = now.UTC()
 	item := Item{
-		id: id, scope: scope, project: project, content: content, origin: origin, status: status,
+		id: id, revision: exactint.First(), scope: scope, project: project, content: content, origin: origin, status: status,
 		day: now.Format(time.DateOnly), createdAt: now, updatedAt: now,
 	}
 	if err := item.validate(); err != nil {

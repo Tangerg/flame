@@ -69,7 +69,7 @@ func interactionTestCost(usd float64) accounting.Cost {
 
 func fixedInteractionPricing(usd float64) accounting.Pricing {
 	cost := interactionTestCost(usd)
-	return func(_, _ string, _ *chat.Usage) accounting.Cost { return cost }
+	return func(_, _ string, _ *chat.Usage) (accounting.Cost, error) { return cost, nil }
 }
 
 func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) {

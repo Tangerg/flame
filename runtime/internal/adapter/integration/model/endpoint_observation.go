@@ -93,19 +93,20 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 }
 
 func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *chat.Response, cause error) error {
-	failure := ""
-	if cause != nil {
-		failure = cause.Error()
-	}
 	var cost accounting.Cost
+	var pricingErr error
 	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && m.pricing != nil {
 		served := response.Metadata.Model
 		if served == "" {
 			served = invocation.Model
 		}
-		cost = m.pricing(invocation.Provider, served, response.Metadata.Usage)
+		cost, pricingErr = m.pricing(invocation.Provider, served, response.Metadata.Usage)
 	}
-	return m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), Response: response.Clone(), FinishedAt: time.Now().UTC(), Failure: failure})
+	failure := ""
+	if err := errors.Join(cause, pricingErr); err != nil {
+		failure = err.Error()
+	}
+	return errors.Join(pricingErr, m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), Response: response.Clone(), FinishedAt: time.Now().UTC(), Failure: failure}))
 }
 
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {

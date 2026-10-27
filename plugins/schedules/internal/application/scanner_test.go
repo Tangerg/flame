@@ -46,7 +46,7 @@ func TestScannerRotatesBacklogAndPreservesCapturedWorkAcrossRestart(t *testing.T
 	}
 	manual := create("sch_manual", now.Add(-time.Hour), false)
 	for i := range 20 {
-		request, err := manual.ManualRun(fmt.Sprintf("ses_manual_%02d", i), fmt.Sprintf("run_manual_%02d", i), now, testsupport.ScheduleInvocation())
+		request, err := manual.ManualRun("manual-command", fmt.Sprintf("ses_manual_%02d", i), fmt.Sprintf("run_manual_%02d", i), now, testsupport.ScheduleInvocation())
 		if err != nil {
 			t.Fatal(err)
 		}

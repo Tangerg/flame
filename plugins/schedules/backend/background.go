@@ -147,7 +147,7 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 	}
 	dispatchStore := app.DispatchStore(store)
 	if _, manual := request.ManualRecord(); manual {
-		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, rpc.RunNow, request.Invocation().ID)
+		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, rpc.RunNow, request.CommandID())
 		if err != nil {
 			return app.RunReference{}, err
 		}

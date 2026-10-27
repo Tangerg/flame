@@ -85,7 +85,7 @@ func newServer(runner *runner) (*sdk.Server, error) {
 			}
 			result, err := readOutcome(receipt.Reply)
 			if err != nil {
-				failure, known := errors.AsType[*tool.Failure](commandFailure(err))
+				failure, known := tool.ClassifyFailure(commandFailure(err))
 				if !known {
 					return pluginsdk.ToolReceipt{}, err
 				}

@@ -78,7 +78,7 @@ func (s *schedulePublicationTrees) SaveExecutionTree(ctx context.Context, update
 }
 
 func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *testing.T) {
-	for _, mode := range []string{"cancel", "timeout", "unavailable", "later model", "publication", "other service", "non-schedule tool", "known refusal"} {
+	for _, mode := range []string{"cancel", "timeout", "unavailable", "later model", "publication", "other service", "non-schedule tool", "known refusal", "ambiguous receipt"} {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				installation := testsupport.InstallationID(t)
@@ -115,11 +115,14 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					if mode == "cancel" {
 						<-release
 					}
-					if mode == "known refusal" {
+					if mode == "known refusal" || mode == "ambiguous receipt" {
 						output := chat.NewTextToolOutput("original refused")
 						failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: errors.New("original refused"), Output: output})
 						if err != nil {
 							return nil, err
+						}
+						if mode == "ambiguous receipt" {
+							return &output, errors.Join(failure, errors.New("receipt validation unconfirmed"))
 						}
 						return &output, failure
 					}
@@ -180,6 +183,9 @@ func TestScheduleInvestigationRespectsCancellationTimeoutAndLaterUnknown(t *test
 					if len(finished) != 1 || finished[0].Failure == nil {
 						t.Fatalf("known refusal lost: %+v", finished)
 					}
+				}
+				if mode == "ambiguous receipt" && (len(payloadsOf[runs.ToolCallFinished](observed)) != 0 || modelCalls.Load() != 1) {
+					t.Fatalf("ambiguous receipt published an outcome or resumed the model: %#v", observed)
 				}
 				want := run.OutcomeLost
 				if mode == "cancel" {

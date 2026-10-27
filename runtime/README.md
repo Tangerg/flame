@@ -2,7 +2,45 @@
 
 Flame Runtime is the local product backend for Flame. It owns durable agent semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol.
 
+Atomic Session/Run openings admit an omitted workspace and use the same default
+workspace projection as ordinary Session creation. An explicitly supplied empty
+workspace remains invalid. Acceptance lookup retains the original omission and
+request identity; retries do not resolve a different default into that request.
+
+Installed model Tool dispatch commits its immutable caller/source alongside the
+original pre-call observation. `installed_tool_callers` retains only logical
+caller, installed Tool, release and source authority, independently of transient
+checkpoints and deleted Session/Run material. Background restoration checks that
+exact evidence against the authenticated current Actor; it cannot invent another
+caller, borrow a replacement release or resurrect a completed execution member.
+Published commands retain their existing routing owner. Neither record contains
+a plugin business result. The additional private routing schema requires a fresh
+Runtime data directory; incompatible directories are refused without conversion
+and must be retained separately.
+
+Post-segment maintenance captures its finishing Session and workspace explicitly.
+A new root opened by another Run's plugin call cannot inherit that caller's
+Session, Goal or physical-model invocation for detached title generation.
+
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
+
+Scope v0.58.0 owns complete Tool failure classification. Runtime uses
+`tool.ClassifyFailure` for dispatch and original-result recovery: independent
+joined errors cannot establish a definite result. A plugin's classified Failure
+retains its diagnostic cause inside that outcome instead of joining it as a
+second outcome. Accepted human answers use the Engine's public Signal constructor
+for exact receipt reconciliation and the current wait's `ResponseSignal` for
+fresh admission.
+
+Unknown catalog pricing preserves unknown cost, including an empty rate schedule
+with reported zero usage. Model listings expose effective base-band cache rates:
+an omitted catalog cache rate uses the input rate, while an explicit zero is free.
+Scope owns cost calculation and threshold selection; historical settled costs
+are not repriced. Pricing validation failures return through the endpoint boundary
+while retaining the original generation, usage and unknown cost in the journal.
+Core wire shapes and storage formats are unchanged by this
+dependency upgrade. Retain waiting work with its captured executable; the existing
+BuildID boundary continues to reject incompatible checkpoints.
 
 Scope's public contracts own framework behavior. Tool discovery implements
 `interaction.AdvertisingTool`, Tool child dispatch uses

@@ -37,8 +37,8 @@ func (w lostOpeningWriter) Write(body []byte) (int, error) {
 	return 0, io.ErrClosedPipe
 }
 
-func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testing.T) {
-	cfg := poMCPConfig(t)
+func schedulesWithLostOpening(t *testing.T, cfg assemblyConfig) (*poMCPRuntime, <-chan protocol.StartRunResponse) {
+	t.Helper()
 	host, api := buildPluginProtocolRuntime(t, cfg)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {
@@ -81,9 +81,15 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	if err := host.application.callbacks.PublishRPC(mux); err != nil {
 		t.Fatal(err)
 	}
+	return r, opening
+}
+
+func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r, opening := schedulesWithLostOpening(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 3 }
+	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
 	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesCreateV1Input{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", CWD: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.ID)

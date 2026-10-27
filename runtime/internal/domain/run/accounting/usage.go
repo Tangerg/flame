@@ -437,4 +437,4 @@ func (m ModelUsage) Validate() error {
 
 // Pricing computes the USD cost of one LLM round from the provider, served
 // model, and full token usage.
-type Pricing func(provider, model string, usage *chat.Usage) Cost
+type Pricing func(provider, model string, usage *chat.Usage) (Cost, error)

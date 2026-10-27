@@ -1,35 +1,35 @@
 [
   {
-    "name": "flame.memory/add.v1",
+    "name": "flame.memory/add.v2",
     "kind": "command",
     "target": "installation",
     "description": "Add a human-authored memory item in the requested scope.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2fadd_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2fadd_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2fadd_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2fadd_2ev2Output"
   },
   {
-    "name": "flame.memory/delete.v1",
+    "name": "flame.memory/delete.v2",
     "kind": "command",
     "target": "installation",
     "description": "Delete one memory item through its private owner.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2fdelete_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2fdelete_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2fdelete_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2fdelete_2ev2Output"
   },
   {
-    "name": "flame.memory/items.v1",
+    "name": "flame.memory/items.v2",
     "kind": "query",
     "target": "installation",
     "description": "Read active memory items that can inform a Run.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2fitems_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2fitems_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2fitems_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2fitems_2ev2Output"
   },
   {
-    "name": "flame.memory/list.v1",
+    "name": "flame.memory/list.v2",
     "kind": "query",
     "target": "installation",
     "description": "List memory items visible in the requested scope.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2flist_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2flist_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2flist_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2flist_2ev2Output"
   },
   {
     "name": "flame.memory/maintain.v1",
@@ -40,27 +40,27 @@
     "output": "schema.json#/$defs/Method_flame_2ememory_2fmaintain_2ev1Output"
   },
   {
-    "name": "flame.memory/review.v1",
+    "name": "flame.memory/review.v2",
     "kind": "command",
     "target": "installation",
     "description": "Apply a human review decision to a pending memory item.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2freview_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2freview_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2freview_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2freview_2ev2Output"
   },
   {
-    "name": "flame.memory/search.v1",
+    "name": "flame.memory/search.v2",
     "kind": "query",
     "target": "installation",
     "description": "Rank active memories for the supplied project and query.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2fsearch_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2fsearch_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2fsearch_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2fsearch_2ev2Output"
   },
   {
-    "name": "flame.memory/update.v1",
+    "name": "flame.memory/update.v2",
     "kind": "command",
     "target": "installation",
     "description": "Edit the current content or pin state of a memory item.",
-    "input": "schema.json#/$defs/Method_flame_2ememory_2fupdate_2ev1Input",
-    "output": "schema.json#/$defs/Method_flame_2ememory_2fupdate_2ev1Output"
+    "input": "schema.json#/$defs/Method_flame_2ememory_2fupdate_2ev2Input",
+    "output": "schema.json#/$defs/Method_flame_2ememory_2fupdate_2ev2Output"
   }
 ]

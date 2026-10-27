@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	catalog "github.com/Tangerg/scope/models/catalog"
+	"github.com/samber/lo"
 )
 
 // Capabilities implements the three model-configuration ports consumed by
@@ -178,7 +179,8 @@ func catalogModel(providerID string, entry catalog.Model) modelsapp.Model {
 		primary := entry.Pricing[0]
 		details.Pricing = &modelsapp.Pricing{
 			InputPerMillion: primary.InputPer1M, OutputPerMillion: primary.OutputPer1M,
-			CacheReadPerMillion: primary.CacheReadPer1M, CacheWritePerMillion: primary.CacheWritePer1M,
+			CacheReadPerMillion:  lo.FromPtrOr(primary.CacheReadPer1M, primary.InputPer1M),
+			CacheWritePerMillion: lo.FromPtrOr(primary.CacheWritePer1M, primary.InputPer1M),
 		}
 	}
 	model, err := modelsapp.NewModel(providerID, entry.ID, details)

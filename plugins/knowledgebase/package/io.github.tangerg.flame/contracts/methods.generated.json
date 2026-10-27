@@ -24,6 +24,22 @@
     "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2flist_2ev1Output"
   },
   {
+    "name": "flame.knowledgebase/read.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2fread_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2fread_2ev1Output"
+  },
+  {
+    "name": "flame.knowledgebase/reindex.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role.",
+    "input": "schema.json#/$defs/Method_flame_2eknowledgebase_2freindex_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2eknowledgebase_2freindex_2ev1Output"
+  },
+  {
     "name": "flame.knowledgebase/search.v1",
     "kind": "query",
     "target": "installation",

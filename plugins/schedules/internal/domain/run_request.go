@@ -22,6 +22,7 @@ type RunRequest struct {
 	sessionID    string
 	runID        string
 	invocation   extension.Invocation
+	commandID    string
 }
 
 func (s Schedule) recordRun(ranAt time.Time) (RunRecord, error) {
@@ -64,7 +65,7 @@ func (r RunRecord) validate() error {
 func (r RunRecord) ScheduleID() string { return r.scheduleID.String() }
 func (r RunRecord) RanAt() time.Time   { return r.ranAt }
 
-func (s Schedule) ManualRun(sessionID, runID string, ranAt time.Time, invocation extension.Invocation) (RunRequest, error) {
+func (s Schedule) ManualRun(commandID, sessionID, runID string, ranAt time.Time, invocation extension.Invocation) (RunRequest, error) {
 	record, err := s.recordRun(ranAt)
 	if err != nil {
 		return RunRequest{}, err
@@ -72,7 +73,7 @@ func (s Schedule) ManualRun(sessionID, runID string, ranAt time.Time, invocation
 	value := RunRequest{
 		execution: s.execution(), manualRecord: &record,
 		sessionID: sessionID, runID: runID,
-		invocation: invocation,
+		invocation: invocation, commandID: commandID,
 	}
 	return value, value.Validate()
 }
@@ -99,8 +100,16 @@ func (r RunRequest) Validate() error {
 		if err := r.manualRecord.validate(); err != nil {
 			return err
 		}
-	} else if err := r.occurrenceID.validate(); err != nil {
-		return err
+		if r.commandID == "" {
+			return errors.New("schedule: manual command identity is required")
+		}
+	} else {
+		if r.commandID != "" {
+			return errors.New("schedule: occurrence cannot own a manual command")
+		}
+		if err := r.occurrenceID.validate(); err != nil {
+			return err
+		}
 	}
 	if err := flameidentity.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("schedule: run request: %w", err)
@@ -128,6 +137,7 @@ func (r RunRequest) ManualRecord() (RunRecord, bool) {
 func (r RunRequest) SessionID() string                { return r.sessionID }
 func (r RunRequest) RunID() string                    { return r.runID }
 func (r RunRequest) Invocation() extension.Invocation { return r.invocation }
+func (r RunRequest) CommandID() string                { return r.commandID }
 
 type RunRequestSnapshot struct {
 	ScheduleID   string
@@ -137,10 +147,11 @@ type RunRequestSnapshot struct {
 	RunID        string
 	ManualRanAt  time.Time
 	Invocation   extension.Invocation
+	CommandID    string `json:"CommandID,omitzero"`
 }
 
 func (r RunRequest) Snapshot() RunRequestSnapshot {
-	value := RunRequestSnapshot{ScheduleID: r.ScheduleID(), Execution: r.execution.snapshot(), OccurrenceID: r.occurrenceID.String(), SessionID: r.sessionID, RunID: r.runID, Invocation: r.invocation}
+	value := RunRequestSnapshot{ScheduleID: r.ScheduleID(), Execution: r.execution.snapshot(), OccurrenceID: r.occurrenceID.String(), SessionID: r.sessionID, RunID: r.runID, Invocation: r.invocation, CommandID: r.commandID}
 	if r.manualRecord != nil {
 		value.ManualRanAt = r.manualRecord.ranAt
 	}
@@ -151,7 +162,7 @@ func RestoreRunRequest(value RunRequestSnapshot) (RunRequest, error) {
 	if err != nil {
 		return RunRequest{}, err
 	}
-	request := RunRequest{execution: execution, sessionID: value.SessionID, runID: value.RunID, invocation: value.Invocation}
+	request := RunRequest{execution: execution, sessionID: value.SessionID, runID: value.RunID, invocation: value.Invocation, commandID: value.CommandID}
 	if value.OccurrenceID != "" {
 		identity, err := parseOccurrenceIdentity(value.OccurrenceID)
 		if err != nil {

@@ -245,7 +245,20 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	case ToolCallStarted:
 		return r.startToolCall(e)
 	case ToolCallPrepared:
+		if err := e.Caller.Validate(); err != nil {
+			return factReduction{}, err
+		}
+		if e.Caller.Snapshot().Invocation.ID != e.Start.CallID || e.Caller.Snapshot().Tool.ModelName() != e.Start.ToolName {
+			return factReduction{}, fmt.Errorf("%w: prepared Tool caller differs from execution", errExecutorContract)
+		}
 		reduced, err := r.startToolCall(e.Start)
+		if err != nil {
+			return reduced, err
+		}
+		if len(reduced.toolInvocations) != 1 {
+			return factReduction{}, fmt.Errorf("%w: prepared Tool has no invocation", errExecutorContract)
+		}
+		reduced.toolInvocations[0].Caller = new(e.Caller)
 		reduced.executionContext = new(e.Context.Clone())
 		return reduced, err
 	case ToolResultsCommitted:

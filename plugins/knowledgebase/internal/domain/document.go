@@ -94,6 +94,8 @@ func NewDraft(content Content) (Draft, error) {
 
 func (d Draft) Texts() []string { return slices.Clone(d.chunks) }
 
+func (d Draft) Content() Content { return d.content }
+
 type index struct {
 	space   string
 	vectors [][]float32
@@ -138,13 +140,23 @@ func Restore(snapshot Snapshot) (Document, error) {
 }
 
 func (d Document) Replace(expected int64, indexed IndexedDraft) (Document, error) {
-	if expected != d.revision || d.revision == exactint.Maximum {
-		return Document{}, ErrRevisionConflict
-	}
-	if len(indexed.draft.chunks) == 0 || d.revision > 0 && d.draft.content.ID != indexed.draft.content.ID {
+	if len(indexed.draft.chunks) == 0 {
 		return Document{}, ErrInvalidDocument
 	}
+	if err := d.CheckReplacement(expected, indexed.draft.content.ID); err != nil {
+		return Document{}, err
+	}
 	return Document{draft: indexed.draft, revision: d.revision + 1, index: indexed.index}, nil
+}
+
+func (d Document) CheckReplacement(expected int64, id string) error {
+	if expected != d.revision || d.revision == exactint.Maximum {
+		return ErrRevisionConflict
+	}
+	if d.revision > 0 && d.draft.content.ID != id {
+		return ErrInvalidDocument
+	}
+	return nil
 }
 
 func (d Document) CheckDeletion(expected int64) error {
@@ -156,6 +168,18 @@ func (d Document) CheckDeletion(expected int64) error {
 	}
 	return nil
 }
+
+func (d Document) PrepareReindex(expected int64) (Draft, error) {
+	if d.revision == 0 {
+		return Draft{}, ErrNotFound
+	}
+	if err := d.CheckReplacement(expected, d.draft.content.ID); err != nil {
+		return Draft{}, err
+	}
+	return d.draft, nil
+}
+
+func (d Document) Content() Content { return d.draft.content }
 
 func (d Document) Header() Header {
 	return Header{ID: d.draft.content.ID, Title: d.draft.content.Title, Source: d.draft.content.Source, Revision: d.revision, Chunks: len(d.draft.chunks), Space: d.index.space}

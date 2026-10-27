@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 type toolInvocationState string
@@ -72,6 +73,7 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	ctx context.Context,
 	sessionID, runID, segmentID, callID, itemID string,
 	startedAt time.Time,
+	caller *plugin.ToolCaller,
 ) error {
 	if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
 		return err
@@ -82,32 +84,42 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if err := instant.Validate(startedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
 	}
-	result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_invocations(
+	return sqlite.RunInTx(ctx, t.db, func(ctx context.Context) error {
+		if caller != nil {
+			if caller.Snapshot().Invocation.ID != callID {
+				return plugin.ErrCommandConflict
+			}
+			if err := t.retainCaller(ctx, *caller); err != nil {
+				return err
+			}
+		}
+		result, err := sqlite.Connection(ctx, t.db).ExecContext(ctx,
+			`INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
 		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
 		   FROM runs
 		  WHERE run_id = ? AND session_id = ? AND state != ?`,
-		callID,
-		itemID,
-		segmentID,
-		toolInvocationStarted.databaseValue(),
-		startedAt.UTC().UnixNano(),
-		runID,
-		sessionID,
-		runStateTerminal.databaseValue(),
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: start Tool invocation %q: %w", callID, err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect Tool invocation %q start: %w", callID, err)
-	}
-	if changed != 1 {
-		return fmt.Errorf("sqlite: Tool invocation %q has no owning active Run", callID)
-	}
-	return nil
+			callID,
+			itemID,
+			segmentID,
+			toolInvocationStarted.databaseValue(),
+			startedAt.UTC().UnixNano(),
+			runID,
+			sessionID,
+			runStateTerminal.databaseValue(),
+		)
+		if err != nil {
+			return fmt.Errorf("sqlite: start Tool invocation %q: %w", callID, err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect Tool invocation %q start: %w", callID, err)
+		}
+		if changed != 1 {
+			return fmt.Errorf("sqlite: Tool invocation %q has no owning active Run", callID)
+		}
+		return nil
+	})
 }
 
 func (t *ToolInvocationStore) CompleteToolInvocation(

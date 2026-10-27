@@ -21,7 +21,7 @@ func TestMemoryOwnerTimesRoundTripAtExactBounds(t *testing.T) {
 			if err != nil || !added {
 				t.Fatalf("Add = %v, %v", added, err)
 			}
-			storedItem, found, err := memory.get(t.Context(), item.ID())
+			storedItem, found, err := memory.Get(t.Context(), item.ID())
 			if err != nil || !found || !storedItem.CreatedAt().Equal(at) || !storedItem.UpdatedAt().Equal(at) {
 				t.Fatalf("Memory time = %+v, %v", storedItem.Snapshot(), err)
 			}

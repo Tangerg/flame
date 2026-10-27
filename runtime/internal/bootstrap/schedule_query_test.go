@@ -2,12 +2,17 @@ package bootstrap
 
 import (
 	json "encoding/json/v2"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+func scheduleToolsReady(tools []protocol.MCPTool) bool {
+	return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "list_schedules" })
+}
 
 func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPluginRequest {
 	r.t.Helper()

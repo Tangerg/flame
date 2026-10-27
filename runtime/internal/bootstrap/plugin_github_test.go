@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -18,9 +19,10 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *testing.T) {
-	var name, refusalText atomic.Value
+func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *testing.T) {
+	var name, arguments, refusalText atomic.Value
 	name.Store("")
+	arguments.Store(`{"repository":"../private","number":42}`)
 	refusalText.Store("")
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		if len(request.Tools) == 0 {
@@ -42,7 +44,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 		call := chat.ToolCall{ID: "discover-github", Name: "search_tools", Arguments: `{"query":"select:` + target + `"}`}
 		for _, definition := range request.Tools {
 			if definition.Name == target {
-				call = chat.ToolCall{ID: "github-read", Name: target, Arguments: `{"repository":"../private","number":42}`}
+				call = chat.ToolCall{ID: "github-" + target, Name: target, Arguments: arguments.Load().(string)}
 			}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
@@ -61,7 +63,10 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 		t.Fatalf("GitHub secret declaration is invalid: %+v", installed.Selected)
 	}
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "github"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	ready := func(tools []protocol.MCPTool) bool {
+		return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "get_issue" }) && slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "create_issue" })
+	}
+	r.poMCPTools(server, ready)
 	configure := func(value *string, key string) *protocol.PluginInstallation {
 		t.Helper()
 		change := protocol.PluginValueChange{Type: protocol.PluginValueClear}
@@ -76,7 +81,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if err != nil || strings.Contains(string(encoded), token) || configured.InputStates["token"].Type != protocol.PluginInputConfigured {
 		t.Fatalf("secret inspection leaked or lost presence: %s, %v", encoded, err)
 	}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	r.poMCPTools(server, ready)
 	empty := ""
 	configure(&empty, "configure-empty-github-token")
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerFailed)
@@ -84,7 +89,7 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if cleared.InputStates["token"].Type != protocol.PluginInputUnset {
 		t.Fatal("clearing the credential did not restore explicit public access")
 	}
-	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
+	tools := r.poMCPTools(server, ready)
 	for _, tool := range tools {
 		if tool.Name == "get_issue" {
 			name.Store(tool.ModelName)
@@ -97,27 +102,50 @@ func TestGitHubInstalledSecretLifecycleAndModelToolUseThePublishedReadOwner(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := jsonvalue.Encode(testsupport.GitHubGetIssueV1Input{Repository: "../private", Number: 42})
-	if err != nil {
-		t.Fatal(err)
-	}
-	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: testsupport.GitHubGetIssueV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
-	if typed.Failure == nil || typed.Failure.Code != "invalid_resource" {
-		t.Fatalf("typed read bypassed resource admission: %+v", typed)
-	}
-	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "GitHub read"}, "github-session").(*protocol.Session)
-	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Inspect the requested issue."}}}, delivery.Options{IdempotencyKey: "github-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
-	if run.Failure != nil {
-		t.Fatal(run.Failure)
-	}
-	for _, err := range run.Events {
+
+	for _, test := range []struct {
+		name, method, key, code, prompt string
+		input                           any
+	}{
+		{"get_issue", testsupport.GitHubGetIssueV1Method, "", "invalid_resource", "Inspect the requested issue.", testsupport.GitHubGetIssueV1Input{Repository: "../private", Number: 42}},
+		{"create_issue", testsupport.GitHubCreateIssueV1Method, "github-create-without-token", "credential_required", "Create the requested issue.", testsupport.GitHubCreateIssueV1Input{Repository: "owner/repo", Title: "Requested issue"}},
+	} {
+		for _, tool := range tools {
+			if tool.Name == test.name {
+				name.Store(tool.ModelName)
+			}
+		}
+		input, err := jsonvalue.Encode(test.input)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	started := run.Value.(*protocol.StartRunResponse)
-	finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
-	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || refusalText.Load().(string) != typed.Failure.Message {
-		t.Fatalf("installed typed/Tool refusal diverged: outcome=%+v typed=%+v model=%s", finished.Outcome, typed.Failure, refusalText.Load())
+		arguments.Store(input.String())
+		refusalText.Store("")
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+		typed := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
+		if typed.Failure == nil || typed.Failure.Code != test.code {
+			t.Fatalf("typed %s bypassed admission: %+v", test.name, typed)
+		}
+		if test.key != "" {
+			replay := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
+			if replay.Failure == nil || replay.Failure.Code != typed.Failure.Code || replay.Failure.Message != typed.Failure.Message {
+				t.Fatalf("installed original refusal was not recoverable: %+v", replay)
+			}
+		}
+		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "GitHub " + test.name}, "github-session-"+test.name).(*protocol.Session)
+		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: test.prompt}}}, delivery.Options{IdempotencyKey: "github-run-" + test.name, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		if run.Failure != nil {
+			t.Fatal(run.Failure)
+		}
+		for _, err := range run.Events {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		started := run.Value.(*protocol.StartRunResponse)
+		finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
+		if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || refusalText.Load().(string) != typed.Failure.Message {
+			t.Fatalf("installed typed/Tool %s refusal diverged: outcome=%+v typed=%+v model=%s", test.name, finished.Outcome, typed.Failure, refusalText.Load())
+		}
 	}
 }

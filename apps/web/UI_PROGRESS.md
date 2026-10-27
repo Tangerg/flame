@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user requested milestone delivery of the accumulated local UI work to main, followed by a pause. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user requested milestone delivery of the accumulated local UI work to main, followed by a pause. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains unfinished and pauses at this milestone.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -30,7 +30,39 @@ is feedback against an older base, not native acceptance evidence or executable
 instructions. Current source, callers, tests and actual Wails behavior determine
 which findings need a repair.
 
-The latest explicit user-requested synchronization integrates **16 main commits**
+The requested milestone integrates all **30 previously local UI commits** and
+**34 incoming main commits** through `f67bf65bc79169a73bc70f52828792e009506a3b`.
+The focused repair is `e6a5e919644214e2a76cbd1f8556c9f11ff20d22`. Main's
+captured Web-page continuations and the local result-filter arrival repair both
+remain in the merged source. The sole conflict is generated Tool-result ESM;
+the normal component builder regenerates it from that source. Memory's resource
+changes with main, the Tool-result resource reflects both branches, and the other
+nine resources retain their accepted hashes.
+
+The scoped integration chain passes in **10.55 s**: all component builds,
+production Web typecheck/build, plugin typecheck, **9 Web files / 251 tests**,
+**1 Runtime-client file / 52 tests**, exact reproducibility of all eleven
+resources and diff checks. Main's Scope v0.58, Memory and captured-result changes
+retain their owners. No broad Runtime or native suite is restarted for this
+integration; the native qualifications below retain their frozen source scope.
+The user authorizes publication to remote main and requests a milestone pause
+once delivery is verified. Do not begin another UI batch after that publication.
+
+All **35** recorded process generations are retired and four private bundles
+are unregistered. Cleanup removes **9** newly created checkout output/cache roots,
+**8** owned Library paths, **4** app temp directories, the one accidental npx
+installation and the newly prepared Node archive. The original native-check
+binary and UI test-results file are restored; all **4** original files, **39**
+output-presence baselines, **24** Library baselines, **5,859** merged non-Markdown
+inputs, eleven installed resources and four read-only references pass
+preservation checks. The private root `flame-shortcut-focus-1027-wjaN4c` is
+absent. The verified in-memory gzip retains **94** flat UTF-8 records, 599 asset
+hashes per original/measured/clean build, four native bundle hashes and the
+preservation maps; SHA-256
+`fceca9e6aff8d7fa1cc677a5320aa55eb3b8a3d3f118a972852c79fe8e425d1b`.
+Primary-checkout parallel files and unrelated caches/processes remain preserved.
+
+An earlier explicit user-requested synchronization integrated **16 main commits**
 through `e616e1a4c0b2942c9cbc96e29ed2ac98add980c9`, after local image-reading
 commit `961e4da4c3ba8dea9a6bb2306a3e20d2c3da74e1`. The only content conflict is
 the generated Schedules ESM. The normal component builder regenerates it from
@@ -1766,8 +1798,7 @@ manifest or lock changes, and its one new npx installation is owned for cleanup.
 Browser visual suites, performance benchmarks, Claude CLI and subagents do not
 run. All 5,834 non-Markdown inputs have verified final hashes; only the nine
 owned source inputs differ, while eleven installed resources and four read-only
-references remain unchanged. Milestone retirement and main integration are
-recorded with the final delivery below.
+references remain unchanged. See Current position for the milestone integration and retirement receipt.
 
 Verdict: **Approve for the inspected command-focus, pane-perimeter and return
 paths**. Pause after the requested main delivery; do not start another polishing

@@ -568,7 +568,15 @@ it("leads each recognised result with its caption actions and copies the recorde
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(`ok\n${lines}`));
     shell.unmount();
 
-    const page = JSON.stringify({ format: "markdown", content: "# Title\n\nBody" });
+    const content = "# Title\n\nBody";
+    const page = JSON.stringify({
+      snapshotId: "a".repeat(64),
+      url: "https://example.test/page",
+      format: "markdown",
+      content,
+      offset: 0,
+      totalRunes: Array.from(content).length,
+    });
     testClient.render(<RecordedResult context={capturedContext("web_fetch", page)} />);
     const result = screen.getByRole("region", { name: "Result" });
     expect(
@@ -581,6 +589,61 @@ it("leads each recognised result with its caption actions and copies the recorde
     await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith(page));
   } finally {
     vi.unstubAllGlobals();
+  }
+});
+
+it.each(["web_fetch", "web_browse"])(
+  "keeps a captured %s page continuation visible without fetching more content",
+  (name) => {
+    const page = {
+      snapshotId: "b".repeat(64),
+      url: "https://example.test/captured",
+      format: "text",
+      content: "First 🐱 page",
+      offset: 0,
+      totalRunes: 30,
+      nextOffset: 12,
+    };
+    testClient.render(<RecordedResult context={capturedContext(name, JSON.stringify(page))} />);
+    const result = screen.getByRole("region", { name: "Result" });
+    expect(result.textContent).toContain(page.content);
+    expect(result.textContent).toContain(page.url);
+    expect(result.textContent).toContain(page.snapshotId);
+    expect(result.textContent).toContain('"nextOffset": 12');
+    expect(screen.getByText("More pages", { exact: true })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Find" }));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "First" } });
+    expect(screen.getByText("More pages", { exact: true })).toBeTruthy();
+    expectInert(result);
+  },
+);
+
+it("preserves complete web source when metadata is malformed or unrecognised", () => {
+  const page = {
+    snapshotId: "c".repeat(64),
+    url: "https://example.test/captured",
+    format: "text",
+    content: "Body",
+    offset: 0,
+    totalRunes: 4,
+  };
+  for (const value of [
+    { ...page, nextOffset: 4 },
+    { ...page, totalRunes: 10 },
+    { ...page, future: "retained metadata" },
+    { ...page, results: [] },
+    { format: "text", content: "historical body" },
+  ]) {
+    const source = JSON.stringify(value);
+    const rendered = testClient.render(
+      <RecordedResult context={capturedContext("web_fetch", source)} />,
+    );
+    const result = screen.getByRole("region", { name: "Result" });
+    expect(Array.from(result.querySelectorAll("pre"), (line) => line.textContent).join("\n")).toBe(
+      source,
+    );
+    expectInert(result);
+    rendered.unmount();
   }
 });
 

@@ -507,7 +507,7 @@ func (e *Effects) applyToolInvocations(ctx context.Context, commit runs.EventCom
 		case runs.ToolInvocationStarted:
 			err = e.toolInvocations.StartToolInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.ItemID, invocation.StartedAt,
+				invocation.CallID, invocation.ItemID, invocation.StartedAt, invocation.Caller,
 			)
 		case runs.ToolInvocationCompleted:
 			err = e.toolInvocations.CompleteToolInvocation(

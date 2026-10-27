@@ -70,6 +70,55 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it.each(["archive", "restore"] as const)(
+    "recovers a Skill %s command through the same journal after client replacement",
+    async (operation) => {
+      const values = new Map<string, unknown>();
+      const storage: MutationJournalStorage = {
+        get: (key) => structuredClone(values.get(key)),
+        set: (key, value) => values.set(key, structuredClone(value)),
+        remove: (key) => void values.delete(key),
+        keys: () => [...values.keys()],
+      };
+      const bind = (call: RpcClient["call"]) => {
+        const journal = createMutationJournal({
+          storage,
+          scope: () => discovery.capabilities.limits.idempotency,
+        });
+        return {
+          journal,
+          methods: createMethods({ call } as RpcClient, {
+            mutationJournal: journal,
+            capabilities: () =>
+              discovery.capabilities as import("@flame/runtime-client/wire").ServerCapabilities,
+          }),
+        };
+      };
+      const lost = vi.fn().mockRejectedValue(new RpcTransportError("response lost"));
+      const first = bind(lost);
+      const command = first.methods.skills[operation]("agent-notes");
+      await expect(command).rejects.toBeInstanceOf(RpcTransportError);
+      first.journal.dispose();
+      const confirmed = vi.fn().mockResolvedValue(undefined);
+      const replacement = bind(confirmed);
+      try {
+        const recovered = replacement.methods.skills[operation]("agent-notes");
+        expect(recovered.idempotencyKey).toBe(command.idempotencyKey);
+        await expect(recovered).resolves.toBeUndefined();
+        expect(confirmed).toHaveBeenCalledWith(
+          `skills.library.${operation}`,
+          { name: "agent-notes" },
+          expect.objectContaining({
+            idempotencyKey: command.idempotencyKey,
+            idempotencyNamespace: discovery.capabilities.limits.idempotency.namespace,
+          }),
+        );
+        expect(values.size).toBe(0);
+      } finally {
+        replacement.journal.dispose();
+      }
+    },
+  );
   it("requires the model catalog's provider and transmits its exact identity", async () => {
     expect(() => checkRequest("models.list", {})).toThrow(RpcProtocolError);
     const transport = createMemoryTransport();

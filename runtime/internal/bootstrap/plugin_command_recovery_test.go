@@ -14,13 +14,13 @@ import (
 )
 
 func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
-	source, _ := managedMessageLossPackage(t, "memory", "flame.memory/add.v1", "request")
+	source, _ := managedMessageLossPackage(t, "memory", "flame.memory/add.v2", "request")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "must not be silently resubmitted"})
+	r.poMCPTools(server, memoryToolsReady)
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "must not be silently resubmitted"})
 	invoke := func() *protocol.Failure {
 		return r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "uncertain", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}).Failure
 	}
@@ -28,11 +28,11 @@ func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
 		t.Fatal("lost request appeared successful")
 	}
 	r = reopenCommandRuntime(t, r, &cfg)
-	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server, memoryToolsReady)
 	if failure := invoke(); failure == nil || !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("missing receipt was settled or resubmitted: %v", failure)
 	}
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 0 {
 		t.Fatalf("receipt lookup executed the original mutation: %+v", page.Data)
 	}
@@ -84,25 +84,25 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	server := func(id string) *protocol.MCPServerID {
 		return &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: id}, Name: "memory"}
 	}
-	r.poMCPTools(server(first.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	request := memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "original provider's fact"})
+	r.poMCPTools(server(first.ID), memoryToolsReady)
+	request := memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original provider's fact"})
 	r.must(delivery.PluginsCall, request, "original-command")
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: first.ID}, "uninstall-observed")
 	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "replacement-install").(*protocol.PluginInstallation)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "replacement-enable")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: second.ID, Contribution: "memory-provider"}, "replacement-provider")
 	r = reopenCommandRuntime(t, r, &cfg)
-	r.poMCPTools(server(second.ID), func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	r.poMCPTools(server(second.ID), memoryToolsReady)
 	replay := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{IdempotencyKey: "original-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if replay.Failure == nil || !errors.Is(replay.Failure, protocol.ErrInternalError) {
 		t.Fatalf("old identity adopted replacement provider: %v", replay.Failure)
 	}
-	page := readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 0 {
 		t.Fatalf("old command mutated replacement owner: %+v", page.Data)
 	}
-	created := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV1Input{Scope: "user", Content: "original provider's fact"}), "new-command")
-	page = readMemoryPage(r, memorycontract.ListV1Input{Scope: "user"})
+	created := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddV2Input{Scope: "user", Content: "original provider's fact"}), "new-command")
+	page = readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 1 || !reflect.DeepEqual(page.Data[0], *created) {
 		t.Fatalf("new command did not use replacement owner: %+v", page.Data)
 	}

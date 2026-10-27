@@ -11,8 +11,9 @@ import { VISUAL_PLUGIN_DIGEST } from "./agentFixtureFacts";
 import { type MethodOutputs as MemoryOutputs } from "../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as ScheduleOutputs } from "../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
-const visualMemory: MemoryOutputs["flame.memory/list.v1"]["Rows"] = [
+const visualMemory: MemoryOutputs["flame.memory/list.v2"]["Rows"] = [
   {
+    Revision: 3,
     ID: "mem_00000000000000000000000000000002",
     Scope: "project",
     Day: "",
@@ -28,6 +29,7 @@ const visualMemory: MemoryOutputs["flame.memory/list.v1"]["Rows"] = [
     UpdatedAt: "2026-07-30T16:20:00Z",
   },
   {
+    Revision: 7,
     ID: "mem_00000000000000000000000000000001",
     Scope: "project",
     Day: "",
@@ -44,7 +46,7 @@ const visualMemory: MemoryOutputs["flame.memory/list.v1"]["Rows"] = [
   },
 ];
 
-export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v1"] = {
+export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
   Rows: visualMemory,
   NextCursor: "",
   Capacity: 512,
