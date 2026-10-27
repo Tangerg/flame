@@ -162,19 +162,20 @@ func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvoc
 		cause = errors.Join(cause, response.Validate())
 		response = nil
 	}
-	failure := ""
-	if cause != nil {
-		failure = cause.Error()
-	}
 	var cost accounting.Cost
+	var pricingErr error
 	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && e.pricing != nil {
 		served := response.Metadata.Model
 		if served == "" {
 			served = invocation.Model
 		}
-		cost = e.pricing(invocation.Provider, served, &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens})
+		cost, pricingErr = e.pricing(invocation.Provider, served, &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens})
 	}
-	return e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), EmbeddingResponse: response, FinishedAt: time.Now().UTC(), Failure: failure})
+	failure := ""
+	if err := errors.Join(cause, pricingErr); err != nil {
+		failure = err.Error()
+	}
+	return errors.Join(pricingErr, e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, modelref.EndpointOutcome{CostUSD: cost.OptionalUSD(), EmbeddingResponse: response, FinishedAt: time.Now().UTC(), Failure: failure}))
 }
 
 func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {

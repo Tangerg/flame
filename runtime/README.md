@@ -24,6 +24,24 @@ Session, Goal or physical-model invocation for detached title generation.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
+Scope v0.58.0 owns complete Tool failure classification. Runtime uses
+`tool.ClassifyFailure` for dispatch and original-result recovery: independent
+joined errors cannot establish a definite result. A plugin's classified Failure
+retains its diagnostic cause inside that outcome instead of joining it as a
+second outcome. Accepted human answers use the Engine's public Signal constructor
+for exact receipt reconciliation and the current wait's `ResponseSignal` for
+fresh admission.
+
+Unknown catalog pricing preserves unknown cost, including an empty rate schedule
+with reported zero usage. Model listings expose effective base-band cache rates:
+an omitted catalog cache rate uses the input rate, while an explicit zero is free.
+Scope owns cost calculation and threshold selection; historical settled costs
+are not repriced. Pricing validation failures return through the endpoint boundary
+while retaining the original generation, usage and unknown cost in the journal.
+Core wire shapes and storage formats are unchanged by this
+dependency upgrade. Retain waiting work with its captured executable; the existing
+BuildID boundary continues to reject incompatible checkpoints.
+
 Scope's public contracts own framework behavior. Tool discovery implements
 `interaction.AdvertisingTool`, Tool child dispatch uses
 `ToolSetConfig.DecorateDispatcher`, and restoration reads

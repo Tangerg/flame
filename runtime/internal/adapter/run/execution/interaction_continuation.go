@@ -182,7 +182,7 @@ func continuationAnswerPlans(cut interactionHandoff, head agent.TreeSnapshot, re
 		if err != nil {
 			return nil, err
 		}
-		signal, err := interaction.NewToolInputResponseSignal(signalID, waitID, response)
+		signal, err := agent.NewSignalRequest(signalID, waitID, response)
 		if err != nil {
 			return nil, fmt.Errorf("execution: construct Interaction answer Signal: %w", err)
 		}

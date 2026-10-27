@@ -206,9 +206,8 @@ type Details struct {
 	Pricing          *Pricing
 }
 
-// Pricing is the primary per-million-token rate the runtime displays for a
-// model. Zero-valued cache rates mean the provider does not price them
-// separately.
+// Pricing is the effective base-band per-million-token rate displayed for a
+// model. Zero-valued cache rates are free.
 type Pricing struct {
 	InputPerMillion      float64
 	OutputPerMillion     float64

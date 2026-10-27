@@ -89,7 +89,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return toolcontract.Result{InputRequest: inputRequest}, nil
 	}
 	if prepareErr != nil {
-		if _, known := errors.AsType[*toolcontract.Failure](prepareErr); !known {
+		if _, known := toolcontract.ClassifyFailure(prepareErr); !known {
 			return toolcontract.Result{}, prepareErr
 		}
 	}
@@ -160,13 +160,10 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		output, callErr = result.Output, invokeErr
 	}
 
-	var failure *toolcontract.Failure
+	failure, knownFailure := toolcontract.ClassifyFailure(callErr)
 	if callErr != nil {
-		if !errors.As(callErr, &failure) {
+		if !knownFailure {
 			return toolcontract.Result{}, callErr
-		}
-		if err := failure.Validate(); err != nil {
-			return toolcontract.Result{}, err
 		}
 		output = failure.Output()
 	}

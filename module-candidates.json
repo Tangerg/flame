@@ -23,7 +23,8 @@
     "v0.1.0-memory.20261027.1": "18220f6245ace458d5ff55b3473048686a22eb10",
     "v0.1.0-memory.20261027.2": "37da45145ef818126843d2377db8cedacb818370",
     "v0.1.0-schedules.20261027.1": "fa31077fa8786c95eaf39b226fc0571f8345214e",
-    "v0.1.0-schedules.20261027.2": "bf3d833f168f7f6ff9f166f73b176c02e093bc02"
+    "v0.1.0-schedules.20261027.2": "bf3d833f168f7f6ff9f166f73b176c02e093bc02",
+    "v0.1.0-scope.20261027.1": "77ea4093f0fce1725ed4ae8ff364173991399740"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",

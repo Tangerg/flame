@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,8 +11,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
 )
 
@@ -64,6 +67,34 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	}
 	if row.Invocation.Caller.ID != "embed-call" || row.Invocation.Caller.Parent != "owner-operation" {
 		t.Fatalf("embedding endpoint lost its original caller: %+v", row.Invocation.Caller)
+	}
+}
+
+func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
+	db, err := persistencefixture.Open(t, t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	cause := errors.New("pricing unavailable")
+	subject := &embedder{
+		id: "space", model: embeddingModelFixture{served: "served-embed"},
+		selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
+		pricing: func(string, string, *chat.Usage) (accounting.Cost, error) { return accounting.Cost{}, cause },
+	}
+	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "embed-pricing"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if vectors, err := subject.Embed(ctx, []string{"alpha"}); vectors != nil || !errors.Is(err, cause) {
+		t.Fatalf("pricing failure became success: %+v, %v", vectors, err)
+	}
+	rows, err := db.ModelInvocations.PageEndpointInvocations(t.Context(), "embed-pricing", 0, "", 10)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("embedding endpoint observation: %+v, %v", rows, err)
+	}
+	if row := rows[0]; row.State != "failed" || !row.HasResponse() || row.Usage == nil || row.Usage.InputTokens != 13 || row.CostUSD != nil || row.Failure != cause.Error() {
+		t.Fatalf("pricing failure lost embedding evidence or invented a price: %+v", row)
 	}
 }
 

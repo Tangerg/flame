@@ -24,6 +24,28 @@ func TestCatalogContainsProviderDefaults(t *testing.T) {
 	}
 }
 
+func TestCatalogPricesPreserveInputDefaultsAndFreeCache(t *testing.T) {
+	for _, test := range []struct {
+		name                string
+		read, write         *float64
+		wantRead, wantWrite float64
+	}{
+		{name: "input default", wantRead: 3, wantWrite: 3},
+		{name: "free cache", read: new(float64(0)), write: new(float64(0))},
+		{name: "explicit rates", read: new(0.3), write: new(3.75), wantRead: 0.3, wantWrite: 3.75},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			model := catalogModel("provider", catalog.Model{ID: "model", Pricing: catalog.PricingSchedule{{
+				InputPer1M: 3, OutputPer1M: 15, CacheReadPer1M: test.read, CacheWritePer1M: test.write,
+			}}})
+			pricing := model.Details().Pricing
+			if pricing == nil || pricing.CacheReadPerMillion != test.wantRead || pricing.CacheWritePerMillion != test.wantWrite {
+				t.Fatalf("catalog cache price changed meaning: %+v", pricing)
+			}
+		})
+	}
+}
+
 func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
 		t.Error("model discovery reached the endpoint without a required credential")
