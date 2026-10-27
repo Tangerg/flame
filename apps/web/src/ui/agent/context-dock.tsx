@@ -18,13 +18,13 @@ import { isImeKey, vocab } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import { Tooltip } from "@flame/ui/tooltip";
 export interface AgentDockTab {
   id: string;
   title: string;
   icon?: IconName;
   badge?: ReactNode;
   active?: boolean;
-  onSelect?: () => void;
   onClose: () => void;
   closeLabel: string;
   onCloseOthers?: () => void;
@@ -90,11 +90,92 @@ const styles = stylex.create({
   contents: { display: "contents" },
 });
 
-export function AgentContextDock({ children, className, ...props }: ComponentProps<"aside">) {
+export function AgentContextDock({
+  children,
+  className,
+  value,
+  onValueChange,
+  ...props
+}: ComponentProps<"aside"> & {
+  value: string | null;
+  onValueChange: (value: string | null) => void;
+}) {
   return (
-    <aside {...props} className={cn("agent-context-dock", className)}>
+    <TabsPrimitive.Root
+      value={value}
+      onValueChange={onValueChange}
+      render={<aside {...props} className={cn("agent-context-dock", className)} />}
+    >
       {children}
-    </aside>
+    </TabsPrimitive.Root>
+  );
+}
+
+export function AgentDockPanel({
+  value,
+  presentation,
+  ...props
+}: Omit<ComponentProps<"div">, "role" | "hidden" | "inert"> & {
+  value: string;
+  presentation: "dock" | "main";
+}) {
+  return (
+    <TabsPrimitive.Panel
+      {...props}
+      value={value}
+      keepMounted
+      // The host retains inactive layout so WebKit preserves native scroll positions.
+      hidden={false}
+      role={presentation === "main" ? "region" : "tabpanel"}
+    />
+  );
+}
+
+function DockTab({
+  tab,
+  onClose,
+  dragging,
+}: {
+  tab: AgentDockTab;
+  onClose: () => void;
+  dragging: boolean;
+}) {
+  const label = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useLayoutEffect(() => {
+    const node = label.current;
+    if (!node) return;
+    const measure = () => setTruncated(node.scrollWidth > node.clientWidth);
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    node.ownerDocument.fonts?.addEventListener("loadingdone", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      node.ownerDocument.fonts?.removeEventListener("loadingdone", measure);
+    };
+  }, [tab.title]);
+  return (
+    <Tooltip label={tab.title} disabled={!truncated || dragging}>
+      <TabsPrimitive.Tab
+        value={tab.id}
+        data-dock-tab-id={tab.id}
+        data-focus-inset=""
+        onKeyDown={(event) => {
+          if (event.key !== "Delete" && event.key !== "Backspace") return;
+          if (event.defaultPrevented || isImeKey(event.nativeEvent)) return;
+          event.preventDefault();
+          onClose();
+        }}
+        {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
+      >
+        {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
+        <span ref={label} {...stylex.props(vocab.truncate)}>
+          {tab.title}
+        </span>
+        {tab.badge != null && <span {...stylex.props(styles.badge, type.ui2xs)}>{tab.badge}</span>}
+      </TabsPrimitive.Tab>
+    </Tooltip>
   );
 }
 
@@ -153,10 +234,7 @@ function keepActiveDockTabInsideFade(element: HTMLElement): void {
 export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const activeIndex = Math.max(
-    0,
-    tabs.findIndex((tab) => tab.active),
-  );
+  const activeIndex = tabs.findIndex((tab) => tab.active);
   const activeId = tabs[activeIndex]?.id;
   const actAndSettleFocus = (
     id: string,
@@ -228,12 +306,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
   }, [tabs.length]);
   if (tabs.length === 0) return null;
   return (
-    <TabsPrimitive.Root
-      ref={rootRef}
-      value={activeId}
-      onValueChange={(id) => tabs.find((tab) => tab.id === id)?.onSelect?.()}
-      className="agent-dock-tabs"
-    >
+    <div ref={rootRef} className="agent-dock-tabs">
       <TabsPrimitive.List
         aria-label={ariaLabel}
         {...stylex.props(styles.contents)}
@@ -285,24 +358,7 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
               }}
               {...stylex.props(reveal.host, styles.tab)}
             >
-              <TabsPrimitive.Tab
-                value={tab.id}
-                data-dock-tab-id={tab.id}
-                data-focus-inset=""
-                onKeyDown={(event) => {
-                  if (event.key !== "Delete" && event.key !== "Backspace") return;
-                  if (event.defaultPrevented || isImeKey(event.nativeEvent)) return;
-                  event.preventDefault();
-                  close();
-                }}
-                {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
-              >
-                {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
-                <span {...stylex.props(vocab.truncate)}>{tab.title}</span>
-                {tab.badge != null && (
-                  <span {...stylex.props(styles.badge, type.ui2xs)}>{tab.badge}</span>
-                )}
-              </TabsPrimitive.Tab>
+              <DockTab tab={tab} onClose={close} dragging={draggingId !== null} />
               <IconButton
                 data-reveal="hover"
                 icon={iconGlyph("x")}
@@ -362,6 +418,6 @@ export function AgentDockTabs({ tabs, ariaLabel, reorder }: AgentDockTabsProps) 
           );
         })}
       </TabsPrimitive.List>
-    </TabsPrimitive.Root>
+    </div>
   );
 }

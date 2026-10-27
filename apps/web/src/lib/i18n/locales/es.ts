@@ -1200,6 +1200,7 @@ export const es: Record<string, string> = {
   "project.row.waiting_other": "{{count}} en espera",
   "settings.font.codeSize": "Tamaño del código",
   "settings.font.followUi": "Como la interfaz",
+  "dock.action.expand": "Abrir a ancho completo",
   "dock.action.openFull":
     "Abrir el material a ancho completo: la ventana es demasiado estrecha para mostrarlo al lado",
   "composer.add": "Añadir al mensaje",

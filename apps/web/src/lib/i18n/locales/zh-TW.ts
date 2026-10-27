@@ -1078,6 +1078,7 @@ export const zhTW: Record<string, string> = {
   "project.row.waiting_other": "{{count}} 個待處理",
   "settings.font.codeSize": "程式碼字級",
   "settings.font.followUi": "跟隨介面",
+  "dock.action.expand": "在主區開啟",
   "dock.action.openFull": "以全寬開啟材料——視窗太窄，無法與對話並排顯示",
   "composer.add": "新增到訊息",
   "composer.add.file": "引用專案檔案",

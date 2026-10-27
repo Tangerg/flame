@@ -85,6 +85,12 @@ Session changes and view retirement retain their existing lifetime boundaries.
 The Dock strip reveals its current tab when selection or that tab's ordered
 position changes. Reordering retains the material and focus; ordinary rerenders
 preserve the user's horizontal browsing position.
+The same controlled Tabs root includes the strip and actual material viewports.
+Each material tab labels and controls its retained panel; the catalog leaves
+material tabs unselected. Expanding and restoring material changes presentation
+without adding an inspection source. The existing return chain and native scroll
+position remain intact. A truncated tab title uses the shared Tooltip on hover
+or keyboard focus; resizing the title does not replace its trigger.
 
 Project choices retain complete wrapping names. When projects share a display
 name, both the new-conversation tray and active-project menu show their full

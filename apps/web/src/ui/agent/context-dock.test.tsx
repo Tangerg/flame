@@ -9,7 +9,12 @@ prepareTestClient(() => {
 import { act, fireEvent, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentDockTabs, type AgentDockTab } from "@/ui/agent/context-dock";
+import {
+  AgentContextDock,
+  AgentDockTabs as DockTabs,
+  type AgentDockTabsProps,
+  type AgentDockTab,
+} from "@/ui/agent/context-dock";
 let nativeScrollIntoView: typeof HTMLElement.prototype.scrollIntoView | undefined;
 let frames: FrameRequestCallback[] = [];
 
@@ -26,12 +31,28 @@ afterEach(() => {
   if (nativeScrollIntoView) HTMLElement.prototype.scrollIntoView = nativeScrollIntoView;
   else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function flushFrames() {
   const pending = frames;
   frames = [];
   act(() => pending.forEach((callback) => callback(performance.now())));
+}
+
+function AgentDockTabs({
+  tabs,
+  onValueChange = () => {},
+  ...props
+}: AgentDockTabsProps & { onValueChange?: (id: string | null) => void }) {
+  return (
+    <AgentContextDock
+      value={tabs.find((tab) => tab.active)?.id ?? null}
+      onValueChange={onValueChange}
+    >
+      <DockTabs tabs={tabs} {...props} />
+    </AgentContextDock>
+  );
 }
 
 function DockHarness({ initial }: { initial: string[] }) {
@@ -47,7 +68,6 @@ function DockHarness({ initial }: { initial: string[] }) {
     id,
     title: id,
     active: id === activeId,
-    onSelect: () => setActiveId(id),
     onClose: () => close(id),
     closeLabel: `Close ${id}`,
     onCloseOthers: () => {
@@ -57,9 +77,9 @@ function DockHarness({ initial }: { initial: string[] }) {
     closeOthersLabel: `Close others than ${id}`,
   }));
   return (
-    <>
+    <AgentContextDock value={activeId ?? null} onValueChange={(id) => setActiveId(id ?? undefined)}>
       <div>
-        <AgentDockTabs
+        <DockTabs
           tabs={dockTabs}
           ariaLabel="Workspace tabs"
           reorder={{
@@ -80,7 +100,7 @@ function DockHarness({ initial }: { initial: string[] }) {
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
       />
-    </>
+    </AgentContextDock>
   );
 }
 
@@ -104,6 +124,55 @@ function tabs(activeId: string): AgentDockTab[] {
 }
 
 describe("AgentDockTabs", () => {
+  it("reveals only a truncated title and keeps the focused tab when its geometry changes", async () => {
+    const observers: ResizeObserverCallback[] = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          observers.push(callback);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    const title = "Review the complete cross-workspace comparison and return to the original task";
+    testClient.render(
+      <AgentDockTabs
+        tabs={[{ id: "diff", title, active: true, onClose: () => {}, closeLabel: "Close" }]}
+        ariaLabel="Workspace tabs"
+      />,
+    );
+    const tab = screen.getByRole("tab", { name: title });
+    const label = screen.getByText(title);
+    let width = 280;
+    Object.defineProperties(label, {
+      clientWidth: { configurable: true, get: () => width },
+      scrollWidth: { configurable: true, value: 250 },
+    });
+    const resize = () => act(() => observers.forEach((notify) => notify([], {} as ResizeObserver)));
+    resize();
+    fireEvent.keyDown(document, { key: "Tab" });
+    act(() => tab.focus());
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    width = 100;
+    resize();
+    act(() => tab.blur());
+    act(() => tab.focus());
+    expect((await screen.findByRole("tooltip")).textContent).toBe(title);
+    expect(screen.getByRole("tab", { name: title })).toBe(tab);
+    expect(document.activeElement).toBe(tab);
+
+    width = 280;
+    resize();
+    flushFrames();
+    await vi.waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    expect(screen.getByRole("tab", { name: title })).toBe(tab);
+    expect(document.activeElement).toBe(tab);
+  });
+
   it("brings a newly active overflow tab into the visible strip", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
@@ -167,7 +236,8 @@ describe("AgentDockTabs", () => {
     const onSelect = vi.fn();
     const view = testClient.render(
       <AgentDockTabs
-        tabs={[{ id: "diff", title: "diff", active: true, onSelect, onClose, closeLabel: "Close" }]}
+        tabs={[{ id: "diff", title: "diff", active: true, onClose, closeLabel: "Close" }]}
+        onValueChange={onSelect}
         ariaLabel="Workspace tabs"
       />,
     );

@@ -7,8 +7,10 @@ import { EmptyState } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
+import { AgentDockPanel } from "@/ui/agent/context-dock";
 interface Props {
   viewId: string;
+  presentation: "dock" | "main";
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -27,7 +29,7 @@ const styles = stylex.create({
   },
 });
 
-export function WorkspaceViewBody({ viewId, ref }: Props) {
+export function WorkspaceViewBody({ viewId, presentation, ref }: Props) {
   const t = useT();
   const scroll = useScrollReach();
   const element = useRef<HTMLDivElement>(null);
@@ -45,12 +47,13 @@ export function WorkspaceViewBody({ viewId, ref }: Props) {
   const Body = view?.component;
   const label = t(view?.title ?? "plugins.mainView");
   return (
-    <div
-      role="region"
-      aria-label={label}
+    <AgentDockPanel
+      value={viewId}
+      presentation={presentation}
+      aria-label={presentation === "main" ? label : undefined}
       {...scroll}
       ref={attach}
-      tabIndex={scroll.tabIndex ?? -1}
+      tabIndex={presentation === "dock" ? 0 : (scroll.tabIndex ?? -1)}
       data-focus-inset=""
       data-slot="workspace-view-body"
       {...stylex.props(styles.viewport)}
@@ -74,6 +77,6 @@ export function WorkspaceViewBody({ viewId, ref }: Props) {
           )}
         </Suspense>
       </PluginBoundary>
-    </div>
+    </AgentDockPanel>
   );
 }

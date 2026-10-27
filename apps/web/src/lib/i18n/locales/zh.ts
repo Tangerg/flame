@@ -1074,6 +1074,7 @@ export const zh: Record<string, string> = {
   "project.row.waiting_other": "{{count}} 个待处理",
   "settings.font.codeSize": "代码字号",
   "settings.font.followUi": "跟随界面",
+  "dock.action.expand": "在主区打开",
   "dock.action.openFull": "全宽打开材料——窗口太窄，无法与对话并排显示",
   "composer.add": "添加到消息",
   "composer.add.file": "引用项目文件",

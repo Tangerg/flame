@@ -1161,6 +1161,7 @@ export const en: Record<string, string> = {
   "project.row.waiting_other": "{{count}} waiting",
   "settings.font.codeSize": "Code size",
   "settings.font.followUi": "Follow UI",
+  "dock.action.expand": "Open full width",
   "dock.action.openFull":
     "Open material full width — the window is too narrow to show it beside the conversation",
   "composer.add": "Add to message",

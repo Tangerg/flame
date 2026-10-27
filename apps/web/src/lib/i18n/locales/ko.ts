@@ -1123,6 +1123,7 @@ export const ko: Record<string, string> = {
   "project.row.waiting_other": "{{count}}개 대기 중",
   "settings.font.codeSize": "코드 크기",
   "settings.font.followUi": "UI 따르기",
+  "dock.action.expand": "전체 폭으로 열기",
   "dock.action.openFull": "자료를 전체 폭으로 열기 — 창이 좁아 대화 옆에 표시할 수 없습니다",
   "composer.add": "메시지에 추가",
   "composer.add.file": "프로젝트 파일 참조",

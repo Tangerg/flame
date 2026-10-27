@@ -1137,6 +1137,7 @@ export const ja: Record<string, string> = {
   "project.row.waiting_other": "{{count}} 件待機中",
   "settings.font.codeSize": "コードのサイズ",
   "settings.font.followUi": "UI に合わせる",
+  "dock.action.expand": "全幅で開く",
   "dock.action.openFull": "資料を全幅で開く — ウィンドウが狭く会話の横に表示できません",
   "composer.add": "メッセージに追加",
   "composer.add.file": "プロジェクトのファイルを参照",

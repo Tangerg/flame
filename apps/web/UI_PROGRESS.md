@@ -18,9 +18,10 @@ below. The latest resumed goal restores verified batch publication to main.
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`. The shared-control batch uses frozen base
-`35a35b7ff` and publishes source commit `c435c71c9` to remote main; the remote has
-no master branch. The user resumed the paused goal.
+is on `codex/ui-feedback-local-1026`. The shared-control batch publishes source commit `c435c71c9`; its delivery
+receipt is `412ff2794`. The Dock panel/presentation batch starts from that clean
+published base. Publication-time fetch confirms remote main still matches it;
+the remote has no master branch. The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -17939,6 +17940,130 @@ browser suite, performance benchmark, Claude CLI, subagent, live model Send,
 VoiceOver, OS IME, other operating-system GUI or whole-product visual verdict is
 claimed. Continue the supplied Dock association/expansion and recorded-material
 task findings after this batch's verified publication and cleanup.
+
+### Dock panels, presentation and complete tab titles
+
+The 2026-10-28 Dock batch follows published base `412ff2794` in the owned
+checkout. It continues the supplied component review after the shared-control
+batch above. Workspace navigation remains the only owner of selection,
+presentation and inspection sources. No Runtime, protocol, preference,
+dependency or second component system changes.
+
+| Domain        | Evidence inspected                                                                                    | Result                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Accessibility | Actual tab/panel associations, catalog selection, keyboard switching, source return and later writing | Shared boundary repaired; inspected native paths pass                                    |
+| Layout        | Wide expansion, restored Dock, minimum native window and 200% zoom                                    | Same material instance retained; source and draft remain reachable                       |
+| Writing       | Expansion action in eight locales, EN/ZH source-return labels and complete object titles              | Concise action and existing source meanings retained                                     |
+| Typography    | 14/18 px, deliberately long contributed identity, native keyboard and pointer hint                    | Complete wrapping hint appears only for truncated text                                   |
+| Colors        | Light/orange and dark/custom-purple at contrast 25/100                                                | Existing semantic surfaces and focus perimeter retained; no palette change               |
+| UI            | Instant presentation changes, title hints, menu reorder and physical middle close                     | Existing motion and sibling close control retained; native drag/drop remains unqualified |
+
+| Severity         | Domain                   | Location                                             | Before                                                                                                                             | After                                                                                                                                                                           | Why                                                                                                                             |
+| ---------------- | ------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| HIGH, repaired   | Accessibility            | `ui/agent/context-dock.tsx`, `WorkspaceViewBody.tsx` | The Tabs root enclosed only the strip; real readers had no associated panel. Catalog presentation selected the first material tab. | The controlled root includes the strip and retained material viewports. Base UI supplies reciprocal tab/panel IDs; catalog selection is null.                                   | A tab must identify and control its actual content without advancing another navigation state.                                  |
+| MEDIUM, repaired | Layout / task continuity | `ChatPanel.tsx`, `WorkspaceWindowHeader.tsx`         | Wide Dock had no full-width action. Moving a main view back could record its own header as a fresh inspection source.              | The existing presentation command expands material; restoring it does not create an inspection. View instance, filters, expanded records, source chain and draft remain intact. | Changing presentation must not replace the task's original source or manufacture a return to itself.                            |
+| MEDIUM, repaired | Typography / UI          | `ui/agent/context-dock.tsx`, shared `tooltip.tsx`    | A clipped title offered no complete hover or keyboard reading.                                                                     | Measure the real label, enable the existing Tooltip only when clipped, and disable it during dragging. Geometry changes keep the same trigger.                                  | Long object identities must remain readable without replacing focused controls or adding duplicate tooltips to complete labels. |
+
+The product Dock component owns panel roles and retained layout; business view
+bodies do not import Base UI directly. Inactive readers remain laid out,
+invisible, inert and outside the accessibility tree. No scroll cache or
+additional presentation state is introduced. Main presentation retains its
+named region and existing focus boundary.
+
+Read-only ZCode `SidePaneTabTrigger` / `SidePaneTabTitleTooltip` and HeroUI
+Tabs establish the existing strip/content and complete-identity references.
+[Base UI Tabs](https://base-ui.com/react/components/tabs) establishes the common
+root and associated panels; [Radix Tooltip](https://www.radix-ui.com/primitives/docs/components/tooltip)
+establishes hover/focus disclosure and local Escape. The implementation uses
+Flame's existing Base UI, StyleX and semantic tokens. Prior ChatGPT, Arc and Ace
+composition research remains applicable; no decorative rail or helper copy is added.
+
+Actual Wails qualification uses the production host, controls, view bodies,
+navigation and commands with deterministic providers. The private overlay
+changes only the host name, asset source and entry URL. The long-title build
+changes only one contributed fixture title through a private Vite transform;
+there is no product debug entry or new production fixture API.
+
+- Light EN 14 px: filter trajectory by `run_root`, expand a recorded model
+  observation, scroll, expand to main, restore beside conversation, switch
+  tabs by arrow, reorder through the context menu and physically middle-close
+  a background tab while Composer retains focus. The original file reference
+  survives expansion/restoration and receives focus on return. The bilingual
+  draft remains editable.
+- Dark EN 18 px / custom purple / contrast 100: the default title fits and
+  correctly has no hint. The deliberately long title measures 702 px in a
+  148 px label. Keyboard and pointer disclosure show its complete wrapping
+  identity; Escape closes the hint without leaving its tab.
+- Minimum native window at 200%: the measured viewport is 560 by 364 CSS px.
+  Inspected file material promotes to main without replacing its node, returns
+  to the original conversation reference, then resumes the existing draft.
+  No native claim is made for unsupported windows below the 1120-point minimum.
+- Clean ZH 14 px, without the observer: repeat the retained query, expanded
+  observation, complete-title hint, wide expansion/restoration, file-source
+  return and retained draft. Clean EN catalog also retains its query and draft
+  through expansion/restoration without a self-return action. Both clean
+  generations add zero observations.
+
+The measured reader keeps the same DOM identity. Reflow changes its native
+scroll anchoring: a near-bottom trajectory position moves from 567 to 451 px
+when the content becomes wider, and then remains 451 through Dock restoration,
+tab switching and menu reorder. This is retained native reading with responsive
+reflow, not a promise of identical pixels across different layouts. An
+unconstrained position is covered by the regression test.
+
+Native scripted dragging did not complete an accepted drop and needed Escape
+to retire its native drag session. Do not report native drag/drop as passed.
+Menu reordering is qualified, and the existing unit drop contract passes. A
+future drag investigation must capture the actual input/drop events before
+changing behavior or adding a workaround. Live provider, long-running Runtime
+tasks, screen-reader speech and forced-color native rendering are outside this
+fixture qualification.
+
+Final-source Web frontend regression passes **425 files / 3,958 tests** in
+**75.36 s**. The shared UI package's complete check passes **10 files / 157
+tests** and its independent packed consumer. Runtime HTTP passes **49/49** in
+**58.88 s** after preparing the repository's checksum-verified Node 24.22.1
+artifact. All **22** remaining declared Web gates pass, and `make check-native`
+passes native Go test/vet/build and supported Wails compilation.
+
+Three new baseline regressions fail on the old implementation. The initial
+aggregate Web command also exposes five old assertions for the intentionally
+changed panel role and self-inspection contract, plus the missing offline Node
+prerequisite. The test contracts and prerequisite are repaired; the aggregate
+command is not represented as an uninterrupted pass. A design-system gate
+initially rejects a business-layer Base UI import; moving the material panel
+contract to the Dock component boundary resolves it. Final source checks are
+reported above. No assertion is weakened or check disabled.
+
+A preliminary private Go/Web build pair briefly overlaps. Both complete, then
+the accepted host and fixture are rebuilt serially. Repository checks and all
+subsequent qualification builds run serially. Existing platform linker and
+large-chunk notices remain warnings. No browser visual suite, performance
+benchmark, Claude CLI or subagent is used.
+
+All five qualification generations exit, the collector closes and the exact
+private bundle is unregistered. Cleanup removes **8** newly created checkout
+output/cache roots, the newly prepared Node archive, **2** owned Library paths,
+one app temp directory and the abandoned temp root from the initial offline
+Runtime prerequisite failure. Both pre-existing files are restored. All **13**
+output-presence baselines, **5** Library/temp baselines, **5,916** final
+non-Markdown source inputs and three clean Git references are verified. The
+pre-existing Node artifact directory retains its empty inventory. No owned
+process remains and the private root `flame-dock-1028-Iw6bSX` is absent.
+
+The verified in-memory gzip retains **62** flat UTF-8 records, **301** measured
+observations, asset hash maps (**609** ordinary / **608** clean long-title
+files), bundle/source hashes and preservation receipts. SHA-256:
+`c359960bdbe030a31ab94d1c1af44575cb535140bfc8617e5ad172fb9e0e05c5`.
+The primary checkout remains on its existing main commit with the user's
+untracked `docs/ui打磨优化.md` preserved. Publication-time fetch confirms
+remote main matches the batch base, so no extra merge or validation cycle is
+needed.
+
+Scoped review: **Approve** the inspected association, presentation, source-return
+and title-reading tasks. This does not approve unqualified dragging or declare
+the continuous whole-product visual goal complete. Next inspect the native drag
+input boundary, then the review's targeted Diff read/scope contract.
 
 ## Working and maintenance practice
 

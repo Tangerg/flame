@@ -45,6 +45,10 @@ the existing `:focus-within` proxies.
 Validation, inset/outset placement and focus proxies keep their existing roles;
 components do not maintain another modality or ring owner.
 
+`Tooltip` and `RichTooltip` accept the primitive's `disabled` state. Consumers
+that reveal a label only while it is truncated keep the same trigger mounted
+and disable its tooltip when the complete text fits.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";

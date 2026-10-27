@@ -21,6 +21,7 @@ export interface TooltipProviderProps {
 
 interface Props {
   label?: ReactNode;
+  disabled?: boolean;
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
   delayDuration?: number;
@@ -30,6 +31,7 @@ interface Props {
 interface RichTooltipProps {
   trigger: ReactElement;
   children: ReactNode;
+  disabled?: boolean;
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
   delay?: number;
@@ -49,6 +51,7 @@ export function Tooltip({
   side = "top",
   sideOffset = 6,
   delayDuration,
+  disabled,
   children,
 }: Props) {
   if (label == null || label === "") return <>{children}</>;
@@ -58,6 +61,7 @@ export function Tooltip({
       side={side}
       sideOffset={sideOffset}
       delay={delayDuration}
+      disabled={disabled}
       styles={tip.label}
     >
       {label}
@@ -71,11 +75,12 @@ export function RichTooltip({
   side = "top",
   sideOffset = 6,
   delay,
+  disabled,
   styles,
 }: RichTooltipProps) {
   const popup = stylex.props(FLOATING_TIP, type.uiSm, tip.measure, styles);
   return (
-    <TooltipPrimitive.Root>
+    <TooltipPrimitive.Root disabled={disabled}>
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Positioner

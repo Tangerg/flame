@@ -24,7 +24,7 @@ export function WorkspaceWindowHeader({
 }: {
   view: Pick<WorkspaceViewSpec, "title" | "icon" | "dock"> | undefined;
   exit: WorkspaceWindowExit;
-  onOpenInDock?: (origin: HTMLElement) => void;
+  onOpenInDock?: () => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
 }) {
   const t = useT();
@@ -45,7 +45,7 @@ export function WorkspaceWindowHeader({
             icon={iconGlyph("open")}
             size="sm"
             aria-label={t("workspace.view.openBeside")}
-            onClick={(event) => onOpenInDock(event.currentTarget)}
+            onClick={onOpenInDock}
           />
         )}
         {exit.kind === "close" && (

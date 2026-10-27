@@ -315,7 +315,7 @@ it.each([false, true])(
     const filter = screen.getByRole<HTMLInputElement>("textbox", { name: "Filter result" });
     fireEvent.change(filter, { target: { value: "needle" } });
     const context = resultContexts.at(-1)!;
-    const body = screen.getByRole("region", { name: "Memory" });
+    const body = screen.getByRole("tabpanel", { name: "Memory" });
     expect(screen.getByRole("complementary", { name: "Memory" })).toBeTruthy();
 
     const expectRetained = (presented: boolean) => {
@@ -342,7 +342,7 @@ it.each([false, true])(
     await navigate(() => (model.activeMainView = null));
     expectRetained(true);
     expect(screen.getByRole("complementary", { name: "Memory" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Memory" })).toBe(body);
+    expect(screen.getByRole("tabpanel", { name: "Memory" })).toBe(body);
 
     cleanup();
     expect(context.signal.aborted).toBe(true);

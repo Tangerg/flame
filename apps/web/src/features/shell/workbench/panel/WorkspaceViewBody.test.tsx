@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n/index";
 import { usePluginErrorStore } from "@/extensions/errors";
 import type { WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
+import { AgentContextDock } from "@/ui/agent/context-dock";
 
 const installed = vi.hoisted(() => ({ views: [] as WorkspaceViewSpec[] }));
 
@@ -34,7 +35,11 @@ describe("workspaceViewBody", () => {
       return <p>diff reader</p>;
     }
     installed.views = [{ id: "diff", title: "Diff", component: DiffView }];
-    testClient.render(<WorkspaceViewBody viewId="diff" />);
+    testClient.render(
+      <AgentContextDock value="diff" onValueChange={() => {}}>
+        <WorkspaceViewBody viewId="diff" presentation="main" />
+      </AgentContextDock>,
+    );
 
     const region = screen.getByRole("region", { name: "Diff" });
     const alert = within(region).getByRole("alert");
@@ -52,7 +57,11 @@ describe("workspaceViewBody", () => {
   });
 
   it("keeps the generic region for a view that is not installed", () => {
-    testClient.render(<WorkspaceViewBody viewId="missing" />);
+    testClient.render(
+      <AgentContextDock value="missing" onValueChange={() => {}}>
+        <WorkspaceViewBody viewId="missing" presentation="main" />
+      </AgentContextDock>,
+    );
 
     const region = screen.getByRole("region", { name: t("plugins.mainView") });
     expect(within(region).getByText(t("workspace.view.unavailable.title"))).toBeTruthy();

@@ -906,11 +906,85 @@ describe("main presentation focus handoff", () => {
 });
 
 describe("Dock collapse focus handoff", () => {
+  it("associates the selected Dock tab with its retained material viewport", () => {
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
+    const tab = screen.getByRole("tab", { name: "Subagents" });
+    const panel = screen.getByRole("tabpanel", { name: "Subagents" });
+
+    expect(tab.getAttribute("aria-controls")).toBe(panel.id);
+    expect(panel.getAttribute("aria-labelledby")).toBe(tab.id);
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(panel.contains(screen.getByRole("button", { name: "Evidence 0" }))).toBe(true);
+  });
+
+  it("leaves material tabs unselected while the catalog is presented", () => {
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    openWorkspaceViewInDock(testClient.workspace.access, "catalog");
+    testClient.render(<ChatPanel onSend={() => true} />);
+
+    expect(screen.queryByRole("tab", { selected: true })).toBeNull();
+    expect(screen.queryByRole("tabpanel")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBeTruthy();
+  });
+
+  it("preserves the filtered catalog when it expands and returns beside the conversation", () => {
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    openWorkspaceViewInDock(testClient.workspace.access, "catalog");
+    testClient.render(<ChatPanel onSend={() => true} />);
+    const search = screen.getByRole<HTMLInputElement>("combobox", { name: "Find a panel…" });
+    fireEvent.change(search, { target: { value: "Files" } });
+    fireEvent.click(screen.getByRole("button", { name: "Open full width" }));
+
+    expect(testClient.navigation.get().view).toBe("catalog");
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect(search.value).toBe("Files");
+    fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
+
+    expect(testClient.navigation.get().view).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Find a panel…" })).toBe(search);
+    expect(search.value).toBe("Files");
+    expect(screen.queryByRole("tab", { selected: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Back to panel list" })).toBeNull();
+  });
+
+  it("expands and restores the same reader without replacing its inspection source", () => {
+    openWorkspaceViewInDock(testClient.workspace.access, "subagents");
+    testClient.render(<ChatPanel onSend={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
+    const source = screen.getByRole("button", { name: "src/child.ts:8" });
+    act(() => source.focus());
+    fireEvent.click(source);
+    const viewport = screen.getByRole("tabpanel", { name: "Files" });
+    viewport.scrollTop = 241;
+    fireEvent.scroll(viewport);
+    const expand = screen.getByRole("button", { name: "Open full width" });
+    act(() => expand.focus());
+    fireEvent.click(expand);
+
+    expect(testClient.navigation.get().view).toBe("file");
+    expect(screen.getByRole("region", { name: "Files" })).toBe(viewport);
+    expect(viewport.scrollTop).toBe(241);
+    expect(document.activeElement).toBe(viewport);
+    expect(screen.getByRole("button", { name: "Back to Subagents" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
+
+    expect(testClient.navigation.get().view).toBeNull();
+    expect(screen.getByRole("tabpanel", { name: "Files" })).toBe(viewport);
+    expect(viewport.scrollTop).toBe(241);
+    expect(screen.queryByRole("button", { name: "Back to Files" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Back to Subagents" }));
+
+    expect(document.activeElement).toBe(source);
+    expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
+    expect(screen.getByLabelText<HTMLTextAreaElement>("Composer draft").value).toBe(INITIAL_DRAFT);
+  });
+
   it("keeps inactive workspace scrollports laid out but inert until their tab returns", () => {
     openWorkspaceViewInDock(testClient.workspace.access, "subagents");
     testClient.render(<ChatPanel onSend={() => true} />);
     fireEvent.click(screen.getByRole("button", { name: "Evidence 0" }));
-    const viewport = screen.getByRole("region", { name: "Subagents" });
+    const viewport = screen.getByRole("tabpanel", { name: "Subagents" });
     const retained = viewport.closest<HTMLElement>("[data-dock-view-id]")!;
     viewport.scrollTop = 241;
     fireEvent.scroll(viewport);
@@ -919,11 +993,11 @@ describe("Dock collapse focus handoff", () => {
     expect(viewport.isConnected).toBe(true);
     expect(retained.hidden).toBe(false);
     expect(retained.hasAttribute("inert")).toBe(true);
-    expect(screen.queryByRole("region", { name: "Subagents" })).toBeNull();
+    expect(screen.queryByRole("tabpanel", { name: "Subagents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Evidence 1" })).toBeNull();
 
     act(() => openWorkspaceViewInDock(testClient.workspace.access, "subagents"));
-    expect(screen.getByRole("region", { name: "Subagents" })).toBe(viewport);
+    expect(screen.getByRole("tabpanel", { name: "Subagents" })).toBe(viewport);
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
     expect(retained.hasAttribute("inert")).toBe(false);
     expect(viewport.scrollTop).toBe(241);
@@ -1400,17 +1474,16 @@ describe("material inspection focus", () => {
     expect(screen.getByRole("button", { name: "Evidence 1" })).toBeTruthy();
   });
 
-  it("moves a full view beside the conversation and restores its named reader on return", () => {
+  it("moves a full view beside the conversation without creating a self-inspection", () => {
     openWorkspaceView(testClient.workspace.access, "file");
     testClient.render(<ChatPanel onSend={() => true} />);
+    const viewport = screen.getByRole("region", { name: "Files" });
     fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
     expect(testClient.navigation.get().view).toBeNull();
     const dock = screen.getByRole("complementary", { name: "Files" });
-    expect(document.activeElement).toBe(dock);
-    fireEvent.click(screen.getByRole("button", { name: "Back to Files" }));
-
-    expect(testClient.navigation.get().view).toBe("file");
-    expect(document.activeElement).toBe(screen.getByRole("region", { name: "Files" }));
+    expect(dock.contains(document.activeElement)).toBe(true);
+    expect(screen.getByRole("tabpanel", { name: "Files" })).toBe(viewport);
+    expect(screen.queryByRole("button", { name: "Back to Files" })).toBeNull();
   });
 
   it("enters explicitly opened material and returns to its source without closing the Dock", () => {

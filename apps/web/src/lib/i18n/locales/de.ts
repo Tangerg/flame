@@ -1192,6 +1192,7 @@ export const de: Record<string, string> = {
   "project.row.waiting_other": "{{count}} warten",
   "settings.font.codeSize": "Codegröße",
   "settings.font.followUi": "Wie Oberfläche",
+  "dock.action.expand": "In voller Breite öffnen",
   "dock.action.openFull":
     "Material in voller Breite öffnen – das Fenster ist zu schmal für die Seitenansicht",
   "composer.add": "Zur Nachricht hinzufügen",

@@ -192,6 +192,12 @@ function DockHeader({
         openViewIds={openViewIds}
         activeViewId={tabs.find((tab) => tab.active)?.id ?? WORKSPACE_DOCK_CATALOG}
       />
+      <IconButton
+        icon={iconGlyph("maximize")}
+        size="sm"
+        aria-label={t("dock.action.expand")}
+        onClick={() => showWorkspaceDock(workspaceAccess, "main")}
+      />
     </AgentSurfaceHeader>
   );
 }
@@ -308,7 +314,6 @@ export function ChatPanel({ onSend, ref }: Props) {
       icon: knownIconName(view?.icon),
       badge: Badge ? <Badge /> : undefined,
       active: id === dock.activeViewId,
-      onSelect: () => selectWorkspaceDockView(workspaceAccess, id),
       onClose: () => closeWorkspaceDockView(workspaceAccess, id),
       closeLabel: `${t("common.close")} ${title}`,
       onCloseOthers: () => closeOtherWorkspaceDockViews(workspaceAccess, id),
@@ -347,7 +352,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           }
           onOpenInDock={
             dockAvailable
-              ? (origin) => openWorkspaceViewInDock(workspaceAccess, fullPaneViewId, origin)
+              ? () => openWorkspaceViewInDock(workspaceAccess, fullPaneViewId)
               : undefined
           }
           onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
@@ -388,6 +393,10 @@ export function ChatPanel({ onSend, ref }: Props) {
         {!presentedMain && dockVisible && <DockResizer width={dockWidth} />}
         <SessionOwnedWorkspaceState sessionId={activeSessionId}>
           <AgentContextDock
+            value={presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId}
+            onValueChange={(id) => {
+              if (id !== null) selectWorkspaceDockView(workspaceAccess, id);
+            }}
             ref={dockRef}
             role={presentedMain ? "presentation" : undefined}
             tabIndex={presentedMain ? undefined : -1}
@@ -440,6 +449,7 @@ export function ChatPanel({ onSend, ref }: Props) {
                         <WorkspaceViewBody
                           ref={viewId === fullPaneViewId ? mainViewRef : undefined}
                           viewId={viewId}
+                          presentation={presentedMain ? "main" : "dock"}
                         />
                       </PanelHost>
                     </ContentVisibility>
