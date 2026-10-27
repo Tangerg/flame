@@ -25,7 +25,7 @@ import {
   request as requestHttp,
   type ServerResponse,
 } from "node:http";
-import { createServer as createNetServer } from "node:net";
+import { createConnection, createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -744,6 +744,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let mcpFixturePath = "";
   let providerBaseUrl = "";
   let runtime: ReturnType<typeof import("node:child_process").spawn> | undefined;
+  let processRunner:
+    | {
+        child: ReturnType<typeof spawn>;
+        exited: Promise<{ code: number | null; signal: NodeJS.Signals | null }>;
+      }
+    | undefined;
+  let runnerOutput = "";
   let provider: ReturnType<typeof createHttpServer> | undefined;
   let providerGate: ProviderGate | undefined;
   let client: FlameClient | undefined;
@@ -835,6 +842,75 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OTEL_SDK_DISABLED: "true",
   });
 
+  const startRunnerProcess = async () => {
+    const directory = join(runtimeStore, "runner");
+    const socketPath = join(directory, "control.sock");
+    const child = spawn(
+      join(environmentRoot, "qimu-runner"),
+      ["--directory", directory, "--socket", socketPath],
+      { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
+    );
+    child.stdout.on("data", (chunk: Buffer) => {
+      runnerOutput += chunk.toString();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      runnerOutput += chunk.toString();
+    });
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolve, reject) => {
+        child.once("error", reject);
+        child.once("close", (code, signal) => resolve({ code, signal }));
+      },
+    );
+    processRunner = { child, exited };
+    const stopped = exited.then(({ code, signal }) => {
+      throw new Error(
+        `runner exited before fixture shutdown (${code}, ${signal}): ${runnerOutput}`,
+      );
+    });
+    const deadline = Date.now() + defaultTestDeadlineMilliseconds;
+    // The fixture owns this process across deliberate Host crashes. This probe
+    // only orders startup; Runtime still performs the original identity handshake.
+    while (Date.now() < deadline) {
+      const socket = createConnection(socketPath);
+      try {
+        await within(
+          Promise.race([
+            new Promise<void>((resolve, reject) => {
+              socket.once("connect", resolve);
+              socket.once("error", reject);
+            }),
+            stopped,
+          ]),
+          "runner control listener",
+          deadline - Date.now(),
+        );
+        return;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== "ENOENT" && code !== "ECONNREFUSED") throw error;
+      } finally {
+        socket.destroy();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`timed out waiting for runner control listener: ${runnerOutput}`);
+  };
+
+  const stopRunnerProcess = async () => {
+    const owner = processRunner;
+    if (!owner) return;
+    if (owner.child.exitCode !== null || owner.child.signalCode !== null)
+      throw new Error(`runner exited before fixture shutdown: ${runnerOutput}`);
+    if (!owner.child.kill("SIGTERM")) throw new Error("failed to signal the original runner");
+    const result = await within(owner.exited, "original runner shutdown");
+    if (result.code !== 0 || result.signal !== null)
+      throw new Error(
+        `original runner shutdown failed (${result.code}, ${result.signal}): ${runnerOutput}`,
+      );
+    processRunner = undefined;
+  };
+
   const startRuntimeProcess = async () => {
     const { spawn } = await import("node:child_process");
     processOutput = "";
@@ -854,15 +930,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
 
   const stopRuntimeProcess = async () => {
     const child = runtime;
-    if (!child || child.exitCode !== null) return;
-    const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
-    child.kill("SIGTERM");
-    try {
-      await within(exited, "Runtime graceful shutdown");
-    } catch {
-      if (child.exitCode === null) child.kill("SIGKILL");
-      await within(exited, "Runtime forced shutdown");
+    if (!child) return;
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+      if (!child.kill("SIGTERM")) throw new Error("failed to signal Runtime shutdown");
+      try {
+        await within(exited, "Runtime graceful shutdown");
+      } catch (error) {
+        if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+        try {
+          await within(exited, "Runtime forced shutdown");
+        } catch (forcedError) {
+          throw new AggregateError([error, forcedError], "Runtime shutdown failed");
+        }
+        throw error;
+      }
     }
+    if (child.exitCode !== 0 || child.signalCode !== null)
+      throw new Error(
+        `Runtime shutdown failed (${child.exitCode}, ${child.signalCode}): ${processOutput}`,
+      );
   };
 
   const killRuntimeProcess = async () => {
@@ -1100,6 +1187,7 @@ for await (const line of lines) {
       ]),
     ]);
 
+    await startRunnerProcess();
     runtimePort = await unusedLoopbackPort();
     baseUrl = `http://127.0.0.1:${runtimePort}`;
     await startRuntimeProcess();
@@ -1118,6 +1206,7 @@ for await (const line of lines) {
   afterAll(async () => {
     await client?.close();
     await stopRuntimeProcess();
+    await stopRunnerProcess();
     if (provider?.listening) {
       await new Promise<void>((resolve, reject) =>
         provider?.close((error) => (error ? reject(error) : resolve())),
