@@ -84,6 +84,7 @@ export const zh: Record<string, string> = {
   "pages.previous": "上一页",
   "pages.next": "下一页",
   "notice.accepted": "Runtime 已接受 Session {{session}} 中的 Run {{run}}。",
+  "notice.openSession": "打开会话",
   "notice.completed": "{{label}} 已完成。",
   "notice.revision":
     "定时任务已更改。请读取其最新修订版本，并在保存前打开新的编辑。",

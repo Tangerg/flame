@@ -6,7 +6,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActionMenu, ContentVisibility, Select } from "../dist/index.js";
 
@@ -206,5 +206,65 @@ describe("ActionMenu retirement", () => {
     await vi.waitFor(() => expect(popup.isConnected).toBe(false));
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(forget).toHaveBeenCalledOnce();
+  });
+
+  it("hands focus to command feedback when admission disables the opener", async () => {
+    function RunTask() {
+      const [pending, setPending] = useState(false);
+      const feedback = useRef<HTMLElement>(null);
+      return (
+        <>
+          <ActionMenu
+            label="Schedule actions"
+            disabled={pending}
+            finalFocus={pending ? feedback : undefined}
+            items={[{ label: "Run now", onSelect: () => setPending(true) }]}
+          />
+          {pending && (
+            <section ref={feedback} tabIndex={-1} aria-label="Run feedback">
+              Running…
+            </section>
+          )}
+        </>
+      );
+    }
+    mount(<RunTask />);
+    const popup = await openPopup(
+      screen.getByRole("button", { name: "Schedule actions" }),
+      "menu",
+    );
+    fireEvent.click(within(popup).getByRole("menuitem", { name: "Run now" }));
+    await vi.waitFor(() => expect(popup.isConnected).toBe(false));
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Schedule actions",
+      }).disabled,
+    ).toBe(true);
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("region", { name: "Run feedback" }),
+      ),
+    );
+  });
+
+  it("suppresses a supplied handoff when the owning material hides", async () => {
+    const destination = vi.fn(() =>
+      screen.getByRole("button", { name: "Outside" }),
+    );
+    const host = mount(
+      <ActionMenu
+        label="Schedule actions"
+        finalFocus={destination}
+        items={[{ label: "Run now", onSelect: vi.fn() }]}
+      />,
+    );
+    const popup = await openPopup(
+      screen.getByRole("button", { name: "Schedule actions" }),
+      "menu",
+    );
+    host.hide();
+    await vi.waitFor(() => expect(popup.isConnected).toBe(false));
+    expect(destination).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(document.body);
   });
 });

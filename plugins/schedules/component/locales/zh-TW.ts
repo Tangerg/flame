@@ -84,6 +84,7 @@ export const zhTW: Record<string, string> = {
   "pages.previous": "上一頁",
   "pages.next": "下一頁",
   "notice.accepted": "Runtime 已接受 Session {{session}} 中的 Run {{run}}。",
+  "notice.openSession": "開啟對話",
   "notice.completed": "{{label}} 已完成。",
   "notice.revision":
     "排程已變更。請讀取其最新修訂版本，並在儲存前開啟新的編輯。",

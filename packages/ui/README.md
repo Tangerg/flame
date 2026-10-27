@@ -193,6 +193,10 @@ The surface keeps the same background, blur token, corners, shadow and motion.
 `ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
 replaces the default ellipsis with a text trigger for named action menus.
+`finalFocus` delegates a task handoff to Base UI's popup focus lifecycle, for
+example when admitting a command disables its original trigger. Omitting it
+retains the ordinary trigger return. Hidden owners suppress the handoff as well
+as the default return.
 `ContentVisibility` lets a host that retains hidden content tell its descendants they
 are hidden; nested providers combine, so any hidden ancestor wins. While hidden,
 `Select` and `ActionMenu` close their open popup without choosing or acting, release

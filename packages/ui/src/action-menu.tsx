@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useRef, type ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import { Ellipsis } from "@flame/icons/react";
 import { MENU_SURFACE } from "./control-surface";
 import { Button } from "./button";
@@ -35,11 +35,13 @@ export function ActionMenu({
   items,
   disabled,
   triggerContent,
+  finalFocus,
 }: {
   label: string;
   items: readonly ActionMenuItem[];
   disabled?: boolean;
   triggerContent?: ReactNode;
+  finalFocus?: ComponentProps<typeof MenuPrimitive.Popup>["finalFocus"];
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const retirement = useHiddenRootRetirement<
@@ -74,7 +76,7 @@ export function ActionMenu({
         >
           <MenuPrimitive.Popup
             aria-label={label}
-            finalFocus={visible ? undefined : false}
+            finalFocus={visible ? finalFocus : false}
             {...stylex.props(
               FLOATING_PANEL,
               MENU_SURFACE.content,

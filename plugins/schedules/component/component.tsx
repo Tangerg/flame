@@ -35,10 +35,12 @@ import { templates } from "./templates";
 
 import { useSchedules, selection, enabled, hasTime } from "./useSchedules";
 export function Schedules({ context }: { context: ComponentContext }) {
+  const openSession = context.openSession;
   const {
     t,
     dateTime,
     notice,
+    feedbackElement,
     command,
     reconcile,
     searchElement,
@@ -76,11 +78,36 @@ export function Schedules({ context }: { context: ComponentContext }) {
     setEdit,
     setDeleting,
   } = useSchedules(context);
-  const feedback = (
-    <>
-      {notice && <p role="status">{notice}</p>}
+  const feedback = (notice || command) && (
+    <section
+      ref={feedbackElement}
+      tabIndex={-1}
+      data-focus-inset=""
+      aria-label={t("command.status.label")}
+    >
+      {notice &&
+        (typeof notice === "string" ? (
+          <p role="status">{notice}</p>
+        ) : (
+          <>
+            <p role="status">
+              {t("notice.accepted", {
+                run: notice.RunID,
+                session: notice.SessionID,
+              })}
+            </p>
+            {openSession && (
+              <Button
+                variant="soft"
+                onClick={() => openSession(notice.SessionID)}
+              >
+                {t("notice.openSession")}
+              </Button>
+            )}
+          </>
+        ))}
       {command && (
-        <section aria-label={t("command.status.label")}>
+        <>
           <p role={command.uncertain ? "alert" : "status"}>
             {command.uncertain
               ? t("command.uncertain")
@@ -94,12 +121,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   key: command.promise.idempotencyKey,
                 })}
               </Metadata>
-              <Button onClick={reconcile}>{t("command.reconcile")}</Button>
+              <Button variant="soft" onClick={reconcile}>
+                {t("command.reconcile")}
+              </Button>
             </>
           )}
-        </section>
+        </>
       )}
-    </>
+    </section>
   );
   return (
     <Panel
@@ -464,6 +493,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
                       name: item.Title || t("untitled"),
                     })}
                     disabled={disabled}
+                    finalFocus={
+                      command?.method === "flame.schedules/runNow.v1"
+                        ? feedbackElement
+                        : undefined
+                    }
                     items={[
                       {
                         label: t("action.runNow"),

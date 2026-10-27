@@ -14,11 +14,13 @@ export type Mutation =
   | "flame.schedules/delete.v1"
   | "flame.schedules/runNow.v1";
 export type Command = {
+  method: Mutation;
   promise: MutationPromise<unknown>;
   label: string;
   uncertain: boolean;
   error?: string;
 };
+export type Notice = string | MethodOutputs["flame.schedules/runNow.v1"];
 export type Read = {
   loading: boolean;
   accepted?: { page: Page; history: string[] };

@@ -122,6 +122,7 @@ export interface ComponentContext {
   readonly sessionId?: string;
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
+  readonly openSession?: (sessionId: string) => void;
   // The host owns the active locale; a component projects it, never selects it.
   readonly locale: string;
   readonly signal: AbortSignal;

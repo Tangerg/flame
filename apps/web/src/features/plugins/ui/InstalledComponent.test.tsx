@@ -10,6 +10,7 @@ import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   ComponentBoundary,
+  InstalledComponent,
   InstalledToolResultComponent,
 } from "@/features/plugins/ui/InstalledComponent";
 import { type ComponentContext } from "@flame/component-sdk";
@@ -137,3 +138,56 @@ it("captures component identity, generation, time and React stack at the failure
   );
   expect(screen.getByText(/scope: installed component/).textContent).toBe(diagnostics);
 });
+
+it.each(["unmount", "resources", "contribution"] as const)(
+  "opens the accepted Session through Host navigation and retires that action on %s",
+  async (retirement) => {
+    let lifetime!: ContributionLifetime;
+    const host = await startKernel([
+      definePlugin({
+        name: "test.session-navigation",
+        setup(context) {
+          lifetime = context.lifetime("navigation");
+        },
+      }),
+    ]);
+    finishTestClient(() => stopKernel(host));
+    const resources = new AbortController();
+    let captured!: ComponentContext;
+    function Receipt({ context }: { context: ComponentContext }) {
+      useEffect(() => {
+        captured = context;
+      }, [context]);
+      return (
+        <button onClick={() => context.openSession!("accepted-session")}>Open conversation</button>
+      );
+    }
+    testClient.navigation.go({ session: "source-session", view: "package:schedules" });
+    const mounted = testClient.render(
+      <InstalledComponent
+        scope="installation"
+        entry={Receipt}
+        component={{ installationId: "installed", digest: "a".repeat(64), componentId: "receipt" }}
+        generation={RuntimeConnectionGeneration.forProcess("test")}
+        compose={() => null}
+        runtime={{} as FlameClient}
+        binding={undefined}
+        lifetime={lifetime}
+        resources={resources.signal}
+      />,
+    );
+    expect(testClient.agent.access.getActiveSessionId()).toBe("source-session");
+    fireEvent.click(screen.getByRole("button", { name: "Open conversation" }));
+    expect(testClient.agent.access.getActiveSessionId()).toBe("accepted-session");
+    expect(testClient.navigation.get().view).toBeNull();
+    const openSession = captured.openSession!;
+    await act(async () => {
+      if (retirement === "unmount") mounted.unmount();
+      else if (retirement === "resources") resources.abort();
+      else await stopKernel(host);
+    });
+    expect(captured.signal.aborted).toBe(true);
+    expect(() => openSession("another-session")).toThrow(captured.signal.reason);
+    expect(testClient.agent.access.getActiveSessionId()).toBe("accepted-session");
+  },
+);

@@ -87,6 +87,7 @@ export const en: Record<string, string> = {
   "pages.previous": "Previous",
   "pages.next": "Next",
   "notice.accepted": "Runtime accepted Run {{run}} in Session {{session}}.",
+  "notice.openSession": "Open conversation",
   "notice.completed": "{{label}} completed.",
   "notice.revision":
     "The schedule changed. Read its latest revision and open a new edit before saving.",

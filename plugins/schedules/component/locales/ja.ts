@@ -89,6 +89,7 @@ export const ja: Record<string, string> = {
   "pages.next": "次へ",
   "notice.accepted":
     "Runtime は Session {{session}} の Run {{run}} を受け入れました。",
+  "notice.openSession": "会話を開く",
   "notice.completed": "{{label}} が完了しました。",
   "notice.revision":
     "スケジュールが変更されました。最新のリビジョンを読み込み、保存する前に新しい編集を開いてください。",

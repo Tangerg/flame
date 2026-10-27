@@ -180,6 +180,23 @@ revision, and model choices query each configured Provider through the public Ru
 catalog; no empty Provider stands for an aggregate model catalog. Same-key retry is
 retained after unknown acknowledgement; new commands are blocked until reconciliation.
 
+An accepted manual Run keeps the generated operation's structured Session/Run
+reference as transient component feedback. Catalog reads and failures do not
+replace that receipt. A graphical Host with public Session navigation offers
+Open conversation on the receipt; only explicit activation selects its Session.
+Unknown outcomes offer original-command reconciliation until it returns the
+accepted reference. Starting another task clears the former feedback. Acceptance
+does not imply execution completed. The action opens the Session using its normal
+Host lifetime; it does not add a Run inspector or preserve another Session's
+component-local filters across that switch.
+
+Manual Run feedback uses one named, programmatically focused region through
+progress, uncertainty, acceptance and refusal. A user-started Run transfers focus
+from its retiring menu into that region, revealing it when the source row was
+scrolled. Tab reaches the accepted Session action or original-command recovery.
+The same node retains native focus during settlement; later user focus elsewhere
+is preserved. Read refreshes do not originate that focus transition.
+
 Each configured Provider's model catalog is read independently. Named failures
 remain visible while successful catalogs stay selectable; a failed refresh retains
 that Provider's last accepted catalog within the captured component context. A

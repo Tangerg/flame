@@ -30,6 +30,7 @@ import {
   type Draft,
   type Mutation,
   type Command,
+  type Notice,
   type Read,
   type Edit,
   type ModelRead,
@@ -89,7 +90,8 @@ export function useSchedules(context: ComponentContext) {
   const [command, setCommand] = useState<Command>();
   const pending = useRef<Command>(undefined);
   const accepted = useRef<{ page: Page; history: string[] }>(undefined);
-  const [notice, setNotice] = useState<string>();
+  const [notice, setNotice] = useState<Notice>();
+  const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
   const refresh = useCallback(
     async (history = accepted.current?.history ?? []) => {
@@ -212,14 +214,8 @@ export function useSchedules(context: ComponentContext) {
         setEdit(undefined);
         setDeleting(undefined);
         setNotice(
-          output &&
-            typeof output === "object" &&
-            "RunID" in output &&
-            "SessionID" in output
-            ? t("notice.accepted", {
-                run: String(output.RunID),
-                session: String(output.SessionID),
-              })
+          captured.method === "flame.schedules/runNow.v1"
+            ? (output as MethodOutputs["flame.schedules/runNow.v1"])
             : t("notice.completed", { label: captured.label }),
         );
         void refresh();
@@ -258,6 +254,7 @@ export function useSchedules(context: ComponentContext) {
     if (pending.current || context.signal.aborted) return;
     try {
       const captured = {
+        method,
         promise: operations.command(method, input),
         label,
         uncertain: false,
@@ -280,6 +277,15 @@ export function useSchedules(context: ComponentContext) {
         uncertain: false,
         error: undefined,
       };
+      const feedback = feedbackElement.current;
+      if (
+        original.method === "flame.schedules/runNow.v1" &&
+        feedback &&
+        !feedback.closest("[hidden], [inert]") &&
+        (feedback.contains(feedback.ownerDocument.activeElement) ||
+          feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
+      )
+        feedback.focus({ preventScroll: true });
       pending.current = retry;
       setCommand(retry);
       void observe(retry);
@@ -390,6 +396,7 @@ export function useSchedules(context: ComponentContext) {
     t,
     dateTime,
     notice,
+    feedbackElement,
     command,
     reconcile,
     searchElement,

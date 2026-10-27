@@ -19,6 +19,7 @@ import { Schedules } from "../../../../plugins/schedules/component/component";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
+  type MethodOutputs,
 } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { VISUAL_CAPABILITIES } from "../../visual/agentFixtureFacts";
 import { VISUAL_SCHEDULES_PAGE } from "../../visual/componentSnapshots";
@@ -526,3 +527,162 @@ it("resolves a removed editor opener to search after a canonical refresh", async
     ),
   );
 });
+
+const acceptedRun: MethodOutputs["flame.schedules/runNow.v1"] = {
+  SessionID: "accepted-session",
+  RunID: "accepted-run",
+};
+
+async function runNow() {
+  fireEvent.click(screen.getByRole("button", { name: /^More actions for / }));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Run now" }));
+  return scheduleRequest("flame.schedules/runNow.v1");
+}
+
+it("keeps one focused command region through Run acceptance", async () => {
+  context = { ...context, openSession: vi.fn() };
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const request = await runNow();
+  const feedback = screen.getByRole("region", { name: "Schedule command status" });
+  expect(document.activeElement).toBe(feedback);
+  await act(async () =>
+    respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  expect(await screen.findByRole("button", { name: "Open conversation" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Schedule command status" })).toBe(feedback);
+  expect(document.activeElement).toBe(feedback);
+});
+
+it("keeps later search focus when the Run acceptance arrives", async () => {
+  context = { ...context, openSession: vi.fn() };
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const request = await runNow();
+  const search = screen.getByRole("searchbox", { name: "Search this page" });
+  search.focus();
+  await act(async () =>
+    respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  expect(await screen.findByRole("button", { name: "Open conversation" })).toBeTruthy();
+  expect(document.activeElement).toBe(search);
+});
+
+it("retains an accepted Run receipt through a failed catalog refresh and only opens its Session on demand", async () => {
+  const openSession = vi.fn();
+  context = { ...context, openSession };
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const search = screen.getByRole<HTMLInputElement>("searchbox", { name: "Search this page" });
+  fireEvent.change(search, { target: { value: "nightly" } });
+  const request = await runNow();
+  const after = transport.outbox().length;
+  await act(async () =>
+    respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  const open = await screen.findByRole("button", { name: "Open conversation" });
+  expect(
+    screen.getByText(/Runtime accepted Run accepted-run in Session accepted-session/),
+  ).toBeTruthy();
+  expect(openSession).not.toHaveBeenCalled();
+  search.focus();
+  const refresh = await scheduleRequest("flame.schedules/list.v1", after);
+  await act(async () => refuse(refresh.id));
+  expect(screen.getByRole("button", { name: "Open conversation" })).toBe(open);
+  expect(search.value).toBe("nightly");
+  expect(document.activeElement).toBe(search);
+  const issued = transport.outbox().length;
+  fireEvent.click(open);
+  expect(openSession).toHaveBeenCalledExactlyOnceWith(acceptedRun.SessionID);
+  expect(transport.outbox()).toHaveLength(issued);
+});
+
+it("keeps accepted identifiers readable when the Host has no Session navigation", async () => {
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const request = await runNow();
+  await act(async () =>
+    respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  expect(
+    await screen.findByText(/Runtime accepted Run accepted-run in Session accepted-session/),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Open conversation" })).toBeNull();
+});
+
+it("clears the former Run receipt when a new authoring task starts", async () => {
+  const openSession = vi.fn();
+  context = { ...context, openSession };
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const request = await runNow();
+  const after = transport.outbox().length;
+  await act(async () =>
+    respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  expect(await screen.findByRole("button", { name: "Open conversation" })).toBeTruthy();
+  const refresh = await scheduleRequest("flame.schedules/list.v1", after);
+  await act(async () =>
+    respondSuccess(transport, refresh.id, {
+      output: stringifyJSON({ Rows: [VISUAL_SCHEDULES_PAGE.Rows[0]!], NextCursor: "" }),
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Add schedule" }));
+  expect(await screen.findByRole("dialog", { name: "New schedule" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Open conversation", hidden: true })).toBeNull();
+  expect(screen.queryByText(/Runtime accepted Run accepted-run/)).toBeNull();
+  expect(openSession).not.toHaveBeenCalled();
+});
+
+it("offers navigation only after reconciling the original unknown Run command", async () => {
+  const openSession = vi.fn();
+  context = { ...context, openSession };
+  const send = vi.spyOn(transport, "send");
+  await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+  const request = await runNow();
+  const original = send.mock.calls.find(([item]) => item.id === request.id)!;
+  const feedback = screen.getByRole("region", { name: "Schedule command status" });
+  await act(async () => respondSuccess(transport, request.id, { output: 42 }));
+  expect(await screen.findByText(/The original outcome is not confirmed/)).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Schedule command status" })).toBe(feedback);
+  expect(document.activeElement).toBe(feedback);
+  expect(screen.queryByRole("button", { name: "Open conversation" })).toBeNull();
+  expect(openSession).not.toHaveBeenCalled();
+  const after = transport.outbox().length;
+  const reconcile = screen.getByRole("button", { name: "Reconcile original command" });
+  reconcile.focus();
+  fireEvent.click(reconcile);
+  expect(document.activeElement).toBe(feedback);
+  const retry = await scheduleRequest("flame.schedules/runNow.v1", after);
+  const repeated = send.mock.calls.find(([item]) => item.id === retry.id)!;
+  expect(repeated[2]!.idempotencyKey).toBe(original[2]!.idempotencyKey);
+  expect(repeated[2]!.idempotencyNamespace).toBe(original[2]!.idempotencyNamespace);
+  expect(retry.params).toEqual(request.params);
+  await act(async () =>
+    respondSuccess(transport, retry.id, { output: stringifyJSON(acceptedRun) }),
+  );
+  const open = await screen.findByRole("button", { name: "Open conversation" });
+  expect(document.activeElement).toBe(feedback);
+  fireEvent.click(open);
+  expect(openSession).toHaveBeenCalledExactlyOnceWith(acceptedRun.SessionID);
+});
+
+it.each(["rejection", "retirement"] as const)(
+  "offers no accepted Run navigation after %s",
+  async (outcome) => {
+    const openSession = vi.fn();
+    context = { ...context, openSession };
+    await loadSchedules([VISUAL_SCHEDULES_PAGE.Rows[0]!]);
+    const request = await runNow();
+    await act(async () => {
+      if (outcome === "retirement") {
+        owner.abort();
+        respondSuccess(transport, request.id, { output: stringifyJSON(acceptedRun) });
+      } else
+        respondSuccess(transport, request.id, {
+          failure: { code: "invalid", message: "The schedule was refused." },
+        });
+    });
+    if (outcome === "rejection") {
+      expect(await screen.findByText("The schedule was refused.")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Reconcile original command" })).toBeNull();
+    }
+    expect(screen.queryByRole("button", { name: "Open conversation" })).toBeNull();
+    expect(openSession).not.toHaveBeenCalled();
+  },
+);

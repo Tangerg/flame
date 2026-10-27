@@ -29,6 +29,7 @@ import {
 } from "@/features/agent/public/session";
 import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
+import { useAgent } from "@/features/agent/public/agent";
 import { type FlameClient } from "@flame/runtime-client";
 import { type PluginOperationBinding } from "@flame/runtime-client/wire";
 import { trackContributionIO } from "@/extensions/contributionIO";
@@ -125,6 +126,7 @@ class ComponentInstance {
     ]);
     const track = <T,>(operation: Promise<T>): Promise<T> =>
       trackContributionIO(this.sources.lifetime, operation);
+    const openSession = this.sources.openSession;
     return Object.freeze({
       runtime: this.sources.runtime,
       component: Object.freeze({ ...this.sources.component }),
@@ -160,6 +162,12 @@ class ComponentInstance {
           })
         : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
+      openSession: openSession
+        ? (sessionId: string) => {
+            signal.throwIfAborted();
+            openSession(sessionId);
+          }
+        : undefined,
       locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
@@ -211,6 +219,7 @@ function RenderingInstance({
 
 export function RenderingComponent(props: ComponentProps & ComponentSources) {
   const locale = useLocale();
+  const { selectAgentSession: openSession } = useAgent();
   const {
     runtime,
     binding,
@@ -240,6 +249,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         sessionTarget,
         component,
         compose,
+        openSession,
         locale,
       }),
     [
@@ -255,6 +265,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       sessionTarget,
       component,
       compose,
+      openSession,
       locale,
     ],
   );
@@ -297,6 +308,7 @@ type ComponentSources = Pick<
   toolResult?: CapturedToolResult;
   submitInput?: SubmitCapturedAgentInput;
   sessionTarget?: CapturedSession;
+  openSession?: (sessionId: string) => void;
 };
 
 function WorkspaceComponent(props: ComponentProps) {

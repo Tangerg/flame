@@ -114,6 +114,15 @@ already dispatched input remains owned by the existing Session/Run lifecycle.
 Hosts without this collaborator may still render captured content; authored
 components must make its absence explicit before offering submission.
 
+The graphical Host supplies optional `context.openSession(sessionId)` for an
+explicit user action on an existing Runtime Session. It delegates selection and
+conversation presentation to the Host's existing navigation owners, without
+querying or starting a Run. The action refuses after the captured component
+signal ends. Hosts without Session navigation omit it; a receipt can remain
+readable without offering that action. Session navigation follows the existing
+scope lifetimes above and may retire the source component. It does not promise
+an exact Run reading anchor or retain another Session's local page filters.
+
 Contextual Session actions receive `context.sessionTarget`, a frozen `CapturedSession`
 projection of the accepted row's ID, title and revision at interaction time. The action
 placement is local metadata; offering a menu does not activate code or query a backend.

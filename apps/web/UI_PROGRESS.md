@@ -20,10 +20,11 @@ below. The latest resumed goal restores verified batch publication to main.
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
 context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
-Diff reading is published as `3a5cdba36`. The Settings task batch has completed
-module/native qualification and cleanup under **Unfinished settings tasks and
-native return continuity** below. Next trace Schedules Run receipt navigation
-against the current component and Host navigation contracts.
+Diff reading is published as `3a5cdba36`, and Settings task continuity as
+`d3f7ff83e`. The current Schedules batch has completed module/native qualification
+and cleanup under **Accepted Run receipts and native command focus** below.
+Next trace custom foreground/background editing, contrast and recovery against
+the current theme palette owner before selecting another repair.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -16561,6 +16562,94 @@ each dock view is still pending):
   header. The `SearchField` `size` split (five `lg`, two default `md` incl. memory + diff)
   is pre-existing, not surfaced here, and left untouched. Verified: `plugins` check,
   `vitest run visual` (167), web `typecheck` + `lint` all green.
+
+### Accepted Run receipts and native command focus
+
+The accepted manual Run now retains its generated Session/Run reference and offers
+**Open conversation** in all eight plugin locales. Receipt settlement and catalog
+refresh never navigate. Explicit activation uses the Host's existing
+`selectAgentSession` owner through optional `ComponentContext.openSession`; the
+captured component signal refuses actions after instance, resource or contribution
+retirement. Hosts without navigation retain readable identifiers without an
+unusable action. No Runtime, protocol, execution or persistence owner changes.
+
+The two ranked findings were a lost keyboard continuation after Run admission
+(P1: the menu disables its opener and native focus falls to BODY), and a dead-end
+accepted reference (P2: exact identifiers without a path to the conversation).
+`ActionMenu.finalFocus` now delegates the explicit task handoff to the existing
+Base UI popup lifecycle. Hidden owners suppress it; ordinary Escape still returns
+to the trigger. Schedules retains one named focusable feedback region through
+pending, unknown, accepted and refused outcomes. Original-command reconciliation
+keeps its key, namespace and input, and hands focus off before its button retires.
+Later user focus elsewhere is preserved. The existing Panel remains the sole
+focus-reveal/scroll owner; the consumer adds no competing scrolling effect,
+listener or timer. Recovery and accepted-navigation buttons use the existing soft
+surface to distinguish actions from status text.
+
+Read-only references: ZCode's real `WorkspaceShellLayout.tsx` automation Run entry
+uses canonical Session selection and conversation presentation; HeroUI's actual
+loading-button example preserves command feedback and action identity. Previous
+Radix focus-lifecycle and Arc/Ace composition research remains applicable. The six
+better domains are covered by stable task focus and keyboard return (accessibility),
+one body scroll owner and narrow feedback wrapping (layout), unchanged 14/18px text
+with complete identifiers (typography), factual acceptance and an explicit next
+action in eight locales (writing), semantic soft surfaces with default Orange and
+custom purple (colors), and native popup focus handoff without added motion (UI).
+No new animation or reduced-motion behavior is introduced.
+
+Verification is serial. The receipt baseline exposes **5 failures / 19 passes**;
+the additional focus baseline exposes **1 failure / 20 passes**, matching actual
+native BODY focus. The final focused Web checks pass **5 files / 64 tests**.
+`@flame/component-sdk` check passes **5 tests**; `@flame/ui` check passes **10 files /
+171 tests** and its independent packed consumer. Plugins pass type/lint/format,
+**28 Node tests**, **4 backend files / 43 tests**, **12 catalogs × 8 locales** and
+exact resource reproduction. Only the Schedules installed ESM changes. The final
+full Web check passes **427 files / 4,042 tests** and all remaining owner, token,
+locale, boundary, resource and bundle gates. `make check-native` completes Desktop
+test/vet/build, Web staging and production Wails build; the existing duplicate
+`-lobjc` linker warning remains non-fatal.
+
+Actual Wails qualification uses one private bundle and six stopped generations.
+Light English 14px with Flame Orange verifies keyboard Run admission, stable
+pending/accepted focus, Tab to Open conversation, the actual accepted Session's
+reply, ordinary sidebar return with the original bilingual draft, same-key unknown
+recovery, later search focus, refusal, and ordinary menu Escape. Final-source dark
+Chinese 18px with custom `#7C5CFC` verifies a scrolled-row refusal and recovery at
+native 200% with an observed **560 × 364 CSS viewport / DPR 4**. Panel focus reveal
+keeps the accepted region and action visible; only `workspace-view-body` scrolls,
+while hidden/clip ancestors, BODY and HTML remain at zero. Target reading and
+return restore the Chinese source draft. A normal **1440 × 900 / DPR 2** viewport
+is also observed. The private fixture initially omitted the production
+Session-to-Dock binding; that setup is corrected without changing product
+navigation. Observer button-label and frame reads are likewise qualification
+corrections, not product fixes.
+
+The final observation-free native control repeats the Orange14 acceptance,
+conversation navigation, draft return and ordinary menu Escape. All **605
+non-HTML product assets** are byte-identical across the **607-file** observed and
+clean builds; only their two HTML entries differ. The clean run produces **zero**
+observer records. Tests use deterministic public operation responses and read
+projections, not live Schedule execution, provider calls or installation changes.
+This action opens a Session: it does not promise an exact Run anchor or retain
+another Session's component-local filters after normal scope retirement.
+VoiceOver speech, OS IME, forced colors/RTL, live provider execution and the
+separate private 200% header-paint behavior remain unqualified. Valid native AX
+bounds and zero hidden-ancestor scrolling do not establish that paint behavior as
+a production chrome defect; investigate actual bootstrap before any global fix.
+No browser visual suite or performance benchmark is run.
+
+Cleanup unregisters the bundle, closes the passive observer server and retires all
+six app generations. It removes **9** newly created output/cache roots and **3**
+owned app Library/temp paths. All **4** pre-existing files and modes, **14** output
+presence baselines, **5** Library baselines and **5,918** frozen non-Markdown inputs
+pass preservation checks; **5,900** inputs outside the **18** owned source changes
+remain byte-identical. The private root `flame-schedule-receipt-1028-U8fUqh` is
+absent. The in-memory archive round-trips before and after deletion and retains
+**76** flat UTF-8 records, **139** passive observations, six generation receipts,
+source/resource maps, asset comparisons and native hashes; **3,776,458 bytes**,
+SHA-256 `7bc56ba569b4abc728410fba15f79253ac265bfa57365d2245c7f452624a8040`.
+Primary-checkout parallel work and shared caches/processes remain untouched.
+The scoped task is accepted; whole-product and award-level acceptance remain open.
 
 ## Plugin internationalization (i18n)
 

@@ -147,6 +147,14 @@ reads the existing journal projection first, including an acceptance recovered
 during that read, before admitting another input. These are receipt projections,
 not a second transcript, scheduler or command store.
 
+Installed components can offer `context.openSession(sessionId)` on an existing
+Runtime Session reference. Explicit activation enters the same Session selection
+and conversation presentation as the Host's other navigation. The captured
+component lifetime guards the action; receipt settlement alone never navigates.
+Schedules retains its accepted manual Session/Run reference and uses this action
+to open the corresponding conversation. Normal scope retirement still applies
+when switching Sessions.
+
 The generic Tool inspector preserves whitespace-only results and argument text as
 literal source, including their reading and copy controls. Only missing or
 zero-length result bodies use its existing empty-result notice.
