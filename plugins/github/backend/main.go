@@ -34,14 +34,14 @@ func run(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, lease.Release()) }()
-	cache, err := openCache(ctx, filepath.Join(data, "github.db"))
+	store, err := openStore(ctx, filepath.Join(data, "github.db"))
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, cache.db.Close()) }()
+	defer func() { err = errors.Join(err, store.db.Close()) }()
 	transport := &http.Transport{DialContext: (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext, ForceAttemptHTTP2: true, MaxIdleConns: 4, MaxIdleConnsPerHost: 2, MaxConnsPerHost: 4, IdleConnTimeout: 90 * time.Second, TLSHandshakeTimeout: 10 * time.Second, MaxResponseHeaderBytes: 64 << 10}
 	defer transport.CloseIdleConnections()
-	connector, err := newConnector(cache, transport, credential)
+	connector, err := newConnector(store, transport, credential)
 	if err != nil {
 		return err
 	}

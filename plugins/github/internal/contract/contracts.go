@@ -41,8 +41,9 @@ type FileInput struct {
 }
 
 type Issue struct {
+	ID          int64     `json:"id" jsonschema:"minimum=1"`
 	Repository  string    `json:"repository"`
-	Number      int64     `json:"number"`
+	Number      int64     `json:"number" jsonschema:"minimum=1"`
 	Title       string    `json:"title"`
 	Body        string    `json:"body"`
 	State       State     `json:"state"`
@@ -50,6 +51,9 @@ type Issue struct {
 	Author      string    `json:"author"`
 	PullRequest bool      `json:"pullRequest"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+	Labels      []string  `json:"labels"`
+	Assignees   []string  `json:"assignees"`
+	StateReason *string   `json:"stateReason,omitzero"`
 }
 
 type IssuePage struct {
@@ -66,19 +70,31 @@ type File struct {
 }
 
 type Contracts struct {
-	Capability     *extension.Capability
-	List           *pluginsdk.Method[ListInput, IssuePage]
-	Issue          *pluginsdk.Method[IssueInput, Issue]
-	File           *pluginsdk.Method[FileInput, File]
-	Pulls          *pluginsdk.Method[PullListInput, PullPage]
-	Pull           *pluginsdk.Method[IssueInput, PullRequest]
-	PullFiles      *pluginsdk.Method[ThreadInput, FilePage]
-	Comments       *pluginsdk.Method[ThreadInput, CommentPage]
-	Reviews        *pluginsdk.Method[ThreadInput, ReviewPage]
-	ReviewComments *pluginsdk.Method[ThreadInput, ReviewCommentPage]
-	Checks         *pluginsdk.Method[CommitInput, CheckPage]
-	Annotations    *pluginsdk.Method[CheckInput, AnnotationPage]
-	Statuses       *pluginsdk.Method[CommitInput, StatusPage]
+	Capability          *extension.Capability
+	List                *pluginsdk.Method[ListInput, IssuePage]
+	Issue               *pluginsdk.Method[IssueInput, Issue]
+	File                *pluginsdk.Method[FileInput, File]
+	Pulls               *pluginsdk.Method[PullListInput, PullPage]
+	Pull                *pluginsdk.Method[IssueInput, PullRequest]
+	PullFiles           *pluginsdk.Method[ThreadInput, FilePage]
+	Comments            *pluginsdk.Method[ThreadInput, CommentPage]
+	Reviews             *pluginsdk.Method[ThreadInput, ReviewPage]
+	ReviewComments      *pluginsdk.Method[ThreadInput, ReviewCommentPage]
+	Checks              *pluginsdk.Method[CommitInput, CheckPage]
+	Annotations         *pluginsdk.Method[CheckInput, AnnotationPage]
+	Statuses            *pluginsdk.Method[CommitInput, StatusPage]
+	CreateIssue         *pluginsdk.Method[CreateIssueInput, Issue]
+	UpdateIssue         *pluginsdk.Method[UpdateIssueInput, Issue]
+	CreateComment       *pluginsdk.Method[CreateCommentInput, Comment]
+	UpdateComment       *pluginsdk.Method[UpdateCommentInput, Comment]
+	DeleteComment       *pluginsdk.Method[CommentInput, DeletedComment]
+	CreatePull          *pluginsdk.Method[CreatePullInput, PullRequest]
+	SubmitReview        *pluginsdk.Method[SubmitReviewInput, Review]
+	MergePull           *pluginsdk.Method[MergePullInput, MergeResult]
+	CreateReviewComment *pluginsdk.Method[CreateReviewCommentInput, ReviewComment]
+	ReplyReviewComment  *pluginsdk.Method[ReplyReviewCommentInput, ReviewComment]
+	UpdateReviewComment *pluginsdk.Method[UpdateCommentInput, ReviewComment]
+	DeleteReviewComment *pluginsdk.Method[CommentInput, DeletedComment]
 }
 
 func NewContracts() (Contracts, error) {
@@ -132,7 +148,12 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.github.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor(), c.Pulls.Descriptor(), c.Pull.Descriptor(), c.PullFiles.Descriptor(), c.Comments.Descriptor(), c.Reviews.Descriptor(), c.ReviewComments.Descriptor(), c.Checks.Descriptor(), c.Annotations.Descriptor(), c.Statuses.Descriptor())
+	writes, err := c.writeMethods()
+	if err != nil {
+		return Contracts{}, err
+	}
+	methods := []extension.MethodDescriptor{c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor(), c.Pulls.Descriptor(), c.Pull.Descriptor(), c.PullFiles.Descriptor(), c.Comments.Descriptor(), c.Reviews.Descriptor(), c.ReviewComments.Descriptor(), c.Checks.Descriptor(), c.Annotations.Descriptor(), c.Statuses.Descriptor()}
+	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.github.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, append(methods, writes...)...)
 	return c, err
 }
 

@@ -36,22 +36,23 @@ func (wire branchWire) admit() (rpc.Branch, error) {
 }
 
 type pullWire struct {
-	Number         int64       `json:"number"`
-	Title          string      `json:"title"`
-	Body           *string     `json:"body"`
-	State          rpc.State   `json:"state"`
-	URL            string      `json:"html_url"`
-	User           *userWire   `json:"user"`
-	Draft          *bool       `json:"draft"`
-	Head           *branchWire `json:"head"`
-	Base           *branchWire `json:"base"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	MergedAt       *time.Time  `json:"merged_at"`
-	Mergeable      *bool       `json:"mergeable"`
-	MergeableState *string     `json:"mergeable_state"`
-	Additions      *int64      `json:"additions"`
-	Deletions      *int64      `json:"deletions"`
-	ChangedFiles   *int64      `json:"changed_files"`
+	Number              int64       `json:"number"`
+	Title               string      `json:"title"`
+	Body                *string     `json:"body"`
+	State               rpc.State   `json:"state"`
+	URL                 string      `json:"html_url"`
+	User                *userWire   `json:"user"`
+	Draft               *bool       `json:"draft"`
+	MaintainerCanModify *bool       `json:"maintainer_can_modify"`
+	Head                *branchWire `json:"head"`
+	Base                *branchWire `json:"base"`
+	UpdatedAt           time.Time   `json:"updated_at"`
+	MergedAt            *time.Time  `json:"merged_at"`
+	Mergeable           *bool       `json:"mergeable"`
+	MergeableState      *string     `json:"mergeable_state"`
+	Additions           *int64      `json:"additions"`
+	Deletions           *int64      `json:"deletions"`
+	ChangedFiles        *int64      `json:"changed_files"`
 }
 
 func (wire pullWire) admit(repository repository) (rpc.PullRequest, error) {
@@ -75,6 +76,7 @@ func (wire pullWire) admit(repository repository) (rpc.PullRequest, error) {
 		return rpc.PullRequest{}, errors.New("github: returned pull request repository differs")
 	}
 	result := rpc.PullRequest{Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), Draft: *wire.Draft, Head: head, Base: base, UpdatedAt: wire.UpdatedAt, MergedAt: wire.MergedAt, Mergeable: wire.Mergeable, MergeableState: wire.MergeableState, Additions: wire.Additions, Deletions: wire.Deletions, ChangedFiles: wire.ChangedFiles}
+	result.MaintainerCanModify = wire.MaintainerCanModify
 	if wire.Body != nil {
 		result.Body = *wire.Body
 	}

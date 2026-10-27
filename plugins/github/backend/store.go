@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 )
 
@@ -15,17 +16,17 @@ type response struct {
 	body        []byte
 	etag, links string
 }
-type cache struct{ db *sql.DB }
+type store struct{ db *sql.DB }
 
-func openCache(ctx context.Context, path string) (*cache, error) {
-	db, err := sqlite.OpenSchema(ctx, path, []string{`CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
+func openStore(ctx context.Context, path string) (*store, error) {
+	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, `CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
 	if err != nil {
 		return nil, err
 	}
-	return &cache{db: db}, nil
+	return &store{db: db}, nil
 }
 
-func (c *cache) read(ctx context.Context, key string) (response, error) {
+func (c *store) readCache(ctx context.Context, key string) (response, error) {
 	var result response
 	err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT etag,links,body FROM responses WHERE key=?`, key).Scan(&result.etag, &result.links, &result.body)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -40,7 +41,7 @@ func (c *cache) read(ctx context.Context, key string) (response, error) {
 	return result, nil
 }
 
-func (c *cache) save(ctx context.Context, key string, result response) error {
+func (c *store) saveCache(ctx context.Context, key string, result response) error {
 	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
 		connection := sqlite.Connection(ctx, c.db)
 		if result.etag == "" {

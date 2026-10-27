@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -27,11 +28,11 @@ func upstream(status int, body string, headers http.Header) *http.Response {
 	return &http.Response{StatusCode: status, Header: headers, Body: io.NopCloser(strings.NewReader(body))}
 }
 
-const issueJSON = `{"number":42,"title":"Inspected issue","body":"Original content","state":"open","html_url":"https://github.com/owner/repo/issues/42","user":{"login":"author"},"updated_at":"2026-10-20T00:00:00Z"}`
+const issueJSON = `{"id":4200,"number":42,"title":"Inspected issue","body":"Original content","state":"open","labels":[],"assignees":[],"html_url":"https://github.com/owner/repo/issues/42","user":{"login":"author"},"updated_at":"2026-10-20T00:00:00Z"}`
 
 func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "github.db")
-	cache, err := openCache(t.Context(), path)
+	cache, err := openStore(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 		t.Fatal(err)
 	}
 	second, err := connector.getIssue(t.Context(), input)
-	if err != nil || second != first || calls != 2 {
+	if err != nil || !reflect.DeepEqual(second, first) || calls != 2 {
 		t.Fatalf("conditional query = %+v, count=%d, %v", second, calls, err)
 	}
 	status = http.StatusUnauthorized
@@ -103,19 +104,19 @@ func TestConditionalReadsRevalidateAuthorizationAndKeepCredentialScopesPrivate(t
 	if strings.Contains(string(content), token) || strings.Contains(string(content), otherToken) {
 		t.Fatal("connector database copied a mutable credential")
 	}
-	reopened, err := openCache(t.Context(), path)
+	reopened, err := openStore(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reopened.db.Close() })
-	connector.cache, status = reopened, http.StatusOK
-	if original, err := connector.getIssue(t.Context(), input); err != nil || original != first {
+	connector.store, status = reopened, http.StatusOK
+	if original, err := connector.getIssue(t.Context(), input); err != nil || !reflect.DeepEqual(original, first) {
 		t.Fatalf("conditional evidence did not survive reopen: %+v, %v", original, err)
 	}
 }
 
 func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
-	cache, err := openCache(t.Context(), filepath.Join(t.TempDir(), "github.db"))
+	cache, err := openStore(t.Context(), filepath.Join(t.TempDir(), "github.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +179,7 @@ func TestGitHubReadsBoundResponsesAndPreserveExplicitFailures(t *testing.T) {
 }
 
 func TestGitHubQueryCancellationJoinsItsOriginalRequest(t *testing.T) {
-	cache, err := openCache(t.Context(), filepath.Join(t.TempDir(), "github.db"))
+	cache, err := openStore(t.Context(), filepath.Join(t.TempDir(), "github.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

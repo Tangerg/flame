@@ -26,17 +26,17 @@ const (
 )
 
 type connector struct {
-	cache      *cache
+	store      *store
 	http       *http.Client
 	credential credential
 }
 
-func newConnector(cache *cache, transport http.RoundTripper, credential credential) (*connector, error) {
-	if cache == nil || cache.db == nil || transport == nil {
-		return nil, errors.New("github: cache and HTTP transport are required")
+func newConnector(store *store, transport http.RoundTripper, credential credential) (*connector, error) {
+	if store == nil || store.db == nil || transport == nil {
+		return nil, errors.New("github: store and HTTP transport are required")
 	}
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	return &connector{cache: cache, http: client, credential: credential}, nil
+	return &connector{store: store, http: client, credential: credential}, nil
 }
 
 func refused(code, message string) error {
@@ -58,14 +58,14 @@ func query[T any](ctx context.Context, c *connector, path string, parameters url
 	if err != nil {
 		return zero, err
 	}
-	if err := c.cache.save(ctx, key, result); err != nil {
+	if err := c.store.saveCache(ctx, key, result); err != nil {
 		return zero, err
 	}
 	return value, nil
 }
 
 func (c *connector) load(ctx context.Context, address, key string) (result response, err error) {
-	previous, err := c.cache.read(ctx, key)
+	previous, err := c.store.readCache(ctx, key)
 	if err != nil {
 		return response{}, err
 	}
@@ -177,6 +177,7 @@ func readPage[W, R any](ctx context.Context, c *connector, path string, paramete
 }
 
 type issueWire struct {
+	ID          int64     `json:"id"`
 	Number      int64     `json:"number"`
 	Title       string    `json:"title"`
 	Body        *string   `json:"body"`
@@ -185,13 +186,34 @@ type issueWire struct {
 	User        *userWire `json:"user"`
 	PullRequest *struct{} `json:"pull_request"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Labels      []struct {
+		Name string `json:"name"`
+	} `json:"labels"`
+	Assignees   []userWire `json:"assignees"`
+	StateReason *string    `json:"state_reason"`
 }
 
 func (wire issueWire) admit(repository repository) (rpc.Issue, error) {
-	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
+	if wire.ID <= 0 || wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != rpc.Open && wire.State != rpc.Closed {
 		return rpc.Issue{}, errors.New("github: invalid issue representation")
 	}
-	result := rpc.Issue{Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
+	if wire.Labels == nil || wire.Assignees == nil {
+		return rpc.Issue{}, errors.New("github: issue metadata arrays are missing")
+	}
+	result := rpc.Issue{ID: wire.ID, Repository: repository.String(), Number: wire.Number, Title: wire.Title, State: wire.State, URL: wire.URL, Author: author(wire.User), PullRequest: wire.PullRequest != nil, UpdatedAt: wire.UpdatedAt}
+	result.Labels, result.Assignees, result.StateReason = make([]string, len(wire.Labels)), make([]string, len(wire.Assignees)), wire.StateReason
+	for i, label := range wire.Labels {
+		if !textPresent(label.Name) {
+			return rpc.Issue{}, errors.New("github: issue label name is missing")
+		}
+		result.Labels[i] = label.Name
+	}
+	for i, assignee := range wire.Assignees {
+		if !textPresent(assignee.Login) {
+			return rpc.Issue{}, errors.New("github: issue assignee login is missing")
+		}
+		result.Assignees[i] = assignee.Login
+	}
 	if wire.Body != nil {
 		result.Body = *wire.Body
 	}

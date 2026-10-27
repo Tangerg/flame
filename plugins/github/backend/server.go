@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -13,6 +14,12 @@ import (
 )
 
 func classify(err error) string {
+	if refusal, known := errors.AsType[*extension.Refusal](err); known {
+		return refusal.Code
+	}
+	if errors.Is(err, extension.ErrInvocationConflict) {
+		return "command_conflict"
+	}
 	if errors.Is(err, errResource) {
 		return "invalid_resource"
 	}
@@ -59,6 +66,11 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		return nil, err
 	}
 	var tools []tool.Tool
+	receipts := make(map[string]toolReceiptReader)
+	toolReceipts, err := pluginsdk.ToolReceiptQuery()
+	if err != nil {
+		return nil, err
+	}
 	if err := errors.Join(
 		registerRead(backend, &tools, contracts.List, "list_issues", connector.listIssues),
 		registerRead(backend, &tools, contracts.Issue, "get_issue", connector.getIssue),
@@ -72,6 +84,26 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		registerRead(backend, &tools, contracts.Checks, "list_check_runs", connector.listChecks),
 		registerRead(backend, &tools, contracts.Annotations, "list_check_annotations", connector.listAnnotations),
 		registerRead(backend, &tools, contracts.Statuses, "list_commit_statuses", connector.listStatuses),
+		registerWrite(backend, &tools, receipts, connector, contracts.CreateIssue, "create_issue", connector.createIssue),
+		registerWrite(backend, &tools, receipts, connector, contracts.UpdateIssue, "update_issue", connector.updateIssue),
+		registerWrite(backend, &tools, receipts, connector, contracts.CreateComment, "create_issue_comment", connector.createComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.UpdateComment, "update_issue_comment", connector.updateComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.DeleteComment, "delete_issue_comment", connector.deleteComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.CreatePull, "create_pull_request", connector.createPull),
+		registerWrite(backend, &tools, receipts, connector, contracts.SubmitReview, "submit_pull_request_review", connector.submitReview),
+		registerWrite(backend, &tools, receipts, connector, contracts.MergePull, "merge_pull_request", connector.mergePull),
+		registerWrite(backend, &tools, receipts, connector, contracts.CreateReviewComment, "create_pull_request_comment", connector.createReviewComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.ReplyReviewComment, "reply_pull_request_comment", connector.replyReviewComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.UpdateReviewComment, "update_pull_request_comment", connector.updateReviewComment),
+		registerWrite(backend, &tools, receipts, connector, contracts.DeleteReviewComment, "delete_pull_request_comment", connector.deleteReviewComment),
+		pluginstorage.RegisterReceipts(backend, connector.store.db),
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+			read := receipts[command.Input.Method]
+			if read == nil {
+				return pluginsdk.ToolReceipt{}, nil
+			}
+			return read(ctx, command.Input)
+		}),
 		backend.BindCapability("github", contracts.Capability),
 	); err != nil {
 		return nil, err

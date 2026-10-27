@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.github",
-  "version": "1.0.0",
-  "description": "Read GitHub issues, pull requests and UTF-8 repository files through one installed backend with private conditional-response storage.",
+  "version": "2.0.0",
+  "description": "Read GitHub resources and manage issues, comments, pull requests, reviews and guarded merges through one installed backend with durable original-command receipts.",
   "extensions": {
     "io.github.tangerg.flame": {
       "declaration": "io.github.tangerg.flame/declaration.json"

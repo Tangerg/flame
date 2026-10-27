@@ -5,6 +5,1387 @@
   "scope": "installation",
   "methods": [
     {
+      "name": "flame.github/create-issue-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create a discussion comment on an issue or PR; code-line comments use create_pull_request_comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateCommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "body"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/create-issue.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create an issue with title, optional body, labels and assignees. Returns GitHub's actual values, including metadata GitHub may ignore without sufficient permissions. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateIssueInput": {
+            "additionalProperties": false,
+            "properties": {
+              "assignees": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "body": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "title"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assignees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "body": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "title"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+            "additionalProperties": false,
+            "properties": {
+              "assignees": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pullRequest": {
+                "type": "boolean"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "state": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "stateReason": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "repository",
+              "number",
+              "title",
+              "body",
+              "state",
+              "url",
+              "author",
+              "pullRequest",
+              "updatedAt",
+              "labels",
+              "assignees"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assignees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pullRequest": {
+            "type": "boolean"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "stateReason": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repository",
+          "number",
+          "title",
+          "body",
+          "state",
+          "url",
+          "author",
+          "pullRequest",
+          "updatedAt",
+          "labels",
+          "assignees"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/create-pull-request-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create an inline PR review comment at the inspected commit/path/line/side; optional startLine/startSide defines a range. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreateReviewCommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "commitId": {
+                "minLength": 1,
+                "pattern": "^[0-9a-fA-F]{40}$",
+                "type": "string"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "side": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "startLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "startSide": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "commitId",
+              "path",
+              "body",
+              "line",
+              "side"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "commitId": {
+            "minLength": 1,
+            "pattern": "^[0-9a-fA-F]{40}$",
+            "type": "string"
+          },
+          "line": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "side": {
+            "allOf": [
+              {
+                "enum": [
+                  "LEFT",
+                  "RIGHT"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "startLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "startSide": {
+            "allOf": [
+              {
+                "enum": [
+                  "LEFT",
+                  "RIGHT"
+                ]
+              }
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "commitId",
+          "path",
+          "body",
+          "line",
+          "side"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "commitId": {
+                "type": "string"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "diffHunk": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "inReplyTo": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "originalCommitId": {
+                "type": "string"
+              },
+              "originalLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "reviewId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "side": {
+                "type": "string"
+              },
+              "startLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "startSide": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt",
+              "reviewId",
+              "path",
+              "diffHunk",
+              "commitId",
+              "originalCommitId",
+              "side"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "commitId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diffHunk": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "inReplyTo": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "line": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "originalCommitId": {
+            "type": "string"
+          },
+          "originalLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "reviewId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "side": {
+            "type": "string"
+          },
+          "startLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "startSide": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "createdAt",
+          "updatedAt",
+          "reviewId",
+          "path",
+          "diffHunk",
+          "commitId",
+          "originalCommitId",
+          "side"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/create-pull-request.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create a PR from existing head/base branches, optionally as a draft. This does not create commits or push a branch. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CreatePullInput": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              "body": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "draft": {
+                "type": "boolean"
+              },
+              "head": {
+                "description": "Existing source branch, qualified as owner:branch for a fork.",
+                "maxLength": 1024,
+                "minLength": 1,
+                "type": "string"
+              },
+              "headRepository": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "maintainerCanModify": {
+                "type": "boolean"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "title",
+              "head",
+              "base"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "base": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "body": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "head": {
+            "description": "Existing source branch, qualified as owner:branch for a fork.",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "headRepository": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maintainerCanModify": {
+            "type": "boolean"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "title",
+          "head",
+          "base"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch": {
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "ref": {
+                "type": "string"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "sha": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "ref",
+              "sha"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_PullRequest": {
+            "additionalProperties": false,
+            "properties": {
+              "additions": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "author": {
+                "type": "string"
+              },
+              "base": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+              },
+              "body": {
+                "type": "string"
+              },
+              "changedFiles": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "deletions": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "draft": {
+                "type": "boolean"
+              },
+              "head": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+              },
+              "maintainerCanModify": {
+                "type": "boolean"
+              },
+              "mergeable": {
+                "type": "boolean"
+              },
+              "mergeableState": {
+                "type": "string"
+              },
+              "mergedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "state": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "title",
+              "body",
+              "state",
+              "url",
+              "author",
+              "draft",
+              "head",
+              "base",
+              "updatedAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "author": {
+            "type": "string"
+          },
+          "base": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+          },
+          "body": {
+            "type": "string"
+          },
+          "changedFiles": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "deletions": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "head": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+          },
+          "maintainerCanModify": {
+            "type": "boolean"
+          },
+          "mergeable": {
+            "type": "boolean"
+          },
+          "mergeableState": {
+            "type": "string"
+          },
+          "mergedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "title",
+          "body",
+          "state",
+          "url",
+          "author",
+          "draft",
+          "head",
+          "base",
+          "updatedAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/delete-issue-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Delete one issue/PR discussion comment by its inspected ID. This does not delete an inline code-review comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "commentId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "commentId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "commentId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "commentId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_DeletedComment": {
+            "additionalProperties": false,
+            "properties": {
+              "deleted": {
+                "const": true,
+                "type": "boolean"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "deleted"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "const": true,
+            "type": "boolean"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "deleted"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/delete-pull-request-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Delete an inline PR review comment by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_CommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "commentId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "commentId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "commentId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "commentId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_DeletedComment": {
+            "additionalProperties": false,
+            "properties": {
+              "deleted": {
+                "const": true,
+                "type": "boolean"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "deleted"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "const": true,
+            "type": "boolean"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "deleted"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.github/get-issue.v1",
       "kind": "query",
       "target": "installation",
@@ -67,11 +1448,33 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
             "additionalProperties": false,
             "properties": {
+              "assignees": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
               "author": {
                 "type": "string"
               },
               "body": {
                 "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               "number": {
                 "allOf": [
@@ -80,6 +1483,7 @@
                     "minimum": -9223372036854775808
                   }
                 ],
+                "minimum": 1,
                 "type": "integer"
               },
               "pullRequest": {
@@ -99,6 +1503,9 @@
                 ],
                 "type": "string"
               },
+              "stateReason": {
+                "type": "string"
+              },
               "title": {
                 "type": "string"
               },
@@ -111,6 +1518,7 @@
               }
             },
             "required": [
+              "id",
               "repository",
               "number",
               "title",
@@ -119,7 +1527,9 @@
               "url",
               "author",
               "pullRequest",
-              "updatedAt"
+              "updatedAt",
+              "labels",
+              "assignees"
             ],
             "type": "object"
           }
@@ -127,11 +1537,33 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
+          "assignees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "author": {
             "type": "string"
           },
           "body": {
             "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "number": {
             "allOf": [
@@ -140,6 +1572,7 @@
                 "minimum": -9223372036854775808
               }
             ],
+            "minimum": 1,
             "type": "integer"
           },
           "pullRequest": {
@@ -159,6 +1592,9 @@
             ],
             "type": "string"
           },
+          "stateReason": {
+            "type": "string"
+          },
           "title": {
             "type": "string"
           },
@@ -171,6 +1607,7 @@
           }
         },
         "required": [
+          "id",
           "repository",
           "number",
           "title",
@@ -179,7 +1616,9 @@
           "url",
           "author",
           "pullRequest",
-          "updatedAt"
+          "updatedAt",
+          "labels",
+          "assignees"
         ],
         "type": "object"
       }
@@ -312,6 +1751,9 @@
               "head": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
               },
+              "maintainerCanModify": {
+                "type": "boolean"
+              },
               "mergeable": {
                 "type": "boolean"
               },
@@ -416,6 +1858,9 @@
           },
           "head": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
+          },
+          "maintainerCanModify": {
+            "type": "boolean"
           },
           "mergeable": {
             "type": "boolean"
@@ -1411,11 +2856,33 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
             "additionalProperties": false,
             "properties": {
+              "assignees": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
               "author": {
                 "type": "string"
               },
               "body": {
                 "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               "number": {
                 "allOf": [
@@ -1424,6 +2891,7 @@
                     "minimum": -9223372036854775808
                   }
                 ],
+                "minimum": 1,
                 "type": "integer"
               },
               "pullRequest": {
@@ -1443,6 +2911,9 @@
                 ],
                 "type": "string"
               },
+              "stateReason": {
+                "type": "string"
+              },
               "title": {
                 "type": "string"
               },
@@ -1455,6 +2926,7 @@
               }
             },
             "required": [
+              "id",
               "repository",
               "number",
               "title",
@@ -1463,7 +2935,9 @@
               "url",
               "author",
               "pullRequest",
-              "updatedAt"
+              "updatedAt",
+              "labels",
+              "assignees"
             ],
             "type": "object"
           },
@@ -2421,6 +3895,9 @@
               "head": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Branch"
               },
+              "maintainerCanModify": {
+                "type": "boolean"
+              },
               "mergeable": {
                 "type": "boolean"
               },
@@ -2502,6 +3979,168 @@
         },
         "required": [
           "pullRequests"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/merge-pull-request.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Directly merge a PR with the explicit merge method and inspected head SHA. GitHub enforces protection and permissions. Merge queues and stacked PRs require GitHub's separate asynchronous API and are not supported by this operation. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_MergePullInput": {
+            "additionalProperties": false,
+            "properties": {
+              "commitMessage": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "commitTitle": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "headSha": {
+                "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
+                "minLength": 1,
+                "pattern": "^[0-9a-fA-F]{40}$",
+                "type": "string"
+              },
+              "mergeMethod": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "merge",
+                      "squash",
+                      "rebase"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "headSha",
+              "mergeMethod"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "commitMessage": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "commitTitle": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "headSha": {
+            "description": "Exact inspected head SHA. GitHub atomically refuses a different current head.",
+            "minLength": 1,
+            "pattern": "^[0-9a-fA-F]{40}$",
+            "type": "string"
+          },
+          "mergeMethod": {
+            "allOf": [
+              {
+                "enum": [
+                  "merge",
+                  "squash",
+                  "rebase"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "headSha",
+          "mergeMethod"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_MergeResult": {
+            "additionalProperties": false,
+            "properties": {
+              "merged": {
+                "const": true,
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              },
+              "sha": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sha",
+              "merged",
+              "message"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "merged": {
+            "const": true,
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "sha": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "merged",
+          "message"
         ],
         "type": "object"
       }
@@ -2620,6 +4259,1388 @@
           "sha",
           "url",
           "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/reply-pull-request-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Reply to an existing inline PR review comment by its inspected comment ID, preserving its upstream thread. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReplyReviewCommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "commentId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "commentId",
+              "body"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "commentId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "commentId",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "commitId": {
+                "type": "string"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "diffHunk": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "inReplyTo": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "originalCommitId": {
+                "type": "string"
+              },
+              "originalLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "reviewId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "side": {
+                "type": "string"
+              },
+              "startLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "startSide": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt",
+              "reviewId",
+              "path",
+              "diffHunk",
+              "commitId",
+              "originalCommitId",
+              "side"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "commitId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diffHunk": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "inReplyTo": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "line": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "originalCommitId": {
+            "type": "string"
+          },
+          "originalLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "reviewId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "side": {
+            "type": "string"
+          },
+          "startLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "startSide": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "createdAt",
+          "updatedAt",
+          "reviewId",
+          "path",
+          "diffHunk",
+          "commitId",
+          "originalCommitId",
+          "side"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/submit-pull-request-review.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Create and submit an APPROVE, REQUEST_CHANGES or COMMENT review against the explicit inspected commit, optionally with inline comments. Body is required for COMMENT and REQUEST_CHANGES. Does not leave a pending review. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "side": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "startLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "startSide": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "body",
+              "line",
+              "side"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_SubmitReviewInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "comments": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment"
+                },
+                "type": "array"
+              },
+              "commitId": {
+                "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
+                "minLength": 1,
+                "pattern": "^[0-9a-fA-F]{40}$",
+                "type": "string"
+              },
+              "event": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "APPROVE",
+                      "REQUEST_CHANGES",
+                      "COMMENT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "commitId",
+              "event"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_InlineComment"
+            },
+            "type": "array"
+          },
+          "commitId": {
+            "description": "Exact inspected commit SHA to review; never defaults to a newer head.",
+            "minLength": 1,
+            "pattern": "^[0-9a-fA-F]{40}$",
+            "type": "string"
+          },
+          "event": {
+            "allOf": [
+              {
+                "enum": [
+                  "APPROVE",
+                  "REQUEST_CHANGES",
+                  "COMMENT"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "commitId",
+          "event"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Review": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "commitId": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "state": {
+                "type": "string"
+              },
+              "submittedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "state"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "commitId": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "submittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "state"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/update-issue-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Replace one issue/PR discussion comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateCommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "commentId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "commentId",
+              "body"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "commentId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "commentId",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Comment": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/update-issue.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Patch only supplied issue fields. Empty body clears it; empty labels/assignees clear their sets. Omitted fields are preserved. GitHub provides no atomic revision condition for these edits. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateIssueInput": {
+            "additionalProperties": false,
+            "properties": {
+              "assignees": {
+                "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "body": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "duplicateIssueId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "description": "Global id returned by get_issue for the canonical duplicate, not its issue number.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "labels": {
+                "description": "Replaces the label set; [] clears it. Omit to preserve it.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "state": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "stateReason": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "completed",
+                      "not_planned",
+                      "duplicate",
+                      "reopened"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assignees": {
+            "description": "Replaces the assignee set; [] clears it. Omit to preserve it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "body": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "duplicateIssueId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "description": "Global id returned by get_issue for the canonical duplicate, not its issue number.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "labels": {
+            "description": "Replaces the label set; [] clears it. Omit to preserve it.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "stateReason": {
+            "allOf": [
+              {
+                "enum": [
+                  "completed",
+                  "not_planned",
+                  "duplicate",
+                  "reopened"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_Issue": {
+            "additionalProperties": false,
+            "properties": {
+              "assignees": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "labels": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pullRequest": {
+                "type": "boolean"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "state": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "stateReason": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "repository",
+              "number",
+              "title",
+              "body",
+              "state",
+              "url",
+              "author",
+              "pullRequest",
+              "updatedAt",
+              "labels",
+              "assignees"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "assignees": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pullRequest": {
+            "type": "boolean"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "state": {
+            "allOf": [
+              {
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              }
+            ],
+            "type": "string"
+          },
+          "stateReason": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "repository",
+          "number",
+          "title",
+          "body",
+          "state",
+          "url",
+          "author",
+          "pullRequest",
+          "updatedAt",
+          "labels",
+          "assignees"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/update-pull-request-comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_UpdateCommentInput": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "maxLength": 65536,
+                "minLength": 1,
+                "type": "string"
+              },
+              "commentId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "commentId",
+              "body"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "type": "string"
+          },
+          "commentId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "commentId",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL2NvbnRyYWN0_ReviewComment": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "commitId": {
+                "type": "string"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "diffHunk": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "inReplyTo": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "originalCommitId": {
+                "type": "string"
+              },
+              "originalLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              },
+              "reviewId": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "side": {
+                "type": "string"
+              },
+              "startLine": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "startSide": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt",
+              "reviewId",
+              "path",
+              "diffHunk",
+              "commitId",
+              "originalCommitId",
+              "side"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "commitId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "diffHunk": {
+            "type": "string"
+          },
+          "id": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "inReplyTo": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "line": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "originalCommitId": {
+            "type": "string"
+          },
+          "originalLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "path": {
+            "type": "string"
+          },
+          "reviewId": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "side": {
+            "type": "string"
+          },
+          "startLine": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "startSide": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "author",
+          "body",
+          "createdAt",
+          "updatedAt",
+          "reviewId",
+          "path",
+          "diffHunk",
+          "commitId",
+          "originalCommitId",
+          "side"
         ],
         "type": "object"
       }

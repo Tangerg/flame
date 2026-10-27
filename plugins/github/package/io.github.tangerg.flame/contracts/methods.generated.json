@@ -1,5 +1,53 @@
 [
   {
+    "name": "flame.github/create-issue-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create a discussion comment on an issue or PR; code-line comments use create_pull_request_comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dissue_2dcomment_2ev1Output"
+  },
+  {
+    "name": "flame.github/create-issue.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create an issue with title, optional body, labels and assignees. Returns GitHub's actual values, including metadata GitHub may ignore without sufficient permissions. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dissue_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dissue_2ev1Output"
+  },
+  {
+    "name": "flame.github/create-pull-request-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create an inline PR review comment at the inspected commit/path/line/side; optional startLine/startSide defines a range. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dpull_2drequest_2dcomment_2ev1Output"
+  },
+  {
+    "name": "flame.github/create-pull-request.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create a PR from existing head/base branches, optionally as a draft. This does not create commits or push a branch. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fcreate_2dpull_2drequest_2ev1Output"
+  },
+  {
+    "name": "flame.github/delete-issue-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Delete one issue/PR discussion comment by its inspected ID. This does not delete an inline code-review comment. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fdelete_2dissue_2dcomment_2ev1Output"
+  },
+  {
+    "name": "flame.github/delete-pull-request-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Delete an inline PR review comment by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fdelete_2dpull_2drequest_2dcomment_2ev1Output"
+  },
+  {
     "name": "flame.github/get-issue.v1",
     "kind": "query",
     "target": "installation",
@@ -88,11 +136,59 @@
     "output": "schema.json#/$defs/Method_flame_2egithub_2flist_2dpull_2drequests_2ev1Output"
   },
   {
+    "name": "flame.github/merge-pull-request.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Directly merge a PR with the explicit merge method and inspected head SHA. GitHub enforces protection and permissions. Merge queues and stacked PRs require GitHub's separate asynchronous API and are not supported by this operation. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fmerge_2dpull_2drequest_2ev1Output"
+  },
+  {
     "name": "flame.github/read-file.v1",
     "kind": "query",
     "target": "installation",
     "description": "Read a UTF-8 repository file up to one MiB, optionally at an exact Git ref. Directory and binary content are refused.",
     "input": "schema.json#/$defs/Method_flame_2egithub_2fread_2dfile_2ev1Input",
     "output": "schema.json#/$defs/Method_flame_2egithub_2fread_2dfile_2ev1Output"
+  },
+  {
+    "name": "flame.github/reply-pull-request-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Reply to an existing inline PR review comment by its inspected comment ID, preserving its upstream thread. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2freply_2dpull_2drequest_2dcomment_2ev1Output"
+  },
+  {
+    "name": "flame.github/submit-pull-request-review.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Create and submit an APPROVE, REQUEST_CHANGES or COMMENT review against the explicit inspected commit, optionally with inline comments. Body is required for COMMENT and REQUEST_CHANGES. Does not leave a pending review. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fsubmit_2dpull_2drequest_2dreview_2ev1Output"
+  },
+  {
+    "name": "flame.github/update-issue-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Replace one issue/PR discussion comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dissue_2dcomment_2ev1Output"
+  },
+  {
+    "name": "flame.github/update-issue.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Patch only supplied issue fields. Empty body clears it; empty labels/assignees clear their sets. Omitted fields are preserved. GitHub provides no atomic revision condition for these edits. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dissue_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dissue_2ev1Output"
+  },
+  {
+    "name": "flame.github/update-pull-request-comment.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2egithub_2fupdate_2dpull_2drequest_2dcomment_2ev1Output"
   }
 ]

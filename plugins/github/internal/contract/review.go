@@ -36,23 +36,24 @@ type Branch struct {
 }
 
 type PullRequest struct {
-	Repository     string     `json:"repository"`
-	Number         int64      `json:"number"`
-	Title          string     `json:"title"`
-	Body           string     `json:"body"`
-	State          State      `json:"state"`
-	URL            string     `json:"url"`
-	Author         string     `json:"author"`
-	Draft          bool       `json:"draft"`
-	Head           Branch     `json:"head"`
-	Base           Branch     `json:"base"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
-	MergedAt       *time.Time `json:"mergedAt,omitzero"`
-	Mergeable      *bool      `json:"mergeable,omitzero"`
-	MergeableState *string    `json:"mergeableState,omitzero"`
-	Additions      *int64     `json:"additions,omitzero"`
-	Deletions      *int64     `json:"deletions,omitzero"`
-	ChangedFiles   *int64     `json:"changedFiles,omitzero"`
+	Repository          string     `json:"repository"`
+	Number              int64      `json:"number"`
+	Title               string     `json:"title"`
+	Body                string     `json:"body"`
+	State               State      `json:"state"`
+	URL                 string     `json:"url"`
+	Author              string     `json:"author"`
+	Draft               bool       `json:"draft"`
+	MaintainerCanModify *bool      `json:"maintainerCanModify,omitzero"`
+	Head                Branch     `json:"head"`
+	Base                Branch     `json:"base"`
+	UpdatedAt           time.Time  `json:"updatedAt"`
+	MergedAt            *time.Time `json:"mergedAt,omitzero"`
+	Mergeable           *bool      `json:"mergeable,omitzero"`
+	MergeableState      *string    `json:"mergeableState,omitzero"`
+	Additions           *int64     `json:"additions,omitzero"`
+	Deletions           *int64     `json:"deletions,omitzero"`
+	ChangedFiles        *int64     `json:"changedFiles,omitzero"`
 }
 
 type PullPage struct {

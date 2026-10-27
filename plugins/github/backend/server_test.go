@@ -17,7 +17,7 @@ import (
 )
 
 func TestTypedAndModelToolsShareGitHubReadsAndKnownRefusals(t *testing.T) {
-	cache, err := openCache(t.Context(), filepath.Join(t.TempDir(), "github.db"))
+	cache, err := openStore(t.Context(), filepath.Join(t.TempDir(), "github.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

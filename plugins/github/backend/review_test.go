@@ -24,7 +24,7 @@ const statusJSON = `{"id":55,"state":"pending","context":"external/build","descr
 
 func reviewConnector(t *testing.T, transport http.RoundTripper) *connector {
 	t.Helper()
-	cache, err := openCache(t.Context(), filepath.Join(t.TempDir(), "github.db"))
+	cache, err := openStore(t.Context(), filepath.Join(t.TempDir(), "github.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
