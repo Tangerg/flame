@@ -100,9 +100,11 @@ Plan checklists name each captured step state in the current locale beside its
 task text. Accepted revisions update these marks in the retained reader; the
 existing Session Plan remains the source of progress.
 
-The shared pre-module focus bootstrap recognizes navigation and activation keys,
-including Home/End, paging, Enter/Space and Escape. Ordinary typing and IME
-composition retain the current modality; pointer input restores pointer mode.
+The shared pre-module focus bootstrap recognizes navigation, activation and
+Ctrl/Command shortcuts. Its explicit input modality owns the shared focus
+perimeter, including programmatic command destinations. Ordinary typing, IME
+composition and AltGraph text retain the current modality; pointer input restores
+pointer mode. Modifier keys alone do not imply a command.
 
 Recorded Tool failures retain their original line breaks, blank lines and indentation
 in both standalone and grouped rows, with long values wrapping inside the reading

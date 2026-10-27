@@ -33,6 +33,15 @@ precedence over an ancestor's `data-focus-inset`, so the focus color cannot
 disappear inside the control's own fill. Unfilled controls and readers retain
 the enclosing inset rule.
 
+The host's pre-module input-modality owner marks pointer or keyboard operation
+with `data-input-modality`. The shared perimeter follows actual focus in keyboard
+mode, including programmatic command targets that WebKit does not match as
+`:focus-visible`. Pointer mode keeps existing control chrome. An independent
+consumer without that host owner retains native `:focus-visible` behavior and
+the existing `:focus-within` proxies.
+Validation, inset/outset placement and focus proxies keep their existing roles;
+components do not maintain another modality or ring owner.
+
 ```tsx
 import { Button, IconButton, FontScaleProvider } from "@flame/ui";
 import { Brain } from "@flame/icons/react";

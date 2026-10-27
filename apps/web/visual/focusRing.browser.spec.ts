@@ -144,7 +144,7 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
         return;
       }
       const foreign = meta.painters.filter(
-        (selector) => !(selector.includes("data-pointer") && selector.includes(":focus-visible")),
+        (selector) => !(selector.includes("data-input-modality") && selector.includes(":focus")),
       );
       if (foreign.length > 0 || meta.painters.length === 0) {
         strangers.push(

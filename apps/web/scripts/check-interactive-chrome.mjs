@@ -100,7 +100,7 @@ const RULES = [
     // twin was three tab stops past where that walk stopped.
     appliesTo: (_line, rel, selector) =>
       (rel !== "styles/globals.css" && rel !== "@flame/ui/globals.css") ||
-      !/:focus-visible|\[data-pointer\]/.test(selector),
+      !/:focus-visible|\[data-input-modality(?:=|\])/.test(selector),
   },
   {
     // Opacity as a hover answer, in either of its two forms. A REVEAL — transparent at rest,

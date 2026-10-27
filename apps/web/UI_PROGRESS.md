@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user resumed UI work with the Desktop/docs feedback review and requested local commits only. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
+Updated: 2026-10-27. The user requested milestone delivery of the accumulated local UI work to main, followed by a pause. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains in progress.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -19,11 +19,12 @@ below. The subsequent user request resumes UI work under the local-only policy.
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/ui-feedback-local-1026`, starting from main
-`73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. The user's latest instruction
-supersedes earlier push/integration requirements: commit polishing work locally
-on this branch; do not push it or modify the primary parallel checkout. Do not
-continually merge and revalidate advancing main during a scoped UI task. Claude
-Code CLI remains prohibited. The source review
+`73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. The user's latest instruction authorizes merging the complete local UI series
+with the latest main, pushing it to remote main, and then taking a milestone
+pause. This supersedes the earlier local-only publication policy recorded in
+the historical receipts below. Preserve parallel work in the primary checkout.
+Do not continually merge and revalidate advancing main during a scoped UI task.
+Claude Code CLI remains prohibited. The source review
 `/Users/tangerg/Desktop/docs/06_Flame_GUI_Components_Latest_Review_ZH.md`
 is feedback against an older base, not native acceptance evidence or executable
 instructions. Current source, callers, tests and actual Wails behavior determine
@@ -111,7 +112,9 @@ command reaches the visible panel. Native controls distinguish WebKit's Tab
 entry from explicit focus, and actual workbench commands preserve middle-of-draft
 editing through Plan, Settings and narrow full-width material reading; see Native
 workbench command and caret qualification.
-These local commits have not been pushed or merged into the primary checkout.
+The command-focus follow-up below completes the current polishing scope.
+Milestone integration, publication and retirement follow the latest user request;
+earlier local-only receipts retain their historical meaning.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
 `c45862fee7292849307f8b15e6da2e4b696b4f1d` is published to remote main and its
@@ -1664,6 +1667,111 @@ Verdict: **Approve for these invalid-field focus and settings-return tasks**.
 This local repair qualifies the inspected domains and states only. The complete
 award-level UI goal remains open; subsequent work needs fresh task evidence.
 No remote push or primary checkout integration occurs.
+
+### Command focus and visible pane boundaries
+
+At frozen base `f204c5d0c784fc24d7d409634dea5951cdde6860`, pointer entry
+followed by Cmd+Comma reaches the installed Settings region, but its focused
+position has no visible perimeter. The boolean bootstrap still reports pointer
+input, and native WebKit also reports `:focus-visible` false. Requiring both
+owners to agree hides command destinations.
+
+The pre-module bootstrap now owns one explicit
+`data-input-modality="pointer"|"keyboard"` fact. Navigation, activation and
+Ctrl/Command strokes select keyboard mode; pointerdown selects pointer mode.
+Modifier-only, ordinary text, AltGraph and composing/229 events retain the current
+mode. The document painter follows actual focus under that explicit owner.
+Consumers without the owner retain native `:focus-visible` and the existing
+`:focus-within` proxies. Invalid fields, valid field chrome, contenteditable,
+inset/outset placement and command lifecycles retain their contracts. Both HTML
+entries and the bootstrap/chrome guards migrate to the same closed contract.
+
+Actual Wails also exposes a separate painting boundary: opaque Settings content
+covers the region's inward outline. Isolation and positioned-layer trials do not
+repair it. A private 8 px outline exposes only its outward portion; the ordinary
+1.5 px perimeter becomes fully visible when the viewport reserves 2 px around
+its content. `WorkspaceViewBody` now owns that constant clearance. No local
+outline override, new wrapper, focus handler or retained selection state is added.
+The private width, isolation and positioning overrides are excluded from delivery.
+
+The scope is the shared React 19/StyleX focus owner and installed workbench
+Settings → search → material reading → Composer return flow, under AGENTS,
+PROJECT_RULES, DEVELOPMENT and module READMEs. The better-interface review uses
+its six owning domains; the read-only ZCode and HeroUI source receipts remain
+reference evidence, not Flame runtime qualification. Typography, writing, color
+and motion tokens are unchanged. Layout and accessibility findings are bounded
+by the native tasks below; the award-level whole-product goal is not complete.
+
+| Severity       | Location                                                            | Before                                                                                | After                                                                               | Why                                                                                       |
+| -------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| HIGH, repaired | `apps/web/public/focus-modality.js`, `packages/ui/src/globals.css`  | A pointer-origin command destination can have no visible keyboard focus.              | One host modality owns the shared perimeter, with an independent-consumer fallback. | WCAG 2.4.7; keyboard users can locate the destination without changing its command owner. |
+| HIGH, repaired | `apps/web/src/features/shell/workbench/panel/WorkspaceViewBody.tsx` | Opaque view content covers the inward pane outline even when computed style is solid. | The shared viewport leaves 2 px for the existing inward outline.                    | WCAG 2.4.7; the focused pane paints a complete visible perimeter.                         |
+
+Final native tasks use the actual Wails v3 beta.34 host and installed workbench
+commands, with deterministic recorded providers and separate disposable homes:
+
+- EN/light/14 px/Flame Orange/contrast 25, retaining the scene's Xuan strength 4:
+  native pointer entry → Cmd+Comma paints the entire Settings perimeter while
+  WebKit still reports `:focus-visible` false. The shared color is
+  `rgb(168, 82, 47)`. Pointer-entered ordinary search text retains pointer mode;
+  Tab reveals Clear search, Return clears it, and Cmd+L returns the same input
+  and model. The exact continued draft is `Shortcut draft. Continue.`.
+- ZH/dark/18 px/custom `#ffe066`/contrast 100/paper Off: the full Settings
+  perimeter paints `rgb(255, 224, 102)`. Native Actual Size plus twenty Zoom In
+  actions establish 200% / 720 × 450 CSS px. Native edge resizing reaches
+  560 × 364 CSS px within the production minimum window. Committed search text,
+  Clear search and return remain reachable. The complete pane perimeter remains
+  visible. Full-width Files receives keyboard reading focus; End reaches line 8,
+  and Cmd+L returns the original `快捷键前保留草稿。 继续。` draft. Actual Size
+  restores 1121 × 729 CSS px. The original textarea/model identity is retained,
+  and both observed final scenes report no script errors.
+- A separate EN/light/14 px/full-motion build omits the passive measurement
+  module. Cmd+Comma still paints the complete perimeter and Cmd+L preserves the
+  exact `Clean native draft. Continue.` draft. The actual Contrast slider keeps
+  its visible proxy perimeter through native click, Left and Right, returning to 25. A bounded independent-consumer control removes only the host bootstrap
+  script from the private HTML and preserves that same native Slider perimeter;
+  its HTML difference is recorded and the normal built HTML is restored.
+
+All UI input uses native CUA actions. The passive observer reads focus, geometry,
+styles, input/model values and errors; it does not set focus or styles. Scene
+preferences and drafts remain disposable. No Send, live provider, Runtime
+lifecycle or business mutation is qualified. The small-window search attempt
+with uncommitted native text is completed with literal pasted text before
+keyboard continuation; this is not full OS IME qualification. VoiceOver,
+forced-colors, RTL, other platforms and 320 CSS px are not newly qualified.
+
+The original command regression fails 7 of 31 cases; final bootstrap coverage
+passes 34 cases. Exported TextField/TextArea tests pass all 6 keyboard, pointer,
+invalid/corrected and independent-consumer cases against the built stylesheet.
+Happy DOM does not implement `:focus-within`; prototype proxy tests therefore
+cannot qualify that contract and are removed in favor of the actual native
+Slider control above. No production pseudo-class or valid assertion is weakened.
+
+The first full Web run has four unchanged 5 s timeouts in memoryDrafts,
+workspaceInstalledContinuity and schema tests: 3 files fail, 418 files and
+3,924 tests pass. Those three unchanged files pass all 128 cases independently
+in 4.10 s; a normal full rerun passes all 421 files / 3,928 tests and all gates
+in 222.81 s, without altered assertions or deadlines. After adding host
+clearance, another normal full Web check passes the same 3,928 tests and gates
+in 196.81 s, and `make check-native` passes in 32.93 s. The earlier native check
+also passes in 61.15 s. Expected schema-format, linker/deployment and chunk-size
+warnings retain their existing status.
+
+The final proxy-preservation chain passes in 25.18 s: repository Prettier,
+`@flame/ui check` (9 files / 135 tests plus three independent package tests),
+4 Web files / 48 focus/command/workspace tests, chrome/bootstrap guards,
+production staging and both measured/clean private asset builds. An accidental
+unconfigured formatter invocation is superseded by repository Prettier; no
+manifest or lock changes, and its one new npx installation is owned for cleanup.
+Browser visual suites, performance benchmarks, Claude CLI and subagents do not
+run. All 5,834 non-Markdown inputs have verified final hashes; only the nine
+owned source inputs differ, while eleven installed resources and four read-only
+references remain unchanged. Milestone retirement and main integration are
+recorded with the final delivery below.
+
+Verdict: **Approve for the inspected command-focus, pane-perimeter and return
+paths**. Pause after the requested main delivery; do not start another polishing
+batch. Remaining whole-product qualifications retain their existing bounds.
 
 ### Appearance labels and search
 

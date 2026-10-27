@@ -22,7 +22,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   style.remove();
-  document.documentElement.removeAttribute("data-pointer");
+  document.documentElement.removeAttribute("data-input-modality");
 });
 
 describe.each([
@@ -30,6 +30,7 @@ describe.each([
   ["multiline", TextArea],
 ] as const)("%s field focus", (_label, Control) => {
   it("keeps keyboard focus distinct from its validation state", () => {
+    document.documentElement.setAttribute("data-input-modality", "keyboard");
     const view = render(
       <FormField label="Configuration">
         <Control invalid />
@@ -55,7 +56,7 @@ describe.each([
   });
 
   it("keeps pointer focus with the field's existing border", () => {
-    document.documentElement.setAttribute("data-pointer", "");
+    document.documentElement.setAttribute("data-input-modality", "pointer");
     render(
       <FormField label="Configuration">
         <Control invalid />
@@ -64,5 +65,17 @@ describe.each([
     const field = screen.getByLabelText("Configuration");
     act(() => field.focus());
     expect(getComputedStyle(field).outlineStyle || "none").toBe("none");
+  });
+
+  it("retains native focus indication without a host modality owner", () => {
+    render(<Control aria-label="Configuration" invalid />);
+    const field = screen.getByLabelText("Configuration");
+
+    act(() => field.focus());
+
+    expect(document.documentElement.hasAttribute("data-input-modality")).toBe(
+      false,
+    );
+    expect(getComputedStyle(field).outlineStyle).toBe("solid");
   });
 });

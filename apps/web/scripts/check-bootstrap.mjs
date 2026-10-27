@@ -94,23 +94,26 @@ expect(
 );
 
 // ── 4. The input-modality attribute ───────────────────────────────────────────
-// Both halves of the focus rule read this: the ring gates on `:not([attr])`, the suppression
-// of the browser's own outline on `[attr]`. Either one missing is a ring that never shows or
-// one that fires on every click.
-const modalityAttr = modality.match(/setAttribute\("(data-[a-z-]+)",\s*""\)/)?.[1];
+// The host owns two explicit modes; an absent owner retains native focus indication.
+const modalityDeclarations = [
+  ...modality.matchAll(/setAttribute\("(data-[a-z-]+)",\s*"([^"]+)"\)/g),
+];
+const modalityAttributes = new Set(modalityDeclarations.map((match) => match[1]));
+const modalityModes = new Set(modalityDeclarations.map((match) => match[2]));
+const modalityAttr = modalityAttributes.size === 1 ? modalityDeclarations[0]?.[1] : undefined;
 expect(
   modalityAttr !== undefined &&
+    modalityModes.size === 2 &&
+    modalityModes.has("pointer") &&
+    modalityModes.has("keyboard") &&
     documentCss.includes(`html:not([${modalityAttr}])`) &&
-    documentCss.includes(`html[${modalityAttr}]`),
-  `the bootstrap marks [${modalityAttr}] but globals.css does not gate both the ring and its suppression on it`,
+    documentCss.includes(`html[${modalityAttr}="pointer"]`) &&
+    documentCss.includes(`html[${modalityAttr}="keyboard"]`),
+  `the bootstrap and globals.css must share one pointer/keyboard attribute and its unowned native fallback; found [${modalityAttr}]`,
 );
 
-// The harness is the only thing that ever photographs this app, and it has its own entry. It
-// carried no bootstrap at all, so `data-pointer` was never set, `html:not([data-pointer])`
-// matched forever, and every fixture ran an app with no modality gate — while a call-site
-// `outline: "none"` stood in for the gate in both the fixtures and the product. The test that
-// asserts a mouse-opened menu draws no ring named the gate in its comment and had never once
-// exercised it. Which is why the modality bootstrap is a file: one owner, both entries.
+// Both entries must use the same explicit modality owner. Omitting it would
+// exercise the independent consumer's native fallback instead of product behavior.
 for (const [name, entry] of [
   ["index.html", html],
   ["visual/index.html", visualHtml],
