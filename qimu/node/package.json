@@ -1,0 +1,40 @@
+{
+  "name": "@qimu/node",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts",
+    "./schema": "./src/schema.ts",
+    "./bootstrap": "./src/node.ts",
+    "./callback": "./src/callback.ts",
+    "./build": "./build.mjs"
+  },
+  "files": [
+    "src",
+    "build.mjs",
+    "README.md"
+  ],
+  "dependencies": {
+    "@qimu/sdk": "*",
+    "ajv-formats": "3.0.1",
+    "decimal.js": "10.6.0",
+    "jsonschema": "1.5.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "oxlint": "^1.89.0",
+    "prettier": "^3.9.10"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint src build.mjs --deny-warnings",
+    "format:check": "prettier --check src build.mjs package.json tsconfig.json README.md",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  }
+}

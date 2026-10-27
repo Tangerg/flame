@@ -1,0 +1,33 @@
+{
+  "name": "@qimu/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./lifetime": "./src/lifetime.ts",
+    "./json": "./src/json.ts",
+    "./protocol": "./src/protocol.generated.ts"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint src --deny-warnings",
+    "format:check": "prettier --check src package.json tsconfig.json README.md",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "jsonc-parser": "3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "oxlint": "^1.89.0",
+    "prettier": "^3.9.10"
+  }
+}
