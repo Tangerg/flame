@@ -9,6 +9,8 @@ import {
 } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
 import { createAgentFixture } from "@/test/agentFixture";
+import { useChatSend } from "@/features/agent/public/input";
+import { useStopCurrentRootRun } from "@/features/agent/public/run";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -23,6 +25,12 @@ import { InstalledPluginsProvider } from "@/features/plugins/context";
 import { createTheme } from "@/features/theme/adapters/theme";
 import { ThemeProvider } from "@/features/theme/public/theme";
 import { VISUAL_RUNTIME_GENERATION } from "./agentFixtureFacts";
+
+function useRecordedChatSession() {
+  const send = useChatSend();
+  const stop = useStopCurrentRootRun();
+  return { send, stop: () => stop?.() };
+}
 
 /** One browser fixture owns these feature instances; production has no default instance. */
 export function createVisualClient(runtimeClient: () => FlameClient) {
@@ -65,6 +73,10 @@ export function createVisualClient(runtimeClient: () => FlameClient) {
     reportConnectionLoss: () => undefined,
   };
   const agent = createAgentFixture(runtimeClient, navigation, runtime, stream, scope);
+  agent.dependencies = {
+    ...agent.dependencies,
+    defaultSession: { useDefaultChatSession: useRecordedChatSession },
+  };
   agent.start();
   const composer = createComposer(
     {

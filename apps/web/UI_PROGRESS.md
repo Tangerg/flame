@@ -106,6 +106,11 @@ Plan checklists now expose each captured step state in the current language.
 The shared pre-module focus owner also recognizes paging, boundary and activation
 keys, preserving visible keyboard reading after pointer entry; see Plan state and
 keyboard reading.
+The recorded workspace now mounts the installed workbench, so its Composer
+command reaches the visible panel. Native controls distinguish WebKit's Tab
+entry from explicit focus, and actual workbench commands preserve middle-of-draft
+editing through Plan, Settings and narrow full-width material reading; see Native
+workbench command and caret qualification.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -788,9 +793,11 @@ remain authoritative. No local outline override or competing focus state is adde
 Native VoiceOver speech, OS IME composition, live Runtime Plan publication,
 fresh 320 px reflow, RTL, other-platform GUI and full-product Goal CHECK acceptance
 remain unverified. Accepted Plan revisions, finished/absent Plans and retained
-reader boundaries are covered by the actual component regressions. The returned
-Composer caret is an unclassified follow-up, not a diagnosis or authorization
-for another editor state owner.
+reader boundaries are covered by the actual component regressions. The later
+Native workbench command and caret qualification section distinguishes the
+returned Composer caret from native Tab behavior without adding another editor
+state owner. Its source trace also confirms that this smaller Agent fixture's
+sidebar callbacks are deliberately inert; their activation cannot qualify collapse.
 
 All **12 owned process generations** have exited and the four exact applications
 are unregistered. Seven new output/cache roots, eight bundle-specific Library
@@ -4971,6 +4978,98 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Native workbench command and caret qualification
+
+The task is draft → read Plan or file material → visit Settings → return to the
+same insertion point and continue editing. Base `26e861183` is synchronized with
+the explicitly fetched main `e616e1a4c`; there are no incoming commits. The owned
+local-only branch, primary checkout boundary, React/Base UI/StyleX conventions,
+Web/Desktop/visual READMEs and six better-* owner skills remain applicable.
+The Desktop/docs G04 task-continuity feedback guides this follow-up. Read-only
+ZCode's actual `prompt-input-textarea.tsx` and HeroUI's controlled TextArea example
+forward ordinary native input; neither supplies a competing caret owner.
+
+| Domain        | Evidence inspected                                                                             | Scoped result                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Accessibility | Installed command, actual native keys, Plan modal boundary, Settings search and same input     | Explicit keyboard return preserves editing; VoiceOver speech not verified |
+| Layout        | EN 1440 × 900, ZH 561 × 475 CSS px / 200%, actual sidebar collapse and full-width file reading | Material and Composer remain reachable through the same navigation owners |
+| Writing       | Existing localized commands, Plan states, Settings and input labels                            | No copy or helper-caption change                                          |
+| Typography    | Existing 14 px / 18 px scale and 200% native reflow                                            | No text-scale or font change                                              |
+| Color         | Unchanged tokens, light Orange and dark custom yellow / contrast 100 scenes                    | No palette change; fresh contrast measurement not verified                |
+| UI polish     | Existing Plan opening/closing, full-motion clean scene and motion-off narrow scene             | No added decoration or motion; slow-motion replay not run                 |
+
+| Severity | Domain        | Location                                | Before                                                                                                                  | After                                      | Why                                                                           |
+| -------- | ------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| MEDIUM   | Accessibility | `visual/VisualWorkspaceFixture.tsx:133` | A directly rendered ChatPanel bypasses the installed workbench ref, so the fixture's Composer command cannot address it | Mount the existing `app.main` contribution | Keyboard continuity must be judged through the actual command and panel owner |
+
+`visual/client.tsx` supplies the recorded default-Session port through the existing
+public input/stop hooks. The snapshot installer's existing actions remain its only
+commands; mounting this captured workspace starts no live Run recovery or driver.
+No production focus, textarea, selection, draft, navigation or Runtime code changes.
+The smaller Agent presentation fixture retains its intentionally inert sidebar;
+actual collapse is qualified only in this full workspace fixture.
+
+The original command regression fails on focus while retaining its draft. The
+first installed-entry candidate exposes the missing recorded default-Session port;
+binding that port resolves it. Awaiting the actual lazy Markdown module before
+rendering also resolves two test teardown import errors. No assertion, timeout or
+check is weakened. The final serial chain passes in **49.12 s**: Web typecheck,
+lint, **22 files / 344 tests** (all visual tests plus actual ChatPanel inspection
+and shortcut-provider tests), layer checks, knip, private assets and two native
+hosts. Two new cases enter the installed command from sidebar and hidden Settings
+and preserve the same field, draft and `5..5` selection. The preceding complete
+production/native receipt retains its frozen scope; this fixture-only change does
+not rerun or claim another complete production check.
+
+Actual Wails v3 beta.34 uses unique private data homes and canonical captured data.
+The plain HTML textarea control has no React or Flame input code: native reverse
+Tab enters at `0..0`, while a button calling only `textarea.focus()` preserves
+`5..5`. This explains the earlier Tab observation without a caret cache or forced
+selection recovery. Buttons explicitly participate in keyboard order. An earlier
+reactivated control generation lacks the launcher's private-home variable and is
+excluded and retired; subsequent private overlays enforce their own data home
+before host construction, including on reactivation.
+
+- EN/light/14 px/Orange/motion off at **1440 × 900**: Plan keeps its dialog boundary
+  under Mod-L. Escape then Mod-L returns to textarea ID **2** at caret **5**;
+  native paste inserts `verified ` there. Settings search then Mod-L retains
+  caret **14**, and paste produces exactly `Keep verified again this draft — 保留`
+  at **20**. Actual sidebar collapse and another Mod-L retain that input and caret.
+- ZH/dark/18 px/custom `#ffe066`/contrast 100/motion off: native Left placement and
+  twenty individually observed Zoom In actions reach **561 × 475 / 200%**.
+  The draft retains input ID **2**, caret **4**. After actual sidebar collapse,
+  the same file opens full width, its named source receives End, and Mod-L returns
+  for middle insertion. Settings search and Mod-L then continue exactly
+  `保留草稿，现在继续核对。`, caret **7**. Actual Size restores the split workspace
+  and original file with that same input and caret. The End action is not a new
+  quantitative file-scroll receipt.
+- The clean EN/full-motion host contains no observation module. Settings search,
+  Mod-L and native middle insertion produce `Keep clean this draft.`; Plan,
+  Escape, Mod-L and another insertion produce `Keep clean return this draft.`.
+  Native Quit closes all accepted apps. The observed EN/ZH traces report no
+  window errors and agree with the actual Composer model.
+
+Five newly created output/cache roots, eight bundle-specific Library entries and
+four bundle-temporary directories are removed; all four applications are
+unregistered. All **39 output-presence baselines**, four original file hashes,
+twenty-four Library-presence baselines, eleven published resources and four
+read-only references are preserved. The accepted **5,834 non-Markdown inputs**
+contain only the two intended fixture-source changes and the new regression file;
+production inputs retain their preceding verified bytes. Candidate and clean
+private builds each contain **599 assets**; the latter has no observation endpoint
+in its JavaScript, HTML or CSS. Existing size/linker warnings remain non-failing.
+All **17 recorded process generations** are retired, and the exact private root
+`flame-caret-return-1027-LCy6Kd` is absent. The in-memory evidence capsule
+round-trips **49 UTF-8 records**, including 33 English and 64 Chinese passive
+observations, gzip SHA-256
+`be7ebaf0e595972db5dbf079c9a6ee482174d983531b7ee45c01cfb5ff299b4e`.
+
+**Not verified:** live Runtime execution/recovery, provider or Tool calls, OS IME
+composition, VoiceOver speech, RTL, other locale/platform GUIs, fresh 320 CSS px
+reflow, new contrast measurements or full-product award CHECK acceptance. No
+browser visual/performance suite or Claude CLI runs. **Approve** for this declared
+command-routing and retained-editing scope; the broader UI goal remains active.
 
 ### Historical editing preserves current authoring
 

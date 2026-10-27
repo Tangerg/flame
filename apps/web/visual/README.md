@@ -37,6 +37,14 @@ cleanup. It covers dock width and resizing, navigation identity,
 diff loading/empty/error states, and the
 production Settings surface without a parallel presentation model.
 
+The workspace mounts the installed `app.main` contribution, so Composer focus
+commands address the panel on screen, including when Settings hides it. Its
+recorded default-Session port consumes the snapshot installer's existing actions;
+mounting the workspace does not start live Run recovery or register a competing
+driver. This fixture qualifies presentation and command routing, not a live
+Runtime execution lifecycle. The smaller Agent fixture keeps its explicit,
+inert shell controls and does not qualify sidebar resizing or collapse.
+
 Portable workspace views use the production installed-component lifecycle and public
 client over canonical, validated fixture reads. Session trajectory rereads the same
 snapshot that the scripted Runtime response advances; fixture view models never write

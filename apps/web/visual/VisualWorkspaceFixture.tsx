@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef } from "react";
-import { ChatPanel } from "@/features/shell/workbench/panel/ChatPanel";
 import { Slot } from "@/extensions/host/Slot";
 import { AppToaster } from "@/features/notifications/toaster/index";
 import { useActiveWorkspaceViewId, useWorkspaceDock } from "@/features/workspace/public/navigation";
@@ -134,7 +133,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
       sidebar={settingsOpen ? undefined : <WorkspaceStateSidebar state={state} />}
       main={
         <div {...stylex.props(fx.contents)} data-testid="workspace-state" data-state={state}>
-          <ChatPanel onSend={() => true} />
+          <Slot name="app.main" />
         </div>
       }
       overlay={
