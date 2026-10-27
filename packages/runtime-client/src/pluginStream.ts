@@ -11,7 +11,7 @@ import type {
 } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
 import { pluginDeliveryMethod, pluginOperationKind } from "./request";
-import { parseJSON } from "./json";
+import { parseJSON } from "@qimu/sdk/json";
 import {
   NOTIFICATIONS_PLUGIN_STREAM,
   type PluginStreamEvent,

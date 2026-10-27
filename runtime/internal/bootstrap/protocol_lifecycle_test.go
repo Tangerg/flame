@@ -1,11 +1,15 @@
 package bootstrap
 
 import (
+	"bufio"
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"iter"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -37,28 +41,25 @@ func TestProtocolLifecycleSurvivesColdRestart(t *testing.T) {
 func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
+	parked := crashParkedProtocolRuntime(t)
+
+	// SQLite, the content authority and the Runtime are opened only after the
+	// previous operating-system process has exited. No shutdown hook settles its
+	// parked run or fabricates an execution exit before this cold recovery.
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
 	model := newLifecycleModel()
+	model.calls.Store(1)
 	cfg := protocolRuntimeConfig(t, stores, model)
-	firstHost, firstAPI := buildProtocolRuntime(t, cfg, stores.DataDirectory)
+	restartedHost, restartedAPI := buildProtocolRuntime(t, cfg, stores.DataDirectory)
 	fixture := &protocolLifecycleFixture{
 		t: t, home: home, ctx: protocolLifecycleContext(t.Context()), model: model,
-		host: firstHost, api: firstAPI, stores: stores,
+		host: restartedHost, api: restartedAPI, stores: stores,
+		started: parked.Started, sessionID: parked.SessionID,
 	}
 	defer fixture.closeFirstRuntime()
-	fixture.startAndPark()
-
-	restartedConfig := cfg
-	restartedConfig.resources = nil
-	restartedHost, restartedAPI := buildProtocolRuntime(t, restartedConfig, stores.DataDirectory)
-	defer func() {
-		if closeErr := restartedHost.Close(); closeErr != nil {
-			t.Errorf("close restarted runtime: %v", closeErr)
-		}
-	}()
 	restarted, err := restartedAPI.GetRun(fixture.ctx, protocol.GetRunRequest{RunID: fixture.started.RunID})
 	if err != nil {
 		t.Fatalf("runs.get after crash-like restart: %v", err)
@@ -74,6 +75,111 @@ func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 		t.Fatalf("restarted waiting boundary = run %+v, interrupts %+v", restarted, pending.Data)
 	}
 	fixture.resumeAndCancelWith(restartedAPI, pending.Data[0].Interrupts[0], false)
+}
+
+type parkedProtocolMarker struct {
+	SessionID string
+	Started   *protocol.StartRunResponse
+}
+
+const parkedProtocolPrefix = "FLAME_PROTOCOL_PARKED "
+
+func TestParkedProtocolCrashProcess(t *testing.T) {
+	if os.Getenv("FLAME_TEST_PARKED_PROTOCOL_CRASH") != "1" {
+		return
+	}
+	home := os.Getenv("FLAME_HOME")
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := newLifecycleModel()
+	host, api := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, model), stores.DataDirectory)
+	fixture := &protocolLifecycleFixture{
+		t: t, home: home, ctx: protocolLifecycleContext(t.Context()), model: model,
+		host: host, api: api, stores: stores,
+	}
+	t.Cleanup(fixture.closeFirstRuntime)
+	fixture.startAndPark()
+	marker, err := json.Marshal(parkedProtocolMarker{SessionID: fixture.sessionID, Started: fixture.started})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Fprintln(os.Stdout, parkedProtocolPrefix+string(marker)); err != nil {
+		t.Fatal(err)
+	}
+	// The parent must kill and join this process, without sending normal shutdown
+	// input. Keeping stdin open gives it a deterministic actual parked boundary.
+	_, err = bufio.NewReader(os.Stdin).ReadByte()
+	t.Fatalf("crash fixture returned before the parent killed it: %v", err)
+}
+
+func crashParkedProtocolRuntime(t *testing.T) parkedProtocolMarker {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
+	defer cancel()
+	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestParkedProtocolCrashProcess$")
+	command.Env = append(os.Environ(), "FLAME_TEST_PARKED_PROTOCOL_CRASH=1")
+	command.Stderr = os.Stderr
+	stdin, err := command.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stdin.Close()
+	stdout, err := command.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waited := false
+	t.Cleanup(func() {
+		if !waited {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+		}
+	})
+	type readiness struct {
+		marker parkedProtocolMarker
+		err    error
+	}
+	ready := make(chan readiness, 1)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			if value, found := strings.CutPrefix(scanner.Text(), parkedProtocolPrefix); found {
+				var marker parkedProtocolMarker
+				err := json.Unmarshal([]byte(value), &marker)
+				ready <- readiness{marker, err}
+				return
+			}
+		}
+		ready <- readiness{err: errors.Join(errors.New("process exited before the durable parked marker"), scanner.Err())}
+	}()
+	var marker parkedProtocolMarker
+	select {
+	case value := <-ready:
+		if value.err != nil {
+			t.Fatal(value.err)
+		}
+		marker = value.marker
+	case <-ctx.Done():
+		t.Fatalf("wait for original parked Runtime: %v", ctx.Err())
+	}
+	if marker.Started == nil || marker.Started.RunID == "" || marker.SessionID == "" {
+		t.Fatal("crash process omitted the original run identity")
+	}
+	if err := command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	var killed *exec.ExitError
+	err = command.Wait()
+	waited = true
+	if !errors.As(err, &killed) || killed.ExitCode() != -1 {
+		t.Fatalf("original Runtime was not terminated by the operating system: %v", err)
+	}
+	return marker
 }
 
 type protocolLifecycleFixture struct {
@@ -441,6 +547,7 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	cfg.userHome = stores.DataDirectory
 	cfg.defaultWorkspacePath = stores.DataDirectory
 	cfg.maintenance = noMaintenance{}
+	cfg.processRunner = testProcessRunner(t)
 	return cfg
 }
 

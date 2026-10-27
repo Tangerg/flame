@@ -1,6 +1,5 @@
 import { type ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { TooltipProvider } from "@flame/ui";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 import { type AnyPlugin, type Host } from "dougong";
 interface Props {
@@ -60,5 +59,5 @@ export function PluginProvider({ children, plugins }: Props) {
   if (outcome?.installation !== installation) return null;
   if (outcome.status === "failed") throw outcome.error;
 
-  return <TooltipProvider>{children}</TooltipProvider>;
+  return children;
 }

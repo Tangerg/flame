@@ -6,14 +6,11 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"reflect"
-	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -21,6 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/embedding"
+	"reflect"
+	"time"
 )
 
 const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finished_at,known_response,endpoint_failure,COALESCE(session_id,''),COALESCE(run_id,''),COALESCE(segment_id,''),endpoint_cost_usd,usage,COALESCE(endpoint_kind,'')`
@@ -28,7 +27,7 @@ const endpointObservationColumns = `call_id,started_at,endpoint_json,state,finis
 type storedEndpointInvocation struct {
 	ID        string                `json:"id"`
 	Kind      modelref.EndpointKind `json:"kind"`
-	Caller    extension.Invocation  `json:"caller"`
+	Caller    portable.Invocation   `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`
 	SessionID string                `json:"sessionId,omitzero"`

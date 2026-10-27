@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { parseJSON } from "@flame/runtime-client";
+import { parseJSON } from "@qimu/sdk/json";
 import { checkRequest } from "@flame/runtime-client";
 import {
   type PluginInstallation,
@@ -92,7 +92,7 @@ function InspectPoint({
         attributes,
         order: parseJSON(order),
       });
-      const result = await operations.track(operations.resolvePoint(request, signal));
+      const result = await operations.track(() => operations.resolvePoint(request, signal));
       if (!signal.aborted)
         setRead({ operations, accepted: { request, bindings: result.data }, pending: false });
     } catch (error) {

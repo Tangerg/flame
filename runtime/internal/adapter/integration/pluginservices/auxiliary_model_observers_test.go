@@ -9,8 +9,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -21,7 +24,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	observer, bindings, _ := installedPublishedObserverFixture(t, "outer-failure")
 	var calls, releases atomic.Int32
 	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		invocation, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil || invocation.Target.Scope != "call" {
 			t.Errorf("provider lost concrete model call: %+v, %v", invocation, err)
 		}
@@ -47,7 +50,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	request.Options.MaxOutputTokens = new(int64(64))
 	calling := func(id string) context.Context {
 		t.Helper()
-		ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-maintenance", Target: extension.Target{Scope: "call", Reference: id}})
+		ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-maintenance", Target: portable.Target{Scope: "call", Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,7 +76,7 @@ func TestAuxiliaryCaptureHoldsOriginalObserversAcrossCallsUntilRelease(t *testin
 	if held := observer.HeldDependencies(); len(held) != 0 || releases.Load() != 1 {
 		t.Fatalf("capture release leaked held state: %+v, %d", held, releases.Load())
 	}
-	if _, err := captured.Model().Call(calling("late"), request); !errors.Is(err, pluginsdk.ErrStaleCall) || calls.Load() != 2 {
+	if _, err := captured.Model().Call(calling("late"), request); !errors.Is(err, qimumcp.ErrStaleCall) || calls.Load() != 2 {
 		t.Fatalf("released capture invoked provider: %d, %v", calls.Load(), err)
 	}
 	text, err := resolve.Complete(t.Context(), models.AuxiliaryPrompt{Operation: "title", SystemPrompt: "write text", UserPrompt: "new input", MaxInputBytes: 128, MaxOutputTokens: 16})
@@ -99,7 +102,7 @@ func TestAuxiliaryCaptureReleaseJoinsCallsBeforeDroppingHeldRelease(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "closing-model", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "closing-model"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "closing-model", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "closing-model"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +135,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			var calls, releases atomic.Int32
 			provider := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 				calls.Add(1)
-				invocation, err := pluginsdk.InvocationFromContext(ctx)
+				invocation, err := qimumcp.InvocationFromContext(ctx)
 				if err != nil || invocation.Parent != "original-effect" {
 					t.Errorf("auxiliary attribution changed: %+v %v", invocation, err)
 				}
@@ -167,7 +170,7 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			}
 			before := request.Clone()
 			for _, id := range []string{"original-context-first", "original-context-second"} {
-				ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: id}})
+				ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: id}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -186,8 +189,8 @@ func TestAuxiliaryContextSharesCapturedIdentityLifetimeAndFinalBudget(t *testing
 			if calls.Load() != wantCalls {
 				t.Fatalf("failed composition reached provider: %d", calls.Load())
 			}
-			store.snapshot.Installation.Disable()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-withdrawn", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-withdrawn"}})
+			store.disable(t)
+			ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context-withdrawn", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "original-context-withdrawn"}})
 			if _, err := capture.Model().Call(ctx, request); err == nil {
 				t.Fatal("withdrawn context capture dispatched provider")
 			}
@@ -251,7 +254,7 @@ func TestAuxiliaryFinalTokenCapacityIncludesContextAndBlocksProvider(t *testing.
 			request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 			request.Options.MaxOutputTokens = new(int64(64))
 			before := request.Clone()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-capacity"}})
+			ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context-capacity", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "original-context-capacity"}})
 			_, err = capture.Model().Call(ctx, request)
 			wantCalls := int32(0)
 			if count == 272000 {
@@ -294,7 +297,7 @@ func TestAuxiliaryReleaseCancelsAndJoinsCapacityCountingBeforeDroppingDependenci
 	}
 	request, _ := chat.NewRequest(chat.NewSystemMessage("instructions"), chat.NewUserMessage(chat.NewTextPart("question")))
 	request.Options.MaxOutputTokens = new(int64(64))
-	ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "original-context-counting"}})
+	ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "original-context-counting", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "original-context-counting"}})
 	result := make(chan error, 1)
 	go func() { _, err := capture.Model().Call(ctx, request); result <- err }()
 	<-started

@@ -6,6 +6,7 @@ import (
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -34,7 +35,7 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
-	if _, err := pluginsdk.InvocationFromContext(ctx); err != nil {
+	if _, err := qimumcp.InvocationFromContext(ctx); err != nil {
 		return nil, err
 	}
 	if err := o.ValidateInput(ctx, bindings); err != nil {
@@ -54,14 +55,17 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 		if err != nil {
 			return nil, err
 		}
-		session, err := o.calls.pool.ServiceSession(ctx, binding.ServerID)
+		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := o.calls.pool.SessionActor(ctx, binding.ServerID, session); err != nil {
+		defer borrowed.Close()
+		calling = borrowed.Context()
+		session := borrowed.Session()
+		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return nil, err
 		}
-		exported, err := pluginsdk.ResolveCapability(ctx, session, binding.Export, contract)
+		exported, err := qimumcp.ResolveCapability(calling, session, binding.Export, contract)
 		if err != nil {
 			return nil, err
 		}

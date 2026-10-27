@@ -66,7 +66,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 			})
 			transport := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 			t.Cleanup(transport.Close)
-			server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("owner"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("owner"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 			registry := &preparationSourceRegistry{mutableSourceRegistry: &mutableSourceRegistry{server: server.Clone()}}
 			prepared := make(chan struct{})
 			resume := make(chan struct{})
@@ -87,7 +87,7 @@ func TestPreparedToolRechecksAuthorityAndReleasesBeforeRefusedDispatch(t *testin
 					defer settled.Add(1)
 					return source.Call(ctx, invocation)
 				}, func() { releases.Add(1) }, nil
-			}, nil, nil)
+			}, nil, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

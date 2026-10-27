@@ -6,11 +6,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestContributionsHaveIndependentIDsAndCanShareOneBackend(t *testing.T) {
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "consumer.role", Composition: extension.Selection, Scope: "installation"}, extension.MethodDescriptor{Name: "owner.read", Kind: extension.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "consumer.role", Composition: portable.Selection, Scope: "installation"}, portable.MethodDescriptor{Name: "owner.read", Kind: portable.Query, Target: "installation", Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}

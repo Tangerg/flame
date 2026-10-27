@@ -37,6 +37,13 @@ export const MAXIMUM_RUNTIME_EVENT_SEQUENCE = MAXIMUM_EXACT_JSON_INTEGER;
 
 // HTTP entrypoints implemented by this runtime build.
 export const HTTP_ENDPOINTS = {
+  pluginControl: {
+    kind: "pluginControl",
+    method: "POST",
+    path: "/v2/qimu",
+    authentication: "pluginRealm",
+    responseStatuses: [200, 401, 409, 503],
+  },
   pluginResources: {
     kind: "resource",
     method: "GET",
@@ -211,6 +218,15 @@ export interface Page<T> {
   nextCursor?: string;
 }
 
+export interface AcquirePluginComponentRequest {
+  componentId: string;
+  digest: string;
+  installationId: string;
+  operationId: string;
+  parentUseId?: string;
+  realm: PluginBrowserRealm;
+}
+
 export interface ActiveRunRef {
   runId: string;
   status: RunStatus;
@@ -381,6 +397,10 @@ export interface ClientCapabilities {
 export interface ClientInfo {
   name: string;
   version: string;
+}
+
+export interface ClosePluginBrowserRealmRequest {
+  realm: PluginBrowserRealm;
 }
 
 export interface CommandResult {
@@ -1060,6 +1080,12 @@ export interface ModelUsage {
   reasoningTokens?: number;
 }
 
+export interface OpenPluginBrowserRealmRequest {
+  operationId: string;
+  resume?: PluginBrowserRealm;
+  resumeToken: string;
+}
+
 export interface OpenPluginResourcesRequest {
   componentId: string;
   digest: string;
@@ -1151,6 +1177,66 @@ export interface PlanStep {
   description: string;
   id: string;
   status: PlanStatus;
+}
+
+export interface PluginBrowserAuthority {
+  epoch: string;
+  id: string;
+}
+
+export type PluginBrowserContractKind = "service" | "point" | "event";
+
+export type PluginBrowserContractMode = "native" | "portable";
+
+export interface PluginBrowserContractRef {
+  digest: string;
+  kind: PluginBrowserContractKind;
+  mode: PluginBrowserContractMode;
+  name: string;
+  version: string;
+}
+
+export interface PluginBrowserExecution {
+  generation: string;
+  id: string;
+}
+
+export interface PluginBrowserLocalExport {
+  contract: PluginBrowserContractRef;
+  instanceId: string;
+  name: string;
+}
+
+export interface PluginBrowserObjectRef {
+  export: PluginBrowserLocalExport;
+  objectId: string;
+}
+
+export interface PluginBrowserRealm {
+  epoch: string;
+  id: string;
+}
+
+export interface PluginBrowserSession {
+  authority: PluginBrowserAuthority;
+  componentContract: PluginBrowserContractRef;
+  controlEndpoint: string;
+  credential: string;
+  maximumMessageBytes: number;
+  pollIntervalMilliseconds: number;
+  proofCapacity: number;
+  realm: PluginBrowserRealm;
+}
+
+export interface PluginBrowserUseGrant {
+  approvalToken: string;
+  authority: PluginBrowserAuthority;
+  execution: PluginBrowserExecution;
+  id: string;
+  objects: PluginBrowserObjectRef[];
+  realm: PluginBrowserRealm;
+  scopeGeneration: string;
+  scopeId: string;
 }
 
 export interface PluginCallFailure {
@@ -2268,6 +2354,8 @@ export const WIRE_ENUMS = {
   ModelEndpointKind: ["chat", "embedding"],
   ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
+  PluginBrowserContractKind: ["service", "point", "event"],
+  PluginBrowserContractMode: ["native", "portable"],
   PluginComponentChange: ["enable", "disable"],
   PluginComponentType: ["manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"],
   PluginDiagnosticCode: ["unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"],

@@ -8,13 +8,13 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/qimu/portable"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -218,7 +218,7 @@ func commandFailure(name string, cause error) error {
 		return nil
 	}
 	err := fmt.Errorf("%s: %w", name, cause)
-	_, receipted := errors.AsType[*extension.Refusal](err)
+	_, receipted := errors.AsType[*portable.Refusal](err)
 	if errors.Is(err, scheduleapp.ErrRefused) || receipted || classify(cause) != "" {
 		return pluginsdk.DefiniteToolFailure(err)
 	}

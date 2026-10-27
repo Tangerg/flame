@@ -1,4 +1,4 @@
-import { stringifyJSON } from "@flame/runtime-client/json";
+import { stringifyJSON } from "@qimu/sdk/json";
 import { prettyJSON } from "@/lib/json";
 import {
   commandToolResult,

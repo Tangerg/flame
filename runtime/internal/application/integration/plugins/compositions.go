@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/samber/lo"
@@ -21,11 +22,11 @@ type CompositionStore interface {
 type Compositions struct {
 	store         CompositionStore
 	installations Store
-	admission     *Admission
+	admission     *qimu.Admission
 	publish       invalidation.Publish
 }
 
-func NewCompositions(store CompositionStore, installations Store, admission *Admission, publish invalidation.Publish) (*Compositions, error) {
+func NewCompositions(store CompositionStore, installations Store, admission *qimu.Admission, publish invalidation.Publish) (*Compositions, error) {
 	if lo.IsNil(store) || lo.IsNil(installations) || admission == nil {
 		return nil, errors.New("plugins: compositions, installations and admission are required")
 	}
@@ -36,7 +37,7 @@ func (c *Compositions) List(ctx context.Context) ([]plugin.OrderedComposition, e
 	return c.store.List(ctx)
 }
 
-func (c *Compositions) Resolve(ctx context.Context, required *extension.Capability) ([]ContributionBinding, error) {
+func (c *Compositions) Resolve(ctx context.Context, required *portable.Capability) ([]ContributionBinding, error) {
 	var bindings []ContributionBinding
 	err := c.admission.Under(ctx, func() error {
 		var err error
@@ -65,8 +66,8 @@ func (c *Compositions) Set(ctx context.Context, record plugin.CompositionRecord)
 
 // ResolveComposition freezes the exact selected releases in stored order. A
 // missing or withdrawn member refuses the chain rather than silently shortening it.
-func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *extension.Capability) ([]ContributionBinding, error) {
-	if required == nil || required.Descriptor().Composition != extension.Decoration {
+func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *portable.Capability) ([]ContributionBinding, error) {
+	if required == nil || required.Descriptor().Composition != portable.Decoration {
 		return nil, plugin.ErrInvalid
 	}
 	value, found, err := compositions.Get(ctx, required.Descriptor().Reference)

@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/scope/core/chat"

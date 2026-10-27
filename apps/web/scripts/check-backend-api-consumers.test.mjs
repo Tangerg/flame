@@ -520,11 +520,16 @@ function consumedHTTP(sourceText) {
   try {
     const fileName = join(dir, "probe.ts");
     const wire = join(dir, "wire.generated.ts");
+    const modules = join(dir, "modules.ts");
     writeFileSync(join(dir, "package.json"), '{"type":"module"}\n');
     writeFileSync(fileName, sourceText);
     writeFileSync(
       wire,
       'export const HTTP_ENDPOINTS = { resources: { path: "/v2/resources/{lease}/*" } };',
+    );
+    writeFileSync(
+      modules,
+      "export class RealmModules { constructor(private open: () => Promise<{url: string}>) {} async evaluate() { const lease = await this.open(); return import(lease.url); } }",
     );
     const start = script.indexOf("function consumedHTTPEndpoints(call)");
     const end = script.indexOf("\nfunction creditHTTPOperationConsumers", start);
@@ -546,6 +551,7 @@ try {
   const checker = project.checker;
   const source = project.program.getSourceFile(${JSON.stringify(fileName)});
   const WIRE_PATH = ${JSON.stringify(wire)};
+  const MODULES_PATH = ${JSON.stringify(modules)};
   ${script.slice(start, end)}
   ${script.slice(unwrapStart, unwrapEnd)}
   ${script.slice(declarationsStart, declarationsEnd)}
@@ -590,6 +596,50 @@ test("credits an imported resource URL only when consumed by module import", () 
     const HTTP_ENDPOINTS = { resources: { path: "/invented" } };
     const loaded = import(HTTP_ENDPOINTS.resources.path);
   `),
+    [],
+  );
+});
+
+test("follows the actual Realm module opener only when its evaluation is consumed", () => {
+  const source = `
+    import { HTTP_ENDPOINTS } from "./wire.generated";
+    import { RealmModules as Modules } from "./modules";
+    class Loader {
+      private modules = new Modules(() => this.open());
+      async open() {
+        const route = HTTP_ENDPOINTS.resources.path.replace("{lease}", "token");
+        return { url: "https://runtime" + route };
+      }
+      async evaluate() { return this.modules.evaluate(); }
+    }
+    new Loader().evaluate();
+  `;
+  assert.deepEqual(consumedHTTP(source), ["resources"]);
+  assert.deepEqual(
+    consumedHTTP(source.replace("return this.modules.evaluate()", "return undefined")),
+    [],
+  );
+  assert.deepEqual(
+    consumedHTTP(
+      source.replace(
+        'import { RealmModules as Modules } from "./modules";',
+        `
+      class Modules {
+        constructor(open: unknown) {}
+        evaluate() { return import("https://unrelated/module.js"); }
+      }
+    `,
+      ),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    consumedHTTP(
+      source.replace(
+        'return { url: "https://runtime" + route };',
+        'const unused = () => ({ url: "https://runtime" + route }); return { url: "https://unrelated/module.js" };',
+      ),
+    ),
     [],
   );
 });

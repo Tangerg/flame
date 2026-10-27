@@ -34,12 +34,13 @@ type ExecutionScope struct {
 // has its own head and is never copied here. The host owns the identity and metadata
 // no other owner records. Model selection, capabilities, and goal incarnation
 // belong to the root Run, and workspace and isolation to the Session; restore
-// reads them from those owners. Installations is the executor's canonical
-// dependency projection; it is stored beside the payload so installation
-// admission never interprets continuation state.
+// reads them from those owners. Bindings retain the admitted executable graphs;
+// Resources retain immutable content sources. Admission derives dependencies
+// from those original facts without interpreting continuation state.
 type ExecutorCheckpoint struct {
 	ToolResultIDs []transcript.ToolResultID
-	Installations []plugin.Dependency
+	Bindings      []plugin.Activation
+	Resources     []plugin.Dependency
 	RootMemberID  string
 	SessionID     string
 	Payload       []byte
@@ -49,7 +50,11 @@ type ExecutorCheckpoint struct {
 // Clone returns an ownership-independent checkpoint value.
 func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
-	e.Installations = slices.Clone(e.Installations)
+	e.Bindings = slices.Clone(e.Bindings)
+	for index := range e.Bindings {
+		e.Bindings[index] = e.Bindings[index].Clone()
+	}
+	e.Resources = slices.Clone(e.Resources)
 	e.Payload = append([]byte(nil), e.Payload...)
 	return e
 }
@@ -60,8 +65,13 @@ func (e ExecutorCheckpoint) Validate() error {
 	if err := transcript.ValidateToolResultReferences(e.ToolResultIDs); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := plugin.ValidateDependencies(e.Installations); err != nil {
+	if err := plugin.ValidateDependencies(e.Resources); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
+	}
+	for _, binding := range e.Bindings {
+		if err := binding.Validate(); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
+		}
 	}
 	if err := ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
@@ -76,6 +86,14 @@ func (e ExecutorCheckpoint) Validate() error {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	return nil
+}
+
+func (e ExecutorCheckpoint) Dependencies() []plugin.Dependency {
+	result := slices.Clone(e.Resources)
+	for _, binding := range e.Bindings {
+		result = append(result, binding.Dependencies...)
+	}
+	return plugin.CompactDependencies(result)
 }
 
 // ValidateOwnership proves that the checkpoint and its owning Run aggregate

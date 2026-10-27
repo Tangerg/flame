@@ -2,9 +2,8 @@ package delivery
 
 import (
 	"errors"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func runtimeProduced(detail string, cause error) *protocol.Failure {
@@ -19,7 +18,7 @@ func failureFromData(data protocol.ProblemData) *protocol.Failure {
 }
 
 func projectError(err error) *protocol.Failure {
-	if errors.Is(err, extension.ErrInvocationConflict) {
+	if errors.Is(err, portable.ErrInvocationConflict) {
 		return protocol.NewFailure(errors.Join(protocol.ErrIdempotencyConflict, err), "idempotency key already binds a different command")
 	}
 	return protocol.ProjectError(err)

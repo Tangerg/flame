@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { createFlameClient } from "./sdk";
 import { createHttpTransport } from "./transports/http";
-import { parseJSON, stringifyJSON } from "./json";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import { maximum } from "./validation/wireCheck";
 import summary from "@flame/runtime-client/testing/samples/usageSummary.json";
 import server from "@flame/runtime-client/testing/samples/mcpServer.json";

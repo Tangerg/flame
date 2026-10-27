@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RpcError, RpcTransportError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
-import { parseJSON, stringifyJSON } from "./json";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 import {
   createMutationJournal,
   MutationJournalCapacityError,

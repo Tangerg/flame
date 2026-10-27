@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -98,7 +98,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	if name.Load().(string) == "" {
 		t.Fatal("installed GitHub Tool is missing")
 	}
-	contracts, err := extension.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		}
 		arguments.Store(input.String())
 		refusalText.Store("")
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 		typed := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
 		if typed.Failure == nil || typed.Failure.Code != test.code {
 			t.Fatalf("typed %s bypassed admission: %+v", test.name, typed)

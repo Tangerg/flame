@@ -13,8 +13,8 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
 
 	_ "modernc.org/sqlite"
@@ -90,47 +90,47 @@ func (s *store) list(ctx context.Context) ([]reviews.Snapshot, error) {
 
 // Receipt reads the original owner result without entering Update. Method and
 // input binding remain required even after the review has advanced again.
-func (s *store) receipt(ctx context.Context, request pluginsdk.ReceiptRequest, updateMethod string) (pluginsdk.Receipt, error) {
+func (s *store) receipt(ctx context.Context, request qimumcp.ReceiptRequest, updateMethod string) (qimumcp.Receipt, error) {
 	if err := validateInvocationID(request.ID); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	if request.Method != updateMethod {
-		return pluginsdk.Receipt{}, errors.New("reviews: receipt method conflicts")
+		return qimumcp.Receipt{}, errors.New("reviews: receipt method conflicts")
 	}
 	var arguments, encoded []byte
 	err := s.db.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, request.ID).Scan(&arguments, &encoded)
 	if errors.Is(err, sql.ErrNoRows) {
-		return pluginsdk.Receipt{}, nil
+		return qimumcp.Receipt{}, nil
 	}
 	if err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	var input reviews.Update
 	if err := json.Unmarshal(arguments, &input, json.RejectUnknownMembers(true)); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	if err := s.inputSchema.Validate(arguments); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	admitted, err := jsonvalue.Parse(arguments)
 	if err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	if admitted.Digest() != request.InputDigest {
-		return pluginsdk.Receipt{}, errors.New("reviews: receipt input conflicts")
+		return qimumcp.Receipt{}, errors.New("reviews: receipt input conflicts")
 	}
 	var result reviews.UpdateResult
 	if err := json.Unmarshal(encoded, &result, json.RejectUnknownMembers(true)); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	if err := result.Validate(); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
-	reply, err := pluginsdk.EncodeReply(result, nil, nil)
+	reply, err := qimumcp.EncodeReply(result, nil, nil)
 	if err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
-	return pluginsdk.Receipt{Found: true, Reply: reply.JSON()}, nil
+	return qimumcp.Receipt{Found: true, Reply: reply.JSON()}, nil
 }
 
 func (s *store) update(ctx context.Context, invocationID string, input reviews.Update, admitted jsonvalue.Value) (_ reviews.UpdateResult, err error) {

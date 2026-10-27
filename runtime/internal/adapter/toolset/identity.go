@@ -3,7 +3,7 @@ package toolset
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -70,7 +70,7 @@ func (t identifiedTool) SourceFingerprint() flameidentity.Digest { return t.fing
 
 type realizedSource interface{ SourceConfig() mcp.ServerConfig }
 
-func CaptureToolCaller(executable toolcontract.Tool, invocation extension.Invocation) (plugin.ToolCaller, error) {
+func CaptureToolCaller(executable toolcontract.Tool, invocation portable.Invocation) (plugin.ToolCaller, error) {
 	ref, err := Identify(executable)
 	if err != nil {
 		return plugin.ToolCaller{}, err
@@ -170,12 +170,14 @@ func (t frozenInstallationTool) InstallationActivation() (plugin.Activation, err
 	return t.activation.Clone(), nil
 }
 func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-	current, err := InstallationActivation(t.Tool)
+	original, found, err := toolcontract.Capability[interface {
+		CallActivation(context.Context, plugin.Activation, toolcontract.Invocation) (toolcontract.Result, error)
+	}](t.Tool)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	if !current.Equal(t.activation) {
-		return toolcontract.Result{}, plugin.ErrStale
+	if !found {
+		return toolcontract.Result{}, fmt.Errorf("toolset: installed Tool does not support its retained binding")
 	}
-	return t.Tool.Call(ctx, invocation)
+	return original.CallActivation(ctx, t.activation.Clone(), invocation)
 }

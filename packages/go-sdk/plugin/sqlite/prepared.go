@@ -7,10 +7,10 @@ import (
 	"errors"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 // PreparedCommand is a projection of a durable private command admission.
@@ -39,7 +39,7 @@ func AdmitCommand(ctx context.Context, db *sql.DB, method, id string, input json
 		err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
-				return extension.ErrInvocationConflict
+				return portable.ErrInvocationConflict
 			}
 			return nil
 		}
@@ -74,7 +74,7 @@ func ResumeCommand(ctx context.Context, db *sql.DB, method, id string) (*Prepare
 		return nil, jsonvalue.Value{}, nil, err
 	}
 	if storedMethod != method {
-		return nil, jsonvalue.Value{}, nil, extension.ErrInvocationConflict
+		return nil, jsonvalue.Value{}, nil, portable.ErrInvocationConflict
 	}
 	input, err := jsonvalue.Parse([]byte(raw))
 	if err != nil {
@@ -97,8 +97,8 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 	if c == nil {
 		return errors.New("managed plugin: prepared command is required")
 	}
-	if _, err := pluginsdk.DecodeReply[jsonvalue.Value](reply); err != nil {
-		if _, known := errors.AsType[*extension.Refusal](err); !known {
+	if _, err := qimumcp.DecodeReply[jsonvalue.Value](reply); err != nil {
+		if _, known := errors.AsType[*portable.Refusal](err); !known {
 			return err
 		}
 	}
@@ -109,11 +109,11 @@ func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
 			return err
 		}
 		if method != c.method || input != c.input.String() {
-			return extension.ErrInvocationConflict
+			return portable.ErrInvocationConflict
 		}
 		if len(original) != 0 {
 			if !bytes.Equal(original, reply) {
-				return extension.ErrInvocationConflict
+				return portable.ErrInvocationConflict
 			}
 			return nil
 		}

@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -60,8 +63,16 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 			if owner == nil || owner.receiptEvidence == nil || owner.receiptEvidence.Tool != proof.Tool || owner.receiptEvidence.Release != proof.Release || owner.receiptEvidence.Authority != proof.Authority || request.Relation().ProcessID().String() != proof.ProcessID || request.ID().String() != proof.EffectID {
 				return resolved, errors.New("execution: Tool receipt source differs from the captured Tool")
 			}
+			activation, err := toolset.InstallationActivation(owner.inner)
+			if err != nil {
+				return resolved, err
+			}
+			original, err := originalToolActivation(proof, []plugin.Activation{activation})
+			if err != nil {
+				return resolved, err
+			}
 			queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
-			output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, metadata.Start.CallID, metadata.Start.Arguments)
+			output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
 			stop()
 			if err := ctx.Err(); err != nil {
 				return resolved, err
@@ -120,4 +131,13 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 		}
 	}
 	return resolved, nil
+}
+
+func originalToolActivation(proof toolReceiptEvidence, bindings []plugin.Activation) (plugin.Activation, error) {
+	server, _, found := proof.Tool.MCP()
+	installation, installed := server.Origin().Installation()
+	if !found || !installed {
+		return plugin.Activation{}, plugin.ErrInvalid
+	}
+	return plugins.OriginalActivation(bindings, installation, proof.Release, server.Name())
 }

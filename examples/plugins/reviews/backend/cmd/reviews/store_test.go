@@ -11,8 +11,8 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 )
 
 func openTestStore(t *testing.T, directory string) *store {
@@ -152,11 +152,11 @@ func TestReceiptHistoryDoesNotExhaustMutationAdmission(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		receipt, err := store.receipt(t.Context(), pluginsdk.ReceiptRequest{ID: original.id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+		receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: original.id, Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 		if err != nil || !receipt.Found {
 			t.Fatalf("missing original receipt %s: %+v, %v", original.id, receipt, err)
 		}
-		recovered, err := pluginsdk.DecodeReply[reviews.UpdateResult](receipt.Reply)
+		recovered, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 		if err != nil || !reflect.DeepEqual(recovered, original.want) {
 			t.Fatalf("changed original receipt %s: %+v, %v", original.id, recovered, err)
 		}
@@ -233,11 +233,11 @@ func TestInvalidBusinessInputRetainsItsOriginalReceiptAcrossRestart(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			receipt, err := store.receipt(t.Context(), pluginsdk.ReceiptRequest{ID: "refused", Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
+			receipt, err := store.receipt(t.Context(), qimumcp.ReceiptRequest{ID: "refused", Method: contracts.Update.Name(), InputDigest: admitted.Digest()}, contracts.Update.Name())
 			if err != nil || !receipt.Found {
 				t.Fatalf("lost original invalid-input receipt: %+v, %v", receipt, err)
 			}
-			result, err := pluginsdk.DecodeReply[reviews.UpdateResult](receipt.Reply)
+			result, err := qimumcp.DecodeReply[reviews.UpdateResult](receipt.Reply)
 			if err != nil || result.Type != reviews.Invalid || result.Review != nil {
 				t.Fatalf("invalid-input receipt changed: %+v, %v", result, err)
 			}

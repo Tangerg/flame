@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"errors"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 type runHost interface {
@@ -17,10 +17,10 @@ type runHost interface {
 	Notify(context.Context, string) error
 }
 
-type runConnector func(context.Context, pluginsdk.CallbackRef) (runHost, func() error, error)
+type runConnector func(context.Context, qimumcp.CallbackRef) (runHost, func() error, error)
 
 func connectRuntime(ctx context.Context, db *sql.DB, connect runConnector) (runHost, func() error, error) {
-	ref, err := pluginsdk.CallbackFromContext(ctx)
+	ref, err := qimumcp.CallbackFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,7 +53,7 @@ func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
 		if err := s.DispatchStore.AcceptRun(ctx, id); err != nil {
 			return err
 		}
-		result, err := pluginsdk.EncodeReply(app.RunReference{SessionID: request.SessionID(), RunID: request.RunID()}, nil, nil)
+		result, err := qimumcp.EncodeReply(app.RunReference{SessionID: request.SessionID(), RunID: request.RunID()}, nil, nil)
 		if err != nil {
 			return err
 		}

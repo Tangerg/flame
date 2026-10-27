@@ -1,3 +1,4 @@
+import { runtime } from "@flame/backend-sdk";
 import { readFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import {
@@ -5,7 +6,7 @@ import {
   Capability,
   parseJSON,
   type CapabilityDescriptor,
-} from "@flame/backend-sdk";
+} from "@qimu/node";
 import { Archive } from "./archive";
 
 const root = process.env.PLUGIN_ROOT;
@@ -33,7 +34,7 @@ backend.implement(
   (value) => value,
   async (context) =>
     archive.capture(context, async (days) => {
-      const host = await context.runtime();
+      const host = await runtime(context);
       return host.queryJSON(
         "usage.summary",
         { sinceDays: days },

@@ -10,7 +10,8 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { createFlameClient, stringifyJSON } from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
+import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess, waitForRequest } from "@flame/runtime-client/testing";
 import { type CallPluginRequest } from "@flame/runtime-client/wire";
@@ -53,7 +54,11 @@ function open() {
     capabilities: () => discovery.capabilities as ServerCapabilities,
   });
   owner = new AbortController();
-  operations = { ...client.plugins, signal: owner.signal, track: (operation) => operation };
+  operations = {
+    ...client.plugins,
+    signal: owner.signal,
+    track: (operation) => operation(owner.signal),
+  };
 }
 
 beforeEach(async () => {

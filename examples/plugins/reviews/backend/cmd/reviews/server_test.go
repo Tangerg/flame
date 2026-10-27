@@ -13,8 +13,10 @@ import (
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -22,7 +24,7 @@ func modelToolMetadata(t *testing.T, id string) sdk.Meta {
 	t.Helper()
 	var meta sdk.Meta
 	if id != "" {
-		if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: id, Origin: extension.Model, Target: extension.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
+		if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: "installation", Reference: "reviews-owner"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -126,7 +128,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "typed-review-client"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -140,7 +142,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "reviews", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +262,7 @@ func TestTypedAndToolEntrancesShareTheBusinessReceipt(t *testing.T) {
 	if err == nil {
 		t.Fatal("storage failure succeeded")
 	}
-	if _, classified := errors.AsType[*extension.Refusal](err); classified {
+	if _, classified := errors.AsType[*portable.Refusal](err); classified {
 		t.Fatalf("unexpected storage error became a known refusal: %v", err)
 	}
 }

@@ -13,6 +13,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -88,6 +89,8 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	bindings            []plugin.Activation
+	resources           []plugin.Dependency
 	toolProposals       []plugins.ContributionBinding
 	modelInputs         []plugins.ContributionBinding
 	modelContexts       []plugins.ContributionBinding
@@ -130,9 +133,11 @@ func (i *interactionSession) executorCheckpoint(
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
+	bindings, resources := i.checkpointPluginReferences()
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: checkpointToolResultIDs(decoded),
-		Installations: i.installationDependencies(),
+		Bindings:      bindings,
+		Resources:     resources,
 		RootMemberID:  tree.RootID().String(), SessionID: i.scope.SessionID,
 		Payload: payload, BuildID: i.buildID.String(),
 	}

@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -26,6 +27,13 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 	}
 	if !slices.Equal(checkpoint.ToolResultIDs, checkpointToolResultIDs(state)) {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint result ownership differs from its continuation")
+	}
+	state.resources = slices.Clone(checkpoint.Resources)
+	for _, activation := range checkpoint.Bindings {
+		if _, err := plugins.DecodeActivation(activation); err != nil {
+			return interactionCheckpointState{}, err
+		}
+		state.bindings = append(state.bindings, activation.Clone())
 	}
 	return state, nil
 }

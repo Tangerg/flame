@@ -16,7 +16,13 @@
     "packages/icons",
     "plugins",
     "examples/plugins/composition",
-    "examples/plugins/reviews/component"
+    "examples/plugins/reviews/component",
+    "qimu/sdk",
+    "qimu/browser",
+    "qimu/react",
+    "qimu/node",
+    "qimu/examples/document/web",
+    "qimu/examples/authoring/browser"
   ],
   "scripts": {
     "prepare": "husky .husky",

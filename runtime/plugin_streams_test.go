@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -38,16 +38,16 @@ func (c *typedStreamCaller) StreamPlugin(_ context.Context, request protocol.Cal
 
 func bindTypedStream(t *testing.T, caller runtimeclient.PluginStreamer) *runtimeclient.PluginStreamingMethod[map[string]string, uint64, bool] {
 	t.Helper()
-	method, err := pluginsdk.NewStreamingMethod[map[string]string, uint64, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: extension.Mutation, Target: "installation", Description: "Stream original records."})
+	method, err := qimumcp.NewStreamingMethod[map[string]string, uint64, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: portable.Mutation, Target: "installation", Description: "Stream original records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t).String()
-	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: extension.Target{Scope: "installation", Reference: id}}, method)
+	bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: "installation", Reference: id}}, method)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestTypedInstalledStreamFreezesBeforeLazySingleConsumption(t *testing.T) {
 	if caller.calls != 0 {
 		t.Fatal("lazy stream performed I/O before consumption")
 	}
-	var values []pluginsdk.StreamValue[uint64, bool]
+	var values []qimumcp.StreamValue[uint64, bool]
 	for value, err := range stream {
 		if err != nil {
 			t.Fatal(err)
@@ -108,7 +108,7 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 					failure = err
 				}
 			}
-			_, known := errors.AsType[*extension.Refusal](failure)
+			_, known := errors.AsType[*portable.Refusal](failure)
 			if failure == nil || known != test.known || errors.Is(failure, runtimeclient.ErrAcknowledgementUnknown) == test.known || caller.calls != 1 {
 				t.Fatalf("outcome=%v known=%v calls=%d", failure, known, caller.calls)
 			}
@@ -117,11 +117,11 @@ func TestTypedInstalledStreamDistinguishesRefusalFromInvalidOrMissingFinal(t *te
 }
 
 func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *testing.T) {
-	method, err := pluginsdk.NewStreamingMethod[struct{}, uint64, bool](pluginsdk.MethodConfig{Name: "records.query", Kind: extension.Query, Target: "installation", Description: "Read streamed records."})
+	method, err := qimumcp.NewStreamingMethod[struct{}, uint64, bool](qimumcp.MethodConfig{Name: "records.query", Kind: portable.Query, Target: "installation", Description: "Read streamed records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestTypedInstalledQueryStreamRetainsWideValuesWithoutCommandUncertainty(t *
 			caller.events = append(caller.events, protocol.PluginStreamEvent{Kind: protocol.PluginStreamResult, Value: `true`})
 		}
 		id := testsupport.InstallationID(t).String()
-		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: extension.Target{Scope: "installation", Reference: id}}, method)
+		bound, err := runtimeclient.BindPluginStreamingMethod(caller, runtimeclient.PluginBinding{InstallationID: id, Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: contract, Target: portable.Target{Scope: "installation", Reference: id}}, method)
 		if err != nil {
 			t.Fatal(err)
 		}

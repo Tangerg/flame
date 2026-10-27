@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, parameters any) *protocol.Failure {

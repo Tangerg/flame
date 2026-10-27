@@ -7,10 +7,10 @@ import {
   decodeReply,
   digestJSON,
   parseJSON,
-  validCommand,
   type CallContext,
   type Method,
-} from "@flame/backend-sdk";
+} from "@qimu/node";
+import { validCommand } from "@qimu/node/contract";
 import { validateWire } from "@flame/runtime-client/validation";
 
 const MAX_REPORTS = 64;

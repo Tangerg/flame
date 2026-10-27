@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 // RuntimeTargetSchema binds a managed plugin's private database to exactly one

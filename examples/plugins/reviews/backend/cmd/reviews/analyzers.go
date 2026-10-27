@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type analyzerCaller interface {
@@ -17,7 +17,7 @@ type analyzerCaller interface {
 	runtimeclient.PluginCaller
 }
 
-func analyzeReview(ctx context.Context, caller analyzerCaller, target extension.Target, review reviews.Snapshot) (reviews.Analysis, error) {
+func analyzeReview(ctx context.Context, caller analyzerCaller, target portable.Target, review reviews.Snapshot) (reviews.Analysis, error) {
 	contract, err := reviews.NewAnalyzerPoint()
 	if err != nil {
 		return reviews.Analysis{}, err
@@ -35,7 +35,7 @@ func analyzeReview(ctx context.Context, caller analyzerCaller, target extension.
 		method, err := runtimeclient.BindPluginMethod(caller, runtimeclient.PluginBinding{
 			InstallationID: value.InstallationID, Digest: value.Digest,
 			Contribution: value.Value.Contribution, Contract: contracts.Capability,
-			Target: extension.Target{Scope: "installation", Reference: value.InstallationID},
+			Target: portable.Target{Scope: "installation", Reference: value.InstallationID},
 		}, contracts.Analyze)
 		if err != nil {
 			return reviews.Analysis{}, err

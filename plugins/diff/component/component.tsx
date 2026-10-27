@@ -122,7 +122,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     const signal = AbortSignal.any([context.signal, controller.signal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
-      const diff = await context.track(
+      const diff = await context.track(() =>
         context.runtime
           .workspace(workspace.ref)
           .diff.get({ mode, format: "rows" }, signal),

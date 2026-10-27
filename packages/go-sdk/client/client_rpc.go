@@ -14,8 +14,8 @@ import (
 	"net/http"
 	"reflect"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
 	"golang.org/x/text/encoding"
@@ -76,13 +76,13 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	request.Header.Set("Accept", "application/json, text/event-stream")
 	if r.callbackCall != "" {
 		request.Header.Set("Authorization", r.token)
-		request.Header.Set("Flame-Call", r.callbackCall)
-		if invocation, invocationErr := pluginsdk.InvocationFromContext(call.ctx); invocationErr == nil {
+		request.Header.Set(qimumcp.CallHeader, r.callbackCall)
+		if invocation, invocationErr := qimumcp.InvocationFromContext(call.ctx); invocationErr == nil {
 			value, encodeErr := json.Marshal(invocation)
 			if encodeErr != nil {
 				return callResult{}, encodeErr
 			}
-			request.Header.Set(pluginsdk.InvocationHeader, string(value))
+			request.Header.Set(qimumcp.InvocationHeader, string(value))
 		}
 	} else if r.token != "" {
 		request.Header.Set("Authorization", "Bearer "+r.token)
@@ -110,7 +110,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != http.StatusOK {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
-			return callResult{}, pluginsdk.ErrStaleCall
+			return callResult{}, qimumcp.ErrStaleCall
 		}
 		return callResult{}, call.readError(decodeTransportError(response, mediaType, r.maxMessageBytes))
 	}
@@ -259,7 +259,7 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 }
 
 func knownTransportRefusal(err error) bool {
-	if errors.Is(err, pluginsdk.ErrStaleCall) {
+	if errors.Is(err, qimumcp.ErrStaleCall) {
 		return true
 	}
 	problem, ok := errors.AsType[*TransportError](err)

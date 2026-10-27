@@ -9,10 +9,10 @@ prepareTestClient(() => {
 });
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { stringifyJSON } from "@qimu/sdk/json";
 import {
   createFlameClient,
   MutationLookupError,
-  stringifyJSON,
   type PluginCommandRecovery,
 } from "@flame/runtime-client";
 
@@ -123,7 +123,7 @@ function mount(
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     locale: "en",
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);
@@ -206,7 +206,7 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     locale: "en",
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   testClient.render(<UsageReports context={context} />);

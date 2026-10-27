@@ -40,45 +40,6 @@
     "Method_flame_2efilewatch_2fstatus_2ev1Output": {
       "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2RvbWFpbg_5fStatus"
     },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24_5fInvocation": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "origin": {
-          "type": "string"
-        },
-        "parent": {
-          "type": "string"
-        },
-        "target": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24_5fTarget"
-        }
-      },
-      "required": [
-        "id",
-        "origin",
-        "target"
-      ],
-      "type": "object"
-    },
-    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24_5fTarget": {
-      "additionalProperties": false,
-      "properties": {
-        "reference": {
-          "type": "string"
-        },
-        "scope": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "scope",
-        "reference"
-      ],
-      "type": "object"
-    },
     "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2NvbnRyYWN0_5fConfigureInput": {
       "additionalProperties": false,
       "properties": {
@@ -122,7 +83,7 @@
           "type": "string"
         },
         "invocation": {
-          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9leHRlbnNpb24_5fInvocation"
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation"
         },
         "kind": {
           "allOf": [
@@ -370,6 +331,45 @@
       "required": [
         "revision",
         "phase"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fInvocation": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "parent": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "target"
+      ],
+      "type": "object"
+    },
+    "Method_go_5fZ2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3FpbXUvcG9ydGFibGU_5fTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "reference": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "reference"
       ],
       "type": "object"
     }

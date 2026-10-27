@@ -48,8 +48,10 @@ function mountRename() {
     locale: "en",
     signal: owner.signal,
     track: (operation) => {
-      tracked.push(operation);
-      return operation;
+      owner.signal.throwIfAborted();
+      const original = operation(owner.signal);
+      tracked.push(original);
+      return original;
     },
     compose: () => null,
   };

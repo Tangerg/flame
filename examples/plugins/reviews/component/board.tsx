@@ -87,7 +87,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           const review = result.reviews[0];
           if (review) {
             try {
-              const values = await context.track(
+              const values = await context.track(() =>
                 context.runtime.plugins.resolvePoint(
                   {
                     contract: ANALYZERS_JSON,

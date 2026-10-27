@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -16,7 +16,7 @@ var tracer = otel.Tracer("scope/flame/adapter/integration/mcp")
 
 // newConnections validates the complete ledger before any owned attempt starts.
 func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
-	callbacks *pluginsdk.Callbacks, client *sdkmcp.Client,
+	callbacks *qimumcp.Callbacks, client *sdkmcp.Client,
 ) (*connections, error) {
 	if lo.IsNil(ctx) {
 		return nil, errors.New("mcp: startup context is required")
@@ -41,7 +41,8 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), err)
 		}
 	}
-	c := &connections{lifetime: lifetime, callbacks: callbacks, client: client, oauthSessions: oauthSessions}
+	c := &connections{lifetime: lifetime, callbacks: callbacks, client: client, oauthSessions: oauthSessions,
+		sessions: make(map[*sdkmcp.ClientSession]*ownedSession)}
 	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}

@@ -1,6 +1,6 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/knowledgebase/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/knowledgebase/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 //go:generate sh -c "go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --model-contract context > ../../package/io.github.tangerg.flame/contracts/context.generated.json"
 
 import (
@@ -9,9 +9,11 @@ import (
 	"github.com/invopop/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type ImportInput struct {
@@ -60,42 +62,42 @@ func (SearchInput) JSONSchemaExtend(schema *jsonschema.Schema) {
 }
 
 type Contracts struct {
-	Capability *extension.Capability
-	Import     *pluginsdk.Method[ImportInput, knowledge.Header]
-	Reindex    *pluginsdk.Method[DocumentInput, knowledge.Header]
-	Delete     *pluginsdk.Method[DocumentInput, bool]
-	List       *pluginsdk.Method[struct{}, []knowledge.Header]
-	Read       *pluginsdk.Method[ReadInput, DocumentRead]
-	Search     *pluginsdk.Method[SearchInput, []knowledge.Match]
+	Capability *portable.Capability
+	Import     *qimumcp.Method[ImportInput, knowledge.Header]
+	Reindex    *qimumcp.Method[DocumentInput, knowledge.Header]
+	Delete     *qimumcp.Method[DocumentInput, bool]
+	List       *qimumcp.Method[struct{}, []knowledge.Header]
+	Read       *qimumcp.Method[ReadInput, DocumentRead]
+	Search     *qimumcp.Method[SearchInput, []knowledge.Match]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Import, err = pluginsdk.NewMethod[ImportInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
+	c.Import, err = qimumcp.NewMethod[ImportInput, knowledge.Header](qimumcp.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Reindex, err = pluginsdk.NewMethod[DocumentInput, knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/reindex.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role."})
+	c.Reindex, err = qimumcp.NewMethod[DocumentInput, knowledge.Header](qimumcp.MethodConfig{Name: "flame.knowledgebase/reindex.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Rebuild an existing document's embedding index from its stored original text at the inspected revision through the configured embedding role."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Delete, err = pluginsdk.NewMethod[DocumentInput, bool](pluginsdk.MethodConfig{Name: "flame.knowledgebase/delete.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Delete a document and its index at the inspected revision."})
+	c.Delete, err = qimumcp.NewMethod[DocumentInput, bool](qimumcp.MethodConfig{Name: "flame.knowledgebase/delete.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Delete a document and its index at the inspected revision."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.List, err = pluginsdk.NewMethod[struct{}, []knowledge.Header](pluginsdk.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "List indexed user documents and their revisions."})
+	c.List, err = qimumcp.NewMethod[struct{}, []knowledge.Header](qimumcp.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "List indexed user documents and their revisions."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Search, err = pluginsdk.NewMethod[SearchInput, []knowledge.Match](pluginsdk.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
+	c.Search, err = qimumcp.NewMethod[SearchInput, []knowledge.Match](qimumcp.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Read, err = pluginsdk.NewMethod[ReadInput, DocumentRead](pluginsdk.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O."})
+	c.Read, err = qimumcp.NewMethod[ReadInput, DocumentRead](qimumcp.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.Import.Descriptor(), c.Reindex.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Read.Descriptor(), c.Search.Descriptor())
+	c.Capability, err = portable.NewCapability(portable.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, c.Import.Descriptor(), c.Reindex.Descriptor(), c.Delete.Descriptor(), c.List.Descriptor(), c.Read.Descriptor(), c.Search.Descriptor())
 	return c, err
 }

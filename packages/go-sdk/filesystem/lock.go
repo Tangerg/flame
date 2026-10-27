@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/qimu/cancellation"
 )
 
 var ErrLockUnsupported = errors.New("advisory lock: unsupported platform")

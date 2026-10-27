@@ -2,7 +2,8 @@ package contract
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/invopop/jsonschema"
 )
 
@@ -152,11 +153,11 @@ type MergeResult struct {
 	Message string `json:"message"`
 }
 
-func writeMethod[P, R any](name, description string) (*pluginsdk.Method[P, R], error) {
-	return pluginsdk.NewMethod[P, R](pluginsdk.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
+func writeMethod[P, R any](name, description string) (*qimumcp.Method[P, R], error) {
+	return qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
 }
 
-func (c *Contracts) writeMethods() ([]extension.MethodDescriptor, error) {
+func (c *Contracts) writeMethods() ([]portable.MethodDescriptor, error) {
 	var err error
 	c.CreateIssue, err = writeMethod[CreateIssueInput, Issue]("create-issue", "Create an issue with title, optional body, labels and assignees. Returns GitHub's actual values, including metadata GitHub may ignore without sufficient permissions.")
 	if err != nil {
@@ -206,7 +207,7 @@ func (c *Contracts) writeMethods() ([]extension.MethodDescriptor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []extension.MethodDescriptor{c.CreateIssue.Descriptor(), c.UpdateIssue.Descriptor(), c.CreateComment.Descriptor(), c.UpdateComment.Descriptor(), c.DeleteComment.Descriptor(), c.CreatePull.Descriptor(), c.SubmitReview.Descriptor(), c.MergePull.Descriptor(), c.CreateReviewComment.Descriptor(), c.ReplyReviewComment.Descriptor(), c.UpdateReviewComment.Descriptor(), c.DeleteReviewComment.Descriptor()}, nil
+	return []portable.MethodDescriptor{c.CreateIssue.Descriptor(), c.UpdateIssue.Descriptor(), c.CreateComment.Descriptor(), c.UpdateComment.Descriptor(), c.DeleteComment.Descriptor(), c.CreatePull.Descriptor(), c.SubmitReview.Descriptor(), c.MergePull.Descriptor(), c.CreateReviewComment.Descriptor(), c.ReplyReviewComment.Descriptor(), c.UpdateReviewComment.Descriptor(), c.DeleteReviewComment.Descriptor()}, nil
 }
 
 func boundString(schema *jsonschema.Schema, field string, maximum int) {

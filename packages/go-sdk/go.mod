@@ -3,18 +3,17 @@ module github.com/Tangerg/flame/packages/go-sdk
 go 1.27.3
 
 require (
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261027.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/Tangerg/scope/mcp v0.58.0
 	github.com/Tangerg/scope/models/catalog v0.58.0
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/Tangerg/sse v0.0.6
-	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
 	github.com/samber/lo v1.53.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
-	modernc.org/sqlite v1.61.0
 )
 
 require (
@@ -26,6 +25,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
@@ -46,4 +46,5 @@ require (
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
+	modernc.org/sqlite v1.61.0 // indirect
 )

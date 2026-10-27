@@ -90,7 +90,7 @@ export function useSkills(context: ComponentContext) {
         case "library":
           accepted = {
             type: target,
-            data: await context.track(
+            data: await context.track(() =>
               context.runtime.skills.listLibrary(signal),
             ),
           };
@@ -98,13 +98,17 @@ export function useSkills(context: ComponentContext) {
         case "available":
           accepted = {
             type: target,
-            data: await context.track(workspace!.skills.listDiscovered(signal)),
+            data: await context.track(() =>
+              workspace!.skills.listDiscovered(signal),
+            ),
           };
           break;
         case "review":
           accepted = {
             type: target,
-            data: await context.track(workspace!.skills.listProposals(signal)),
+            data: await context.track(() =>
+              workspace!.skills.listProposals(signal),
+            ),
           };
           break;
       }
@@ -133,7 +137,7 @@ export function useSkills(context: ComponentContext) {
           previous && { ...previous, loading: true, error: undefined },
       );
       try {
-        const accepted = await context.track(
+        const accepted = await context.track(() =>
           workspace!.skills.getDiscovered(name, signal),
         );
         if (!signal.aborted)
@@ -198,7 +202,7 @@ export function useSkills(context: ComponentContext) {
         if (!signal.aborted) setObservationError(failure(error));
       }
     };
-    void context.track(observeChanges());
+    void context.track(() => observeChanges());
     return () => controller.abort();
   }, [context, workspace]);
   function navigate(next: Target) {
@@ -261,7 +265,7 @@ export function useSkills(context: ComponentContext) {
   }, [opened]);
   async function observe(captured: Command) {
     try {
-      await context.track(captured.promise);
+      await captured.promise;
       pending.current = undefined;
       if (!context.signal.aborted) {
         setCommand(undefined);
@@ -293,7 +297,11 @@ export function useSkills(context: ComponentContext) {
   function submit(make: () => MutationPromise<void>, label: string) {
     if (pending.current || context.signal.aborted) return;
     try {
-      const captured = { promise: make(), label, uncertain: false };
+      const captured = {
+        promise: context.track(make),
+        label,
+        uncertain: false,
+      };
       pending.current = captured;
       setCommand(captured);
       setReview(undefined);
@@ -309,7 +317,9 @@ export function useSkills(context: ComponentContext) {
     try {
       const retry = {
         ...original,
-        promise: original.promise.retry({ signal: context.signal }),
+        promise: context.track(() =>
+          original.promise.retry({ signal: context.signal }),
+        ),
         uncertain: false,
         error: undefined,
       };

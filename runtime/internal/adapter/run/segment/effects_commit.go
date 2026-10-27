@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -220,7 +221,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 	if commit.ObsoleteCheckpointRootID != "" && commit.State != runs.StateTerminalize {
 		return errors.New("segment: executor checkpoint deletion requires a terminal Run commit")
 	}
-	err := e.runInTx(ctx, func(ctx context.Context) error {
+	err := e.runCheckpointTx(ctx, commit.CommitID.String(), commit.ExecutionContext, func(ctx context.Context) error {
 		if err := e.applyCommit(ctx, commit); err != nil {
 			return err
 		}
@@ -246,6 +247,9 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		}
 		return nil
 	})
+	if errors.Is(err, qimu.ErrRecoveryRequired) {
+		return err
+	}
 	if err != nil {
 		settled, settleErr := e.reconcileEventCommit(ctx, commit)
 		if settled {
@@ -323,7 +327,7 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	commits := barrier.Runs()
 	commitID := barrier.CommitID()
 
-	err := e.runInTx(ctx, func(ctx context.Context) error {
+	err := e.runCheckpointTx(ctx, commitID.String(), &checkpoint, func(ctx context.Context) error {
 		if err := e.executorCheckpoints.SaveCheckpoint(ctx, checkpoint); err != nil {
 			return fmt.Errorf("segment: persist tree barrier executor checkpoint: %w", err)
 		}
@@ -346,6 +350,9 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	})
 	if err == nil {
 		return nil
+	}
+	if errors.Is(err, qimu.ErrRecoveryRequired) {
+		return err
 	}
 	rootSegmentID := ""
 	for _, commit := range commits {
@@ -612,6 +619,13 @@ func (e *Effects) resumeTree(ctx context.Context, resume run.TreeResumeDraft) er
 
 func (e *Effects) runInTx(ctx context.Context, fn func(context.Context) error) error {
 	return e.tx(ctx, fn)
+}
+
+func (e *Effects) runCheckpointTx(ctx context.Context, identity string, checkpoint *runs.ExecutorCheckpoint, fn func(context.Context) error) error {
+	if checkpoint == nil || len(checkpoint.Bindings) == 0 && len(checkpoint.Resources) == 0 {
+		return e.runInTx(ctx, fn)
+	}
+	return e.pluginBindings(ctx, identity, checkpoint.Clone(), fn)
 }
 
 func (e *Effects) openInterrupt(ctx context.Context, p runs.Pending) error {

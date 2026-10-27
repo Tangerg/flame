@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type observedRunHost struct {
@@ -44,7 +44,7 @@ func (h *observedRunHost) Admit(ctx context.Context, request schedule.RunRequest
 		return err
 	}
 	if h.seen != nil {
-		invocation, err := pluginsdk.InvocationFromContext(ctx)
+		invocation, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil || invocation != request.Invocation() {
 			return errors.New("original calling context changed")
 		}
@@ -86,7 +86,7 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 	}
 }
 
-func schedulesContract(t *testing.T) *extension.Capability {
+func schedulesContract(t *testing.T) *portable.Capability {
 	t.Helper()
 	contracts, err := rpc.NewContracts()
 	if err != nil {

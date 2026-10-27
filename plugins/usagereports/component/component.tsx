@@ -17,7 +17,7 @@ import {
   type Translate,
 } from "@flame/component-sdk";
 import { scrollPositions, type ScrollPosition } from "@flame/component-sdk";
-import type { JSONNumber } from "@flame/runtime-client";
+import type { JSONNumber } from "@qimu/sdk/json";
 import {
   Button,
   Disclosure,

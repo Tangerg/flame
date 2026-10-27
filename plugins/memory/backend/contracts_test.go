@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
@@ -17,11 +17,11 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	required, err := extension.ParseCapability(data)
+	required, err := portable.ParseCapability(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	description, err := pluginsdk.Describe(t.Context(), session)
+	description, err := qimumcp.Describe(t.Context(), session)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 			if published.Name != method.Name {
 				continue
 			}
-			actual, err := extension.AdmitMethod(published)
+			actual, err := portable.AdmitMethod(published)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -49,7 +49,7 @@ func TestGeneratedMemoryContractMatchesLiveMethods(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	exported, err := pluginsdk.ResolveCapability(t.Context(), session, "memory", required)
+	exported, err := qimumcp.ResolveCapability(t.Context(), session, "memory", required)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,22 +8,22 @@ import (
 	"runtime"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/sqlite"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
 
 type homeRead func(context.Context) (string, error)
 
 func coreHome(ctx context.Context) (home string, err error) {
-	ref, err := pluginsdk.CallbackFromContext(ctx)
+	ref, err := qimumcp.CallbackFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +110,7 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 			return sandbox.Result{}, err
 		}
 	}
-	reply, err := pluginsdk.EncodeReply(result, operationErr, classify)
+	reply, err := qimumcp.EncodeReply(result, operationErr, classify)
 	if err != nil {
 		return sandbox.Result{}, err
 	}
@@ -122,7 +122,7 @@ func (r *runner) complete(ctx context.Context, prepared *pluginstorage.PreparedC
 }
 
 func readOutcome(encoded []byte) (sandbox.Result, error) {
-	result, err := pluginsdk.DecodeReply[sandbox.Result](encoded)
+	result, err := qimumcp.DecodeReply[sandbox.Result](encoded)
 	if err != nil {
 		return sandbox.Result{}, err
 	}

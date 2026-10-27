@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -97,6 +98,10 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		bindings = append(bindings, state.toolProposals...)
 		if i.config.CallComposition.Pending(bindings) {
 			return runs.DeferredWaiting(), nil
+		}
+		bindings, err = plugins.BindActivations(bindings, state.bindings)
+		if err != nil {
+			return runs.WaitingResumption{}, fmt.Errorf("execution: restore captured contribution bindings: %w", err)
 		}
 		// Probe source eligibility before allocating an Engine. A definite
 		// withdrawal loses the captured tree; an inconclusive read changes no facts.

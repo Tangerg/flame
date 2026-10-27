@@ -1,0 +1,31 @@
+//go:build darwin || dragonfly || freebsd || linux || netbsd || openbsd
+
+package runner
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/qimu"
+)
+
+func TestInvalidSocketAddressNeverCreatesOrReconnectsAnAuthority(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), strings.Repeat("x", socketPathLimit()))
+	socket := filepath.Join(directory, "control.sock")
+	if _, err := NewDaemon(DaemonConfig{Executable: "/unstarted-runner", Directory: directory, StartTimeout: time.Second}); !errors.Is(err, qimu.ErrInvalid) {
+		t.Fatalf("long daemon address: %v", err)
+	}
+	if _, err := Listen(socket); !errors.Is(err, qimu.ErrInvalid) {
+		t.Fatalf("long listener address: %v", err)
+	}
+	if _, err := Dial(socket).Identity(t.Context()); !errors.Is(err, qimu.ErrInvalid) || errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unusable address was treated as absent authority: %v", err)
+	}
+	if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("validation created state: %v", err)
+	}
+}

@@ -73,12 +73,13 @@ gets its own existing process, immutable release lease, frozen requirements and
 call-scoped callbacks. There is no shared JavaScript supervisor or result store.
 
 Build Runtime/CLI distributions with `make build-runtime` / `make build-cli` after
-`make setup`. Ship their companion `runtimes` and `plugins` directories together.
+`make setup`. Ship the hosting executable, sibling `qimu-runner`, and companion
+`runtimes` and `plugins` directories together.
 Replace the complete distribution only while quiescent. Desktop attaches to a
 Runtime and does not host backends; it does not ship an unused interpreter.
 Core `2026-10-24.1` projects managed server declarations explicitly. Rebuild its
 Go/TypeScript/CLI/Desktop consumers together. Backend protocol identity remains
-owned by `capability.Protocol`. Usage Reports has a new private SQLite owner and
+owned by the compiled `portable.Protocol` in `qimu/portable`. Usage Reports has a new private SQLite owner and
 requires fresh installation data; retain the former installation/data separately.
 
 Run accounting facts report every physically dispatched model call, including
@@ -199,8 +200,8 @@ field set that their Go decoder admits. All three strings are required, includin
 empty strings for the default selection. Schedules contracts and typed CLI/TS
 consumers are regenerated from that owner; arbitrary string maps are not accepted.
 
-[`model`](model/README.md) owns that immutable public choice for Runtime and
-independent authors. [`model/catalog`](model/catalog/README.md) applies the shared
+[`model`](../packages/go-sdk/model/README.md) owns that immutable public choice for Runtime and
+independent authors. [`model/catalog`](../packages/go-sdk/model/catalog/README.md) applies the shared
 released Scope catalog's effort and modality facts without provider I/O or model
 inference. Former private selection/catalog implementations are removed. Moving
 the schema owner changes generated reference identities; rebuild Schedules
@@ -242,15 +243,19 @@ the new lifetime lease. Opening does not migrate or discard unknown commands.
 
 ## First-party initialization
 
-Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime` and its companion `plugins/` distribution. Run that executable in the foreground. The embedded Go binding uses the
-same layout: its host executable must ship a sibling `plugins` directory.
-`localruntime` owns this layout, with no working-directory or checkout fallback.
+Root `make build-runtime` produces `out/runtime/<platform>/flame-runtime`, its
+sibling `qimu-runner`, the `plugins/` distribution and the pinned
+`runtimes/node/<os>-<arch>/` companion. Run that executable in the foreground.
+The embedded Go binding requires the same companions beside its actual hosting
+executable. `localruntime` owns this layout, with no PATH, working-directory or
+checkout fallback.
 
-On a fresh database, Runtime admits and enables the distributed catalog
-through the ordinary installation aggregates, then commits the catalog and its
-initialization completion in one transaction before exposing delivery. Managed
-backend directories are prepared before completion; connections follow the existing
-MCP supervisor lifecycle. A failed admission cannot commit partial defaults.
+On a fresh `flame-qimu.db`, Runtime admits and enables the distributed catalog
+through Qimu Host installation admission, prepares the private backend directories
+and records the configured default providers before marking initialization
+complete. Delivery is exposed only after initialization succeeds. Each original
+installation is durable; interrupted initialization resumes those same identities
+and rejects a changed distribution instead of creating replacement installations.
 
 Initialization runs once per database. Restart never reinstalls an uninstalled
 package, reenables a disabled one or selects updated bytes.
@@ -267,9 +272,12 @@ migration. Use a fresh data directory when upgrading.
 - `protocol` owns binding-neutral requests, responses, events and validation.
   [`contract/API_REFERENCE.md`](contract/API_REFERENCE.md) and the generated
   manifest, OpenRPC and schema are projections of the operation catalog.
-- [`plugin`](../packages/go-sdk/plugin/README.md) owns public typed backend methods, streams,
-  receipts and captured host collaborators. [`capability`](capability/contract.go)
-  owns callable metadata; [`point`](point/contract.go) owns typed value points.
+- [`Qimu MCP`](../qimu/README.md#processes-browser-execution-and-distribution) owns generic typed backend methods, streams,
+  setup, callbacks and receipt transport. `qimu/portable` owns exact method,
+  capability and portable value-point contracts.
+- [`plugin`](../packages/go-sdk/plugin/README.md) owns Flame model roles, Tool
+  helpers, captured product collaborators and the Tool receipt contract.
+  `packages/go-sdk/extension` owns only Flame invocation origin and scope policy.
 - `localruntime` owns the executable/companion-package layout and credential handoff.
   The Runtime process and clients consume that layout without checkout discovery.
 
@@ -322,7 +330,7 @@ call-bound `next` and preserve canonical response/chunk evidence. Tool proposals
 may transform arguments while execution retains Tool identity, schema and approval.
 See the [public authoring contracts](../packages/go-sdk/plugin/README.md).
 
-`plugin.Callbacks` owns one lifecycle-bound loopback link. Bootstrap publishes
+`qimumcp.Callbacks` from `github.com/Tangerg/flame/qimu/mcp` owns one lifecycle-bound loopback link. Bootstrap publishes
 canonical RPC once before backends can receive its reference. Nested operations
 inherit captured caller/actor authority and cancellation; each HTTP request owns
 its own transport metadata. Closing or replacing a session revokes its references,
@@ -342,6 +350,11 @@ Packages publish ordinary prebuilt ESM exports using the public
 may be content-only or bind a same-release callable contribution. Workspace,
 Session, action, file and Tool-result placements use one component/resource path.
 The first-party catalog and independent Reviews author use this same entrance.
+The Go Qimu Host approves exact Browser plans and Uses; the Browser executor owns
+the actual JavaScript objects and cleanup within that approved realm. Components
+borrow their original Use, including exact parent/child bindings. Release evidence
+returns to the Go Host before execution protection is removed. Private workbench
+registrations do not select another provider or create another public authority.
 
 `plugins.openResources` creates a live exact-release resource subscription. Each
 asset read rechecks the enabled release, component and package integrity through
@@ -402,108 +415,75 @@ Original command routes retain that ID, named export and complete capability
 contract alongside immutable provider/server/input evidence. Former host tables
 without these bindings are refused by exact-schema admission without conversion.
 
-Runtime owns plugin installations under its data directory. `plugin.json` uses Agent
-Plugins 1.0. Flame's `io.github.tangerg.flame` namespace contains one `declaration`
-path under that namespace. The referenced local JSON file declares the exact
-current backend protocol requirement, optional inputs, contributions and current
-presentation entries. Its own fields are strict; the former inline apiVersion
-and services shapes have no interpretation. Portable MCP/Skill components remain
-independent when Flame declaration admission fails. The complete operation schemas and error categories are generated in
-[the API reference](contract/API_REFERENCE.md). `plugins` is an advertised capability.
+Runtime composes Qimu Host for installation admission, exact bindings, execution
+protection and lifetime management. Flame owns the interpretation of its plugin
+metadata, user configuration, provider choices and product contribution policy.
+The complete operation schemas and error categories are generated in
+[the API reference](contract/API_REFERENCE.md); `plugins` is an advertised
+Runtime capability.
 
-Install from an absolute directory or ZIP path on the Runtime machine. Admission copies
-regular files into a bounded, SHA-256-addressed release; it does not execute package code.
-The shared filesystem input boundary owns regular-file kind, size admission and opened
-identity for package sources, release scans, resources and packaged MCP commands.
-Workspace, prompt, Skill, Hook and LSP adapters project their business error categories
-without replacing the input boundary's kind, size or identity failure causes. Special
-nodes are rejected before they can block a read. Copying and hashing use the opened file's
-metadata and reject source replacement or mutation observed after reading; cancellation
-preserves its standard category, custom cause and concurrent I/O failures, and cannot
-complete a copy successfully. The package adapter owns
-archive entry safety, extracted-byte quotas, release digests and the content index that
-checks the exact resource bytes returned to a caller.
-Staging owns one destination tree for files, declared directories and implied parents.
-It rejects each duplicate, ambiguous spelling or file/directory conflict before writing
-that destination. Implied parents count toward the entry limit; a later declaration of
-the same directory is accepted once without changing the release's content identity.
-The immutable release catalog owns the declaration accepted at first admission and is the
-only owner of release content: an installation names its selected and staged releases by
-digest. Installation reads hydrate selected and staged catalog declarations in the same
-storage transaction as installation state. Lists, MCP definitions and Skills consume that
-coherent snapshot, so concurrent release reclamation cannot break a later metadata join.
-Byte availability remains a live filesystem observation after the transaction. A release
-is admitted once by its constructor, which validates each contribution exactly once (package admission
-isolates an invalid contribution against the ones admitted before it); persistence,
-installations and projections trust the admitted value. Repeated installation and cold
-loading use that declaration; integrity validation does not reinterpret package
-contributions. Publish different package bytes to request a new admission.
-The package adapter translates the portable `mcp.json` spelling (`streamable-http`, `cwd`)
-once into the MCP registry vocabulary (`streamableHttp`, `dir`) that releases and
-`PluginServerDeclaration` use; connection rules belong to the MCP server owner, and a
-release adds only the rules that exist because the declaration comes from a portable
-package (the reserved `PLUGIN_ROOT`/`PLUGIN_DATA` variables, case-ambiguous environment
-names, package-relative commands and working directories, no user information in endpoint
-URLs, HTTPS outside loopback). Package bytes are public content: static headers and
-environment values are never treated as secrets, so a credential reaches a server only
-through a declared input. Header and `authorization` inputs are admitted only as secrets;
-an environment input uses its declared `secret` flag.
-The Flame extension namespace names only its `declaration` resource. That file owns
-`protocol`, `inputs`, `contributions`, `contributes`, `points`, `pointValues` and
-`components`; presentation `contributes` admits themes. Unknown namespace fields
-are isolated as typed admission diagnostics, never interpreted as an older API.
-Relative source paths, absent or malformed mandatory manifests and unsafe or malformed archives
-return `invalid_params` without creating an installation. Filesystem and storage failures
-retain their own causes; component diagnostics continue to preserve valid siblings.
-Release diagnostics are typed admission findings: a closed `code` (`unknownField`,
-`invalidDeclaration`, `unsupportedContribution`, `componentLimit`, `invalidDependencies`,
-`unavailableComponent`) plus a closed `component` reference (`manifestField`,
-`extensionField`, `contribution`, `mcpServer` and `skill` carry the authored `name`;
-`flameExtension`, `mcp` and `skills` carry none). They describe what admission isolated,
-travel with the immutable declaration, and never decide availability.
-An installation owns selected release identity and desired `enabled` state.
-Explicit installation and release selection trust those package bytes; there is no
-separate release-approval operation. A new installation starts disabled. Configure
-declared required inputs, then enable it. Disablement withdraws future dispatch
-without discarding the selected release or standing tool decisions. Enabling the same
-selected code may restore availability while execution or an unresolved command still holds that release;
-configuration, release selection and uninstall still require quiescence. Package roots are
-read-only. Admission seals the staged tree before digesting it, and admission and cold
-loading scan an entire release once; concurrent cold loads of one digest share that scan
-while other digests load independently. A scan canceled by its caller does not decide
-another live caller's outcome; the surviving caller verifies under its own lifetime.
-Cancellation retains both its standard category and owner-supplied cause, including
-before staging, on a cached proof and while waiting for shared work.
-Installation and MCP availability reads use the
-same current byte proof as connection launches, so tampered bytes withdraw presentation
-and availability on the next read, and repaired bytes restore both. Startup,
-configuration, reconnect and OAuth read the current source owner before creating a
-connection and revalidate its package bytes:
-the cached scan is reused only while every entry of the release keeps the change stamp
-(inode, size, mode, modification and inode-change time) recorded when its bytes were
-digested, and any added, removed or changed entry or a replaced directory sends the release
-through a fresh full scan that withdraws the cache for tampered bytes and restores it for
-a repaired directory. A launch accepts only a scan that began after it observed a change,
-and rechecks the stamps of the proof it receives, so a scan that read bytes before they
-changed can never vouch for them. An entry whose inode-change time is not strictly older
-than the scan that stamped it is unsettled (the racy-index rule): a proof holding one is
-not reused, and the next inspection or launch rescans. Proofs are cached within a 32 MiB
-budget derived from measured per-entry size; a proof that would exceed it is not cached,
-and a proof an in-flight caller holds is never evicted. Platforms without an inode-change
-time rescan on every inspection or connection. A stdio launch copies from the confined
-verified root into private, sealed execution content and verifies that copy against the
-admitted digest. Command,
-arguments, environment and working directory are projected onto that content; replacing,
-rewriting or reclaiming the published release cannot redirect an admitted process or its
-later package reads. Connections of one digest share the content while any launch or
-session holds it. A canceled preparation ends only its caller's claim; surviving callers
-acquire content under their own context. This resource claim transfers once into the MCP
-session ledger and is retired after process teardown, including failed handshakes, rejected or superseded
-attempts, detach and shutdown. Retained source descriptors contain neither the claim nor
-relocated paths and cannot launch installation stdio. Startup collects abandoned execution
-copies after acquiring the data-directory lifetime lease. This protects
-the launch from changes to published bytes; stdio still runs as trusted local code, without
-an OS sandbox.
+Install from an absolute directory or ZIP path on the Runtime machine. Each
+release must contain Qimu's `manifest.json`, `plugin.lock.json` and exactly its
+listed artifacts. The neutral manifest supplies the sole immutable release
+identity. `plugin.json` remains Flame product metadata using Agent Plugins 1.0.
+Its `io.github.tangerg.flame` namespace names one local declaration document with
+`plugin.DeclarationProtocol`, independently of `portable.Protocol` used by
+callable contracts. Raw legacy source trees without the neutral release files
+are refused.
+
+`qimu/distribution` owns deterministic archive creation, path and entry safety,
+byte quotas, artifact digests, immutable content and read leases. The composition
+root creates one content Store with the Host's shared Admission. Its held physical
+directory identity and exclusive ownership protect all operations; closing the
+Store seals new work and joins its operations and leases. Slow file verification
+and physical cleanup occur outside the admission gate. The Flame adapter neither
+computes a second release digest nor maintains an integrity cache or execution
+copy of that content.
+
+The author command `runtime/cmd/pluginpack` calls the same
+`plugins.ProjectFrameworkDeclaration` used during admission. It interprets Flame
+metadata, adds the actual compiled module graph or selected executable artifact,
+and builds the neutral manifest and lock. Admission verifies the complete
+projection against that manifest. Hidden Units, changed imports, substituted
+runtime identities or a different contract cannot be introduced through a
+second metadata document. Inert content packages need no executable Unit.
+
+The immutable Flame release catalog retains the accepted product interpretation.
+An installation selects or stages the original neutral release digest; catalog
+presence is not proof that its bytes remain available. Current resource reads
+and activation acquire the content through the original Store. A candidate keeps
+its content lease from materialization through installation admission or refusal,
+so concurrent reclamation cannot remove a release awaiting that decision.
+
+Flame declarations own inputs, contributions, presentation themes, points,
+point values and components. Product diagnostics retain their typed code and
+component reference without granting availability. Invalid paths, mandatory
+release files, archives or manifest projections are refused before installation;
+filesystem and storage failures keep their original causes. Package bytes are
+public content. Credentials reach a backend through declared secret inputs,
+not static package environment values.
+
+Installed process entries are packaged native executables or declared managed
+Node entries. Native variants identify their OS, architecture and original
+executable digest; managed entries retain the distribution's exact pinned Node
+version and digest. Ambient commands and installed HTTP backends are refused.
+Independently configured ordinary MCP connections retain their own transports.
+The package adapter reserves `PLUGIN_ROOT` and `PLUGIN_DATA`, validates declared
+inputs and projects launch paths onto the original leased content.
+
+`qimu/process` persists the original start attempt and binding before asking
+`qimu-runner` to create a process. The original runner owns process creation,
+fencing and wait evidence. The content lease survives handshake failure,
+retirement and lost communication until that original execution is proved to
+have ended. A new runner's empty ledger is not exit evidence. Installed native
+code is trusted local code; this process profile does not establish an OS sandbox.
+
+A new installation starts disabled. Configure its required inputs, then enable
+it. Disablement withdraws new use without discarding the selected release or
+standing Tool decisions. Configuration changes, release selection and uninstall
+respect the original business and execution protection under the shared
+Admission. Exact old bindings remain the authority for retained work; a current
+provider selection cannot replace them.
 
 Advisory leases own their release attempt and settled cleanup result. Non-blocking
 contention returns no lease and no error; descriptor or handle cleanup failures remain
@@ -516,13 +496,15 @@ delegates release to its lease rather than maintaining a second release state.
 The registry resolves each server by its origin, realizing an installation
 server only as far as the read requires (desired definition, dispatch authority, or launch)
 and never its siblings. Ordinary tool dispatch reads admitted declarations and
-current installation authority for the called server alone. Resource and Skill reads verify their selected file
-against the admitted content index through a confined directory capability. `${PLUGIN_DATA}` is a private per-installation directory
-retained through updates and uninstall and is never collected automatically. A release
-is retained while an installation selects or stages it or a live session, pending
-checkpoint or unresolved installed command depends on it; every other release, its catalog row and its directory, is
-reclaimed at the admission point when a change commits and at startup. A release whose
-removal fails stays admitted and is retried by the next reclamation.
+current installation authority for the called server alone. Resource and Skill reads use the exact release
+lease and verify the selected artifact through Qimu's held directory authority.
+`${PLUGIN_DATA}` is a private per-installation directory retained through updates
+and uninstall; it is never collected automatically. Content remains retained
+while an installation selects or stages it, a content lease is live, or business
+or execution evidence requires it. Reclamation reads those current owners under
+the shared Admission before retiring unretained bytes. The immutable Flame
+metadata catalog remains available for history after content reclamation; its
+presence never proves executable availability.
 
 Execution dependency projection follows the actual frozen MCP setup bindings,
 including transitively bound optional collaborators. It does not resolve current
@@ -565,12 +547,11 @@ selection or configuration changes. Disable first when new credentials are neede
 select the candidate, configure it and enable it explicitly.
 It retains what the candidate declares unchanged: input values whose input keeps its
 server, target, key and secrecy, and disabled servers and Skills that are still declared.
-A secret input and an OAuth credential follow one rule: a credential follows its
-recipient. For a Streamable HTTP server the recipient is the endpoint (transport, URL and
-static headers, excluding configured input values), so its secrets and OAuth credential
-survive a release that keeps that declaration and stop applying when it changes. For a
-stdio server the recipient is the executable (release digest and server name), so its
-secret inputs are dropped by every release change and must be entered again. Configuration commands require
+An installed process secret follows its executable recipient: the original
+release digest and server name. A release change drops those secret inputs and
+requires explicit configuration again. Ordinary user-configured HTTP sources
+retain their separate endpoint-bound OAuth authority; they are not installed
+package process variants. Configuration commands require
 the exact selected `digest` alongside `installationId`; a release switch rejects an
 older configuration as `plugin_stale` before changing inputs or component enablement.
 An omitted digest is invalid. Rebuild clients together; old unbound commands are not
@@ -585,12 +566,12 @@ an unrelated or unreadable checkpoint cannot block another installation's change
 Installation changes, including the capacity check of a new install, and the
 publication of an assembled execution and command binding/dispatch share one short serialization point. Run
 assembly, model resolution and package reads happen outside it, so a pending change
-never waits for, or holds back, an assembling Run. The live MCP tool catalog is a
-projection of committed installation state, not a second copy that catches up: the same
-critical section that commits a change cancels the affected sources' in-flight connection
-attempts and detaches them, in memory and without waiting for I/O, so no Run assembled
-after the commit can freeze the superseded release's tools. Launching or dialing the
-committed release happens afterwards, outside the lock. The installation owner reports
+never waits for, or holds back, an assembling Run. The MCP catalog is a source observation, not a
+Use grant. Qimu seals superseded admission when the installation change commits;
+every subsequent execution must borrow an exact approved Use, so a stale catalog
+observation cannot authorize superseded code. Original admitted Uses retain
+their own dependency protection. Process retirement, launch and handshake happen
+outside the shared gate. The installation owner reports
 whether its durable change affected selected execution capabilities; staging and
 unchanged configuration do not. Quiescence controls existing executions,
 while every committed execution change, including disable, invalidates
@@ -612,7 +593,7 @@ provider after update or uninstall. History is not evicted or capped by an arbit
 lifetime command count. The public `jsonvalue.Value` normalizes object order
 without rounding numbers or replacing original request evidence with decoded DTOs.
 The host and private stores persist this input; fingerprints are derived projections.
-The public `extension` package owns consumer-defined value schema, scope,
+The public `qimu/portable` package admits consumer-defined value schema, scope,
 applicability, optional absence and composition ordering. Namespace declarations
 publish `points` and `pointValues` using local contract files. Installation admits
 these without starting code. `ResolvePluginPoint` and `plugins point` return
@@ -633,14 +614,15 @@ refused. This change does not convert storage or pending command identities.
 The Reviews analyzer example interprets a value as a same-release callable
 contribution and invokes it through its declared optional capability dependency.
 
-The same public `extension` owner defines local callable metadata, schemas and
-canonical identity. It imports no MCP transport or Runtime internals. The public
-`plugin` SDK, callbacks, actual feature bindings and generator consume that owner;
-installation domain code can admit a contract without activating a backend.
-Go API ownership changed without changing the backend protocol or wire identity.
-Core and private backend stores each admit their exact current schema and receipt
-contract. Preserve incompatible directories and use the owning binary to finish
-pending work; opening a directory never converts or deletes it.
+The same `qimu/portable` owner admits callable metadata, schemas and canonical
+identity without importing MCP or Runtime internals. `qimu/mcp`, Flame's product
+contracts and `qimu/contractgen` consume those admitted values. Installation domain
+code can validate a contract without activating a backend. Flame's `extension`
+package retains only its product origin and scope vocabulary.
+The Qimu integration requires rebuilt contracts and a fresh host database; it
+provides no compatibility wire reader or state conversion. Private backend owners
+continue to admit their own exact schema and receipt contract. Preserve earlier
+deployments and their data together to finish unresolved work.
 
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
@@ -683,8 +665,9 @@ present admitted themes only and never rebuild that decision from `state` or
 the same quiescence as a release switch and returns `plugin_in_use` while an active or
 waiting execution or unresolved command depends on the installation; disablement remains available to withdraw its
 authority while in use. Uninstall is an acknowledgement without a result: it durably removes
-admission before asynchronous connection retirement, and leaves all retirement work in the
-existing Connections shutdown ownership graph.
+admission before asynchronous retirement. Qimu retains the installed execution
+resources and their original proofs until retirement completes; the MCP Pool
+withdraws its session observation without claiming process exit.
 Post-commit package preparation, reconciliation, and projection, including a new
 installation's first result, survive request cancellation and follow the Runtime's
 cancellation root. A reconciliation that cannot
@@ -712,10 +695,11 @@ The connection owner admits configuration, authorization and refusal under the s
 that advances live state. A command canceled before admission changes no session, tools,
 credentials or status; a superseded launch cannot withdraw its replacement connection.
 Supersession cancels obsolete work; shutdown cancels and joins every admitted attempt.
-A stdio server that reports an exit status after its input closes or it is signaled has
-exited, so its retirement succeeded whatever the status. Only a session that could not be
-stopped, or a process-group cleanup that failed, is a retirement failure; it is logged when
-it happens and still reported by Shutdown.
+For an ordinary user-configured stdio server, the original process wait determines
+exit even when the status is nonzero. An installed backend instead requires the
+original Qimu runner's execution proof; closing its MCP session alone proves no
+process exit. Unconfirmed retirement retains its resources and remains visible
+to the shutdown owner.
 Canceling a wait for session retirement leaves unreported close failures with Connections
 until shutdown captures them. MCP shutdown owns one terminal generation: all callers
 that observe completion receive its retained result, including later calls after a
@@ -726,8 +710,11 @@ OAuth target fingerprints encode the owner's exact fields and header bytes throu
 shared framed hash, independently of JSON serialization. Credentials recorded with the
 former JSON hash require a new OAuth authorization; no dual fingerprint reader is retained.
 
-Portable `mcp.json` admits stdio and Streamable HTTP through the existing MCP registry,
-connection supervisor, deferred tools, exposure, approval and OAuth owners.
+Installed `mcp.json` declares packaged stdio executables; managed Node entries
+use the Flame declaration. The current Qimu process profile refuses installed
+HTTP entries. Ordinary user-configured MCP sources continue to support stdio and
+Streamable HTTP through their existing connection, exposure, approval and OAuth
+owners.
 An MCP server's identity is its origin plus the name that origin chose:
 `mcpserver.ID{Origin: User | Installation(id), Name}`. Names are unique only within an
 origin, so a user server and an installation server may share one. The same structured
@@ -765,8 +752,9 @@ reconnect and authorization reach the connection owner's launch integrity check,
 repaired release can recover without replacing its installation.
 Stdio is an explicitly trusted executable with the Runtime user's OS access, not an OS sandbox.
 Only PATH, the reserved package paths, declared environment values and configured inputs
-are inherited. HTTP authorization and secret headers use declared host inputs or the
-existing OAuth owner. Credentials must not be embedded in portable files or UI assets.
+are inherited for installed executables. Ordinary user-configured HTTP sources
+use their explicit credentials and the existing OAuth owner. Credentials must not
+be embedded in package files or UI assets.
 Package entries, relative commands, working directories and resource reads share one
 portable path contract; Windows reserved names and ambiguous path segments are rejected
 before filesystem preparation on every host.
@@ -1016,7 +1004,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 
 - Runtime is a product backend, not another Agent Framework. Scope owns Process, strategy, tree, provider, and effect execution contracts; Runtime adapts them to Flame product semantics.
 - The module root owns the public in-process `Runtime` lifecycle and typed operation methods. `protocol` owns public request, response, event, error, version, and validation values. Do not define synonymous public models or a forwarding binding package.
-- [`plugin`](../packages/go-sdk/plugin/README.md) owns the public typed backend MCP wire binding, immutable Go-owned method contracts and logical Tool metadata translation. Memory, Schedules and independent Reviews use this same package. Private business mutation and receipt ownership stay with each backend; the binding never turns an unrecognized failure into a definite business refusal.
+- [`Qimu MCP`](../qimu/README.md#processes-browser-execution-and-distribution) owns typed backend transport and setup; `qimu/portable` owns immutable callable contracts. [`plugin`](../packages/go-sdk/plugin/README.md) supplies Flame model roles, logical Tool metadata and product receipt contracts. Memory, Schedules and independent Reviews consume those same public owners. Each backend retains its private business mutations and durable receipts; transport never turns an unrecognized failure into a definite business refusal.
 - The Go binding and HTTP/JSON-RPC binding must enter the same delivery endpoint before capability admission, idempotency, invocation lifetime, Application use cases, and event or error projection.
 - Domain packages own behavior-rich aggregates, value objects, invariants, and pure transitions. Aggregates validate construction, hide mutation, and expose legal domain operations; protocol, storage, configuration, provider, and projection values remain strict data. Application packages own cohesive use-case families and cross-aggregate ordering. Neither depends on protocol, storage, provider SDKs, or delivery types.
 - Keep a Domain or Application package only when it protects a real aggregate vocabulary, invariant, or workflow lifecycle. Merge helper, identity, reference, and one-concept packages into their proven owner; do not replace them with one god package.
@@ -1441,18 +1429,21 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 ## SQLite transaction lifetime
 
-`packages/go-sdk/sqlite` is the public schema/transaction owner used by Runtime
-and plugin authors. `packages/go-sdk/plugin/sqlite` owns reusable private command admission
+`qimu/sqlite` is the public schema/transaction owner used by Runtime
+and plugin authors. `packages/go-sdk/plugin/sqlite` owns Flame private command admission
 and atomic receipts. Their former private implementations and entrances are
 removed; Core stores and both bundled backends use the same public mechanisms.
 Host business tables remain in Runtime, and private business tables stay with their
-plugins. This source move changes no database schema or backend protocol.
+plugins. Qimu framework records and Runtime's original business references share
+one `flame-qimu.db` database, with WAL and FULL synchronous durability. This is a
+breaking storage and plugin protocol cutover: use a fresh product root and rebuild
+plugin releases. Historical state is retained separately, never converted on open.
 
 Transaction context binds the exact `*sql.DB`, so work for another database cannot
 accidentally enter the first owner's write-set. Nested work for one database joins
 its transaction; an independent transaction for that same active database is
 refused before connection acquisition. Separate owners do not become a distributed
-transaction. See [SQLite ownership](../packages/go-sdk/sqlite/README.md) and
+transaction. See [SQLite ownership](../qimu/sqlite/README.md) and
 [private receipt ownership](../packages/go-sdk/plugin/sqlite/README.md).
 
 The SQLite transaction boundary owns connection admission, commit and joined
@@ -1619,8 +1610,8 @@ absent, while an explicit empty map no longer silently inherits parent credentia
 Malformed persisted HTTP endpoints fail reads without automatic repair; valid records
 and the public protocol keep their format.
 
-The MCP connection supervisor admits every attempt before configuration, execution
-resource or credential I/O. Admission withdraws the previous session and tools and
+For ordinary user-configured sources, the MCP connection supervisor admits every
+attempt before configuration, execution resource or credential I/O. Admission withdraws the previous session and tools and
 publishes connecting from that same owner. Startup, reconnect and authorization
 share this lifecycle; supersession and shutdown cancel and join preparation as well
 as dialing. The application coordinates durable configuration, exposure and ordered
@@ -1649,6 +1640,16 @@ without waiting for configuration I/O, handshakes or tool discovery. Every sourc
 connects independently under the Runtime lifetime. Plugin management stays available
 while a source is connecting; disable cancels its attempt and shutdown joins it.
 A construction caller's cancellation after admission cannot retire accepted attempts.
+Managed MCP catalogs retain only the original instance, session and binding
+observation. Discovery holds a short Qimu Use and releases it before publication.
+Every Tool, callback and installed command borrows its exact approved Use;
+callback preparation and transport work finish before that borrow closes. An idle
+catalog cannot prevent release replacement or uninstall. Withdrawal requests
+retirement from Qimu, which retains and joins the actual process resource; Pool
+shutdown does not claim process exit. Waiting Run restoration obtains original
+executable schemas and bindings independently of the current catalog and never
+publishes restored providers as a new selection.
+
 Catalog publications include pending source identities atomically with executable tools.
 Checkpoints capture MCP Tool references separately for root and delegated groups.
 A connection may publish between those two resolutions, so a union cannot reconstruct

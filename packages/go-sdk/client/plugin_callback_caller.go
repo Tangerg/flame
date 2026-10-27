@@ -6,16 +6,16 @@ import (
 	"iter"
 	"sync/atomic"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 )
 
 // PluginCallbackCaller binds background work to setup's activation and nested
 // operations to their calling-owner callback, preserving original context.
-type PluginCallbackCaller struct{ activation pluginsdk.CallbackRef }
+type PluginCallbackCaller struct{ activation qimumcp.CallbackRef }
 
-func NewPluginCallbackCaller(activation pluginsdk.CallbackRef) (*PluginCallbackCaller, error) {
+func NewPluginCallbackCaller(activation qimumcp.CallbackRef) (*PluginCallbackCaller, error) {
 	if err := activation.Validate(); err != nil {
 		return nil, err
 	}
@@ -35,14 +35,14 @@ func (c *PluginCallbackCaller) CallPlugin(ctx context.Context, request protocol.
 	return client.CallPlugin(ctx, request, options)
 }
 
-func (c *PluginCallbackCaller) reference(ctx context.Context) (pluginsdk.CallbackRef, error) {
+func (c *PluginCallbackCaller) reference(ctx context.Context) (qimumcp.CallbackRef, error) {
 	if c == nil {
-		return pluginsdk.CallbackRef{}, errors.New("runtime: plugin callback caller is required")
+		return qimumcp.CallbackRef{}, errors.New("runtime: plugin callback caller is required")
 	}
-	ref, refErr := pluginsdk.CallbackFromContext(ctx)
+	ref, refErr := qimumcp.CallbackFromContext(ctx)
 	if refErr != nil {
-		if _, invocationErr := pluginsdk.InvocationFromContext(ctx); invocationErr == nil {
-			return pluginsdk.CallbackRef{}, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
+		if _, invocationErr := qimumcp.InvocationFromContext(ctx); invocationErr == nil {
+			return qimumcp.CallbackRef{}, errors.New("runtime: an invoked plugin dependency requires its calling-owner callback")
 		}
 		ref = c.activation
 	}

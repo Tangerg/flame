@@ -10,20 +10,21 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
 )
 
-func decodeWriteReply[R any](method *extension.Method, reply []byte) (R, error) {
+func decodeWriteReply[R any](method *portable.Method, reply []byte) (R, error) {
 	var result R
-	raw, err := pluginsdk.DecodeReply[jsontext.Value](reply)
+	raw, err := qimumcp.DecodeReply[jsontext.Value](reply)
 	if err != nil {
 		return result, err
 	}
@@ -34,7 +35,7 @@ func decodeWriteReply[R any](method *extension.Method, reply []byte) (R, error) 
 	return result, err
 }
 
-func mutate[P, R any](ctx context.Context, c *connector, method *extension.Method, id string, input P, admitted jsonvalue.Value, call func(context.Context, P) (R, error)) (R, error) {
+func mutate[P, R any](ctx context.Context, c *connector, method *portable.Method, id string, input P, admitted jsonvalue.Value, call func(context.Context, P) (R, error)) (R, error) {
 	var zero R
 	prepared, original, err := pluginstorage.AdmitCommand(ctx, c.store.db, method.Name(), id, admitted, func(ctx context.Context) error {
 		// Any dispatched write can affect several query pages. Invalidation joins
@@ -61,7 +62,7 @@ func mutate[P, R any](ctx context.Context, c *connector, method *extension.Metho
 			return zero, err
 		}
 	}
-	reply, err := pluginsdk.EncodeReply(value, outcomeErr, classify)
+	reply, err := qimumcp.EncodeReply(value, outcomeErr, classify)
 	if err != nil {
 		return zero, err
 	}
@@ -71,10 +72,10 @@ func mutate[P, R any](ctx context.Context, c *connector, method *extension.Metho
 	return decodeWriteReply[R](method, reply.JSON())
 }
 
-type toolReceiptReader func(context.Context, pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error)
+type toolReceiptReader func(context.Context, qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error)
 
-func registerWrite[P, R any](backend *pluginsdk.Backend, tools *[]tool.Tool, receipts map[string]toolReceiptReader, c *connector, method *pluginsdk.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
-	contract, err := extension.AdmitMethod(method.Descriptor())
+func registerWrite[P, R any](backend *qimumcp.Backend, tools *[]tool.Tool, receipts map[string]toolReceiptReader, c *connector, method *qimumcp.Method[P, R], name string, call func(context.Context, P) (R, error)) error {
+	contract, err := portable.AdmitMethod(method.Descriptor())
 	if err != nil {
 		return err
 	}
@@ -84,7 +85,7 @@ func registerWrite[P, R any](backend *pluginsdk.Backend, tools *[]tool.Tool, rec
 		if err != nil {
 			return zero, err
 		}
-		original, err := pluginsdk.RequestInput(ctx)
+		original, err := qimumcp.RequestInput(ctx)
 		if err != nil {
 			return zero, err
 		}
@@ -94,7 +95,7 @@ func registerWrite[P, R any](backend *pluginsdk.Backend, tools *[]tool.Tool, rec
 	if err != nil {
 		return err
 	}
-	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
+	if err := method.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
 		original, err := command.RequestInput()
 		if err != nil {
 			var zero R
@@ -104,7 +105,7 @@ func registerWrite[P, R any](backend *pluginsdk.Backend, tools *[]tool.Tool, rec
 	}); err != nil {
 		return err
 	}
-	receipts[name] = func(ctx context.Context, input pluginsdk.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
+	receipts[name] = func(ctx context.Context, input qimumcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 		input.Method = method.Name()
 		receipt, err := pluginstorage.ReadReceipt(ctx, c.store.db, input)
 		if err != nil || !receipt.Found {

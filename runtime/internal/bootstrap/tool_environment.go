@@ -2,10 +2,10 @@ package bootstrap
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -34,16 +34,17 @@ type toolEnvironment struct {
 	toolResults     *pluginservices.ToolResults
 	pluginCalls     *pluginservices.CommandCalls
 	callComposition *pluginservices.CallComposition
-	modelCallbacks  []pluginsdk.Callback
+	modelCallbacks  []qimumcp.Callback
 	utilityModel    models.AuxiliaryResolver
 	closers         []*teardownStep
-	admission       *plugins.Admission
+	admission       *qimu.Admission
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
 // process-owned tool runtime. Keeping the contract as one value lets construction
 // transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
+	framework      frameworkComposition
 	modelServices  modelEnvironment
 	workspaceScope *workspace.Scope
 	conversation   interface {
@@ -71,16 +72,9 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	if err != nil {
 		return toolEnvironment{}, err
 	}
-	admission := plugins.NewAdmission()
-	commands, err := plugins.NewCommands(cfg.stores.PluginCommands, admission)
-	if err != nil {
-		return toolEnvironment{}, err
-	}
-	callers, err := pluginservices.NewCallerRestorer(commands, cfg.stores.ToolInvocations)
-	if err != nil {
-		return toolEnvironment{}, err
-	}
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, callers)
+	admission := cfg.stores.Admission
+	commands, callers := deps.framework.commands, deps.framework.callers
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.modelServices.callbacks, prepareTool, deps.publish, callers, deps.framework.installed)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -91,11 +85,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		// must outlive that deadline and return only when the pool generation has
 		// actually settled, so a timed-out Instance retains and later joins it.
 		closers: []*teardownStep{terminalStep(func(ctx context.Context) error {
-			return errors.Join(mcpPool.Shutdown(context.WithoutCancel(ctx)), deps.modelServices.callbacks.Close())
+			return mcpPool.Shutdown(context.WithoutCancel(ctx))
 		})},
 	}
 	environment.admission = admission
-	commandCalls, err := pluginservices.NewCommandCalls(cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions, mcpPool, commands, deps.publish)
+	commandCalls, err := pluginservices.NewCommandCalls(deps.framework.host, cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions, mcpPool, commands, deps.publish)
 	if err != nil {
 		return environment, err
 	}
@@ -136,6 +130,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		Plan:            deps.plan,
 		Interrupt:       runinput.Require,
 		MCPToolDisabled: deps.mcp.exposure.ToolDisabled,
+		RestoreMCP:      mcpPool.RestoreTools,
 		SkillProposals:  deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
 		SandboxShell:         cfg.sandboxShell,

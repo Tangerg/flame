@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -44,11 +44,11 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 			return nil, fmt.Errorf("%w: duplicate resolved requirement %s", ErrInvalid, key)
 		}
 		seen[key] = true
-		contract, err := extension.ParseCapability(value.Contract.JSON())
+		contract, err := portable.ParseCapability(value.Contract.JSON())
 		if err != nil {
 			return nil, fmt.Errorf("%w: requirement %s contract: %w", ErrInvalid, key, err)
 		}
-		if !value.Optional && len(value.Bindings) == 0 || contract.Descriptor().Composition == extension.Selection && len(value.Bindings) > 1 {
+		if !value.Optional && len(value.Bindings) == 0 || contract.Descriptor().Composition == portable.Selection && len(value.Bindings) > 1 {
 			return nil, fmt.Errorf("%w: requirement %s binding cardinality", ErrInvalid, key)
 		}
 		owned.values[i].Contract = contract.Identity()
@@ -64,7 +64,7 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 			if err := binding.Server.Validate(); err != nil {
 				return nil, err
 			}
-			if !extension.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
+			if !portable.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
 				return nil, fmt.Errorf("%w: requirement %s binding contract", ErrInvalid, key)
 			}
 			providerKey := binding.Provider.InstallationID.String() + "/" + binding.Contribution.String()

@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { HOST_MODULES } from "@flame/component-sdk/build";
 
@@ -19,19 +18,9 @@ export function pluginModules() {
   const namedExports = new Map();
   return {
     name: "flame-public-plugin-modules",
-    async configResolved(value) {
+    configResolved(value) {
       config = value;
-      const ui = JSON.parse(
-        await readFile(new URL("../../packages/ui/package.json", import.meta.url), "utf8"),
-      );
-      modules = [
-        ...new Set([
-          ...HOST_MODULES,
-          ...Object.keys(ui.exports)
-            .filter((key) => key !== "." && !key.endsWith(".css"))
-            .map((key) => `@flame/ui/${key.slice(2)}`),
-        ]),
-      ];
+      modules = [...HOST_MODULES];
       for (const module of modules) {
         if (!reactModules.has(module)) continue;
         namedExports.set(

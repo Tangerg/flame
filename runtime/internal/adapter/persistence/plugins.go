@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -154,12 +154,8 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, nil
 }
 
-// Save replaces the installation's state and keeps one MCP source row per
-// server its selected release declares. A source the release no longer
-// declares is removed, and its exposure, credentials and standing approvals
-// follow by cascade.
-func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Installation) error {
-	record := installation.Snapshot()
+// projectRecord writes only the Host's transaction-bound product index.
+func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Record) error {
 	id := record.ID.String()
 	var staged any
 	if record.Staged != nil {
@@ -205,38 +201,31 @@ func (s *InstallationStore) Save(ctx context.Context, installation *plugin.Insta
 	})
 }
 
-// Remove deletes the installation; its state, MCP sources and everything that
-// references them follow by cascade.
-func (s *InstallationStore) Remove(ctx context.Context, id identity.InstallationID) error {
-	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, id.String())
-	if err != nil {
-		return err
-	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return plugin.ErrNotFound
-	}
-	return nil
+// Initialized records completion separately from the independently durable
+// installation operations. An interrupted bootstrap resumes the same identities.
+func (s *InstallationStore) Initialized(ctx context.Context) (bool, error) {
+	var initialized bool
+	err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_initialization WHERE id=1)`).Scan(&initialized)
+	return initialized, err
 }
 
-// Initialize commits the first-party catalog and its completion atomically.
-// Deleting all installations later does not make initialization pending again.
-func (s *InstallationStore) Initialize(ctx context.Context, install func(context.Context) error) error {
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		var initialized bool
-		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM plugin_initialization WHERE id=1)`).Scan(&initialized); err != nil {
-			return err
-		}
-		if initialized {
-			return nil
-		}
-		if err := install(ctx); err != nil {
-			return err
-		}
-		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1)`)
+func (s *InstallationStore) MarkInitialized(ctx context.Context) error {
+	_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1) ON CONFLICT(id) DO NOTHING`)
+	return err
+}
+
+// Stage advances only Flame's proposed update, not the Host's selected release.
+func (s *InstallationStore) Stage(ctx context.Context, id identity.InstallationID, digest identity.Digest) error {
+	if err := digest.Validate(); err != nil {
 		return err
-	})
+	}
+	result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE plugin_installations SET staged_digest=? WHERE id=?`, digest.String(), id.String())
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err == nil && changed != 1 {
+		return plugin.ErrNotFound
+	}
+	return err
 }

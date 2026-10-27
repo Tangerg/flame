@@ -9,9 +9,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -34,10 +35,12 @@ func testModelRequest() *chat.Request {
 }
 
 func TestMemoryGrantKeepsCompleteModelEvidenceWithKnownResponseAndFailure(t *testing.T) {
-	callbacks := pluginsdk.NewCallbacks()
+	callbacks := qimumcp.NewCallbacks()
 	defer callbacks.Close()
 	session := new(sdk.ClientSession)
-	callbacks.AdmitSession(session)
+	if err := callbacks.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	message := chat.NewAssistantMessage(chat.NewTextPart("fact"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "captured-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
 	grant, release, err := GrantMemoryModels(t.Context(), callbacks, session, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -57,7 +60,7 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	token := strings.Repeat("a", 64)
-	_, err := pluginsdk.CallModel(ctx, pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}, "original", testModelRequest())
+	_, err := pluginsdk.CallModel(ctx, qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: token, Call: token, MaxResponseBytes: 1024}, "original", testModelRequest())
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled transport lost its cause: %v", err)
 	}
@@ -67,14 +70,16 @@ func TestModelTransportFailurePreservesCauseWithoutCapability(t *testing.T) {
 }
 
 func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	session := new(sdk.ClientSession)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	var calls atomic.Int32
 	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { calls.Add(1); return "fact", nil }), nil)
 	if err != nil {
@@ -108,14 +113,16 @@ func TestModelGrantBindsSessionBudgetAndRevocation(t *testing.T) {
 func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 	for _, lost := range []bool{false, true} {
 		t.Run(fmt.Sprint("response lost ", lost), func(t *testing.T) {
-			callbacks := pluginsdk.NewCallbacks()
+			callbacks := qimumcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := callbacks.Close(); err != nil {
 					t.Error(err)
 				}
 			})
 			session := new(sdk.ClientSession)
-			callbacks.AdmitSession(session)
+			if err := callbacks.AdmitSession(session); err != nil {
+				t.Fatal(err)
+			}
 			var calls atomic.Int32
 			grant, release, err := GrantMemoryModels(t.Context(), callbacks, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)
@@ -132,7 +139,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if method.Descriptor().Kind != extension.Mutation {
+			if method.Descriptor().Kind != portable.Mutation {
 				t.Fatal("external model call was declared as a query")
 			}
 			value, err := pluginsdk.CallModel(t.Context(), grant, "first", testModelRequest())
@@ -148,7 +155,7 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 			changed := testModelRequest()
 			changed.Messages[1] = chat.NewUserMessage(chat.NewTextPart("changed input"))
 			_, err = pluginsdk.CallModel(t.Context(), grant, "first", changed)
-			failure, known := errors.AsType[*extension.Refusal](err)
+			failure, known := errors.AsType[*portable.Refusal](err)
 			if !known || failure.Code != "command_conflict" {
 				t.Fatalf("changed original input did not conflict: %v", err)
 			}
@@ -166,14 +173,16 @@ func TestModelInvocationIdentityFencesExternalCalls(t *testing.T) {
 	}
 }
 func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	session := new(sdk.ClientSession)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	entered := make(chan struct{})
 	settled := make(chan struct{})
 	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(ctx context.Context, _ *chat.Request) (string, error) {
@@ -204,22 +213,22 @@ func TestGrantRetirementCancelsAndJoinsAdmittedModelCall(t *testing.T) {
 	}
 }
 func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	server := sdk.NewServer(&sdk.Implementation{Name: "memory"}, nil)
-	binding, err := pluginsdk.NewBackend(server)
+	binding, err := qimumcp.NewBackend(server)
 	if err != nil {
 		t.Fatal(err)
 	}
-	method, err := pluginsdk.NewMethod[pluginsdk.CallbackRef, string](pluginsdk.MethodConfig{Name: "fixture.memory/test.v1", Kind: extension.Query, Target: "call", Description: "Exercise the model callback captured by the Host."})
+	method, err := qimumcp.NewMethod[qimumcp.CallbackRef, string](qimumcp.MethodConfig{Name: "fixture.memory/test.v1", Kind: portable.Query, Target: "call", Description: "Exercise the model callback captured by the Host."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(binding, func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.CallbackRef]) (string, error) {
+	if err := method.RegisterServer(binding, func(error) string { return "model" }, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.CallbackRef]) (string, error) {
 		response, err := pluginsdk.CallModel(ctx, command.Input, "original-model-call", testModelRequest())
 		if err != nil {
 			return "", err
@@ -232,7 +241,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "runtime"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -246,7 +255,9 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "durable fact", nil }), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -258,7 +269,7 @@ func TestModelCapabilityDuringCurrentMCPRequest(t *testing.T) {
 	}
 }
 func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -266,7 +277,9 @@ func TestCanceledInvocationRefusesNewModelCalls(t *testing.T) {
 	})
 	ctx, cancel := context.WithCancel(t.Context())
 	session := new(sdk.ClientSession)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	grant, release, err := GrantMemoryModels(ctx, broker, session, textModel(func(context.Context, *chat.Request) (string, error) { return "", errors.New("must not be called") }), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -291,7 +304,7 @@ func (e *boundedEmbeddings) Embed(_ context.Context, texts []string) ([][]float3
 }
 
 func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
@@ -299,7 +312,9 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 	})
 	embedder := new(boundedEmbeddings)
 	session := new(sdk.ClientSession)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	grant, release, err := GrantMemoryModels(t.Context(), broker, session, nil, embedder)
 	if err != nil {
 		t.Fatal(err)
@@ -324,21 +339,23 @@ func TestEmbeddingCapabilityAcceptsMaximumEscapedActiveCorpus(t *testing.T) {
 }
 
 func TestRetiredConnectionRefusesLateModelGrant(t *testing.T) {
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
 	session := new(sdk.ClientSession)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	broker.RevokeSession(session)
 	grant, release, err := GrantMemoryModels(t.Context(), broker, session, nil, nil)
 	if err == nil {
 		release()
 		t.Fatalf("retired connection issued model capability %+v", grant)
 	}
-	if grant != (pluginsdk.CallbackRef{}) || release != nil {
+	if grant != (qimumcp.CallbackRef{}) || release != nil {
 		t.Fatal("refused grant retained model authority")
 	}
 }
@@ -361,14 +378,16 @@ func TestModelGrantRefusesRequestsOutsideCapturedAuthority(t *testing.T) {
 		{"missing captured format", func(request *chat.Request) { request.Options.OutputFormat = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			broker := pluginsdk.NewCallbacks()
+			broker := qimumcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := broker.Close(); err != nil {
 					t.Error(err)
 				}
 			})
 			session := new(sdk.ClientSession)
-			broker.AdmitSession(session)
+			if err := broker.AdmitSession(session); err != nil {
+				t.Fatal(err)
+			}
 			var calls atomic.Int32
 			grant, release, err := GrantMemoryModels(t.Context(), broker, session, textModel(func(context.Context, *chat.Request) (string, error) {
 				calls.Add(1)

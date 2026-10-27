@@ -5,9 +5,10 @@ import (
 	"errors"
 	"maps"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -23,13 +24,13 @@ import (
 
 type ToolPreparationConfig struct {
 	Installations plugins.Store
-	Callbacks     *pluginsdk.Callbacks
+	Callbacks     *qimumcp.Callbacks
 	Embeddings    func(context.Context) (models.TextEmbedder, error)
 	Invalidations invalidation.Publish
 }
 
 func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, error) {
-	memoryContract, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	memoryContract, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +105,7 @@ func scopeCallbacks(ctx context.Context, metadata sdk.ParamsBase) context.Contex
 }
 
 // Only the publisher's search Tool receives Memory's narrow embedding grant.
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginsdk.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error), invalidations invalidation.Publish) (mcp.ToolCall, func(), error) {
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *qimumcp.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error), invalidations invalidation.Publish) (mcp.ToolCall, func(), error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")
@@ -119,7 +120,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	_, remote, _ := ref.MCP()
 	if remote.String() != memorycontract.SearchToolName {
 		metadata := scopemcp.RequestMetaFromContext(ctx)
-		delete(metadata, pluginsdk.CallbackMetadataKey)
+		delete(metadata, qimumcp.CallbackMetadataKey)
 		ctx = scopemcp.WithRequestMeta(ctx, metadata)
 		scoped, err := pluginsdk.WithToolContext(ctx, pluginsdk.ToolContext{CWD: cwd})
 		if err != nil {
@@ -131,19 +132,21 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if err != nil {
 		return nil, nil, err
 	}
-	session, err := source.CallbackSession()
+	borrowed, err := source.BorrowSession(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	grant, release, err := GrantMemoryModels(ctx, callbacks, session, nil, embedder)
+	ctx = borrowed.Context()
+	grant, revoke, err := GrantMemoryModels(ctx, callbacks, borrowed.Session(), nil, embedder)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(err, borrowed.Close())
 	}
+	release := func() { revoke(); _ = borrowed.Close() }
 	space := ""
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	metadata, err := pluginsdk.CallbackMetadata(grant)
+	metadata, err := qimumcp.CallbackMetadata(grant)
 	if err != nil {
 		release()
 		return nil, nil, err

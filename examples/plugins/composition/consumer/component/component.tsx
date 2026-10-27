@@ -33,12 +33,14 @@ export function CompositionBoard({ context }: { context: ComponentContext }) {
         await events.return?.();
       }
     };
-    void context.track(observe()).catch((error: unknown) => {
-      if (!signal.aborted)
-        setCatalog({
-          error: error instanceof Error ? error.message : String(error),
-        });
-    });
+    void context
+      .track(() => observe())
+      .catch((error: unknown) => {
+        if (!signal.aborted)
+          setCatalog({
+            error: error instanceof Error ? error.message : String(error),
+          });
+      });
     return () => controller.abort();
   }, [context]);
   if (catalog.error) return <p role="status">{catalog.error}</p>;

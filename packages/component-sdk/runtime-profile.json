@@ -1,0 +1,16 @@
+{
+  "profile": "io.github.tangerg.flame/component-runtime@1",
+  "modules": [
+    "react",
+    "react-dom",
+    "react-dom/client",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "@flame/component-sdk",
+    "@flame/ui",
+    "@qimu/sdk",
+    "@qimu/sdk/json",
+    "@qimu/react"
+  ],
+  "packageExports": ["@flame/ui"]
+}

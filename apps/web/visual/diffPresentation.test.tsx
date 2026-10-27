@@ -48,7 +48,7 @@ function mountDiff(
     telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
     locale,
     signal: owner.signal,
-    track: (operation) => operation,
+    track: (operation) => operation(owner.signal),
     compose: () => null,
   };
   const outsideEscape = vi.fn();

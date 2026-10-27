@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
@@ -29,7 +29,7 @@ func TestUnsupportedPlatformSettlesARefusalWithoutHostAccess(t *testing.T) {
 	encoded, _ := jsonvalue.Encode(input)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "unavailable", input, encoded)
-		refusal, known := errors.AsType[*extension.Refusal](err)
+		refusal, known := errors.AsType[*portable.Refusal](err)
 		if !known || refusal.Code != "sandbox_unavailable" {
 			t.Fatalf("unsupported confinement was not refused: %v", err)
 		}

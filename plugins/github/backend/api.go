@@ -14,8 +14,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 const (
@@ -40,7 +40,7 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 }
 
 func refused(code, message string) error {
-	return &extension.Refusal{Code: code, Message: "github: " + message}
+	return &portable.Refusal{Code: code, Message: "github: " + message}
 }
 
 func query[T any](ctx context.Context, c *connector, path string, parameters url.Values, decode func(response) (T, error)) (T, error) {

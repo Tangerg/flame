@@ -9,7 +9,7 @@ import {
   findCycles,
   readSourceGraph,
   RUNTIME_CLIENT_EDGE,
-  RUNTIME_JSON_EDGE,
+  QIMU_JSON_EDGE,
 } from "./source-graph.mjs";
 
 function fixture(files, callback) {
@@ -154,7 +154,7 @@ test("TSX component imports remain runtime dependencies", () => {
 test("resolved Runtime SDK paths and aliases keep the client boundary", () => {
   for (const [entry, member] of [
     [RUNTIME_CLIENT_EDGE, "asRunId"],
-    [RUNTIME_JSON_EDGE, "parseJSON"],
+    [QIMU_JSON_EDGE, "parseJSON"],
   ]) {
     const sdk = fileURLToPath(import.meta.resolve(entry));
     fixture(

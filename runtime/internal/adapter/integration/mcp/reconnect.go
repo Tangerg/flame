@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -102,11 +102,25 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 // still owns the server. Authorization retains the handler for later reconnects.
 func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepared *launch, keepHandler bool) error {
 	cfg := prepared.config
-	session, cleanupSession, err := dial(ctx, c.lifetime, c.client, prepared)
+	var session *sdk.ClientSession
+	var cleanupSession sessionCleanup
+	var observation *installedObservation
+	var err error
+	if prepared.managed != nil {
+		observation = prepared.managed.observe()
+		session, cleanupSession = observation.session, observation.retire
+		prepared.retire = func() error { return prepared.managed.release(context.WithoutCancel(ctx)) }
+	} else {
+		session, cleanupSession, err = dial(ctx, c.lifetime, c.client, prepared)
+	}
 	step := mcpserver.FailureConnection
 	var verifiedTools []Executable
 	c.mu.Lock()
-	c.ownSessionLocked(session, cleanupSession, prepared.admission.Bindings)
+	if prepared.managed == nil {
+		err = errors.Join(err, c.ownSessionLocked(session, cleanupSession, prepared.admission.Bindings))
+	} else if session != nil {
+		c.sessions[session] = &ownedSession{closeFn: cleanupSession, bindings: prepared.admission.Bindings, managed: observation}
+	}
 	c.mu.Unlock()
 	if err == nil && prepared.admission.Run != nil {
 		step = mcpserver.FailureConfiguration
@@ -122,6 +136,11 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 		// Prove the session is usable before publishing it as connected.
 		step = mcpserver.FailureToolDiscovery
 		verifiedTools, err = sourceTools(ctx, c, cfg, session)
+	}
+	// The catalog contains an observation, not a Use. Release discovery before
+	// it returns or joins retirement; later calls must acquire their own lease.
+	if prepared.managed != nil {
+		err = errors.Join(err, prepared.close())
 	}
 	c.mu.Lock()
 	// Authorization may expire while waiting for the publication lock.

@@ -22,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -370,7 +369,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(directory.DatabasePath()))
+				db, err := sql.Open("sqlite", directory.DatabasePath())
 				if err != nil {
 					t.Fatal(err)
 				}

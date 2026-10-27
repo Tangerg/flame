@@ -7,7 +7,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -39,7 +41,7 @@ type CommandBinding struct {
 	Activation   Activation
 	Server       mcpserver.ServerName
 	Phase        CommandPhase
-	Invocation   extension.Invocation
+	Invocation   portable.Invocation
 }
 
 type Command struct{ record CommandBinding }
@@ -59,18 +61,18 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	if err := record.Contribution.Validate(); err != nil {
 		return nil, err
 	}
-	if !extension.ValidExportName(record.Export) {
+	if !portable.ValidExportName(record.Export) {
 		return nil, fmt.Errorf("%w: command export", ErrInvalid)
 	}
-	contract, err := extension.ParseCapability(record.Contract.JSON())
+	contract, err := portable.ParseCapability(record.Contract.JSON())
 	if err != nil {
 		return nil, err
 	}
 	method, found := contract.Method(record.Method)
-	if !found || method.Kind() != extension.Mutation {
+	if !found || method.Kind() != portable.Mutation {
 		return nil, fmt.Errorf("%w: command does not belong to its original capability", ErrInvalid)
 	}
-	if err := record.Invocation.Validate(); err != nil {
+	if err := extension.ValidateInvocation(record.Invocation); err != nil {
 		return nil, err
 	}
 	if record.Invocation.ID != record.ID || record.Invocation.Target.Scope != method.Descriptor().Target {

@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -40,7 +42,7 @@ func TestObservedEmbedderJournalsEndpointEvidenceThroughSharedOwner(t *testing.T
 	t.Cleanup(func() { _ = db.Close() })
 	store := db.ModelInvocations
 	subject := &embedder{id: "space", model: embeddingModelFixture{served: "served-embed"}, selection: testsupport.MustModelSelection("openai", "embed-model"), journal: store}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: extension.Target{Scope: "call", Reference: "embed-call"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-call", Origin: extension.Automatic, Parent: "owner-operation", Target: portable.Target{Scope: "call", Reference: "embed-call"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +84,7 @@ func TestEmbeddingRetainsPhysicalEvidenceWhenPricingFails(t *testing.T) {
 		selection: testsupport.MustModelSelection("openai", "embed-model"), journal: db.ModelInvocations,
 		pricing: func(string, string, *chat.Usage) (accounting.Cost, error) { return accounting.Cost{}, cause },
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "embed-pricing"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "embed-pricing", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "embed-pricing"}})
 	if err != nil {
 		t.Fatal(err)
 	}

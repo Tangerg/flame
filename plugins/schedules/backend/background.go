@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/google/uuid"
 )
 
@@ -31,11 +33,11 @@ type background struct {
 	store           store
 	scanner         *app.Scanner
 	host            runHost
-	target          extension.Target
+	target          portable.Target
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, db *sql.DB, store store, scanner *app.Scanner, host runHost, contribution string, target extension.Target, closeHost func() error) *background {
+func newBackground(ctx context.Context, db *sql.DB, store store, scanner *app.Scanner, host runHost, contribution string, target portable.Target, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{contribution: contribution, closeDone: make(chan struct{}), ctx: lifetime, cancel: cancel, done: make(chan struct{}), db: db, store: store, scanner: scanner, host: host, target: target, closeHost: closeHost}
 }
@@ -85,8 +87,8 @@ func (b *background) run() {
 	}
 }
 func (b *background) scan(now time.Time) {
-	invocation := extension.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
-	ctx, err := pluginsdk.WithInvocation(b.ctx, invocation)
+	invocation := portable.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+	ctx, err := qimumcp.WithInvocation(b.ctx, invocation)
 	if err != nil {
 		b.report("caller admission", err)
 		return
@@ -119,7 +121,7 @@ func (b *background) scan(now time.Time) {
 			b.report("captured target", errors.New("schedules: capture belongs to another installation"))
 			continue
 		}
-		calling, err := pluginsdk.WithInvocation(b.ctx, request.Invocation())
+		calling, err := qimumcp.WithInvocation(b.ctx, request.Invocation())
 		if err == nil {
 			_, err = resumeCaptured(calling, b.db, b.store, b.host, request)
 		}
@@ -138,7 +140,7 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 	if err := request.Validate(); err != nil {
 		return app.RunReference{}, err
 	}
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -159,7 +161,7 @@ func resumeCaptured(ctx context.Context, db *sql.DB, store store, host runHost, 
 			return app.RunReference{}, errors.New("schedules: original manual input differs from capture")
 		}
 		if prepared == nil {
-			reference, err := pluginsdk.DecodeReply[app.RunReference](original)
+			reference, err := qimumcp.DecodeReply[app.RunReference](original)
 			if err == nil && (reference.RunID != request.RunID() || reference.SessionID != request.SessionID()) {
 				err = errors.New("schedules: original manual receipt differs from capture")
 			}

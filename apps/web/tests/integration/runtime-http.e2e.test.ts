@@ -1080,6 +1080,11 @@ for await (const line of lines) {
       execFileAsync("go", ["build", "-o", runtimeExecutable, "./cmd/flame-runtime"], {
         cwd: runtimeDirectory,
       }),
+      execFileAsync(
+        "go",
+        ["build", "-o", join(environmentRoot, "qimu-runner"), "./runner/cmd/qimu-runner"],
+        { cwd: resolve(runtimeDirectory, "../qimu") },
+      ),
       execFileAsync("go", ["build", "-o", cliExecutable, "."], {
         cwd: resolve(runtimeDirectory, "../apps/cli"),
         env: { ...process.env, GOWORK: resolve(runtimeDirectory, "../go.work") },
@@ -1139,7 +1144,7 @@ for await (const line of lines) {
     )!;
     await client.plugins.setEnablement({ installationId: defaultTrajectory.id, enabled: false });
     const installed = await client.plugins.install({
-      source: resolve(runtimeDirectory, "../plugins/trajectory/package"),
+      source: join(environmentRoot, "plugins", "trajectory"),
     });
     const target = { installationId: installed.id, digest: installed.selected.digest };
     const reader = createSharedClient();
@@ -1154,7 +1159,7 @@ for await (const line of lines) {
       const resourceRequest = { ...target, componentId: component.id, path: component.entry };
       const resource = await client.plugins.readResource(resourceRequest);
       expect(Buffer.from(resource.body, "base64")).toEqual(
-        await readFile(resolve(runtimeDirectory, "../plugins/trajectory/package", component.entry)),
+        await readFile(join(environmentRoot, "plugins", "trajectory", component.entry)),
       );
       const session = await client.sessions.create({
         workspace: { path: root },
@@ -1198,6 +1203,7 @@ for await (const line of lines) {
     const resourceRequest = { ...release, componentId: component.id, path: component.entry };
     const workspace = { path: root };
     let created: Awaited<ReturnType<typeof addInstalledMemory>> | undefined;
+    let withdrawn = false;
     try {
       expect(installation.selected.diagnostics).toEqual([]);
       created = await addInstalledMemory(client, {
@@ -1217,10 +1223,9 @@ for await (const line of lines) {
       expect(component.scope).toBe("client");
       expect(
         Buffer.from((await client.plugins.readResource(resourceRequest)).body, "base64"),
-      ).toEqual(
-        await readFile(resolve(runtimeDirectory, "../plugins/memory/package", component.entry)),
-      );
+      ).toEqual(await readFile(join(environmentRoot, "plugins", "memory", component.entry)));
       await client.plugins.setEnablement({ installationId: installation.id, enabled: false });
+      withdrawn = true;
       await expect(client.plugins.readResource(resourceRequest)).rejects.toMatchObject({
         code: -32042,
       });
@@ -1229,15 +1234,20 @@ for await (const line of lines) {
       ).rejects.toSatisfy(
         (error: unknown) => error instanceof Error && error.message.includes("unavailable"),
       );
-      await activateManagedOwner("memory");
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+      await awaitMCPTools(
+        { origin: { type: "installation", installationId: installation.id }, name: "memory" },
+        (tools) => tools.some((tool) => tool.name === "search_memory"),
+      );
+      withdrawn = false;
       expect(await readInstalledMemory(client, "project", workspace.path)).toContainEqual(created);
     } finally {
-      await activateManagedOwner("memory");
+      if (withdrawn) await activateManagedOwner("memory");
       if (created) await deleteInstalledMemory(client, created.id, created.revision);
       await client.plugins.uninstall(installation.id);
       managedOwners.delete("memory");
     }
-  });
+  }, 10_000);
 
   it("joins a CLI-owned run from independent views without canceling it when a view closes", async () => {
     const observer = createSharedClient();

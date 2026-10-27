@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/runner"
+	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -23,6 +27,7 @@ type InstanceConfig struct {
 	DefaultWorkspacePath string
 	DataDirectory        string
 	FirstPartyDirectory  string
+	RunnerExecutable     string
 	ConfigDirectories    []string
 	BuildID              string
 	ServerInfo           protocol.ServerInfo
@@ -77,10 +82,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 
-	if err = initializeFirstPartyPlugins(ctx, stores, cfg.FirstPartyDirectory); err != nil {
-		return nil, config.Settings{}, err
-	}
-
 	if err = seedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -95,7 +96,13 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err = seedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
+	processRunner, err := runner.NewDaemon(runner.DaemonConfig{Executable: cfg.RunnerExecutable, Directory: filepath.Join(cfg.DataDirectory, "runner"), StartTimeout: 10 * time.Second})
+	if err != nil {
+		return nil, config.Settings{}, err
+	}
 	assemblyConfig := composeConfig(settings, stores, chatResolver, providers, buildID)
+	assemblyConfig.processRunner = processRunner
+	assemblyConfig.firstPartyDirectory = cfg.FirstPartyDirectory
 	// Resources close in reverse acquisition order. The directory must remain
 	// leased even when a constructor's bounded shutdown wait expires.
 	assemblyConfig.resources = append([]terminalResource{directory}, assemblyConfig.resources...)
@@ -109,6 +116,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.resources)
+	ownedLifetime.toolResources = append(ownedLifetime.toolResources, terminalStep(func(ctx context.Context) error { return processRunner.Close(ctx) }))
 	directoryOwned = false
 	storesOwned = false
 	host, err := assemble(ctx, assemblyConfig, ownedLifetime, buildToolEnvironment)
@@ -148,7 +156,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	host.lifetime.stopRuntime = stopRuntime
 	// The delivery endpoint published the callback RPC, so background plugins can
 	// now activate; only now may uncertain-execution revival query their sessions.
-	if err = host.application.recoverUncertainExecutions(ctx); err != nil {
+	if err = host.application.recoverUncertainExecutions(ctx); err != nil && !errors.Is(err, qimu.ErrRecoveryRequired) {
 		return nil, config.Settings{}, err
 	}
 	workerJoins := host.application.startWorkers(runtimeContext)
@@ -171,6 +179,7 @@ func (i InstanceConfig) validate() error {
 		{name: "default workspace path", value: i.DefaultWorkspacePath},
 		{name: "data directory", value: i.DataDirectory},
 		{name: "first-party directory", value: i.FirstPartyDirectory},
+		{name: "runner executable", value: i.RunnerExecutable},
 	} {
 		if path.value == "" {
 			return fmt.Errorf("runtime: %s is required", path.name)
@@ -208,3 +217,9 @@ func (i *Instance) ServerInfo() protocol.ServerInfo { return i.serverInfo }
 // returned unwrapped when the single-connection pool is busy, so a caller can
 // distinguish a saturated runtime from a broken one.
 func (i *Instance) CheckStorage(ctx context.Context) error { return i.stores.Ping(ctx) }
+
+// PluginControl returns the authenticated Realm protocol endpoint. It remains
+// available for original cleanup proofs while application admission is closed.
+func (i *Instance) PluginControl() http.Handler { return i.application.pluginControl }
+
+func (i *Instance) CheckPlugins(context.Context) error { return i.stores.Admission.RecoveryError() }

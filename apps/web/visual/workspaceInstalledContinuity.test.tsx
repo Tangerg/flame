@@ -118,7 +118,7 @@ function Memory({ context }: ComponentProps<PluginComponent>) {
   const submit = () => {
     const key = `memory-save-${save.mock.calls.length + 1}`;
     setSaved(`pending ${key}`);
-    void context.track(save(key)).then(() => setSaved(`saved ${key}`));
+    void context.track(() => save(key)).then(() => setSaved(`saved ${key}`));
   };
   return (
     <section aria-label="Memory entry">

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"

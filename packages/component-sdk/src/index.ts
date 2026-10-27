@@ -1,9 +1,6 @@
 import type { ClientTelemetry } from "./telemetry";
-import {
-  OperationFailure,
-  parseJSON,
-  stringifyJSON,
-} from "@flame/runtime-client";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { OperationFailure } from "@flame/runtime-client";
 import { pluginMethod } from "@flame/runtime-client";
 export { OperationFailure } from "@flame/runtime-client";
 import type { ComponentType, ReactNode } from "react";
@@ -95,7 +92,9 @@ export interface ComponentContext {
   // The host owns the active locale; a component projects it, never selects it.
   readonly locale: string;
   readonly signal: AbortSignal;
-  track<T>(operation: Promise<T>): Promise<T>;
+  // Reserve work before starting it; preserve the original command promise and
+  // its retry identity. The factory is invoked synchronously after admission.
+  track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;
   compose(composition: ComponentComposition): ReactNode;
 }
 
@@ -188,18 +187,19 @@ function mapMutation<R>(
       enumerable: true,
       value: (options?: { signal?: AbortSignal }) => {
         context.signal.throwIfAborted();
-        return mapMutation<R>(
-          source.retry({
-            signal: options?.signal
-              ? AbortSignal.any([context.signal, options.signal])
-              : context.signal,
-          }),
-          context,
+        return context.track(() =>
+          mapMutation<R>(
+            source.retry({
+              signal: options?.signal
+                ? AbortSignal.any([context.signal, options.signal])
+                : context.signal,
+            }),
+            context,
+          ),
         );
       },
     },
   }) as MutationPromise<R>;
-  context.track(mapped);
   return mapped;
 }
 
@@ -256,7 +256,7 @@ export function bindOperations<
           idempotencyKey: command.idempotencyKey,
           retire: (signal: AbortSignal = context.signal): Promise<void> => {
             context.signal.throwIfAborted();
-            return context.track(
+            return context.track(() =>
               command.retire(AbortSignal.any([context.signal, signal])),
             );
           },
@@ -264,7 +264,7 @@ export function bindOperations<
             signal: AbortSignal = context.signal,
           ): Promise<Outputs[K]> => {
             context.signal.throwIfAborted();
-            return context.track(
+            return context.track(() =>
               command.recover(
                 (value) => value as Outputs[K],
                 AbortSignal.any([context.signal, signal]),
@@ -279,7 +279,7 @@ export function bindOperations<
       consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
       signal: AbortSignal = context.signal,
     ): Promise<Outputs[K]> =>
-      context.track(
+      context.track(() =>
         context.runtime.plugins.queryStream(
           request(method, input, "query", "stream"),
           (chunk, signal) => consume(chunk as Chunks[K], signal),
@@ -296,7 +296,7 @@ export function bindOperations<
     ): Promise<Outputs[K]> => {
       const invocation = request(method, input, "command", "stream");
       const { input: _, contract, method: name, ...binding } = invocation;
-      return context.track(
+      return context.track(() =>
         context.runtime.plugins.stream(
           intent,
           { contract, method: name, input: invocation.input },
@@ -312,7 +312,7 @@ export function bindOperations<
       input: Inputs[K],
       signal: AbortSignal = context.signal,
     ): Promise<Outputs[K]> =>
-      context.track(
+      context.track<Promise<Outputs[K]>>(() =>
         context.runtime.plugins
           .call(request(method, input, "query", "unary"), {
             signal: AbortSignal.any([context.signal, signal]),
@@ -322,17 +322,18 @@ export function bindOperations<
     command: <K extends keyof Inputs & string>(
       method: K,
       input: Inputs[K],
-    ): MutationPromise<Outputs[K]> => {
-      const mutation = context.runtime.plugins.call(
-        request(method, input, "command", "unary"),
-        { signal: context.signal },
-      );
-      if (!("retry" in mutation) || !("idempotencyKey" in mutation))
-        throw new Error("Runtime omitted the command identity");
-      return mapMutation<Outputs[K]>(
-        mutation as MutationPromise<CallPluginResponse>,
-        context,
-      );
-    },
+    ): MutationPromise<Outputs[K]> =>
+      context.track(() => {
+        const mutation = context.runtime.plugins.call(
+          request(method, input, "command", "unary"),
+          { signal: context.signal },
+        );
+        if (!("retry" in mutation) || !("idempotencyKey" in mutation))
+          throw new Error("Runtime omitted the command identity");
+        return mapMutation<Outputs[K]>(
+          mutation as MutationPromise<CallPluginResponse>,
+          context,
+        );
+      }),
   };
 }

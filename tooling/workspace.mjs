@@ -82,16 +82,17 @@ async function declarationFiles(directory) {
   return found;
 }
 
-// The backend protocol version has one owner, extension.Protocol. Stamp it
+// The consumer declaration version has one owner, plugin.DeclarationProtocol. Stamp it
 // into every first-party package declaration so a bump needs no hand-edited
 // manifest; checkGenerated then enforces the projection stays current.
 async function stampDeclarations(repository) {
   const method = await readFile(
-    join(repository, "packages/go-sdk/extension/method.go"),
+    join(repository, "packages/go-sdk/plugin/declaration.go"),
     "utf8",
   );
-  const owner = method.match(/\bconst Protocol = "([^"]+)"/);
-  if (!owner) throw new Error("extension.Protocol not found in method.go");
+  const owner = method.match(/\bconst DeclarationProtocol = "([^"]+)"/);
+  if (!owner)
+    throw new Error("plugin.DeclarationProtocol not found in declaration.go");
   const protocol = JSON.stringify(owner[1]);
   for (const base of ["plugins", "examples/plugins"])
     for (const file of await declarationFiles(join(repository, base))) {
@@ -102,6 +103,7 @@ async function stampDeclarations(repository) {
 }
 
 export async function generate(repository = root) {
+  run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
   await buildShared(repository);
   const env = {
     ...proxyEnvironment(join(root, "out/module-proxy")),
@@ -111,6 +113,29 @@ export async function generate(repository = root) {
     run("go", args, join(repository, member), env);
   const temporary = await mkdtemp(join(tmpdir(), "flame-contract-source-"));
   try {
+    go(["generate", "./mcp"], "qimu");
+    go(
+      ["run", "./cmd/controlgen", "--out", "sdk/src/protocol.generated.ts"],
+      "qimu",
+    );
+    go(
+      [
+        "run",
+        "./examples/document/cmd/webgen",
+        "--out",
+        "examples/document/web/src/api.generated.ts",
+      ],
+      "qimu",
+    );
+    go(
+      [
+        "run",
+        "./examples/authoring/cmd/authorhost",
+        "-generate",
+        "examples/authoring/browser/src/contracts.generated.ts",
+      ],
+      "qimu",
+    );
     go(
       [
         "run",
@@ -137,7 +162,7 @@ export async function generate(repository = root) {
     go(
       [
         "run",
-        "./cmd/flame-sdk",
+        "github.com/Tangerg/flame/qimu/cmd/qimu",
         "contract",
         "--feature",
         memory,
@@ -163,8 +188,31 @@ export async function generate(repository = root) {
       true,
     );
     go(["generate", "./..."], "plugins");
+    go(
+      [
+        "run",
+        "github.com/Tangerg/flame/qimu/cmd/qimu",
+        "contract",
+        "--feature",
+        "usagereports/contracts/capability.json",
+        "--out",
+        "usagereports/package/io.github.tangerg.flame/contracts",
+        "--ts",
+        "usagereports/component",
+      ],
+      "plugins",
+    );
     go(["generate", "./internal/testsupport"], "runtime");
     go(["generate", "./nodequalification", "./integration"], "tooling");
+    go(
+      [
+        "run",
+        "./cmd/pluginbrowsergen",
+        "--out",
+        "../packages/go-sdk/protocol/plugin_browser.generated.go",
+      ],
+      "runtime",
+    );
     go(
       [
         "run",
@@ -216,13 +264,17 @@ export async function generate(repository = root) {
     for (const p of ordered(await workspaces(repository)))
       if (p.scripts?.generate)
         run("npm", ["run", "generate"], p.directory, env);
-    await cp(
-      join(repository, "runtime/testdata/plugin-values.json"),
-      join(
-        repository,
-        "packages/runtime-client/testing/generated/plugin-values.json",
-      ),
-    );
+    for (const destination of [
+      "qimu/sdk/testing/generated/plugin-values.json",
+      "runtime/testdata/plugin-values.json",
+      "packages/runtime-client/testing/generated/plugin-values.json",
+    ]) {
+      await mkdir(dirname(join(repository, destination)), { recursive: true });
+      await cp(
+        join(repository, "qimu/jsonvalue/testdata/values.json"),
+        join(repository, destination),
+      );
+    }
     await stampDeclarations(repository);
   } finally {
     await rm(temporary, { recursive: true, force: true });
@@ -463,6 +515,7 @@ export function proxyEnvironment(proxy, { offline = false } = {}) {
 }
 export async function linkDependencies(repository, packages) {
   packages ??= await workspaces(repository);
+  const workspaceNames = new Set(packages.map((pkg) => pkg.name.split("/")[0]));
   const members = [
     "",
     ...packages.map((p) => relative(repository, p.directory)),
@@ -473,15 +526,15 @@ export async function linkDependencies(repository, packages) {
     const destination = join(repository, member, "node_modules");
     await mkdir(destination, { recursive: true });
     for (const entry of await readdir(installed, { withFileTypes: true })) {
-      if (entry.name === "@flame") continue;
+      if (workspaceNames.has(entry.name)) continue;
       await symlink(join(installed, entry.name), join(destination, entry.name));
     }
   }
-  const names = join(repository, "node_modules/@flame");
-  await mkdir(names, { recursive: true });
-  for (const p of packages)
-    if (p.name.startsWith("@flame/"))
-      await symlink(p.directory, join(repository, "node_modules", p.name));
+  for (const p of packages) {
+    const destination = join(repository, "node_modules", p.name);
+    await mkdir(dirname(destination), { recursive: true });
+    await symlink(p.directory, destination);
+  }
 }
 async function trackedSources(repository) {
   return run(
@@ -574,6 +627,40 @@ async function goMembers(native) {
     }
   }
 }
+async function checkQimuAuthors() {
+  const temporary = await mkdtemp(join(tmpdir(), "qimu-authors-"));
+  const binary = join(
+    temporary,
+    process.platform === "win32" ? "authorhost.exe" : "authorhost",
+  );
+  const env = {
+    ...proxyEnvironment(join(root, "out/module-proxy")),
+    GOWORK: "off",
+    QIMU_AUTHOR_HOST_BINARY: binary,
+  };
+  try {
+    run(
+      "go",
+      [
+        "build",
+        "-mod=readonly",
+        "-o",
+        binary,
+        "./examples/authoring/cmd/authorhost",
+      ],
+      join(root, "qimu"),
+      env,
+    );
+    run(
+      "npm",
+      ["run", "test:workflow"],
+      join(root, "qimu/examples/authoring/browser"),
+      env,
+    );
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+}
 async function main(command) {
   switch (command) {
     case "setup": {
@@ -621,6 +708,7 @@ async function main(command) {
             : null;
         if (script) run("npm", ["run", script], p.directory);
       }
+      await checkQimuAuthors();
       run("node", ["tooling/qualify-node.mjs"]);
       run("git", ["diff", "--check"]);
       return;
@@ -670,6 +758,18 @@ async function main(command) {
         join(directory, "plugins"),
         "--replace",
       ]);
+      run(
+        "go",
+        [
+          "build",
+          "-trimpath",
+          "-o",
+          join(directory, "qimu-runner"),
+          "./runner/cmd/qimu-runner",
+        ],
+        join(root, "qimu"),
+        { ...proxyEnvironment(join(root, "out/module-proxy")), GOWORK: "off" },
+      );
       return run(
         "go",
         [

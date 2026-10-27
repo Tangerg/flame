@@ -37,8 +37,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if edited.ID != item.ID || edited.Content != content || !edited.Pinned || edited.Origin != "user" || edited.Status != "active" || !edited.CreatedAt.Equal(item.CreatedAt) {
 		t.Fatalf("edited memory=%+v", edited)
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&source, memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "project", CWD: cfg.defaultWorkspacePath})
 

@@ -13,10 +13,12 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	tool "github.com/Tangerg/scope/core/tool"
@@ -25,7 +27,7 @@ import (
 func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, name string, input any) (*sdk.CallToolResult, jsonvalue.Value) {
 	t.Helper()
 	var meta sdk.Meta
-	if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: id, Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
+	if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: id, Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := meta.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: project}); err != nil {
@@ -110,7 +112,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	}
 	humanInput := rpc.UpdateInput{ID: first.ID().String(), ExpectedRevision: first.Revision(), Content: new(second.Content()), Pinned: new(true)}
 	_, err = callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput, sdk.ParamsBase{})
-	refusal, known := errors.AsType[*extension.Refusal](err)
+	refusal, known := errors.AsType[*portable.Refusal](err)
 	if !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("human content conflict remained unconfirmed: %v", err)
 	}
@@ -128,7 +130,7 @@ func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testi
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
 	_, found, err := receiptMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput)
-	refusal, known = errors.AsType[*extension.Refusal](err)
+	refusal, known = errors.AsType[*portable.Refusal](err)
 	if !found || !known || refusal.Code != "duplicate_content" {
 		t.Fatalf("restart lost the human refusal: found=%v %v", found, err)
 	}

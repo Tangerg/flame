@@ -3,7 +3,8 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261027.4
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261027.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
 	github.com/invopop/jsonschema v0.14.0
@@ -47,4 +48,4 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 )
 
-tool github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk
+tool github.com/Tangerg/flame/qimu/cmd/qimu

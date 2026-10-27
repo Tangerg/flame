@@ -9,9 +9,12 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -35,7 +38,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 				t.Fatal(err)
 			}
 			client := sdk.NewClient(&sdk.Implementation{Name: "guardrails-test", Version: "1"}, nil)
-			if err := pluginsdk.RegisterClient(client); err != nil {
+			if err := qimumcp.RegisterClient(client); err != nil {
 				t.Fatal(err)
 			}
 			a, b := sdk.NewInMemoryTransports()
@@ -49,7 +52,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 				t.Fatal(err)
 			}
 			defer session.Close()
-			policyExport, err := pluginsdk.ResolveCapability(t.Context(), session, "policy", contracts.Capability)
+			policyExport, err := qimumcp.ResolveCapability(t.Context(), session, "policy", contracts.Capability)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +64,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "edit-policy", Origin: extension.Human, Target: extension.Target{Scope: "installation", Reference: "guardrails"}})
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "edit-policy", Origin: extension.Human, Target: portable.Target{Scope: "installation", Reference: "guardrails"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +87,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			}
 			method, _ := pluginsdk.ModelInputMethod()
 			contract, _ := pluginsdk.ModelInputContract()
-			exported, err := pluginsdk.ResolveCapability(t.Context(), session, "input", contract)
+			exported, err := qimumcp.ResolveCapability(t.Context(), session, "input", contract)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -92,7 +95,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, err = pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "inspect-input", Origin: extension.Model, Target: extension.Target{Scope: "call", Reference: "inspect-input"}})
+			ctx, err = qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "inspect-input", Origin: extension.Model, Target: portable.Target{Scope: "call", Reference: "inspect-input"}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,7 +140,7 @@ func TestPolicyReceiptsAndModelInputSharePrivateFactsAcrossReopen(t *testing.T) 
 }
 
 func refusalCode(err error) string {
-	if refusal, ok := errors.AsType[*extension.Refusal](err); ok {
+	if refusal, ok := errors.AsType[*portable.Refusal](err); ok {
 		return refusal.Code
 	}
 	return ""

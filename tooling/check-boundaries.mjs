@@ -55,7 +55,7 @@ const dependencies = (member, tests = false) =>
       "-deps",
       ...(tests ? ["-test"] : []),
       "-f",
-      "{{.ImportPath}}",
+      "{{.ImportPath}}\t{{with .Module}}{{.Path}}{{end}}",
       "./...",
     ],
     join(root, member),
@@ -64,24 +64,34 @@ const dependencies = (member, tests = false) =>
   )
     .toString()
     .trim()
-    .split("\n");
+    .split("\n")
+    .map((line) => {
+      const [path, module] = line.split("\t");
+      return { path, module };
+    });
 const sdk = "github.com/Tangerg/flame/packages/go-sdk";
-for (const dependency of dependencies("packages/go-sdk", true))
+const qimu = "github.com/Tangerg/flame/qimu";
+for (const { path, module } of dependencies("packages/go-sdk", true))
   if (
-    dependency.startsWith("github.com/Tangerg/flame/") &&
-    dependency !== sdk &&
-    !dependency.startsWith(sdk + "/")
+    module.startsWith("github.com/Tangerg/flame/") &&
+    module !== sdk &&
+    module !== qimu
   )
     throw new Error(
-      `SDK source, tests or tools compile a host module: ${dependency}`,
+      `SDK source, tests or tools compile a host module: ${path}`,
     );
-for (const dependency of dependencies("runtime"))
+for (const { path, module } of dependencies("qimu", true))
+  if (module.startsWith("github.com/Tangerg/flame/") && module !== qimu)
+    throw new Error(
+      `Qimu source, tests or tools compile a consumer module: ${path}`,
+    );
+for (const { path: dependency } of dependencies("runtime"))
   if (dependency.startsWith("github.com/Tangerg/flame/plugins/"))
     throw new Error(
       `Runtime production imports a downstream plugin: ${dependency}`,
     );
 for (const member of ["runtime", "apps/cli", "plugins"])
-  for (const dependency of dependencies(member))
+  for (const { path: dependency } of dependencies(member))
     if (dependency.startsWith("github.com/Tangerg/flame/tooling/"))
       throw new Error(`${member} imports repository tooling: ${dependency}`);
 
@@ -89,16 +99,29 @@ const packages = await workspaces();
 const runtimeClient = packages.find(
   (pkg) => pkg.name === "@flame/runtime-client",
 );
-const jsonEntry = resolve(
-  runtimeClient.directory,
-  runtimeClient.exports["./json"],
-);
+const qimuSDK = packages.find((pkg) => pkg.name === "@qimu/sdk");
+const jsonEntry = resolve(qimuSDK.directory, qimuSDK.exports["./json"]);
 const runtimeEntries = new Set(
   Object.entries(runtimeClient.exports)
     .filter(([name, path]) => name !== "./json" && !path.includes("*"))
     .map(([, path]) => resolve(runtimeClient.directory, path)),
 );
-assertSourceClosure(runtimeClient.directory, jsonEntry, runtimeEntries);
+assertSourceClosure(qimuSDK.directory, jsonEntry, runtimeEntries);
+const byName = new Map(packages.map((pkg) => [pkg.name, pkg]));
+for (const pkg of packages.filter((pkg) => pkg.name.startsWith("@qimu/"))) {
+  const visited = new Set();
+  const inspect = (current) => {
+    if (visited.has(current.name)) return;
+    visited.add(current.name);
+    for (const field of ["dependencies", "devDependencies", "peerDependencies"])
+      for (const name of Object.keys(current[field] ?? {})) {
+        if (name.startsWith("@flame/"))
+          throw new Error(`${pkg.name} compiles a consumer package: ${name}`);
+        if (byName.has(name)) inspect(byName.get(name));
+      }
+  };
+  inspect(pkg);
+}
 const { graph } = readSourceGraph(join(root, "apps/web"));
 for (const [file, edges] of Object.entries(graph))
   if (file.startsWith("extensions/"))

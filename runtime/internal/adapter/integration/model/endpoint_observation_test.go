@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
@@ -30,7 +32,7 @@ func TestEndpointRecordsOneFailureForInvalidResponse(t *testing.T) {
 		}),
 		journal: store, selection: testsupport.MustModelSelection("anthropic", "captured-model"),
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "invalid-response"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "invalid-response", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "invalid-response"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +72,7 @@ func TestEndpointRetainsGenerationWhenCatalogCannotPriceUsage(t *testing.T) {
 		}),
 		journal: db.ModelInvocations, selection: testsupport.MustModelSelection("anthropic", "claude-opus-5"), pricing: Pricing(),
 	}
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: extension.Target{Scope: "call", Reference: "pricing-failure"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "pricing-failure", Origin: extension.Automatic, Target: portable.Target{Scope: "call", Reference: "pricing-failure"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +125,7 @@ func TestEndpointStreamRecordsCompletionAndConsumerStopWithoutPromotion(t *testi
 	stream, _ := resolved.Streamer()
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("original input")))
 	for _, id := range []string{"complete", "stop", "stop-final"} {
-		ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: extension.Target{Scope: "call", Reference: id}})
+		ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-operation", Target: portable.Target{Scope: "call", Reference: id}})
 		if err != nil {
 			t.Fatal(err)
 		}

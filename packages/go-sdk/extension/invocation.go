@@ -2,55 +2,29 @@ package extension
 
 import (
 	"errors"
-	"strings"
-	"unicode"
-	"unicode/utf8"
+
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
-type Origin string
-
+// Flame owns the closed product origin and target vocabulary.
 const (
-	Human     Origin = "human"
-	Model     Origin = "model"
-	Automatic Origin = "automatic"
+	Human             portable.Origin = "human"
+	Model             portable.Origin = "model"
+	Automatic         portable.Origin = "automatic"
+	ScopeCall                         = "call"
+	ScopeInstallation                 = "installation"
 )
 
-// Target is a concrete reference interpreted by the operation's resource owner.
-// Scope is the method contract's target vocabulary, not a UI selection.
-type Target struct {
-	Scope     string `json:"scope"`
-	Reference string `json:"reference"`
-}
-
-// Target scope vocabulary: the kind of resource an invocation targets. A method
-// contract validates an invocation against the scope its operation owns.
-const (
-	ScopeCall         = "call"
-	ScopeInstallation = "installation"
-)
-
-func (t Target) Validate() error {
-	if !validToken(t.Scope) || t.Reference == "" || !utf8.ValidString(t.Reference) || strings.ContainsFunc(t.Reference, unicode.IsControl) {
-		return errors.New("capability: concrete target scope and reference are required")
+// ValidateInvocation admits Flame's product evidence. Qimu accepts other
+// consumers' origin vocabularies without granting them Flame authority.
+func ValidateInvocation(invocation portable.Invocation) error {
+	if err := invocation.Validate(); err != nil {
+		return err
 	}
-	return nil
-}
-
-// Invocation is immutable calling-owner evidence. It contains no credentials,
-// callback permissions, mutable execution state or business result.
-type Invocation struct {
-	ID     string `json:"id"`
-	Origin Origin `json:"origin"`
-	Parent string `json:"parent,omitzero"`
-	Target Target `json:"target"`
-}
-
-func (i Invocation) Validate() error {
-	if !validToken(i.ID) || i.Parent != "" && (!validToken(i.Parent) || i.Parent == i.ID) {
-		return errors.New("capability: invocation and distinct parent identities are required")
+	switch invocation.Origin {
+	case Human, Model, Automatic:
+		return nil
+	default:
+		return errors.New("extension: unknown Flame invocation origin")
 	}
-	if i.Origin != Human && i.Origin != Model && i.Origin != Automatic {
-		return errors.New("capability: invocation origin must be human, model or automatic")
-	}
-	return i.Target.Validate()
 }

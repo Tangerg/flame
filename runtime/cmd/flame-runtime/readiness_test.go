@@ -56,6 +56,7 @@ func TestServedReadinessReportsTheStorageCheck(t *testing.T) {
 	}
 	instance, _, err := bootstrap.OpenInstance(t.Context(), bootstrap.InstanceConfig{
 		FirstPartyDirectory:  filepath.Join(filepath.Dir(executable), "plugins"),
+		RunnerExecutable:     testsupport.RunnerExecutable(t),
 		UserHome:             testsupport.TempDirectory(t),
 		DefaultWorkspacePath: testsupport.TempDirectory(t),
 		DataDirectory:        testsupport.TempDirectory(t),

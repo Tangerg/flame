@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
@@ -110,7 +110,7 @@ func (s pluginBindingStub) GetPluginCommand(ctx context.Context, query protocol.
 
 func TestPluginCommandLookupPreservesScopeInputAndFailure(t *testing.T) {
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: `{}`, Method: "test.retained/save.v1", Input: `{"scale":1.0,"value":18446744073709551615}`, Target: extension.Target{Scope: "installation", Reference: installation}}
+	original := protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("a", 64), Contribution: "retained", Contract: `{}`, Method: "test.retained/save.v1", Input: `{"scale":1.0,"value":18446744073709551615}`, Target: portable.Target{Scope: "installation", Reference: installation}}
 	invalid := original
 	invalid.Digest = "changed"
 	upstream := errors.New("original route unavailable")

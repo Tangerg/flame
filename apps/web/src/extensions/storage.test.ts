@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createStorage } from "@/extensions/storage";
-import { parseJSON, stringifyJSON } from "@flame/runtime-client";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
 afterEach(() => vi.restoreAllMocks());
 
 describe("createStorage", () => {

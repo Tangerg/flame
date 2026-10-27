@@ -1,12 +1,14 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/github/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/github/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type State string
@@ -70,31 +72,31 @@ type File struct {
 }
 
 type Contracts struct {
-	Capability          *extension.Capability
-	List                *pluginsdk.Method[ListInput, IssuePage]
-	Issue               *pluginsdk.Method[IssueInput, Issue]
-	File                *pluginsdk.Method[FileInput, File]
-	Pulls               *pluginsdk.Method[PullListInput, PullPage]
-	Pull                *pluginsdk.Method[IssueInput, PullRequest]
-	PullFiles           *pluginsdk.Method[ThreadInput, FilePage]
-	Comments            *pluginsdk.Method[ThreadInput, CommentPage]
-	Reviews             *pluginsdk.Method[ThreadInput, ReviewPage]
-	ReviewComments      *pluginsdk.Method[ThreadInput, ReviewCommentPage]
-	Checks              *pluginsdk.Method[CommitInput, CheckPage]
-	Annotations         *pluginsdk.Method[CheckInput, AnnotationPage]
-	Statuses            *pluginsdk.Method[CommitInput, StatusPage]
-	CreateIssue         *pluginsdk.Method[CreateIssueInput, Issue]
-	UpdateIssue         *pluginsdk.Method[UpdateIssueInput, Issue]
-	CreateComment       *pluginsdk.Method[CreateCommentInput, Comment]
-	UpdateComment       *pluginsdk.Method[UpdateCommentInput, Comment]
-	DeleteComment       *pluginsdk.Method[CommentInput, DeletedComment]
-	CreatePull          *pluginsdk.Method[CreatePullInput, PullRequest]
-	SubmitReview        *pluginsdk.Method[SubmitReviewInput, Review]
-	MergePull           *pluginsdk.Method[MergePullInput, MergeResult]
-	CreateReviewComment *pluginsdk.Method[CreateReviewCommentInput, ReviewComment]
-	ReplyReviewComment  *pluginsdk.Method[ReplyReviewCommentInput, ReviewComment]
-	UpdateReviewComment *pluginsdk.Method[UpdateCommentInput, ReviewComment]
-	DeleteReviewComment *pluginsdk.Method[CommentInput, DeletedComment]
+	Capability          *portable.Capability
+	List                *qimumcp.Method[ListInput, IssuePage]
+	Issue               *qimumcp.Method[IssueInput, Issue]
+	File                *qimumcp.Method[FileInput, File]
+	Pulls               *qimumcp.Method[PullListInput, PullPage]
+	Pull                *qimumcp.Method[IssueInput, PullRequest]
+	PullFiles           *qimumcp.Method[ThreadInput, FilePage]
+	Comments            *qimumcp.Method[ThreadInput, CommentPage]
+	Reviews             *qimumcp.Method[ThreadInput, ReviewPage]
+	ReviewComments      *qimumcp.Method[ThreadInput, ReviewCommentPage]
+	Checks              *qimumcp.Method[CommitInput, CheckPage]
+	Annotations         *qimumcp.Method[CheckInput, AnnotationPage]
+	Statuses            *qimumcp.Method[CommitInput, StatusPage]
+	CreateIssue         *qimumcp.Method[CreateIssueInput, Issue]
+	UpdateIssue         *qimumcp.Method[UpdateIssueInput, Issue]
+	CreateComment       *qimumcp.Method[CreateCommentInput, Comment]
+	UpdateComment       *qimumcp.Method[UpdateCommentInput, Comment]
+	DeleteComment       *qimumcp.Method[CommentInput, DeletedComment]
+	CreatePull          *qimumcp.Method[CreatePullInput, PullRequest]
+	SubmitReview        *qimumcp.Method[SubmitReviewInput, Review]
+	MergePull           *qimumcp.Method[MergePullInput, MergeResult]
+	CreateReviewComment *qimumcp.Method[CreateReviewCommentInput, ReviewComment]
+	ReplyReviewComment  *qimumcp.Method[ReplyReviewCommentInput, ReviewComment]
+	UpdateReviewComment *qimumcp.Method[UpdateCommentInput, ReviewComment]
+	DeleteReviewComment *qimumcp.Method[CommentInput, DeletedComment]
 }
 
 func NewContracts() (Contracts, error) {
@@ -152,11 +154,11 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	methods := []extension.MethodDescriptor{c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor(), c.Pulls.Descriptor(), c.Pull.Descriptor(), c.PullFiles.Descriptor(), c.Comments.Descriptor(), c.Reviews.Descriptor(), c.ReviewComments.Descriptor(), c.Checks.Descriptor(), c.Annotations.Descriptor(), c.Statuses.Descriptor()}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.github.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, append(methods, writes...)...)
+	methods := []portable.MethodDescriptor{c.List.Descriptor(), c.Issue.Descriptor(), c.File.Descriptor(), c.Pulls.Descriptor(), c.Pull.Descriptor(), c.PullFiles.Descriptor(), c.Comments.Descriptor(), c.Reviews.Descriptor(), c.ReviewComments.Descriptor(), c.Checks.Descriptor(), c.Annotations.Descriptor(), c.Statuses.Descriptor()}
+	c.Capability, err = portable.NewCapability(portable.CapabilityConfig{Reference: "flame.github.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, append(methods, writes...)...)
 	return c, err
 }
 
-func readMethod[P, R any](name, description string) (*pluginsdk.Method[P, R], error) {
-	return pluginsdk.NewMethod[P, R](pluginsdk.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: description})
+func readMethod[P, R any](name, description string) (*qimumcp.Method[P, R], error) {
+	return qimumcp.NewMethod[P, R](qimumcp.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: description})
 }

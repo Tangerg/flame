@@ -9,9 +9,9 @@ await buildPlugin({
   source: fileURLToPath(new URL("./", import.meta.url)),
   output: values.output,
   archives: values.archives,
-  archiveTool: fileURLToPath(
+  packageTool: fileURLToPath(
     new URL(
-      "./tools/flame-sdk" + (process.platform === "win32" ? ".exe" : ""),
+      "./tools/pluginpack" + (process.platform === "win32" ? ".exe" : ""),
       import.meta.url,
     ),
   ),

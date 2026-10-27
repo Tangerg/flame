@@ -2,6 +2,11 @@
 
 | Consumer                   | Entry                                                                |
 | -------------------------- | -------------------------------------------------------------------- |
+| Generic Go plugin host     | `github.com/Tangerg/flame/qimu`                                      |
+| Generic Go backend author  | `github.com/Tangerg/flame/qimu/mcp`                                  |
+| Generic TypeScript backend | `@qimu/node`                                                         |
+| Generic browser host       | `@qimu/browser`, `@qimu/react`                                       |
+| Generic TypeScript values  | `@qimu/sdk`, `@qimu/sdk/json`                                        |
 | Local Go host              | `github.com/Tangerg/flame/runtime`                                   |
 | Remote Go client           | `github.com/Tangerg/flame/packages/go-sdk/client` (package `client`) |
 | Go backend author          | `github.com/Tangerg/flame/packages/go-sdk/plugin`                    |
@@ -15,12 +20,15 @@
 Rebuild all in-repository consumers after this source/package migration. Former
 Go modules, TS package names, wildcard implementation exports and source-layout
 aliases are removed. Operation and stored business semantics retain their owners;
-this directory migration does not convert or delete user data. Rebuild and select new plugin releases after their resource imports or contract identities change; the host does not register former package aliases.
+the Qimu cutover uses a fresh product root and `flame-qimu.db`, without converting
+historical plugin state. Preserve the old deployment and its data separately.
+Rebuild and select new plugin releases after their resource imports or contract identities change; the host does not register former package aliases.
 
-The TypeScript client explicitly exports its main client API, `json`, `wire`, `methods`,
+The TypeScript client explicitly exports its main client API, `wire`, `methods`,
 `validation`, `testing` and `testing/samples/*`. Ordinary unit tests and internal
 implementation paths are not package APIs. `npm pack` is exercised by independent
-author projects. Raw JSON sample copies are generated from Runtime-owned bytes.
+author projects. Exact JSON values are owned by `@qimu/sdk/json`; clients import it
+directly. Raw JSON sample copies are generated from Runtime-owned bytes.
 
 ## Current-source author export
 
@@ -61,7 +69,8 @@ generation, builds and managed JavaScript checks retain the complete network den
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
 TypeScript-only exports have no Go module or DTO source prerequisite. They include
-the host-specific prebuilt `flame-sdk` author command and the selected
+the host-specific prebuilt `qimu` and `flame-sdk` contract generators, Runtime's
+`pluginpack` release builder and the selected
 Node test companion; their generated JavaScript ZIP remains portable. The
 independent check denies Go execution through the author PATH as well as network
 and checkout reads while regenerating, checking, testing and packaging that project.

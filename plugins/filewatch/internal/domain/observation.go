@@ -3,6 +3,7 @@ package filewatch
 import (
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/qimu/portable"
 	"slices"
 	"time"
 
@@ -22,16 +23,16 @@ const (
 // A connection-local sequence cannot identify an observation after reconnection.
 // The generation and immutable capture keep retries bound to the original work.
 type Capture struct {
-	Generation string               `json:"generation"`
-	Sequence   uint64               `json:"sequence"`
-	Revision   int64                `json:"revision"`
-	Kind       Kind                 `json:"kind"`
-	Paths      []string             `json:"paths"`
-	ObservedAt time.Time            `json:"observedAt"`
-	Trigger    Draft                `json:"trigger"`
-	SessionID  string               `json:"sessionId"`
-	RunID      string               `json:"runId"`
-	Invocation extension.Invocation `json:"invocation"`
+	Generation string              `json:"generation"`
+	Sequence   uint64              `json:"sequence"`
+	Revision   int64               `json:"revision"`
+	Kind       Kind                `json:"kind"`
+	Paths      []string            `json:"paths"`
+	ObservedAt time.Time           `json:"observedAt"`
+	Trigger    Draft               `json:"trigger"`
+	SessionID  string              `json:"sessionId"`
+	RunID      string              `json:"runId"`
+	Invocation portable.Invocation `json:"invocation"`
 }
 
 type Observation struct{ capture Capture }
@@ -48,7 +49,7 @@ func NewObservation(capture Capture) (Observation, error) {
 	if err != nil {
 		return Observation{}, err
 	}
-	if err := errors.Join(identity.ValidateSession(capture.SessionID), identity.ValidateRun(capture.RunID), capture.Invocation.Validate()); err != nil {
+	if err := errors.Join(identity.ValidateSession(capture.SessionID), identity.ValidateRun(capture.RunID), extension.ValidateInvocation(capture.Invocation)); err != nil {
 		return Observation{}, errors.Join(ErrInvalid, err)
 	}
 	if capture.Invocation.Origin != extension.Automatic || capture.Invocation.Parent != "" || capture.Invocation.Target.Scope != "installation" {

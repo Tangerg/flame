@@ -10,17 +10,17 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
-func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+func runNow(ctx context.Context, db *sql.DB, store store, connect runConnector, command qimumcp.Command[rpc.ItemInput]) (app.RunReference, error) {
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -43,7 +43,7 @@ type manualCommand struct {
 // A logical caller and its private receipt command have distinct identities.
 // The queue retains both so recovery never guesses a Tool's command namespace.
 func captureManual(ctx context.Context, db *sql.DB, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -60,7 +60,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 	err = sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		var err error
 		prepared, original, err = pluginstorage.AdmitCommand(ctx, db, rpc.RunNow, command.id, command.admitted, func(ctx context.Context) error {
-			_, err := pluginsdk.CallbackFromContext(ctx)
+			_, err := qimumcp.CallbackFromContext(ctx)
 			return err
 		})
 		if err != nil {
@@ -80,7 +80,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 		if err == nil {
 			return store.QueueManual(ctx, captured)
 		}
-		reply, replyErr := pluginsdk.EncodeReply(app.RunReference{}, err, classify)
+		reply, replyErr := qimumcp.EncodeReply(app.RunReference{}, err, classify)
 		if replyErr != nil {
 			return replyErr
 		}
@@ -95,7 +95,7 @@ func captureManual(ctx context.Context, db *sql.DB, store store, connect runConn
 		return result, err
 	}
 	if prepared == nil {
-		return pluginsdk.DecodeReply[app.RunReference](original)
+		return qimumcp.DecodeReply[app.RunReference](original)
 	}
 	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != command.input.ID || captured.SessionID() != sessionID {
 		return result, errors.New("schedules: manual request differs from its original capture")

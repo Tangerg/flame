@@ -846,6 +846,69 @@
       ]
     },
     {
+      "goName": "OpenPluginBrowserRealm",
+      "name": "plugins.openBrowserRealm",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "ownerResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
+      "goName": "AcquirePluginComponent",
+      "name": "plugins.acquireComponent",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "ownerResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
+      "goName": "ClosePluginBrowserRealm",
+      "name": "plugins.closeBrowserRealm",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "ownerResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_disabled",
+        "plugin_stale",
+        "plugin_command_retired",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
       "goName": "GetPluginCommand",
       "name": "plugins.getCommand",
       "kind": "unary",
@@ -1588,6 +1651,19 @@
   ],
   "httpEndpoints": [
     {
+      "name": "pluginControl",
+      "kind": "pluginControl",
+      "method": "POST",
+      "path": "/v2/qimu",
+      "authentication": "pluginRealm",
+      "responseStatuses": [
+        200,
+        401,
+        409,
+        503
+      ]
+    },
+    {
       "name": "pluginResources",
       "kind": "resource",
       "method": "GET",
@@ -1681,7 +1757,9 @@
           "modelInvocations.endpoints",
           "modelInvocations.list",
           "plan.get",
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
@@ -1689,6 +1767,7 @@
           "plugins.listCompositions",
           "plugins.listProviders",
           "plugins.notifyChange",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -1873,13 +1952,16 @@
         "code": -32047,
         "recoveryAction": "stop",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -1900,13 +1982,16 @@
         "code": -32042,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -1927,13 +2012,16 @@
         "code": -32041,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -1954,13 +2042,16 @@
         "code": -32040,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -1981,13 +2072,16 @@
         "code": -32043,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -2008,13 +2102,16 @@
         "code": -32045,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.acquireComponent",
           "plugins.call",
+          "plugins.closeBrowserRealm",
           "plugins.configure",
           "plugins.getCommand",
           "plugins.install",
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.openBrowserRealm",
           "plugins.openResources",
           "plugins.readResource",
           "plugins.resolveComposition",
@@ -2674,6 +2771,36 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.openBrowserRealm",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.acquireComponent",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.closeBrowserRealm",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -9055,6 +9182,57 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "OpenPluginBrowserRealmRequest",
+      "rules": [
+        {
+          "field": "operationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "resumeToken",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "AcquirePluginComponentRequest",
+      "rules": [
+        {
+          "field": "operationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "componentId",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "PluginBrowserSession",
+      "rules": [
+        {
+          "field": "credential",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "controlEndpoint",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "maximumMessageBytes",
+          "constraint": "positive"
+        },
+        {
+          "field": "proofCapacity",
+          "constraint": "positive"
+        },
+        {
+          "field": "pollIntervalMilliseconds",
+          "constraint": "positive"
         }
       ]
     },

@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu/portable"
 	"math"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -82,7 +83,7 @@ func TestSummaryPublishesItsSingleCoreClockObservationAndExactRange(t *testing.T
 
 func usd(value float64) *float64 { return &value }
 func usageRecord(id, provider, model, state string, at time.Time, reported *chat.Usage, cost *float64) modelref.EndpointObservation {
-	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: extension.Invocation{Origin: extension.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
+	value := modelref.EndpointObservation{Invocation: modelref.EndpointInvocation{ID: id, Kind: modelref.EndpointChat, Provider: provider, Model: model, StartedAt: at, Caller: portable.Invocation{Origin: extension.Automatic}}, ServedModel: model, State: state, CostUSD: cost, Usage: reported}
 	if state == "completed" || state == "failed" {
 		message := chat.NewAssistantMessage(chat.NewTextPart("known"))
 		value.Response = &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: model, Usage: reported}}

@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"iter"
 	"strings"
 	"sync/atomic"
@@ -16,9 +17,11 @@ import (
 func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	var calls atomic.Int32
-	callback, err := NewModelStreamCallback(func(_ context.Context, command Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(_ context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			calls.Add(1)
 			if command.ID != "original-stream" || command.Input.Messages[0].Text() != "original request" {
@@ -34,7 +37,7 @@ func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,9 +80,11 @@ func TestCapturedModelStreamIsLazyAndUsesOneCanonicalAggregate(t *testing.T) {
 func TestStoppingModelStreamCancelsAndJoinsItsSource(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	stopped := make(chan struct{})
-	callback, err := NewModelStreamCallback(func(ctx context.Context, _ Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(ctx context.Context, _ qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			defer close(stopped)
 			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("partial")}}, nil) {
@@ -91,7 +96,7 @@ func TestStoppingModelStreamCancelsAndJoinsItsSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,8 +121,10 @@ func TestStoppingModelStreamCancelsAndJoinsItsSource(t *testing.T) {
 func TestModelStreamRetainsCompletedInnerResponseAfterOuterFailure(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
-	callback, err := NewModelStreamCallback(func(context.Context, Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
+	callback, err := NewModelStreamCallback(func(context.Context, qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("known result")}, FinishReason: chat.FinishReasonStop, Metadata: &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: 9, OutputTokens: 2}}}, nil) {
 				return
@@ -154,9 +161,11 @@ func TestModelStreamRetainsCompletedInnerResponseAfterOuterFailure(t *testing.T)
 func TestModelStreamAggregateUsesTheCapturedByteCapacity(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	produced := 0
-	callback, err := NewModelStreamCallback(func(context.Context, Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	callback, err := NewModelStreamCallback(func(context.Context, qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			for range 100 {
 				produced++
@@ -169,7 +178,7 @@ func TestModelStreamAggregateUsesTheCapturedByteCapacity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 512}, callback)
+	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 512}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

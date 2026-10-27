@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -17,7 +18,8 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 	commit runs.WaitingSubtreeCancellationCommit,
 ) (runs.WaitingSubtreeCancellationResult, error) {
 	var target, root run.Run
-	err := e.runInTx(ctx, func(ctx context.Context) error {
+	checkpoint := commit.Checkpoint()
+	err := e.runCheckpointTx(ctx, commit.CommitID().String(), &checkpoint, func(ctx context.Context) error {
 		if err := e.claimWaitingCancellation(ctx, commit); err != nil {
 			return err
 		}
@@ -37,6 +39,9 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		root = commit.RootRun()
 		return e.persistWaitingCancellationDisposition(ctx, commit, &root)
 	})
+	if errors.Is(err, qimu.ErrRecoveryRequired) {
+		return runs.WaitingSubtreeCancellationResult{}, err
+	}
 	if err != nil {
 		settled, committed, settleErr := e.reconcileWaitingCancellation(ctx, commit)
 		if settled {

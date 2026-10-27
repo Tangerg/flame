@@ -12,11 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/sandbox/internal/contract"
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t *testing.T) {
@@ -76,7 +76,7 @@ func TestNativeExecutionConfinesEffectsAndReplaysTheOriginalOutcomeAfterReopen(t
 	}
 	changed := rpc.ExecuteInput{Script: "exit 0", TimeoutMillis: 3000}
 	changedJSON, _ := jsonvalue.Encode(changed)
-	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", changed, changedJSON); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, err := runner.execute(t.Context(), contracts.Execute.Name(), "original", changed, changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("accepted identity changed script: %v", err)
 	}
 	binary := rpc.ExecuteInput{Script: "printf '\\377'", TimeoutMillis: 3000}
@@ -127,7 +127,7 @@ func TestUnknownNativeCommandCannotAcquireANewHostReadAfterRestart(t *testing.T)
 	invalidJSON, _ := jsonvalue.Encode(invalid)
 	for range 2 {
 		_, err := runner.execute(t.Context(), contracts.Execute.Name(), "invalid", invalid, invalidJSON)
-		refusal, known := errors.AsType[*extension.Refusal](err)
+		refusal, known := errors.AsType[*portable.Refusal](err)
 		if !known || refusal.Code != "invalid_program" || calls != 1 {
 			t.Fatalf("local refusal did not settle before host access: %v", err)
 		}

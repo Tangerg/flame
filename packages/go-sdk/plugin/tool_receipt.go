@@ -4,10 +4,11 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/tool"
@@ -23,8 +24,8 @@ type ToolReceipt struct {
 	IsError bool   `json:"isError,omitzero"`
 }
 
-func ToolReceiptQuery() (*Method[ReceiptRequest, ToolReceipt], error) {
-	return NewMethod[ReceiptRequest, ToolReceipt](MethodConfig{Name: ToolReceiptMethod, Kind: extension.Query, Target: "installation", Description: ToolReceiptMethod})
+func ToolReceiptQuery() (*qimumcp.Method[qimumcp.ReceiptRequest, ToolReceipt], error) {
+	return qimumcp.NewMethod[qimumcp.ReceiptRequest, ToolReceipt](qimumcp.MethodConfig{Name: ToolReceiptMethod, Kind: portable.Query, Target: "installation", Description: ToolReceiptMethod})
 }
 
 func NewToolReceipt(output chat.ToolOutput, failed bool) (ToolReceipt, error) {
@@ -48,7 +49,7 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err != nil {
 		return nil, err
 	}
-	request := ReceiptRequest{ID: id, Method: remote, InputDigest: admitted.Digest()}
+	request := qimumcp.ReceiptRequest{ID: id, Method: remote, InputDigest: admitted.Digest()}
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
@@ -56,20 +57,7 @@ func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, re
 	if err != nil {
 		return nil, err
 	}
-	input, err := jsonvalue.Encode(request)
-	if err != nil {
-		return nil, err
-	}
-	binding := &Binding{session: session, method: method.contract}
-	wire, err := binding.invoke(ctx, "", input, sdk.ParamsBase{})
-	if err != nil {
-		return nil, err
-	}
-	result, err := decodeBoundResult[ToolReceipt](wire)
-	if err != nil {
-		return nil, err
-	}
-	receipt, err := result.value(ToolReceiptMethod)
+	receipt, err := method.Call(ctx, session, request)
 	if err != nil {
 		return nil, err
 	}

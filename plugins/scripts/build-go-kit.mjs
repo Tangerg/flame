@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 
 const sdkPath = "github.com/Tangerg/flame/packages/go-sdk";
+const qimuPath = "github.com/Tangerg/flame/qimu";
+const runtimePath = "github.com/Tangerg/flame/runtime";
 export function authorSDK(artifacts) {
   const version =
     artifacts.members["github.com/Tangerg/flame/plugins"]?.requires[sdkPath];
@@ -62,13 +64,34 @@ export async function prepareDevelopmentTools({
       authorSDK(artifacts),
       "flame.invalid/author-tools",
     );
+    const runtimeVersion =
+      artifacts.members["github.com/Tangerg/flame/apps/cli"]?.requires[
+        runtimePath
+      ];
+    if (!artifacts.modules[`${runtimePath}@${runtimeVersion}`])
+      throw new Error(
+        "the frozen CLI must select a prepared Runtime author tool artifact",
+      );
+    execFileSync(
+      "go",
+      ["mod", "edit", `-require=${runtimePath}@${runtimeVersion}`],
+      {
+        cwd: source,
+        env: environment(repository, artifacts, offline),
+        stdio: "inherit",
+      },
+    );
     const env = {
       ...environment(repository, artifacts, offline),
       GOOS: "",
       GOARCH: "",
     };
     await mkdir(join(output, "tools"));
-    for (const name of ["flame-sdk"])
+    for (const [name, tool] of [
+      ["flame-sdk", `${sdkPath}/cmd/flame-sdk`],
+      ["qimu", `${qimuPath}/cmd/qimu`],
+      ["pluginpack", `${runtimePath}/cmd/pluginpack`],
+    ])
       execFileSync(
         "go",
         [
@@ -81,7 +104,7 @@ export async function prepareDevelopmentTools({
             "tools",
             name + (process.platform === "win32" ? ".exe" : ""),
           ),
-          `${sdkPath}/cmd/${name}`,
+          tool,
         ],
         { cwd: source, env, stdio: "inherit" },
       );
@@ -97,7 +120,7 @@ export async function prepareGoKit({
   offline,
   tools,
 }) {
-  const allowed = new Set([`${sdkPath}/cmd/flame-sdk`]);
+  const allowed = new Set([`${sdkPath}/cmd/flame-sdk`, `${qimuPath}/cmd/qimu`]);
   for (const tool of tools)
     if (!allowed.has(tool))
       throw new Error(`author tool is not public: ${tool}`);

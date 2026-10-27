@@ -10,7 +10,7 @@ import {
   digestJSON,
   parseJSON,
   type CapabilityDescriptor,
-} from "@flame/backend-sdk";
+} from "@qimu/node";
 import sample from "@flame/runtime-client/testing/samples/usageSummary.json";
 import { Archive } from "./archive";
 

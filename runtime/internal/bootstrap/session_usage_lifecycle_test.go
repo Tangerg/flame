@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -69,7 +71,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: id, Origin: extension.Human, Target: extension.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "entry": "component.js",
+  "modules": [
+    {
+      "path": "component.js",
+      "imports": [
+        "react/jsx-runtime"
+      ],
+      "dynamicImports": [],
+      "exports": [
+        "Frame",
+        "Panel",
+        "Summary"
+      ]
+    }
+  ],
+  "sharedSpecifiers": [
+    "react/jsx-runtime"
+  ]
+}

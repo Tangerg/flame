@@ -3,16 +3,16 @@ package main
 import (
 	"context"
 	"errors"
-	"path/filepath"
-	"sync/atomic"
-	"testing"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"path/filepath"
+	"sync/atomic"
+	"testing"
 )
 
 func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *testing.T) {
@@ -74,7 +74,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "original", changed, changedJSON); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed intent = %v", err)
 	}
 	staleCalls := calls.Load()
@@ -97,7 +97,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if _, err := library.importDocument(t.Context(), contracts.Import.Name(), "unknown", input, admitted); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls.Load() != before {
 		t.Fatalf("pending work repeated its external exchange: %v", err)
 	}
-	receipt, err := pluginstorage.ReadReceipt(t.Context(), reopened.db, pluginsdk.ReceiptRequest{ID: "unknown", Method: contracts.Import.Name(), InputDigest: admitted.Digest()})
+	receipt, err := pluginstorage.ReadReceipt(t.Context(), reopened.db, qimumcp.ReceiptRequest{ID: "unknown", Method: contracts.Import.Name(), InputDigest: admitted.Digest()})
 	if err != nil || receipt.Found {
 		t.Fatalf("uncertainty invented a receipt: %+v, %v", receipt, err)
 	}

@@ -13,7 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -65,6 +67,7 @@ type Resolver struct {
 	// mcpToolDisabled reads the current domain policy per resolution so registry
 	// changes and live-tool reconnects remain independent hot swaps.
 	mcpToolDisabled func(domaintool.Ref) bool
+	restoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
 
 type audience uint8
@@ -121,6 +124,7 @@ type resolverDeps struct {
 	ReadTracker   *readTracker        // backs the read-before-patch and stale-read guards
 	// MCPToolDisabled reports whether an identified MCP tool is hidden.
 	MCPToolDisabled func(domaintool.Ref) bool
+	RestoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
 
 // newResolver builds the Runtime-scoped Tool resolver from its
@@ -160,6 +164,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		readTracker:     d.ReadTracker,
 		pathLocker:      keylock.NewSet(),
 		mcpToolDisabled: d.MCPToolDisabled,
+		restoreMCP:      d.RestoreMCP,
 	}
 	return resolver, nil
 }
@@ -208,13 +213,99 @@ type mcpCatalog struct {
 	pending []mcpserver.ID
 }
 
-func (r *Resolver) mcpTools(capturedMCP []domaintool.Ref) ([]toolcontract.Tool, []mcpserver.ID, error) {
+func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcontract.Tool, []mcpserver.ID, func() error, error) {
 	snapshot := r.mcp.Load()
 	if snapshot == nil {
-		return nil, nil, nil
+		snapshot = &mcpCatalog{}
 	}
-	tools, err := r.exposedMCPTools(snapshot.tools, capturedMCP)
-	return tools, slices.Clone(snapshot.pending), err
+	if retained == nil {
+		tools, err := r.exposedMCPTools(snapshot.tools, nil)
+		return tools, slices.Clone(snapshot.pending), nil, err
+	}
+	users := make([]domaintool.Ref, 0, len(retained.MCP))
+	var installed []domaintool.Ref
+	for _, ref := range retained.MCP {
+		server, _, _ := ref.MCP()
+		if _, managed := server.Origin().Installation(); managed {
+			installed = append(installed, ref)
+		} else {
+			users = append(users, ref)
+		}
+	}
+	current, err := r.exposedMCPTools(snapshot.tools, users)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var pending []mcpserver.ID
+	for _, source := range snapshot.pending {
+		if slices.ContainsFunc(users, func(ref domaintool.Ref) bool {
+			server, _, _ := ref.MCP()
+			return server == source
+		}) {
+			pending = append(pending, source)
+		}
+	}
+	if len(installed) == 0 {
+		return current, pending, nil, nil
+	}
+	if r.restoreMCP == nil {
+		return nil, nil, nil, fmt.Errorf("%w: original MCP restoration is unavailable", plugin.ErrUnavailable)
+	}
+	original, close, err := r.restoreMCP(ctx, installed, cloneManifestBindings(retained.Bindings))
+	if err != nil {
+		if close != nil {
+			err = errors.Join(err, close())
+		}
+		return nil, nil, nil, err
+	}
+	if close == nil {
+		return nil, nil, nil, errors.New("toolset: original MCP restoration requires resource ownership")
+	}
+	if err := validateRestoredMCP(original, installed, retained.Bindings); err != nil {
+		return nil, nil, nil, errors.Join(err, close())
+	}
+	original, err = r.exposedMCPTools(original, installed)
+	if err != nil {
+		return nil, nil, nil, errors.Join(err, close())
+	}
+	return append(slices.Clone(current), original...), pending, close, nil
+}
+
+func validateRestoredMCP(values []toolcontract.Tool, references []domaintool.Ref, bindings []plugin.Activation) error {
+	if len(values) != len(references) {
+		return fmt.Errorf("%w: original MCP tools are incomplete", plugin.ErrUnavailable)
+	}
+	var seen []domaintool.Ref
+	for _, executable := range values {
+		ref, found, err := mcp.IdentifyTool(executable)
+		if err != nil {
+			return err
+		}
+		if !found || !slices.Contains(references, ref) || slices.Contains(seen, ref) {
+			return fmt.Errorf("%w: original MCP tool identity changed", plugin.ErrStale)
+		}
+		seen = append(seen, ref)
+		dependency, installed, err := InstallationDependency(executable)
+		if err != nil {
+			return err
+		}
+		if !installed {
+			return fmt.Errorf("%w: restored MCP tool is not installed", plugin.ErrInvalid)
+		}
+		server, _, _ := ref.MCP()
+		original, err := plugins.OriginalActivation(bindings, dependency.InstallationID, dependency.Digest, server.Name())
+		if err != nil {
+			return err
+		}
+		actual, err := InstallationActivation(executable)
+		if err != nil {
+			return err
+		}
+		if !actual.Equal(original) {
+			return fmt.Errorf("%w: original MCP setup binding changed", plugin.ErrStale)
+		}
+	}
+	return nil
 }
 
 func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
@@ -289,18 +380,27 @@ func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 // is the integration surface for execution strategies that distinguish initial
 // visibility from deferred executable authority without importing this package
 // into their framework.
-// capturedMCP is nil for a new execution and non-nil for its exact restored
-// group. Filtering precedes discovery so a late connection cannot enter either
-// executable authority or the model's deferred catalog.
-func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (Manifest, error) {
-	resolved, err := r.resolve(ctx, group, capturedMCP)
+// retained is nil for new execution. Restoration obtains installed Tools from
+// the original graphs before any current catalog can influence the manifest.
+func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained) (Manifest, error) {
+	if err := retained.validate(); err != nil {
+		return Manifest{}, err
+	}
+	resolved, err := r.resolve(ctx, group, retained)
 	if err != nil {
 		return Manifest{}, err
 	}
-	return resolved.manifest(r.telemetry)
+	manifest, err := resolved.manifest(r.telemetry)
+	if err == nil {
+		err = retained.validateManifest(manifest)
+	}
+	if err != nil {
+		return Manifest{}, errors.Join(err, resolved.close())
+	}
+	return manifest, nil
 }
 
-func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (_ manifestBuilder, err error) {
+func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained *Retained) (_ manifestBuilder, err error) {
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
@@ -312,9 +412,10 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, captured
 	if err != nil {
 		return manifestBuilder{}, err
 	}
+	close := localTools.close
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, localTools.close())
+			err = errors.Join(err, close())
 		}
 	}()
 	tools := manifestBuilder{close: localTools.close}
@@ -322,9 +423,13 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, captured
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	tools.deferTools(r.online...)
-	mcpTools, pending, err := r.mcpTools(capturedMCP)
+	mcpTools, pending, closeMCP, err := r.mcpTools(ctx, retained)
 	if err != nil {
 		return manifestBuilder{}, err
+	}
+	if closeMCP != nil {
+		close = sync.OnceValue(func() error { return errors.Join(closeMCP(), localTools.close()) })
+		tools.close = close
 	}
 	tools.deferred = append(tools.deferred, mcpTools...)
 	tools.pendingMCP = pending
@@ -334,7 +439,11 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, captured
 	// Skill tools are working-directory scoped (project skills live under the
 	// Run's cwd), so they are built per resolution like filesystem tools and are
 	// available to both root and delegated groups. No tools when no skills exist.
-	skillTools, dependencies, err := builtin.BuildReaders(ctx, cwd, r.skillsUserDir, r.skillUsage, r.packageSkills)
+	var resources []plugin.Dependency
+	if retained != nil {
+		resources = append([]plugin.Dependency{}, retained.Resources...)
+	}
+	skillTools, dependencies, err := builtin.BuildReaders(ctx, cwd, r.skillsUserDir, r.skillUsage, r.packageSkills, resources)
 	if err != nil {
 		return manifestBuilder{}, fmt.Errorf("toolset: resolve skill tools: %w", err)
 	}

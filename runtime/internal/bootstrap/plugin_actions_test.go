@@ -64,8 +64,7 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 	if got := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("withdrawal changed the historical receipt")
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	if got := r.must(delivery.SessionsUpdate, request, "rename").(*protocol.Session); !reflect.DeepEqual(saved, got) {
 		t.Fatal("restart did not retain the exact receipt")
 	}

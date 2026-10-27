@@ -12,8 +12,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 const memoryID = "01980000-0000-7000-8000-000000000001"
@@ -30,7 +30,7 @@ func (c *memoryCommands) prepare(method string, value any) (protocol.CallPluginR
 		return protocol.CallPluginRequest{}, err
 	}
 	const installation = "12345678-1234-1234-1234-123456789abc"
-	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: method, Target: extension.Target{Scope: "installation", Reference: installation}, Input: string(body)}, nil
+	return protocol.CallPluginRequest{InstallationID: installation, Digest: strings.Repeat("1", 64), Contribution: "memory-provider", Contract: memory.CapabilityJSON, Method: method, Target: portable.Target{Scope: "installation", Reference: installation}, Input: string(body)}, nil
 }
 
 func (c *memoryCommands) PrepareAdd(_ context.Context, input memory.AddV2Input) (protocol.CallPluginRequest, error) {

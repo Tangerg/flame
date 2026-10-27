@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { commitApprovalArgs } from "@/features/chat/message/application/approvalArgsEditor";
-import { stringifyJSON } from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
 describe("commitApprovalArgs", () => {
   it("preserves an exact edited value and distinguishes neighboring wide integers", () => {
     const original = '{"wide":9007199254740993,"decimal":1.0}';

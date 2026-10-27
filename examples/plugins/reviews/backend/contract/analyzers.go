@@ -5,9 +5,9 @@ import (
 
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -42,26 +42,26 @@ type Findings struct {
 }
 
 type AnalyzerContracts struct {
-	Capability *extension.Capability
-	Analyze    *pluginsdk.Method[Snapshot, Findings]
+	Capability *portable.Capability
+	Analyze    *qimumcp.Method[Snapshot, Findings]
 }
 
 func NewAnalyzerContracts() (AnalyzerContracts, error) {
-	method, err := pluginsdk.NewMethod[Snapshot, Findings](pluginsdk.MethodConfig{
-		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: extension.Query, Target: "installation",
+	method, err := qimumcp.NewMethod[Snapshot, Findings](qimumcp.MethodConfig{
+		Name: "io.github.tangerg.flame.examples/reviews.analyze", Kind: portable.Query, Target: "installation",
 		Description: "Analyze an inspected review snapshot and return findings without changing its records.",
 	})
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: extension.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: portable.Collection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
 	return AnalyzerContracts{Capability: contract, Analyze: method}, nil
 }
 
-func NewAnalyzerPoint() (*extension.Point, error) {
+func NewAnalyzerPoint() (*portable.Point, error) {
 	schema, err := jsonschema.For[Analyzer]()
 	if err != nil {
 		return nil, err
@@ -76,5 +76,5 @@ func NewAnalyzerPoint() (*extension.Point, error) {
 	if err != nil {
 		return nil, err
 	}
-	return extension.AdmitPoint(extension.PointDescriptor{Protocol: extension.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: extension.Collection, Scope: "installation", Optional: true, Ordering: extension.CanonicalKeys, Value: schema.JSON(), Applicability: applicability.JSON()})
+	return portable.AdmitPoint(portable.PointDescriptor{Protocol: portable.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: portable.Collection, Scope: "installation", Optional: true, Ordering: portable.CanonicalKeys, Value: schema.JSON(), Applicability: applicability.JSON()})
 }

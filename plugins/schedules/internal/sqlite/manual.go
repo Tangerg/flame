@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)) CHECK(json_type(captured_request_json,'$.CommandID') IS 'text' AND length(json_extract(captured_request_json,'$.CommandID')) > 0), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())

@@ -13,6 +13,7 @@ import (
 	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/google/uuid"
 )
@@ -26,7 +27,7 @@ type store interface {
 	CapturedRun(context.Context, string) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, models app.ModelAdmitter, connect runConnector) (*pluginsdk.Backend, error) {
+func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDResolver, models app.ModelAdmitter, connect runConnector) (*qimumcp.Backend, error) {
 	if connect == nil {
 		return nil, errors.New("schedules: Runtime Run connector is required")
 	}
@@ -34,7 +35,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	if err != nil {
 		return nil, err
 	}
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +62,11 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
-		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
+		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
 			return toolReceipt(ctx, db, input)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ListInput]) (rpc.Page, error) {
+		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ListInput]) (rpc.Page, error) {
 			input := command.Input
 			limit := pagination.DefaultLimit()
 			if input.Limit != nil {
@@ -93,7 +94,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ItemInput) (rpc.Ack, error) {
 			return rpc.Ack{}, coordinator.Delete(ctx, input.ID)
 		}),
-		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[rpc.ItemInput]) (app.RunReference, error) {
+		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[rpc.ItemInput]) (app.RunReference, error) {
 			return runNow(ctx, db, store, connect, command)
 		}),
 	); err != nil {
@@ -102,7 +103,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 	if err := backend.BindCapability(rpc.CapabilityReference, contracts.Capability); err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(ctx context.Context, setup pluginsdk.Setup) (io.Closer, error) {
+	if err := backend.OnSetup(func(ctx context.Context, setup qimumcp.Setup) (io.Closer, error) {
 		values, err := setup.Contributions()
 		if err != nil {
 			return nil, err
@@ -111,7 +112,7 @@ func registerServer(server *sdk.Server, db *sql.DB, store store, paths app.CWDRe
 			if value.Export != rpc.CapabilityReference || value.Background == nil {
 				continue
 			}
-			ref, err := pluginsdk.CallbackFromContext(ctx)
+			ref, err := qimumcp.CallbackFromContext(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -153,7 +154,7 @@ func (t toolCommands) Create(ctx context.Context, input schedule.Draft) (schedul
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	admitted, err := pluginsdk.RequestInput(ctx)
+	admitted, err := qimumcp.RequestInput(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
@@ -171,7 +172,7 @@ func (t toolCommands) Update(ctx context.Context, input app.UpdateCommand) (sche
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
-	admitted, err := pluginsdk.RequestInput(ctx)
+	admitted, err := qimumcp.RequestInput(ctx)
 	if err != nil {
 		return schedule.Schedule{}, decodeError(err)
 	}
@@ -190,7 +191,7 @@ func (t toolCommands) RunNow(ctx context.Context, input rpc.ItemInput) (app.RunR
 	if err != nil {
 		return app.RunReference{}, err
 	}
-	admitted, err := pluginsdk.RequestInput(ctx)
+	admitted, err := qimumcp.RequestInput(ctx)
 	if err != nil {
 		return app.RunReference{}, err
 	}
@@ -203,7 +204,7 @@ func (t toolCommands) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	admitted, err := pluginsdk.RequestInput(ctx)
+	admitted, err := qimumcp.RequestInput(ctx)
 	if err != nil {
 		return err
 	}

@@ -6,23 +6,24 @@ Flame is an agent product with a Go Runtime, a terminal CLI, and one React appli
 
 ## Repository
 
-| Path                               | Owner                                                                        |
-| ---------------------------------- | ---------------------------------------------------------------------------- |
-| `runtime/`                         | Semantic core, HTTP delivery, local Go binding and Host contract generator   |
-| `apps/cli/`                        | Scriptable `flame` command and interactive terminal                          |
-| `apps/web/`                        | Shared Browser/Wails product UI                                              |
-| `apps/desktop/`                    | Native Wails host and macOS packaging                                        |
-| `packages/go-sdk/`                 | Public Go contracts, remote client, backend SDK and independent author tools |
-| `packages/runtime-client/`         | `@flame/runtime-client`, generated wire projection and client                |
-| `packages/backend-sdk/`            | `@flame/backend-sdk`, TypeScript backend authoring API                       |
-| `packages/component-sdk/`          | `@flame/component-sdk`, installed React component authoring API              |
-| `packages/local-runtime/`          | Process roots, token handoff and companion-distribution lookup               |
-| `packages/ui/`, `packages/icons/`  | Shared controls/tokens and authored optical icon masters                     |
-| `plugins/`                         | First-party backend/component/package sources and plugin build tools         |
-| `examples/plugins/`                | Independent authoring and component-composition consumers                    |
-| `assets/brand/`                    | Original brand artwork and guide                                             |
-| `design/branding/`                 | Brand mark exploration history; shipped artwork lives in `assets/brand/`     |
-| `tooling/`, `tooling/integration/` | Workspace coordination and public product integration                        |
+| Path                               | Owner                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| `qimu/`                            | Independent heterogeneous plugin framework, Go Host, drivers, storage and SDKs |
+| `runtime/`                         | Semantic core, HTTP delivery, local Go binding and Host contract generator     |
+| `apps/cli/`                        | Scriptable `flame` command and interactive terminal                            |
+| `apps/web/`                        | Shared Browser/Wails product UI                                                |
+| `apps/desktop/`                    | Native Wails host and macOS packaging                                          |
+| `packages/go-sdk/`                 | Flame Go contracts, remote client and product-specific plugin author APIs      |
+| `packages/runtime-client/`         | `@flame/runtime-client`, generated wire projection and client                  |
+| `packages/backend-sdk/`            | `@flame/backend-sdk`, TypeScript backend authoring API                         |
+| `packages/component-sdk/`          | `@flame/component-sdk`, installed React component authoring API                |
+| `packages/local-runtime/`          | Process roots, token handoff and companion-distribution lookup                 |
+| `packages/ui/`, `packages/icons/`  | Shared controls/tokens and authored optical icon masters                       |
+| `plugins/`                         | First-party backend/component/package sources and plugin build tools           |
+| `examples/plugins/`                | Independent authoring and component-composition consumers                      |
+| `assets/brand/`                    | Original brand artwork and guide                                               |
+| `design/branding/`                 | Brand mark exploration history; shipped artwork lives in `assets/brand/`       |
+| `tooling/`, `tooling/integration/` | Workspace coordination and public product integration                          |
 
 ## Development
 
@@ -36,9 +37,15 @@ make check-native
 make check-author
 ```
 
-Use `make dev-web` or `make dev-desktop` for the same Web product. `make build-runtime`, `make build-cli` and `make package-desktop` create deliveries under `out/`. Keep each executable with its companion `plugins/` directory. Browser output is `apps/web/dist`; native embed staging is generated in `apps/desktop/assets/web`.
+Use `make dev-web` or `make dev-desktop` for the same Web product. `make build-runtime`, `make build-cli` and `make package-desktop` create deliveries under `out/`. A Runtime-hosting distribution includes its sibling `qimu-runner`, `plugins/` directory and pinned `runtimes/node/<os>-<arch>/` companion. Ship these together; managed plugins do not search for a system Node executable. Desktop attaches to a Runtime rather than hosting plugin processes. Browser output is `apps/web/dist`; native embed staging is generated in `apps/desktop/assets/web`.
 
-The repository root owns `go.work` and has no `go.mod`. Eight Go modules own their dependency graphs: Go SDK, local-runtime, Runtime, CLI, Desktop, first-party plugins, tooling and the independent Reviews backend. Root npm workspaces use one lock and one install. No former module/package names or source-layout aliases are provided.
+The repository root owns `go.work` and has no `go.mod`. Qimu, Go SDK, local-runtime, Runtime, CLI, Desktop, first-party plugins, tooling and the independent Reviews backend own their Go dependency graphs. Root npm workspaces use one lock and one install. See [workspace ownership](docs/architecture/workspace.md) for module boundaries.
+
+The Qimu integration is a breaking storage cutover. Start the new distribution
+with a fresh product root; `localruntime.DataDirectory` selects `flame-qimu.db`
+for Qimu framework records and Flame business references in one SQLite database.
+Retain the previous binary and data together for unresolved work. No historical
+plugin-state reader or automatic conversion is supplied.
 
 ## Connect to a Runtime
 

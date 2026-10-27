@@ -8,13 +8,15 @@ import (
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/google/uuid"
 )
 
 type remoteModels struct {
-	grant pluginsdk.CallbackRef
+	grant qimumcp.CallbackRef
 	space string
 }
 

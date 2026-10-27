@@ -164,6 +164,7 @@ beforeEach(async () => {
   vi.spyOn(modules, "component").mockImplementation(async () => ({
     component: Panel,
     signal: resources.signal,
+    reload: vi.fn(async () => {}),
   }));
   host = await startKernel([
     definePlugin({
@@ -306,6 +307,7 @@ it("retires a two-way nested graph without registering cleanup in its disposed p
                 input: "nested",
               }),
       signal: resources.signal,
+      reload: vi.fn(async () => {}),
     }),
   );
   mount();
@@ -375,7 +377,9 @@ it("retires observation of an unbounded import and never publishes late exports"
   await waitFor(() => expect(modules.component).toHaveBeenCalledOnce());
   await publish([consumer], []);
   await screen.findByText("Consumer content");
-  await act(async () => pending.resolve({ component: Panel, signal: resources.signal }));
+  await act(async () =>
+    pending.resolve({ component: Panel, signal: resources.signal, reload: vi.fn(async () => {}) }),
+  );
   expect(screen.queryByRole("button", { name: "Extension:inspected:0" })).toBeNull();
 });
 
@@ -387,12 +391,13 @@ it("cancels and joins a contributor's tracked reads before publishing the replac
       useEffect(() => {
         const retire = () => cancelled();
         context.signal.addEventListener("abort", retire, { once: true });
-        void context.track(release.promise);
+        void context.track(() => release.promise);
         return () => context.signal.removeEventListener("abort", retire);
       }, [context]);
       return <p>Pending contributor read</p>;
     },
     signal: resources.signal,
+    reload: vi.fn(async () => {}),
   });
   try {
     mount();
@@ -413,11 +418,12 @@ it("joins the previous render owner when the consumer changes its composition co
     component: function PendingContext({ context }) {
       contexts.push(context);
       useEffect(() => {
-        void context.track(release.promise);
+        void context.track(() => release.promise);
       }, [context]);
       return <p>Contextual contribution</p>;
     },
     signal: resources.signal,
+    reload: vi.fn(async () => {}),
   });
   function Scene({ context }: { context: ComponentContext }) {
     const [mode, setMode] = useState(0);
@@ -493,6 +499,7 @@ it("detects recursive plugin composition and cancels a component that fails rend
       });
     },
     signal: resources.signal,
+    reload: vi.fn(async () => {}),
   });
   mount();
   await screen.findByRole("alert");
@@ -508,6 +515,7 @@ it("cancels failed rendering and contains the failure inside the contribution", 
       throw new Error("broken extension");
     },
     signal: resources.signal,
+    reload: vi.fn(async () => {}),
   });
   mount();
   await screen.findByRole("alert");

@@ -10,8 +10,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 type ScheduleStore struct {

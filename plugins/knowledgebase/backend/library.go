@@ -6,11 +6,12 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/google/uuid"
 )
 
@@ -18,7 +19,7 @@ type embed func(context.Context, []string) (pluginsdk.TextEmbeddings, error)
 type resolveEmbedding func(context.Context) (embed, error)
 
 func remoteEmbedding(ctx context.Context) (embed, error) {
-	ref, err := pluginsdk.CallbackFromContext(ctx)
+	ref, err := qimumcp.CallbackFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 		return knowledge.Header{}, err
 	}
 	if prepared == nil {
-		return pluginsdk.DecodeReply[knowledge.Header](original)
+		return qimumcp.DecodeReply[knowledge.Header](original)
 	}
 	if !prepared.NewlyAdmitted() {
 		return knowledge.Header{}, pluginstorage.ErrCommandUnconfirmed

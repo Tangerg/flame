@@ -1,4 +1,4 @@
-import { cloneJSON } from "./json";
+import { cloneJSON } from "@qimu/sdk/json";
 import {
   MutationJournalError,
   MutationJournalOwnershipError,

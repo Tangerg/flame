@@ -3,8 +3,9 @@ package plugin
 import (
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -29,12 +30,7 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 				if err != nil {
 					return nil, err
 				}
-				ctx = context.WithValue(ctx, requestInputKey{}, input)
-				ctx, err = bindInvocationMetadata(ctx, call.Params.Meta, nil)
-				if err != nil {
-					return nil, err
-				}
-				ctx, err = bindCallbackMetadata(ctx, call.Params.Meta)
+				ctx, err = qimumcp.AdmitRequest(ctx, input, call.Params.Meta)
 				if err != nil {
 					return nil, err
 				}
@@ -47,7 +43,7 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 }
 
 func InvocationID(ctx context.Context) (string, error) {
-	invocation, err := InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	return invocation.ID, err
 }
 
@@ -62,11 +58,11 @@ func ToolCommandID(ctx context.Context) (string, error) {
 }
 
 func toolCommandID(id string) (string, error) {
-	if err := validateCommandID(id); err != nil {
+	if err := qimumcp.ValidateCommandID(id); err != nil {
 		return "", err
 	}
 	command := ToolCommandPrefix + id
-	if err := validateCommandID(command); err != nil {
+	if err := qimumcp.ValidateCommandID(command); err != nil {
 		return "", err
 	}
 	return command, nil

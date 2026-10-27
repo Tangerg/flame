@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/google/uuid"
 )
 
@@ -87,12 +89,12 @@ type background struct {
 	store           *store
 	host            host
 	namespace       string
-	target          extension.Target
+	target          portable.Target
 	contribution    string
 	closeHost       func() error
 }
 
-func newBackground(ctx context.Context, store *store, host host, namespace string, target extension.Target, contribution string, closeHost func() error) *background {
+func newBackground(ctx context.Context, store *store, host host, namespace string, target portable.Target, contribution string, closeHost func() error) *background {
 	lifetime, cancel := context.WithCancel(ctx)
 	return &background{ctx: lifetime, cancel: cancel, done: make(chan struct{}), closeDone: make(chan struct{}), store: store, host: host, namespace: namespace, target: target, contribution: contribution, closeHost: closeHost, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
@@ -157,8 +159,8 @@ func (b *background) dispatchStatus(err error) {
 	}
 }
 
-func (b *background) invocation() extension.Invocation {
-	return extension.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
+func (b *background) invocation() portable.Invocation {
+	return portable.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 }
 
 func (b *background) run() {
@@ -198,7 +200,7 @@ func (b *background) run() {
 			stop(err)
 			return
 		}
-		ctx, err := pluginsdk.WithInvocation(b.ctx, b.invocation())
+		ctx, err := qimumcp.WithInvocation(b.ctx, b.invocation())
 		if err == nil {
 			stream, err = openStream(ctx, b.host, generation, trigger)
 		}
@@ -300,7 +302,7 @@ func (b *background) reconcile() {
 		}
 		if err == nil {
 			ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
-			ctx, err = pluginsdk.WithInvocation(ctx, event.Capture.Invocation)
+			ctx, err = qimumcp.WithInvocation(ctx, event.Capture.Invocation)
 			if err == nil {
 				err = b.host.Admit(ctx, b.namespace, observation)
 			}
@@ -319,7 +321,7 @@ func (b *background) reconcile() {
 }
 
 func (b *background) notify() {
-	ctx, err := pluginsdk.WithInvocation(b.ctx, b.invocation())
+	ctx, err := qimumcp.WithInvocation(b.ctx, b.invocation())
 	if err == nil {
 		err = b.host.Notify(ctx, b.contribution)
 	}

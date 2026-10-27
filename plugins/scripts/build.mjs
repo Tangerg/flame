@@ -119,7 +119,7 @@ export async function buildPlugin({
   os,
   arch,
   archives,
-  archiveTool,
+  packageTool,
 }) {
   await validateDestination(source, output);
   const plan = await readBuildPlan(source);
@@ -165,16 +165,23 @@ export async function buildPlugin({
     await writeFile(mcp, JSON.stringify(descriptor, null, 2) + "\n");
   }
   if (plan.managed.length) {
-    const { buildBackend } = await import("@flame/backend-sdk/build");
+    const { default: protocol } = await import("@flame/backend-sdk/protocol", {
+      with: { type: "json" },
+    });
+    const { buildBackend } = await import("@qimu/node/build");
     const { rolldown } = await import("rolldown");
     for (const backend of plan.managed)
       await buildBackend({
+        target: protocol.constants.nodeTarget,
+        maximumFrameBytes: protocol.constants.maximumFrameBytes,
         compiler: rolldown,
         input: join(source, backend.entry.slice(0, -4) + ".ts"),
         directory: dirname(join(output, backend.entry)),
         entryFileName: basename(backend.entry),
       });
   }
+  const packageArgs = ["--source", output];
+  if (plan.native) packageArgs.push("--os", os, "--arch", arch);
   if (archives) {
     await validateDestination(source, archives);
     await mkdir(archives, { recursive: true });
@@ -184,37 +191,41 @@ export async function buildPlugin({
         !/^[a-zA-Z0-9][a-zA-Z0-9.+-]{0,127}$/.test(value)
       )
         throw new Error("plugin archive requires a bounded name and version");
-    const archiveArgs = [
-      "archive",
-      "--source",
-      output,
-      "--output",
+    packageArgs.push(
+      "--archive",
       join(
         archives,
         `plugin-${manifest.name}-${manifest.version}${plan.native ? `-${os}-${arch}` : ""}.zip`,
       ),
-    ];
-    if (archiveTool !== undefined && !isAbsolute(archiveTool))
-      throw new Error("archive tool must be an absolute executable path");
-    if (plan.managed.length && !archiveTool)
-      throw new Error(
-        "managed backend packaging requires an explicit prebuilt archive tool",
-      );
-    await run(
-      archiveTool ?? "go",
-      archiveTool
-        ? archiveArgs
-        : [
-            "tool",
-            "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
-            ...archiveArgs,
-          ],
-      {
-        cwd: source,
-        env: { ...process.env, GOOS: "", GOARCH: "" },
-        maxBuffer: 32 * 1024 * 1024,
-      },
     );
+  }
+  if (packageTool !== undefined && !isAbsolute(packageTool))
+    throw new Error("package tool must be an absolute executable path");
+  const bundled = fileURLToPath(
+    new URL(
+      "./tools/pluginpack" + (process.platform === "win32" ? ".exe" : ""),
+      import.meta.url,
+    ),
+  );
+  const runtimeModule = fileURLToPath(
+    new URL("../../runtime/", import.meta.url),
+  );
+  if (packageTool || (await exists(bundled))) {
+    await run(packageTool ?? bundled, packageArgs, {
+      cwd: source,
+      env: { ...process.env, GOOS: "", GOARCH: "" },
+      maxBuffer: 32 * 1024 * 1024,
+    });
+  } else {
+    if (!(await exists(join(runtimeModule, "cmd/pluginpack/main.go"))))
+      throw new Error(
+        "independent author builds require their prebuilt pluginpack tool",
+      );
+    await run("go", ["run", "./cmd/pluginpack", ...packageArgs], {
+      cwd: runtimeModule,
+      env: { ...process.env, GOOS: "", GOARCH: "" },
+      maxBuffer: 32 * 1024 * 1024,
+    });
   }
 }
 if (
@@ -228,10 +239,10 @@ if (
       os: { type: "string" },
       arch: { type: "string" },
       archives: { type: "string" },
-      "archive-tool": { type: "string" },
+      "package-tool": { type: "string" },
     },
   });
   if (!values.source || !values.output)
     throw new Error("--source and --output are required");
-  await buildPlugin({ ...values, archiveTool: values["archive-tool"] });
+  await buildPlugin({ ...values, packageTool: values["package-tool"] });
 }

@@ -24,6 +24,7 @@ import (
 func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	var calls atomic.Int32
 	remote := sdk.NewServer(&sdk.Implementation{Name: "review", Version: "1"}, nil)
+	publishTestBackend(t, remote)
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "record", Description: "Record a review"}, func(_ context.Context, input struct {
 		Value string `json:"value"`
 	}) (string, error) {
@@ -111,8 +112,8 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 	source := t.TempDir()
 	files := map[string]string{
-		"plugin.json":            `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package"}`,
-		"mcp.json":               `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":"` + server.URL + `"}}}`,
+		"plugin.json":            `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package","version":"1.0.0"}`,
+		"mcp.json":               `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, server.URL) + `}}`,
 		"skills/review/SKILL.md": "---\nname: review\ndescription: Review this workspace\n---\nInspect each change.\n",
 	}
 	for name, body := range files {
@@ -124,6 +125,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	authorPluginPackage(t, source)
 	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
 	if installed.Enabled != false || len(installed.Selected.Skills) != 1 {
 		t.Fatalf("unexpected admission: %+v", installed)
@@ -179,6 +181,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err = os.WriteFile(filepath.Join(source, "notes.txt"), []byte("next release"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage-while-waiting").(*protocol.PluginInstallation)
 	if staged.Staged == nil || staged.Selected.Digest != release.Digest {
 		t.Fatal("staging changed executable selection")
@@ -194,6 +197,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if err = host.Close(); err != nil {
 		t.Fatal(err)
 	}
+	reopenPluginStores(t, &cfg)
 	host, api = buildPluginProtocolRuntime(t, cfg)
 	endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
 	if err != nil {

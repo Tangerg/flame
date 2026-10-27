@@ -143,7 +143,7 @@ export function useSchedules(context: ComponentContext) {
         if (!signal.aborted) setLiveError(failure(error));
       }
     };
-    void context.track(watch());
+    void context.track(() => watch());
     return () => controller.abort();
   }, [context, refresh]);
   useEffect(() => {
@@ -199,12 +199,12 @@ export function useSchedules(context: ComponentContext) {
           }));
       }
     };
-    void context.track(readModels());
+    void context.track(() => readModels());
     return () => controller.abort();
   }, [context, modelRefresh]);
   async function observe(captured: Command) {
     try {
-      const output = await context.track(captured.promise);
+      const output = await captured.promise;
       pending.current = undefined;
       if (!context.signal.aborted) {
         if (edit?.basis || deleting) taskOpener.current = searchElement.current;

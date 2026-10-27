@@ -15,7 +15,8 @@
     "@flame/ui": "*",
     "@flame/runtime-client": "*",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "@qimu/sdk": "0.1.0"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

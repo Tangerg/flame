@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { asyncDisposeSymbol } from "dougong";
-import { parseJSON, stringifyJSON, type FlameClient } from "@flame/runtime-client";
+import { parseJSON, stringifyJSON } from "@qimu/sdk/json";
+import { type FlameClient } from "@flame/runtime-client";
 import {
   type PluginInstallation,
   type ResolvePluginPointRequest,
@@ -59,6 +60,8 @@ export class ComponentCompositions {
     private readonly moduleScope: ContributionLifetime,
   ) {}
 
+  reload = () => this.modules.reload();
+
   renderer(
     lifetime: ContributionLifetime,
     ancestry: readonly ComponentReference[],
@@ -82,8 +85,7 @@ export class ComponentCompositions {
     ancestry: readonly ComponentReference[],
   ): Promise<LoadedContribution[]> {
     const signal = AbortSignal.any([context.signal, lifetime.signal]);
-    const page = await trackContributionIO(
-      lifetime,
+    const page = await trackContributionIO(lifetime, () =>
       this.client.plugins.resolvePoint(request, signal),
     );
     signal.throwIfAborted();
@@ -185,6 +187,7 @@ function ComposedComponents(props: CompositionProps) {
     <ComponentBoundary
       scope={componentFailureScope(props.context.component, props.host.generation)}
       resetKey={resetKey}
+      reload={props.host.reload}
     >
       <InstalledComposition
         {...props}
@@ -307,7 +310,7 @@ class CompositionInstance {
         }
       }
     };
-    const work = trackContributionIO(this.lifetime, load());
+    const work = trackContributionIO(this.lifetime, () => load());
     this.reads.set(read, work);
     void work.catch((error: unknown) => this.report(error));
     return () => {
@@ -366,6 +369,7 @@ function InstalledComposition({
     <RenderingComponent
       key={entry.key}
       entry={entry.component}
+      reload={entry.reload}
       resources={entry.signal}
       runtime={context.runtime}
       binding={entry.binding}

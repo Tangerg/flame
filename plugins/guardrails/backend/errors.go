@@ -2,9 +2,8 @@ package main
 
 import (
 	"errors"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func classify(err error) string {
@@ -20,7 +19,7 @@ func classify(err error) string {
 		return "revision_limit"
 	case errors.Is(err, guardrail.ErrProtectedContent):
 		return "protected_content"
-	case errors.Is(err, extension.ErrInvocationConflict):
+	case errors.Is(err, portable.ErrInvocationConflict):
 		return "command_conflict"
 	default:
 		return ""

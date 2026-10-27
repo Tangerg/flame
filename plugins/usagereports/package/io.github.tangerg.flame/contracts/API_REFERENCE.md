@@ -9,6 +9,6 @@ Generated from the feature's Go-owned method contracts.
 | `flame.usage-reports/get.v1` | query | installation | Read one saved core report verbatim, preserving missing usage, unknown prices and recorded zeros. |
 | `flame.usage-reports/list.v1` | query | installation | List saved accounting report headers in capture order, newest first. |
 
-Capability `flame.usage-reports.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.flame/backend/2026-10-15.3`.
+Capability `flame.usage-reports.v1` uses `collection` composition in `installation` scope. Required backend protocol: `io.github.tangerg.qimu/portable/1`.
 
 `capability.generated.json` preserves the canonical callable contract; `schema.json` and the method references are presentation projections.

@@ -27,6 +27,7 @@ import (
 func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	var executions atomic.Int32
 	remote := sdk.NewServer(&sdk.Implementation{Name: "review", Version: "1"}, nil)
+	publishTestBackend(t, remote)
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "record", Description: "Record a review"}, func(_ context.Context, input struct {
 		Value string `json:"value"`
 	}) (string, error) {
@@ -123,9 +124,10 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 
 	source := t.TempDir()
 	poApprovalWriteFiles(t, source, map[string]string{
-		"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package"}`,
-		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":"` + server.URL + `"}}}`,
+		"plugin.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package","version":"1.0.0"}`,
+		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, server.URL) + `}}`,
 	})
+	authorPluginPackage(t, source)
 	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	serverID := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
@@ -214,6 +216,7 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "notes.txt"), []byte("next release"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	authorPluginPackage(t, source)
 	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage").(*protocol.PluginInstallation)
 	if staged.Staged == nil || staged.Staged.Digest == installed.Selected.Digest {
 		t.Fatalf("staged release = %+v", staged.Staged)

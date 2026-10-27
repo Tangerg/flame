@@ -23,9 +23,9 @@ func TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "pid")
 	source := poMCPPackage(t, map[string]string{
 		"plugin.json": poMCPManifest,
-		"blocked.sh":  "echo $$ > \"$1\"\nwhile IFS= read -r request; do :; done\n",
-		"mcp.json":    fmt.Sprintf(`{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"stdio","command":"sh","args":["${PLUGIN_ROOT}/blocked.sh",%q]}}}`, marker),
+		"mcp.json":    fmt.Sprintf(`{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"stdio","command":%q,"args":["blocked",%q]}}}`, fixturePluginCommand, marker),
 	})
+	authorPluginPackage(t, source)
 	first := poMCPOpen(t, cfg)
 	installed := poMCPActivate(first, source)
 	if len(installed.Selected.Servers) != 1 {
@@ -33,6 +33,7 @@ func TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable(t *testing.T) {
 	}
 	firstPID := waitPluginPID(t, marker, 0)
 	first.close()
+	reopenPluginStores(t, &cfg)
 	assertPluginExited(t, firstPID)
 	ctx, cancel := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
 	defer cancel()

@@ -3,10 +3,11 @@ package plugin
 import (
 	"context"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"math"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type TextEmbeddings struct {
@@ -16,11 +17,11 @@ type TextEmbeddings struct {
 
 // TextEmbeddingMethod projects vectors from the captured embedding model. The
 // model adapter retains the complete provider response and endpoint evidence.
-func TextEmbeddingMethod() (*Method[[]string, TextEmbeddings], error) {
-	return NewMethod[[]string, TextEmbeddings](MethodConfig{Name: "flame.model/embed-texts.v2", Kind: extension.Mutation, Target: "call", Description: "Embed texts and identify the vector space captured by this exchange."})
+func TextEmbeddingMethod() (*qimumcp.Method[[]string, TextEmbeddings], error) {
+	return qimumcp.NewMethod[[]string, TextEmbeddings](qimumcp.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: portable.Mutation, Target: "call", Description: "Embed texts and identify the vector space captured by this exchange."})
 }
 
-func CallTextEmbedding(ctx context.Context, ref CallbackRef, id string, texts []string) (TextEmbeddings, error) {
+func CallTextEmbedding(ctx context.Context, ref qimumcp.CallbackRef, id string, texts []string) (TextEmbeddings, error) {
 	if len(texts) == 0 {
 		return TextEmbeddings{}, errors.New("embedding call: texts are required")
 	}
@@ -28,7 +29,7 @@ func CallTextEmbedding(ctx context.Context, ref CallbackRef, id string, texts []
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
-	vectors, err := CallHost(ctx, ref, method, id, slices.Clone(texts))
+	vectors, err := qimumcp.CallHost(ctx, ref, method, id, slices.Clone(texts))
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
@@ -40,19 +41,19 @@ func CallTextEmbedding(ctx context.Context, ref CallbackRef, id string, texts []
 
 // NewTextEmbeddingCallback leaves admission and budgets with the calling owner.
 // Physical model evidence belongs to this child exchange, retaining its parent.
-func NewTextEmbeddingCallback(call func(context.Context, Command[[]string]) (TextEmbeddings, error)) (Callback, error) {
+func NewTextEmbeddingCallback(call func(context.Context, qimumcp.Command[[]string]) (TextEmbeddings, error)) (qimumcp.Callback, error) {
 	if call == nil {
-		return Callback{}, errors.New("embedding call: model owner is required")
+		return qimumcp.Callback{}, errors.New("embedding call: model owner is required")
 	}
 	method, err := TextEmbeddingMethod()
 	if err != nil {
-		return Callback{}, err
+		return qimumcp.Callback{}, err
 	}
-	return NewCallback(method, nil, func(ctx context.Context, command Command[[]string]) (TextEmbeddings, error) {
+	return qimumcp.NewCallback(method, nil, func(ctx context.Context, command qimumcp.Command[[]string]) (TextEmbeddings, error) {
 		if len(command.Input) == 0 {
 			return TextEmbeddings{}, errors.New("embedding call: texts are required")
 		}
-		if parent, err := InvocationFromContext(ctx); err == nil && parent.ID == command.ID {
+		if parent, err := qimumcp.InvocationFromContext(ctx); err == nil && parent.ID == command.ID {
 			return TextEmbeddings{}, errors.New("embedding call: independent invocation requires a distinct identity")
 		}
 		ctx, err := modelCallContext(ctx, command.ID)

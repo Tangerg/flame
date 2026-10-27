@@ -2,10 +2,11 @@ package plugin
 
 import (
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -22,19 +23,19 @@ func (r ModelInputRequest) Validate() error {
 	}
 	return r.Request.Validate()
 }
-func ModelInputMethod() (*Method[ModelInputRequest, chat.Request], error) {
-	return NewMethod[ModelInputRequest, chat.Request](MethodConfig{Name: "flame.model-input/transform.v1", Kind: extension.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
+func ModelInputMethod() (*qimumcp.Method[ModelInputRequest, chat.Request], error) {
+	return qimumcp.NewMethod[ModelInputRequest, chat.Request](qimumcp.MethodConfig{Name: "flame.model-input/transform.v1", Kind: portable.Query, Target: "call", Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
-func ModelInputContract() (*extension.Capability, error) { return modelInputContract() }
+func ModelInputContract() (*portable.Capability, error) { return modelInputContract() }
 
 // The published contract is immutable. Checkpoint validation shares its compiled
 // schemas instead of repeating admission on every durable tree commit.
-var modelInputContract = sync.OnceValues(func() (*extension.Capability, error) {
+var modelInputContract = sync.OnceValues(func() (*portable.Capability, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
 		return nil, err
 	}
-	return extension.NewCapability(extension.CapabilityConfig{Reference: "flame.model-input.v1", Composition: extension.Decoration, Scope: "call"}, method.Descriptor())
+	return portable.NewCapability(portable.CapabilityConfig{Reference: "flame.model-input.v1", Composition: portable.Decoration, Scope: "call"}, method.Descriptor())
 })
 
 // ValidateModelInput preserves facts owned by selection, Tool preparation and

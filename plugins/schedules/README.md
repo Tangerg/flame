@@ -75,8 +75,8 @@ former incompatible routes are not converted or retargeted.
 source used by actual server registration and query consumers. Its generated
 canonical capability, Schema, method references and TypeScript data maps live
 under `io.github.tangerg.flame/contracts` in this package. Regenerate from the workspace
-with `go generate ./plugins/schedules/internal/contract`; the SDK contract command
-projects the same methods. The package builder copies this namespace into the
+with `go generate ./plugins/schedules/internal/contract`; the public
+`qimu/cmd/qimu contract` command projects those same methods. The package builder copies this namespace into the
 compiled package. Do not hand-edit generated artifacts or duplicate schemas.
 The backend publishes the named `schedules` capability. Runtime validates the
 complete contract and declared export, including runNow, and captures the

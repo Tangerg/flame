@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import {
-  OperationFailure,
-  isErrorType,
-  stringifyJSON,
-  type PluginCommandRecovery,
-} from "@flame/runtime-client";
+import { stringifyJSON } from "@qimu/sdk/json";
+import { OperationFailure, isErrorType, type PluginCommandRecovery } from "@flame/runtime-client";
 import {
   Button,
   CodeBlock,
@@ -62,10 +58,10 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
     try {
       let outcome: Outcome;
       if (action === "retire") {
-        await operations.track(command.retire(signal));
+        await operations.track(() => command.retire(signal));
         outcome = { type: "retired", key: command.idempotencyKey };
       } else {
-        const output = await operations.track(
+        const output = await operations.track(() =>
           command.recover((value) => stringifyJSON(value), signal),
         );
         outcome = { type: "confirmed", key: command.idempotencyKey, output };

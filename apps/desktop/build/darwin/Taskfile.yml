@@ -49,34 +49,6 @@ tasks:
       CGO_LDFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
       MACOSX_DEPLOYMENT_TARGET: "{{.MACOS_MIN_VERSION}}"
 
-  build:universal:
-    summary: Builds darwin universal binary (arm64 + amd64)
-    deps:
-      - task: build
-        vars:
-          ARCH: amd64
-          OUTPUT: "{{.UNIVERSAL_BIN}}-amd64"
-      - task: build
-        vars:
-          ARCH: arm64
-          OUTPUT: "{{.UNIVERSAL_BIN}}-arm64"
-    cmds:
-      - task: '{{if eq OS "darwin"}}build:universal:lipo:native{{else}}build:universal:lipo:go{{end}}'
-
-  build:universal:lipo:native:
-    summary: Creates universal binary using native lipo (macOS)
-    internal: true
-    cmds:
-      - lipo -create -output "{{.UNIVERSAL_BIN}}" "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
-      - rm "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
-
-  build:universal:lipo:go:
-    summary: Creates universal binary using wails3 tool lipo (Linux/Windows)
-    internal: true
-    cmds:
-      - wails3 tool lipo -output "{{.UNIVERSAL_BIN}}" -input "{{.UNIVERSAL_BIN}}-amd64" -input "{{.UNIVERSAL_BIN}}-arm64"
-      - rm -f "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
-
   package:
     summary: Packages the application into a `.app` bundle
     deps:
@@ -87,13 +59,9 @@ tasks:
           BINARY_SOURCE: "{{.OUTPUT | default .NATIVE_BIN}}"
 
   package:universal:
-    summary: Packages darwin universal binary (arm64 + amd64)
-    deps:
-      - task: build:universal
+    summary: Refuses a universal release without a complete multi-architecture companion contract
     cmds:
-      - task: create:app:bundle
-        vars:
-          BINARY_SOURCE: "{{.UNIVERSAL_BIN}}"
+      - node ../../tooling/desktop-companions.mjs --arch universal
 
   package:dmg:
     summary: Packages the application into a styled `.dmg`
@@ -136,6 +104,7 @@ tasks:
           cp build/darwin/Assets.car "{{.APP_BUNDLE}}/Contents/Resources"
         fi
       - cp "{{.BINARY_SOURCE}}" "{{.APP_BUNDLE}}/Contents/MacOS/{{.APP_NAME}}"
+      - node ../../tooling/desktop-companions.mjs --arch "{{.ARCH | default ARCH}}" --output "{{.APP_BUNDLE}}/Contents/MacOS"
       - cp "{{.PLIST_SOURCE}}" "{{.APP_BUNDLE}}/Contents/Info.plist"
       - /usr/libexec/PlistBuddy -c 'Add :LSMinimumSystemVersion string {{.MACOS_MIN_VERSION}}' "{{.APP_BUNDLE}}/Contents/Info.plist"
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'

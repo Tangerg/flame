@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 func TestAgentMemoryQueriesJoinCallerTransaction(t *testing.T) {

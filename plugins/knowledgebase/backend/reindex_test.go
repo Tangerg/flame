@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
 	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 func TestStoredTextRemainsReadableAndReindexUsesOneDurablePublication(t *testing.T) {

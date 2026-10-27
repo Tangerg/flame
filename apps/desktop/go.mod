@@ -3,23 +3,31 @@ module github.com/Tangerg/flame/apps/desktop
 go 1.27.3
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-qimu.20261027.2
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261027.3
 	github.com/wailsapp/wails/v3 v3.0.0-beta.34
 	golang.org/x/tools v0.52.0
 )
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
+	github.com/Tangerg/scope/core v0.58.0 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/go-json-experiment/json v0.0.0-20260820222146-c27c302e5fc3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.2.4 // indirect
+	github.com/invopop/jsonschema v0.14.0 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/stretchr/testify v1.12.1 // indirect
+	github.com/pb33f/go-yaml v0.1.1 // indirect
+	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
+	github.com/samber/lo v1.53.0 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )

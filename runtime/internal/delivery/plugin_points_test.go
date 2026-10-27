@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -16,18 +16,18 @@ import (
 
 type inspectedPoint struct {
 	pluginCallUseCases
-	contract *extension.Point
+	contract *portable.Point
 }
 
-func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *extension.Point, _ extension.PointContext, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
+func (s *inspectedPoint) ResolvePoint(_ context.Context, contract *portable.Point, _ portable.PointContext, _ []plugins.PointReference) ([]plugins.PointBinding, error) {
 	s.contract = contract
 	return []plugins.PointBinding{}, nil
 }
 
 func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
-	contract, err := extension.AdmitPoint(extension.PointDescriptor{
-		Protocol: extension.Protocol, Reference: "example.threshold", Scope: "workspace",
-		Composition: extension.Collection, Ordering: extension.CanonicalKeys, Optional: true,
+	contract, err := portable.AdmitPoint(portable.PointDescriptor{
+		Protocol: portable.Protocol, Reference: "example.threshold", Scope: "workspace",
+		Composition: portable.Collection, Ordering: portable.CanonicalKeys, Optional: true,
 		Value: []byte(`{"type":"integer","maximum":18446744073709551615}`), Applicability: []byte(`true`),
 	})
 	if err != nil {
@@ -53,7 +53,7 @@ func TestPointProjectionAndQueryPreserveCanonicalNumericSchema(t *testing.T) {
 	if projected.Points[0].Contract != raw || projected.PointValues[0].Contract != raw || projected.PointValues[0].Value != "18446744073709551615" || !strings.Contains(raw, "18446744073709551615") {
 		t.Fatal("point projection changed the admitted schema identity")
 	}
-	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: extension.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
+	request := protocol.ResolvePluginPointRequest{Contract: projected.Points[0].Contract, Target: portable.Target{Scope: "workspace", Reference: "/project"}, Attributes: `{}`, Order: []protocol.PluginPointReference{}}
 	body, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)

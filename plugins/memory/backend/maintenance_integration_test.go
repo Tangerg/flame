@@ -11,13 +11,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	app "github.com/Tangerg/flame/plugins/memory/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -53,13 +54,15 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryThroughCapturedModels(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	operations := []string{}
 	grant, release, err := openTestModel(t.Context(), broker, session, promptModel(func(_ context.Context, prompt app.Prompt) (string, error) {
 		operations = append(operations, prompt.Operation)
@@ -121,13 +124,15 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 		t.Fatal(err)
 	}
 	store, session, closeBackend := connectMemoryBackend(t, path)
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	curating := make(chan struct{})
 	joined := make(chan struct{})
 	grant, release, err := openTestModel(ctx, broker, session, promptModel(func(ctx context.Context, prompt app.Prompt) (string, error) {
@@ -189,7 +194,9 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	closeBackend()
 	store, session, _ = connectMemoryBackend(t, path)
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	originalInput := rpc.MaintenanceInput{SessionID: "ses_revoked", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured conversation"}}
 	if _, found, err := receiptMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](ctx, session, memoryContract(t), "memory", rpc.Maintain, "maintenance", originalInput); err != nil || found {
 		t.Fatalf("canceled model work became known receipt: %t, %v", found, err)
@@ -258,13 +265,15 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_maintenance_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	broker := pluginsdk.NewCallbacks()
+	broker := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := broker.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	broker.AdmitSession(session)
+	if err := broker.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	defer broker.RevokeSession(session)
 	var calls atomic.Int32
 	grant, release, err := openTestModel(t.Context(), broker, session, promptModel(func(context.Context, app.Prompt) (string, error) {
@@ -299,9 +308,9 @@ func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *test
 	}
 }
 
-func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref pluginsdk.CallbackRef) (rpc.MaintenanceResult, error) {
+func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref qimumcp.CallbackRef) (rpc.MaintenanceResult, error) {
 	t.Helper()
-	metadata, err := pluginsdk.CallbackMetadata(ref)
+	metadata, err := qimumcp.CallbackMetadata(ref)
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
@@ -309,7 +318,7 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	exported, err := pluginsdk.NewCapabilityBinding(session, "memory", contracts.Capability)
+	exported, err := qimumcp.NewCapabilityBinding(session, "memory", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,10 +354,10 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 		t.Fatal(err)
 	}
 	for _, call := range []struct {
-		descriptor extension.MethodDescriptor
+		descriptor portable.MethodDescriptor
 		input      any
 	}{{contracts.Search.Descriptor(), input}, {contracts.Maintain.Descriptor(), rpc.MaintenanceInput{SessionID: "ses_former", Project: input.Project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}}} {
-		method, err := extension.AdmitMethod(call.descriptor)
+		method, err := portable.AdmitMethod(call.descriptor)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -363,7 +372,7 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 		if err := json.Unmarshal(admitted.JSON(), &former); err != nil {
 			t.Fatal(err)
 		}
-		former["Grant"] = pluginsdk.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
+		former["Grant"] = qimumcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
 		admitted, err = jsonvalue.Encode(former)
 		if err != nil {
 			t.Fatal(err)
@@ -374,7 +383,7 @@ func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(
 	}
 }
 
-func memoryContract(t *testing.T) *extension.Capability {
+func memoryContract(t *testing.T) *portable.Capability {
 	t.Helper()
 	contracts, err := rpc.NewContracts()
 	if err != nil {
@@ -385,20 +394,20 @@ func memoryContract(t *testing.T) *extension.Capability {
 
 // The callback fixture supplies the public model exchange. Runtime owns admission
 // and provider budgets; these tests assert Memory's private publication lifetime.
-func openTestModel(ctx context.Context, callbacks *pluginsdk.Callbacks, session *sdk.ClientSession, model chat.Model) (pluginsdk.CallbackRef, func(), error) {
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
+func openTestModel(ctx context.Context, callbacks *qimumcp.Callbacks, session *sdk.ClientSession, model chat.Model) (qimumcp.CallbackRef, func(), error) {
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		return model.Call(ctx, command.Input.Clone())
 	})
 	if err != nil {
-		return pluginsdk.CallbackRef{}, nil, err
+		return qimumcp.CallbackRef{}, nil, err
 	}
 	policy := rpc.ModelCallerPolicy()
-	return callbacks.Open(ctx, session, pluginsdk.CallbackLimits{MaxRequestBytes: policy.MaxCallbackInputBytes, MaxResponseBytes: policy.MaxCallbackOutputBytes}, completion)
+	return callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: policy.MaxCallbackInputBytes, MaxResponseBytes: policy.MaxCallbackOutputBytes}, completion)
 }
 
-func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *extension.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
+func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P, metadata sdk.ParamsBase) (R, error) {
 	var zero R
-	exported, err := pluginsdk.NewCapabilityBinding(session, export, contract)
+	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, err
 	}
@@ -418,9 +427,9 @@ func callMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSess
 	return zero, err
 }
 
-func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *extension.Capability, export, method, id string, input P) (R, bool, error) {
+func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientSession, contract *portable.Capability, export, method, id string, input P) (R, bool, error) {
 	var zero R
-	exported, err := pluginsdk.NewCapabilityBinding(session, export, contract)
+	exported, err := qimumcp.NewCapabilityBinding(session, export, contract)
 	if err != nil {
 		return zero, false, err
 	}

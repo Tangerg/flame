@@ -30,7 +30,12 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, closeRuntimeInstance(instance)) }()
+	owned := true
+	defer func() {
+		if owned {
+			err = errors.Join(err, closeRuntimeInstance(instance))
+		}
+	}()
 	srv := cfg.Server
 	if len(srv.CORSOrigins) == 0 {
 		srv.CORSOrigins = flamehttp.DefaultCORSOrigins()
@@ -59,7 +64,8 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	return runServer(ctx, errw, httpServer, srv.Listen, token)
+	owned = false
+	return runServer(ctx, errw, httpServer, srv.Listen, token, instance)
 }
 
 type runtimeCloser interface {
@@ -98,12 +104,13 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue
 	info := instance.ServerInfo()
 	return flamehttp.NewServer(flamehttp.Config{
 		Endpoint:       instance.Endpoint(),
+		PluginControl:  instance.PluginControl(),
 		Addr:           srv.Listen,
 		ServerInfo:     info,
 		LocalToken:     tokenValue,
 		CORSOrigins:    srv.CORSOrigins,
 		WebApplication: web,
-		HealthProbes:   []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage)},
+		HealthProbes:   []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage), pluginHealthProbe(instance.CheckPlugins)},
 	})
 }
 
@@ -152,7 +159,7 @@ type runtimeHTTPServer interface {
 
 // runServer launches the server, blocks until it returns or a shutdown signal
 // arrives, then drains with a 10s budget.
-func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer, addr string, token *localruntime.Token) error {
+func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer, addr string, token *localruntime.Token, instance runtimeCloser) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -169,6 +176,10 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 			switch {
 			case endpoint.Authentication == flamehttp.EndpointAuthenticationNone:
 				gate = "no auth"
+			case endpoint.Authentication == flamehttp.EndpointAuthenticationRealm:
+				gate = "realm-gated"
+			case endpoint.Authentication == flamehttp.EndpointAuthenticationResourceLease:
+				gate = "lease-gated"
 			case token == nil:
 				gate = "UNGATED"
 			}
@@ -190,6 +201,7 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 	select {
 	case serveErr := <-errs:
 		return errors.Join(
+			closeRuntimeInstance(instance),
 			normalizeHTTPServerError(serveErr),
 			normalizeHTTPServerError(httpServer.Close()),
 		)
@@ -197,6 +209,9 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 		_, _ = fmt.Fprintln(errw, runtimeLogPrefix+" shutdown requested, draining...")
 	}
 
+	// The Realm cleanup endpoint must remain reachable while Runtime joins
+	// original browser exits. Delivery seals new product work itself.
+	runtimeErr := closeRuntimeInstance(instance)
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), serverShutdownTimeout)
 	defer cancel()
 	shutdownErr := httpServer.Shutdown(shutdownCtx)
@@ -204,7 +219,7 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 		shutdownErr = errors.Join(shutdownErr, normalizeHTTPServerError(httpServer.Close()))
 	}
 	serveErr := normalizeHTTPServerError(<-errs)
-	return errors.Join(shutdownErr, serveErr)
+	return errors.Join(runtimeErr, shutdownErr, serveErr)
 }
 
 func normalizeHTTPServerError(err error) error {
@@ -212,4 +227,13 @@ func normalizeHTTPServerError(err error) error {
 		return nil
 	}
 	return err
+}
+
+func pluginHealthProbe(check func(context.Context) error) flamehttp.HealthProbe {
+	return flamehttp.HealthProbe{Name: "plugins", Probe: func(ctx context.Context) flamehttp.HealthCheck {
+		if err := check(ctx); err != nil {
+			return flamehttp.HealthCheck{Status: flamehttp.HealthDegraded, Detail: "original plugin execution protection is awaiting recovery"}
+		}
+		return flamehttp.HealthCheck{Status: flamehttp.HealthOK}
+	}}
 }

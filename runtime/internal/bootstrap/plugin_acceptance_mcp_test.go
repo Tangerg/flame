@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -136,6 +136,7 @@ func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]pro
 func poMCPRemote(t *testing.T, names ...string) string {
 	t.Helper()
 	remote := sdk.NewServer(&sdk.Implementation{Name: "fixture", Version: "1"}, nil)
+	publishTestBackend(t, remote)
 	for _, name := range names {
 		executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: name, Description: "Fixture tool " + name}, func(_ context.Context, input struct {
 			Value string `json:"value"`
@@ -188,11 +189,11 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
 	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
 	for _, contribution := range installed.Selected.Contributions {
-		contract, err := extension.ParseCapability([]byte(contribution.Contract))
+		contract, err := portable.ParseCapability([]byte(contribution.Contract))
 		if err != nil {
 			r.t.Fatal(err)
 		}
-		if contract.Descriptor().Composition != extension.Selection {
+		if contract.Descriptor().Composition != portable.Selection {
 			continue
 		}
 		role := contract.Descriptor().Reference
@@ -201,15 +202,16 @@ func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation 
 	return installed
 }
 
-const poMCPManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package"}`
+const poMCPManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"review-package","version":"1.0.0"}`
 
 func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T) {
 	url := poMCPRemote(t, "record")
 	cfg := poMCPConfig(t)
 	source := poMCPPackage(t, map[string]string{
 		"plugin.json": poMCPManifest,
-		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":"` + url + `"},"broken":{"type":"carrier-pigeon"}}}`,
+		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, url) + `,"broken":{"type":"carrier-pigeon"}}}`,
 	})
+	authorPluginPackage(t, source)
 	first := poMCPOpen(t, cfg)
 	enabled := poMCPActivate(first, source)
 	broken := protocol.PluginDiagnostic{Component: protocol.PluginComponent{Type: protocol.PluginComponentMCPServer, Name: new("broken")}, Code: protocol.PluginDiagnosticInvalidDeclaration}
@@ -227,9 +229,7 @@ func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T
 		return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "record" })
 	}
 	first.poMCPTools(&sibling, hasRecord)
-	first.close()
-
-	restarted := poMCPOpen(t, cfg)
+	restarted := reopenPluginRuntime(t, first, &cfg)
 	listed := restarted.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	if len(listed.Data) != 1 {
 		t.Fatalf("restart lost the installation: %+v", listed.Data)
@@ -273,10 +273,12 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsExcludesBoth(t *testing.T) {
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: userURL},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 	}, "create-user-reviews")
-	installed := poMCPActivate(runtime, poMCPPackage(t, map[string]string{
+	source := poMCPPackage(t, map[string]string{
 		"plugin.json": poMCPManifest,
-		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":{"type":"streamable-http","url":"` + installationURL + `"}}}`,
-	}))
+		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, installationURL) + `}}`,
+	})
+	authorPluginPackage(t, source)
+	installed := poMCPActivate(runtime, source)
 	user := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: "reviews"}
 	owned := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	userRef := protocol.ToolRef{Type: protocol.ToolRefMCP, Name: "record", Server: &user}

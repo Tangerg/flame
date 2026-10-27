@@ -9,7 +9,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -44,10 +47,10 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			original := extension.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "original-model"}}
-			refs := make(chan pluginsdk.CallbackRef, 1)
-			beforeNext := func(ctx context.Context) (pluginsdk.CallbackRef, error) {
-				ref, err := pluginsdk.CallbackFromContext(ctx)
+			original := portable.Invocation{ID: "original-model", Origin: extension.Model, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "original-model"}}
+			refs := make(chan qimumcp.CallbackRef, 1)
+			beforeNext := func(ctx context.Context) (qimumcp.CallbackRef, error) {
+				ref, err := qimumcp.CallbackFromContext(ctx)
 				if err != nil {
 					return ref, err
 				}
@@ -66,9 +69,9 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 				}
 				return ref, nil
 			}
-			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"observer"}, func(backend *qimumcp.Backend) {
 				call, _ := pluginsdk.ModelMethod()
-				if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.Command[chat.Request]) (pluginsdk.ModelResult, error) {
+				if err := call.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, input qimumcp.Command[chat.Request]) (pluginsdk.ModelResult, error) {
 					ref, err := beforeNext(ctx)
 					if err != nil {
 						return pluginsdk.ModelResult{}, err
@@ -79,11 +82,11 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 					t.Fatal(err)
 				}
 				stream, _ := pluginsdk.ModelStreamMethod()
-				if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, input pluginsdk.Command[chat.Request]) iter.Seq2[pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
-					return func(yield func(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
+				if err := stream.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, input qimumcp.Command[chat.Request]) iter.Seq2[qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error] {
+					return func(yield func(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult], error) bool) {
 						ref, err := beforeNext(ctx)
 						if err != nil {
-							yield(pluginsdk.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
+							yield(qimumcp.StreamValue[chat.ResponseDelta, pluginsdk.ModelResult]{}, err)
 							return
 						}
 						pluginsdk.StreamModel(ctx, ref, input.ID, input.Input.Clone())(yield)
@@ -98,7 +101,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			}
 			model := &continuationOwnerModel{check: func(ctx context.Context) {
 				actor, found := operation.ActorFrom(ctx)
-				invocation, err := pluginsdk.InvocationFromContext(ctx)
+				invocation, err := qimumcp.InvocationFromContext(ctx)
 				if !found || actor != caller || err != nil || invocation != original {
 					t.Error("next adopted the observer's authority or changed original invocation")
 				}
@@ -106,7 +109,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 			var hostCalls atomic.Int32
 			host := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				actor, found := operation.ActorFrom(r.Context())
-				invocation, err := pluginsdk.InvocationFromContext(r.Context())
+				invocation, err := qimumcp.InvocationFromContext(r.Context())
 				if !found || actor.Server().String() != "observer" || actor.Release() != store.snapshot.Selected.Digest() || err != nil || invocation != original {
 					t.Error("RPC did not retain the observer activation and original invocation")
 					http.Error(w, "wrong receiver", http.StatusForbidden)
@@ -127,7 +130,7 @@ func TestObserverCohostsRPCAndNextWithDistinctCapturedAuthority(t *testing.T) {
 				t.Fatal(err)
 			}
 			bound, streamer := composition.Bind(model, model, bindings)
-			ctx, err := pluginsdk.WithInvocation(operation.WithActor(t.Context(), caller), original)
+			ctx, err := qimumcp.WithInvocation(operation.WithActor(t.Context(), caller), original)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,22 +4,31 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+type modelAuthorityKey struct{}
 
 func TestModelMethodUsesScopeExchangeContract(t *testing.T) {
 	method, err := ModelMethod()
 	if err != nil {
 		t.Fatal(err)
 	}
+	contract, err := portable.AdmitMethod(method.Descriptor())
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, value := range []jsontext.Value{[]byte(`{}`), []byte(`{"failure":{"code":"failed","message":" "}}`)} {
-		if err := method.contract.ValidateOutput(value); err == nil {
+		if err := contract.ValidateOutput(value); err == nil {
 			t.Fatalf("model contract accepted an absent outcome: %s", value)
 		}
 	}
@@ -28,15 +37,17 @@ func TestModelMethodUsesScopeExchangeContract(t *testing.T) {
 func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
-	parent := extension.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: extension.Target{Scope: "installation", Reference: "captured-installation"}}
-	ctx, err := WithInvocation(t.Context(), parent)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
+	parent := portable.Invocation{ID: "original-maintenance", Origin: extension.Human, Parent: "original-operation", Target: portable.Target{Scope: "installation", Reference: "captured-installation"}}
+	ctx, err := qimumcp.WithInvocation(t.Context(), parent)
 	if err != nil {
 		t.Fatal(err)
 	}
-	seen := make(chan extension.Invocation, 2)
-	callback, err := NewModelCallback(func(ctx context.Context, command Command[chat.Request]) (*chat.Response, error) {
-		invocation, err := InvocationFromContext(ctx)
+	seen := make(chan portable.Invocation, 2)
+	callback, err := NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+		invocation, err := qimumcp.InvocationFromContext(ctx)
 		if err != nil || invocation.ID != command.ID {
 			return nil, errors.Join(err, errors.New("model command identity was not projected"))
 		}
@@ -47,7 +58,7 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(ctx, session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,14 +69,14 @@ func TestModelCallbackProjectsDistinctCallsWithOriginalOriginAndParent(t *testin
 			t.Fatal(err)
 		}
 		actual := <-seen
-		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (extension.Target{Scope: "call", Reference: id}) {
+		if actual.ID != id || actual.Origin != parent.Origin || actual.Parent != parent.ID || actual.Target != (portable.Target{Scope: "call", Reference: id}) {
 			t.Fatalf("call lost original ancestry: %+v", actual)
 		}
 	}
 }
 
 func TestModelCallRejectsInvalidInputBeforeTransport(t *testing.T) {
-	if _, err := CallModel(t.Context(), CallbackRef{}, "model-call", &chat.Request{}); !errors.Is(err, chat.ErrInvalidRequest) {
+	if _, err := CallModel(t.Context(), qimumcp.CallbackRef{}, "model-call", &chat.Request{}); !errors.Is(err, chat.ErrInvalidRequest) {
 		t.Fatalf("invalid input entered model transport: %v", err)
 	}
 }
@@ -73,9 +84,11 @@ func TestModelCallRejectsInvalidInputBeforeTransport(t *testing.T) {
 func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	started, stopped := make(chan struct{}), make(chan struct{})
-	callback, err := NewModelCallback(func(ctx context.Context, _ Command[chat.Request]) (*chat.Response, error) {
+	callback, err := NewModelCallback(func(ctx context.Context, _ qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		close(started)
 		<-ctx.Done()
 		close(stopped)
@@ -84,7 +97,7 @@ func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(t.Context(), session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	ref, release, err := host.Open(t.Context(), session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,12 +137,14 @@ func TestCapturedModelCancellationStopsOwnerWork(t *testing.T) {
 func TestModelCallbackRetainsCompleteScopeResponseAndAuthority(t *testing.T) {
 	host := newTestCallbacks(t)
 	session := new(sdk.ClientSession)
-	host.AdmitSession(session)
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
+	}
 	var calls atomic.Int32
 	message := chat.NewAssistantMessage(chat.NewTextPart("answer"), chat.NewReasoningPart("basis", nil))
 	response := &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, Metadata: &chat.ResponseMetadata{Model: "inner-model", Usage: &chat.Usage{InputTokens: 12, OutputTokens: 3, CacheReadInputTokens: new(int64(0))}}}
-	callback, err := NewModelCallback(func(ctx context.Context, command Command[chat.Request]) (*chat.Response, error) {
-		if ctx.Value(callbackOwnerKey{}) != "captured-model" || command.ID != "original-model-call" {
+	callback, err := NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
+		if ctx.Value(modelAuthorityKey{}) != "captured-model" || command.ID != "original-model-call" {
 			return nil, errors.New("captured model identity changed")
 		}
 		calls.Add(1)
@@ -138,8 +153,8 @@ func TestModelCallbackRetainsCompleteScopeResponseAndAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner := context.WithValue(t.Context(), callbackOwnerKey{}, "captured-model")
-	ref, release, err := host.Open(owner, session, CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
+	owner := context.WithValue(t.Context(), modelAuthorityKey{}, "captured-model")
+	ref, release, err := host.Open(owner, session, qimumcp.CallbackLimits{MaxRequestBytes: 64 * 1024, MaxResponseBytes: 64 * 1024}, callback)
 	if err != nil {
 		t.Fatal(err)
 	}

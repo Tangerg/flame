@@ -10,9 +10,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/memory"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type AgentMemory struct{ runtime *Connection }
@@ -133,7 +133,7 @@ func (a *AgentMemory) prepareCommand(ctx context.Context, name string, input jso
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	contract, err := extension.ParseCapability([]byte(bound.Contract))
+	contract, err := portable.ParseCapability([]byte(bound.Contract))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}

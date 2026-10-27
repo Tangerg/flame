@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -18,7 +20,7 @@ import (
 type installedCall struct {
 	calls   *CommandCalls
 	request plugins.CallRequest
-	method  *extension.Method
+	method  *portable.Method
 }
 
 func (c *CommandCalls) Command(ctx context.Context, id string) (*plugin.Command, error) {
@@ -38,14 +40,14 @@ func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (
 }
 
 func (c *CommandCalls) Resolve(ctx context.Context, installation identity.InstallationID, digest identity.Digest, contribution plugin.ContributionID) ([]plugins.Collaborator, error) {
-	return plugins.ResolveRequirements(ctx, c.installations, c.selections, c.compositions, installation, digest, contribution)
+	return plugins.ResolveRequirements(ctx, c.framework, c.installations, c.selections, c.compositions, installation, digest, contribution)
 }
 
-func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *extension.Point, target extension.PointContext, order []plugins.PointReference) ([]plugins.PointBinding, error) {
-	return plugins.ResolvePoint(ctx, c.installations, contract, target, order)
+func (c *CommandCalls) ResolvePoint(ctx context.Context, contract *portable.Point, target portable.PointContext, order []plugins.PointReference) ([]plugins.PointBinding, error) {
+	return plugins.ResolvePoint(ctx, c.framework, c.installations, contract, target, order)
 }
 
-func (c *installedCall) Kind() extension.MethodKind { return c.method.Kind() }
+func (c *installedCall) Kind() portable.MethodKind { return c.method.Kind() }
 
 func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBinding, error) {
 	r := c.request
@@ -87,27 +89,30 @@ func (c *CommandCalls) resolveContribution(ctx context.Context, r plugins.CallRe
 func (c *installedCall) accepts(record plugin.CommandBinding) error {
 	r := c.request
 	if record.Provider.InstallationID != r.Installation || record.Provider.Digest != r.Digest || record.Contribution != r.Contribution || record.Contract != r.Contract.Identity() {
-		return errors.Join(extension.ErrInvocationConflict, plugin.ErrCommandConflict)
+		return errors.Join(portable.ErrInvocationConflict, plugin.ErrCommandConflict)
 	}
 	return nil
 }
 
 func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
-	if c.Kind() == extension.Mutation {
+	if c.Kind() == portable.Mutation {
 		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func(), error) {
 			return c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
-		}, func(plugins.ContributionBinding) extension.Target { return c.request.Target })
+		}, func(plugins.ContributionBinding) portable.Target { return c.request.Target })
 		return reply.value, err
 	}
 	location, err := c.resolve(ctx)
 	if err != nil {
 		return jsonvalue.Value{}, err
 	}
-	session, err := c.calls.pool.ServiceSession(ctx, location.ServerID)
+	borrowed, err := c.calls.pool.BorrowSession(ctx, location.ServerID)
 	if err != nil {
 		return jsonvalue.Value{}, err
 	}
-	exported, err := pluginsdk.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
+	exported, err := qimumcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
 	if err != nil {
 		return jsonvalue.Value{}, err
 	}
@@ -122,7 +127,7 @@ func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
 	if err != nil {
 		return jsonvalue.Value{}, err
 	}
-	ctx, err = pluginsdk.WithInvocation(ctx, invocation)
+	ctx, err = qimumcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return jsonvalue.Value{}, err
 	}
@@ -134,15 +139,15 @@ func (c *installedCall) Invoke(ctx context.Context) (jsonvalue.Value, error) {
 	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
 }
 
-func validateInput(ctx context.Context, binding *pluginsdk.Binding, input jsonvalue.Value) error {
+func validateInput(ctx context.Context, binding *qimumcp.Binding, input jsonvalue.Value) error {
 	err := binding.ValidateInput(ctx, input)
-	if errors.Is(err, pluginsdk.ErrInvalidInput) {
+	if errors.Is(err, qimumcp.ErrInvalidInput) {
 		return errors.Join(plugin.ErrInvalid, err)
 	}
 	return err
 }
 
-func admitCallRequest(request plugins.CallRequest, streaming bool) (*extension.Method, error) {
+func admitCallRequest(request plugins.CallRequest, streaming bool) (*portable.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -168,7 +173,7 @@ func admitCallRequest(request plugins.CallRequest, streaming bool) (*extension.M
 	if err := request.Input.Validate(); err != nil {
 		return nil, errors.Join(plugin.ErrInvalid, err)
 	}
-	if method.Kind() == extension.Query {
+	if method.Kind() == portable.Query {
 		if err := method.ValidateInput(request.Input); err != nil {
 			return nil, errors.Join(plugin.ErrInvalid, err)
 		}

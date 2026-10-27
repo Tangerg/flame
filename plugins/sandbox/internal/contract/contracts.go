@@ -1,6 +1,6 @@
 package contract
 
-//go:generate sh -c "go run github.com/Tangerg/flame/plugins/sandbox/backend/cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
+//go:generate sh -c "go run github.com/Tangerg/flame/plugins/sandbox/backend/cmd/contracts | go run github.com/Tangerg/flame/qimu/cmd/qimu contract --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../package/io.github.tangerg.flame/contracts"
 
 import (
 	json "encoding/json"
@@ -9,8 +9,10 @@ import (
 	"github.com/invopop/jsonschema"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type ExecuteInput struct {
@@ -28,23 +30,23 @@ type Limits struct {
 }
 
 type Contracts struct {
-	Capability *extension.Capability
-	Execute    *pluginsdk.Method[ExecuteInput, sandbox.Result]
-	Limits     *pluginsdk.Method[struct{}, Limits]
+	Capability *portable.Capability
+	Execute    *qimumcp.Method[ExecuteInput, sandbox.Result]
+	Limits     *qimumcp.Method[struct{}, Limits]
 }
 
 func NewContracts() (Contracts, error) {
 	var c Contracts
 	var err error
-	c.Execute, err = pluginsdk.NewMethod[ExecuteInput, sandbox.Result](pluginsdk.MethodConfig{Name: "flame.sandbox/execute.v1", Kind: extension.Mutation, Target: extension.ScopeInstallation, Description: "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed."})
+	c.Execute, err = qimumcp.NewMethod[ExecuteInput, sandbox.Result](qimumcp.MethodConfig{Name: "flame.sandbox/execute.v1", Kind: portable.Mutation, Target: extension.ScopeInstallation, Description: "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Limits, err = pluginsdk.NewMethod[struct{}, Limits](pluginsdk.MethodConfig{Name: "flame.sandbox/limits.v1", Kind: extension.Query, Target: extension.ScopeInstallation, Description: "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution."})
+	c.Limits, err = qimumcp.NewMethod[struct{}, Limits](qimumcp.MethodConfig{Name: "flame.sandbox/limits.v1", Kind: portable.Query, Target: extension.ScopeInstallation, Description: "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution."})
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Capability, err = extension.NewCapability(extension.CapabilityConfig{Reference: "flame.sandbox.v1", Composition: extension.Collection, Scope: extension.ScopeInstallation}, c.Execute.Descriptor(), c.Limits.Descriptor())
+	c.Capability, err = portable.NewCapability(portable.CapabilityConfig{Reference: "flame.sandbox.v1", Composition: portable.Collection, Scope: extension.ScopeInstallation}, c.Execute.Descriptor(), c.Limits.Descriptor())
 	return c, err
 }
 

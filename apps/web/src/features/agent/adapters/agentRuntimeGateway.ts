@@ -1,4 +1,4 @@
-import { cloneJSON } from "@flame/runtime-client";
+import { cloneJSON } from "@qimu/sdk/json";
 import type { RuntimeAgentDriver } from "./runtimeDriver";
 import { type MCPServerID } from "@flame/runtime-client/wire";
 import { type FlameClient } from "@flame/runtime-client";

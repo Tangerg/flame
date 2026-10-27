@@ -65,7 +65,7 @@ function RequirementBindings({
       pending: true,
     }));
     try {
-      const result = await operations.track(
+      const result = await operations.track(() =>
         operations.resolveRequirements(
           {
             installationId: installation.id,

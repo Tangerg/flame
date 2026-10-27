@@ -61,6 +61,7 @@ require (
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	google.golang.org/api v0.308.0 // indirect
 	google.golang.org/genai v1.75.0 // indirect
@@ -74,8 +75,9 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.0-scope.20261027.1
-	github.com/Tangerg/flame/packages/local-runtime v0.1.0-consolidation.20261026.1
+	github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261027.4
+	github.com/Tangerg/flame/packages/local-runtime v0.1.0-qimu.20261027.2
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261027.3
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/a2a v0.58.0
 	github.com/Tangerg/scope/agent v0.58.0
@@ -124,7 +126,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.49.0
-	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.52.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.61.0

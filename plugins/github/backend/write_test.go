@@ -14,10 +14,13 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -43,7 +46,7 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 		t.Fatal(err)
 	}
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-write-test"}, nil)
-	if err := pluginsdk.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	a, b := sdk.NewInMemoryTransports()
@@ -67,9 +70,9 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 	return c, session, close
 }
 
-func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *pluginsdk.Binding {
+func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *qimumcp.Binding {
 	t.Helper()
-	bound, err := pluginsdk.ResolveCapability(t.Context(), session, "github", contracts.Capability)
+	bound, err := qimumcp.ResolveCapability(t.Context(), session, "github", contracts.Capability)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +85,7 @@ func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contr
 
 func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method, id string, input jsonvalue.Value) (jsonvalue.Value, error) {
 	t.Helper()
-	ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Human, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
+	ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +167,7 @@ func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T
 				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
 			}
 			var meta sdk.Meta
-			if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "model", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "model", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			commandID = "tool:model"
@@ -231,7 +234,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			if err == nil {
 				t.Fatal("uncertain write invented success")
 			}
-			if _, known := errors.AsType[*extension.Refusal](err); known {
+			if _, known := errors.AsType[*portable.Refusal](err); known {
 				t.Fatalf("uncertain write became a definite refusal: %v", err)
 			}
 			if calls != 1 {
@@ -253,7 +256,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			}
 			changed, _ := jsonvalue.Encode(rpc.CreateIssueInput{Repository: "owner/repo", Title: "Different"})
 			_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", changed)
-			refusal, known := errors.AsType[*extension.Refusal](err)
+			refusal, known := errors.AsType[*portable.Refusal](err)
 			if !known || refusal.Code != "command_conflict" || calls != 1 {
 				t.Fatalf("unknown identity was rebound: calls=%d %v", calls, err)
 			}
@@ -276,7 +279,7 @@ func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *t
 			input := rpc.MergePullInput{IssueInput: rpc.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: rpc.Merge}
 			admitted, _ := jsonvalue.Encode(input)
 			var meta sdk.Meta
-			if err := meta.Set(pluginsdk.InvocationMetadataKey, extension.Invocation{ID: "refused", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
+			if err := meta.Set(qimumcp.InvocationMetadataKey, portable.Invocation{ID: "refused", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
 				t.Fatal(err)
 			}
 			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})
@@ -336,7 +339,7 @@ func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
 	if !reflect.DeepEqual(readTags, []string{"", ""}) {
 		t.Fatalf("post-write query borrowed an old conditional response: %+v", readTags)
 	}
-	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, pluginsdk.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
+	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, qimumcp.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
 		t.Fatalf("unknown write acquired a receipt: %+v %v", receipt, err)
 	}
 }

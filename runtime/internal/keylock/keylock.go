@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/qimu/cancellation"
 )
 
 // Set owns one exclusion per key. The zero value is not usable; build one with

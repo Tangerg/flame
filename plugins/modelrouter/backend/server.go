@@ -9,6 +9,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
 	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -29,7 +30,7 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.modelrouter", Version: "1.0.0"}, nil)
-	backend, err := pluginsdk.NewBackend(server)
+	backend, err := qimumcp.NewBackend(server)
 	if err != nil {
 		return nil, err
 	}
@@ -38,11 +39,11 @@ func newServer(store *store) (*sdk.Server, error) {
 		pluginstorage.RegisterCommand(backend, store.db, contracts.Replace, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.ReplaceInput) (routing.Snapshot, error) {
 			return store.replace(ctx, input.ExpectedRevision, input.Rules)
 		}),
-		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginsdk.Command[struct{}]) (routing.Snapshot, error) {
+		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ qimumcp.Command[struct{}]) (routing.Snapshot, error) {
 			policy, err := store.read(ctx)
 			return policy.Snapshot(), err
 		}),
-		selection.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
+		selection.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelSelectionRequest]) (pluginsdk.ModelSelection, error) {
 			if err := command.Input.Validate(); err != nil {
 				return pluginsdk.ModelSelection{}, err
 			}

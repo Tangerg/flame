@@ -280,7 +280,7 @@ export function Usage({ context }: { context: ComponentContext }) {
     const signal = AbortSignal.any([context.signal, controller.signal]);
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
-      const report = await context.track(
+      const report = await context.track(() =>
         context.runtime.usage.summary(period.query, signal),
       );
       if (!signal.aborted)

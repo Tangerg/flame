@@ -3,6 +3,7 @@ import {
   Component,
   Suspense,
   useMemo,
+  useState,
   useSyncExternalStore,
   type ErrorInfo,
   type ReactNode,
@@ -50,6 +51,7 @@ export class ComponentBoundary extends Component<
     fallback?: ReactNode;
     resetKey?: unknown;
     onFailure?: () => void;
+    reload?: () => Promise<void>;
   },
   { failure: ComponentFailure | null; resetKey: unknown }
 > {
@@ -79,7 +81,7 @@ export class ComponentBoundary extends Component<
     return this.state.failure ? (
       <>
         {this.props.fallback}
-        <ComponentRecovery failure="render" />
+        <ComponentRecovery failure="render" reload={this.props.reload} />
         {this.state.failure.diagnostics && (
           <FailureDetails diagnostics={this.state.failure.diagnostics} />
         )}
@@ -95,12 +97,41 @@ export function ComponentLoading() {
   return <p role="status">{t("packages.module.loading")}</p>;
 }
 
-function ComponentRecovery({ failure }: { failure: "render" | "connection" }) {
+function ComponentRecovery({
+  failure,
+  reload,
+}: {
+  failure: "render" | "connection";
+  reload?: () => Promise<void>;
+}) {
   const t = useT();
+  const [pending, setPending] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<string>();
+  const retry = async () => {
+    if (!reload || pending) return;
+    setPending(true);
+    try {
+      await reload();
+    } catch (error) {
+      setDiagnostics(failureDiagnostics("installed component reload", error));
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <div role="alert">
       <p>{t(failure === "render" ? "packages.module.failed" : "packages.module.unavailable")}</p>
-      <Button onClick={() => location.reload()}>{t("packages.module.reload")}</Button>
+      {reload && (
+        <Button
+          disabled={pending}
+          onClick={() => {
+            void retry();
+          }}
+        >
+          {t("packages.module.reload")}
+        </Button>
+      )}
+      {diagnostics && <FailureDetails diagnostics={diagnostics} />}
     </div>
   );
 }
@@ -146,8 +177,8 @@ class ComponentInstance {
       locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
-      track: <T,>(operation: Promise<T>): Promise<T> =>
-        trackContributionIO(this.sources.lifetime, operation),
+      track: <P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P =>
+        trackContributionIO(this.sources.lifetime, () => operation(signal)),
       compose: (composition: ComponentComposition) => {
         signal.throwIfAborted();
         return this.sources.compose(this.context, composition);
@@ -179,6 +210,7 @@ function RenderingInstance({
   contribution,
   children,
   fallback,
+  reload,
 }: ComponentProps & { instance: ComponentInstance }) {
   const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   return context ? (
@@ -188,7 +220,7 @@ function RenderingInstance({
   ) : (
     <>
       {fallback}
-      <ComponentRecovery failure="connection" />
+      <ComponentRecovery failure="connection" reload={reload} />
     </>
   );
 }
@@ -245,6 +277,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       fallback={props.fallback}
       resetKey={instance}
       onFailure={instance.retire}
+      reload={props.reload}
     >
       <Suspense fallback={props.fallback ?? <ComponentLoading />}>
         <RenderingInstance {...props} instance={instance} />
@@ -254,6 +287,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
 }
 
 type ComponentProps = {
+  reload?: () => Promise<void>;
   fallback?: ReactNode;
   entry: PluginComponent;
   component: ComponentReference;

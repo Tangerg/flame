@@ -3,13 +3,13 @@ package schedules
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu/portable"
 	"sync"
 	"time"
 
-	"github.com/samber/lo"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/samber/lo"
 )
 
 // Claim must persist both cursor and occurrence so returned work survives restart.
@@ -45,13 +45,13 @@ func NewScanner(store WorkerStore, manual ManualQueue, sessionID, runID func() s
 	}
 	return &Scanner{store: store, manual: manual, newSessionID: sessionID, newRunID: runID}, nil
 }
-func (s *Scanner) Scan(ctx context.Context, now time.Time, invocation extension.Invocation) ([]schedule.RunRequest, error) {
+func (s *Scanner) Scan(ctx context.Context, now time.Time, invocation portable.Invocation) ([]schedule.RunRequest, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := invocation.Validate(); err != nil {
+	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
 	}
 	manual, err := s.manual.PendingManual(ctx, s.afterManualID, schedule.MaximumDispatchBatch/4)

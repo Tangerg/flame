@@ -1,3 +1,4 @@
+import { toolReceipts, toolCommandId } from "@flame/backend-sdk";
 import { readFileSync, writeFileSync } from "node:fs";
 import "./logging";
 import {
@@ -11,7 +12,7 @@ import {
   type CapabilityDescriptor,
   type MethodDescriptor,
   type CallContext,
-} from "@flame/backend-sdk";
+} from "@qimu/node";
 
 console.info("conformance module loaded");
 const contract = new Capability(
@@ -117,7 +118,7 @@ backend.receipts((_context, input) => {
     throw new Refusal("command_conflict", "receipt identity differs");
   return { found: true, reply: receipt.reply };
 });
-backend.toolReceipts((_context, input) => {
+toolReceipts(backend, (_context, input) => {
   const receipt = receipts.get(input.id);
   if (!receipt) return { found: false };
   if (receipt.method !== input.method || receipt.digest !== input.inputDigest)
@@ -142,7 +143,7 @@ backend.tool(
       mode: "host",
       value: (input as Input).value,
     });
-    receipts.set(context.toolCommandId(), {
+    receipts.set(toolCommandId(context), {
       method: "host_echo",
       digest: context.inputDigest,
       reply: {

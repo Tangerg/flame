@@ -107,11 +107,9 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	// The private capture is covered by Schedules' own lost-acceptance tests.
 	// Here, a restart must recover the same public Run receipt after Core retires it.
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: current.SessionID}, "retire-accepted-material")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := readScheduleRun(r, request, "lost-core")

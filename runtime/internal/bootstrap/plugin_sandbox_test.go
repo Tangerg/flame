@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -69,7 +69,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "sandbox"}
 	tools := r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	name.Store(tools[0].ModelName)
-	contracts, err := extension.ParseCapability([]byte(testsupport.SandboxCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.SandboxCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
 	var result testsupport.SandboxExecuteV1Output
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || result.ExitCode != 5 || result.Stdout.Content != "native-typed-result" {
@@ -97,8 +97,7 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	if run.Outcome == nil || run.Outcome.Type != protocol.OutcomeCompleted || !observed.Load() {
 		t.Fatalf("core did not own the completed Tool Run: outcome=%+v observed=%v result=%s", run.Outcome, observed.Load(), toolResult.Load())
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	replay := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
 	if replay.Output != typed.Output || replay.Failure != nil {

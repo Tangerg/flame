@@ -29,7 +29,7 @@ func TestExecutionSkillSourcePreservesCancellationClassAndCause(t *testing.T) {
 				writeRuntimeSkill(t, bundle.Root, "review", "Review the result.")
 				packages = packageSkillFixtures{bundle}
 			}
-			source, _, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil)
+			source, _, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

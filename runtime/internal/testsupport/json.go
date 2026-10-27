@@ -3,7 +3,7 @@ package testsupport
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 func JSONInput(t testing.TB, data string) jsonvalue.Value {

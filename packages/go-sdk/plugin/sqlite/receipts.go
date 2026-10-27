@@ -6,10 +6,10 @@ import (
 	"errors"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -32,7 +32,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != admitted.String() {
-				return extension.ErrInvocationConflict
+				return portable.ErrInvocationConflict
 			}
 			if len(reply) == 0 {
 				return ErrCommandUnconfirmed
@@ -46,7 +46,7 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 			return err
 		}
 		value, operationErr := handler(ctx, input)
-		outcome, err := pluginsdk.EncodeReply(value, operationErr, classify)
+		outcome, err := qimumcp.EncodeReply(value, operationErr, classify)
 		if err != nil {
 			return err
 		}
@@ -65,14 +65,14 @@ func Command[P, R any](ctx context.Context, db *sql.DB, method, id string, input
 	if err != nil {
 		return zero, err
 	}
-	return pluginsdk.DecodeReply[R](reply)
+	return qimumcp.DecodeReply[R](reply)
 }
 
-func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, method *pluginsdk.Method[P, R], classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
-	if method == nil || method.Descriptor().Kind != extension.Mutation {
+func RegisterCommand[P, R any](server *qimumcp.Backend, db *sql.DB, method *qimumcp.Method[P, R], classify func(error) string, handler func(context.Context, *sdk.ServerSession, P) (R, error)) error {
+	if method == nil || method.Descriptor().Kind != portable.Mutation {
 		return errors.New("managed plugin: command method is required")
 	}
-	return method.RegisterServer(server, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginsdk.Command[P]) (R, error) {
+	return method.RegisterServer(server, classify, func(ctx context.Context, session *sdk.ServerSession, command qimumcp.Command[P]) (R, error) {
 		admitted, err := command.RequestInput()
 		if err != nil {
 			var zero R
@@ -82,41 +82,41 @@ func RegisterCommand[P, R any](server *pluginsdk.Backend, db *sql.DB, method *pl
 	})
 }
 
-func RegisterReceipts(server *pluginsdk.Backend, db *sql.DB) error {
-	method, err := pluginsdk.ReceiptQuery()
+func RegisterReceipts(server *qimumcp.Backend, db *sql.DB) error {
+	method, err := qimumcp.ReceiptQuery()
 	if err != nil {
 		return err
 	}
 	return method.RegisterServer(server, func(err error) string {
-		if errors.Is(err, extension.ErrInvocationConflict) {
+		if errors.Is(err, portable.ErrInvocationConflict) {
 			return "command_conflict"
 		}
 		return ""
-	}, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.Receipt, error) {
+	}, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
 		return ReadReceipt(ctx, db, command.Input)
 	})
 }
 
 // ReadReceipt only projects the private owner's original method/input evidence.
-func ReadReceipt(ctx context.Context, db *sql.DB, input pluginsdk.ReceiptRequest) (pluginsdk.Receipt, error) {
+func ReadReceipt(ctx context.Context, db *sql.DB, input qimumcp.ReceiptRequest) (qimumcp.Receipt, error) {
 	if err := input.Validate(); err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	var method, encoded string
 	var reply []byte
 	err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
 	if errors.Is(err, sql.ErrNoRows) {
-		return pluginsdk.Receipt{}, nil
+		return qimumcp.Receipt{}, nil
 	}
 	if err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	admitted, err := jsonvalue.Parse([]byte(encoded))
 	if err != nil {
-		return pluginsdk.Receipt{}, err
+		return qimumcp.Receipt{}, err
 	}
 	if method != input.Method || admitted.Digest() != input.InputDigest {
-		return pluginsdk.Receipt{}, extension.ErrInvocationConflict
+		return qimumcp.Receipt{}, portable.ErrInvocationConflict
 	}
-	return pluginsdk.Receipt{Found: len(reply) != 0, Reply: reply}, nil
+	return qimumcp.Receipt{Found: len(reply) != 0, Reply: reply}, nil
 }

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useState, type ErrorInfo, type ReactNode } from "react";
 import { failureDiagnostics, failureMessage } from "@/lib/diagnostics";
 import { t } from "@/lib/i18n/index";
 import { FailureDetails } from "@/ui/index";
@@ -25,25 +25,58 @@ export const FAILURE_SCOPE = { startup: "startup", rootRender: "root-render" } a
 
 type FailureScope = (typeof FAILURE_SCOPE)[keyof typeof FAILURE_SCOPE];
 
-export function StartupFailure({ scope, error }: { scope: FailureScope; error: unknown }) {
+export function StartupFailure({
+  scope,
+  error,
+  reload,
+}: {
+  scope: FailureScope;
+  error: unknown;
+  reload(): Promise<void>;
+}) {
+  const [pending, setPending] = useState(false);
+  const [closeFailure, setCloseFailure] = useState<{ error: unknown }>();
+  const retry = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await reload();
+    } catch (failure) {
+      setCloseFailure({ error: failure });
+    } finally {
+      setPending(false);
+    }
+  };
   return (
     <main role="alert" {...stylex.props(styles.page)}>
       <div {...stylex.props(styles.card)}>
         <h1 {...stylex.props(styles.title, type.displaySm)}>{t("startup.failed.title")}</h1>
         <p {...stylex.props(styles.body, type.uiMd)}>{t("startup.failed.body")}</p>
         <div {...stylex.props(styles.actions)}>
-          <Button variant="primary" onClick={() => window.location.reload()}>
+          <Button
+            variant="primary"
+            disabled={pending}
+            onClick={() => {
+              void retry();
+            }}
+          >
             {t("common.retry")}
           </Button>
         </div>
         <p {...stylex.props(styles.detail, type.uiSm)}>{failureMessage(error)}</p>
         <FailureDetails diagnostics={failureDiagnostics(scope, error)} />
+        {closeFailure && (
+          <FailureDetails diagnostics={failureDiagnostics("client cleanup", closeFailure.error)} />
+        )}
       </div>
     </main>
   );
 }
 
-export class RootBoundary extends Component<{ children: ReactNode }, { error: unknown }> {
+export class RootBoundary extends Component<
+  { children: ReactNode; reload(): Promise<void> },
+  { error: unknown }
+> {
   override state: { error: unknown } = { error: null };
 
   static getDerivedStateFromError(error: unknown) {
@@ -56,6 +89,12 @@ export class RootBoundary extends Component<{ children: ReactNode }, { error: un
 
   override render(): ReactNode {
     if (this.state.error === null) return this.props.children;
-    return <StartupFailure scope={FAILURE_SCOPE.rootRender} error={this.state.error} />;
+    return (
+      <StartupFailure
+        scope={FAILURE_SCOPE.rootRender}
+        error={this.state.error}
+        reload={this.props.reload}
+      />
+    );
   }
 }

@@ -17,9 +17,9 @@ import (
 	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 func main() {
@@ -178,11 +178,11 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if err := wait(); err != nil {
 		return err
 	}
-	contract, err := extension.ParseCapability([]byte(UsageReportsCapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(UsageReportsCapabilityJSON))
 	if err != nil {
 		return err
 	}
-	request := protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: extension.Target{Scope: "installation", Reference: usage.ID}}
+	request := protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: portable.Target{Scope: "installation", Reference: usage.ID}}
 	call := func(request protocol.CallPluginRequest, key string) (*protocol.CallPluginResponse, error) {
 		response, err := client.CallPlugin(ctx, request, protocol.PluginCallOptions{IdempotencyKey: key})
 		if err != nil {

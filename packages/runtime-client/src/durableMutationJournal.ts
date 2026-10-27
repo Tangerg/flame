@@ -7,7 +7,7 @@ import type {
   RequestMeta,
 } from "./generated/wire.generated";
 import { validateWire } from "./generated/wire.validate.generated";
-import { cloneJSON, parseJSON, stringifyJSON } from "./json";
+import { cloneJSON, parseJSON, stringifyJSON } from "@qimu/sdk/json";
 
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";

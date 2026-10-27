@@ -3,6 +3,40 @@
   "title": "Flame Runtime Protocol wire types",
   "protocolVersion": "2026-10-24.1",
   "$defs": {
+    "AcquirePluginComponentRequest": {
+      "type": "object",
+      "properties": {
+        "componentId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "installationId": {
+          "type": "string",
+          "pattern": "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parentUseId": {
+          "type": "string"
+        },
+        "realm": {
+          "$ref": "#/$defs/PluginBrowserRealm"
+        }
+      },
+      "required": [
+        "componentId",
+        "digest",
+        "installationId",
+        "operationId",
+        "realm"
+      ]
+    },
     "ActiveRunRef": {
       "type": "object",
       "properties": {
@@ -1493,6 +1527,17 @@
       "required": [
         "name",
         "version"
+      ]
+    },
+    "ClosePluginBrowserRealmRequest": {
+      "type": "object",
+      "properties": {
+        "realm": {
+          "$ref": "#/$defs/PluginBrowserRealm"
+        }
+      },
+      "required": [
+        "realm"
       ]
     },
     "CommandResult": {
@@ -5773,6 +5818,26 @@
         }
       }
     },
+    "OpenPluginBrowserRealmRequest": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resume": {
+          "$ref": "#/$defs/PluginBrowserRealm"
+        },
+        "resumeToken": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "operationId",
+        "resumeToken"
+      ]
+    },
     "OpenPluginResourcesRequest": {
       "type": "object",
       "properties": {
@@ -6326,6 +6391,213 @@
         "description",
         "id",
         "status"
+      ]
+    },
+    "PluginBrowserAuthority": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "epoch",
+        "id"
+      ]
+    },
+    "PluginBrowserContractKind": {
+      "type": "string",
+      "enum": [
+        "service",
+        "point",
+        "event"
+      ]
+    },
+    "PluginBrowserContractMode": {
+      "type": "string",
+      "enum": [
+        "native",
+        "portable"
+      ]
+    },
+    "PluginBrowserContractRef": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/PluginBrowserContractKind"
+        },
+        "mode": {
+          "$ref": "#/$defs/PluginBrowserContractMode"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "kind",
+        "mode",
+        "name",
+        "version"
+      ]
+    },
+    "PluginBrowserExecution": {
+      "type": "object",
+      "properties": {
+        "generation": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "generation",
+        "id"
+      ]
+    },
+    "PluginBrowserLocalExport": {
+      "type": "object",
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/PluginBrowserContractRef"
+        },
+        "instanceId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract",
+        "instanceId",
+        "name"
+      ]
+    },
+    "PluginBrowserObjectRef": {
+      "type": "object",
+      "properties": {
+        "export": {
+          "$ref": "#/$defs/PluginBrowserLocalExport"
+        },
+        "objectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "export",
+        "objectId"
+      ]
+    },
+    "PluginBrowserRealm": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "epoch",
+        "id"
+      ]
+    },
+    "PluginBrowserSession": {
+      "type": "object",
+      "properties": {
+        "authority": {
+          "$ref": "#/$defs/PluginBrowserAuthority"
+        },
+        "componentContract": {
+          "$ref": "#/$defs/PluginBrowserContractRef"
+        },
+        "controlEndpoint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "credential": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maximumMessageBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pollIntervalMilliseconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "proofCapacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "realm": {
+          "$ref": "#/$defs/PluginBrowserRealm"
+        }
+      },
+      "required": [
+        "authority",
+        "componentContract",
+        "controlEndpoint",
+        "credential",
+        "maximumMessageBytes",
+        "pollIntervalMilliseconds",
+        "proofCapacity",
+        "realm"
+      ]
+    },
+    "PluginBrowserUseGrant": {
+      "type": "object",
+      "properties": {
+        "approvalToken": {
+          "type": "string"
+        },
+        "authority": {
+          "$ref": "#/$defs/PluginBrowserAuthority"
+        },
+        "execution": {
+          "$ref": "#/$defs/PluginBrowserExecution"
+        },
+        "id": {
+          "type": "string"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PluginBrowserObjectRef"
+          }
+        },
+        "realm": {
+          "$ref": "#/$defs/PluginBrowserRealm"
+        },
+        "scopeGeneration": {
+          "type": "string"
+        },
+        "scopeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "approvalToken",
+        "authority",
+        "execution",
+        "id",
+        "objects",
+        "realm",
+        "scopeGeneration",
+        "scopeId"
       ]
     },
     "PluginCallFailure": {

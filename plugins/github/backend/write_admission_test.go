@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
 )
 
 func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
@@ -43,13 +43,13 @@ func TestGitHubWriteLocalRefusalsSettleBeforeAnyHTTP(t *testing.T) {
 			input, _ := jsonvalue.Encode(test.input)
 			for range 2 {
 				_, err := invokeGitHub(t, session, contracts, test.method, "original", input)
-				refusal, known := errors.AsType[*extension.Refusal](err)
+				refusal, known := errors.AsType[*portable.Refusal](err)
 				if !known || refusal.Code != test.code || calls != 0 {
 					t.Fatalf("local refusal lost settlement or dispatched HTTP: calls=%d %v", calls, err)
 				}
 			}
 			_, found, err := githubBinding(t, session, contracts, test.method).ReadReceipt(t.Context(), "original", input)
-			if _, known := errors.AsType[*extension.Refusal](err); !found || !known || calls != 0 {
+			if _, known := errors.AsType[*portable.Refusal](err); !found || !known || calls != 0 {
 				t.Fatalf("local refusal has no original receipt: found=%v calls=%d %v", found, calls, err)
 			}
 		})
@@ -66,14 +66,14 @@ func TestGitHubMissingWriteCredentialIsAnOriginalRefusal(t *testing.T) {
 	_, session, close := connectGitHubWrites(t, path, transport, nil)
 	input, _ := jsonvalue.Encode(rpc.CreateIssueInput{Repository: "owner/repo", Title: "Title"})
 	_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
-	if refusal, known := errors.AsType[*extension.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
+	if refusal, known := errors.AsType[*portable.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
 		t.Fatalf("anonymous write contacted upstream: calls=%d %v", calls, err)
 	}
 	close()
 	token := "private-write-fixture-token"
 	_, session, _ = connectGitHubWrites(t, path, transport, &token)
 	_, err = invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input)
-	if refusal, known := errors.AsType[*extension.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
+	if refusal, known := errors.AsType[*portable.Refusal](err); !known || refusal.Code != "credential_required" || calls != 0 {
 		t.Fatalf("new credential changed the original refusal: calls=%d %v", calls, err)
 	}
 }
@@ -83,7 +83,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	merge, err := extension.AdmitMethod(contracts.MergePull.Descriptor())
+	merge, err := portable.AdmitMethod(contracts.MergePull.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestGitHubWriteSchemasOwnExactCommitAndTextAdmission(t *testing.T) {
 			t.Fatalf("merge head admission %q: %v", sha, err)
 		}
 	}
-	comment, err := extension.AdmitMethod(contracts.CreateComment.Descriptor())
+	comment, err := portable.AdmitMethod(contracts.CreateComment.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}

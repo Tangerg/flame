@@ -15,9 +15,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
 	plugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -68,27 +71,27 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build backend: %s: %v", output, err)
 	}
-	read, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.read", Kind: extension.Query, Target: "installation", Description: "Read exact original input."})
+	read, err := qimumcp.NewMethod[typescriptInput, typescriptOutput](qimumcp.MethodConfig{Name: "fixture.read", Kind: portable.Query, Target: "installation", Description: "Read exact original input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := plugin.NewMethod[typescriptInput, typescriptOutput](plugin.MethodConfig{Name: "fixture.write", Kind: extension.Mutation, Target: "installation", Description: "Commit one original outcome."})
+	write, err := qimumcp.NewMethod[typescriptInput, typescriptOutput](qimumcp.MethodConfig{Name: "fixture.write", Kind: portable.Mutation, Target: "installation", Description: "Commit one original outcome."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	queryStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.query-stream", Kind: extension.Query, Target: "installation", Description: "Read exact chunks and final."})
+	queryStream, err := qimumcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](qimumcp.MethodConfig{Name: "fixture.query-stream", Kind: portable.Query, Target: "installation", Description: "Read exact chunks and final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandStream, err := plugin.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](plugin.MethodConfig{Name: "fixture.command-stream", Kind: extension.Mutation, Target: "installation", Description: "Commit streamed final."})
+	commandStream, err := qimumcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](qimumcp.MethodConfig{Name: "fixture.command-stream", Kind: portable.Mutation, Target: "installation", Description: "Commit streamed final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "flame.test.typescript", Composition: extension.Collection, Scope: "installation"}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "flame.test.typescript", Composition: portable.Collection, Scope: "installation"}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
-	hostMethod, err := plugin.NewMethod[typescriptHostInput, typescriptHostInput](plugin.MethodConfig{Name: "fixture.host", Kind: extension.Query, Target: "installation", Description: "Read through the original calling owner."})
+	hostMethod, err := qimumcp.NewMethod[typescriptHostInput, typescriptHostInput](qimumcp.MethodConfig{Name: "fixture.host", Kind: portable.Query, Target: "installation", Description: "Read through the original calling owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +109,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	var diagnostics typescriptDiagnostics
 	command.Stderr = &diagnostics
 	client := sdk.NewClient(&sdk.Implementation{Name: "go.conformance"}, nil)
-	if err := plugin.RegisterClient(client); err != nil {
+	if err := qimumcp.RegisterClient(client); err != nil {
 		t.Fatal(err)
 	}
 	session, err := client.Connect(t.Context(), &sdk.CommandTransport{Command: command}, nil)
@@ -118,13 +121,13 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	if err := plugin.SetUp(t.Context(), session, []plugin.SetupContribution{{ID: "fixture", Export: "fixture", Requires: []plugin.SetupDependency{}}}, sdk.ParamsBase{}); err != nil {
+	if err := qimumcp.SetUp(t.Context(), session, []qimumcp.SetupContribution{{ID: "fixture", Export: "fixture", Requires: []qimumcp.SetupDependency{}}}, sdk.ParamsBase{}); err != nil {
 		t.Fatalf("setup: %v; stderr: %s", err, diagnostics.String())
 	}
-	if err := plugin.Activate(t.Context(), session); err != nil {
+	if err := qimumcp.Activate(t.Context(), session); err != nil {
 		t.Fatal(err)
 	}
-	bound, err := plugin.ResolveCapability(t.Context(), session, "fixture", contract)
+	bound, err := qimumcp.ResolveCapability(t.Context(), session, "fixture", contract)
 	if err != nil {
 		t.Fatalf("resolve: %v; stderr: %s", err, diagnostics.String())
 	}
@@ -147,7 +150,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatalf("original evidence changed: %s, %v", output.Source, err)
 	}
 	_, err = readBinding.Call(t.Context(), typescriptInput{Mode: "empty-refusal", Value: input.Value})
-	if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+	if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("empty-message business refusal lost its category: %v", err)
 	}
 	writeBinding, err := write.Bind(bound)
@@ -162,40 +165,42 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil || !found || string(recovered.Value) != string(input.Value) {
 		t.Fatalf("original receipt: %s, %v, %v", recovered.Value, found, err)
 	}
-	host := plugin.NewCallbacks()
+	host := qimumcp.NewCallbacks()
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	host.AdmitSession(session)
-	invocation := extension.Invocation{
-		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
-		Target: extension.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+	if err := host.AdmitSession(session); err != nil {
+		t.Fatal(err)
 	}
-	ctx, err := plugin.WithInvocation(t.Context(), invocation)
+	invocation := portable.Invocation{
+		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
+		Target: portable.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+	}
+	ctx, err := qimumcp.WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
 	}
-	receiver, err := plugin.NewCallback(hostMethod, nil, func(calling context.Context, command plugin.Command[typescriptHostInput]) (typescriptHostInput, error) {
-		actual, err := plugin.InvocationFromContext(calling)
+	receiver, err := qimumcp.NewCallback(hostMethod, nil, func(calling context.Context, command qimumcp.Command[typescriptHostInput]) (typescriptHostInput, error) {
+		actual, err := qimumcp.InvocationFromContext(calling)
 		if err != nil || actual != invocation {
 			t.Errorf("callback lost original invocation: %+v, %v", actual, err)
 		}
 		if string(command.Input.Value) == `"empty-refusal"` {
-			return typescriptHostInput{}, &extension.Refusal{Code: "fixture_refused"}
+			return typescriptHostInput{}, &portable.Refusal{Code: "fixture_refused"}
 		}
 		return command.Input, nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ref, release, err := host.Open(ctx, session, plugin.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}, receiver)
+	ref, release, err := host.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}, receiver)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer release()
-	metadata, err := plugin.CallbackMetadata(ref)
+	metadata, err := qimumcp.CallbackMetadata(ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,10 +210,10 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatalf("host callback: %s, %v", output.Value, err)
 	}
 	_, err = readBinding.CallWithMetadata(ctx, typescriptInput{Mode: "host", Value: jsontext.Value(`"empty-refusal"`)}, metadata)
-	if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+	if refusal, ok := errors.AsType[*portable.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("host refusal changed across Go and TypeScript: %v", err)
 	}
-	if err := metadata.Set(plugin.InvocationMetadataKey, invocation); err != nil {
+	if err := metadata.Set(qimumcp.InvocationMetadataKey, invocation); err != nil {
 		t.Fatal(err)
 	}
 	arguments, err := jsonvalue.Encode(typescriptHostInput{Value: input.Value})
@@ -235,7 +240,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits := plugin.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
+	limits := qimumcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
 	for _, mode := range []string{"echo", "mutated-final", "missing", "late"} {
 		input.Mode = mode
 		original, err := jsonvalue.Encode(input)

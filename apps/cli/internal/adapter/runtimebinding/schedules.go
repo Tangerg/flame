@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/schedule"
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
@@ -147,7 +147,7 @@ func (r *Connection) prepareSchedulesCommand(ctx context.Context, name string, i
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	contract, err := extension.ParseCapability([]byte(bound.Contract))
+	contract, err := portable.ParseCapability([]byte(bound.Contract))
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}

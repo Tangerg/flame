@@ -4,18 +4,22 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/cancellation"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type sourceRegistry interface {
+	Definition(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
 	Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
 	Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error)
 }
@@ -24,6 +28,7 @@ type sourceRegistry interface {
 type authorizedTool struct {
 	toolcontract.Tool
 	registry sourceRegistry
+	pool     *Pool
 	source   Executable
 	config   ServerConfig
 	prepare  ToolPreparation
@@ -36,16 +41,16 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return toolcontract.Result{}, err
 	}
 	if installation, managed := t.config.Server.Source.Origin().Installation(); managed {
-		captured, err := operation.Capture(ctx, extension.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
+		captured, err := operation.Capture(ctx, portable.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
 		metadata := scopemcp.RequestMetaFromContext(ctx)
-		if err := metadata.Set(pluginsdk.InvocationMetadataKey, captured); err != nil {
+		if err := metadata.Set(qimumcp.InvocationMetadataKey, captured); err != nil {
 			return toolcontract.Result{}, err
 		}
 		ctx = scopemcp.WithRequestMeta(ctx, metadata)
-		ctx, err = pluginsdk.WithInvocation(ctx, captured)
+		ctx, err = qimumcp.WithInvocation(ctx, captured)
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
@@ -117,7 +122,65 @@ func rejected(reason string) error {
 func (p *Pool) authorizedTools(catalog []Executable) []toolcontract.Tool {
 	result := make([]toolcontract.Tool, 0, len(catalog))
 	for _, executable := range catalog {
-		result = append(result, authorizedTool{Tool: executable, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: p.prepare, host: p.toolHost(executable)})
+		result = append(result, authorizedTool{Tool: executable, pool: p, registry: p.registry, source: executable, config: executable.SourceConfig(), prepare: p.prepare, host: p.toolHost(executable)})
 	}
 	return result
+}
+
+// CallActivation preserves both the frozen Qimu graph and Flame's per-call
+// authority and callback preparation. It never borrows today's catalog graph.
+func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Activation, invocation toolcontract.Invocation) (result toolcontract.Result, err error) {
+	if t.pool == nil {
+		return result, ErrUnavailable
+	}
+	borrowed, err := t.pool.BorrowActivation(ctx, t.config.ID(), activation)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, borrowed.Close()) }()
+	ctx = borrowed.Context()
+	_, err = t.pool.SessionActor(ctx, t.config.ID(), borrowed.Session())
+	if err != nil {
+		return result, err
+	}
+	fingerprint, err := borrowed.SourceFingerprint()
+	if err != nil {
+		return result, err
+	}
+	if fingerprint != t.config.AuthorityFingerprint() {
+		return result, plugin.ErrStale
+	}
+	tools, err := sourceTools(ctx, nil, t.config, borrowed.Session())
+	if err != nil {
+		return result, err
+	}
+	original, found, err := IdentifyTool(t.source)
+	if err != nil || !found {
+		return result, errors.Join(ErrUnavailable, err)
+	}
+	definition, err := jsonvalue.Encode(t.source.Definition())
+	if err != nil {
+		return result, err
+	}
+	for _, candidate := range tools {
+		ref, found, err := IdentifyTool(candidate)
+		if err != nil {
+			return result, err
+		}
+		if !found || ref != original {
+			continue
+		}
+		actual, err := jsonvalue.Encode(candidate.Definition())
+		if err != nil {
+			return result, err
+		}
+		if actual != definition {
+			return result, plugin.ErrStale
+		}
+		candidate.held = borrowed
+		candidate.owner = t.source.owner
+		t.Tool, t.source, t.host = candidate, candidate, t.pool.toolHost(candidate)
+		return t.Call(ctx, invocation)
+	}
+	return result, ErrUnavailable
 }

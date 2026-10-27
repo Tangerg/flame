@@ -4,12 +4,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./build": "./build.mjs"
+    "./build": "./build.mjs",
+    "./runtime-profile": "./src/runtime-profile.generated.ts"
   },
   "files": [
     "src",
     "build.mjs",
-    "README.md"
+    "README.md",
+    "runtime-profile.json",
+    "runtime-profile.generated.json"
   ],
   "peerDependencies": {
     "react": "^19.3.0",
@@ -30,5 +33,8 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "lint": "oxlint src build.mjs build.test.mjs --deny-warnings",
     "format:check": "prettier --check src build.mjs build.test.mjs package.json tsconfig.json"
+  },
+  "dependencies": {
+    "@qimu/sdk": "0.1.0"
   }
 }

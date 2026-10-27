@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -30,7 +31,7 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 	if err := proposal.Validate(); err != nil {
 		return chat.ToolCall{}, err
 	}
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return chat.ToolCall{}, err
 	}
@@ -54,14 +55,17 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 		if err != nil {
 			return chat.ToolCall{}, err
 		}
-		session, err := o.calls.pool.ServiceSession(calling, binding.ServerID)
+		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
 		if err != nil {
 			return chat.ToolCall{}, err
 		}
+		defer borrowed.Close()
+		calling = borrowed.Context()
+		session := borrowed.Session()
 		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
 			return chat.ToolCall{}, err
 		}
-		exported, err := pluginsdk.NewCapabilityBinding(session, binding.Export, contract)
+		exported, err := qimumcp.NewCapabilityBinding(session, binding.Export, contract)
 		if err != nil {
 			return chat.ToolCall{}, err
 		}
