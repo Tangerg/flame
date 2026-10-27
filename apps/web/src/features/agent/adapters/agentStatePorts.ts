@@ -140,11 +140,6 @@ export function createAgentState(
     getCurrentView: getCurrentSessionView,
     getSessions: () => useAgentStore.getState().sessions,
     getSession: (sessionId) => useAgentStore.getState().sessions[sessionId],
-    sendToSession: (sessionId, input, options) => {
-      const send = useAgentStore.getState().sessions[sessionId]?.send;
-      if (!send) return false;
-      return send(input, options);
-    },
     dropMessage: (sessionId, messageId) =>
       useAgentStore.getState().dropMessage(sessionId, messageId),
     projectSteerDelivery: (sessionId, messageId, command) =>

@@ -6,13 +6,89 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { ComponentBoundary } from "@/features/plugins/ui/InstalledComponent";
+import {
+  ComponentBoundary,
+  InstalledToolResultComponent,
+} from "@/features/plugins/ui/InstalledComponent";
+import { type ComponentContext } from "@flame/component-sdk";
+import { type FlameClient } from "@flame/runtime-client";
+import { definePlugin, type ContributionLifetime } from "@/extensions/definePlugin";
+import { startKernel, stopKernel } from "@/extensions/bootstrap";
+import { RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { useEffect } from "react";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
+});
+
+it("injects the captured interaction into an installed result without querying during render", async () => {
+  let lifetime!: ContributionLifetime;
+  const host = await startKernel([
+    definePlugin({
+      name: "test.captured-interaction",
+      setup(context) {
+        lifetime = context.lifetime("result");
+      },
+    }),
+  ]);
+  finishTestClient(() => stopKernel(host));
+  let captured!: ComponentContext;
+  function Result({ context }: { context: ComponentContext }) {
+    useEffect(() => {
+      captured = context;
+    }, [context]);
+    return <p>Captured result</p>;
+  }
+  const get = vi.fn(async () => ({ id: "run_original", sessionId: "ses_original" }));
+  const send = vi.fn(async () => ({
+    status: "accepted" as const,
+    sessionId: "ses_original",
+    runId: "run_followup",
+    userItemId: "item_followup",
+  }));
+  testClient.agent.projection.store.getState().ensureSession("ses_original");
+  testClient.agent.projection.store.getState().setSend("ses_original", send);
+  vi.spyOn(testClient.agent.dependencies.runtime, "loadSessionSnapshot").mockResolvedValue({
+    snapshot: { items: [], runs: [], pendingInterruptSets: [] },
+    projectAssociatedSharedMaterial: (shared) => shared,
+  });
+  const mounted = testClient.render(
+    <InstalledToolResultComponent
+      entry={Result}
+      component={{ installationId: "installed", digest: "a".repeat(64), componentId: "result" }}
+      generation={RuntimeConnectionGeneration.forProcess("test")}
+      compose={() => null}
+      runtime={{ runs: { get } } as unknown as FlameClient}
+      binding={undefined}
+      lifetime={lifetime}
+      resources={new AbortController().signal}
+      toolResult={{
+        id: "item_original",
+        runId: "run_original",
+        name: "present",
+        fn: "present",
+        args: "{}",
+        status: "ok",
+        result: "{}",
+      }}
+    />,
+  );
+  expect(get).not.toHaveBeenCalled();
+  expect(captured.interaction?.source).toEqual({ runId: "run_original", itemId: "item_original" });
+  testClient.navigation.go({ session: "ses_elsewhere" });
+  await act(async () => {
+    await expect(
+      captured.interaction!.submit({ action: "Continue", payloadJSON: "{}" }),
+    ).resolves.toMatchObject({ status: "accepted", sessionId: "ses_original" });
+  });
+  expect(send).toHaveBeenCalledOnce();
+  const original = captured.interaction!;
+  mounted.unmount();
+  expect(() => original.submit({ action: "Continue", payloadJSON: "{}" })).toThrow(/abort/i);
+  expect(send).toHaveBeenCalledOnce();
 });
 
 it("retains the original component exception for inspection before reloading", () => {

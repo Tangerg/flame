@@ -19,10 +19,32 @@ export interface MutationSettlerConfig {
 interface MutationSettleOptions {
   parent?: AbortSignal;
   timeoutMs?: number;
+  onMutation?: (idempotencyKey: string) => void;
 }
 
 interface PendingMutation<T> {
   mutation: MutationPromise<T>;
+}
+
+function projectMutation<T>(
+  settlement: Promise<T>,
+  idempotencyKey: string,
+  onMutation: MutationSettleOptions["onMutation"],
+): Promise<T> {
+  try {
+    onMutation?.(idempotencyKey);
+  } catch (cause) {
+    // A projection failure cannot orphan a dispatched command or its deadline.
+    return settlement.then(
+      () => {
+        throw cause;
+      },
+      (error: unknown) => {
+        throw new AggregateError([cause, error], "mutation identity observer failed", { cause });
+      },
+    );
+  }
+  return settlement;
 }
 
 export interface MutationSettler {
@@ -158,7 +180,7 @@ function driveMutation<T>(
 export function createMutationSettler(config: MutationSettlerConfig = {}): MutationSettler {
   const acceptedAttempt = config.acceptedAttempt ?? "released";
   const pending = new Map<string, PendingMutation<unknown>[]>();
-  const replaying = new Map<string, Promise<unknown>>();
+  const replaying = new Map<string, { promise: Promise<unknown>; idempotencyKey: string }>();
   const lifetime = new AbortController();
   let disposed = false;
 
@@ -183,8 +205,13 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
       options: MutationSettleOptions = {},
     ): Promise<T> {
       if (disposed) return Promise.reject(new MutationSettlementClosedError());
-      const activeReplay = replaying.get(identity) as Promise<T> | undefined;
-      if (activeReplay) return activeReplay;
+      const activeReplay = replaying.get(identity);
+      if (activeReplay)
+        return projectMutation(
+          activeReplay.promise as Promise<T>,
+          activeReplay.idempotencyKey,
+          options.onMutation,
+        );
 
       const retained = take<T>(identity);
 
@@ -230,10 +257,11 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
           },
         )
         .finally(() => {
-          if (replaying.get(identity) === tracked) replaying.delete(identity);
+          if (replaying.get(identity)?.promise === tracked) replaying.delete(identity);
         });
-      if (retained) replaying.set(identity, tracked as Promise<unknown>);
-      return tracked;
+      if (retained)
+        replaying.set(identity, { promise: tracked, idempotencyKey: mutation.idempotencyKey });
+      return projectMutation(tracked, mutation.idempotencyKey, options.onMutation);
     },
     dispose(): void {
       if (disposed) return;

@@ -62,6 +62,21 @@ Run `npm run browser:dev` for manual inspection and `npm run browser:test` for
 browser behavior checks. Run focused scenarios for the changed behavior rather
 than repeating the complete matrix for each spacing or typography adjustment.
 
+The `genui-report` Agent state loads the built GenUI package ESM and declared
+Tool selector through the installed captured-result components. Its accepted
+document combines a local scenario form, reactive calculations, conditional
+content, a searchable and selectable table, charts and accessible media views.
+Build plugin
+resources first, then run `npm run browser:genui --workspace @flame/web`
+from the repository root. This focused
+suite reuses the production fixture build and preview, checks editing, validation,
+reset, keyboard controls, overflow and both themes at narrow and wide widths,
+and attaches screenshots for manual inspection. The sandbox cases exercise local
+program execution while checking that scripts cannot access the parent or send
+external requests. These fixtures do not contact a Runtime or load the OpenUI
+development inspector; Runtime operation and conversation-input tests own those
+execution contracts.
+
 Useful routes:
 
 - `/visual/?theme=light&sidebar=expanded`

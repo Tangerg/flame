@@ -9,7 +9,9 @@ import {
 } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
 import { createAgentFixture } from "@/test/agentFixture";
-import { useChatSend } from "@/features/agent/public/input";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
+import { type AgentInput } from "@/features/agent/public/input";
 import { useStopCurrentRootRun } from "@/features/agent/public/run";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
@@ -27,9 +29,12 @@ import { ThemeProvider } from "@/features/theme/public/theme";
 import { VISUAL_RUNTIME_GENERATION } from "./agentFixtureFacts";
 
 function useRecordedChatSession() {
-  const send = useChatSend();
+  const agent = useAgentDependencies();
   const stop = useStopCurrentRootRun();
-  return { send, stop: () => stop?.() };
+  return {
+    send: (input: AgentInput) => submitAgentInput(agent, agent.state.getActiveSessionId(), input),
+    stop: () => stop?.(),
+  };
 }
 
 /** One browser fixture owns these feature instances; production has no default instance. */

@@ -14,6 +14,43 @@ afterEach(() => {
 });
 
 describe("run opening controller", () => {
+  it("returns the real acceptance while the existing owner continues observing the Run", async () => {
+    const observed = Promise.withResolvers<void>();
+    const controller = createRunOpeningController({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      markInteracted: vi.fn(),
+      setAbortController: vi.fn(),
+      abortCurrent: vi.fn(),
+      setStartError: vi.fn(),
+      onRejected: vi.fn(),
+    });
+    const opening = Promise.withResolvers<
+      RunOpeningResult<{
+        runId: ReturnType<typeof asRunId>;
+        segmentId: ReturnType<typeof asSegmentId>;
+      }>
+    >();
+    const observe = vi.fn(() => observed.promise);
+    const receipt = controller.begin(() => opening.promise, { observe });
+    const received = vi.fn();
+    void receipt.then(received);
+    await Promise.resolve();
+    expect(received).not.toHaveBeenCalled();
+    opening.resolve({
+      result: { runId: asRunId("run_1"), segmentId: asSegmentId("seg_1") },
+      observation: { type: "stream", events: emptyEvents() },
+    });
+    await expect(receipt).resolves.toMatchObject({
+      result: { runId: "run_1", segmentId: "seg_1" },
+    });
+    expect(observe).toHaveBeenCalledOnce();
+    expect(controller.isStarting()).toBe(true);
+    observed.resolve();
+    await vi.waitFor(() => expect(controller.isStarting()).toBe(false));
+    controller.retire();
+  });
+
   it("retires an opening that ignores cancellation and disposes its late stream", async () => {
     const opening = Promise.withResolvers<
       RunOpeningResult<{

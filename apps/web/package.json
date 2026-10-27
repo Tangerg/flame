@@ -45,7 +45,8 @@
     "check:dead-tokens": "node scripts/check-dead-tokens.mjs",
     "check:styles": "node scripts/check-dead-styles.mjs",
     "browser:dev": "vite --config vite.visual.config.ts",
-    "browser:test": "playwright test --config playwright.browser.config.ts"
+    "browser:test": "playwright test --config playwright.browser.config.ts",
+    "browser:genui": "playwright test --config playwright.genui.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

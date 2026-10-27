@@ -190,8 +190,10 @@ describe("useAgentSession send re-entrancy", () => {
 
     let accepted = true;
     act(() => {
-      accepted = testClient.agent.projection.store.getState().sessions[SID]!.send!(
-        agentTextInput("must wait for the interrupt"),
+      accepted = Boolean(
+        testClient.agent.projection.store.getState().sessions[SID]!.send!(
+          agentTextInput("must wait for the interrupt"),
+        ),
       );
     });
 
@@ -215,7 +217,9 @@ describe("useAgentSession run timing guards", () => {
           data: { type: "session_not_found", detail: "gone" },
         });
       })
-      .mockImplementationOnce((...args: unknown[]) => parkUntilAborted(args.at(-1) as AbortSignal));
+      .mockImplementationOnce((_input: unknown, _options: unknown, signal: AbortSignal) =>
+        parkUntilAborted(signal),
+      );
     const driver = {
       start,
       resume: vi.fn((_runId: unknown, _responses: unknown, signal: AbortSignal) =>

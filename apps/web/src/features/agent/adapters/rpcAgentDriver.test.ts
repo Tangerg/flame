@@ -65,7 +65,7 @@ describe("createRpcAgentDriver", () => {
       resumeResult,
     );
 
-    expect(gateway.start).toHaveBeenCalledWith({ sessionId: "ses_1", input }, signal);
+    expect(gateway.start).toHaveBeenCalledWith({ sessionId: "ses_1", input }, signal, undefined);
     expect(gateway.resume).toHaveBeenCalledWith({ runId, responses, input: followUp }, signal);
   });
 });

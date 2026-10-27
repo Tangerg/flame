@@ -111,6 +111,17 @@ in both standalone and grouped rows, with long values wrapping inside the readin
 column. Captured text, status, disclosure, actions and source-return ownership stay
 with their existing owners.
 
+Installed Tool-result components receive an optional captured interaction
+collaborator. It resolves the original Run's Session only when the user submits,
+then enters the same Agent input owner as Composer. The action description and
+exact form JSON become ordinary user input with the source Run and Item IDs.
+The existing mounted Session selects start or steer and observes the Run; the
+component receives actual accepted, retired or unknown command settlement.
+Unknown results retain their original key and recovery. A recreated component
+reads the existing journal projection first, including an acceptance recovered
+during that read, before admitting another input. These are receipt projections,
+not a second transcript, scheduler or command store.
+
 The generic Tool inspector preserves whitespace-only results and argument text as
 literal source, including their reading and copy controls. Only missing or
 zero-length result bodies use its existing empty-result notice.

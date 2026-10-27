@@ -16,6 +16,7 @@ import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeG
 import { toolCategoryForName } from "@/features/agent/application/fold/reducer.fixtures";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
+import { GENUI_REPORT } from "./genuiReport";
 export const VISUAL_AGENT_STATES = [
   "empty",
   "runtime-down",
@@ -46,6 +47,7 @@ export const VISUAL_AGENT_STATES = [
   "tool-agentic",
   "tool-tail",
   "tool-skill-pages",
+  "genui-report",
   "question-multi",
   "waves",
 ] as const;
@@ -2089,6 +2091,41 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     pendingInterruptSets: [],
   },
 
+  "genui-report": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:01.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 1, activeDurationMillis: 1_000 },
+      }),
+    ],
+    items: [
+      message(
+        "userMessage",
+        "item_genui_prompt",
+        "Present the plugin delivery review as a report.",
+      ),
+      {
+        type: "toolCall",
+        id: "item_genui_report",
+        runId: ROOT_RUN_ID,
+        status: "completed",
+        safetyClass: "safe",
+        startedAt: CREATED_AT,
+        finishedAt: "2026-07-31T08:00:00.020Z",
+        durationMillis: 20,
+        tool: {
+          name: "genui_ui_present",
+          category: "unknown",
+          arguments: GENUI_REPORT,
+          result: GENUI_REPORT,
+        },
+      },
+      message("agentMessage", "item_genui_answer", "The captured delivery review is ready."),
+    ],
+    pendingInterruptSets: [],
+  },
+
   waves: {
     runs: [run("running")],
     items: [
@@ -2202,6 +2239,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-search": [],
   "tool-remote": [],
   "tool-skill-pages": [],
+  "genui-report": [],
   "tool-agentic": [],
   "tool-tail": [],
   "question-multi": [],

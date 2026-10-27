@@ -94,6 +94,26 @@ The current installed component may format it with ordinary Hooks and shared con
 generic inspection remains available when a renderer fails or is absent. Navigation
 never retargets the captured record. Tool results is the concrete consumer.
 
+The graphical Host also supplies optional `context.interaction` for an installed
+Tool-result component. `source` freezes its original `{ runId, itemId }`.
+`submit({ action, payloadJSON })` submits ordinary Agent input to that Run's
+Session; the Host resolves the Session at submission time. `action` is descriptive
+text, never a Core method or Tool authority. The input contains the source IDs,
+action and exact JSON source. This preserves traceability without mutating the
+captured result or adding a separate structured transcript record.
+
+The returned `InteractionSubmission` reports `accepted` with the Session, Run and
+user Item IDs, `retired` when Runtime reports that the original acceptance retired,
+or `unknown` with the original `idempotencyKey` and `recover()`. Acceptance does not
+mean the Agent has completed the requested work. Retirement is not a fresh
+successful execution. Known refusals reject with their original error. Keep an
+unknown result and invoke its recovery; do not replace it with another submit.
+Recreated components check the existing command journal before admitting input.
+Closing a component prevents new submissions and recovery observations, while an
+already dispatched input remains owned by the existing Session/Run lifecycle.
+Hosts without this collaborator may still render captured content; authored
+components must make its absence explicit before offering submission.
+
 Contextual Session actions receive `context.sessionTarget`, a frozen `CapturedSession`
 projection of the accepted row's ID, title and revision at interaction time. The action
 placement is local metadata; offering a menu does not activate code or query a backend.
@@ -141,6 +161,11 @@ durable; authored input and business results are not copied into it. Low-level
 calls and stable-intent commands share that journal and retain routing metadata.
 For a recreated component, `bindOperations(...).pendingCommands(method)` projects
 unresolved commands, including streams, for that original installation/contribution/target.
+Components that associate pending work with an authored action also check the
+Runtime handle's `matchesIntent(originalIntent)` through
+`context.runtime.plugins.pendingCommands()`. A shared binding does not establish
+the originating document or action. The predicate reads the existing salted
+journal fingerprint without introducing another intent registry.
 Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct
 input from the current draft, prepare another provider or persist business output.
@@ -169,7 +194,12 @@ directory and `compiler: rolldown` imported from the author toolchain's declared
 The SDK owns shared-module externalization and the prebuilt ESM/relative-asset
 format. The former implicit compiler lookup is removed; all in-repository build
 callers supply the compiler explicitly. Private dependencies are bundled. `HOST_MODULES` names shared React,
-React DOM, JSX runtimes, SDK and UI modules; UI subpath imports are also external.
+React DOM, JSX runtimes, SDK, Runtime-client, Runtime-client JSON and UI modules;
+UI subpath imports are also external. The workbench derives its import map from
+that same declaration and deduplicates the Runtime-client package. Both
+`@flame/runtime-client` and `@flame/runtime-client/json` therefore use the actual
+Host's error constructors and exact-number codec. Source-only tests cannot prove
+this identity; component builds and the production ESM linkage check exercise it.
 Unresolved imports, including Node built-ins, fail the browser build instead of
 becoming undeclared runtime dependencies.
 The graphical client must map those imports to its actual shared instances before
@@ -186,11 +216,19 @@ module graph as other components. Source, type, build and actual graphical
 qualification retain their own recorded scope; compilation alone does not prove
 component or recovery lifetimes.
 
-Core Runtime failures are classified with the shared SDK's `isErrorType` export.
-Components must use this host module rather than bundling another RPC error class;
+Core Runtime failures are classified with the shared Runtime-client's
+`isErrorType` export or the SDK's identical re-export. Components must use these
+host modules rather than bundling another RPC error class;
 class identity is part of the Runtime client's typed failure contract. Business
 operation refusals use the shared Runtime client's OperationFailure and code/message,
 which the SDK exports as the same class.
+The same rule applies to `ExactNumber`: host-produced query results and plugin
+expressions must use the shared JSON codec, which preserves the original numeric
+lexemes. These module mappings apply to graphical components. A backend is a
+separate process and bundles its own codec for its JSON wire boundary.
+Rebuild components and update their graphical Host together for this shared
+module contract. Previously published private bundles do not acquire the Host's
+class identity retroactively.
 
 `failureText(error, fallback)` presents a typed Runtime problem by its nonempty
 published `detail`, falling back to the RPC message when the detail is absent or

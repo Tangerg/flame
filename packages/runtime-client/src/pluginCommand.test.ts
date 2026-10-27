@@ -66,6 +66,92 @@ const binding = {
 const intent = `record-delete:${id}`;
 const journals: MutationJournal[] = [];
 
+it("matches original stable intents across client replacement without exposing input or mutating the journal", async () => {
+  const storage = new Storage();
+  const original = client(storage);
+  original.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  const actions = [
+    { intent: "document-a:submit:delete", input: '{"ID":9007199254740993}' },
+    { intent: "document-b:submit:delete", input: '{"ID":9007199254740994}' },
+    { intent: "document-a:alternate:delete", input: '{"ID":9007199254740995}' },
+  ];
+  for (const action of actions)
+    await expect(
+      original.methods.plugins.command(
+        action.intent,
+        { ...input, input: action.input },
+        async () => binding,
+        (value) => value,
+      ),
+    ).rejects.toBeInstanceOf(RpcTransportError);
+  const evidence = structuredClone([...storage.values]);
+  original.journal.dispose();
+  const successor = client(storage);
+  const pending = successor.methods.plugins.pendingCommands();
+  expect(pending).toHaveLength(3);
+  for (const action of actions) {
+    const matches = pending.filter((command) => command.matchesIntent(action.intent));
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.binding).toEqual({
+      ...binding,
+      contract: input.contract,
+      method: input.method,
+    });
+  }
+  expect(pending.every((command) => !command.matchesIntent("unrelated-action"))).toBe(true);
+  expect([...storage.values]).toEqual(evidence);
+  expect(successor.dispatch).not.toHaveBeenCalled();
+  const encoded = JSON.stringify(evidence);
+  for (const action of actions) {
+    expect(encoded).not.toContain(action.intent);
+    expect(encoded).not.toContain(action.input);
+  }
+  const prepare = vi.fn(async () => binding);
+  await expect(
+    successor.methods.plugins.command(
+      actions[0]!.intent,
+      { ...input, input: '{"ID":1}' },
+      prepare,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+  expect(prepare).not.toHaveBeenCalled();
+  expect(successor.dispatch).not.toHaveBeenCalled();
+  expect(pending.filter((command) => command.matchesIntent(actions[0]!.intent))).toHaveLength(1);
+});
+
+it("does not assign an intent to direct calls or to a settled original handle", async () => {
+  const storage = new Storage();
+  const current = client(storage);
+  current.dispatch.mockRejectedValue(new RpcTransportError("reply lost"));
+  await expect(current.methods.plugins.call({ ...binding, ...input })).rejects.toBeInstanceOf(
+    RpcTransportError,
+  );
+  const direct = current.methods.plugins.pendingCommands()[0]!;
+  expect(direct.matchesIntent(intent)).toBe(false);
+  await expect(
+    current.methods.plugins.command(
+      intent,
+      input,
+      async () => binding,
+      (value) => value,
+    ),
+  ).rejects.toBeInstanceOf(RpcTransportError);
+  const command = current.methods.plugins
+    .pendingCommands()
+    .find((value) => value.matchesIntent(intent))!;
+  expect(command).toBeDefined();
+  current.dispatch
+    .mockResolvedValueOnce({ ...binding, ...input } as unknown as CallPluginResponse)
+    .mockResolvedValueOnce({ output: "{}" });
+  await expect(command.recover((value) => value)).resolves.toEqual({});
+  expect(command.matchesIntent(intent)).toBe(false);
+  expect(direct.matchesIntent(intent)).toBe(false);
+  expect(() => direct.matchesIntent("")).toThrow("plugin command intent is invalid");
+  current.journal.dispose();
+  expect(() => direct.matchesIntent(intent)).toThrow(MutationJournalOwnershipError);
+});
+
 it("retires only the original command and clears its journal after confirmed retirement", async () => {
   const storage = new Storage();
   const original = client(storage);

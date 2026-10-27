@@ -25,7 +25,7 @@ export interface RunOpeningController {
       onResult?: (result: Result, observation: RunOpeningResult<Result>["observation"]) => void;
       onStartError?: () => void;
     },
-  ) => void;
+  ) => Promise<RunOpeningResult<Result>>;
   retire: () => void;
 }
 
@@ -114,6 +114,9 @@ export function createRunOpeningController({
           if (ownLease === openingLease) starting = false;
           finishSpan();
         });
+      // Acceptance and the observed Run have different lifetimes. The existing
+      // controller keeps the stream; input consumers only receive its receipt.
+      return opening;
     },
     retire() {
       releaseActiveDraft?.();

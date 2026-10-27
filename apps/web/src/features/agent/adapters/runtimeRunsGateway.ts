@@ -26,13 +26,17 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
 
   #openings = createMutationSettler({ acceptedAttempt: "retained" });
 
-  async start({ sessionId, ...params }: RpcRunStartParams, signal?: AbortSignal) {
+  async start(
+    { sessionId, ...params }: RpcRunStartParams,
+    signal?: AbortSignal,
+    onMutation?: (idempotencyKey: string) => void,
+  ) {
     const client = this.runtimeClient();
     const { result, observation } = await this.#openings.settle(
       runOpeningIdentity("start", { sessionId, ...params }),
       (attemptSignal) =>
         client.runs.start({ ...params, sessionId: asSessionId(sessionId) }, attemptSignal),
-      { parent: signal },
+      { parent: signal, onMutation },
     );
     return { result: brandStartedRun(result), observation };
   }

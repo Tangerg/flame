@@ -81,3 +81,75 @@ assert.deepEqual(
   "the author must retain every requested public binding",
 );
 console.log("[check-plugin-modules] production React and JSX named imports link successfully");
+
+const runtimeModules = [
+  "@flame/runtime-client",
+  "@flame/runtime-client/json",
+  "@flame/component-sdk",
+];
+for (const module of runtimeModules)
+  assert.equal(typeof imports[module], "string", `the public module ${module} must be mapped`);
+
+const runtimeEntry = resolve(root, "flame-public-runtime-consumer.mjs");
+const runtimeResult = await build({
+  configFile: false,
+  root,
+  logLevel: "error",
+  resolve: {
+    alias: runtimeModules
+      .toSorted((left, right) => right.length - left.length)
+      .map((module) => ({
+        find: module,
+        replacement: resolve(dist, imports[module].replace(/^\/+/, "")),
+      })),
+  },
+  plugins: [
+    {
+      name: "flame-public-runtime-consumer",
+      resolveId(id) {
+        if (id === runtimeEntry) return `\0${runtimeEntry}`;
+      },
+      load(id) {
+        if (id !== `\0${runtimeEntry}`) return;
+        return `
+          import { MutationLookupError, OperationFailure, ExactNumber } from "@flame/runtime-client";
+          import { isJSONNumber, parseJSON, stringifyJSON } from "@flame/runtime-client/json";
+          import { mutationSettlementIsUnknown, OperationFailure as SharedFailure } from "@flame/component-sdk";
+          export function inspectHostValues() {
+            const value = new ExactNumber("1.00");
+            const source = stringifyJSON({ value });
+            return {
+              unknown: mutationSettlementIsUnknown(new MutationLookupError(new Error("reply unavailable"))),
+              failure: new OperationFailure("not_found", "owner refused") instanceof SharedFailure,
+              exact: isJSONNumber(value),
+              source,
+              decoded: parseJSON(source).value instanceof ExactNumber,
+            };
+          }
+        `;
+      },
+    },
+  ],
+  build: {
+    write: false,
+    minify: false,
+    lib: { entry: runtimeEntry, formats: ["es"] },
+  },
+});
+assert(Array.isArray(runtimeResult), "the Runtime consumer must return its ESM output");
+const runtimeChunk = runtimeResult[0].output.find(
+  (output) => output.type === "chunk" && output.isEntry,
+);
+assert(runtimeChunk, "the Runtime consumer must emit its entry module");
+assert.deepEqual(runtimeChunk.imports, [], "the linked Runtime consumer must be executable");
+const consumer = await import(
+  "data:text/javascript;base64," + Buffer.from(runtimeChunk.code).toString("base64")
+);
+assert.deepEqual(consumer.inspectHostValues(), {
+  unknown: true,
+  failure: true,
+  exact: true,
+  source: '{"value":1.00}',
+  decoded: true,
+});
+console.log("[check-plugin-modules] production Runtime errors and exact JSON retain Host identity");

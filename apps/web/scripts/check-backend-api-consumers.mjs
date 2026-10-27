@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, resolve, relative, sep } from "node:path";
-import { API, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
+import { API, SignatureKind, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
 const ROOT = process.cwd();
@@ -91,7 +91,7 @@ if (!sidecarSource) fail([`TypeScript did not load ${relative(ROOT, SIDECAR_PATH
 
 const implementationMap = new Map();
 const bindingFactories = new Set();
-const bindingWrappers = new Set();
+const localSDKWrappers = new Set();
 const bindingOwners = new Map();
 mapTypedSDKBindings();
 mapReturnedObject("bindWorkspace", [], true);
@@ -163,26 +163,13 @@ checker = project.checker;
 const errors = [];
 errors.push(...discardedResults);
 const operationConsumers = new Map([...operations].map((operation) => [operation, new Set()]));
-for (const [wrapper, locations] of consumerCalls) {
-  const mappedOperations = implementationMap.get(wrapper);
-  if (!mappedOperations?.size) {
-    if (bindingWrappers.has(wrapper)) continue;
-    errors.push(
-      `frontend calls Methods.${wrapper}, but its implementation could not be mapped to a Runtime operation (${[...locations].join(", ")})`,
-    );
-    continue;
-  }
-  for (const operation of mappedOperations) {
-    const consumers = operationConsumers.get(operation);
-    if (!consumers) {
-      errors.push(
-        `Methods.${wrapper} maps to ${operation}, which is absent from the Runtime manifest`,
-      );
-      continue;
-    }
-    for (const location of locations) consumers.add(location);
-  }
-}
+creditSDKOperationConsumers(
+  consumerCalls,
+  implementationMap,
+  localSDKWrappers,
+  operationConsumers,
+  errors,
+);
 
 const directlyConsumedOperations = new Set(
   [...operationConsumers]
@@ -335,6 +322,35 @@ function creditHTTPOperationConsumers(endpoints, methods, calls, consumers, targ
       consumers.get(endpoint.projects).add(`${location} (HTTP ${endpoint.name})`);
   }
   return credited;
+}
+
+function creditSDKOperationConsumers(
+  calls,
+  implementations,
+  localWrappers,
+  consumersByOperation,
+  targetErrors,
+) {
+  for (const [wrapper, locations] of calls) {
+    const mapped = implementations.get(wrapper);
+    if (!mapped?.size) {
+      if (localWrappers.has(wrapper)) continue;
+      targetErrors.push(
+        `frontend calls Methods.${wrapper}, but its implementation could not be mapped to a Runtime operation (${[...locations].join(", ")})`,
+      );
+      continue;
+    }
+    for (const operation of mapped) {
+      const consumers = consumersByOperation.get(operation);
+      if (!consumers) {
+        targetErrors.push(
+          `Methods.${wrapper} maps to ${operation}, which is absent from the Runtime manifest`,
+        );
+        continue;
+      }
+      for (const location of locations) consumers.add(location);
+    }
+  }
 }
 
 function checkOperationConsumers(
@@ -516,13 +532,55 @@ function walkImplementationObject(object, prefix) {
     const mapped = wireOperationsIn(property.initializer);
     const key = path.join(".");
     if (mapped.size === 0) {
-      if (returnsMappedBinding(property.initializer)) bindingWrappers.add(key);
+      if (returnsMappedBinding(property.initializer) || returnsLocalValue(property.initializer))
+        localSDKWrappers.add(key);
       continue;
     }
     const current = implementationMap.get(key) ?? new Set();
     for (const operation of mapped) current.add(operation);
     implementationMap.set(key, current);
   }
+}
+
+// A synchronous primitive result and synchronous callees identify a local
+// observation. Traced wire calls take precedence; async, unknown and void
+// members still need an inspectable endpoint or capability-factory projection.
+function returnsLocalValue(initializer) {
+  const local = (value) => {
+    if (!value) return false;
+    if (value.isUnionType()) return value.getTypes().every(local);
+    return (
+      (value.flags &
+        (TypeFlags.BooleanLike |
+          TypeFlags.StringLike |
+          TypeFlags.NumberLike |
+          TypeFlags.BigIntLike |
+          TypeFlags.ESSymbolLike |
+          TypeFlags.Null)) !==
+      0
+    );
+  };
+  const localResult = (expression) => {
+    const type = checker.getTypeAtLocation(expression);
+    const signatures = type && checker.getSignaturesOfType(type, SignatureKind.Call);
+    return Boolean(
+      signatures?.length &&
+      signatures.every((signature) => local(checker.getReturnTypeOfSignature(signature))),
+    );
+  };
+  if (!localResult(initializer)) return false;
+  let synchronous = true;
+  const scan = (node) => {
+    if (
+      node !== initializer &&
+      (ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node))
+    )
+      return;
+    if (ts.isCallExpression(node) && !localResult(node.expression)) synchronous = false;
+    node.forEachChild(scan);
+  };
+  scan(initializer);
+  return synchronous;
 }
 
 // Constructing a capability does not call its members; only product member calls earn coverage.

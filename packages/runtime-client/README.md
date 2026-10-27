@@ -35,6 +35,20 @@ responses. Retrying continues that original command. Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
 
+`createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
+the identity of the selected original mutation, including retained or shared
+recovery attempts. It grants no replacement command or independent retry owner;
+the existing mutation handle and journal retain settlement authority.
+
+Each `plugins.pendingCommands()` handle exposes `matchesIntent(intent)`, a
+read-only comparison against the original journal's salted intent fingerprint.
+Use the same authored intent when associating pending work with a document or
+action; equal bindings alone cannot identify that input. Direct calls without a
+stable intent do not match. The predicate neither claims nor executes a command,
+and it does not validate changed input. Original input, contract and route remain
+validated by command capture and receipt recovery. No raw intent or authored
+input is added to the persistent journal.
+
 Each client owns one mutation journal and retires it when `close()` begins.
 Consumers may supply `mutationStorage` to retain unresolved commands across
 client replacement. The `capabilities` reader supplies the sole namespace and

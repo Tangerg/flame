@@ -130,7 +130,7 @@ function visualAgentRuntimeGateway(
         ) as AgentSteerSubmission;
       return expose(mutation);
     },
-    isSteerReceiptUnknown: () => false,
+    isInputReceiptUnknown: () => false,
     isRunGone: () => false,
     isReplayLost: () => false,
     setApprovalMode: (mode) => runtimeClient().approval.setMode(mode),
@@ -279,7 +279,7 @@ export async function installVisualAgentFixture(
     planProgress,
     subagentsView,
     ...createToolRenderingPlugins(visual.workspace.access),
-    visualToolResults(runtimeClient),
+    await visualToolResults(runtimeClient, state === "genui-report"),
     fileListProvider,
   );
 
@@ -320,7 +320,12 @@ export async function installVisualAgentFixture(
   }
   store.setSend(VISUAL_SESSION_ID, (input) => {
     document.documentElement.dataset.visualSentInput = JSON.stringify(input);
-    return true;
+    return Promise.resolve({
+      status: "accepted",
+      sessionId: VISUAL_SESSION_ID,
+      runId: VISUAL_ROOT_RUN_ID,
+      userItemId: "item_visual_submitted",
+    });
   });
   store.setStop(VISUAL_SESSION_ID, () => {
     document.documentElement.dataset.visualStoppedRoot = VISUAL_ROOT_RUN_ID;

@@ -27,6 +27,7 @@ export interface RpcRunsGateway {
   start: (
     params: RpcRunStartParams,
     signal?: AbortSignal,
+    onMutation?: (idempotencyKey: string) => void,
   ) => ReturnType<RuntimeAgentDriver["start"]>;
   resume: (
     params: RpcRunResumeParams,
@@ -58,8 +59,8 @@ export function createRpcAgentDriver(
   gateway: () => RpcRunsGateway,
 ): RuntimeAgentDriver {
   return {
-    start: (input, options, signal) =>
-      gateway().start(rpcRunStartParams(sessionId, input, options), signal),
+    start: (input, options, signal, onMutation) =>
+      gateway().start(rpcRunStartParams(sessionId, input, options), signal, onMutation),
     resume: (runId, options, signal) => gateway().resume({ runId, ...options }, signal),
   };
 }

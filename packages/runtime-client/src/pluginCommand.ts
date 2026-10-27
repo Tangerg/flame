@@ -22,6 +22,7 @@ import { parseJSON } from "./json";
 export interface PluginCommandRecovery {
   readonly idempotencyKey: string;
   readonly binding: Omit<CallPluginRequest, "input">;
+  matchesIntent(intent: string): boolean;
   recover<T>(decode: (output: unknown) => T, signal?: AbortSignal): Promise<T>;
   retire(signal?: AbortSignal): Promise<void>;
 }
@@ -34,6 +35,7 @@ export function pendingPluginCommand(
   return {
     idempotencyKey: command.idempotencyKey,
     binding: command.binding,
+    matchesIntent: (intent) => command.matchesIntent(intent),
     recover: async <T>(decode: (output: unknown) => T, signal?: AbortSignal) => {
       const reservation = command.reserve();
       return reservation.track(() =>

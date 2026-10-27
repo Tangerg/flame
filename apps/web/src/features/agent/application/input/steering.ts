@@ -11,6 +11,11 @@ import {
 
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
 import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "@/features/agent/application/view/optimisticMessageIdentity";
+import {
+  settleAgentInput,
+  type AgentInputSettlement,
+  type AgentOpeningAcceptance,
+} from "@/features/agent/application/input/inputSubmission";
 export function steerRunningTurn(
   agentAccess: AgentDependencies,
   {
@@ -24,17 +29,18 @@ export function steerRunningTurn(
     segmentId: string;
     input: AgentInput;
   },
-): boolean {
-  if (input.parts.length === 0) return false;
+): Promise<AgentInputSettlement> | null {
+  if (input.parts.length === 0) return null;
+  agentAccess.commands.current().assertCurrent();
   const prepared = structuredClone(input);
   let submission: AgentSteerSubmission;
   try {
     submission = agentAccess.runtime.steerRun(runId, segmentId, prepared);
   } catch (error) {
     notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
-    return false;
+    return null;
   }
-  observeSteer(
+  return observeSteer(
     agentAccess,
     sessionId,
     runId,
@@ -42,7 +48,6 @@ export function steerRunningTurn(
     submission.idempotencyKey,
     () => submission,
   );
-  return true;
 }
 
 export function restoreUnresolvedSteers(
@@ -81,7 +86,7 @@ function observeSteer(
   open: () => AgentSteerSubmission,
   restored = false,
   nominatedId: string | null = null,
-): void {
+): Promise<AgentInputSettlement> {
   const owner = agentAccess.commands.current();
   const runtime = agentAccess.runtime;
   const view = agentAccess.view;
@@ -108,19 +113,29 @@ function observeSteer(
       notifyInfo(t("agent.command.unknown"), { source: "session" });
   }
 
-  function attempt(open: () => AgentSteerSubmission, previous?: AgentSteerSubmission): void {
+  function attempt(
+    open: () => AgentSteerSubmission,
+    previous?: AgentSteerSubmission,
+  ): Promise<AgentInputSettlement> {
+    owner.assertCurrent();
     view.projectSteerDelivery(sessionId, localId, { runId, delivery: "pending" });
     let submission: AgentSteerSubmission;
     try {
       submission = open();
     } catch (error) {
-      if (previous && runtime.isSteerReceiptUnknown(error)) {
+      if (previous && runtime.isInputReceiptUnknown(error)) {
         retainUnknown(previous);
-        return;
+        return Promise.resolve({
+          status: "unknown",
+          idempotencyKey: previous.idempotencyKey,
+          recover: () => attempt(() => previous.retry(), previous),
+        });
       }
       effect.rollback();
       notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
-      return;
+      const rejected = Promise.reject<AgentInputSettlement>(error);
+      void rejected.catch(() => {});
+      return rejected;
     }
     void submission.inputIdentity
       .then(
@@ -134,9 +149,15 @@ function observeSteer(
       .catch((error: unknown) => {
         notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
       });
-    void owner.settle(submission).then(
-      (result) => {
-        if (!owner.isCurrent()) return;
+    const acceptance = owner.settle(submission).then(
+      (result): AgentOpeningAcceptance => {
+        const accepted: AgentOpeningAcceptance = {
+          status: result.type,
+          sessionId,
+          runId,
+          userItemId: result.userItemId,
+        };
+        if (!owner.isCurrent()) return accepted;
         if (result.type === "retired") {
           clearProvisional();
           const retiredId = `retired-steer:${result.userItemId}`;
@@ -163,23 +184,53 @@ function observeSteer(
           .catch((error: unknown) => {
             console.warn("[session] steer reconciliation failed:", sessionId, error);
           });
+        return accepted;
       },
       (error: unknown) => {
-        if (!owner.isCurrent()) return;
-        if (runtime.isSteerReceiptUnknown(error)) {
-          retainUnknown(submission);
-          return;
+        if (owner.isCurrent()) {
+          if (runtime.isInputReceiptUnknown(error)) retainUnknown(submission);
+          else {
+            effect.rollback();
+            notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+          }
         }
-        effect.rollback();
-        notifyError(describeRpcError(error) ?? t("session.error.steer"), { source: "session" });
+        throw error;
       },
     );
+    return settleAgentInput(acceptance, {
+      key: () => submission.idempotencyKey,
+      isUnknown: (error) => runtime.isInputReceiptUnknown(error),
+      recover: () => attempt(() => submission.retry(), submission),
+    });
   }
 
   if (restored) {
     view.projectSteerDelivery(sessionId, localId, { runId, delivery: "unknown" });
     owner.retainSteerRetry(localId, () => attempt(open));
-  } else attempt(open);
+    return Promise.resolve({
+      status: "unknown",
+      idempotencyKey: key,
+      recover: () => attempt(open),
+    });
+  }
+  return attempt(open);
+}
+
+export function recoverUnresolvedSteer(
+  agentAccess: AgentDependencies,
+  sessionId: string,
+  command: AgentUnresolvedSteer,
+): Promise<AgentInputSettlement> {
+  return observeSteer(
+    agentAccess,
+    sessionId,
+    command.runId,
+    command.input,
+    command.idempotencyKey,
+    command.retry,
+    false,
+    command.userItemId,
+  );
 }
 
 export function retrySteerInput(agentAccess: AgentDependencies, messageId: string): boolean {

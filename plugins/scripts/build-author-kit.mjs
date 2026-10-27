@@ -23,6 +23,7 @@ import {
   authorSDK,
 } from "./build-go-kit.mjs";
 import { validateDestination, readBuildPlan } from "./build.mjs";
+import { authorDependencies } from "./author-dependencies.mjs";
 import { stageNode } from "../../tooling/node-companion.mjs";
 
 const { values } = parseArgs({
@@ -270,6 +271,7 @@ try {
         "packages/backend-sdk",
         "package.json",
         "package-lock.json",
+        "plugins/package.json",
         "plugins/tsconfig.json",
         "plugins/backend.tsconfig.json",
       ],
@@ -280,24 +282,40 @@ try {
     await mkdir(frozenTree);
     run("tar", ["-xf", frozenTar, "-C", frozenTree], root, process.env, true);
     await rm(frozenTar);
+    const candidates = await Promise.all(
+      packageDirectories.map(async (directory) => ({
+        directory: join(frozenTree, directory),
+        manifest: JSON.parse(
+          await readFile(join(frozenTree, directory, "package.json"), "utf8"),
+        ),
+      })),
+    );
     await linkDependencies(
       frozenTree,
-      await Promise.all(
-        packageDirectories.map(async (directory) => ({
-          directory: join(frozenTree, directory),
-          ...JSON.parse(
-            await readFile(join(frozenTree, directory, "package.json"), "utf8"),
-          ),
-        })),
-      ),
+      candidates.map(({ directory, manifest }) => ({ directory, ...manifest })),
     );
-    const dependencies = {};
+    const lock = JSON.parse(
+      await readFile(join(frozenTree, "package-lock.json"), "utf8"),
+    );
+    const { dependencies, devDependencies, packages } =
+      await authorDependencies({
+        source: output,
+        manifest: JSON.parse(
+          await readFile(join(frozenTree, "plugins/package.json"), "utf8"),
+        ),
+        lock,
+        packages: candidates,
+        required: [
+          ...(component ? ["@flame/component-sdk"] : []),
+          ...(managed ? ["@flame/backend-sdk"] : []),
+        ],
+      });
     const packedDependencies = [];
-    for (const directory of packageDirectories) {
-      const packageDirectory = join(frozenTree, directory);
-      const manifest = JSON.parse(
-        await readFile(join(packageDirectory, "package.json"), "utf8"),
-      );
+    for (const {
+      directory: packageDirectory,
+      manifest,
+      development,
+    } of packages) {
       if (manifest.scripts?.build)
         run("npm", ["run", "build"], packageDirectory, process.env, true);
       const [packed] = JSON.parse(
@@ -317,26 +335,19 @@ try {
       );
       if (packed.files.some((file) => /\.test\.[cm]?[jt]sx?$/.test(file.path)))
         throw new Error(`${packed.name} ships ordinary test source`);
-      dependencies[packed.name] = `file:./artifacts/npm/${packed.filename}`;
+      const resolved = `file:./artifacts/npm/${packed.filename}`;
+      (development ? devDependencies : dependencies)[packed.name] = resolved;
       packedDependencies.push({
         manifest,
-        resolved: dependencies[packed.name],
+        resolved,
         integrity: packed.integrity,
       });
     }
-    const lock = JSON.parse(
-      await readFile(join(frozenTree, "package-lock.json"), "utf8"),
-    );
     const version = (name) => {
       const entry = lock.packages[`node_modules/${name}`];
       if (!entry?.version) throw new Error(`root lock has no selected ${name}`);
       return entry.version;
     };
-    for (const name of ["react", "react-dom", "motion", "marked"])
-      if (component) dependencies[name] = version(name);
-    if (managed)
-      dependencies["@js-temporal/polyfill"] = version("@js-temporal/polyfill");
-    const devDependencies = {};
     for (const name of [
       "typescript",
       "@types/react",
@@ -430,7 +441,7 @@ try {
       });
       await writeFile(
         join(output, "test-backend.mjs"),
-        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
+        `import { execFileSync } from "node:child_process";\nimport { fileURLToPath } from "node:url";\nexecFileSync(fileURLToPath(new URL(${JSON.stringify(relative(output, node).split(sep).join("/"))}, import.meta.url)), [fileURLToPath(new URL("./node_modules/vitest/vitest.mjs", import.meta.url)), "run", "backend", "contracts"], { cwd: fileURLToPath(new URL("./", import.meta.url)), stdio: "inherit" });\n`,
       );
       run("npm", ["run", "generate"], output);
       run("npm", ["test"], output);
@@ -439,7 +450,7 @@ try {
   await writeFile(
     join(output, "README.md"),
     managed && !plan.native
-      ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. The prebuilt flame-sdk contract and archive commands are development-only tools; the included selected Node companion runs backend storage tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects contracts/capability.json without changing existing opaque schema names. Rebuild and explicitly select a new release after edits. Preserve prior installations and data; Usage Reports uses a fresh archive at the pre-release cutover.\n`
+      ? `# ${plugin} TypeScript author project\n\nImplementation source is frozen at ${revision}. Packed public SDKs and this project's lock own the npm graph. There is no Go source or Go compiler prerequisite. The prebuilt flame-sdk contract and archive commands are development-only tools; the included selected Node companion runs backend and contract tests.\n\nFrom this directory:\n\n\`\`\`sh\nnpm ci --ignore-scripts\nnpm run generate\nnpm run typecheck\nnpm test\nnpm run build\nnpm run package -- --output /absolute/new/release --archives /absolute/new/archives\n\`\`\`\n\nThe portable ZIP contains its complete backend graph and declared resources, without node_modules or an interpreter. Install it through Runtime; Runtime supplies its qualified Node companion. Generation projects only the feature contracts named by the package declaration; a Tool-only package has none. Rebuild and explicitly select a new release after edits. Preserve prior installations and their original pending work when changing releases.\n`
       : `# ${plugin} author project\n\nThe backend, component and package resource root use the same layout as Flame.\nYour module is ${modulePath}; its implementation source is frozen at ${revision}. Flame dependencies are immutable module artifacts ${sdk.path}@${sdk.version} from ${sdk.revision}.\nGo production and generation tools are vendored; there is no local replace or Flame checkout dependency.\nJS dependencies use packed SDKs and this project's own lock. They require an ordinary npm install and are not claimed to be fully offline.\n\nRun with the Go version in go.mod:\n\n\`\`\`sh\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go test ./...\nGOWORK=off GOTOOLCHAIN=local GOPROXY=off GONOPROXY=none GOFLAGS=-mod=vendor go generate ./...\n${component ? "npm ci --ignore-scripts\nnpm run typecheck\nnpm run build\n" : ""}node build.mjs --source "$PWD" --output /absolute/new/release --os darwin --arch arm64\n\`\`\`\n\nInstall the built release; installation needs neither Go nor Node. Existing consumer contracts come from the pinned public SDK; local Go types implement them without redefining their identity. Regenerate package/UI projections after edits. New business contracts must be defined and published explicitly by their owner.\n`,
   );
   console.log(output);

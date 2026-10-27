@@ -3,6 +3,7 @@ import {
   type AgentViewRefreshToken,
   type CancelRunAction,
   type ResumeRunAction,
+  type RetryOpeningAction,
   type SendAgentInputAction,
   type StopCurrentRootRunAction,
   type SynchronizeSessionAction,
@@ -52,7 +53,7 @@ interface SessionEntry {
   synchronize: SynchronizeSessionAction | null;
   cancelRun: CancelRunAction | null;
   openingCommands: readonly AgentOpeningCommand[];
-  retryOpening: ((idempotencyKey: string) => boolean) | null;
+  retryOpening: RetryOpeningAction | null;
 }
 
 interface AgentStore {
@@ -103,10 +104,7 @@ interface AgentStore {
   setResume: (sessionId: string, action: ResumeRunAction | null) => void;
   setSynchronize: (sessionId: string, action: SynchronizeSessionAction | null) => void;
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
-  setRetryOpening: (
-    sessionId: string,
-    action: ((idempotencyKey: string) => boolean) | null,
-  ) => void;
+  setRetryOpening: (sessionId: string, action: RetryOpeningAction | null) => void;
   projectOpeningAccepted: (sessionId: string, idempotencyKey: string) => void;
   clearProblem: (sessionId: string) => void;
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;

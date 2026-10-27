@@ -1,5 +1,4 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
-import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { useCallback } from "react";
 import { resolveAgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type AgentInput } from "@/features/agent/domain/input";
@@ -8,38 +7,19 @@ import {
   getActiveSessionId,
   useActiveSessionId,
 } from "@/features/agent/application/session/activeSession";
-import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { useCurrentRootMaterial } from "@/features/agent/application/run/runReadModel";
-import { steerRunningTurn } from "@/features/agent/application/input/steering";
-type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
+import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
 
 export function useChatSend(): (input: AgentInput) => boolean {
   const agentAccess = useAgentDependencies();
 
-  const send = agentAccess.view.useAction("send");
   return useCallback(
     (input: AgentInput) => {
       const sessionId = getActiveSessionId(agentAccess);
       const runOptions = resolveAgentRunStartOptions();
-      const root = selectCurrentRootRun(agentAccess.view.getCurrentView());
-      if (root?.status === "running" && sessionId && root.activeSegmentId) {
-        if (
-          steerRunningTurn(agentAccess, {
-            sessionId,
-            runId: root.id,
-            segmentId: root.activeSegmentId,
-            input,
-          })
-        ) {
-          return true;
-        }
-      }
-      if (!canAcceptChatInput(sessionId, Boolean(send), root?.status ?? "idle")) {
-        return false;
-      }
-      return sendFreshTurn({ sessionId, send, input, runOptions });
+      return Boolean(submitAgentInput(agentAccess, sessionId, input, runOptions));
     },
-    [send, agentAccess],
+    [agentAccess],
   );
 }
 
@@ -58,18 +38,4 @@ export function canAcceptChatInput(
   rootStatus: "idle" | "running" | "waiting" | "finished",
 ): boolean {
   return Boolean(sessionId) && mountedSendAvailable && rootStatus !== "waiting";
-}
-
-interface SendFreshTurnInput {
-  sessionId: string;
-  send: SendToAgent | null;
-  input: AgentInput;
-  runOptions: AgentRunStartOptions;
-}
-
-function sendFreshTurn({ sessionId, send, input, runOptions }: SendFreshTurnInput): boolean {
-  if (sessionId && send) {
-    return send(input, runOptions);
-  }
-  return false;
 }

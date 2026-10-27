@@ -251,9 +251,17 @@ describe("steer command observation", () => {
       () => ({ runs: { steer } }) as unknown as FlameClient,
     );
     const input = { parts: [{ kind: "text" as const, text: "original instruction" }] };
-    expect(
-      steerRunningTurn(testClient.agent.dependencies, { sessionId, runId, segmentId, input }),
-    ).toBe(true);
+    const submission = steerRunningTurn(testClient.agent.dependencies, {
+      sessionId,
+      runId,
+      segmentId,
+      input,
+    });
+    expect(submission).toBeInstanceOf(Promise);
+    await expect(submission).resolves.toMatchObject({
+      status: "unknown",
+      idempotencyKey: "original-command",
+    });
     input.parts[0]!.text = "a changed draft";
     await vi.waitFor(() => expect(messages()[0]?.steer?.delivery).toBe("unknown"));
     const localId = messages()[0]!.id;

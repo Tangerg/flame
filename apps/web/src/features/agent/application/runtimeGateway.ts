@@ -13,6 +13,7 @@ import {
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
+import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
 export type RestoreType = "history" | "files" | "both";
 
 export interface AgentSessionSnapshot {
@@ -33,6 +34,11 @@ export interface AgentSessionMaterialRead {
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
   unresolvedSteers?: AgentUnresolvedSteer[];
   unresolvedOpenings?: AgentOpeningCommand[];
+  recoveredInputs?: Array<{
+    idempotencyKey: string;
+    input: AgentInput;
+    acceptance: AgentOpeningAcceptance;
+  }>;
 }
 
 export type AgentOpeningCommand = (
@@ -98,7 +104,7 @@ export interface AgentRuntimeGateway {
     droppedRuns: Array<{ runId: string; userInput?: AgentInput }>;
   }>;
   steerRun(runId: string, segmentId: string, input: AgentInput): AgentSteerSubmission;
-  isSteerReceiptUnknown(error: unknown): boolean;
+  isInputReceiptUnknown(error: unknown): boolean;
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>;

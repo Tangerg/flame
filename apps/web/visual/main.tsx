@@ -47,7 +47,7 @@ type FixtureTheme = "light" | "dark";
 
 const VISUAL_CLOCK_STARTED_AT = performance.now();
 
-Date.now = () => VISUAL_NOW + (performance.now() - VISUAL_CLOCK_STARTED_AT);
+Date.now = () => VISUAL_NOW + Math.floor(performance.now() - VISUAL_CLOCK_STARTED_AT);
 
 let currentRuntimeClient: FlameClient | undefined;
 export const visualClient = createVisualClient(() => {

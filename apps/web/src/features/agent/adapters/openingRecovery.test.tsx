@@ -248,9 +248,9 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     );
     await act(async () => {});
     act(() => {
-      expect(testClient.agent.projection.store.getState().sessions[SID]!.retryOpening!(key)).toBe(
-        true,
-      );
+      expect(
+        testClient.agent.projection.store.getState().sessions[SID]!.retryOpening!(key),
+      ).toBeInstanceOf(Promise);
     });
     await waitFor(() =>
       expect(testClient.agent.projection.store.getState().sessions[SID]!.openingCommands).toEqual(
@@ -266,7 +266,7 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
         testClient.agent.projection.store.getState().sessions[SID]!.send!(
           agentTextInput("changed draft"),
         ),
-      ).toBe(false);
+      ).toBeNull();
     });
     options.observationFailure = false;
     await act(async () => {
@@ -318,10 +318,10 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
     await act(async () => {});
     act(() => {
       const session = testClient.agent.projection.store.getState().sessions[SID]!;
-      expect(session.send!(agentTextInput("replacement draft"))).toBe(false);
+      expect(session.send!(agentTextInput("replacement draft"))).toBeNull();
       expect(session.resume!("run_replacement", [])).toBe(false);
-      expect(session.retryOpening!(key)).toBe(true);
-      expect(session.retryOpening!(key)).toBe(false);
+      expect(session.retryOpening!(key)).toBeInstanceOf(Promise);
+      expect(session.retryOpening!(key)).toBeNull();
     });
     await waitFor(() => expect(cold.subscribe).toHaveBeenCalledOnce());
     expect(cold.call.mock.calls.find(([method]) => method === `runs.${operation}`)).toEqual([
@@ -386,7 +386,7 @@ describe.each(["start", "resume"] as const)("Desktop cold original %s", (operati
           testClient.agent.projection.store.getState().sessions[SID]!.openingCommands[0]!
             .idempotencyKey,
         ),
-      ).toBe(true);
+      ).toBeInstanceOf(Promise);
     });
     await waitFor(() => expect(cold.call.mock.calls.length).toBeGreaterThan(1));
     expect(cold.call.mock.calls.every(([method]) => method === "runs.getAcceptance")).toBe(true);

@@ -93,6 +93,7 @@ const original = (method: string, recover: PluginCommandRecovery["recover"]) => 
   },
   recover,
   retire: vi.fn(),
+  matchesIntent: () => false,
 });
 
 function mount(
@@ -173,6 +174,7 @@ it("recovers the original capture and preserves exact numbers, zero prices and m
     pending = [
       {
         idempotencyKey: "original-capture",
+        matchesIntent: () => false,
         binding: {
           ...binding,
           method: "flame.usage-reports/capture.v1",

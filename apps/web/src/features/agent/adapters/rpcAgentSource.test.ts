@@ -40,6 +40,6 @@ describe("rpcAgentSource", () => {
 
     await expect(source.factory().start(input, {}, undefined)).resolves.toBe(result);
 
-    expect(gateway.start).toHaveBeenCalledWith({ sessionId: "ses_2", input }, undefined);
+    expect(gateway.start).toHaveBeenCalledWith({ sessionId: "ses_2", input }, undefined, undefined);
   });
 });

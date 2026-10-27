@@ -13,6 +13,66 @@ function resolvedMutation<T>(value: T): MutationPromise<T> {
 }
 
 describe("unary mutation settlement", () => {
+  it("retains the dispatched command when its identity observer throws", async () => {
+    const projectionError = new Error("projection failed");
+    const transportError = new RpcTransportError("ack lost");
+    const retry = vi.fn(() => resolvedMutation("recovered"));
+    const open = vi.fn(() =>
+      Object.assign(Promise.reject<string>(transportError), {
+        idempotencyKey: "same-key",
+        retry,
+      }),
+    );
+    const settler = createMutationSettler();
+    const failure = await rejected(
+      settler.settle("runs.start", open, {
+        onMutation: () => {
+          throw projectionError;
+        },
+      }),
+    );
+    expect(failure).toBeInstanceOf(AggregateError);
+    expect(failure.cause).toBe(projectionError);
+    expect((failure as AggregateError).errors).toEqual([projectionError, transportError]);
+    await expect(settler.settle("runs.start", open)).resolves.toBe("recovered");
+    expect(open).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledOnce();
+    settler.dispose();
+  });
+
+  it("projects the original key for fresh, retained and shared recovery observations", async () => {
+    const retryResult = Promise.withResolvers<string>();
+    const retry = vi.fn((): MutationPromise<string> =>
+      Object.assign(retryResult.promise, {
+        idempotencyKey: "original-command",
+        retry,
+      }),
+    );
+    const open = vi.fn(() =>
+      Object.assign(Promise.reject<string>(new RpcTransportError("ack lost")), {
+        idempotencyKey: "original-command",
+        retry,
+      }),
+    );
+    const seen: string[] = [];
+    const settler = createMutationSettler();
+    const options = {
+      onMutation: (key: string) => {
+        seen.push(key);
+      },
+    };
+    await expect(settler.settle("runs.start", open, options)).rejects.toThrow("ack lost");
+    const recovery = settler.settle("runs.start", open, options);
+    const shared = settler.settle("runs.start", open, options);
+    expect(shared).toBe(recovery);
+    expect(seen).toEqual(["original-command", "original-command", "original-command"]);
+    retryResult.resolve("accepted");
+    await expect(recovery).resolves.toBe("accepted");
+    expect(open).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledOnce();
+    settler.dispose();
+  });
+
   it.each(["internal_error", "idempotency_conflict", "idempotency_store_mismatch"] as const)(
     "retains %s for an explicit same-command retry without reopening",
     async (type) => {

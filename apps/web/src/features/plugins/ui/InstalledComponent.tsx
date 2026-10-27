@@ -34,6 +34,11 @@ import { type PluginOperationBinding } from "@flame/runtime-client/wire";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { type ContributionLifetime } from "@/extensions/definePlugin";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { useSubmitCapturedAgentInput } from "@/features/agent/public/input";
+import {
+  captureToolInteraction,
+  type SubmitCapturedAgentInput,
+} from "@/features/plugins/adapters/toolInteraction";
 export function componentFailureScope(
   component: ComponentReference,
   generation: RuntimeConnectionGeneration,
@@ -118,6 +123,8 @@ class ComponentInstance {
       this.sources.lifetime.signal,
       this.sources.resources,
     ]);
+    const track = <T,>(operation: Promise<T>): Promise<T> =>
+      trackContributionIO(this.sources.lifetime, operation);
     return Object.freeze({
       runtime: this.sources.runtime,
       component: Object.freeze({ ...this.sources.component }),
@@ -126,6 +133,16 @@ class ComponentInstance {
         ? Object.freeze({ ...this.sources.sessionTarget })
         : undefined,
       toolResult: this.sources.toolResult,
+      interaction:
+        this.sources.toolResult && this.sources.submitInput
+          ? captureToolInteraction(
+              this.sources.runtime,
+              this.sources.submitInput,
+              { runId: this.sources.toolResult.runId, itemId: this.sources.toolResult.id },
+              signal,
+              track,
+            )
+          : undefined,
       file: this.sources.file
         ? Object.freeze({
             ...this.sources.file,
@@ -146,8 +163,7 @@ class ComponentInstance {
       locale: this.sources.locale,
       signal,
       telemetry: captureClientTelemetry(signal),
-      track: <T,>(operation: Promise<T>): Promise<T> =>
-        trackContributionIO(this.sources.lifetime, operation),
+      track,
       compose: (composition: ComponentComposition) => {
         signal.throwIfAborted();
         return this.sources.compose(this.context, composition);
@@ -204,6 +220,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
     sessionId,
     file,
     toolResult,
+    submitInput,
     sessionTarget,
     component,
     compose,
@@ -219,6 +236,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
         sessionId,
         file,
         toolResult,
+        submitInput,
         sessionTarget,
         component,
         compose,
@@ -233,6 +251,7 @@ export function RenderingComponent(props: ComponentProps & ComponentSources) {
       sessionId,
       file,
       toolResult,
+      submitInput,
       sessionTarget,
       component,
       compose,
@@ -276,6 +295,7 @@ type ComponentSources = Pick<
   sessionId?: string;
   file?: CapturedFile;
   toolResult?: CapturedToolResult;
+  submitInput?: SubmitCapturedAgentInput;
   sessionTarget?: CapturedSession;
 };
 
@@ -354,7 +374,8 @@ export function InstalledToolResultComponent({
   toolResult,
   ...props
 }: ComponentProps & { toolResult: CapturedToolResult }) {
-  return <RenderingComponent {...props} toolResult={toolResult} />;
+  const submitInput = useSubmitCapturedAgentInput();
+  return <RenderingComponent {...props} toolResult={toolResult} submitInput={submitInput} />;
 }
 
 export function InstalledSessionActionComponent({

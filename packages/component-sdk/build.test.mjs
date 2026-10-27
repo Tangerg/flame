@@ -1,11 +1,82 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { rolldown } from "rolldown";
 import { buildComponent } from "./build.mjs";
+
+test("published components preserve the Host's Runtime error and exact JSON instances", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "flame-component-runtime-"));
+  try {
+    await writeFile(join(directory, "package.json"), '{"type":"module"}');
+    const runtimeEntry = createRequire(import.meta.url).resolve(
+      "@flame/runtime-client",
+    );
+    const hostSource = join(directory, "host.ts");
+    await writeFile(
+      hostSource,
+      `export * from ${JSON.stringify(runtimeEntry)};`,
+    );
+    const hostDirectory = join(directory, "node_modules/@flame/runtime-client");
+    await mkdir(hostDirectory, { recursive: true });
+    await buildComponent({
+      input: hostSource,
+      directory: hostDirectory,
+      compiler: rolldown,
+    });
+    await writeFile(
+      join(hostDirectory, "package.json"),
+      JSON.stringify({
+        type: "module",
+        exports: { ".": "./component.js", "./json": "./json.js" },
+      }),
+    );
+    await writeFile(
+      join(hostDirectory, "json.js"),
+      'export { ExactNumber, isJSONNumber, parseJSON, stringifyJSON } from "./component.js";',
+    );
+    const input = join(directory, "entry.ts");
+    await writeFile(
+      input,
+      `
+        import { mutationSettlementIsUnknown, OperationFailure } from "@flame/runtime-client";
+        import { isJSONNumber, parseJSON, stringifyJSON } from "@flame/runtime-client/json";
+        export function inspect(unknown, failure, value) {
+          const source = stringifyJSON({ value });
+          return {
+            unknown: mutationSettlementIsUnknown(unknown),
+            failure: failure instanceof OperationFailure,
+            exact: isJSONNumber(value),
+            source,
+            decoded: parseJSON(source).value,
+          };
+        }
+      `,
+    );
+    const output = join(directory, "output");
+    await buildComponent({ input, directory: output, compiler: rolldown });
+    const host = await import(
+      pathToFileURL(join(hostDirectory, "component.js"))
+    );
+    const component = await import(pathToFileURL(join(output, "component.js")));
+    const result = component.inspect(
+      new host.MutationLookupError(new Error("reply unavailable")),
+      new host.OperationFailure("not_found", "owner refused"),
+      new host.ExactNumber("1.00"),
+    );
+    assert.equal(result.unknown, true);
+    assert.equal(result.failure, true);
+    assert.equal(result.exact, true);
+    assert.equal(result.source, '{"value":1.00}');
+    assert.equal(result.decoded instanceof host.ExactNumber, true);
+    assert.equal(result.decoded.text, "1.00");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("bundles private static and dynamic modules into an executable browser graph", async () => {
   const directory = await mkdtemp(join(tmpdir(), "flame-component-graph-"));

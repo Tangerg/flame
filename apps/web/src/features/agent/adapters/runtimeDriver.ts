@@ -12,6 +12,7 @@ export interface RuntimeAgentDriver {
     input: ContentBlock[],
     options: AgentRunStartOptions,
     signal?: AbortSignal,
+    onMutation?: (idempotencyKey: string) => void,
   ) => Promise<RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId: ItemId }>>;
   resume: (
     runId: RunId,

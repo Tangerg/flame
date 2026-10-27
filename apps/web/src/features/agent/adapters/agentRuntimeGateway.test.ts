@@ -53,6 +53,61 @@ function createdSession(id: string) {
 }
 
 describe("agentRuntimeGateway", () => {
+  it("projects an acceptance found during recovery and retains its exact Session retry route", async () => {
+    const retry = vi.fn(async () => ({
+      result: { runId: "run_original", segmentId: "seg_original", userItemId: "item_original" },
+      observation: { type: "retired", sessionId: "ses_original" },
+    }));
+    const command = {
+      operation: "start",
+      params: {
+        sessionId: "ses_original",
+        input: [{ type: "text", text: "exact original input" }],
+      },
+      idempotencyKey: "original-key",
+      observation: {
+        type: "known",
+        acceptance: {
+          type: "retired",
+          sessionId: "ses_original",
+          runId: "run_original",
+          segmentId: "seg_original",
+          userItemId: "item_original",
+        },
+      },
+      retry,
+    };
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: async () => ({ items: [], runs: [], interrupts: [] }) },
+        runs: { recoverCommands: async () => [command] },
+      }) as unknown as FlameClient;
+    uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
+    const material =
+      await testClient.agent.dependencies.runtime.loadSessionSnapshot("ses_original");
+    expect(material?.recoveredInputs).toEqual([
+      {
+        idempotencyKey: "original-key",
+        input: { parts: [{ kind: "text", text: "exact original input" }] },
+        acceptance: {
+          status: "retired",
+          sessionId: "ses_original",
+          runId: "run_original",
+          userItemId: "item_original",
+        },
+      },
+    ]);
+    expect(material?.unresolvedOpenings).toEqual([]);
+    await expect(
+      testClient.agent.retries.retry("ses_other", "original-key", new AbortController().signal),
+    ).rejects.toThrow(/does not belong/);
+    expect(retry).not.toHaveBeenCalled();
+    await expect(
+      testClient.agent.retries.retry("ses_original", "original-key", new AbortController().signal),
+    ).resolves.toMatchObject({ result: { runId: "run_original" } });
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("keeps the current-generation opening retry when a retired recovery completes late", async () => {
     vi.spyOn(testClient.runtime.capabilities, "hasCapability").mockReturnValue(false);
     const oldRetry = vi.fn(async () => ({ result: { runId: "run_old", segmentId: "seg_old" } }));
@@ -86,6 +141,7 @@ describe("agentRuntimeGateway", () => {
     await retiredRead;
 
     const result = await testClient.agent.retries.retry(
+      "ses_retry",
       "persisted-opening-key",
       new AbortController().signal,
     );
@@ -309,15 +365,15 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({}) as FlameClient;
     uninstall = createAgentGatewayFixture(testClient, getRuntimeClient);
     expect(
-      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
+      testClient.agent.dependencies.runtime.isInputReceiptUnknown(
         new RpcTransportError("lost ACK"),
       ),
     ).toBe(true);
     expect(
-      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(new Error("unreadable receipt")),
+      testClient.agent.dependencies.runtime.isInputReceiptUnknown(new Error("unreadable receipt")),
     ).toBe(true);
     expect(
-      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
+      testClient.agent.dependencies.runtime.isInputReceiptUnknown(
         new RpcError({
           message: "still claimed",
           data: { type: "idempotency_in_progress", retryAfterSeconds: 1 },
@@ -325,7 +381,7 @@ describe("agentRuntimeGateway", () => {
       ),
     ).toBe(true);
     expect(
-      testClient.agent.dependencies.runtime.isSteerReceiptUnknown(
+      testClient.agent.dependencies.runtime.isInputReceiptUnknown(
         new RpcError({ message: "stale segment", data: { type: "stale_segment" } }),
       ),
     ).toBe(false);

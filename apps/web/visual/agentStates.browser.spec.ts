@@ -33,6 +33,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   "tool-agentic": "finished",
   "tool-tail": "finished",
   "tool-skill-pages": "finished",
+  "genui-report": "finished",
   "question-multi": "waiting",
   waves: "running",
 };

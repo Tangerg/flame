@@ -42,6 +42,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "tool-agentic": "Tool agentic",
   "tool-tail": "Tool tail",
   "tool-skill-pages": "Skill pages",
+  "genui-report": "Generated report",
   "question-multi": "Question · multi",
   waves: "Waves",
 };

@@ -4,6 +4,7 @@ import { t } from "@/lib/i18n/index";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { notifyInfo } from "@/features/notifications/public/notifications";
 import { type RestoreType } from "@/features/agent/application/runtimeGateway";
+import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
 
 import {
   selectRootNarrativeMessages,
@@ -39,7 +40,7 @@ export function sendToAgentSession(
   sessionId: string,
   input: AgentInput,
 ): boolean {
-  return agentAccess.view.sendToSession(sessionId, input);
+  return Boolean(submitAgentInput(agentAccess, sessionId, input));
 }
 
 export async function rollbackSessionToBeforeRun(

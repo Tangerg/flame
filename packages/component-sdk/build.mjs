@@ -5,6 +5,8 @@ export const HOST_MODULES = Object.freeze([
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
   "@flame/component-sdk",
+  "@flame/runtime-client",
+  "@flame/runtime-client/json",
   "@flame/ui",
 ]);
 

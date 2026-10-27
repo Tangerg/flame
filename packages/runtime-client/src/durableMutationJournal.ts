@@ -85,6 +85,7 @@ export interface DurableMutationIdentity {
 }
 
 export interface DurableMutationJournal {
+  matchesPluginCommandIntent(identity: DurableMutationIdentity, intent: string): boolean;
   findPluginCommand(
     intent: string,
     input: PluginCommandInput,
@@ -336,6 +337,13 @@ function fingerprintFields(...fields: readonly string[]): string {
   return fields.join(FINGERPRINT_FIELD_SEPARATOR);
 }
 
+function matchesPluginIntent(entry: JournalEntry, intent: string): boolean {
+  return (
+    entry.installed?.intentFingerprint ===
+    fingerprint(fingerprintFields(entry.salt, "plugins.call", intent))
+  );
+}
+
 function commandFingerprintInput(
   method: string,
   params: unknown,
@@ -485,13 +493,17 @@ export function openDurableMutationJournal(
   };
 
   const journal: DurableMutationJournal = {
+    matchesPluginCommandIntent(identity, intent) {
+      if (!validText(intent, MAX_IDENTITY_LENGTH))
+        throw new MutationJournalError("plugin command intent is invalid");
+      const entry = readReservedEntry(identity);
+      return entry !== undefined && matchesPluginIntent(entry, intent);
+    },
     findPluginCommand(intent, input, claimed) {
       if (!validText(intent, MAX_IDENTITY_LENGTH))
         throw new MutationJournalError("plugin command intent is invalid");
-      const matches = loadEntries(options.storage).filter(
-        (entry) =>
-          entry.installed?.intentFingerprint ===
-          fingerprint(fingerprintFields(entry.salt, "plugins.call", intent)),
+      const matches = loadEntries(options.storage).filter((entry) =>
+        matchesPluginIntent(entry, intent),
       );
       if (matches.length > 1)
         throw new MutationJournalOwnershipError(

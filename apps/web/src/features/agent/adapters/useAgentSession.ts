@@ -23,6 +23,12 @@ import { useEffect, useEffectEvent } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentSession } from "@/features/agent/application/session/sessionAccess";
+import {
+  settleAgentInput,
+  recoverOpeningInput,
+  type AgentInputSettlement,
+  type AgentOpeningAcceptance,
+} from "@/features/agent/application/input/inputSubmission";
 import { type InterruptResumeInput } from "@/features/agent/domain/hitl";
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { agentInputToContentBlocks } from "@/features/agent/adapters/wireInput";
@@ -184,30 +190,56 @@ export function useAgentSession(
       }
     };
 
-    const send = (input: AgentInput, options: AgentRunStartOptions = {}): boolean => {
+    const acceptance = (
+      opening: RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId?: string }>,
+    ): AgentOpeningAcceptance => ({
+      status: opening.observation.type === "retired" ? "retired" : "accepted",
+      sessionId,
+      runId: opening.result.runId,
+      ...(opening.result.userItemId ? { userItemId: opening.result.userItemId } : {}),
+    });
+
+    const send = (
+      input: AgentInput,
+      options: AgentRunStartOptions = {},
+    ): Promise<AgentInputSettlement> | null => {
       if (
         !commandsReady ||
         runOpening.isStarting() ||
         store().sessions[sessionId]?.openingCommands.length
       )
-        return false;
+        return null;
       const currentRoot = store().sessions[sessionId]?.view;
-      if (currentRoot && selectCurrentRootRun(currentRoot)?.status === "waiting") return false;
+      if (currentRoot && selectCurrentRootRun(currentRoot)?.status === "waiting") return null;
       const wireInput = agentInputToContentBlocks(input);
       const optimistic = createOptimisticUserMessage(wireInput);
       store().appendLocalMessage(sessionId, optimistic.message);
-      runOpening.begin((signal) => driver.start(wireInput, options, signal), {
-        onResult: (result, observation) => {
-          if (observation.type === "retired") store().dropMessage(sessionId, optimistic.localId);
-          else store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
+      let key: string | undefined;
+      const opening = runOpening.begin(
+        (signal) =>
+          driver.start(wireInput, options, signal, (value) => {
+            key = value;
+          }),
+        {
+          onResult: (result, observation) => {
+            if (observation.type === "retired") store().dropMessage(sessionId, optimistic.localId);
+            else store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
+          },
+          onStartError: () => store().dropMessage(sessionId, optimistic.localId),
+          observe: (opening, signal) =>
+            opening.observation.type === "stream"
+              ? runPump.pump({ result: opening.result, events: opening.observation.events }, signal)
+              : recoverOpeningObservation(opening, signal),
         },
-        onStartError: () => store().dropMessage(sessionId, optimistic.localId),
-        observe: (opening, signal) =>
-          opening.observation.type === "stream"
-            ? runPump.pump({ result: opening.result, events: opening.observation.events }, signal)
-            : recoverOpeningObservation(opening, signal),
+      );
+      return settleAgentInput(opening.then(acceptance), {
+        key: () => key,
+        isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
+        recover: () => {
+          if (!key) throw new Error("input command omitted its mutation identity");
+          return recoverOpeningInput(agentAccess, sessionId, key);
+        },
       });
-      return true;
     };
 
     const resume = (
@@ -294,16 +326,14 @@ export function useAgentSession(
     store().setStop(sessionId, stop);
     store().setResume(sessionId, resume);
     store().setRetryOpening(sessionId, (key) => {
-      if (!commandsReady || runOpening.isStarting()) return false;
-      const command = store().sessions[sessionId]?.openingCommands.find(
-        (pending) => pending.idempotencyKey === key,
-      );
-      if (!command) return false;
-      runOpening.begin((signal) => retries.retry(key, signal), {
+      if (!commandsReady || runOpening.isStarting()) return null;
+      const opening = runOpening.begin((signal) => retries.retry(sessionId, key, signal), {
         onResult: () => store().projectOpeningAccepted(sessionId, key),
         observe: recoverOpeningObservation,
       });
-      return true;
+      const settlement = opening.then(acceptance);
+      void settlement.catch(() => {});
+      return settlement;
     });
     store().setSynchronize(sessionId, (ownership) => {
       if (
@@ -343,7 +373,7 @@ export function useAgentSession(
 
   return {
     send: (input: AgentInput, options?: AgentRunStartOptions) =>
-      useAgentStore.getState().sessions[sessionId]?.send?.(input, options) ?? false,
+      useAgentStore.getState().sessions[sessionId]?.send?.(input, options) ?? null,
     stop: () => {
       useAgentStore.getState().sessions[sessionId]?.stop?.();
     },

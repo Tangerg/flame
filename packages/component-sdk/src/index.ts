@@ -82,10 +82,40 @@ export type CapturedSession = Readonly<
   Pick<Session, "id" | "revision" | "title">
 >;
 
+export interface ToolInteractionInput {
+  readonly action: string;
+  readonly payloadJSON: string;
+}
+
+export type InteractionSubmission =
+  | {
+      readonly status: "accepted";
+      readonly sessionId: string;
+      readonly runId: string;
+      readonly userItemId: string;
+    }
+  | {
+      readonly status: "retired";
+      readonly sessionId: string;
+      readonly runId: string;
+      readonly userItemId?: string;
+    }
+  | {
+      readonly status: "unknown";
+      readonly idempotencyKey: string;
+      recover(): Promise<InteractionSubmission>;
+    };
+
+export interface CapturedToolInteraction {
+  readonly source: Readonly<{ runId: string; itemId: string }>;
+  submit(input: ToolInteractionInput): Promise<InteractionSubmission>;
+}
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
   readonly toolResult?: Readonly<CapturedToolResult>;
+  readonly interaction?: CapturedToolInteraction;
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;

@@ -1,11 +1,19 @@
 # First-party portable packages
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
-Saved usage reports, Native sandbox and File watch are complete optional backends. Memory,
-Schedules and Saved usage reports use ordinary public components; the other seven
-are backend-only packages.
+Saved usage reports, Generated interfaces, Native sandbox and File watch are complete
+optional backends. Memory, Schedules, Saved usage reports and Generated interfaces use
+ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
+
+Generated interfaces (`genui`) accepts a bounded interactive document through
+`genui_ui_present`. Its immutable presentation owner supplies the component,
+state, expression and action contract. Runtime Tool history retains the accepted
+document; OpenUI owns local draft values. Queries and confirmed commands use real
+captured plugin bindings and the existing Runtime command journal. Followups enter
+the original Session through the shared Agent input owner. Isolated HTML previews
+have no Runtime bridge. See [`genui/README.md`](genui/README.md).
 
 Each source plugin uses `backend/`, `component/` and `package/` for the capabilities it actually has. The Flame namespace in `package/plugin.json` references one local declaration file.
 That strict declaration names each independent contribution ID, its contract file,

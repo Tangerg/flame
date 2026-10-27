@@ -322,7 +322,7 @@ test("rejects stale terminal diagnostic declarations", () => {
   assert.match(errors[0], /absent from the Runtime manifest/);
 });
 
-function mappedOperations(sourceText, helperText, bindings = false) {
+function mappedOperations(sourceText, helperText, bindings = false, details = false) {
   const dir = mkdtempSync(join(tmpdir(), "api-operation-consumer-"));
   try {
     const fileName = join(dir, "probe.ts");
@@ -335,12 +335,15 @@ function mappedOperations(sourceText, helperText, bindings = false) {
     const propertyEnd = script.indexOf("\nfunction isProductSource", propertyStart);
     const declarationsStart = script.indexOf("function declarationsOf(symbol)");
     const declarationsEnd = script.indexOf("\nfunction fail", declarationsStart);
+    const creditStart = script.indexOf("function creditSDKOperationConsumers(");
+    const creditEnd = script.indexOf("\nfunction checkOperationConsumers", creditStart);
     assert.ok(mappingStart >= 0 && mappingEnd > mappingStart);
     assert.ok(declarationsStart >= 0 && declarationsEnd > declarationsStart);
+    assert.ok(creditStart >= 0 && creditEnd > creditStart);
     writeFileSync(
       join(dir, "probe.mjs"),
       `import { dirname, relative, resolve, sep } from "node:path";
-import { API, SymbolFlags } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
+import { API, SignatureKind, SymbolFlags, TypeFlags } from ${JSON.stringify(import.meta.resolve("typescript/unstable/sync"))};
 import * as ts from ${JSON.stringify(import.meta.resolve("typescript/unstable/ast"))};
 const fileName = ${JSON.stringify(fileName)};
 const compiler = new API({ cwd: ${JSON.stringify(dir)} });
@@ -354,12 +357,13 @@ try {
   const METHODS_PATH = fileName;
   const implementationMap = new Map();
   const bindingFactories = new Set();
-  const bindingWrappers = new Set();
+  const localSDKWrappers = new Set();
   const bindingOwners = new Map();
   const operations = new Set(["runs.start", "runs.resume", "runs.getAcceptance"]);
   ${script.slice(mappingStart, mappingEnd)}
   ${script.slice(propertyStart, propertyEnd)}
   ${script.slice(declarationsStart, declarationsEnd)}
+  ${script.slice(creditStart, creditEnd)}
   let initializer;
   for (const statement of methodsSource.statements) {
     if (!ts.isVariableStatement(statement)) continue;
@@ -370,19 +374,23 @@ try {
   if (${bindings}) {
     mapTypedSDKBindings();
     const found = new Set();
+    const calls = new Map();
     function scan(node) {
       if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
         let symbol = checker.getSymbolAtLocation(node.expression.name);
         if (symbol?.flags & SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
         for (const declaration of declarationsOf(symbol)) {
           const path = typedBindingPath(declaration);
+          if (path) calls.set(path, new Set(["product.ts:1"]));
           for (const operation of implementationMap.get(path) ?? []) found.add(operation);
         }
       }
       node.forEachChild(scan);
     }
     scan(methodsSource);
-    console.log(JSON.stringify({ projection: returnsMappedBinding(initializer), operations: [...found].sort() }));
+    const errors = [];
+    creditSDKOperationConsumers(calls, implementationMap, localSDKWrappers, new Map([...operations].map((operation) => [operation, new Set()])), errors);
+    console.log(JSON.stringify({ projection: returnsMappedBinding(initializer), operations: [...found].sort(), ...(${details} ? { errors } : {}) }));
   } else console.log(JSON.stringify([...wireOperationsIn(initializer)].sort()));
 } finally { compiler.close(); }
 `,
@@ -477,6 +485,94 @@ test("credits only actually called members of typed SDK capability projections",
     projection: true,
     operations: ["runs.resume"],
   });
+});
+
+test("does not require an endpoint for synchronous observations on an RPC capability", () => {
+  const result = mappedOperations(
+    `
+      import { bind } from "./helper";
+      const start = () => [1].map(() => bind("retained"));
+      const [command] = start();
+      const matches = command.matches("retained");
+    `,
+    `
+      declare function perform(method: string): Promise<unknown>;
+      export interface Recovery {
+        matches(intent: string): boolean;
+        recover(): Promise<unknown>;
+      }
+      export function bind(original: string): Recovery {
+        return {
+          matches: (intent) => intent === original,
+          recover: () => perform("runs.getAcceptance"),
+        };
+      }
+    `,
+    true,
+    true,
+  );
+  assert.deepEqual(result, { projection: true, operations: [], errors: [] });
+});
+
+test("keeps unmapped asynchronous and uncertain capability methods as failures", () => {
+  const result = mappedOperations(
+    `
+      import { bind } from "./helper";
+      const start = () => [1].map(() => bind());
+      const [command] = start();
+      command.unmapped(); command.uncertain(); command.empty(); command.dynamic();
+    `,
+    `
+      declare function perform(method: string): Promise<unknown>;
+      declare function uninspectable(): unknown;
+      declare function operationName(): string;
+      export interface Recovery {
+        recover(): Promise<unknown>;
+        unmapped(): Promise<unknown>;
+        uncertain(): unknown;
+        empty(): void;
+        dynamic(): boolean;
+      }
+      export function bind(): Recovery {
+        return {
+          recover: () => perform("runs.getAcceptance"),
+          unmapped: async () => true,
+          uncertain: () => uninspectable(),
+          empty: () => {},
+          dynamic: () => { perform(operationName()); return true; },
+        };
+      }
+    `,
+    true,
+    true,
+  );
+  assert.deepEqual(result.operations, []);
+  assert.equal(result.errors.length, 4);
+  assert.match(result.errors[0], /Recovery\.unmapped.*could not be mapped/);
+  assert.match(result.errors[1], /Recovery\.uncertain.*could not be mapped/);
+  assert.match(result.errors[2], /Recovery\.empty.*could not be mapped/);
+  assert.match(result.errors[3], /Recovery\.dynamic.*could not be mapped/);
+});
+
+test("credits a traced RPC even when its capability wrapper returns synchronously", () => {
+  const result = mappedOperations(
+    `
+      import { bind } from "./helper";
+      const start = () => [1].map(() => bind());
+      const [command] = start();
+      const started = command.starts();
+    `,
+    `
+      declare function perform(method: string): Promise<unknown>;
+      export interface Recovery { starts(): boolean; }
+      export function bind(): Recovery {
+        return { starts: () => { perform("runs.resume"); return true; } };
+      }
+    `,
+    true,
+    true,
+  );
+  assert.deepEqual(result, { projection: true, operations: ["runs.resume"], errors: [] });
 });
 
 test("does not credit an SDK helper without a product caller of its wrapper", () => {

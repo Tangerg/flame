@@ -11,6 +11,10 @@ import {
 } from "@/features/agent/public/sessionView";
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
 import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
+import {
+  type AgentInputSettlement,
+  type AgentOpeningAcceptance,
+} from "@/features/agent/application/input/inputSubmission";
 export type { AgentOpenSessions };
 
 export interface AgentSessionStatePort {
@@ -38,7 +42,12 @@ export type SynchronizeSessionAction = (
 
 export type CancelRunAction = (runId: string) => void;
 
-export type SendAgentInputAction = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
+export type SendAgentInputAction = (
+  input: AgentInput,
+  options?: AgentRunStartOptions,
+) => Promise<AgentInputSettlement> | null;
+
+export type RetryOpeningAction = (idempotencyKey: string) => Promise<AgentOpeningAcceptance> | null;
 
 export type ResumeRunAction = (
   runId: string,
@@ -58,7 +67,7 @@ export interface AgentSessionViewEntry {
   synchronize: SynchronizeSessionAction | null;
   cancelRun: CancelRunAction | null;
   openingCommands: readonly AgentOpeningCommand[];
-  retryOpening: ((idempotencyKey: string) => boolean) | null;
+  retryOpening: RetryOpeningAction | null;
 }
 
 export interface AgentViewRefreshToken {
@@ -86,7 +95,6 @@ export interface AgentSessionViewPort {
   getCurrentView(): AgentSessionView;
   getSessions(): Record<string, AgentSessionViewEntry>;
   getSession(sessionId: string): AgentSessionViewEntry | undefined;
-  sendToSession(sessionId: string, input: AgentInput, options?: AgentRunStartOptions): boolean;
   dropMessage(sessionId: string, messageId: string): void;
   projectSteerReceipt(
     sessionId: string,
@@ -124,7 +132,7 @@ export interface AgentSessionViewPort {
 }
 
 export interface AgentSession {
-  send: (input: AgentInput, options?: AgentRunStartOptions) => boolean;
+  send: SendAgentInputAction;
   stop: () => void;
 }
 

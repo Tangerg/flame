@@ -56,6 +56,7 @@ export interface PendingPluginCommand {
   readonly idempotencyKey: string;
   readonly namespace: string;
   readonly binding: Omit<CallPluginRequest, "input">;
+  matchesIntent(intent: string): boolean;
   reserve(): MutationReservation;
   validate(request: CallPluginRequest): void;
 }
@@ -149,6 +150,10 @@ class MutationAuthority implements MutationJournal {
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         binding: cloneJSON(identity.entry.installed!.route),
+        matchesIntent: (intent) => {
+          this.#assertCurrent();
+          return this.#journal.matchesPluginCommandIntent(identity, intent);
+        },
         reserve: () => {
           this.#assertCurrent();
           if (this.#claims.has(identity.entry.idempotencyKey))

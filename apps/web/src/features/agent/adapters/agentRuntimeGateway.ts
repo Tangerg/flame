@@ -41,15 +41,25 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   // finishes after the gateway switched writes a stale handle into a discarded
   // registry rather than the current one; retries resolve only the current one.
   #generation: {
-    retries: Map<string, (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>>;
+    retries: Map<
+      string,
+      {
+        sessionId: string;
+        retry: (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>;
+      }
+    >;
   } = { retries: new Map() };
-  retryOpening(key: string, signal: AbortSignal): ReturnType<RuntimeAgentDriver["resume"]> {
-    const retry = this.#generation.retries.get(key);
-    if (!retry)
+  retryOpening(
+    sessionId: string,
+    key: string,
+    signal: AbortSignal,
+  ): ReturnType<RuntimeAgentDriver["resume"]> {
+    const original = this.#generation.retries.get(key);
+    if (!original || original.sessionId !== sessionId)
       return Promise.reject(
         new Error("opening command does not belong to this Runtime generation"),
       );
-    return retry(signal);
+    return original.retry(signal);
   }
 
   async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
@@ -113,16 +123,55 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       const unresolvedOpenings: AgentOpeningCommand[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
       for (const command of commands) {
+        const receipt =
+          command.observation.type === "known" ? command.observation.acceptance : null;
+        if (
+          command.operation !== "resume" &&
+          receipt &&
+          receipt.type !== "notRecorded" &&
+          receipt.sessionId === sessionId
+        ) {
+          material.recoveredInputs ??= [];
+          material.recoveredInputs.push({
+            idempotencyKey: command.idempotencyKey,
+            input: contentBlocksToAgentInput(command.params.input),
+            acceptance: {
+              status: receipt.type,
+              sessionId: receipt.sessionId,
+              runId: receipt.runId,
+              ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
+            },
+          });
+        }
         if (command.operation !== "steer") {
+          const belongs =
+            receipt && receipt.type !== "notRecorded"
+              ? receipt.sessionId === sessionId
+              : command.operation === "start"
+                ? command.params.sessionId === sessionId
+                : snapshot.runs.some((run) => run.id === command.params.runId);
+          if (!belongs) continue;
+          generation.retries.set(command.idempotencyKey, {
+            sessionId,
+            retry: async (retrySignal: AbortSignal) => {
+              const opening = await command.retry({ signal: retrySignal });
+              return {
+                ...opening,
+                result: {
+                  runId: asRunId(opening.result.runId),
+                  segmentId: asSegmentId(opening.result.segmentId),
+                  ...(opening.result.userItemId
+                    ? { userItemId: asItemId(opening.result.userItemId) }
+                    : {}),
+                },
+              };
+            },
+          });
           if (
             command.observation.type === "known" &&
             command.observation.acceptance.type !== "notRecorded"
           )
             continue;
-          const belongs =
-            command.operation === "start"
-              ? command.params.sessionId === sessionId
-              : snapshot.runs.some((run) => run.id === command.params.runId);
           const request =
             command.operation === "start"
               ? {
@@ -145,26 +194,11 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                     : {}),
                   responses: cloneJSON(command.params.responses),
                 };
-          if (belongs) {
-            generation.retries.set(command.idempotencyKey, async (retrySignal: AbortSignal) => {
-              const opening = await command.retry({ signal: retrySignal });
-              return {
-                ...opening,
-                result: {
-                  runId: asRunId(opening.result.runId),
-                  segmentId: asSegmentId(opening.result.segmentId),
-                  ...(opening.result.userItemId
-                    ? { userItemId: asItemId(opening.result.userItemId) }
-                    : {}),
-                },
-              };
-            });
-            unresolvedOpenings.push({
-              ...request,
-              idempotencyKey: command.idempotencyKey,
-              receipt: command.observation.type === "unknown" ? "unknown" : "notRecorded",
-            });
-          }
+          unresolvedOpenings.push({
+            ...request,
+            idempotencyKey: command.idempotencyKey,
+            receipt: command.observation.type === "unknown" ? "unknown" : "notRecorded",
+          });
           continue;
         }
         try {
@@ -248,7 +282,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     );
   }
 
-  isSteerReceiptUnknown(error: unknown): boolean {
+  isInputReceiptUnknown(error: unknown): boolean {
     return !(error instanceof RpcError) || mutationSettlementIsUnknown(error);
   }
 
@@ -308,7 +342,10 @@ export function createAgentRuntimeGateway(
   let disposed = false;
   return {
     gateway,
-    retries: { retry: (key: string, signal: AbortSignal) => gateway.retryOpening(key, signal) },
+    retries: {
+      retry: (sessionId: string, key: string, signal: AbortSignal) =>
+        gateway.retryOpening(sessionId, key, signal),
+    },
     replaceRuntimeGeneration() {
       if (disposed) return;
       gateway.replaceRuntimeGeneration();

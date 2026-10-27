@@ -43,7 +43,12 @@ function waitingRoot(): RunRef {
 }
 
 function seedSession(root?: RunRef) {
-  const send = vi.fn(() => true);
+  const send = vi.fn(async () => ({
+    status: "accepted" as const,
+    sessionId: SID,
+    runId: "run_new",
+    userItemId: "item_new",
+  }));
   testClient.navigation.go({ session: SID });
   const store = testClient.agent.projection.store.getState();
   store.ensureSession(SID);
