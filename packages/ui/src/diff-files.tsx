@@ -139,7 +139,7 @@ export function DiffFileHeader({
   children,
   ref,
 }: {
-  file: DiffFileSummary;
+  file: DiffFileSummary | Pick<DiffFileSummary, "path">;
   children?: ReactNode;
   ref?: Ref<HTMLHeadingElement>;
 }) {
@@ -154,7 +154,7 @@ export function DiffFileHeader({
         >
           {file.path.slice(file.path.lastIndexOf("/") + 1)}
         </Tag>
-        <FileState file={file} />
+        {"status" in file && <FileState file={file} />}
       </div>
       {children}
     </div>

@@ -12,7 +12,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { afterEach, expect, it, vi } from "vitest";
 import { type ComponentContext } from "@flame/component-sdk";
 import { createFlameClient } from "@flame/runtime-client";
-import { type Diff, type FileStatus } from "@flame/runtime-client/wire";
+import { type Diff, type FileStatus, type GetDiffRequest } from "@flame/runtime-client/wire";
 import { WorkspaceDiff } from "../../../plugins/diff/component/component";
 import { RUNTIME_AGENT_SESSION_SNAPSHOTS } from "./agentSessionSnapshots";
 import { VISUAL_CAPABILITIES } from "./agentFixtureFacts";
@@ -24,11 +24,18 @@ afterEach(async () => {
   cleanup();
   await Promise.all(releases.splice(0).map((release) => release()));
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 function mountDiff(
   path = "",
-  readDiff: (signal?: AbortSignal) => Promise<Diff> = async () => REVIEW_DIFF,
+  readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff> = async (
+    _signal,
+    request,
+  ) => ({
+    ...REVIEW_DIFF,
+    files: REVIEW_DIFF.files?.filter((file) => !request?.path || file.path === request.path),
+  }),
   locale = "en",
 ) {
   const owner = new AbortController();
@@ -85,6 +92,248 @@ async function comparison(label: string) {
   fireEvent.pointerDown(option, { pointerType: "mouse" });
   fireEvent.click(option);
 }
+
+it("keeps an accepted read when the current comparison is selected again", async () => {
+  const { get } = mountDiff();
+  await loaded();
+  const at = document.querySelector("time")!.dateTime;
+  await comparison("Uncommitted changes");
+  expect(get).toHaveBeenCalledTimes(1);
+  expect(document.querySelector("time")!.dateTime).toBe(at);
+});
+
+it("reads a source-targeted file outside the workspace page and explicitly requests the overview", async () => {
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => ({
+    ...REVIEW_DIFF,
+    files: request?.path === ACTIVE_DIFF_FILE ? [REVIEW_DIFF.files![0]!] : [REVIEW_DIFF.files![1]!],
+    truncated: request?.path === undefined,
+  }));
+  const { get } = mountDiff(`/Users/visual/scope/${ACTIVE_DIFF_FILE}`, read);
+  await loaded();
+
+  expect(get).toHaveBeenCalledWith(
+    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+    expect.any(AbortSignal),
+  );
+  expect(screen.getByRole("heading", { name: "DockResizer.tsx" })).toBeTruthy();
+  expect(screen.getAllByRole("table")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+
+  await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows" },
+    expect.any(AbortSignal),
+  );
+  await screen.findByRole("heading", { name: "1 included file" });
+  expect(screen.getByRole("button", { name: /^session.go / })).toBeTruthy();
+  expect(screen.getByRole("note").textContent).toContain("Partial diff");
+});
+
+const BOUNDED_PATCH = `diff --git a/${ACTIVE_DIFF_FILE} b/${ACTIVE_DIFF_FILE}\n--- a/${ACTIVE_DIFF_FILE}\n+++ b/${ACTIVE_DIFF_FILE}\n@@ -1 +1 @@\n-old value\n+accepted patch value\n`;
+
+it("continues a row-bounded target through the existing raw read and returns to workspace files", async () => {
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    if (request?.format === "raw") return { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH };
+    if (request?.path) return { baseline: REVIEW_DIFF.baseline, truncated: true };
+    return { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![1]!], truncated: true };
+  });
+  const { get, outsideEscape } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  expect(screen.queryByText("No changes in this comparison.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
+
+  const patch = await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
+  expect(patch.textContent).toContain("accepted patch value");
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "raw", path: ACTIVE_DIFF_FILE },
+    expect.any(AbortSignal),
+  );
+  const heading = screen.getByRole<HTMLElement>("heading", { name: "DockResizer.tsx" });
+  expect(document.activeElement).toBe(heading);
+  expect(screen.queryByText("Modified")).toBeNull();
+  fireEvent.keyDown(heading, { key: "Escape" });
+  expect(outsideEscape).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+
+  await screen.findByRole("heading", { name: "1 included file" });
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows" },
+    expect.any(AbortSignal),
+  );
+  expect(screen.queryByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` })).toBeNull();
+});
+
+it("keeps the accepted scope, baseline and read time beside a reader after a failed comparison", async () => {
+  const first = "2026-10-28T03:00:01.000Z";
+  const next = "2026-10-28T03:05:02.000Z";
+  vi.setSystemTime(new Date(first));
+  const read = vi.fn(async () => REVIEW_DIFF);
+  mountDiff("", read);
+  await loaded();
+  read.mockRejectedValueOnce(new Error("No common ancestor"));
+  vi.setSystemTime(new Date(next));
+  await comparison("Branch changes");
+  await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: /^DockResizer.tsx / }));
+
+  const controls = document.querySelector<HTMLElement>('[data-slot="panel-controls"]')!;
+  expect(controls.textContent).toContain("Uncommitted changes");
+  expect(controls.textContent).toContain("HEAD");
+  expect(controls.textContent).toContain("12345678");
+  expect(controls.querySelector("time")?.dateTime).toBe(first);
+  expect(screen.getByRole("region", { name: `Changes in ${ACTIVE_DIFF_FILE}` })).toBeTruthy();
+  read.mockResolvedValueOnce({
+    ...REVIEW_DIFF,
+    baseline: { type: "mergeBase", commit: "b".repeat(40) },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+  await screen.findByText("Showing branch changes.");
+  expect(controls.textContent).toContain("Branch changes");
+  expect(controls.textContent).toContain("merge base");
+  expect(controls.textContent).toContain("bbbbbbbb");
+  expect(controls.querySelector("time")?.dateTime).toBe(next);
+});
+
+it("retains a bounded target after a byte-bounded patch failure and retries the same scope", async () => {
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    if (request?.format === "raw") throw new Error("Workspace diff result exceeds the byte limit");
+    return { baseline: REVIEW_DIFF.baseline, truncated: true };
+  });
+  const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  const at = document.querySelector("time")!.dateTime;
+  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
+  const error = await screen.findByRole("alert");
+  expect(error.textContent).toContain("byte limit");
+  expect(document.querySelector("time")!.dateTime).toBe(at);
+  expect(screen.getByRole("note").textContent).toContain("Partial diff");
+  expect(screen.queryByText("No changes in this comparison.")).toBeNull();
+  read.mockResolvedValueOnce({ baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH });
+  fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+  await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "raw", path: ACTIVE_DIFF_FILE },
+    expect.any(AbortSignal),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Show structured diff" }));
+  await screen.findByRole("button", { name: "Read patch" });
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows", path: ACTIVE_DIFF_FILE },
+    expect.any(AbortSignal),
+  );
+});
+
+it.each([
+  ["en", "Read patch", "Copy patch", "Enable word wrap", "Disable word wrap"],
+  ["zh", "阅读补丁", "复制补丁", "启用自动换行", "关闭自动换行"],
+  ["zh-TW", "閱讀修補檔", "複製修補檔", "啟用自動換行", "關閉自動換行"],
+  ["ja", "パッチを読む", "パッチをコピー", "折り返しを有効にする", "折り返しを無効にする"],
+  ["ko", "패치 읽기", "패치 복사", "자동 줄 바꿈 사용", "자동 줄 바꿈 사용 안 함"],
+  ["es", "Leer parche", "Copiar parche", "Activar ajuste de línea", "Desactivar ajuste de línea"],
+  [
+    "fr",
+    "Lire le patch",
+    "Copier le patch",
+    "Activer le retour à la ligne",
+    "Désactiver le retour à la ligne",
+  ],
+  ["de", "Patch lesen", "Patch kopieren", "Zeilenumbruch aktivieren", "Zeilenumbruch deaktivieren"],
+])(
+  "names patch actions in %s and keeps wrapping state observable",
+  async (locale, open, copy, wrap, unwrap) => {
+    mountDiff(
+      ACTIVE_DIFF_FILE,
+      async (_signal, request) =>
+        request?.format === "raw"
+          ? { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH }
+          : { baseline: REVIEW_DIFF.baseline, truncated: true },
+      locale,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: open }));
+    await screen.findByRole("button", { name: copy });
+    const toggle =
+      screen.queryByRole("button", { name: wrap }) ?? screen.getByRole("button", { name: unwrap });
+    const next = toggle.getAttribute("aria-pressed") === "true" ? wrap : unwrap;
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: next })).toBe(toggle);
+    fireEvent.click(toggle);
+  },
+);
+
+it("leaves later focus alone while the source reader requests the workspace overview", async () => {
+  let release!: (value: Diff) => void;
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    if (!request?.path) return new Promise((resolve) => (release = resolve));
+    return { ...REVIEW_DIFF, files: [REVIEW_DIFF.files![0]!] };
+  });
+  mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+  const outside = screen.getByRole<HTMLButtonElement>("button", { name: "Outside action" });
+  outside.focus();
+  await act(async () => release(REVIEW_DIFF));
+  expect(screen.getByRole("heading", { name: "2 changed files" })).toBeTruthy();
+  expect(document.activeElement).toBe(outside);
+});
+
+it("returns keyboard focus to the accepted overview after a failed comparison without another read", async () => {
+  const read = vi.fn(async () => REVIEW_DIFF);
+  const { get } = mountDiff("", read);
+  await loaded();
+  read.mockRejectedValueOnce(new Error("No common ancestor"));
+  await comparison("Branch changes");
+  await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: /^DockResizer.tsx / }));
+  fireEvent.keyDown(screen.getByRole("heading", { name: "DockResizer.tsx" }), { key: "Escape" });
+  const row = screen.getByRole("button", { name: /^DockResizer.tsx / });
+  expect(document.activeElement).toBe(row);
+  expect(get).toHaveBeenCalledTimes(2);
+});
+
+it("keeps full read feedback in the scrolling content with a compact persistent failure cue", async () => {
+  const read = vi.fn(async () => REVIEW_DIFF);
+  mountDiff("", read);
+  await loaded();
+  read.mockRejectedValueOnce(new Error("No common ancestor"));
+  await comparison("Branch changes");
+  const error = await screen.findByRole("alert");
+  fireEvent.click(screen.getByRole("button", { name: /^DockResizer.tsx / }));
+  const controls = document.querySelector<HTMLElement>('[data-slot="panel-controls"]')!;
+  expect(controls.contains(error)).toBe(false);
+  expect(within(controls).getByText("Read failed")).toBeTruthy();
+  expect(controls.textContent).toContain("Uncommitted changes");
+  expect(controls.textContent).not.toContain("last successful read");
+  expect(error.textContent).toContain("No common ancestor");
+  expect(within(controls).getByRole("button", { name: "Refresh" })).toBeTruthy();
+});
+
+it("retries an explicit workspace read after it fails while retaining an accepted patch", async () => {
+  let workspaceReads = 0;
+  const read = vi.fn(async (_signal?: AbortSignal, request?: GetDiffRequest): Promise<Diff> => {
+    if (request?.format === "raw") return { baseline: REVIEW_DIFF.baseline, patch: BOUNDED_PATCH };
+    if (request?.path) return { baseline: REVIEW_DIFF.baseline, truncated: true };
+    if (++workspaceReads === 1) throw new Error("Workspace read unavailable");
+    return REVIEW_DIFF;
+  });
+  const { get } = mountDiff(ACTIVE_DIFF_FILE, read);
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: "Read patch" }));
+  await screen.findByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` });
+  const at = document.querySelector("time")!.dateTime;
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+  await screen.findByRole("alert");
+  expect(screen.getByRole("region", { name: `Patch for ${ACTIVE_DIFF_FILE}` })).toBeTruthy();
+  expect(document.querySelector("time")!.dateTime).toBe(at);
+  fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
+  await screen.findByRole("heading", { name: "2 changed files" });
+  expect(get).toHaveBeenLastCalledWith(
+    { mode: "worktree", format: "rows" },
+    expect.any(AbortSignal),
+  );
+  expect(workspaceReads).toBe(2);
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: /^DockResizer.tsx / }));
+});
 
 it("starts a general review at its overview and gives each navigation depth a distinct return", async () => {
   const { get, outsideEscape } = mountDiff();
@@ -215,7 +464,7 @@ it("opens a requested file directly while keeping complete paths in the list and
   fireEvent.click(screen.getByRole("button", { name: "Show changed files" }));
   const row = screen.getByRole<HTMLElement>("button", { name: /^DockResizer.tsx / });
   expect(row.title).toBe(ACTIVE_DIFF_FILE);
-  expect(document.activeElement).toBe(row);
+  await waitFor(() => expect(document.activeElement).toBe(row));
 });
 
 it("shows each complete path in the scrolling reader while the filename stays in the controls", async () => {

@@ -414,7 +414,31 @@ export function visualWorkspaceRuntime(
           ? BRANCH_REVIEW_DIFF
           : { ...review, baseline: BRANCH_REVIEW_DIFF.baseline }
         : review;
-    return state === "dock-empty" ? { baseline: comparison.baseline } : comparison;
+    const files =
+      state === "dock-empty"
+        ? []
+        : comparison.files?.filter((file) => !request?.path || file.path === request.path);
+    if (request?.format === "raw") {
+      return {
+        baseline: comparison.baseline,
+        patch: files
+          ?.map((file) =>
+            [
+              `diff --git a/${file.previousPath ?? file.path} b/${file.path}`,
+              `--- a/${file.previousPath ?? file.path}`,
+              `+++ b/${file.path}`,
+              ...file.rows.map((row) =>
+                row.type === "hunk"
+                  ? row.text
+                  : `${row.type === "added" ? "+" : row.type === "deleted" ? "-" : " "}${row.code}`,
+              ),
+              "",
+            ].join("\n"),
+          )
+          .join("\n"),
+      };
+    }
+    return { ...comparison, files };
   };
   return { agentState, snapshot, capabilities, readDiff };
 }

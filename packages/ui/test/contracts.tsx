@@ -1,5 +1,13 @@
 import { Brain } from "@flame/icons/react";
-import { IconButton, PanelHeader, SearchField, Toolbar } from "../src/index";
+import {
+  DiffFileHeader,
+  IconButton,
+  PanelHeader,
+  SearchField,
+  Toolbar,
+} from "../src/index";
+
+void (<DiffFileHeader file={{ path: "src/reader.ts" }} />);
 
 void (<IconButton icon={Brain} aria-label="Memory" />);
 void (

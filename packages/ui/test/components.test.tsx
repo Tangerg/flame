@@ -23,6 +23,7 @@ import {
   useCopyFeedback,
   Disclosure,
   DiffTable,
+  DiffFileHeader,
   FilterBar,
   Checkbox,
   Form,
@@ -1566,6 +1567,30 @@ describe("search field keyboard contract", () => {
 });
 
 describe("diff semantics", () => {
+  it("renders a path-only patch identity without inventing file evidence", () => {
+    const heading = createRef<HTMLHeadingElement>();
+    const { rerender } = render(
+      <DiffFileHeader ref={heading} file={{ path: "src/reader.ts" }} />,
+    );
+    expect(screen.getByRole("heading", { name: "reader.ts" })).toBe(
+      heading.current,
+    );
+    expect(heading.current?.parentElement?.textContent).toBe("reader.ts");
+    rerender(
+      <DiffFileHeader
+        file={{
+          path: "src/reader.ts",
+          status: "Renamed",
+          added: 2,
+          removed: 1,
+        }}
+      />,
+    );
+    expect(screen.getByText("Renamed")).toBeTruthy();
+    expect(screen.getByText("+2")).toBeTruthy();
+    expect(screen.getByText("−1")).toBeTruthy();
+  });
+
   const labels = {
     region: "文件差异，可横向滚动",
     beforeLine: "原行号",

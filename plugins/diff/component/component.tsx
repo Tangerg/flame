@@ -25,6 +25,7 @@ import {
 import type { Diff, DiffMode, FileDiff } from "@flame/runtime-client/wire";
 import {
   Button,
+  CodeBlock,
   DiffFileHeader,
   DiffFileList,
   DiffFilePath,
@@ -68,9 +69,12 @@ const fileSummary = (t: Translate, file: FileDiff): DiffFileSummary => ({
   binary: file.binary,
 });
 
+type Query =
+  | { mode: DiffMode; format: "rows"; path?: string }
+  | { mode: DiffMode; format: "raw"; path: string };
 type Read = {
   loading: boolean;
-  accepted?: { diff: Diff; mode: DiffMode };
+  accepted?: { diff: Diff; query: Query; at: string };
   error?: string;
 };
 type Selection =
@@ -94,7 +98,15 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
     };
   }, [context]);
-  const [mode, setMode] = useState<DiffMode>("worktree");
+  const [query, setQuery] = useState<Query>(() => ({
+    mode: "worktree",
+    format: "rows",
+    ...(workspace.focusPath ? { path: workspace.focusPath } : {}),
+  }));
+  const timeFormat = useMemo(
+    () => new Intl.DateTimeFormat(context.locale, { timeStyle: "medium" }),
+    [context.locale],
+  );
   const [filter, setFilter] = useState("");
   const [layout, setLayout] = useState<"unified" | "split">("unified");
   const [selection, setSelection] = useState<Selection>(() =>
@@ -113,6 +125,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const pendingFocus = useRef<{
     target: "file" | "list";
     active: Element | null;
+    query?: Query;
   } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -123,36 +136,48 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     setRead((previous) => ({ ...previous, loading: true, error: undefined }));
     try {
       const diff = await context.track(
-        context.runtime
-          .workspace(workspace.ref)
-          .diff.get({ mode, format: "rows" }, signal),
+        context.runtime.workspace(workspace.ref).diff.get(query, signal),
       );
       if (!signal.aborted) {
         setSelection((current) =>
+          query.format === "rows" &&
           current.view === "file" &&
           !diff.files?.some((file) => file.path === current.path)
             ? { path: current.path, view: "files" }
             : current,
         );
-        setRead({ loading: false, accepted: { diff, mode } });
+        setRead({
+          loading: false,
+          accepted: { diff, query, at: new Date().toISOString() },
+        });
       }
     } catch (error) {
-      if (!signal.aborted)
+      if (!signal.aborted) {
+        pendingFocus.current = null;
         setRead((previous) => ({
           ...previous,
           loading: false,
           error: failureText(error, t("read.failed")),
         }));
+      }
     }
-  }, [context, mode, workspace, t]);
+  }, [context, query, workspace, t]);
   useEffect(() => {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
 
-  const files = read.accepted?.diff.files ?? [];
+  const accepted = read.accepted;
+  const rawPath =
+    accepted?.query.format === "raw" ? accepted.query.path : undefined;
+  const files = accepted?.diff.files ?? [];
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
+  const showingReader = Boolean(file || rawPath);
+  const readingOverview =
+    read.loading &&
+    query.path === undefined &&
+    accepted?.query.path !== undefined;
   const matching = files.filter((item) =>
     `${item.path} ${item.previousPath ?? ""}`
       .toLocaleLowerCase()
@@ -184,24 +209,53 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     });
   }
   function showFiles() {
-    pendingFocus.current = { target: "list", active: document.activeElement };
+    const next: Query =
+      query.path !== undefined || accepted?.query.path !== undefined
+        ? { mode: query.mode, format: "rows" }
+        : query;
+    pendingFocus.current = {
+      target: "list",
+      active: document.activeElement,
+      query: next !== query ? next : undefined,
+    };
     setSelection((current) => ({ path: current.path, view: "files" }));
+    setQuery(next);
+  }
+  function readTarget(format: "raw" | "rows") {
+    const path = accepted?.query.path;
+    if (!path) return;
+    const next: Query = {
+      ...accepted.query,
+      format,
+      path,
+    };
+    pendingFocus.current = {
+      target: "file",
+      active: document.activeElement,
+      query: next,
+    };
+    setSelection({ view: "file", path, returnTo: "source" });
+    setQuery(next);
   }
   useLayoutEffect(() => {
     const pending = pendingFocus.current;
-    pendingFocus.current = null;
     const active = document.activeElement;
     if (!pending) {
       if (
-        !file &&
+        !showingReader &&
         active === document.body &&
         lastFocus.current?.isConnected === false
       )
         search.current?.focus();
       return;
     }
-    if (active !== pending.active && active !== document.body) return;
-    if (pending.target === "file" && file) {
+    if (active !== pending.active && active !== document.body) {
+      pendingFocus.current = null;
+      return;
+    }
+    if (pending.query && accepted?.query !== pending.query) return;
+    pendingFocus.current = null;
+    if (pending.target === "file" && showingReader) {
       for (const position of scrollPositions(panel.current))
         position.element.scrollTop = 0;
       heading.current?.focus();
@@ -214,9 +268,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       ).find((item) => item.dataset.diffFile === selection.path);
       (row ?? search.current)?.focus();
     }
-  }, [file, read.accepted, selection]);
+  }, [file, showingReader, accepted, selection, read.error]);
 
-  const accepted = read.accepted;
   return (
     <Panel
       ref={panel}
@@ -229,7 +282,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           event.key !== "Escape" ||
           event.defaultPrevented ||
           isImeKey(event.nativeEvent) ||
-          !file ||
+          !showingReader ||
           selection.view !== "file" ||
           selection.returnTo !== "files"
         )
@@ -251,91 +304,98 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          {!file && (
+          {!showingReader && (
             <Toolbar
               label={t("scope.label")}
               actions={
-                <IconButton
-                  icon={Refresh}
-                  aria-label={t("refresh")}
-                  size="md"
-                  pending={read.loading}
-                  onClick={() => void refresh()}
-                />
+                <>
+                  {(query.path || accepted?.query.path) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={showFiles}
+                      aria-label={t("files.show")}
+                      pending={readingOverview}
+                    >
+                      <Icon glyph={List} size="sm" />
+                      {t("files.button")}
+                    </Button>
+                  )}
+                  {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
+                  <IconButton
+                    icon={Refresh}
+                    aria-label={t("refresh")}
+                    size="md"
+                    pending={read.loading}
+                    onClick={() => void refresh()}
+                  />
+                </>
               }
             >
               <Select
                 label={t("comparison.label")}
-                value={mode}
+                value={query.mode}
                 options={COMPARISONS.map((value) => ({
                   value,
                   label: t(`comparison.${value}`),
                 }))}
-                onValueChange={(value) => setMode(value as DiffMode)}
+                onValueChange={(value) =>
+                  setQuery((current) =>
+                    current.mode === value
+                      ? current
+                      : { ...current, mode: value as DiffMode },
+                  )
+                }
               />
             </Toolbar>
           )}
-          {read.loading && (
-            <Metadata role="status">
-              {t("status.reading", {
-                name: comparisonName(t, mode).toLocaleLowerCase(),
-              })}
-            </Metadata>
-          )}
-          {read.error && (
-            <Metadata role="alert">
-              {t("status.error", {
-                name: comparisonName(t, mode).toLocaleLowerCase(),
-                error: read.error,
-              })}
-            </Metadata>
-          )}
-          {accepted &&
-            (read.loading || read.error || accepted.mode !== mode) && (
-              <Metadata role="status">
-                {t("status.stale", {
-                  name: comparisonName(t, accepted.mode).toLocaleLowerCase(),
-                })}
-              </Metadata>
-            )}
-          {file ? (
+          {showingReader ? (
             <>
               <Toolbar
                 label={t("navigation.label")}
                 actions={
                   <>
-                    <Metadata
-                      aria-live="polite"
-                      aria-label={
-                        filter && navigationFiles === matching
-                          ? t("navigation.positionMatching", {
-                              position: index + 1,
-                              total: navigationFiles.length,
-                            })
-                          : t("navigation.position", {
-                              position: index + 1,
-                              total: navigationFiles.length,
-                            })
-                      }
-                    >
-                      {index + 1} / {navigationFiles.length}
-                    </Metadata>
-                    <IconButton
-                      icon={ChevronLeft}
-                      aria-label={t("nav.previous")}
-                      size="sm"
-                      disabled={index <= 0}
-                      onClick={() => openFile(navigationFiles[index - 1]!.path)}
-                    />
-                    <IconButton
-                      icon={ChevronRight}
-                      aria-label={t("nav.next")}
-                      size="sm"
-                      disabled={
-                        index < 0 || index >= navigationFiles.length - 1
-                      }
-                      onClick={() => openFile(navigationFiles[index + 1]!.path)}
-                    />
+                    {file && (
+                      <>
+                        <Metadata
+                          aria-live="polite"
+                          aria-label={
+                            filter && navigationFiles === matching
+                              ? t("navigation.positionMatching", {
+                                  position: index + 1,
+                                  total: navigationFiles.length,
+                                })
+                              : t("navigation.position", {
+                                  position: index + 1,
+                                  total: navigationFiles.length,
+                                })
+                          }
+                        >
+                          {index + 1} / {navigationFiles.length}
+                        </Metadata>
+                        <IconButton
+                          icon={ChevronLeft}
+                          aria-label={t("nav.previous")}
+                          size="sm"
+                          disabled={index <= 0}
+                          onClick={() =>
+                            openFile(navigationFiles[index - 1]!.path)
+                          }
+                        />
+                        <IconButton
+                          icon={ChevronRight}
+                          aria-label={t("nav.next")}
+                          size="sm"
+                          disabled={
+                            index < 0 || index >= navigationFiles.length - 1
+                          }
+                          onClick={() =>
+                            openFile(navigationFiles[index + 1]!.path)
+                          }
+                        />
+                      </>
+                    )}
+                    {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
                     <IconButton
                       icon={Refresh}
                       aria-label={t("refresh")}
@@ -355,6 +415,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                       : t("files.show")
                   }
                   onClick={showFiles}
+                  pending={readingOverview}
                 >
                   <Icon
                     glyph={
@@ -368,20 +429,36 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   {t("files.button")}
                 </Button>
               </Toolbar>
-              <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
-                {!file.binary && file.rows.length > 0 && (
-                  <Select
+              <DiffFileHeader
+                ref={heading}
+                file={file ? fileSummary(t, file) : { path: rawPath! }}
+              >
+                {rawPath ? (
+                  <Button
+                    variant="ghost"
                     size="sm"
-                    label={t("layout.label")}
-                    value={layout}
-                    onValueChange={(value) =>
-                      setLayout(value as "unified" | "split")
-                    }
-                    options={[
-                      { value: "unified", label: t("layout.unified") },
-                      { value: "split", label: t("layout.split") },
-                    ]}
-                  />
+                    onClick={() => readTarget("rows")}
+                    pending={read.loading}
+                  >
+                    {t("raw.structured")}
+                  </Button>
+                ) : (
+                  file &&
+                  !file.binary &&
+                  file.rows.length > 0 && (
+                    <Select
+                      size="sm"
+                      label={t("layout.label")}
+                      value={layout}
+                      onValueChange={(value) =>
+                        setLayout(value as "unified" | "split")
+                      }
+                      options={[
+                        { value: "unified", label: t("layout.unified") },
+                        { value: "split", label: t("layout.split") },
+                      ]}
+                    />
+                  )
                 )}
               </DiffFileHeader>
             </>
@@ -402,27 +479,96 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               }
             />
           )}
+          {accepted && (
+            <Metadata>
+              {comparisonName(t, accepted.query.mode)}
+              {" · "}
+              {t(accepted.query.path ? "scope.file" : "scope.workspace")}
+              {" · "}
+              <span
+                title={
+                  accepted.diff.baseline.type === "emptyTree"
+                    ? undefined
+                    : accepted.diff.baseline.commit
+                }
+              >
+                {accepted.diff.baseline.type === "emptyTree"
+                  ? t("baseline.emptyTree")
+                  : t("baseline.label", {
+                      ref: t(
+                        accepted.diff.baseline.type === "head"
+                          ? "baseline.head"
+                          : "baseline.mergeBase",
+                      ),
+                      commit: accepted.diff.baseline.commit.slice(0, 8),
+                    })}
+              </span>
+              {" · "}
+              <time dateTime={accepted.at}>
+                {t("read.at", {
+                  time: timeFormat.format(new Date(accepted.at)),
+                })}
+              </time>
+            </Metadata>
+          )}
         </>
       }
     >
+      {read.loading && (
+        <Metadata role="status">
+          {t("status.reading", {
+            name: comparisonName(t, query.mode).toLocaleLowerCase(),
+          })}
+        </Metadata>
+      )}
+      {read.error && (
+        <Metadata role="alert">
+          {t("status.error", {
+            name: comparisonName(t, query.mode).toLocaleLowerCase(),
+            error: read.error,
+          })}
+        </Metadata>
+      )}
+      {accepted && (read.loading || read.error || accepted.query !== query) && (
+        <Metadata role="status" className="sr-only">
+          {t("status.stale", {
+            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
+          })}
+        </Metadata>
+      )}
       {accepted && (
         <>
-          {!read.loading && !read.error && accepted.mode === mode && (
+          {!read.loading && !read.error && accepted.query === query && (
             <Metadata role="status" className="sr-only">
               {t("status.loaded", {
-                name: comparisonName(t, accepted.mode).toLocaleLowerCase(),
+                name: comparisonName(
+                  t,
+                  accepted.query.mode,
+                ).toLocaleLowerCase(),
               })}
             </Metadata>
           )}
           {accepted.diff.truncated && (
-            <Metadata role="note">{t("partial")}</Metadata>
+            <>
+              <Metadata role="note">{t("partial")}</Metadata>
+              {accepted.query.path && accepted.query.format === "rows" && (
+                <Button
+                  variant="soft"
+                  size="sm"
+                  onClick={() => readTarget("raw")}
+                  pending={read.loading}
+                >
+                  {t("raw.read")}
+                </Button>
+              )}
+            </>
           )}
-          {selection.path && !selected && (
+          {selection.path && !selected && !rawPath && (
             <Metadata>
               {t("missing")} <DiffFilePath path={selection.path} />
             </Metadata>
           )}
-          <div hidden={Boolean(file)}>
+          <div hidden={showingReader}>
             <PanelSection
               title={t(
                 accepted.diff.truncated ? "files.included" : "files.changed",
@@ -502,11 +648,39 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               )}
             </section>
           )}
+          {rawPath && (
+            <section aria-label={t("file.changes", { path: rawPath })}>
+              <Metadata>
+                <DiffFilePath path={rawPath} />
+              </Metadata>
+              {accepted.diff.patch ? (
+                <CodeBlock
+                  language="diff"
+                  label={t("raw.region", { path: rawPath })}
+                  labels={{
+                    copy: t("raw.copy"),
+                    copied: t("raw.copied"),
+                    wrap: t("raw.wrap"),
+                    unwrap: t("raw.unwrap"),
+                  }}
+                >
+                  {accepted.diff.patch}
+                </CodeBlock>
+              ) : (
+                <EmptyState
+                  icon={FileDiffIcon}
+                  size="compact"
+                  title={t("empty.title")}
+                  sub={t("empty.sub")}
+                />
+              )}
+            </section>
+          )}
           <Disclosure title={t("details.title")}>
             <Metadata>
               {accepted.diff.baseline.type === "emptyTree"
                 ? t("details.emptyTree")
-                : accepted.mode === "worktree"
+                : accepted.query.mode === "worktree"
                   ? t("details.worktree")
                   : t("details.base")}
             </Metadata>

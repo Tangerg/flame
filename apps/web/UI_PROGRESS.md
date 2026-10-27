@@ -18,12 +18,11 @@ below. The latest resumed goal restores verified batch publication to main.
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`. The latest Dock source repair
-`307b65135` is published to remote main after shared-control source
-`c435c71c9` and its delivery receipt `412ff2794`. The Dock batch starts from
-that clean published base. Before publication, fetch confirms there are no
-incoming main commits and no remote master branch. The user resumed the paused
-goal.
+is on `codex/ui-feedback-local-1026`. The targeted Diff read batch starts from
+clean published `f36312041`, following Dock repair `307b65135`, its delivery
+receipt `9b7f6319a` and the native drag input diagnosis. Its implementation,
+native qualification and cleanup are recorded under **Targeted Diff reads and
+accepted comparison context** below. The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -18140,6 +18139,144 @@ records; the independent control contributes 29. SHA-256:
 Next continue the supplied review's confirmed targeted Diff read and accepted
 scope task. Revisit native drag acceptance when the input/host chain can deliver
 a complete drop; the menu reorder path remains available and qualified.
+
+### Targeted Diff reads and accepted comparison context
+
+The 2026-10-28 batch follows the supplied review's specified-file Diff task.
+Scope is file material → current-workspace Diff → included-file overview → one
+reader → original list position → continuing the Composer draft. It includes
+structured-row truncation, bounded patch continuation, accepted-result identity,
+failed comparison/overview reads and their keyboard return paths. It does not
+change Runtime semantics, confinement, read limits, provider execution or stored
+Tool evidence. The approved shared filled fields retain their existing owner.
+
+The existing read-only research remains applicable. ZCode's
+`packages/ui/src/components/ui/diff-viewer.tsx:82` separates file identity from
+the code renderer and distinguishes patch input from full before/after content.
+Flame reuses its own `DiffFileHeader`, `CodeBlock`, Panel, Base UI controls,
+StyleX and semantic tokens. It adds no second diff library or navigation API.
+`runtime/internal/application/workspace/vcs_reads.go` and the public SDK already
+support scoped structured and raw reads. Runtime retains whole-file row bounds
+and an independent byte bound for raw patches.
+
+The request has one local owner: mode, optional target path and format. A
+successful response accepts that request with its canonical baseline and client
+acceptance time. Pending and failed requests cannot relabel or advance these
+facts. The persistent context shows actual accepted mode, file/workspace scope,
+baseline, short commit and a semantic `time`; Comparison details retains the full
+commit. Read time is client acceptance time, not a commit timestamp.
+
+A source-targeted read passes its normalized path. Files explicitly requests
+workspace rows; it never presents a scoped slice as the complete workspace.
+Returning within an already accepted overview remains local, including after a
+failed comparison. A return waits only when it starts a read. Failed workspace
+reads retain the scoped result and the same Files command can retry. Later
+outside focus is left alone. Choosing the current comparison again preserves the
+request and read time; explicit Refresh still issues one read.
+
+A row-bounded target offers Read patch through the existing scoped raw API.
+Its reader uses the shared copy/wrap controls with eight-locale labels, a named
+reading region and an explicit structured-read command. A byte-bound failure
+retains accepted content, scope and time. The shared file header accepts known
+path identity without requiring invented status or counts. It retains the
+existing heading ref and two-line filename; the complete selectable path stays
+in scrolling content. The overview still distinguishes partial, empty, binary,
+renamed and metadata-only evidence.
+
+The native narrow-window review catches a second composition issue: full read
+feedback in sticky controls leaves one visible code line when an error and a
+long filename coincide. Full feedback now belongs to the scrolling body. The
+toolbar retains a compact textual failure cue and Refresh, while accepted scope
+stays persistent. The existing stale-result announcement remains available to
+assistive technology without another visible paragraph.
+
+| Domain        | Evidence inspected                                                                                                                        | Result within this task                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Accessibility | Source/list Escape ownership, layout popup dismissal, named patch actions, pending commands, asynchronous focus and native keyboard paths | Clear after the return fix; VoiceOver audio is not run                  |
+| Layout        | `plugins/diff/component/component.tsx:131`, `:211`, `:482`, `:651`; native included-file, failed-read, long-path and full-width scenes    | Clear after scoped reads and feedback composition repair                |
+| Writing       | Eight Diff catalogs, actual accepted comparison and baseline, partial/byte-bound feedback, copy/wrap labels                               | Clear after native localization correction                              |
+| Typography    | Shared heading/Metadata/CodeBlock, native 14/18px UI settings, 241-byte filename, complete 443-character relative path                    | Existing type ladder retained; long identity remains accessible         |
+| Colors        | WebKit-painted foreground/background pairs in light/dark custom-accent scenes                                                             | Accepted-context text 7.88:1 light and 7.60:1 dark; no new color tokens |
+| UI            | Shared filled Select/search field, localized copy success/wrap state, focus perimeter and pending activation policy                       | Existing surfaces and motion reused; no added animation                 |
+
+| Severity | Domain        | Location                                                                         | Before                                                                                                              | After                                                                                                                | Why                                                                                   |
+| -------- | ------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| HIGH     | Layout        | `plugins/diff/component/component.tsx:131`                                       | A specified file is searched inside a workspace-wide slice                                                          | Pass the target path to the canonical read; Files requests workspace rows                                            | A whole-file budget can omit the target even when that file is readable independently |
+| HIGH     | Layout        | `plugins/diff/component/component.tsx:651`; `packages/ui/src/diff-files.tsx:142` | A target beyond the row budget has no continuation                                                                  | Offer a separately byte-bounded scoped patch reader using known identity only                                        | Restore a real reading path without raising a limit or fabricating file evidence      |
+| HIGH     | Layout        | Diff Panel controls and read feedback                                            | At 560×364 CSS pixels, failed comparison plus long identity consumes 283.5px and exposes 26.5px of code             | Keep compact failure feedback with actions; full feedback scrolls; controls measure 207.5px and visible code 102.5px | Preserve primary reading room at the supported native minimum and 200% zoom           |
+| MEDIUM   | Writing       | `plugins/diff/component/component.tsx:482`                                       | Accepted mode/baseline is buried and read time absent                                                               | Persist accepted scope, real baseline and acceptance time beside identity                                            | A failed desired comparison cannot be mistaken for the displayed result               |
+| MEDIUM   | Accessibility | `plugins/diff/component/component.tsx:211`, `:240`                               | Failed comparison return waits for a nonexistent read; failed raw-to-overview navigation cannot retry through Files | Wait only for an initiated read, restore the accepted row, and retain explicit scoped-to-workspace retry             | Keep keyboard position and an actionable recovery path                                |
+| MEDIUM   | Writing       | `plugins/diff/component/locales`; raw CodeBlock actions                          | The initial native patch reader inherits English copy/wrap labels                                                   | Supply the package's eight-locale action labels                                                                      | Match the active interface language and expose wrapping state                         |
+| LOW      | UI            | `plugins/diff/component/component.tsx:344`                                       | Selecting the current comparison allocates another request and advances read time                                   | Retain the current immutable request                                                                                 | An unchanged selection preserves accepted state; Refresh remains explicit             |
+
+Verification passed:
+
+- The initial three targeted regressions fail before the repair. Native review
+  also reproduces the two return/retry failures, oversized sticky feedback and
+  English default action labels. The same-comparison regression proves two
+  reads before its guard. Final `npm run test --workspace @flame/web --
+visual/diffPresentation.test.tsx` passes **42 tests**, including existing
+  cancellation, IME, popup, pending-button and later-focus contracts.
+- `npm run check --workspace @flame/ui` passes build, type/lint/format checks,
+  **10 files / 158 tests** and the independent packed UI/icon consumer. Its
+  non-document source stays unchanged through the later Diff refinements.
+  The final UI format check passes.
+- Final `npm run check --workspace @flame/web` passes uninterrupted:
+  **426 files / 4,024 tests**, including Runtime lifecycle, followed by all
+  boundary, locale, style, resource, bundle and module-link gates.
+- Final `npm run check --prefix plugins` passes type/lint/format, **28 Node
+  tests**, **4 backend files / 43 tests**, **12 catalogs / eight locales** and
+  exact reproduction of all **12** current resources. The normal builder
+  changes only Diff's tracked ESM.
+- `make check-native` passes current staging, Desktop Go test/vet/build and the
+  supported production Wails build. Existing SDK/linker warnings remain in
+  the successful build log. No repository Go source changes.
+- Six existing VCS tests pass with `-count=1`: selected nested-workspace path
+  confinement, real HEAD/unborn baselines, whole-file row-budget truncation,
+  raw-byte rejection, application-limit forwarding and default/clamped row
+  limits. They run in the two existing workspace/Git packages with temporary
+  repositories or bounded port fixtures.
+- Ten private production Wails generations supply reproductions and final qualification of the actual rendered task
+  through CUA. They cover light EN 14px, dark ZH 18px, default Orange/custom
+  accent, target absent from the global slice, row/byte bounds, comparison and
+  overview failure, retry, complete long paths, layout-popup Escape, keyboard
+  horizontal reading, native resizing and 200% zoom. The measured minimum is
+  **1120×728 native points / 560×364 CSS pixels**. Native return restores the
+  current row and the original draft continues through the installed Composer
+  command. The final same-value scene records zero additional reads and one
+  read for explicit Refresh.
+- An additional-observer-free control in the same Wails host repeats the long
+  patch, retained error/read time, localized wrap, overview retry, reader return
+  and draft continuation at 200%. It produces no additional observation
+  records. Its later same-value-only source delta is separately qualified in
+  the final native generation. Source and asset maps retain both boundaries.
+
+Native input snapshots are deterministic public-SDK fixtures; they qualify
+presentation and routing, not live Git/provider data or an already installed
+user release. Existing Runtime VCS tests cover the unchanged data boundary.
+VoiceOver audio, a fresh forced-colors OS pass, unsupported 320px native width,
+browser suites and performance benchmarks are not run. The earlier native
+HTML-drag qualification gap remains open; this batch adds no workaround.
+
+Cleanup is complete. All ten application generations are stopped, the exact
+bundle is unregistered, and the passive observer closes. Eight new checkout
+output/cache roots, the prepared Node archive, two owned Library directories
+and one app temp directory are removed. Four pre-existing files are restored.
+All **13** output-presence baselines, **five** Library/temp baselines and
+**5,916** frozen non-Markdown source inputs pass preservation checks; **5,901**
+of those inputs are outside this source change. The private qualification root
+is absent. The primary checkout and read-only references remain untouched.
+
+The verified in-memory gzip retains **58** flat UTF-8 records, **1,653**
+observation records, ten generation boundaries, three **608-file** asset maps,
+source/original-file maps, native reading-room and contrast evidence, and the
+clean-control receipt. It is **2,061,449 bytes**, SHA-256:
+`2b0e5a67998f14a3b2715b58bf28d9997cba7e4244b14d03b085795ed02bb224`.
+
+**Approve** the inspected targeted Diff reading and recovery flow. No HIGH
+finding remains in that scope. This is not a whole-product award-tier claim.
+Next trace the supplied review's split replacement pairing and word-level
+reading issue from the current shared DiffTable owner before choosing a change.
 
 ## Working and maintenance practice
 

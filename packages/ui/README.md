@@ -126,6 +126,7 @@ Navigation history, origin focus and the destination belong to the consumer.
 directory and compact state/count metadata. `DiffFileHeader` keeps the filename
 to two visible lines beside state and reader actions, preserving its full heading
 text and ref. The consumer supplies the complete path in scrolling reader content;
+path-only patch results may omit state/count evidence rather than invent it.
 `DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.
 `RecordSummary` owns the optional identity mark, copy and state alignment.
