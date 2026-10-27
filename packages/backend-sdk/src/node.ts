@@ -1,6 +1,7 @@
 import console, { Console } from "node:console";
 import { syncBuiltinESMExports } from "node:module";
 import { Backend } from "./backend";
+import { failureDiagnostic, type FailurePhase } from "./diagnostic";
 import { StdioTransport } from "./transport";
 
 export async function startBackend(options: {
@@ -17,19 +18,27 @@ export async function startBackend(options: {
   let backend: Backend | undefined;
   let failure = false;
   let stopping = false;
+  let phase: FailurePhase = "startup";
+  const report = (stage: FailurePhase, cause: unknown) => {
+    failure = true;
+    process.stderr.write(failureDiagnostic(stage, cause));
+  };
   const shutdown = () => {
     stopping = true;
     void backend?.close().catch(() => {
       failure = true;
     });
   };
-  const fatal = () => {
-    failure = true;
-    process.stderr.write("plugin: fatal backend failure\n");
+  const uncaught = (cause: unknown) => {
+    report("uncaught exception", cause);
     shutdown();
   };
-  process.once("uncaughtException", fatal);
-  process.once("unhandledRejection", fatal);
+  const rejected = (cause: unknown) => {
+    report("unhandled rejection", cause);
+    shutdown();
+  };
+  process.once("uncaughtException", uncaught);
+  process.once("unhandledRejection", rejected);
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
   try {
@@ -38,19 +47,18 @@ export async function startBackend(options: {
       throw new Error("plugin: module must export its Backend as default");
     backend = loaded.default;
     if (stopping) return;
+    phase = "service";
     await backend.serve(new StdioTransport(process.stdin, process.stdout));
-  } catch {
-    failure = true;
-    process.stderr.write("plugin: backend startup or protocol failed\n");
+  } catch (cause) {
+    report(phase, cause);
   } finally {
     try {
       await backend?.close();
-    } catch {
-      failure = true;
-      process.stderr.write("plugin: backend cleanup failed\n");
+    } catch (cause) {
+      report("cleanup", cause);
     }
-    process.off("uncaughtException", fatal);
-    process.off("unhandledRejection", fatal);
+    process.off("uncaughtException", uncaught);
+    process.off("unhandledRejection", rejected);
     process.off("SIGTERM", shutdown);
     process.off("SIGINT", shutdown);
     if (failure) process.exitCode = 1;

@@ -37,6 +37,7 @@ const decode = (value: unknown) => value as Input;
 const result = async (context: CallContext, input: Input) => {
   if (input.mode === "refuse")
     throw new Refusal("fixture_refused", "fixture refused the operation");
+  if (input.mode === "empty-refusal") throw new Refusal("fixture_refused", "");
   const value =
     input.mode === "host"
       ? (

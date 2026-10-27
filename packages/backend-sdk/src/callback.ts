@@ -74,8 +74,15 @@ function directFetch(ref: CallbackRef, invocation?: Invocation): typeof fetch {
     const headers = new Headers(init.headers);
     headers.set("Authorization", ref.credential);
     headers.set("Flame-Call", ref.call);
-    if (invocation)
-      headers.set(wire.constants.InvocationHeader!, stringifyJSON(invocation));
+    if (invocation) {
+      // Header bytes are ASCII; JSON escapes preserve the original Unicode
+      // identity without changing admission, request bodies or receipt digests.
+      const encoded = stringifyJSON(invocation).replace(
+        /[\u007f-\uffff]/g,
+        (unit) => "\\u" + unit.charCodeAt(0).toString(16).padStart(4, "0"),
+      );
+      headers.set(wire.constants.InvocationHeader!, encoded);
+    }
     return await new Promise<Response>((resolve, reject) => {
       const request = httpRequest(
         url,
@@ -188,9 +195,12 @@ export class Refusal extends Error {
     readonly code: string,
     message: string,
   ) {
+    if (typeof code !== "string" || !code || typeof message !== "string")
+      throw new Error(
+        "plugin: refusal requires a nonempty code and string message",
+      );
+    stringifyJSON({ code, message });
     super(message);
-    if (!code || !message)
-      throw new Error("plugin: refusal requires a code and message");
     this.name = "Refusal";
   }
 }

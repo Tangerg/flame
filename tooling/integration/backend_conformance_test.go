@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -145,6 +146,10 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil || output.Source != original.String() {
 		t.Fatalf("original evidence changed: %s, %v", output.Source, err)
 	}
+	_, err = readBinding.Call(t.Context(), typescriptInput{Mode: "empty-refusal", Value: input.Value})
+	if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+		t.Fatalf("empty-message business refusal lost its category: %v", err)
+	}
 	writeBinding, err := write.Bind(bound)
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +169,10 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		}
 	})
 	host.AdmitSession(session)
-	invocation := extension.Invocation{ID: "host-call", Origin: extension.Model, Parent: "parent", Target: extension.Target{Scope: "installation", Reference: "original-target"}}
+	invocation := extension.Invocation{
+		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
+		Target: extension.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+	}
 	ctx, err := plugin.WithInvocation(t.Context(), invocation)
 	if err != nil {
 		t.Fatal(err)
@@ -173,6 +181,9 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		actual, err := plugin.InvocationFromContext(calling)
 		if err != nil || actual != invocation {
 			t.Errorf("callback lost original invocation: %+v, %v", actual, err)
+		}
+		if string(command.Input.Value) == `"empty-refusal"` {
+			return typescriptHostInput{}, &extension.Refusal{Code: "fixture_refused"}
 		}
 		return command.Input, nil
 	})
@@ -192,6 +203,10 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	output, err = readBinding.CallWithMetadata(ctx, input, metadata)
 	if err != nil || string(output.Value) != string(input.Value) {
 		t.Fatalf("host callback: %s, %v", output.Value, err)
+	}
+	_, err = readBinding.CallWithMetadata(ctx, typescriptInput{Mode: "host", Value: jsontext.Value(`"empty-refusal"`)}, metadata)
+	if refusal, ok := errors.AsType[*extension.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
+		t.Fatalf("host refusal changed across Go and TypeScript: %v", err)
 	}
 	if err := metadata.Set(plugin.InvocationMetadataKey, invocation); err != nil {
 		t.Fatal(err)

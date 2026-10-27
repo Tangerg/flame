@@ -54,10 +54,22 @@ owns the MCP connection until it ends. `close()` aborts work, closes transport,
 joins admitted handlers and releases resources once; concurrent callers share
 its settlement. The MCP server and publication step are private to `Backend`.
 The Node entry point supplies stdio and signal handling to this lifecycle.
+Failures retain their lifecycle phase, error category, conventional system code,
+source-map locations and cause/aggregate relationships in bounded stderr
+records. Exception messages, thrown payloads and arbitrary error properties are
+not logged: they may contain credentials or user data, and generic text
+redaction cannot prove their absence. A source location identifies the owning
+operation without printing its arguments. Cyclic or oversized diagnostics are
+marked, not recursively dumped. This projection never changes the original
+failure, command outcome or shutdown owner. Authors remain responsible for their
+own console output.
 
 `context.runtime()` creates the public Runtime client from this call's captured
 grant. It keeps the original invocation and fixed loopback endpoint, uses no
 proxy or redirect, bounds response bytes and closes when the handler returns.
+Invocation header JSON uses ASCII escapes for Unicode code units, preserving the
+exact decoded identity, parent and target through both the public Runtime client
+and typed host calls. Request bodies and canonical receipt input are unchanged.
 `client.queryJSON` preserves exact Core evidence; ordinary typed methods refuse
 unrepresentable numeric projections. `callHost` supports a captured typed host
 method. No call substitutes the activation's setup grant. Ordinary MCP Tools use
@@ -87,13 +99,17 @@ Missing, invalid, duplicate or late final work is a protocol failure. Cancellati
 closes and joins the source. A command stream settles through the same original
 receipt as a unary command; recovery does not replay chunks.
 
-Throw `Refusal(code, message)` only for a known business refusal. Unexpected
-exceptions, cancellation, malformed data and invalid output are protocol failures,
-including output failure after a mutation committed. `receipts(handler)` exposes
+Throw `Refusal(code, message)` only for a known business refusal. The published
+Go contract requires a nonempty code and valid Unicode strings; its message may
+be empty. Construction and received replies preserve that same classification,
+without inventing display text or turning an empty message into uncertainty.
+Unexpected exceptions, cancellation, malformed data and invalid output are
+protocol failures, including output failure after a mutation committed.
+`receipts(handler)` exposes
 the existing receipt method. Its implementation owns durable business admission
 and atomic business/receipt settlement; this SDK has no result cache or database.
 A missing receipt never permits another mutation or a new Core observation.
-The [Usage Reports implementation](../../../plugins/usagereports/README.md) shows
+The [Usage Reports implementation](../../plugins/usagereports/README.md) shows
 the full SQLite transaction and unknown-outcome behavior.
 
 Schemas support the documented draft-2020-12 object/array/type, local JSON Pointer
