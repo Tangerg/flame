@@ -18,10 +18,12 @@ below. The latest resumed goal restores verified batch publication to main.
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`. The shared-control batch publishes source commit `c435c71c9`; its delivery
-receipt is `412ff2794`. The Dock panel/presentation batch starts from that clean
-published base. Publication-time fetch confirms remote main still matches it;
-the remote has no master branch. The user resumed the paused goal.
+is on `codex/ui-feedback-local-1026`. The latest Dock source repair
+`307b65135` is published to remote main after shared-control source
+`c435c71c9` and its delivery receipt `412ff2794`. The Dock batch starts from
+that clean published base. Before publication, fetch confirms there are no
+incoming main commits and no remote master branch. The user resumed the paused
+goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -18059,6 +18061,12 @@ The primary checkout remains on its existing main commit with the user's
 untracked `docs/ui打磨优化.md` preserved. Publication-time fetch confirms
 remote main matches the batch base, so no extra merge or validation cycle is
 needed.
+
+Source commit `307b65135f880149e91988c3111cba7a7dfd1e10` is pushed to remote
+main. Staged formatting and all-workspace lint pass; all **5,916** qualified
+non-Markdown inputs remain byte-identical after hooks. At source publication
+the owned worktree is clean with zero unpushed commits. This delivery receipt
+changes documentation only; native evidence keeps the frozen source scope above.
 
 Scoped review: **Approve** the inspected association, presentation, source-return
 and title-reading tasks. This does not approve unqualified dragging or declare
