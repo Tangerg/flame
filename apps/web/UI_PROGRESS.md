@@ -19,10 +19,11 @@ below. The latest resumed goal restores verified batch publication to main.
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
 is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted comparison
-context are published to main as `f9241b46b`, following native qualification and
-cleanup recorded under **Targeted Diff reads and accepted comparison context**
-below. The next scoped investigation is the supplied review's split replacement
-pairing and word-level reading issue. The user resumed the paused goal.
+context are published to main as `f9241b46b`, with receipt `8a16a1824`. The paired
+Diff reading batch has completed module/native qualification and cleanup under
+**Paired replacement reading and layout continuity** below. Next trace plugin
+installation draft retention and Run receipt navigation against current owners.
+The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
 continually merge and revalidate advancing main during a scoped UI task. Claude
@@ -18284,6 +18285,133 @@ frozen non-Markdown source inputs still match the native-qualified source.
 finding remains in that scope. This is not a whole-product award-tier claim.
 Next trace the supplied review's split replacement pairing and word-level
 reading issue from the current shared DiffTable owner before choosing a change.
+
+### Paired replacement reading and layout continuity
+
+The 2026-10-28 batch starts from clean published `8a16a1824`. It follows the
+supplied review after targeted file reachability and accepted comparison context
+are delivered. Scope is one shared DiffTable reader, layout changes during
+reading, the included-file overview and continuing the Composer draft. Canonical
+rows, counts, baseline, read limits and source navigation retain their owners.
+
+ZCode's `packages/ui/src/components/ui/diff-viewer.tsx:86` requests `word-alt`
+within its separate renderer. Flame retains its semantic table, native selection,
+consumer labels, StyleX and status washes. No renderer or dependency is added.
+Existing HeroUI/Radix/Arc/Ace research continues to guide control states and
+reading-space judgment; the approved quiet filled fields remain unchanged.
+
+`packages/ui/src/diff-table-lines.ts:89` owns the derived presentation. Adjacent
+deletion runs followed by addition runs pair by position, ending at context and
+hunk boundaries. Extras keep their own side; unified layout keeps source order.
+Platform word segmentation and bounded token matching identify separate changes
+without changing indentation, punctuation or Unicode graphemes. More than 128
+segments on either side uses whole-line emphasis instead of an unbounded matching
+matrix. Complete source remains available; no Runtime budget is raised.
+
+Native review catches two defects in the initial implementation before delivery.
+StyleX drops a multi-value logical border shorthand, leaving no painted word cue.
+Three supported longhands now emit an actual inherited-ink edge. Pairing also
+changes row height distribution: line 77 moves from y=231 to y=-420 while line
+101 becomes visible at y=204. Automatic scroll adjustment does not preserve the
+source being read.
+
+The private tbody boundary in `packages/ui/src/diff-table.tsx:164` now captures
+the first visible source cell before React replaces rows for a layout-only change
+of the same source. It intersects clipping ancestors and reuses Panel's controls
+reference for the sticky boundary. After replacement, it restores that cell's
+offset in the existing scrolling surface. Source replacement, focus and navigation
+stay with their current owners. There is no scroll listener, timer or new store.
+
+| Domain        | Evidence inspected                                                                                                | Result within this task                                                    |
+| ------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Accessibility | Consumer region/column labels, native Select keyboard entry, layered Escape, code selection and Composer return   | Keyboard and selection pass; VoiceOver audio not run                       |
+| Layout        | Positional row pairing, native mid-file source-cell offsets, main/Dock presentation, small native window and zoom | Same source remains reachable and anchored after repair                    |
+| Writing       | Existing eight-locale labels, persistent accepted comparison, scope and read time                                 | No new interface copy; Chinese controls and accepted facts remain coherent |
+| Typography    | Exact source text, Unicode/whitespace regressions, native EN 14px and ZH 18px scenes                              | Changed words are visibly emphasized without losing source characters      |
+| Colors        | WebKit canvas-converted inherited ink against the actual painted status rows                                      | Minimum sampled contrast 13.75:1 light and 15.25:1 dark; no new palette    |
+| UI            | Distributed stylesheet, native painted edge, filled layout Select, focus and layout snapshots                     | Real 1px word cue and local reading continuity pass; no new motion         |
+
+| Severity | Domain     | Location                                                                      | Before                                                                                        | After                                                                     | Why                                                                             |
+| -------- | ---------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| MEDIUM   | Layout     | `packages/ui/src/diff-table-lines.ts:89`                                      | Removal and addition occupy separate rows with empty opposite cells                           | Pair adjacent replacement runs, preserving unmatched sides and boundaries | Improve comparison density while retaining actual line numbers and source order |
+| MEDIUM   | Typography | `packages/ui/src/diff-table-lines.ts:46`; `packages/ui/src/diff-table.tsx:60` | Whole-line change treatment provides no word precision; the initial edge shorthand is dropped | Bounded word matching and a verified inherited-ink edge                   | Locate changes without a second renderer or color-only meaning                  |
+| MEDIUM   | Layout     | `packages/ui/src/diff-table.tsx:164`, `:205`                                  | The initial paired layout moves the current source out of view                                | Pre-mutation source-cell snapshot restores its relative viewport offset   | Keep reading continuity when the number of displayed rows changes               |
+
+Verification passed:
+
+- Six new reading regressions fail against the original unpaired reader. The
+  geometry regression exposes 100→60 source-cell movement before the snapshot
+  boundary. Final focused `npm run test --workspace @flame/ui -- test/diff-table.test.tsx`
+  passes **20 tests**: pairing boundaries, unmatched
+  lines, source order, separate word changes, Unicode, bounded emphasis, native
+  selection policy, distributed physical edge and both layout directions.
+- Final `npm run check --workspace @flame/ui` passes build/type/lint/format,
+  **10 files / 169 tests**, and independent packed UI/icon consumption.
+- Final `npm run check --workspace @flame/web` passes uninterrupted:
+  **426 files / 4,024 tests**, followed by boundary, style, locale, resource,
+  bundle and module-link gates. The first attempt lacked the prepared offline
+  Node archive; normal `node-companion.mjs` preparation restores that prerequisite.
+  No assertion or check is disabled.
+- Final `npm run check --prefix plugins` passes type/lint/format, **28 Node
+  tests**, **4 backend files / 43 tests**, **12 catalogs / eight locales** and
+  exact resource reproduction. No tracked component resource changes.
+- Final `make check-native` passes current staging, Desktop Go test/vet/build
+  and the supported production Wails build. Existing linker warnings remain
+  in the successful log. No repository Go source changes or migrations.
+- Seven private Wails generations provide setup diagnosis, reproductions and
+  final qualification. The final source is qualified in three scenes: long
+  light EN 14px, dark ZH 18px with custom accent/small window/200% zoom, and
+  the additional-observer-free long-file control. The two blank setup entries
+  and the two pre-repair reading scenes are not passing final qualification.
+- In the final long-file scene, source line 84 retains y=168 and offset -14px
+  in both directions. At the small-window/200% scene's **reported 560×364 CSS
+  pixel viewport**, the first visible source offset remains 35px;
+  the half-pixel outer-coordinate rounding does not change that offset.
+  Tab reveals the code below sticky controls; Right reaches horizontal
+  scrollLeft 357. Full selection retains Chinese, emoji and combining marks
+  while excluding the caption, headers and surrounding application.
+- Native file→Diff→main→overview/filter→reader→popup Escape→list Escape
+  restores the `Dock` query and current row. Cmd+L resumes the original
+  `中文复验草稿。阅读后继续。已继续。` draft. Accepted context remains stable
+  across layout changes; Files independently accepts the workspace read.
+- The clean control uses the same long light EN 14px input and normal Wails
+  host. Both builds contain **608 assets**; all **606 non-HTML assets** are
+  byte-identical, and only the two HTML entries lose the added observer.
+  Native screenshots retain line 84 and visible word cues; local row return
+  and `Control draft. Continue. Resumed.` pass. It emits **zero** additional
+  observation records.
+
+The initial private asset root lacks a root index. Wails beta.34 discovers the
+nested index and narrows its filesystem root, losing sibling assets. Copying the
+byte-identical Vite index to the private root restores the preceding native
+staging arrangement. Repeat that step after every private fixture build.
+Diagnostic overlays are not the qualification host. These are deterministic
+public-SDK fixture inputs in a real Wails application; they do not qualify live
+user Git/provider data, production bootstrap or an already installed user release.
+VoiceOver audio, fresh forced-colors/RTL OS checks, unsupported 320px native width,
+browser suites and performance benchmarks are not run. The earlier native HTML
+drag input gap remains separate; no workaround is added here.
+
+Cleanup is complete. All seven app generations are stopped, the exact bundle
+is unregistered and the private observer is closed. Eight new checkout output/
+cache roots, the prepared Node archive, two owned Library directories and one
+app temp directory are removed. Four pre-existing files and their modes are
+restored. All **13** output-presence baselines, **five** Library/temp baselines
+and **5,917** frozen non-Markdown source inputs pass preservation checks;
+**5,914** inputs outside this source change remain identical. The private root
+is absent. The primary checkout and read-only references remain untouched.
+Prepare the managed Node prerequisite before the next offline Runtime gate.
+
+The verified in-memory gzip retains **47** flat UTF-8 records, **55** observation
+records, seven generation boundaries, three **608-file** asset maps, baseline/
+qualified-source maps, original-file hashes, contrast/anchor/control receipts
+and cleanup evidence. It is **1,751,354 bytes**, SHA-256:
+`c03f56c4b6ceefc62a343556c1ea54626741e555e677bf8df658a47f0b14b80a`.
+
+**Approve** the inspected paired reading and return flow. No HIGH finding remains
+in that scope. This is not a whole-product award-tier claim. Next trace the
+supplied review's plugin installation draft retention and Run receipt navigation
+against current owners before selecting a repair.
 
 ## Working and maintenance practice
 

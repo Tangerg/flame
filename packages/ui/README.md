@@ -346,6 +346,18 @@ its original indentation remain separate from the decorative marker.
 With its region focused, Ctrl/Cmd+A selects only the rendered difference rows,
 excluding the caption, column headings and surrounding application; partial
 selection and copy remain native.
+Adjacent deletion/addition runs pair by position in split layout, stopping at
+context and hunk boundaries. Extra lines keep their own side; unified layout
+retains source order. Both layouts mark changed words without changing source
+text or indentation. A platform word segmenter preserves Unicode graphemes;
+bounded token matching falls back to whole-line emphasis for complex lines.
+The emphasis uses an inherited-ink underline alongside existing semantic row
+washes and signs, so its meaning survives without color. Presentation does not
+change canonical rows, counts, navigation, read limits or accepted-result facts.
+Layout changes retain the first visible source-cell anchor in the existing
+scrolling surface. A pre-mutation DOM snapshot uses Panel's controls reference
+for the sticky boundary and restores that local geometry after row replacement.
+It does not move focus or handle source replacement as navigation.
 `ScrollRegion` defaults to a `div`; `as="span"` keeps a bounded, named keyboard
 reader valid inside a heading. Both forms retain native refs, attributes and the
 same scrolling and focus contract.
