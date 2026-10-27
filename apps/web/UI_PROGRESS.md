@@ -18073,6 +18073,74 @@ and title-reading tasks. This does not approve unqualified dragging or declare
 the continuous whole-product visual goal complete. Next inspect the native drag
 input boundary, then the review's targeted Diff read/scope contract.
 
+### Native drag input boundary diagnosis
+
+The 2026-10-28 diagnosis starts from clean published `9b7f6319a`. No
+product code changes. It narrows the preceding native drag qualification gap
+before any component workaround is considered.
+
+[Wails HTML Drag & Drop](https://v3.wails.io/features/drag-and-drop/html/)
+describes the standard draggable/dragover/drop path. The actual beta.34 native
+file-drag delegates, Dock handlers and Base UI context-menu trigger are
+inspected. The existing context menu remains the qualified single-pointer and
+keyboard alternative required by WCAG 2.5.7; no new drag state owner is added.
+
+A private production Wails host records trusted events in capture and bubble
+phases, including payload types, accepted operation, coordinates, default
+prevention and the actual dragging-row projection. The observer is passive.
+A second page in that same host contains a plain DOM three-item draggable list,
+with synchronous handlers and no React, Base UI or Dock. It is a diagnostic
+control, not a substitute for product acceptance.
+
+- The Dock receives `dragstart`, writes the expected `text/plain` view ID,
+  requests `move` and commits its dragging row before the next frame. It
+  receives neither destination `dragover` nor `drop`. Escape produces a
+  cancelled `dragend`. This does not support a stale React-state diagnosis.
+- The independent control shows the same initial failure. A second motion in
+  its active native session delivers `dragenter` and `dragover` to the
+  intended item; its handler prevents default and requests `move`. The
+  session nevertheless leaves the destination and ends with `dropEffect=none`,
+  without `drop` or a reordered list. Recorded pointer-down events report
+  `buttons=0`.
+- These observations narrow the qualification gap to the native input/host
+  chain shared by both pages. They do not establish which part of that chain
+  is responsible, or prove real hardware has the same behavior. Native drag/drop
+  remains **not qualified**. Do not add a Dock retry, geometry engine, second
+  drag owner or host workaround based on this automated gesture.
+
+The initial command-started app is accompanied by an automatic extra launch
+without its environment; the extra instance shows an empty asset-root error.
+Both are retired and their setup evidence is discarded. The accepted private
+host pins its temporary home and asset root before host construction, and reads
+its entry URL from a private file. Subsequent launches use only that host. The
+repository's host constructors validate deployment paths without starting a
+Runtime command. No production bootstrap or debug route is changed.
+
+The existing documented staging and production Wails build flags compile the
+unchanged product and private host serially. Browser suites, benchmarks,
+Claude CLI and subagents are not used. Product regression suites and the broad
+Runtime gate are not restarted for this documentation-only diagnosis; the
+preceding native and test receipts retain their exact source scope. Formatting
+and repository lint apply to this progress update.
+
+All qualification and discarded startup instances are stopped, the observer
+closes and the exact bundle is unregistered. Cleanup removes four new checkout
+output roots, two owned Library paths and one app temp directory. Four
+pre-existing files, including both shared-UI test-cache records, are restored.
+All 13 output-presence baselines, five Library/temp baselines and 5,916
+non-Markdown source inputs pass preservation checks; the private
+`flame-drag-input-1028-T50sgY` root is absent.
+
+The verified in-memory gzip retains 17 flat UTF-8 records, 111 observation
+records (one discarded setup record), 610 private asset hashes and the
+source/original-file preservation maps. The product gesture contributes 13
+records; the independent control contributes 29. SHA-256:
+`63f02ca0823bccbbe352dae8b9321b78e032977aaae488ef20f9adff6223672b`.
+
+Next continue the supplied review's confirmed targeted Diff read and accepted
+scope task. Revisit native drag acceptance when the input/host chain can deliver
+a complete drop; the menu reorder path remains available and qualified.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
