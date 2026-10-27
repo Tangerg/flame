@@ -25,7 +25,7 @@ for (const [fontSize, theme, width] of [
     await expect(annotation).toContainText("https://example.test/runtime/review");
     await expect(captured.locator("a, [href], [onclick]")).toHaveCount(0);
 
-    await view.getByRole("tab", { name: "Source", exact: true }).click();
+    await view.getByRole("radio", { name: "Source", exact: true }).click();
     const source = view.locator('[data-quote-source="file"]');
     await expect(source).toContainText(
       '[protocol]: https://example.test/packages/go-sdk/protocol "Accepted protocol contract"',

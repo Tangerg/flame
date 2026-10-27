@@ -15,9 +15,27 @@ beforeEach(() => {
   // Happy DOM needs normalized selector whitespace and a concrete host focus color.
   style.textContent = stylesheet
     .replace(/\s+/g, " ")
-    .replaceAll("var(--color-focus-ring)", "#123456");
+    .replaceAll("var(--color-focus-ring)", "#123456")
+    .replaceAll("var(--color-negative)", "#bb1234");
   document.head.append(style);
 });
+
+it.each(["bare", "inline", "well"] as const)(
+  "preserves %s validation alongside keyboard focus",
+  (variant) => {
+    document.documentElement.setAttribute("data-input-modality", "keyboard");
+    render(
+      <div data-focus-inset="">
+        <TextArea variant={variant} invalid aria-label="Configuration" />
+      </div>,
+    );
+    const field = screen.getByLabelText("Configuration");
+    act(() => field.focus());
+    expect(getComputedStyle(field).outlineStyle).toBe("solid");
+    expect(getComputedStyle(field).outlineOffset).toBe("1px");
+    expect(getComputedStyle(field).boxShadow).toContain("#bb1234");
+  },
+);
 
 afterEach(() => {
   cleanup();
@@ -52,10 +70,10 @@ describe.each([
     );
     act(() => field.focus());
     expect(field.getAttribute("aria-invalid")).toBeNull();
-    expect(getComputedStyle(field).outlineStyle || "none").toBe("none");
+    expect(getComputedStyle(field).outlineStyle).toBe("solid");
   });
 
-  it("keeps pointer focus with the field's existing border", () => {
+  it("keeps pointer focus quiet", () => {
     document.documentElement.setAttribute("data-input-modality", "pointer");
     render(
       <FormField label="Configuration">

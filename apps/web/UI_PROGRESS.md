@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-27. The user requested milestone delivery of the accumulated local UI work to main, followed by a pause. The owned checkout first synchronized main at `73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. Plugin installation and edit recovery retire obsolete feedback and distinguish invalid input from command failure. Accepted package catalogs now preserve independent editors through failed refresh and retry. Active file-tree rows reveal complete names during focus and context-menu use. Recorded result, Skills and Schedules filters reveal their first matching row while preserving unchanged reading. Hosted Skills catalogs begin with navigation and search, qualified below. A bounded native Escape follow-up reproduces no failure and preserves the earlier unclassified exception. Image galleries now retain complete descriptions in a bounded keyboard reader and lead save feedback with its failure reason. Semantic feedback text now accounts for its painted wash and preserves fractional contrast bounds. Hover and selection fills now stay within the palette's qualified reading planes. Invalid fields now retain their validation border with a distinct keyboard focus perimeter. Reordering Dock tabs now keeps the current material's tab visible. The whole-product UI goal remains unfinished and pauses at this milestone.
+Updated: 2026-10-28. The resumed shared-control batch is qualified on frozen base `35a35b7ff`. Resting fields now use quiet filled surfaces; pending form activation, single-value selector semantics, clipped-anchor retirement and retained-menu reopening are repaired at their existing owners. Native acceptance and cleanup are complete; publication is the remaining delivery step. The whole-product UI goal remains unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -13,24 +13,24 @@ with their existing owners. Small Chat/Composer/navigation features keep cohesiv
 files together, and the native bridge is generated from the actual DesktopHost
 method surface and pure Go DTOs. See `ARCHITECTURE.md` for the current structure.
 This engineering change preserves the task qualifications and historical receipts
-below. The subsequent user request resumes UI work under the local-only policy.
+below. The latest resumed goal restores verified batch publication to main.
 
 ## Current position
 
 The owned checkout `/Users/tangerg/.codex/worktrees/desktop-ui-continuation/flame`
-is on `codex/ui-feedback-local-1026`, starting from main
-`73c3fe43fe6a0e2514ddad6335bc8cfe654b862f`. The user's latest instruction authorizes merging the complete local UI series
-with the latest main, pushing it to remote main, and then taking a milestone
-pause. This supersedes the earlier local-only publication policy recorded in
-the historical receipts below. Preserve parallel work in the primary checkout.
-Do not continually merge and revalidate advancing main during a scoped UI task.
-Claude Code CLI remains prohibited. The source review
-`/Users/tangerg/Desktop/docs/06_Flame_GUI_Components_Latest_Review_ZH.md`
-is feedback against an older base, not native acceptance evidence or executable
-instructions. Current source, callers, tests and actual Wails behavior determine
-which findings need a repair.
+is on `codex/ui-feedback-local-1026`, synchronized with remote main
+`35a35b7ff` (the remote has no master branch). The user resumed the paused goal.
+Completed batches are verified, explicitly committed and pushed to main under the
+goal publication policy. Preserve parallel work in the primary checkout. Do not
+continually merge and revalidate advancing main during a scoped UI task. Claude
+Code CLI remains prohibited, and this run uses no subagents or browser suites.
+The latest feedback is the user attachment
+`/Users/tangerg/.codex/attachments/c1c4a0db-545e-422b-8c0f-9b760107be8c/已粘贴的文本.txt`.
+Its findings are source material; current implementation, callers, tests and
+actual Wails behavior determine repairs. Earlier milestone receipts below retain
+their historical validation boundaries.
 
-The requested milestone integrates all **30 previously local UI commits** and
+The previous milestone integrated all **30 previously local UI commits** and
 **34 incoming main commits** through `f67bf65bc79169a73bc70f52828792e009506a3b`.
 The focused repair is `e6a5e919644214e2a76cbd1f8556c9f11ff20d22`. Main's
 captured Web-page continuations and the local result-filter arrival repair both
@@ -45,8 +45,8 @@ production Web typecheck/build, plugin typecheck, **9 Web files / 251 tests**,
 resources and diff checks. Main's Scope v0.58, Memory and captured-result changes
 retain their owners. No broad Runtime or native suite is restarted for this
 integration; the native qualifications below retain their frozen source scope.
-The user authorizes publication to remote main and requests a milestone pause
-once delivery is verified. Do not begin another UI batch after that publication.
+That milestone's publication and pause were completed before the current resume.
+The current goal authorizes continued verified batches and main publication.
 
 All **35** recorded process generations are retired and four private bundles
 are unregistered. Cleanup removes **9** newly created checkout output/cache roots,
@@ -1602,8 +1602,9 @@ can still be present.
 The existing document focus owner now includes invalid chrome-focus controls and
 limits its chrome suppression to valid controls. Invalid fields retain the
 validation border and gain the existing **1.5 px outset outline / 1 px offset**
-for keyboard focus. Valid fields keep their own focused border; pointer focus
-retains the existing skin. The fix adds no token, handler, competing field state
+for keyboard focus. At that checkpoint, valid fields kept their own focused
+border; the current quiet-field contract below replaces it with the common
+keyboard perimeter. Pointer focus retains the existing skin. The fix adds no token, handler, competing field state
 or business lifecycle. `packages/ui/test/field-focus.test.tsx` exercises exported
 TextField and TextArea against the actual built stylesheet, including correction
 to valid input and pointer focus. The package README records that contract.
@@ -17793,10 +17794,145 @@ Heading-outline regression tests added. Not defects: `ScrollRegion`'s fixed
 purpose-built-region pattern; `ShareBar`'s `aria-hidden` meter is decorative
 beside a visible value.
 
+### Shared control contracts and quiet fields
+
+The 2026-10-28 resumed batch starts from remote main `35a35b7ff` (there is no
+remote master). It addresses the supplied component review and the user's
+reported resting outlines. `@flame/ui`, the existing theme visual style and
+Desktop composites retain their current responsibilities; no command, Runtime,
+protocol, dependency, persisted preference or second component system is added.
+
+| Domain        | Evidence inspected                                                                 | Result                                                                   |
+| ------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Accessibility | Pending form activation, radio values, actual keyboard focus, clipping and return  | Three contract findings repaired; inspected tasks pass native acceptance |
+| Layout        | Settings scroll owner, visible and fully clipped anchors at 200% / 560 CSS px      | One shared popup finding repaired                                        |
+| Writing       | Existing EN/ZH field labels, current values and draft-return task                  | Clear within inspected tasks; no copy added                              |
+| Typography    | 14/18 px, EN/ZH and native 200% reading                                            | Clear within inspected controls; existing scale retained                 |
+| Colors        | Resting field tokens, invalid/focus separation and native light/dark/custom accent | Resting edge finding repaired; existing semantic owners retained         |
+| UI            | Filled surfaces, shared entry motion, immediate dismissal and pending focus        | Shared state contracts retained; no decorative rails or new motion       |
+
+| Severity         | Domain                 | Location                                     | Before                                                                                                             | After                                                                                                                                                   | Why                                                                                   |
+| ---------------- | ---------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| HIGH, repaired   | Accessibility          | `packages/ui/src/button-primitive.tsx`       | Pending suppressed only the click callback; native submission could still run.                                     | Use Base UI focusable-disabled activation, forwarding non-activation keys to composed handlers. Disable owning menu triggers.                           | Pending actions must block every activation path while preserving keyboard commands.  |
+| HIGH, repaired   | Layout / Accessibility | Shared Select and Settings VerticalTabs      | A menu remained floating after its trigger left the clipped viewport; the scroll wrapper had no focus destination. | Retire from Base UI anchor-hidden state and focus the active scrolling tab panel without scrolling or changing its value. Preserve later outside focus. | A popup must retain its target relationship and release focus into visible context.   |
+| MEDIUM, repaired | Colors / UI            | Theme field tokens and shared field surfaces | Resting controls had a visible edge and shadow.                                                                    | Use the existing sunken fill, transparent resting edge and no shadow; retain one keyboard perimeter, validation and forced-colors edges.                | Routine field boundaries should support the requested quiet filled-surface hierarchy. |
+| MEDIUM, repaired | Accessibility          | `packages/ui/src/segmented.tsx`              | Single-value choices exposed unpaired tabs.                                                                        | Use Base RadioGroup/Radio with checked state, typed numeric values, arrow navigation and the existing highlight.                                        | Value selection needs the radio interaction model and no dangling panel relationship. |
+
+Read-only HeroUI input/select styles and its semantic field variables establish
+the quiet filled-surface reference. The official Base UI Button, RadioGroup and
+Select contracts establish activation, radio keyboard behavior, anchor-hidden
+state and final focus. The repair consumes those public facts rather than adding
+a scroll listener, geometry engine or competing open/value state. Existing
+ZCode/ChatGPT/Arc research remains in the corresponding task sections. The six
+better domains are covered here: accessibility and layout have the findings
+above; colors/UI retain existing semantic and motion owners; EN/ZH 14/18 px
+typography and direct labels retain their scale and meaning. No decorative rail,
+new helper copy, palette or typeface is introduced.
+
+Actual Wails qualification uses the production shared controls, SettingsPage,
+workspace and installed settings/navigation commands with deterministic providers:
+
+- EN/light/14 px/Flame Orange: a real pending Submit blocks implicit Enter,
+  focused Enter/Space and repeated pointer clicks without incrementing the form
+  counter; completing pending allows one submission. Arrow keys move the radio
+  choice and Tab exits it. Boxed/bare/inline/well invalid text areas retain their
+  error mark alongside keyboard focus. Ordinary fields have transparent edges
+  and no shadows, using the existing neutral fill.
+- EN/light/14 px/contrast 25/Xuan: both size lists follow scrolling, Escape
+  returns to the correct trigger, and immediate Tab reaches the next control.
+  Settings search clears locally with Escape. A Composer draft survives entry,
+  search and return, continuing exactly as
+  `Keep the field review draft. Continue.`.
+- ZH/dark/18 px/custom `#ffe066`/contrast 100/Xuan/motion off: native Zoom In
+  establishes 200%, and the visible window resize reaches **560 × 364 CSS px**.
+  Both size menus follow a visible trigger, close when it leaves the clipped
+  panel and keep values `18` / Follow interface. Interface-size retirement keeps
+  panel scrollTop **933** before/after focus return; Code-size retirement keeps
+  **1041**. The focus destination is the visible Appearance tab panel. Returning
+  leaves the menu closed; reopening and Escape restore the normal trigger.
+- The first unobserved full-motion control found that Base UI retains its last
+  hidden-anchor sample with closed item content. Retiring that same sample again
+  could immediately close a reopened menu. The existing detached snapshot now
+  consumes each new hidden transition once; Base UI still owns every geometry
+  update. The final unobserved EN/light/14 px/`#FB6E30`/contrast 25/Xuan/200%
+  minimum-window scene passes repeated scroll-out, keyboard reopen, selected-item
+  focus, Escape and immediate Tab for both size fields. Search `font` clears with
+  Escape, Cmd+L returns to the Composer and the retained draft continues exactly
+  as `Keep the final field review draft. Continue.`. The clean control also
+  repeats pending form blocking, one accepted submission, radio navigation and
+  visible validation/focus coexistence. No diagnostic observation is emitted.
+
+Regression coverage includes real form submission and composed disabled key
+handlers, typed numeric radio choices, the exported field stylesheet, actual
+Base UI scroll/resize positioning and hidden-content retirement. Three added
+Select tests control only the public Positioner anchor-hidden fact; they expose
+the original failure and verify value, focus, scroll, later-focus and reopen
+contracts. Happy DOM has no layout: affected consumer/lifecycle tests now supply
+nonzero external geometry rather than changing production behavior or weakening
+assertions. An earlier UI run exposed four incomplete geometry fixtures, and
+the first Web continuation exposed 23 Select-consumer failures from zero-sized
+anchors/scrollports. A global geometry candidate interfered with existing reader
+geometry tests and was removed. The final opt-in measurement support is confined
+to actual Select consumer scenes and their explicit scrolling viewports; no
+production exception or assertion weakening remains. The focused Web
+continuation passes **8 files / 195 tests**. The renewed complete shared check
+passes **10 files / 157 tests** plus the independent packed-consumer test,
+including retained hidden-sample reopening. Final Web and Desktop gates are
+complete as scoped below.
+
+Final verification:
+
+- `npm run check --workspace @flame/ui`: **10 files / 157 tests**, type/lint/
+  format/build and the independent packed-consumer test pass. Diff review also
+  strengthens the parameterized custom-render/cancellation cases to exercise
+  pending independently from disabled; production inputs remain unchanged.
+- An earlier complete Web check passes **426 files / 4,002 tests** and every
+  later gate. After the retained-anchor follow-up, the final aggregate command
+  passes **425 frontend files / 3,953 tests**, then fails its Runtime suite's
+  **60-second beforeAll hook**, automatically skipping 49 cases. This remains a
+  failed aggregate run. The unchanged Runtime file passes **49/49** when run
+  alone in **62.05 seconds**; all **22** remaining Web check scripts subsequently
+  pass in their original order. No timeout or assertion is weakened. The setup
+  timeout's cause is unproven; revisit its preparation lifecycle when that
+  integration harness is next changed rather than attributing it to this UI
+  repair.
+- `make check-native` passes again with the final production source: shared
+  prerequisites, all twelve component entries, Web staging, native Go test/vet/
+  build and the supported Wails production build. Existing SDK-minimum and
+  duplicate-`-lobjc` warnings remain non-failing. No portable resource source or
+  published ESM bytes change.
+- The clean Wails control uses the final production components without either
+  observation script; the collector remains at **302** measured observations
+  before/after clean acceptance. All **5,916** non-Markdown inputs are preserved
+  through final checks, with the reviewed test-only adjustment recorded
+  explicitly. Native Go sources, dependencies and Runtime contracts are intact.
+
+Verdict: **Approve for the inspected shared controls and settings-return tasks**.
+The whole-product UI goal remains open.
+
+Cleanup is complete. All owned acceptance apps and checks have exited, the
+collector is closed and the exact private bundle is unregistered. Cleanup removes
+**8** new checkout output/cache roots, **2** unique bundle Library paths, **1**
+bundle temp directory and the newly prepared official Node archive; **2**
+pre-existing files are restored. All **11** output-presence baselines, five
+Library baselines, **5,916** final non-Markdown inputs and three Git reference
+heads/statuses pass preservation checks. The private root
+`flame-controls-1028-vGvl4z` is absent. The verified in-memory gzip retains **67**
+UTF-8 records and **608** private asset hashes, SHA-256
+`3a214ab06756801730d66c613f46c5d6c7c7c4a33cd89f5ab58401905cc0a660`.
+Dependencies, pre-existing caches, reference resources, user data and the primary
+checkout's parallel work remain preserved.
+
+Coverage is bounded to these concrete control and settings-return tasks. No
+browser suite, performance benchmark, Claude CLI, subagent, live model Send,
+VoiceOver, OS IME, other operating-system GUI or whole-product visual verdict is
+claimed. Continue the supplied Dock association/expansion and recorded-material
+task findings after this batch's verified publication and cleanup.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
-- Implementation handoffs follow current human steering, which forbids Claude Code CLI in this resumed run and requires local commits only. Earlier milestones' tool choices and publication rules do not override those instructions. The primary agent owns reference research, decisions, actual diff review, real Wails acceptance, verification, local commits and cleanup. A delegated completion report never replaces that acceptance.
+- Implementation follows current human steering: Claude Code CLI is prohibited, and the resumed goal requires verified batch commits and publication to main. Earlier milestone pauses and local-only receipts are historical. The primary agent owns research, decisions, diff review, actual Wails acceptance, verification, publication and cleanup. This run uses no subagents.
 - Apply relevant better-series skills and inspect the references in depth. Preserve StyleX, Base UI, semantic tokens and one fact/one owner. Runtime owns durable product semantics; layout work does not authorize rebuilding those state machines in the client.
 - Batch meaningful changes, then review their combined visual and interaction result. Prioritize development and actual native computer use. The user explicitly asked not to run visual/browser suites and to avoid meaningless tests; retain necessary regression coverage and module checks, and reuse valid results when source and dependencies have not changed.
 - A `plugins/*/component` change is not verified by `cd plugins && npm run check` alone: `apps/web/visual/*.test.tsx` imports several plugin sources directly (`../../../plugins/<name>/component/component`) and encodes their behavioural contracts (diff, schedules, memory, usage, …). Run `vitest run visual` (or the affected `visual/*.test.tsx`) for any dock plugin edit before committing; treat a broken contract as a signal to reconsider the change, not just to update the test.
@@ -17804,8 +17940,8 @@ beside a visible value.
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Commit explicit owned paths locally on `codex/ui-feedback-local-1026`, preserve unrelated working files and clean owned resources. Do not push or integrate UI work into the primary checkout while the local-only instruction applies. Update this file with the new product state and verification scope rather than starting another round log.
-- Keep user-facing replies in Chinese and repository content in English. Retain the approved visual direction and task model across pages. The user's latest feedback-document request resumes the 2026-10-26 milestone pause. Native acceptance, proportionate checks and cleanup remain required; local-only delivery supersedes earlier main/push requirements.
+- Commit explicit owned paths on `codex/ui-feedback-local-1026`, publish qualified batches to remote main and preserve the primary checkout's parallel work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
+- Keep user-facing replies in Chinese and repository content in English. Preserve the approved visual direction and task model. Continue evidence-backed UI batches until the user explicitly stops the resumed goal.
 
 ## Milestone closure (2026-10-23)
 

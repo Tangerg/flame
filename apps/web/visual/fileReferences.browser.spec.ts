@@ -161,8 +161,8 @@ test("inline references retain keyboard navigation to the recorded file and line
   });
   await reference.press("Enter");
   const view = page.locator('[data-dock-view-id="file"]');
-  await expect(view.getByRole("tab", { name: "Source", exact: true })).toHaveAttribute(
-    "aria-selected",
+  await expect(view.getByRole("radio", { name: "Source", exact: true })).toHaveAttribute(
+    "aria-checked",
     "true",
   );
   const source = view.locator('[data-quote-source="file"][data-quote-path="README.md"]');
@@ -196,7 +196,7 @@ for (const [fontSize, codeFontSize, theme] of [
     await page.locator("html[data-visual-ready]").waitFor();
     await page.getByRole("treeitem", { name: "reading-guide.md", exact: true }).click();
     const view = page.locator('[data-dock-view-id="file"]');
-    await view.getByRole("tab", { name: "Source", exact: true }).click();
+    await view.getByRole("radio", { name: "Source", exact: true }).click();
     const source = view.locator('[data-quote-source="file"]');
     await expect(source).toBeVisible();
     await page.evaluate(async (size) => {

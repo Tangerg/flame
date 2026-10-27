@@ -22,7 +22,7 @@ test("a log has a concise identity and preserves its complete multiline reading 
   }, body);
   const panel = page.getByRole("region", { name: "Client diagnostics", exact: true });
   await panel.getByRole("button", { name: "Refresh", exact: true }).click();
-  await panel.getByRole("tab", { name: /^Logs ·/ }).click();
+  await panel.getByRole("radio", { name: /^Logs ·/ }).click();
   const observations = panel.getByRole("region", { name: "Local observations", exact: true });
   const summary = observations.getByRole("button", { name: new RegExp(headline) });
   await expect(summary).toContainText(headline);

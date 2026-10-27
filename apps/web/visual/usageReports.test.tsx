@@ -1,8 +1,10 @@
 import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { mockSelectLayout, mockSelectViewport } from "@/test/selectLayout";
 let testClient: TestClient;
 prepareTestClient(() => {
+  mockSelectLayout();
   const owned = createTestClient();
   testClient = owned;
   finishTestClient(() => owned.dispose());
@@ -377,6 +379,7 @@ it("retires a pending report refresh on Back and returns to the same archive row
   const { reads, calls } = heldReads();
   const pane = screen.getByRole("region", { name: "Saved usage reports" }).parentElement!;
   pane.style.overflowY = "auto";
+  mockSelectViewport(pane);
   const opener = await screen.findByRole("button", { name: /^View report: Weekly report · / });
   fireEvent.click(screen.getByRole("combobox", { name: "Capture period" }));
   const option = await screen.findByRole("option", { name: "Weekly · last 7 days" });

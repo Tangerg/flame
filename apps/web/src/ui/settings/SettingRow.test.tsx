@@ -53,7 +53,7 @@ it.each([
   const field =
     kind === "slider"
       ? screen.getByRole("slider", { name: "Texture strength" })
-      : screen.getByRole("tab", { name: "Cotton paper" });
+      : screen.getByRole("radio", { name: "Cotton paper" });
   vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(525);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,

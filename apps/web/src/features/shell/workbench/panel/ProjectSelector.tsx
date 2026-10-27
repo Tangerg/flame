@@ -125,13 +125,13 @@ export function ComposerProjectTray() {
       <div data-slot="project-selector-tray" {...stylex.props(pl.tray)}>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
+            disabled={!actions.canCreateSessionInFolder}
             render={
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
                 press="none"
-                disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
                 className={stylex.props(vocab.min).className}
               >

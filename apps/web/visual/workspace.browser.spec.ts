@@ -401,9 +401,9 @@ test("portable Skills captures discovery, review and personal targets in one doc
 }) => {
   await openWorkspace(page, { state: "dock-skills" });
   const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
-  const catalog = view.getByRole("tablist", { name: "Catalog" });
+  const catalog = view.getByRole("radiogroup", { name: "Catalog" });
   await expect(view).toContainText("2 available Skills");
-  await catalog.getByRole("tab", { name: "Skill proposals", exact: true }).click();
+  await catalog.getByRole("radio", { name: "Skill proposals", exact: true }).click();
   await expect(view).toContainText("2 pending proposals");
   const proposal = view.getByRole("button", {
     name: "risk-first-review Proposal Proposed review instructions.",
@@ -420,10 +420,10 @@ test("portable Skills captures discovery, review and personal targets in one doc
   await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(confirmation).toHaveCount(0);
   await expect(view).toContainText("2 pending proposals");
-  await catalog.getByRole("tab", { name: "Personal Skill library", exact: true }).click();
+  await catalog.getByRole("radio", { name: "Personal Skill library", exact: true }).click();
   await expect(view).toContainText("2 user-managed Skills");
   await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:skills");
-  await catalog.getByRole("tab", { name: "Available Skills", exact: true }).click();
+  await catalog.getByRole("radio", { name: "Available Skills", exact: true }).click();
   await expect(view).toContainText("2 available Skills");
 });
 
@@ -433,8 +433,8 @@ for (const theme of ["light", "dark"] as const) {
       await openWorkspace(page, { state: "dock-skills", theme });
       const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
       await view
-        .getByRole("tablist", { name: "Catalog" })
-        .getByRole("tab", {
+        .getByRole("radiogroup", { name: "Catalog" })
+        .getByRole("radio", {
           name: section === "Review" ? "Skill proposals" : "Personal Skill library",
           exact: true,
         })

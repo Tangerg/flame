@@ -30,10 +30,18 @@ explicit dependencies. Tests construct independent instances in `test/renderClie
 and visual fixtures compose them in `visual/client.tsx`. No default feature-instance
 registry or module-global port installer is part of the product API.
 
+Shared text, search and selection fields use the same quiet sunken fill,
+transparent resting edge and independent keyboard focus perimeter. The theme
+visual style owns these values; modules do not remove borders locally. Validation
+and system high-contrast edges retain their shared owners.
+
 Appearance settings use section headings and direct label/control rows. Existing
 control labels, selected values and error feedback carry the task; the page does
 not repeat explanatory introductions or one-line descriptions. Section headings
 remain settings search terms through their existing catalog keys.
+Each active settings tab panel owns its scroll viewport and keyboard focus.
+Shared Select closes when Base UI reports its trigger fully clipped; dismissal
+keeps the current value and viewport position, then returns focus to that panel.
 
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows

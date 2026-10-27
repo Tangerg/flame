@@ -178,9 +178,9 @@ for (const theme of THEMES) {
     await expect(pendingText).toHaveAttribute("aria-disabled", "true");
     await expectStableHover(page, pendingText);
 
-    const tabs = controls.getByRole("tablist", { name: "Unavailable diagnostics", exact: true });
+    const tabs = controls.getByRole("radiogroup", { name: "Unavailable diagnostics", exact: true });
     for (const label of ["Trace", "Metrics"]) {
-      const tab = tabs.getByRole("tab", { name: label, exact: true });
+      const tab = tabs.getByRole("radio", { name: label, exact: true });
       await expect(tab).toBeDisabled();
       await expectStableHover(page, tab);
     }
@@ -190,7 +190,7 @@ for (const theme of THEMES) {
 
     const enabled = [
       page.locator('[data-atom="text-button"]').getByRole("button", { name: "Muted", exact: true }),
-      page.getByRole("tablist", { name: "Diagnostics", exact: true }).getByRole("tab", {
+      page.getByRole("radiogroup", { name: "Diagnostics", exact: true }).getByRole("radio", {
         name: "Metrics",
         exact: true,
       }),
@@ -285,9 +285,9 @@ for (const theme of THEMES) {
 
   test(`hover keeps the selected segment's fill in ${theme}`, async ({ page }) => {
     await openGallery(page, theme);
-    const chip = '[data-atom="segmented"] [role="tab"][data-active]';
+    const chip = '[data-atom="segmented"] [role="radio"][data-checked]';
     const resting = await paint(page, chip, "background-color");
-    const selected = page.locator('[data-atom="segmented"] [role="tab"][data-active]');
+    const selected = page.locator('[data-atom="segmented"] [role="radio"][data-checked]');
     await selected.hover();
     await expect.poll(() => selected.evaluate((node) => node.matches(":hover"))).toBe(true);
     expect(await paint(page, chip, "background-color")).toBe(resting);

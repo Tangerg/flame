@@ -80,11 +80,11 @@ test("layout tokens change page gutters, form padding and field groups together"
 test("segments slide continuously and reverse from their painted position", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await open(page, "fixture=atoms&theme=light&motion=full");
-  const tabs = page.getByRole("tablist", { name: "Diagnostics", exact: true });
+  const tabs = page.getByRole("radiogroup", { name: "Diagnostics", exact: true });
   await tabs.scrollIntoViewIfNeeded();
-  const trace = tabs.getByRole("tab", { name: "Trace", exact: true });
-  const metrics = tabs.getByRole("tab", { name: "Metrics", exact: true });
-  const logs = tabs.getByRole("tab", { name: "Logs", exact: true });
+  const trace = tabs.getByRole("radio", { name: "Trace", exact: true });
+  const metrics = tabs.getByRole("radio", { name: "Metrics", exact: true });
+  const logs = tabs.getByRole("radio", { name: "Logs", exact: true });
   const from = (await trace.boundingBox())!.x;
   const to = (await metrics.boundingBox())!.x;
   await metrics.click();
@@ -104,7 +104,7 @@ test("segments slide continuously and reverse from their painted position", asyn
     "an interrupted movement must continue from its current position",
   ).toBe(true);
   expect(Math.abs(reversed.at(-1)! - from)).toBeLessThan(1);
-  await expect(trace).toHaveAttribute("aria-selected", "true");
+  await expect(trace).toHaveAttribute("aria-checked", "true");
   await expect(tabs.locator('[data-slot="item-highlight"]')).toHaveCount(1);
 });
 
@@ -128,12 +128,12 @@ test("reduced motion keeps selection accurate without a sliding transform", asyn
   await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page, "fixture=atoms&theme=dark&motion=full");
   const metrics = page
-    .getByRole("tablist", { name: "Diagnostics", exact: true })
-    .getByRole("tab", { name: "Metrics", exact: true });
+    .getByRole("radiogroup", { name: "Diagnostics", exact: true })
+    .getByRole("radio", { name: "Metrics", exact: true });
   await metrics.click();
   const indicator = metrics.locator('[data-slot="item-highlight"]');
   const reading = indicator.evaluate(async (element) => {
-    const tab = element.closest('[role="tab"]')!;
+    const tab = element.closest('[role="radio"]')!;
     const frames: { offset: number; transform: string }[] = [];
     const start = performance.now();
     while (performance.now() - start < 420) {

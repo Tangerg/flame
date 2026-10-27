@@ -12,6 +12,21 @@ import { ContentVisibility, ModalDialog, Select } from "../dist/index.js";
 type FinalFocus = ComponentProps<typeof ModalDialog>["finalFocus"];
 
 beforeEach(() => {
+  // Base UI's clipping signal needs visible anchor geometry in layout-free Happy DOM.
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      if (this.closest("[hidden]")) return new DOMRect();
+      return this === document.documentElement || this === document.body
+        ? new DOMRect(0, 0, 1024, 768)
+        : new DOMRect(20, 20, 160, 32);
+    },
+  );
+  vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(
+    1024,
+  );
+  vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
+    768,
+  );
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(
     function (this: HTMLElement) {
       return (this.closest("[hidden]") ? [] : [{}]) as unknown as DOMRectList;

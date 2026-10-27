@@ -874,6 +874,50 @@ describe("modal form ownership", () => {
   });
 });
 describe("shared controls", () => {
+  it("keeps numeric single choices controlled and keyboard selectable", async () => {
+    const submit = vi.fn((event: FormEvent<HTMLFormElement>) =>
+      event.preventDefault(),
+    );
+    const change = vi.fn();
+    function Choices() {
+      const [value, setValue] = useState(1);
+      return (
+        <form onSubmit={submit}>
+          <Segmented
+            value={value}
+            ariaLabel="Spacing"
+            options={[
+              { value: 1, label: "Compact" },
+              { value: 2, label: "Comfortable" },
+            ]}
+            onChange={(next) => {
+              change(next);
+              setValue(next);
+            }}
+          />
+        </form>
+      );
+    }
+    render(<Choices />);
+    const group = screen.getByRole("radiogroup", { name: "Spacing" });
+    const compact = within(group).getByRole("radio", {
+      name: "Compact",
+      checked: true,
+    });
+    const comfortable = within(group).getByRole("radio", {
+      name: "Comfortable",
+      checked: false,
+    });
+    act(() => compact.focus());
+    fireEvent.keyDown(compact, { key: "ArrowRight" });
+    await waitFor(() =>
+      expect(comfortable.getAttribute("aria-checked")).toBe("true"),
+    );
+    expect(document.activeElement).toBe(comfortable);
+    expect(change).toHaveBeenLastCalledWith(2);
+    fireEvent.click(comfortable);
+    expect(submit).not.toHaveBeenCalled();
+  });
   it("labels composite form controls without replacing their option names", () => {
     render(
       <FormGroup label="Transport">
@@ -889,11 +933,11 @@ describe("shared controls", () => {
       </FormGroup>,
     );
     const group = screen.getByRole("group", { name: "Transport" });
-    expect(group.contains(screen.getByRole("tab", { name: "stdio" }))).toBe(
+    expect(group.contains(screen.getByRole("radio", { name: "stdio" }))).toBe(
       true,
     );
     expect(
-      group.contains(screen.getByRole("tab", { name: "Streamable HTTP" })),
+      group.contains(screen.getByRole("radio", { name: "Streamable HTTP" })),
     ).toBe(true);
   });
   it("distinguishes an unselected control from a selected empty-string option", () => {
@@ -1014,16 +1058,34 @@ describe("shared controls", () => {
   });
   it("keeps pending buttons keyboard focusable and blocks submission", () => {
     const click = vi.fn();
-    render(
-      <Button pending onClick={click}>
-        Save
-      </Button>,
+    const submit = vi.fn((event: FormEvent<HTMLFormElement>) =>
+      event.preventDefault(),
+    );
+    const view = render(
+      <form onSubmit={submit}>
+        <Button type="submit" pending onClick={click}>
+          Save
+        </Button>
+      </form>,
     );
     const button = screen.getByRole("button", { name: "Save" });
+    button.focus();
     fireEvent.click(button);
     expect(click).not.toHaveBeenCalled();
+    expect(submit).not.toHaveBeenCalled();
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect(button.getAttribute("disabled")).toBeNull();
+    expect(document.activeElement).toBe(button);
+    view.rerender(
+      <form onSubmit={submit}>
+        <Button type="submit" onClick={click}>
+          Save
+        </Button>
+      </form>,
+    );
+    fireEvent.click(button);
+    expect(click).toHaveBeenCalledOnce();
+    expect(submit).toHaveBeenCalledOnce();
   });
   it("uses one StyleX merge for control overrides", () => {
     render(<Button styles={vocab.negative}>Delete</Button>);

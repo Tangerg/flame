@@ -13,7 +13,7 @@ for (const [decision, width, theme] of [
     );
     await page.locator("html[data-visual-ready]").waitFor();
     const panel = page.getByRole("region", { name: "Skills", exact: true });
-    await panel.getByRole("tab", { name: "Skill proposals", exact: true }).click();
+    await panel.getByRole("radio", { name: "Skill proposals", exact: true }).click();
     const search = panel.getByRole("searchbox", { name: "Search this catalog", exact: true });
     await expect(panel).toContainText("2 pending proposals");
 

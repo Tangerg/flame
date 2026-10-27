@@ -150,7 +150,7 @@ function expectHeldFields(names: readonly string[], held: boolean) {
   );
 }
 
-function expectDisabledControls(names: readonly string[], role: "switch" | "tab", held: boolean) {
+function expectDisabledControls(names: readonly string[], role: "switch" | "radio", held: boolean) {
   const controls = names.map((name) => ({
     name,
     disabled: screen.getByRole(role, { name }).hasAttribute("data-disabled"),
@@ -235,7 +235,7 @@ describe("MCP server test feedback", () => {
     expect(field("Description").placeholder).toBe("");
     expect(screen.queryByText(/Saving starts a background connection/)).toBeNull();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Streamable HTTP" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Streamable HTTP" }));
     expect(field("Server URL").required).toBe(true);
     expect(screen.queryByRole("textbox", { name: "Command" })).toBeNull();
   });
@@ -260,7 +260,7 @@ describe("MCP server test feedback", () => {
       "Environment — KEY=value, one per line",
       "Working directory",
     ]);
-    fireEvent.click(screen.getByRole("tab", { name: "Streamable HTTP" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Streamable HTTP" }));
     expectLiteral([
       "Server name",
       "Server URL",
@@ -500,7 +500,7 @@ describe("MCP server form while a mutation is pending", () => {
     expectHeldFields(textFields, true);
     expect((screen.getByRole("spinbutton") as HTMLInputElement).readOnly).toBe(true);
     expectDisabledControls(switches, "switch", true);
-    expectDisabledControls(tabs, "tab", true);
+    expectDisabledControls(tabs, "radio", true);
     const trigger = screen.getByRole<HTMLButtonElement>("button", { name: "Test" });
     expect(trigger.disabled).toBe(false);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
@@ -521,7 +521,7 @@ describe("MCP server form while a mutation is pending", () => {
     expectHeldFields(textFields, false);
     expect((screen.getByRole("spinbutton") as HTMLInputElement).readOnly).toBe(false);
     expectDisabledControls(switches, "switch", false);
-    expectDisabledControls(tabs, "tab", false);
+    expectDisabledControls(tabs, "radio", false);
     expect(field("Server URL").value).toBe("https://tools.example/v2");
     expect(field("Description").value).toBe("Team tools");
     expect(
@@ -558,7 +558,7 @@ describe("MCP server form while a mutation is pending", () => {
     expect(status.textContent).toBe("");
     expectHeldFields(textFields, true);
     expectDisabledControls(["Remove stored environment"], "switch", true);
-    expectDisabledControls(["stdio", "Streamable HTTP"], "tab", true);
+    expectDisabledControls(["stdio", "Streamable HTTP"], "radio", true);
     const trigger = screen.getByRole<HTMLButtonElement>("button", { name: "Test" });
     expect(trigger.disabled).toBe(false);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
@@ -575,7 +575,7 @@ describe("MCP server form while a mutation is pending", () => {
     );
     expectHeldFields(textFields, false);
     expectDisabledControls(["Remove stored environment"], "switch", false);
-    expectDisabledControls(["stdio", "Streamable HTTP"], "tab", false);
+    expectDisabledControls(["stdio", "Streamable HTTP"], "radio", false);
     expect(field("Description").value).toBe("Local files");
     expect(servers()).toEqual([stdioServer]);
     expect(document.activeElement).toBe(destroy);

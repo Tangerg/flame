@@ -7,14 +7,14 @@ async function open(page: Page, theme: string, fixture: string) {
 
 async function chooseCorners(page: Page, theme: string, choice: string, reload = false) {
   await open(page, theme, "fixture=workspace&state=settings&pane=appearance");
-  const corners = page.getByRole("tablist", { name: "Corner radius", exact: true });
-  const tab = corners.getByRole("tab", { name: choice, exact: true });
+  const corners = page.getByRole("radiogroup", { name: "Corner radius", exact: true });
+  const tab = corners.getByRole("radio", { name: choice, exact: true });
   await tab.click();
-  await expect(tab).toHaveAttribute("aria-selected", "true");
+  await expect(tab).toHaveAttribute("aria-checked", "true");
   if (reload) {
     await page.reload();
     await page.locator("html[data-visual-ready]").waitFor();
-    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await expect(tab).toHaveAttribute("aria-checked", "true");
   }
 }
 
@@ -70,7 +70,7 @@ for (const theme of ["light", "dark"]) {
         chip: await shape(chip),
         field: await shape(page.getByRole("textbox", { name: "Empty", exact: true })),
         segmented: await shape(segmented),
-        segment: await shape(segmented.getByRole("tab", { name: "Trace", exact: true })),
+        segment: await shape(segmented.getByRole("radio", { name: "Trace", exact: true })),
       };
       expect(current.icon.width).toBe(24);
       expect(current.icon.height).toBe(24);

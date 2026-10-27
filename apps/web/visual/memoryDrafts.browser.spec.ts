@@ -30,7 +30,7 @@ for (const theme of ["light", "dark"]) {
       await expect(content).toBeFocused();
       await content.fill("Keep this unsaved memory draft.\n\nPreserve these authored lines.");
       await expect(edit).toBeDisabled();
-      await expect(panel.getByRole("tab", { name: "User", exact: true })).toBeDisabled();
+      await expect(panel.getByRole("radio", { name: "User", exact: true })).toBeDisabled();
       await expect(panel.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
       const actions = record.getByRole("button", { name: /^More actions for / });
       await actions.click();
@@ -74,7 +74,7 @@ for (const theme of ["light", "dark"]) {
       await expect(cancel).toBeFocused();
       await expect(add).toBeDisabled();
       await expect(edit).toBeDisabled();
-      await expect(panel.getByRole("tab", { name: "User", exact: true })).toBeDisabled();
+      await expect(panel.getByRole("radio", { name: "User", exact: true })).toBeDisabled();
       expect(await confirmation.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
       await cancel.click();
       await expect(confirmation).toHaveCount(0);

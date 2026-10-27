@@ -1,7 +1,9 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { mockSelectLayout, mockSelectViewport } from "@/test/selectLayout";
 let testClient: TestClient;
 prepareTestClient(() => {
+  mockSelectLayout();
   const owned = createTestClient();
   testClient = owned;
   finishTestClient(() => owned.dispose());
@@ -55,6 +57,7 @@ async function mountSchedules() {
       <Schedules context={context} />
     </div>,
   );
+  mockSelectViewport(screen.getByTestId("viewport"));
   await screen.findByRole("heading", { name: VISUAL_SCHEDULES_PAGE.Rows[0]!.Title });
   await waitFor(() => expect(screen.queryByText("Reading schedules…")).toBeNull());
   return { call, runtime };

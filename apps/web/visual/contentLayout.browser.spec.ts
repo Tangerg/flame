@@ -262,7 +262,7 @@ for (const theme of ["light", "dark"]) {
     await page.locator("html[data-visual-ready]").waitFor();
     await page.getByRole("treeitem", { name: "README.md", exact: true }).click();
     const view = page.locator('[data-dock-view-id="file"]');
-    await expect(view.getByRole("tab", { name: "Preview", exact: true })).toBeVisible();
+    await expect(view.getByRole("radio", { name: "Preview", exact: true })).toBeVisible();
     const resizer = page.locator(".agent-pane-resizer");
     await resizer.focus();
     await resizer.press("Home");
@@ -287,12 +287,12 @@ for (const theme of ["light", "dark"]) {
         .map((node) => node.getAttribute("aria-label") ?? node.textContent),
     );
     expect(escaped).toEqual([]);
-    await view.getByRole("tab", { name: "Source", exact: true }).click();
-    await expect(view.getByRole("tab", { name: "Source", exact: true })).toHaveAttribute(
-      "aria-selected",
+    await view.getByRole("radio", { name: "Source", exact: true }).click();
+    await expect(view.getByRole("radio", { name: "Source", exact: true })).toHaveAttribute(
+      "aria-checked",
       "true",
     );
-    await view.getByRole("tab", { name: "Preview", exact: true }).click();
+    await view.getByRole("radio", { name: "Preview", exact: true }).click();
     await expect(view.locator('[data-slot="document-body"]')).toContainText("Workspace notes");
   });
 

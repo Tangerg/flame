@@ -26,10 +26,10 @@ test("file image references keep encoded payloads in Source and out of the readi
   expect(await reading.evaluate((node) => node.scrollWidth - node.clientWidth)).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 
-  await view.getByRole("tab", { name: "Source", exact: true }).click();
+  await view.getByRole("radio", { name: "Source", exact: true }).click();
   const payload = LONG_RESPONSE_MARKDOWN.match(/data:image\/svg\+xml;base64,[^)]+/)![0];
   await expect(view.locator('[data-quote-source="file"]')).toContainText(payload);
-  await view.getByRole("tab", { name: "Preview", exact: true }).click();
+  await view.getByRole("radio", { name: "Preview", exact: true }).click();
   await expect(reading.getByText("Embedded image data", { exact: true })).toHaveCount(2);
   expect(remoteRequests).toEqual([]);
 });

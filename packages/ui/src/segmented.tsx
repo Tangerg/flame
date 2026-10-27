@@ -11,7 +11,8 @@ import {
   type as typeStep,
   weight,
 } from "./tokens.stylex";
-import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import { Radio } from "@base-ui/react/radio";
+import { RadioGroup } from "@base-ui/react/radio-group";
 
 export interface SegmentedOption<T> {
   value: T;
@@ -31,8 +32,7 @@ const styles = stylex.create({
     backgroundColor: surface.hover,
     boxShadow: "var(--shadow-well)",
   },
-  list: { display: "contents" },
-  tab: {
+  option: {
     position: "relative",
     isolation: "isolate",
     minHeight: "max(var(--control-height-xs), var(--control-target-min))",
@@ -50,7 +50,7 @@ const styles = stylex.create({
       ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
         "@media (hover: hover)": color.fg,
       },
-      ":is([data-active])": color.fg,
+      ":is([data-checked])": color.fg,
     },
     opacity: {
       default: null,
@@ -79,35 +79,32 @@ export function Segmented<T extends string | number>({
   const chipId = useId();
   const root = stylex.props(styles.root);
   return (
-    <TabsPrimitive.Root
+    <RadioGroup
       data-slot="segmented"
-      value={String(value)}
+      aria-label={ariaLabel}
+      value={value}
+      disabled={disabled}
       onValueChange={(v) => {
-        const opt = options.find((o) => String(o.value) === v);
+        const opt = options.find((o) => o.value === v);
         if (opt) onChange(opt.value);
       }}
       {...root}
       className={cn(root.className, className)}
     >
-      <TabsPrimitive.List
-        aria-label={ariaLabel}
-        {...stylex.props(styles.list)}
-        activateOnFocus
-      >
-        {options.map((opt) => (
-          <TabsPrimitive.Tab
-            key={String(opt.value)}
-            value={String(opt.value)}
-            disabled={disabled}
-            {...stylex.props(styles.tab, typeStep.uiMd)}
-          >
-            {String(opt.value) === String(value) && (
-              <ItemHighlight layoutId={chipId} variant="segment" />
-            )}
-            <span {...stylex.props(styles.label)}>{opt.label}</span>
-          </TabsPrimitive.Tab>
-        ))}
-      </TabsPrimitive.List>
-    </TabsPrimitive.Root>
+      {options.map((opt) => (
+        <Radio.Root
+          key={String(opt.value)}
+          value={opt.value}
+          nativeButton
+          render={<button type="button" />}
+          {...stylex.props(styles.option, typeStep.uiMd)}
+        >
+          {opt.value === value && (
+            <ItemHighlight layoutId={chipId} variant="segment" />
+          )}
+          <span {...stylex.props(styles.label)}>{opt.label}</span>
+        </Radio.Root>
+      ))}
+    </RadioGroup>
   );
 }

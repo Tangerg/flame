@@ -21,6 +21,8 @@ it("keeps an open selection anchored when its scroll viewport moves the trigger"
       if (this.getAttribute("role") === "combobox") {
         return new DOMRect(100, triggerTop, 160, 32);
       }
+      if (this.dataset.testid === "viewport")
+        return new DOMRect(0, 0, 1024, 400);
       if (this === document.documentElement)
         return new DOMRect(0, 0, 1024, 768);
       return originalRect.call(this);
@@ -46,6 +48,10 @@ it("keeps an open selection anchored when its scroll viewport moves the trigger"
       />
     </div>,
   );
+  Object.defineProperties(view.getByTestId("viewport"), {
+    clientHeight: { configurable: true, value: 400 },
+    clientWidth: { configurable: true, value: 1024 },
+  });
   const trigger = screen.getByRole("combobox");
   act(() => trigger.focus());
   fireEvent.click(trigger);

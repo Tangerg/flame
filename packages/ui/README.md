@@ -26,6 +26,9 @@ Focusable disabled buttons retain their focus and disabled semantics. Base UI
 still blocks activation and submission; unrelated keys remain available to parent
 navigation and native commands. The shared render boundary preserves that policy
 for native buttons and custom renderers without a command-specific override.
+Pending buttons enter that same focusable-disabled activation boundary, including
+native form submission. Non-activation keys also reach composed trigger handlers,
+so Escape closes a tooltip before an enclosing reader handles another Escape.
 
 Filled primary buttons, selected checkboxes and switches keep their focus
 perimeter on the surrounding surface. Their `data-focus-outset` marker takes
@@ -170,6 +173,14 @@ sizes and portable filters use this same positioning contract. The popup keeps
 the shared entry motion but closes without an exit transition: Base UI holds
 its focus manager until the popup unmounts, so an animated exit delays focus
 return and a quick Tab after Escape would leave focus on the document.
+When Base UI reports the trigger fully clipped, the Select retires its own root
+without choosing a value. It returns focus to the nearest focusable scrolling
+owner without moving that viewport, and preserves any later outside focus.
+Revealing the trigger again leaves the menu closed. Geometry remains with Base
+UI; the component does not maintain a second positioning or scroll listener.
+Base UI retains closed item content and its last anchor sample. The component
+consumes a hidden transition once, allowing a reopened menu to receive its next
+measurement before dismissing again.
 `FLOATING_PANEL` and `FLOATING_TIP` apply the theme's backdrop filter directly to
 the surface. Keeping the filter on a negative-layer pseudo-element inside a
 scrolling popup can leave its options unpainted in WKWebView at native page zoom.
@@ -196,8 +207,12 @@ inset. Filtering retains the column geometry, so a lone result keeps the
 catalog's card width; narrow containers retain complete, wrapping identities.
 `Stats` groups metrics in one shared card with a single inset and compact,
 content-driven columns that wrap with the available width;
-`MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns the controlled catalog selector in
-Desktop and portable views. `Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
+`MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns controlled single-value selection in
+Desktop and portable views. Settings, catalog/scope filters and document display
+modes use Base UI RadioGroup/Radio semantics, preserving typed values, one roving
+tab stop and arrow-key selection. Actual workspace and Settings panels keep their
+separate Tabs owners and panel lifetimes.
+`Form`, `RecordForm`, `FormSection`, `FormRow`, `FormField` and `FormGroup` provide responsive form grouping and visible
 native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
 `CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
@@ -400,6 +415,14 @@ available height from the same inset that positions them, preserving the compact
 bottom gutter. Search overlays keep the query row fixed while their results scroll.
 
 ## Shared visual ownership
+
+Fields share a quiet filled surface without a resting outline. The host supplies
+`--field-background`, `--field-border` and `--field-shadow`; the default host
+uses its sunken plane, a transparent edge and no shadow. Shared keyboard focus
+remains independent from validation. Search outlines its existing composite root;
+its inner text field keeps the chrome exception. Unboxed invalid fields retain
+an inset validation mark beside the focus perimeter. Forced colors restore a
+system-colored field edge.
 
 The host visual-style contribution owns colors, shape, layout, and timing tokens.
 `FIELD_SURFACE`, `MENU_SURFACE`, `CARD_SURFACE`, and `CHOICE_SURFACE` own their

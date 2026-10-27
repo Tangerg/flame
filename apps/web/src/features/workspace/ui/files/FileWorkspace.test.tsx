@@ -514,7 +514,7 @@ describe("workspace files panel", () => {
       expect(host.scrollTop).toBe(0);
 
       host.scrollTop = 753;
-      fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+      fireEvent.click(screen.getByRole("radio", { name: "Source" }));
       expect(screen.queryByTestId("rendered-markdown")).toBeNull();
       expect(host.scrollTop).toBe(753);
 
@@ -538,12 +538,12 @@ describe("workspace files panel", () => {
 
     expect((await screen.findByTestId("rendered-markdown")).textContent).toBe("# Title");
     expect(document.activeElement).toBe(caller);
-    const source = screen.getByRole("tab", { name: "Source" });
+    const source = screen.getByRole("radio", { name: "Source" });
     act(() => source.focus());
     fireEvent.click(source);
     expect(await screen.findByText("# Title")).toBeTruthy();
     expect(document.activeElement).toBe(source);
-    const preview = screen.getByRole("tab", { name: "Preview" });
+    const preview = screen.getByRole("radio", { name: "Preview" });
     act(() => preview.focus());
     fireEvent.click(preview);
     await screen.findByTestId("rendered-markdown");
@@ -902,7 +902,7 @@ describe("file preview path identity", () => {
 
     const rendered = await screen.findByTestId("rendered-markdown");
     expect(precedes(shownPath(path).shown, rendered)).toBe(true);
-    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Source" }));
     expect(
       precedes(shownPath(path).shown, document.querySelector('[data-quote-source="file"]')!),
     ).toBe(true);
@@ -1465,14 +1465,14 @@ describe("file source selection", () => {
     expect(clipboard(host).native).toBe(true);
     expect(clipboard(host).setData).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Source" }));
     expect(fireEvent.keyDown(host, { key: "a", metaKey: true })).toBe(false);
     expectSourceRange(sourceView());
     expect(clipboard(host).setData.mock.calls).toEqual([
       ["text/plain", "# Guide\n\nA  paragraph\n"],
     ]);
 
-    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Preview" }));
     await screen.findByTestId("rendered-markdown");
     await resetKernelForTest();
     expect(screen.queryByTestId("rendered-markdown")).toBeNull();
@@ -1541,7 +1541,7 @@ describe("file read refresh continuity", () => {
       </>,
     );
     await screen.findByTestId("rendered-markdown");
-    fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Source" }));
     const host = controlGeometry(screen.getByRole("region", { name: guide }));
     const view = sourceView();
     expect(view.textContent).toContain("Accepted line");
@@ -1563,7 +1563,7 @@ describe("file read refresh continuity", () => {
     expect(screen.getByRole("region", { name: guide })).toBe(host);
     expect(sourceView()).toBe(view);
     expect(view.textContent).toContain("Accepted line");
-    expect(screen.getByRole("tab", { name: "Source", selected: true })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Source", checked: true })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to files" })).toBe(back);
     expect(screen.getByRole("button", { name: "Go to line" })).toBeTruthy();
     expect(document.activeElement).toBe(host);
@@ -1608,7 +1608,7 @@ describe("file read refresh continuity", () => {
     expect(screen.queryByRole("status")).toBeNull();
     expect(view.textContent).toContain("Updated line");
     expect(view.textContent).not.toContain("Accepted line");
-    expect(screen.getByRole("tab", { name: "Source", selected: true })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Source", checked: true })).toBeTruthy();
     expect(draft.value).toBe("Retained message draft, continued");
     expect(readFile.mock.calls).toEqual(
       Array.from({ length: 4 }, () => [{ cwd: undefined, path: guide }]),
@@ -1649,7 +1649,7 @@ describe("file read refresh continuity", () => {
       expect(screen.getByRole("region", { name: path })).toBe(host);
       expect(shown()).toBe(node);
       expect(node.textContent).toBe(text);
-      expect(screen.queryByRole("tab", { selected: true })?.textContent).toBe(mode);
+      expect(screen.queryByRole("radio", { checked: true })?.textContent).toBe(mode);
 
       readFile.mockResolvedValueOnce({ content: updated, startLine: 1, totalLines: 1 });
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -1657,7 +1657,7 @@ describe("file read refresh continuity", () => {
       expect(shown()).toBe(node);
       expect(screen.getByRole("region", { name: path })).toBe(host);
       expect(screen.queryByText("Couldn't refresh file")).toBeNull();
-      expect(screen.queryByRole("tab", { selected: true })?.textContent).toBe(mode);
+      expect(screen.queryByRole("radio", { checked: true })?.textContent).toBe(mode);
     },
   );
 
@@ -1695,7 +1695,7 @@ describe("file read refresh continuity", () => {
       mount(<FileWorkspace />);
       await screen.findByText("cached pixels");
       expect(screen.getByText("1 line")).toBeTruthy();
-      if (hasMode) fireEvent.click(screen.getByRole("tab", { name: "Source" }));
+      if (hasMode) fireEvent.click(screen.getByRole("radio", { name: "Source" }));
       readFile.mockRejectedValueOnce(
         new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
       );
@@ -1707,8 +1707,8 @@ describe("file read refresh continuity", () => {
       expect(screen.queryByText("cached pixels")).toBeNull();
       expect(screen.queryByText("Couldn't refresh file")).toBeNull();
       expect(screen.queryByRole("button", { name: "Go to line" })).toBeNull();
-      expect(screen.queryByRole("tab", { name: "Source" })).toBeNull();
-      expect(screen.queryByRole("tab", { name: "Preview" })).toBeNull();
+      expect(screen.queryByRole("radio", { name: "Source" })).toBeNull();
+      expect(screen.queryByRole("radio", { name: "Preview" })).toBeNull();
       expect(screen.queryByText(/^\d+ lines?$/)).toBeNull();
     },
   );

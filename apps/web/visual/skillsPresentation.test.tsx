@@ -191,7 +191,7 @@ it("opens a named document directly from its filtered catalog row and returns to
   expect(document.activeElement).toBe(screen.getByRole("heading", { name: "runtime-boundaries" }));
   expect(viewport.scrollTop).toBe(0);
   expect(screen.queryByRole("searchbox")).toBeNull();
-  expect(screen.queryByRole("tablist", { name: "Catalog" })).toBeNull();
+  expect(screen.queryByRole("radiogroup", { name: "Catalog" })).toBeNull();
   expect(screen.queryByRole("region", { name: "Available Skills" })).toBeNull();
   await waitFor(() =>
     expect(instructions("runtime-boundaries")?.textContent).toBe(RUNTIME_BOUNDARIES.instructions),
@@ -476,7 +476,7 @@ it("lets a canonical catalog read remove the opener while its document stays rea
 it("distinguishes an unreadable catalog from a successfully empty one", async () => {
   const { runtime } = await mountSkills();
   vi.spyOn(runtime.skills, "listLibrary").mockRejectedValueOnce(new Error("library offline"));
-  fireEvent.click(screen.getByRole("tab", { name: "Personal Skill library" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Personal Skill library" }));
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Could not read personal skill library: library offline",
   );
@@ -512,7 +512,7 @@ it("returns focus to search when a canonical read removes the focused navigation
 
 it("cancels the inspected proposal before Escape reaches the surrounding page", async () => {
   const { outsideEscape } = await mountSkills();
-  fireEvent.click(screen.getByRole("tab", { name: "Skill proposals" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
   await screen.findByText("2 pending proposals");
   const approve = screen.getAllByRole<HTMLElement>("button", { name: "Approve" })[0]!;
   approve.focus();
@@ -540,7 +540,7 @@ it("keeps an unconfirmed proposal command and its original identity across catal
     return sendRequest(request, signal, options);
   });
   const approve = vi.spyOn(workspace.skills, "approveProposal");
-  fireEvent.click(screen.getByRole("tab", { name: "Skill proposals" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Skill proposals" }));
   await screen.findByText("2 pending proposals");
   fireEvent.click(screen.getAllByRole("button", { name: "Approve" })[0]!);
   fireEvent.click(screen.getByRole("button", { name: "Confirm approve" }));
@@ -551,9 +551,9 @@ it("keeps an unconfirmed proposal command and its original identity across catal
     revision: proposal.revision,
   });
   const original = approve.mock.results[0]!.value as MutationPromise<void>;
-  const available = screen.getByRole("tab", { name: "Available Skills" });
+  const available = screen.getByRole("radio", { name: "Available Skills" });
   fireEvent.click(available);
-  expect(screen.getByRole("tab", { name: "Skill proposals" }).getAttribute("aria-selected")).toBe(
+  expect(screen.getByRole("radio", { name: "Skill proposals" }).getAttribute("aria-checked")).toBe(
     "true",
   );
   await act(async () => acknowledgement.resolve());
@@ -563,7 +563,7 @@ it("keeps an unconfirmed proposal command and its original identity across catal
   expect(refresh.matches(":disabled")).toBe(true);
   expect(refresh.hasAttribute("aria-disabled")).toBe(false);
   fireEvent.click(available);
-  expect(screen.getByRole("tab", { name: "Skill proposals" }).getAttribute("aria-selected")).toBe(
+  expect(screen.getByRole("radio", { name: "Skill proposals" }).getAttribute("aria-checked")).toBe(
     "true",
   );
   expect(screen.queryByRole("region", { name: "Available Skills" })).toBeNull();

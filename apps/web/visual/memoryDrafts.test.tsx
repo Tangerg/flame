@@ -1,8 +1,10 @@
 import { mutationResult } from "@/test/runtimeClient";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { mockSelectLayout } from "@/test/selectLayout";
 let testClient: TestClient;
 prepareTestClient(() => {
+  mockSelectLayout();
   const owned = createTestClient();
   testClient = owned;
   finishTestClient(() => owned.dispose());
@@ -265,7 +267,7 @@ it.each(["empty", "unavailable"] as const)(
             : Promise.reject(new Error("Memory catalog is unavailable."))) as never)
         : admitted(request, options),
     );
-    fireEvent.click(screen.getByRole("tab", { name: "User" }));
+    fireEvent.click(screen.getByRole("radio", { name: "User" }));
     await screen.findByText(
       state === "empty" ? "No memory items in this target." : "Memory catalog is unavailable.",
     );
@@ -473,7 +475,7 @@ it("keeps known results visible without a catalog and retires notices with their
       ? (Promise.reject(new Error("Memory catalog is unavailable.")) as never)
       : admitted(request, options),
   );
-  fireEvent.click(screen.getByRole("tab", { name: "User" }));
+  fireEvent.click(screen.getByRole("radio", { name: "User" }));
   await screen.findByText("Memory catalog is unavailable.");
   expect(screen.queryByText(`Approve ${pending.ID} · confirmed.`)).toBeNull();
   settle.mockResolvedValueOnce({
@@ -497,7 +499,7 @@ it("keeps one memory form and its target until explicit cancellation", async () 
   await openMemory();
   const { add, editor, content } = startDraft();
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Edit" }).disabled).toBe(true);
-  expect(screen.getByRole("tab", { name: "User" }).getAttribute("aria-disabled")).toBe("true");
+  expect(screen.getByRole("radio", { name: "User" }).hasAttribute("disabled")).toBe(true);
   expect(screen.getByRole<HTMLButtonElement>("button", { name: "Approve" }).disabled).toBe(false);
   const actions = await openActions();
   expect(screen.getByRole("menuitem", { name: "Delete" }).getAttribute("aria-disabled")).toBe(

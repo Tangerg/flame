@@ -165,11 +165,11 @@ export function ApprovalCard({
           {rememberable && (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
+                disabled={disabled}
                 render={
                   <Button
                     variant="primary"
                     size="icon-sm"
-                    disabled={disabled}
                     focusableWhenDisabled
                     aria-label={t("approval.action.allowOptions")}
                     join="end"

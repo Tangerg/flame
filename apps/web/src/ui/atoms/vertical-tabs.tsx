@@ -167,13 +167,16 @@ export function VerticalTabs({
             </HoverTrack>
           </TabsPrimitive.List>
         </div>
-        <div {...stylex.props(styles.page)}>
-          {items.map((item) => (
-            <TabsPrimitive.Panel key={item.id} value={item.id} aria-label={item.label}>
-              {item.content}
-            </TabsPrimitive.Panel>
-          ))}
-        </div>
+        {items.map((item) => (
+          <TabsPrimitive.Panel
+            key={item.id}
+            value={item.id}
+            aria-label={item.label}
+            {...stylex.props(styles.page)}
+          >
+            {item.content}
+          </TabsPrimitive.Panel>
+        ))}
       </TabsPrimitive.Root>
     </div>
   );

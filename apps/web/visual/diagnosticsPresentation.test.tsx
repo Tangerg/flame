@@ -89,7 +89,7 @@ function openDiagnostics(
 }
 
 function signal(name: string) {
-  return screen.getByRole("tab", { name: new RegExp("^" + name + "(?: ·|$)") });
+  return screen.getByRole("radio", { name: new RegExp("^" + name + "(?: ·|$)") });
 }
 function observations() {
   return screen.getByRole("region", { name: "Local observations" });
@@ -111,11 +111,11 @@ function clearObservations() {
 it("places read counts in their signal controls without a second count dashboard", () => {
   const read = vi.fn(() => structuredClone(recorded));
   openDiagnostics({ read, clear() {} });
-  expect(screen.getByRole("tab", { name: "Traces · 1" }).getAttribute("aria-selected")).toBe(
+  expect(screen.getByRole("radio", { name: "Traces · 1" }).getAttribute("aria-checked")).toBe(
     "true",
   );
-  expect(screen.getByRole("tab", { name: "Metrics · 2" })).toBeTruthy();
-  expect(screen.getByRole("tab", { name: "Logs · 1" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "Metrics · 2" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "Logs · 1" })).toBeTruthy();
   expect(screen.queryByRole("definition")).toBeNull();
   expect(screen.queryByRole("heading", { name: "Local observations" })).toBeNull();
   fireEvent.click(signal("Logs"));
@@ -165,7 +165,7 @@ it("retains accepted signal counts and expanded evidence on failure, then refres
   refresh.focus();
   fireEvent.click(refresh);
   expect(screen.getByRole("alert").textContent).toContain("Buffer read failed");
-  expect(screen.getByRole("tab", { name: "Logs · 1" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("radio", { name: "Logs · 1" }).getAttribute("aria-checked")).toBe("true");
   expect(screen.getByRole("status").textContent).toBe("Showing the last accepted read.");
   expect(
     within(observations()).getByRole("button", { name: /Preview could not be refreshed/ }),
@@ -174,7 +174,7 @@ it("retains accepted signal counts and expanded evidence on failure, then refres
   expect(document.activeElement).toBe(refresh);
   fireEvent.click(refresh);
   expect(read).toHaveBeenCalledTimes(3);
-  expect(screen.getByRole("tab", { name: "Logs · 2" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("radio", { name: "Logs · 2" }).getAttribute("aria-checked")).toBe("true");
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByRole("status").textContent).toBe("Last buffer read");
   expect(
@@ -190,7 +190,7 @@ it("does not present unknown counts as zero after an initial read failure", () =
     clear() {},
   });
   expect(screen.getByRole("alert")).toBeTruthy();
-  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+  expect(screen.getAllByRole("radio").map((tab) => tab.textContent)).toEqual([
     "Traces",
     "Metrics",
     "Logs",
@@ -213,18 +213,18 @@ it("discards a cleared snapshot before a failed reread and shows known zero coun
   clearObservations();
   expect(clear).toHaveBeenCalledTimes(1);
   expect(read).toHaveBeenCalledTimes(2);
-  expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+  expect(screen.getAllByRole("radio").map((tab) => tab.textContent)).toEqual([
     "Traces",
     "Metrics",
     "Logs",
   ]);
   expect(screen.queryByRole("region", { name: "Local observations" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-  expect(screen.getByRole("tab", { name: "Traces · 0" }).getAttribute("aria-selected")).toBe(
+  expect(screen.getByRole("radio", { name: "Traces · 0" }).getAttribute("aria-checked")).toBe(
     "true",
   );
-  expect(screen.getByRole("tab", { name: "Metrics · 0" })).toBeTruthy();
-  expect(screen.getByRole("tab", { name: "Logs · 0" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "Metrics · 0" })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "Logs · 0" })).toBeTruthy();
   expect(screen.getByText("No local observations in this read.")).toBeTruthy();
 });
 
@@ -238,7 +238,7 @@ it("preserves selected accepted material when clearing itself fails", () => {
   clearObservations();
   expect(clear).toHaveBeenCalledTimes(1);
   expect(read).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole("tab", { name: "Logs · 1" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("radio", { name: "Logs · 1" }).getAttribute("aria-checked")).toBe("true");
   expect(screen.getByRole("alert").textContent).toContain("Clear unavailable");
   expect(
     within(observations()).getByRole("button", { name: /Preview could not be refreshed/ }),
@@ -252,7 +252,7 @@ it("formats category counts for the active locale", () => {
     id: String(index),
   }));
   openDiagnostics({ read: () => snapshot, clear() {} }, "de");
-  expect(screen.getByRole("tab", { name: /1\.000/ })).toBeTruthy();
+  expect(screen.getByRole("radio", { name: /1\.000/ })).toBeTruthy();
 });
 
 it("preserves the complete multiline log and its original raw evidence", () => {

@@ -58,7 +58,9 @@ test("recorded tasks keep their reading size and body alignment in narrow touch 
 
   const view = page.locator('[data-dock-view-id="file"]');
   await expectReadableTask(view.locator('[data-slot="document-body"]'));
-  const previewTab = (await view.getByRole("tab", { name: "Preview", exact: true }).boundingBox())!;
+  const previewTab = (await view
+    .getByRole("radio", { name: "Preview", exact: true })
+    .boundingBox())!;
   expect(previewTab.width).toBeGreaterThanOrEqual(44);
   expect(previewTab.height).toBeGreaterThanOrEqual(44);
 

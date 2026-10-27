@@ -1,7 +1,9 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { mockSelectLayout } from "@/test/selectLayout";
 let testClient: TestClient;
 prepareTestClient(() => {
+  mockSelectLayout();
   const owned = createTestClient();
   testClient = owned;
   finishTestClient(() => owned.dispose());

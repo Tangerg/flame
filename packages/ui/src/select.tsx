@@ -1,4 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
+import {
+  useLayoutEffect,
+  useRef,
+  type ComponentPropsWithRef,
+  type RefObject,
+} from "react";
 import { ChevronDown, Check } from "@flame/icons/react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { FIELD_SIZE, FIELD_SURFACE, MENU_SURFACE } from "./control-surface";
@@ -56,6 +62,8 @@ export function Select({
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const detached = useRef(false);
   const retirement = useHiddenRootRetirement<
     SelectPrimitive.Root.Actions,
     SelectPrimitive.Root.OpenChangeEventDetails
@@ -72,6 +80,7 @@ export function Select({
       {...retirement}
     >
       <SelectPrimitive.Trigger
+        ref={trigger}
         render={
           <Button
             variant="bare"
@@ -85,7 +94,6 @@ export function Select({
           />
         }
         id={id}
-        data-chrome-focus=""
         aria-label={label}
       >
         <SelectPrimitive.Value
@@ -100,9 +108,44 @@ export function Select({
           {...stylex.props(FLOATING_LAYER)}
           sideOffset={4}
           alignItemWithTrigger={false}
+          render={(props, state) => (
+            <SelectAnchor
+              {...props}
+              open={state.open}
+              anchorHidden={state.anchorHidden}
+              detached={detached}
+              actionsRef={retirement.actionsRef}
+            />
+          )}
         >
           <SelectPrimitive.Popup
-            finalFocus={visible ? undefined : false}
+            finalFocus={() => {
+              if (!visible) return false;
+              const doc = trigger.current?.ownerDocument;
+              const active = doc?.activeElement;
+              if (
+                active &&
+                active !== doc?.body &&
+                active !== trigger.current &&
+                !portalRef.current?.contains(active)
+              )
+                return false;
+              if (!detached.current) return true;
+              for (
+                let owner = trigger.current?.parentElement;
+                owner;
+                owner = owner.parentElement
+              ) {
+                const overflow = getComputedStyle(owner).overflowY;
+                if (
+                  owner.tabIndex >= 0 &&
+                  (overflow === "auto" || overflow === "scroll") &&
+                  owner.scrollHeight > owner.clientHeight
+                )
+                  return owner;
+              }
+              return false;
+            }}
             className={(state) =>
               stylex.props(
                 FLOATING_PANEL,
@@ -132,4 +175,27 @@ export function Select({
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
   );
+}
+
+function SelectAnchor({
+  open,
+  anchorHidden,
+  detached,
+  actionsRef,
+  ...props
+}: ComponentPropsWithRef<"div"> & {
+  open: boolean;
+  anchorHidden: boolean;
+  detached: RefObject<boolean>;
+  actionsRef: RefObject<SelectPrimitive.Root.Actions | null>;
+}) {
+  useLayoutEffect(() => {
+    // Base UI retains closed items and their last geometry. Consume a hidden
+    // transition once so reopening can receive the next anchor measurement.
+    if (!open) return;
+    const wasDetached = detached.current;
+    detached.current = anchorHidden;
+    if (anchorHidden && !wasDetached) actionsRef.current?.close();
+  }, [open, anchorHidden, detached, actionsRef]);
+  return <div {...props} hidden={props.hidden || anchorHidden} />;
 }

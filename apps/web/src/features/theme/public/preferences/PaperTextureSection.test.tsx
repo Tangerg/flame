@@ -21,12 +21,12 @@ it("selects paper immediately and retains its strength across Off", () => {
       <PaperTextureSection />
     </ThemeProvider>,
   );
-  const options = screen.getByRole("tablist", { name: "Paper texture" });
-  expect(within(options).getByRole("tab", { name: "Off" }).getAttribute("aria-selected")).toBe(
+  const options = screen.getByRole("radiogroup", { name: "Paper texture" });
+  expect(within(options).getByRole("radio", { name: "Off" }).getAttribute("aria-checked")).toBe(
     "true",
   );
   expect(screen.queryByRole("slider", { name: "Texture strength" })).toBeNull();
-  fireEvent.click(within(options).getByRole("tab", { name: "Xuan paper" }));
+  fireEvent.click(within(options).getByRole("radio", { name: "Xuan paper" }));
   expect(owner.store.getState().paperTexture).toBe("xuan");
   const strength = screen.getByRole<HTMLInputElement>("slider", { name: "Texture strength" });
   expect(strength.min).toBe("1");
@@ -35,9 +35,9 @@ it("selects paper immediately and retains its strength across Off", () => {
   fireEvent.keyDown(strength, { key: "ArrowRight" });
   expect(owner.store.getState().paperTextureStrength).toBe(4);
   expect(strength.value).toBe("4");
-  fireEvent.click(within(options).getByRole("tab", { name: "Off" }));
+  fireEvent.click(within(options).getByRole("radio", { name: "Off" }));
   expect(screen.queryByRole("slider", { name: "Texture strength" })).toBeNull();
-  fireEvent.click(within(options).getByRole("tab", { name: "Cotton paper" }));
+  fireEvent.click(within(options).getByRole("radio", { name: "Cotton paper" }));
   expect(owner.store.getState().paperTexture).toBe("cotton");
   expect(screen.getByRole<HTMLInputElement>("slider", { name: "Texture strength" }).value).toBe(
     "4",

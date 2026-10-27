@@ -61,6 +61,15 @@ beforeEach(() => {
 });
 
 describe("ComposerProjectTray", () => {
+  it("does not open project selection while Session creation is unavailable", () => {
+    mocks.actions.canCreateSessionInFolder = false;
+    testClient.render(<ComposerProjectTray />);
+    const trigger = screen.getByRole("button", { name: "Choose project" });
+    fireEvent.click(trigger);
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(mocks.actions.startSessionInFolder).not.toHaveBeenCalled();
+  });
   it("owns a full-width attached tray instead of a composer-footer utility", () => {
     const { container } = testClient.render(<ComposerProjectTray />);
 

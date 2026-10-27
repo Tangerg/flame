@@ -10,7 +10,7 @@ for (const width of [320, 1120]) {
       );
       await page.locator("html[data-visual-ready]").waitFor();
       const panel = page.getByRole("region", { name: "Skills", exact: true });
-      await panel.getByRole("tab", { name: "Skill proposals", exact: true }).click();
+      await panel.getByRole("radio", { name: "Skill proposals", exact: true }).click();
       const opener = panel
         .getByRole("button", {
           name: decision === "approve" ? "Approve" : "Reject",

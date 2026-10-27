@@ -59,7 +59,7 @@ const styles = stylex.create({
   },
   inkDefault: { color: color.fg },
   inkSoft: { color: color.fgSoft },
-  invalidBare: { outline: `1px solid ${color.negative}` },
+  invalidBare: { boxShadow: `inset 0 0 0 1px ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
   faceSans: { fontFamily: "var(--font-sans)" },
@@ -151,9 +151,7 @@ export function TextField({
     <Input
       {...props}
       aria-invalid={invalid || undefined}
-      data-chrome-focus={
-        variant === "boxed" || "data-chrome-focus" in props ? "" : undefined
-      }
+      {...(invalid && { "data-focus-outset": "" })}
       readOnly={pending || props.readOnly}
       aria-disabled={pending ? true : props["aria-disabled"]}
       data-slot="text-field"
@@ -287,9 +285,7 @@ export function TextArea({
         if (ref) ref.current = node;
       }}
       aria-invalid={invalid || undefined}
-      data-chrome-focus={
-        variant === "boxed" || "data-chrome-focus" in props ? "" : undefined
-      }
+      {...(invalid && { "data-focus-outset": "" })}
       readOnly={pending || props.readOnly}
       aria-disabled={pending ? true : props["aria-disabled"]}
       {...styled}
@@ -365,7 +361,7 @@ export function SearchField({
     extra,
   );
   return (
-    <div {...box} className={cn(box.className, className)}>
+    <div data-focus-proxy="" {...box} className={cn(box.className, className)}>
       <Icon
         glyph={Search}
         size={SEARCH_GLYPH[size]}

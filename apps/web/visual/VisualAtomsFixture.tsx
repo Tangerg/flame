@@ -449,9 +449,14 @@ export function VisualInputContractFixture() {
   const [visible, setVisible] = useState(false);
   const [narrow, setNarrow] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const [pending, setPending] = useState(true);
+  const [submitted, setSubmitted] = useState(0);
   return (
     <main {...stylex.props(styles.page)}>
-      <section {...stylex.props(styles.column)} style={{ width: narrow ? 180 : 440 }}>
+      <section
+        {...stylex.props(styles.column)}
+        style={{ width: narrow ? 180 : 440, maxWidth: "100%" }}
+      >
         <Button variant="outline" onClick={() => setVisible(!visible)}>
           {visible ? "Hide notes" : "Show notes"}
         </Button>
@@ -504,6 +509,35 @@ export function VisualInputContractFixture() {
             aria-label={`${state} search`}
             clearLabel={`Clear ${state} search`}
           />
+        ))}
+      </section>
+      <section {...stylex.props(styles.column)}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSubmitted((count) => count + 1);
+          }}
+        >
+          <FormField label="Submission note">
+            <TextField defaultValue="Keep this draft" />
+          </FormField>
+          <Button type="submit" pending={pending}>
+            Save submission note
+          </Button>
+        </form>
+        <Button onClick={() => setPending(!pending)}>
+          {pending ? "Finish pending submission" : "Mark submission pending"}
+        </Button>
+        <p role="status">Submissions: {submitted}</p>
+        <SegmentedSpecimen />
+        {(["boxed", "bare", "inline", "well"] as const).map((variant) => (
+          <FormField key={variant} label={`${variant} invalid note`}>
+            <TextArea
+              variant={variant}
+              invalid
+              defaultValue="Keep the validation mark while focused"
+            />
+          </FormField>
         ))}
       </section>
     </main>

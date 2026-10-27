@@ -50,7 +50,6 @@ export function SelectTrigger({
     <Pressable
       {...props}
       type={props.type ?? "button"}
-      data-chrome-focus=""
       {...styled}
       className={cn(styled.className, className)}
     >

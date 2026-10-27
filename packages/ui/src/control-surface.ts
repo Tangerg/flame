@@ -9,8 +9,7 @@ export const FIELD_SURFACE = stylex.create({
     borderStyle: "solid",
     borderColor: {
       default: "var(--field-border)",
-      ":is(:focus, :focus-within, [data-popup-open]):not([aria-invalid=true])":
-        surface.fieldFocus,
+      "@media (forced-colors: active)": "ButtonText",
       ":is([aria-invalid=true])": color.negative,
     },
     backgroundColor: "var(--field-background)",

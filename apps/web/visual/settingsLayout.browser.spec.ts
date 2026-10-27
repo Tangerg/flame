@@ -117,7 +117,7 @@ for (const transport of ["stdio", "streamableHttp"] as const) {
     });
     await expect(field).toBeFocused();
     await expect(panel.getByRole("textbox", { name: "Server name", exact: true })).toBeDisabled();
-    const mode = panel.getByRole("tab", {
+    const mode = panel.getByRole("radio", {
       name: transport === "stdio" ? "Streamable HTTP" : "stdio",
       exact: true,
     });
@@ -290,7 +290,7 @@ test("MCP fields retain visible labels after entering values", async ({ page }) 
   await page.getByRole("button", { name: "Add server", exact: true }).click();
   const panel = page.getByRole("tabpanel");
   const transport = panel.getByRole("group", { name: "Transport", exact: true });
-  const stdio = transport.getByRole("tab", { name: "stdio", exact: true });
+  const stdio = transport.getByRole("radio", { name: "stdio", exact: true });
   await expect(stdio).toBeVisible();
   expect(await stdio.evaluate((node) => node.closest("label") === null)).toBe(true);
   await panel.getByRole("textbox", { name: "Server name", exact: true }).fill("Desktop tools");
@@ -308,7 +308,7 @@ test("MCP fields retain visible labels after entering values", async ({ page }) 
       .getByRole("group", { name: "Add server", exact: true })
       .getByRole("button", { name: "Add server", exact: true }),
   ).toBeEnabled();
-  await panel.getByRole("tab", { name: "Streamable HTTP", exact: true }).click();
+  await panel.getByRole("radio", { name: "Streamable HTTP", exact: true }).click();
   await expect(panel.getByText("Server URL", { exact: true })).toBeVisible();
   await expect(panel.getByText("Authorization token", { exact: true })).toBeVisible();
 });
