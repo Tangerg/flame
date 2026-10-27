@@ -3,9 +3,10 @@ package plugins
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/qimu"
 	"testing"
 	"testing/synctest"
+
+	"github.com/Tangerg/flame/qimu"
 )
 
 // A change holds the serialization point across durable storage. Assembly
@@ -47,13 +48,20 @@ func TestInstallationAdmissionNeverQueuesAssemblyOrIgnoresCancellation(t *testin
 		cause := errors.New("change abandoned")
 		ctx, cancel := context.WithCancelCause(t.Context())
 		waited := make(chan error, 1)
+		waiterEntered := make(chan struct{})
 		go func() {
-			waited <- admission.Under(ctx, func() error { t.Fatal("canceled waiter entered"); return nil })
+			waited <- admission.Under(ctx, func() error { close(waiterEntered); return nil })
 		}()
 		synctest.Wait()
 		cancel(cause)
 		synctest.Wait()
-		if err := <-waited; !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
+		err := <-waited
+		select {
+		case <-waiterEntered:
+			t.Fatal("canceled waiter entered")
+		default:
+		}
+		if !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
 			t.Fatalf("waiting change = %v, want its own cancellation", err)
 		}
 	})

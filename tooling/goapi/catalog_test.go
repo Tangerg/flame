@@ -59,7 +59,7 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 		t.Fatal("Runtime public API does not contain Connect returning *Client")
 	}
 	if !slices.ContainsFunc(publicGoPackageByPath(t, api, "github.com/Tangerg/flame/packages/go-sdk/client").Functions, func(function publicGoFunction) bool {
-		return function.Name == "ConnectCallback" && function.Signature == "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
+		return function.Name == "ConnectCallback" && function.Signature == "func(ctx context.Context, ref mcp.CallbackRef) (*Client, error)"
 	}) {
 		t.Fatal("Runtime public API does not contain the typed callback Client entrance")
 	}
