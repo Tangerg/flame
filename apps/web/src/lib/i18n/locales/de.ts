@@ -211,6 +211,9 @@ export const de: Record<string, string> = {
   "chatSearch.next": "Nächster Treffer",
   "plan.complete": "{{done}} von {{total}} erledigt",
   "plan.progress": "Schritt {{current}} / {{total}}",
+  "plan.step.done": "Abgeschlossen",
+  "plan.step.active": "In Bearbeitung",
+  "plan.step.pending": "Ausstehend",
 
   "goal.summary.active": "Ziel wird verfolgt",
   "goal.summary.paused": "Pausiertes Ziel",

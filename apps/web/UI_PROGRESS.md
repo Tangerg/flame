@@ -102,6 +102,10 @@ discard the focused reading witness before content reflow. The Goal tray retains
 its preferred width under native zoom, and the Composer's existing Steer action
 carries intent without a repeated paragraph; see Sticky disclosure clearance and
 reading space.
+Plan checklists now expose each captured step state in the current language.
+The shared pre-module focus owner also recognizes paging, boundary and activation
+keys, preserving visible keyboard reading after pointer entry; see Plan state and
+keyboard reading.
 These local commits have not been pushed or merged into the primary checkout.
 
 Earlier delivery receipts remain historical. Recorded Skill-page implementation
@@ -689,6 +693,121 @@ evidence. The actual Wails observations below establish that behavior.
 
 Continue with another observed conversation → material → return path on current
 main; do not turn this completed rail/read task into an unrelated redesign.
+
+### Plan state and keyboard reading
+
+#### Scope and coverage
+
+The complete task is draft → open the accepted Plan → distinguish each step's
+state → read long steps → return to the same entry → continue authoring, on local
+base `4e41f579a`. React, Base UI, StyleX and Wails **v3 beta.34** retain their
+existing boundaries. Repository instructions, DEVELOPMENT, Web/Desktop/visual
+READMEs and the six better-* owner skills guide the review. The Desktop/docs
+G02/G04 feedback supplies the task criteria. Read-only ZCode `TodoPanel.tsx`
+supplies explicit checklist disclosure and HeroUI's Popover example supplies a
+named contextual reader. Flame retains completed steps and its own Session Plan;
+it does not copy the reference's completed-step filtering or add a second Plan.
+
+`StepMark` now requires a localized accessible label and exposes its existing
+glyph as one named image. `ActivePlan` projects the accepted step's closed status
+through the eight locale catalogs. The three static atom specimens migrate with
+the contract. Original text, glyphs, colors, progress, revision and reader lifetime
+remain with their existing owners. No visible status caption is added.
+
+The same native task exposes a shared focus defect: after pointer entry, End
+scrolls the focused reader while `:focus-visible` is true, but `data-pointer`
+still suppresses its outline. The one pre-module bootstrap previously recognized
+only Tab and arrows. It now recognizes Home/End, paging, Enter/Space and Escape
+too. Ordinary typing, composing keys and native keyCode 229 retain the current
+mode; pointer input restores pointer mode. The same two listeners and shared CSS
+remain authoritative. No local outline override or competing focus state is added.
+
+| Domain        | Evidence inspected                                                                                            | Scoped result                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Accessibility | Actual EN/ZH AX step images, keyboard entry/return, native focus CSS and isolated bootstrap event regressions | Step states and keyboard reading are exposed; VoiceOver speech not verified |
+| Layout        | Twelve long steps, native Left arrangement, twenty zoom increments, 561 × 475 CSS px Chinese scene            | Existing bounded reader reaches both ends without changing its footprint    |
+| Writing       | Three state names in all eight existing catalogs and unchanged task descriptions                              | State meaning is available without visible helper copy                      |
+| Typography    | EN 14 px / ZH 18 px, long mixed-language steps and paths, 200% native reading                                 | Existing scale, wrapping and source text retained                           |
+| Color         | Existing light/Orange and dark/custom-yellow/contrast-100/Xuan-5 scenes, shared focus and status tokens       | No palette change; rendered contrast not freshly measured                   |
+| UI polish     | Existing popup, status glyphs, pointer/keyboard transition, EN full motion and ZH motion off                  | No added decoration or animation; slow-motion replay not run                |
+
+#### Findings
+
+| Severity | Domain        | Location                                                                             | Before                                                                                                             | After                                                                                 | Why                                                                            |
+| -------- | ------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| HIGH     | Accessibility | `public/focus-modality.js:28`                                                        | Native End reading retains pointer suppression despite a focused `:focus-visible` reader                           | Navigation and activation enter keyboard mode at the existing global owner            | WCAG 2.4.7: the keyboard reader needs a visible focus indicator                |
+| HIGH     | Accessibility | `src/ui/atoms/step-row.tsx:24`, `src/features/chat/plan-progress/ActivePlan.tsx:163` | All three state glyphs are hidden from assistive technology; the aggregate count cannot identify individual states | One named image beside each original task text, updated from the accepted step status | WCAG 1.1.1 / 1.3.1: expose the meaning represented by each non-text state mark |
+
+#### Verification
+
+- Original Plan baseline passes **13 tests**. The new state/update case fails
+  against original production source with those thirteen still passing. The
+  first candidate passes **4 files / 53 tests**, then typechecking identifies
+  three unmigrated static atom callers; supplying their required labels resolves
+  the errors without a fallback or weakened assertion. The continuation passes
+  types, lint, locale coverage and the two native builds in **14.31 s**.
+- The bootstrap regression executes the actual public script in an isolated DOM
+  and EventTarget. Original code fails **8 cases / 7 pass**. Final coverage adds
+  legacy native composition and passes all sixteen event cases, preserving browser
+  defaults, pointer reset and ordinary typing. The final serial focused chain
+  passes **5 files / 69 tests**, types, lint, bootstrap checks and private assets
+  in **8.08 s**. No browser visual suite or performance benchmark runs.
+- Actual Wails EN/light/14 px/full motion exposes Completed, In progress and
+  Pending beside all twelve task texts. Keyboard entry, native Left arrangement,
+  twenty Zoom In actions, Home/End, Escape and continued input are inspected.
+  One returned-caret paste precedes the intact draft; native Undo restores it,
+  then explicit Command-Down appends the continuation. This qualifies editing,
+  not automatic caret-position preservation.
+- Actual ZH/dark/18 px/custom `#ffe066`/contrast 100/Xuan strength 5/motion off
+  exposes 已完成, 进行中 and 待处理. At **561 × 475 CSS px / 200%**, the original
+  shared policy records a focused `:focus-visible` reader with pointer mode true
+  and outline `3px none rgb(238, 238, 238)`. The final same-geometry scene records
+  pointer mode false and `1.5px solid rgb(255, 224, 102)`. The 320 × 274 px reader
+  reaches scrollTop **1,041** of **1,315** content pixels and Home returns to zero.
+  Escape returns to the original pill; five Tabs reach the retained Composer,
+  and explicit Command-Down plus native paste produces exactly
+  `保留草稿，核对计划。 继续核对。`. Actual Size and native Quit complete the scene.
+- An initial private observer endpoint mismatch yields no passive records; the
+  corresponding AX and screenshots remain direct evidence, while geometry and
+  event claims use the corrected endpoint's later records. A fixture-sidebar
+  activation does not establish collapse and is excluded from product-navigation
+  qualification. The accepted passive records contain no window errors.
+- The normal production chain passes in **281.49 s**: canonical pinned Node
+  companion preparation (**8.82 s**, archive/executable hashes verified),
+  `make check-native` (**32.07 s**), complete `npm run check --workspace @flame/web`
+  (**226.77 s**, **420 files / 3,908 tests** and all remaining gates), then clean
+  private assets and native host. Existing bundle-size/linker warnings and
+  expected error-path test stderr do not produce a failed check. All **5,833**
+  non-Markdown source inputs remain byte-identical to the accepted map.
+- The final clean English Wails host omits the observer from all **598 assets**.
+  At Actual Size with full motion, five reverse Tabs reach the pill, Space opens
+  the reader with a visible focus ring, End reaches its final step, and Escape
+  restores the same pill. Five Tabs plus explicit Command-Down and native paste
+  continue exactly `Clean plan draft. Continue.`. Native Quit retires the app.
+
+Native VoiceOver speech, OS IME composition, live Runtime Plan publication,
+fresh 320 px reflow, RTL, other-platform GUI and full-product Goal CHECK acceptance
+remain unverified. Accepted Plan revisions, finished/absent Plans and retained
+reader boundaries are covered by the actual component regressions. The returned
+Composer caret is an unclassified follow-up, not a diagnosis or authorization
+for another editor state owner.
+
+All **12 owned process generations** have exited and the four exact applications
+are unregistered. Seven new output/cache roots, eight bundle-specific Library
+entries, four bundle-temporary directories and this batch's prepared Node archive
+are removed. The overwritten native-check binary is restored from its verified
+original. All **39 output-presence baselines**, four original file hashes,
+twenty-four Library-presence baselines, **5,833 accepted source inputs**, eleven
+resources and four read-only references remain preserved. The private root
+`flame-plan-status-1027-kpYTrz` is absent. Its in-memory evidence capsule round-trips
+**65 UTF-8 records / 17 capture digests**, gzip SHA-256
+`d4c1a30c89351d8b0fe67bf03066b5e0a534c16331d0743a41857685d82ea537`.
+
+#### Verdict
+
+**Approve** for the inspected Plan state semantics and keyboard reading flow.
+The unverified scenarios above retain their boundaries. The batch stays local;
+the continuous whole-product UI goal remains active.
 
 ### Goal stop-reason reading
 

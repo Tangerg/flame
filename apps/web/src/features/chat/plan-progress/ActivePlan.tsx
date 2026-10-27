@@ -160,7 +160,7 @@ function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: A
                     aria-current={step.id === progress.current?.id ? "step" : undefined}
                     {...stylex.props(ap.step)}
                   >
-                    <StepMark state={step.status} />
+                    <StepMark state={step.status} label={t(`plan.step.${step.status}`)} />
                     <span
                       {...stylex.props(
                         ap.stepText,

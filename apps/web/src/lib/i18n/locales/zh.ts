@@ -213,6 +213,9 @@ export const zh: Record<string, string> = {
   "chatSearch.next": "下一个匹配",
   "plan.complete": "已完成 {{done}} / {{total}}",
   "plan.progress": "第 {{current}} / {{total}} 步",
+  "plan.step.done": "已完成",
+  "plan.step.active": "进行中",
+  "plan.step.pending": "待处理",
 
   "goal.summary.active": "进行中的目标",
   "goal.summary.paused": "已暂停的目标",

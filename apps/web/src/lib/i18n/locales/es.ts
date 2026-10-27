@@ -212,6 +212,9 @@ export const es: Record<string, string> = {
   "chatSearch.next": "Coincidencia siguiente",
   "plan.complete": "{{done}} de {{total}} completadas",
   "plan.progress": "Paso {{current}} / {{total}}",
+  "plan.step.done": "Completado",
+  "plan.step.active": "En curso",
+  "plan.step.pending": "Pendiente",
 
   "goal.summary.active": "Objetivo en curso",
   "goal.summary.paused": "Objetivo en pausa",

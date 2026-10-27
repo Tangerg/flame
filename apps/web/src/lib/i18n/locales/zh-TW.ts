@@ -207,6 +207,9 @@ export const zhTW: Record<string, string> = {
   "chatSearch.next": "下一個符合",
   "plan.complete": "已完成 {{done}} / {{total}}",
   "plan.progress": "第 {{current}} / {{total}} 步",
+  "plan.step.done": "已完成",
+  "plan.step.active": "進行中",
+  "plan.step.pending": "待處理",
 
   "goal.summary.active": "進行中的目標",
   "goal.summary.paused": "目標已暫停",

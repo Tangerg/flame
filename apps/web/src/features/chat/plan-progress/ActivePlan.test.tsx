@@ -72,6 +72,32 @@ describe("ActivePlan", () => {
     expect(screen.getByRole("button", { name: "Step 2 / 2" })).toBeTruthy();
   });
 
+  it("exposes each captured step state and its accepted updates beside the task text", async () => {
+    model.steps = [
+      { id: "step-1", text: "Inspect", status: "done" },
+      { id: "step-2", text: "Fix", status: "active" },
+      { id: "step-3", text: "Verify", status: "pending" },
+    ];
+    const { rerender } = testClient.render(<ActivePlan />);
+    const { reader } = await openPlan("Step 2 / 3");
+    const rows = within(reader).getAllByRole("listitem");
+
+    expect(within(rows[0]!).getByRole("img", { name: "Completed" })).toBeTruthy();
+    expect(within(rows[1]!).getByRole("img", { name: "In progress" })).toBeTruthy();
+    expect(within(rows[2]!).getByRole("img", { name: "Pending" })).toBeTruthy();
+    expect(rows.map((row) => row.textContent)).toEqual(["Inspect", "Fix", "Verify"]);
+
+    model.revision = 2;
+    model.steps = model.steps.map((step) => ({ ...step, status: "done" }));
+    rerender(<ActivePlan />);
+
+    await waitFor(() => {
+      expect(within(reader).getAllByRole("img", { name: "Completed" })).toHaveLength(3);
+      expect(within(reader).queryByRole("img", { name: "In progress" })).toBeNull();
+      expect(within(reader).queryByRole("img", { name: "Pending" })).toBeNull();
+    });
+  });
+
   it("keeps the focused checklist open while the accepted Plan advances", async () => {
     const { rerender } = testClient.render(<ActivePlan />);
     const { popup, reader } = await openPlan();

@@ -221,6 +221,9 @@ export const en: Record<string, string> = {
   "chatSearch.next": "Next match",
   "plan.complete": "{{done}} of {{total}} complete",
   "plan.progress": "Step {{current}} / {{total}}",
+  "plan.step.done": "Completed",
+  "plan.step.active": "In progress",
+  "plan.step.pending": "Pending",
 
   "goal.summary.active": "Pursuing goal",
   "goal.summary.paused": "Paused goal",

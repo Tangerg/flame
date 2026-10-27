@@ -207,6 +207,9 @@ export const ko: Record<string, string> = {
   "chatSearch.next": "다음 일치",
   "plan.complete": "{{total}}개 중 {{done}}개 완료",
   "plan.progress": "{{current}} / {{total}}단계",
+  "plan.step.done": "완료",
+  "plan.step.active": "진행 중",
+  "plan.step.pending": "대기 중",
 
   "goal.summary.active": "진행 중인 목표",
   "goal.summary.paused": "일시중지된 목표",

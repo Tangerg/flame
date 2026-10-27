@@ -21,9 +21,9 @@ const GLYPH: Record<StepState, IconName> = {
   pending: "circle",
 };
 
-export function StepMark({ state }: { state: StepState }) {
+export function StepMark({ state, label }: { state: StepState; label: string }) {
   return (
-    <div {...stylex.props(styles.mark)}>
+    <div role="img" aria-label={label} {...stylex.props(styles.mark)}>
       <Icon name={GLYPH[state]} size="sm" className={stylex.props(styles[state]).className} />
     </div>
   );

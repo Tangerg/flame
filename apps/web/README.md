@@ -96,6 +96,14 @@ explanation, and keyboard scrolling can reach every recorded requirement.
 The retained disclosure body preserves native reading position through close and
 reopen; the primitive excludes it from the closed keyboard and accessible scope.
 
+Plan checklists name each captured step state in the current locale beside its
+task text. Accepted revisions update these marks in the retained reader; the
+existing Session Plan remains the source of progress.
+
+The shared pre-module focus bootstrap recognizes navigation and activation keys,
+including Home/End, paging, Enter/Space and Escape. Ordinary typing and IME
+composition retain the current modality; pointer input restores pointer mode.
+
 Recorded Tool failures retain their original line breaks, blank lines and indentation
 in both standalone and grouped rows, with long values wrapping inside the reading
 column. Captured text, status, disclosure, actions and source-return ownership stay

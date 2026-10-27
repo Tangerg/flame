@@ -383,9 +383,9 @@ export function VisualAtomsFixture() {
       </Specimen>
       <Specimen name="steps">
         <div {...stylex.props(styles.column)}>
-          <StepMark state="done" />
-          <StepMark state="active" />
-          <StepMark state="pending" />
+          <StepMark state="done" label="Completed" />
+          <StepMark state="active" label="In progress" />
+          <StepMark state="pending" label="Pending" />
         </div>
       </Specimen>
       <Specimen name="system-message">

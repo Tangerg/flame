@@ -209,6 +209,9 @@ export const ja: Record<string, string> = {
   "chatSearch.next": "次の一致",
   "plan.complete": "{{total}} 件中 {{done}} 件完了",
   "plan.progress": "ステップ {{current}} / {{total}}",
+  "plan.step.done": "完了",
+  "plan.step.active": "進行中",
+  "plan.step.pending": "未着手",
 
   "goal.summary.active": "進行中の目標",
   "goal.summary.paused": "一時停止中の目標",
