@@ -3,9 +3,12 @@ package pluginservices
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/qimu"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -31,13 +34,13 @@ func (r retainedToolCaller) ToolCaller(_ context.Context, id string) (plugin.Too
 }
 
 func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testing.T) {
-	commands, err := plugins.NewCommands(emptyCallerCommands{}, plugins.NewAdmission())
+	commands, err := plugins.NewCommands(emptyCallerCommands{}, qimu.NewAdmission())
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: extension.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: portable.Invocation{ID: "original-model-call", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)
@@ -58,11 +61,11 @@ func TestInstalledCallerRestorationCannotBorrowAnotherActorOrInvocation(t *testi
 	if _, err := restorer.RestoreInvocation(t.Context(), value.Invocation); !errors.Is(err, plugin.ErrCommandConflict) {
 		t.Fatalf("missing installed Actor gained authority: %v", err)
 	}
-	for _, edit := range []func(*extension.Invocation){
-		func(i *extension.Invocation) { i.ID = "unrecorded-model-call" },
-		func(i *extension.Invocation) { i.Parent = "process:other" },
-		func(i *extension.Invocation) { i.Origin = extension.Human },
-		func(i *extension.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
+	for _, edit := range []func(*portable.Invocation){
+		func(i *portable.Invocation) { i.ID = "unrecorded-model-call" },
+		func(i *portable.Invocation) { i.Parent = "process:other" },
+		func(i *portable.Invocation) { i.Origin = extension.Human },
+		func(i *portable.Invocation) { i.Target.Reference = testsupport.InstallationID(t).String() },
 	} {
 		changed := value.Invocation
 		edit(&changed)

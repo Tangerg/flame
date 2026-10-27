@@ -4,27 +4,29 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/qimu"
 	"iter"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 type CallComposition struct {
 	calls     *CommandCalls
-	callbacks *pluginsdk.Callbacks
-	admission *plugins.Admission
+	callbacks *qimumcp.Callbacks
+	admission *qimu.Admission
 	mu        sync.Mutex
 	captures  map[*modelCapture]struct{}
 }
 
-func NewCallComposition(calls *CommandCalls, callbacks *pluginsdk.Callbacks, admission *plugins.Admission) (*CallComposition, error) {
+func NewCallComposition(calls *CommandCalls, callbacks *qimumcp.Callbacks, admission *qimu.Admission) (*CallComposition, error) {
 	if calls == nil || callbacks == nil || admission == nil {
 		return nil, errors.New("model composition: installed calls and callbacks are required")
 	}
@@ -57,7 +59,7 @@ func (o *CallComposition) admitBinding(ctx context.Context, binding plugins.Cont
 	if err != nil {
 		return err
 	}
-	if location != binding {
+	if !location.SameContribution(binding) {
 		return plugin.ErrStale
 	}
 	return nil
@@ -84,11 +86,11 @@ type observedModel struct {
 
 type streamedObservedModel struct{ *observedModel }
 
-func (o *observedModel) prepare(ctx context.Context, request *chat.Request, streaming bool) (*sdk.ClientSession, *pluginsdk.Binding, error) {
+func (o *observedModel) prepare(ctx context.Context, request *chat.Request, streaming bool) (*mcp.BorrowedSession, *qimumcp.Binding, error) {
 	if err := request.Validate(); err != nil {
 		return nil, nil, err
 	}
-	_, err := pluginsdk.InvocationFromContext(ctx)
+	_, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,19 +114,31 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, stre
 	if err := o.owner.admitBinding(ctx, r); err != nil {
 		return nil, nil, err
 	}
-	session, err := o.owner.calls.pool.ServiceSession(ctx, r.ServerID)
+	borrowed, err := borrowContribution(ctx, o.owner.calls.pool, r)
 	if err != nil {
 		return nil, nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			borrowed.Close()
+		}
+	}()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
 	if _, err := o.owner.calls.pool.SessionActor(ctx, r.ServerID, session); err != nil {
 		return nil, nil, err
 	}
-	exported, err := pluginsdk.NewCapabilityBinding(session, r.Export, contract)
+	exported, err := qimumcp.NewCapabilityBinding(session, r.Export, contract)
 	if err != nil {
 		return nil, nil, err
 	}
 	bound, err := exported.Method(name)
-	return session, bound, err
+	if err != nil {
+		return nil, nil, err
+	}
+	transferred = true
+	return borrowed, bound, nil
 }
 
 // observationAdmission is this transparent contract's one-delivery rule, not a
@@ -141,12 +155,12 @@ type observationAdmission struct {
 	innerFailure error
 }
 
-func (a *observationAdmission) enter(command pluginsdk.Command[chat.Request]) error {
+func (a *observationAdmission) enter(command qimumcp.Command[chat.Request]) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	exact, err := sameObservationJSON(a.request, &command.Input)
 	if a.entered || command.ID != a.id || err != nil || !exact {
-		a.violation = &extension.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
+		a.violation = &portable.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"}
 		a.violation = errors.Join(a.violation, err)
 		return a.violation
 	}
@@ -194,13 +208,16 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	if err != nil {
 		return nil, err
 	}
-	session, binding, err := o.prepare(ctx, request, false)
+	borrowed, binding, err := o.prepare(ctx, request, false)
 	if err != nil {
 		return nil, err
 	}
-	invocation, _ := pluginsdk.InvocationFromContext(ctx)
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
+	invocation, _ := qimumcp.InvocationFromContext(ctx)
 	admission := &observationAdmission{request: request.Clone(), id: invocation.ID}
-	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
+	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		if err := admission.enter(command); err != nil {
 			return nil, err
 		}
@@ -248,14 +265,17 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			yield(nil, err)
 			return
 		}
-		session, binding, err := o.prepare(calling, frozen, true)
+		borrowed, binding, err := o.prepare(calling, frozen, true)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
-		invocation, _ := pluginsdk.InvocationFromContext(ctx)
+		defer borrowed.Close()
+		calling = borrowed.Context()
+		session := borrowed.Session()
+		invocation, _ := qimumcp.InvocationFromContext(ctx)
 		admission := &observationAdmission{request: frozen, id: invocation.ID}
-		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginsdk.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command qimumcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error] {
 			return func(yield func(*chat.ResponseDelta, error) bool) {
 				if err := admission.enter(command); err != nil {
 					yield(nil, err)
@@ -365,7 +385,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			}
 		}
 		if result == nil {
-			yield(nil, pluginsdk.ErrStreamUnconfirmed)
+			yield(nil, qimumcp.ErrStreamUnconfirmed)
 			return
 		}
 		if result.Failure != nil {

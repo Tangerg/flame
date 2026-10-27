@@ -32,7 +32,7 @@ func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDe
 	if err := domainskills.ValidateName(name); err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	selected, err := resolveSkills(ctx, cwd, w.userDir, w.packages)
+	selected, err := resolveSkills(ctx, cwd, w.userDir, w.packages, nil)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}

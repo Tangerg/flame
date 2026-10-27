@@ -187,8 +187,8 @@ type reconnectingGroupTools struct {
 	byGroup     map[domaintool.Group]toolset.Manifest
 }
 
-func (r *reconnectingGroupTools) Manifest(ctx context.Context, group domaintool.Group, capturedMCP []domaintool.Ref) (toolset.Manifest, error) {
-	return (staticInteractionTools{manifest: r.byGroup[group], identities: []domaintool.Ref{r.questionRef}}).Manifest(ctx, group, capturedMCP)
+func (r *reconnectingGroupTools) Manifest(ctx context.Context, group domaintool.Group, retained *toolset.Retained) (toolset.Manifest, error) {
+	return (staticInteractionTools{manifest: r.byGroup[group], identities: []domaintool.Ref{r.questionRef}}).Manifest(ctx, group, retained)
 }
 
 func TestCheckpointRejectsUncapturedMCPManifests(t *testing.T) {

@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -16,7 +18,7 @@ import (
 
 type pluginCallTarget struct {
 	ids         []string
-	invocations []extension.Invocation
+	invocations []portable.Invocation
 }
 
 type pluginStreamOwner struct {
@@ -29,7 +31,7 @@ func (s *pluginStreamOwner) PrepareStream(_ context.Context, _ plugins.CallReque
 	return s, nil
 }
 
-func (*pluginStreamOwner) Kind() extension.MethodKind { return extension.Mutation }
+func (*pluginStreamOwner) Kind() portable.MethodKind { return portable.Mutation }
 
 func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
@@ -44,8 +46,8 @@ func (s *pluginStreamOwner) Stream(ctx context.Context) iter.Seq2[plugins.Stream
 
 func TestPluginStreamProjectsKnownRefusalWithoutSettlingUnknownError(t *testing.T) {
 	contract := testsupport.CommandContract(t, "records.stream", "installation")
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: extension.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
-	owner := &pluginStreamOwner{err: &extension.Refusal{Code: "refused", Message: "owner refused"}}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "records", Contract: string(contract.JSON()), Method: "records.stream", Input: `{}`, Target: portable.Target{Scope: "installation", Reference: testsupport.InstallationID(t).String()}}
+	owner := &pluginStreamOwner{err: &portable.Refusal{Code: "refused", Message: "owner refused"}}
 	handler := &Handler{pluginCalls: owner, features: featureAvailability{plugins: true}}
 	endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
 	for range 2 {
@@ -101,11 +103,11 @@ func (s *pluginCallTarget) PreparePluginCall(_ context.Context, request protocol
 }
 
 func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *testing.T) {
-	contract, err := extension.ParseCapability(testsupport.CommandContract(t, "review.update", "installation").JSON())
+	contract, err := portable.ParseCapability(testsupport.CommandContract(t, "review.update", "installation").JSON())
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: extension.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
+	request := protocol.CallPluginRequest{InstallationID: testsupport.InstallationID(t).String(), Digest: testsupport.Digest("1").String(), Contribution: "review-operations", Contract: string(contract.Identity().JSON()), Target: portable.Target{Scope: "installation", Reference: "12345678-1234-1234-1234-123456789abc"}, Method: "review.update", Input: `{"revision":2}`}
 	target := &pluginCallTarget{}
 	endpoint := mustNewEndpoint(t, target, EndpointConfig{})
 	ctx := operation.Adopt(t.Context(), "parent-tool", extension.Model, "run_owner")
@@ -122,8 +124,8 @@ func TestPluginCallResolvesQueryAndOwnerCommandPoliciesAtTheSharedEndpoint(t *te
 		t.Fatalf("owner invocation identities = %v", target.ids)
 	}
 	query := contract.Descriptor()
-	query.Methods[0].Kind = extension.Query
-	queryContract, err := extension.AdmitCapability(query)
+	query.Methods[0].Kind = portable.Query
+	queryContract, err := portable.AdmitCapability(query)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 )
@@ -20,7 +20,7 @@ type modelEnvironment struct {
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder
-	callbacks          *pluginsdk.Callbacks
+	callbacks          *qimumcp.Callbacks
 }
 
 func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelection modelchoice.Selection) (modelEnvironment, error) {
@@ -56,6 +56,6 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, defaultSelec
 		embeddingResolver:  embeddingResolver,
 	}
 	environment.liveEmbedder = liveEmbedder
-	environment.callbacks = pluginsdk.NewCallbacks()
+	environment.callbacks = qimumcp.NewCallbacks()
 	return environment, nil
 }

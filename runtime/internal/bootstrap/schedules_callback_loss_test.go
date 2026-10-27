@@ -37,50 +37,71 @@ func (w lostOpeningWriter) Write(body []byte) (int, error) {
 	return 0, io.ErrClosedPipe
 }
 
-func schedulesWithLostOpening(t *testing.T, cfg assemblyConfig) (*poMCPRuntime, <-chan protocol.StartRunResponse) {
+func poMCPOpenWithCallbackRPC(t *testing.T, cfg assemblyConfig, decorate func(http.Handler) http.Handler) *poMCPRuntime {
 	t.Helper()
-	host, api := buildPluginProtocolRuntime(t, cfg)
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
+	// Loss fixtures must decorate the original RPC before its single publication.
+	host := assembleTestRuntime(t, cfg)
+	r := &poMCPRuntime{t: t, host: host}
+	t.Cleanup(r.close)
+	api, err := pluginProtocolHandler(host, cfg)
 	if err != nil {
-		_ = host.Close()
 		t.Fatal(err)
 	}
-	r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
-	t.Cleanup(r.close)
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
+		Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency,
+		IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String(), ValidateStorage: cfg.stores.ValidateDirectory,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.api, r.endpoint = api, endpoint
+	host.lifetime.delivery = endpoint
 	rpc, err := flamehttp.NewRPCHandler(endpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	opening := make(chan protocol.StartRunResponse, 1)
-	var withheld atomic.Bool
+	rpc = decorate(rpc)
 	mux := http.NewServeMux()
 	for _, route := range flamehttp.Contract().Endpoints {
 		if route.Kind == flamehttp.EndpointKindRPC {
-			mux.Handle(route.Method+" "+route.Path, http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-				body, err := io.ReadAll(request.Body)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				request.Body = io.NopCloser(bytes.NewReader(body))
-				var envelope struct {
-					Method string `json:"method"`
-				}
-				if err := json.Unmarshal(body, &envelope); err != nil {
-					t.Error(err)
-					return
-				}
-				if envelope.Method == "runs.start" && withheld.CompareAndSwap(false, true) {
-					rpc.ServeHTTP(lostOpeningWriter{ResponseWriter: w, opening: opening}, request)
-					return
-				}
-				rpc.ServeHTTP(w, request)
-			}))
+			mux.Handle(route.Method+" "+route.Path, rpc)
 		}
 	}
-	if err := host.application.callbacks.PublishRPC(mux); err != nil {
+	if err := host.application.callbacks.PublishRPC(mux, host.application.modelCallbacks...); err != nil {
 		t.Fatal(err)
 	}
+	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+func schedulesWithLostOpening(t *testing.T, cfg assemblyConfig) (*poMCPRuntime, <-chan protocol.StartRunResponse) {
+	t.Helper()
+	opening := make(chan protocol.StartRunResponse, 1)
+	var withheld atomic.Bool
+	r := poMCPOpenWithCallbackRPC(t, cfg, func(rpc http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+			body, err := io.ReadAll(request.Body)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			request.Body = io.NopCloser(bytes.NewReader(body))
+			var envelope struct {
+				Method string `json:"method"`
+			}
+			if err := json.Unmarshal(body, &envelope); err != nil {
+				t.Error(err)
+				return
+			}
+			if envelope.Method == "runs.start" && withheld.CompareAndSwap(false, true) {
+				rpc.ServeHTTP(lostOpeningWriter{ResponseWriter: w, opening: opening}, request)
+				return
+			}
+			rpc.ServeHTTP(w, request)
+		})
+	})
 	return r, opening
 }
 
@@ -107,11 +128,9 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
 	// The private capture is covered by Schedules' own lost-acceptance tests.
 	// Here, a restart must recover the same public Run receipt after Core retires it.
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: current.SessionID}, "retire-accepted-material")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := readScheduleRun(r, request, "lost-core")

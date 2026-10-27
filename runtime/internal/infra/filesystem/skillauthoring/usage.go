@@ -11,8 +11,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	skillspec "github.com/Tangerg/scope/skills"

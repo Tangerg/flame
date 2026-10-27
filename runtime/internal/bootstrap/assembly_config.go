@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/qimu/process"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -26,7 +27,9 @@ type chatResolver interface {
 type assemblyConfig struct {
 	// Stores is the complete durable graph opened by persistence.Open.
 	// Bootstrap never assembles individual missing-store feature variants.
-	stores *persistence.Bundle
+	stores              *persistence.Bundle
+	processRunner       process.Runner
+	firstPartyDirectory string
 
 	// BuildID identifies the running executable at durable executor boundaries.
 	buildID string
@@ -122,6 +125,9 @@ type assemblyConfig struct {
 func validateAssemblyConfig(c assemblyConfig) error {
 	if c.stores == nil {
 		return errors.New("runtime: Stores is required")
+	}
+	if lo.IsNil(c.processRunner) {
+		return errors.New("runtime: process runner is required")
 	}
 	if c.userHome == "" {
 		return errors.New("runtime: UserHome is required")

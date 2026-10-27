@@ -5,13 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/samber/lo"
 	"slices"
 	"sync"
 	"time"
-
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/runtime/internal/keylock"
-	"github.com/samber/lo"
 )
 
 var (
@@ -71,7 +70,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	defer release()
 	if pending, ok := r.pendingCompletion(key); ok {
 		if pending.Fingerprint != fingerprint {
-			return nil, extension.ErrInvocationConflict
+			return nil, portable.ErrInvocationConflict
 		}
 		if err := r.completeWithin(context.WithoutCancel(ctx), pending); err != nil {
 			return nil, settlementError(err)
@@ -95,7 +94,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	}
 	record = ReplayRecord{Key: key, Fingerprint: fingerprint, Payload: payload}
 	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
-		if errors.Is(err, extension.ErrInvocationConflict) {
+		if errors.Is(err, portable.ErrInvocationConflict) {
 			return nil, err
 		}
 		r.rememberPendingCompletion(record)
@@ -105,7 +104,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 }
 
 func settlementError(err error) error {
-	if errors.Is(err, extension.ErrInvocationConflict) || errors.Is(err, ErrClaimLost) || errors.Is(err, ErrOutcomeConflict) {
+	if errors.Is(err, portable.ErrInvocationConflict) || errors.Is(err, ErrClaimLost) || errors.Is(err, ErrOutcomeConflict) {
 		return fmt.Errorf("idempotency: persist execution outcome: %w", err)
 	}
 	return errors.Join(ErrOutcomePending, err)

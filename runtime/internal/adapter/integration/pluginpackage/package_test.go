@@ -1,55 +1,252 @@
 package pluginpackage
 
 import (
-	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
-	"fmt"
+	"io"
 	"os"
+	"path"
 	"path/filepath"
-	"reflect"
-	"slices"
+	"runtime"
 	"strings"
 	"testing"
 
-	flameextension "github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/distribution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
-type emptySelections struct{ plugins.SelectionStore }
+const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content","version":"1.0.0"}`
 
-type emptyCompositions struct{ plugins.CompositionStore }
+// The profile is registered to validate declarations. Metadata tests must never
+// execute code; real process and browser drivers have their own integration tests.
+type unopenedProfile qimu.Profile
 
-func (emptyCompositions) List(context.Context) ([]plugin.OrderedComposition, error) {
-	return nil, nil
+func (p unopenedProfile) Profile() qimu.Profile { return qimu.Profile(p) }
+func (p unopenedProfile) Prepare(context.Context, *qimu.Setup) ([]qimu.ExportValue, error) {
+	return nil, errors.New("metadata fixture attempted execution")
 }
 
-func (emptySelections) List(context.Context) ([]plugin.ProviderSelection, error) {
-	return nil, nil
+type installationFixture struct {
+	*persistence.InstallationStore
+	host    *qimu.Host
+	catalog releaseCatalog
 }
 
-func testReleases(t *testing.T) *Releases {
-	releases, _, _ := testReleaseStore(t)
-	return releases
+func (s *installationFixture) Save(ctx context.Context, installation *plugin.Installation) error {
+	release, err := s.catalog.Get(ctx, installation.Selected())
+	if err != nil {
+		return err
+	}
+	projected, err := plugins.ProjectFrameworkRelease(release)
+	if err != nil {
+		return err
+	}
+	if err := plugins.RegisterFrameworkRelease(s.host, projected); err != nil {
+		return err
+	}
+	encoded, err := plugins.EncodeFrameworkConfiguration(installation.Snapshot())
+	if err != nil {
+		return err
+	}
+	_, found, err := s.Get(ctx, installation.ID())
+	if err != nil {
+		return err
+	}
+	config := qimu.InstallationConfig{ID: qimu.InstallationID(installation.ID().String()), Plugin: projected.Plugin, Configuration: encoded, Enabled: installation.Enabled()}
+	if found {
+		original, ok := s.host.Installation(config.ID)
+		if !ok {
+			return qimu.ErrUnavailable
+		}
+		return s.host.Update(ctx, original, config)
+	}
+	_, err = s.host.Install(ctx, config)
+	return err
 }
 
+func testReleases(t *testing.T) *Releases { releases, _, _ := testReleaseStore(t); return releases }
+func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persistence.MCPServerStore) {
+	t.Helper()
+	directory := t.TempDir()
+	db, err := persistencefixture.Open(t, t.Context(), filepath.Join(t.TempDir(), "runtime"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := qimu.NewHost(t.Context(), qimu.HostConfig{Admission: db.Admission, Epoch: db.Qimu.Epoch(), Installations: db.Qimu, ExecutionProtection: db.Qimu, Drivers: []qimu.Driver{unopenedProfile(qimu.MCPProcess), unopenedProfile(qimu.BrowserJS)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := distribution.Open(distribution.Config{Directory: filepath.Join(directory, "releases"), Admission: db.Admission, Trust: func(_ context.Context, source distribution.Source, _ distribution.Manifest, _ distribution.Lock) error {
+		if !filepath.IsAbs(source.Location) {
+			return distribution.ErrUntrusted
+		}
+		return nil
+	}, Retained: func(ctx context.Context, digest qimu.Digest) (bool, error) {
+		states, err := db.Installations.List(ctx)
+		if err != nil {
+			return false, err
+		}
+		for _, state := range states {
+			if state.Selected.Digest().String() == digest.String() || state.Staged != nil && state.Staged.Digest().String() == digest.String() {
+				return true, nil
+			}
+		}
+		return false, nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	releases, err := New(content, filepath.Join(directory, "data"), db.PluginReleases)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, err := host.Close(context.Background())
+		if err != nil {
+			t.Error(err)
+		}
+		if err := content.Close(context.Background()); err != nil {
+			t.Error(err)
+		}
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+		_ = filepath.WalkDir(directory, func(name string, entry os.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				return os.Chmod(name, 0700)
+			}
+			return err
+		})
+	})
+	return releases, &installationFixture{InstallationStore: db.Installations, host: host, catalog: db.PluginReleases}, db.MCPServers
+}
+
+// Fixtures explicitly include the neutral author inputs. The original product
+// schema remains independent, so malformed metadata still reaches its parser.
+func writePackage(t *testing.T, files map[string]string) string {
+	t.Helper()
+	directory := t.TempDir()
+	for name, body := range files {
+		if name == "plugin.json" {
+			var object map[string]jsontext.Value
+			if json.Unmarshal([]byte(body), &object) == nil && object != nil {
+				if _, exists := object["version"]; !exists {
+					object["version"] = jsontext.Value(`"1.0.0"`)
+					encoded, _ := json.Marshal(object)
+					body = string(encoded)
+				}
+			}
+		}
+		destination := filepath.Join(directory, name)
+		if err := os.MkdirAll(filepath.Dir(destination), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(destination, []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var mcp struct {
+		Servers map[string]struct {
+			Command string `json:"command"`
+		} `json:"mcpServers"`
+	}
+	if json.Unmarshal([]byte(files["mcp.json"]), &mcp) == nil {
+		for _, server := range mcp.Servers {
+			command, ok := strings.CutPrefix(server.Command, "./")
+			if !ok || !plugin.ValidResourcePath(command) {
+				continue
+			}
+			if _, exists := files[command]; !exists {
+				continue
+			}
+			if err := os.Chmod(filepath.Join(directory, command), 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	// Handwritten module fixtures have a matching explicit compiler graph. Real
+	// generated graphs are tested by component-sdk with its actual compiler.
+	var declaration struct {
+		Components []struct {
+			Entry  string `json:"entry"`
+			Export string `json:"export"`
+		} `json:"components"`
+	}
+	for name, body := range files {
+		if !strings.HasSuffix(name, "declaration.json") {
+			continue
+		}
+		if json.Unmarshal([]byte(body), &declaration) != nil {
+			continue
+		}
+		graphs := map[string]*moduleGraph{}
+		for _, component := range declaration.Components {
+			if !plugin.ValidResourcePath(component.Entry) || component.Export == "" {
+				continue
+			}
+			graphPath := path.Join(path.Dir(component.Entry), "modules.generated.json")
+			graph := graphs[graphPath]
+			if graph == nil {
+				graph = &moduleGraph{SchemaVersion: 1, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
+				graphs[graphPath] = graph
+			}
+			graph.Modules[0].Exports = append(graph.Modules[0].Exports, component.Export)
+		}
+		for name, graph := range graphs {
+			if _, exists := files[name]; exists {
+				continue
+			}
+			encoded, _ := json.Marshal(graph)
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(directory, name)), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(directory, name), encoded, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return directory
+}
+func publishPackage(ctx context.Context, releases *Releases, source string) (plugin.Release, error) {
+	info, err := os.Stat(source)
+	if err != nil {
+		return plugin.Release{}, err
+	}
+	if info.IsDir() {
+		if _, err := BuildRelease(ctx, source, BuildTarget{OS: runtime.GOOS, Arch: runtime.GOARCH}, io.Discard); err != nil {
+			return plugin.Release{}, err
+		}
+	}
+	candidate, err := releases.Materialize(ctx, source)
+	if err != nil {
+		return plugin.Release{}, err
+	}
+	release, err := candidate.Publish(ctx)
+	return release, errors.Join(err, candidate.Discard())
+}
+func flameDeclaration(fields string) string {
+	if fields != "" {
+		fields = "," + fields
+	}
+	return `{"protocol":"` + sdkplugin.DeclarationProtocol + `"` + fields + `}`
+}
 func relocateTestRelease(source, destination string) error {
 	info, err := os.Stat(source)
 	if err != nil {
 		return err
 	}
 	mode := info.Mode().Perm()
-	// macOS 15 requires owner write to rename a sealed directory. Restore the
-	// original permissions so the fixture changes location, not release policy.
 	if err := os.Chmod(source, mode|0200); err != nil {
 		return err
 	}
@@ -59,70 +256,154 @@ func relocateTestRelease(source, destination string) error {
 	return os.Chmod(destination, mode)
 }
 
-func TestStartupRecoversSealedStagingAndNormalReclaimPreservesCandidates(t *testing.T) {
-	r := testReleases(t)
-	stage := filepath.Join(r.directory, ".stage-abandoned")
-	if err := os.Mkdir(stage, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(stage, "payload"), []byte("unpublished"), 0400); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(stage, 0500); err != nil {
-		t.Fatal(err)
-	}
-	if err := r.Reclaim(t.Context(), nil); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(stage); err != nil {
-		t.Fatalf("normal reclaim removed staging: %v", err)
-	}
-	if err := r.RecoverStaging(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(stage); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("staging survived startup: %v", err)
-	}
+type afterReadStore struct {
+	plugins.Store
+	after func()
 }
 
-func testReleaseStore(t *testing.T) (*Releases, *persistence.InstallationStore, *persistence.MCPServerStore) {
-	t.Helper()
-	directory := t.TempDir()
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "flame.db")))
+func (s *afterReadStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
+	value, found, err := s.Store.Get(ctx, id)
+	if err == nil && s.after != nil {
+		call := s.after
+		s.after = nil
+		call()
+	}
+	return value, found, err
+}
+
+func TestNeutralReleaseOwnsIdentityAndCandidateContentClaim(t *testing.T) {
+	releases := testReleases(t)
+	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "resource.txt": "original"})
+	var archive bytes.Buffer
+	built, err := BuildRelease(t.Context(), source, BuildTarget{}, &archive)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
-	r, err := New(directory, db.PluginReleases)
+	candidate, err := releases.Materialize(t.Context(), source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_ = filepath.WalkDir(directory, func(path string, entry os.DirEntry, err error) error {
-			if err == nil && entry.IsDir() {
-				return os.Chmod(path, 0700)
-			}
-			return err
-		})
-	})
-	return r, db.Installations, db.MCPServers
-}
-func writePackage(t *testing.T, files map[string]string) string {
-	t.Helper()
-	dir := t.TempDir()
-	for name, body := range files {
-		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(body), 0600); err != nil {
-			t.Fatal(err)
-		}
+	t.Cleanup(func() { _ = candidate.Discard() })
+	if candidate.Release().Digest().String() != built.Digest.String() {
+		t.Fatal("Flame invented a second release identity")
 	}
-	return dir
+	if err := releases.Reclaim(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := candidate.Publish(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := releases.Reclaim(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := releases.content.Acquire(t.Context(), built.Digest)
+	if err != nil {
+		t.Fatal("candidate lost content before admission:", err)
+	}
+	_ = lease.Close()
+	if err := candidate.Discard(); err != nil {
+		t.Fatal(err)
+	}
+	if err := releases.Reclaim(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := releases.content.Acquire(t.Context(), built.Digest); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unretained content survived: %v", err)
+	}
+	if _, err := releases.catalog.Get(t.Context(), candidate.Release().Digest()); err != nil {
+		t.Fatalf("immutable original metadata was lost: %v", err)
+	}
+	file := filepath.Join(t.TempDir(), "release.zip")
+	if err := os.WriteFile(file, archive.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fromArchive, err := releases.Materialize(t.Context(), file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fromArchive.Discard()
+	if fromArchive.Release().Digest() != candidate.Release().Digest() {
+		t.Fatal("directory and neutral ZIP have different identities")
+	}
 }
 
-const portableManifest = `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"test.content"}`
+func TestLegacyContentAndInstalledAmbientTransportsAreRefused(t *testing.T) {
+	releases := testReleases(t)
+	if _, err := releases.Materialize(t.Context(), writePackage(t, map[string]string{"plugin.json": portableManifest})); err == nil {
+		t.Fatal("legacy tree without neutral manifest was admitted")
+	}
+	for _, server := range []string{`{"type":"stdio","command":"sh"}`, `{"type":"streamable-http","url":"https://example.test/mcp"}`} {
+		source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + server + `}}`})
+		if _, err := publishPackage(t.Context(), releases, source); !errors.Is(err, plugin.ErrInvalid) {
+			t.Fatalf("unsupported installed profile admitted: %s: %v", server, err)
+		}
+	}
+}
+
+func TestNativeConnectionRetainsOriginalContentAndDigest(t *testing.T) {
+	releases := testReleases(t)
+	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"./bin/backend"}}}`, "bin/backend": "native fixture"})
+	release, err := publishPackage(t.Context(), releases, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.Enable(release); err != nil {
+		t.Fatal(err)
+	}
+	launch, found, err := releases.Connection(t.Context(), installation, release, testsupport.ServerName("backend"))
+	if err != nil || !found {
+		t.Fatalf("connection: %v, %v", found, err)
+	}
+	defer launch.Retire.Close()
+	if launch.Stdio.ExpectedExecutable.String() != qimu.Hash([]byte("native fixture")).String() {
+		t.Fatal("launch re-hashed mutable executable as new authority")
+	}
+	if err := releases.Reclaim(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(launch.Stdio.Command); err != nil {
+		t.Fatal("live original connection lost bytes:", err)
+	}
+	if err := launch.Retire.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := releases.Reclaim(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(launch.Stdio.Command); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("released connection retained content: %v", err)
+	}
+}
+
+func TestNeutralProjectionCannotAddAnExecutableUnit(t *testing.T) {
+	releases := testReleases(t)
+	source := writePackage(t, map[string]string{"plugin.json": portableManifest})
+	built, err := BuildRelease(t.Context(), source, BuildTarget{}, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := built.Manifest
+	manifest.Units = append(manifest.Units, distribution.Unit{ID: "invented", Profile: qimu.NativeGo})
+	var output bytes.Buffer
+	lock, err := distribution.Build(t.Context(), source, manifest, nil, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.Release == built.Digest {
+		t.Fatal("declaration mutation retained identity")
+	}
+	archive := filepath.Join(t.TempDir(), "invented.zip")
+	if err := os.WriteFile(archive, output.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := releases.Materialize(t.Context(), archive); !errors.Is(err, plugin.ErrInvalid) {
+		t.Fatalf("neutral graph escaped Flame consumer contract: %v", err)
+	}
+}
 
 func TestBackendDirectoryValidationPreservesFilesystemFailure(t *testing.T) {
 	root, err := os.OpenRoot(t.TempDir())
@@ -150,634 +431,11 @@ func TestManifestFailurePreservesTheJSONCause(t *testing.T) {
 	}
 }
 
-func TestMalformedArchiveRetainsFormatCauseAndMissingSourceIsNotInvalidInput(t *testing.T) {
-	releases := testReleases(t)
-	source := filepath.Join(t.TempDir(), "package.zip")
-	if err := os.WriteFile(source, []byte("invalid archive"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := publishPackage(t.Context(), releases, source); !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, zip.ErrFormat) {
-		t.Fatalf("malformed archive lost its validation category or format cause: %v", err)
-	}
-	if _, err := publishPackage(t.Context(), releases, filepath.Join(t.TempDir(), "missing")); !errors.Is(err, os.ErrNotExist) || errors.Is(err, plugin.ErrInvalid) {
-		t.Fatalf("missing source lost its filesystem cause or became invalid input: %v", err)
-	}
-}
-
-func TestUnsupportedArchiveCompressionPreservesAlgorithmCause(t *testing.T) {
-	releases := testReleases(t)
-	source := filepath.Join(t.TempDir(), "package.zip")
-	file, err := os.Create(source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	archive := zip.NewWriter(file)
-	_, createErr := archive.CreateRaw(&zip.FileHeader{Name: "plugin.json", Method: 99})
-	if err := errors.Join(createErr, archive.Close(), file.Close()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := publishPackage(t.Context(), releases, source); !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, zip.ErrAlgorithm) {
-		t.Fatalf("unsupported archive compression lost its category or algorithm cause: %v", err)
-	}
-}
-
 func TestManifestKeywordsCannotDefaultNullToText(t *testing.T) {
 	releases := testReleases(t)
 	manifest := strings.TrimSuffix(portableManifest, "}") + `,"keywords":[null]}`
 	if _, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": manifest})); err == nil {
 		t.Fatal("manifest admitted a null keyword as an empty string")
-	}
-}
-
-func TestInvalidContributionMapRefusesFlameEntriesAndPreservesPortableServers(t *testing.T) {
-	for _, raw := range []string{`null`, `[]`, `"invalid"`} {
-		t.Run(raw, func(t *testing.T) {
-			releases := testReleases(t)
-			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-				"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}],"contributes":` + raw + ``),
-				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
-			}))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(release.Declaration().Inputs) != 0 || len(release.Declaration().Servers) != 1 || len(release.Declaration().Diagnostics) != 1 || release.Declaration().Diagnostics[0] != (plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentFlameExtension}, Code: plugin.DiagnosticInvalidDeclaration}) {
-				t.Fatalf("invalid contribution map escaped its component boundary: %+v", release)
-			}
-		})
-	}
-}
-
-// Capability requests had no enforcement point and are no longer part of the
-// Flame namespace. The strict current declaration is refused while portable
-// MCP components remain independently available.
-func TestUnsupportedFlameFieldIsReportedNotAdmitted(t *testing.T) {
-	releases := testReleases(t)
-	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"requests":[{"capability":"tools.invoke","targets":["backend/read"]}],"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION"}]`),
-		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture"}}}`,
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declaration := release.Declaration()
-	want := []plugin.Diagnostic{{Component: plugin.Component{Kind: plugin.ComponentFlameExtension}, Code: plugin.DiagnosticInvalidDeclaration}}
-	if !reflect.DeepEqual(declaration.Diagnostics, want) || len(declaration.Inputs) != 0 || len(declaration.Servers) != 1 {
-		t.Fatalf("unsupported Flame field = %+v", declaration)
-	}
-}
-
-func TestNullCannotBecomeAnImplicitDeclarationDefault(t *testing.T) {
-	for _, test := range []struct {
-		name, extension, mcp string
-		servers              int
-	}{
-		{"input flag", `"inputs":[{"id":"option","server":"backend","target":"env","key":"OPTION","required":null}]`, `{"type":"stdio","command":"fixture"}`, 2},
-		{"theme colors", `"contributes":{"themes":[{"id":"theme","title":"Theme","scheme":"dark","colors":null}]}`, `{"type":"stdio","command":"fixture"}`, 2},
-		{"environment value", `"inputs":[]`, `{"type":"stdio","command":"fixture","env":{"OPTION":null}}`, 1},
-		{"argument", `"inputs":[]`, `{"type":"stdio","command":"fixture","args":[null]}`, 1},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			releases := testReleases(t)
-			release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-				"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-				"io.github.tangerg.flame/declaration.json": flameDeclaration(`` + test.extension + ``),
-				"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":` + test.mcp + `,"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
-			}))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(release.Declaration().Inputs) != 0 || len(release.Declaration().Themes) != 0 || len(release.Declaration().Diagnostics) == 0 {
-				t.Fatalf("null was admitted as a declaration default: %+v", release)
-			}
-			if len(release.Declaration().Servers) != test.servers {
-				t.Fatalf("invalid backend was retained or healthy sibling withdrawn: %+v", release)
-			}
-		})
-	}
-}
-
-func TestOptionalEmptyInputsReachTheirDeclaredBindings(t *testing.T) {
-	releases := testReleases(t)
-	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"environment","server":"process","target":"env","key":"OPTION"},{"id":"header","server":"remote","target":"header","key":"X-Option","secret":true}]`),
-		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"process":{"type":"stdio","command":"fixture"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
-	})
-	release, err := publishPackage(t.Context(), releases, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		change plugin.ValueChange
-		set    bool
-	}{{plugin.SetValue(""), true}, {plugin.ClearValue(), false}} {
-		if err := installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"environment": test.change, "header": test.change}}); err != nil {
-			t.Fatal(err)
-		}
-		servers, err := releases.Definitions(t.Context(), installation, release)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, server := range servers {
-			bindings, key := server.Env, "OPTION"
-			if server.Name.String() == "remote" {
-				bindings, key = server.Headers, "X-Option"
-			}
-			bound, exists := bindings[key]
-			if exists != test.set || bound != "" {
-				t.Fatalf("optional input presence lost for %s: %t, %q", server.Name, exists, bound)
-			}
-		}
-	}
-}
-
-func TestCachedIntegrityRefusesAReleaseRootAlias(t *testing.T) {
-	releases := testReleases(t)
-	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{"plugin.json": portableManifest}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	root, err := releases.Root(release.Digest())
-	if err != nil {
-		t.Fatal(err)
-	}
-	retained := root + "-retained"
-	if err := relocateTestRelease(root, retained); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(retained, root); err != nil {
-		t.Fatal(err)
-	}
-	capability, _, err := releases.verifiedRoot(t.Context(), release.Digest())
-	if capability != nil {
-		_ = capability.Close()
-	}
-	if !errors.Is(err, plugin.ErrUnavailable) {
-		t.Fatalf("cached integrity admitted a redirected root: %v", err)
-	}
-}
-
-func TestDeclaredSearchPathDoesNotCompeteWithHostInheritance(t *testing.T) {
-	releases := testReleases(t)
-	release, err := publishPackage(t.Context(), releases, writePackage(t, map[string]string{
-		"plugin.json": portableManifest,
-		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"fixture","env":{"Path":"declared"}}}}`,
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	servers, err := releases.Definitions(t.Context(), installation, release)
-	if err != nil || len(servers) != 1 {
-		t.Fatalf("declared descriptor = %d, %v", len(servers), err)
-	}
-	if _, inherited := servers[0].Env["PATH"]; inherited || servers[0].Env["Path"] != "declared" {
-		t.Fatal("host inheritance introduced a competing portable search path")
-	}
-}
-
-func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
-	releases, store, users := testReleaseStore(t)
-	user, err := mcpserver.ParseServerName("user")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := users.Save(t.Context(), mcpserver.Server{Source: mcpserver.UserSource(), Name: user, Transport: mcpserver.TransportStdio, Command: "fixture"}); err != nil {
-		t.Fatal(err)
-	}
-	source := writePackage(t, map[string]string{"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`, "io.github.tangerg.flame/declaration.json": flameDeclaration(""), "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
-	release, err := publishPackage(t.Context(), releases, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Enable(release); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Save(t.Context(), installation); err != nil {
-		t.Fatal(err)
-	}
-	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{}, emptyCompositions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	name, err := installation.ServerID(testsupport.ServerName("backend"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	ref, err := tool.MCP(name, mustRemoteToolName(t, "read"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	authorities := toolset.NewAuthorities(registry.Definition, nil)
-	before, found, err := authorities.Fingerprint(t.Context(), ref)
-	if err != nil || !found {
-		t.Fatalf("initial authority = %t, %v", found, err)
-	}
-	desired, err := registry.Definitions(t.Context())
-	if err != nil || len(desired) != 2 {
-		t.Fatalf("initial definitions = %+v, %v", desired, err)
-	}
-	root, err := releases.Root(release.Digest())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := relocateTestRelease(root, root+"-retired"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(root, 0700); err != nil {
-		t.Fatal(err)
-	}
-	sources, err := registry.Definitions(t.Context())
-	if err != nil || !reflect.DeepEqual(sources, desired) {
-		t.Fatalf("unavailable release changed desired definitions = %+v, %v", sources, err)
-	}
-	realization, err := releases.Realize(t.Context(), installation, release)
-	if err != nil || realization.Release != plugins.ReleaseUnavailable || len(realization.UnavailableBackends) != 0 {
-		t.Fatalf("unavailable release observation = %+v, %v", realization, err)
-	}
-	if _, found, err := registry.Dispatchable(t.Context(), sources[1].ID()); found || !errors.Is(err, plugin.ErrUnavailable) {
-		t.Fatalf("unavailable source admitted dispatch: %t, %v", found, err)
-	}
-	current, found, err := authorities.Fingerprint(t.Context(), ref)
-	if err != nil || !found || current != before {
-		t.Fatalf("unavailable bytes obscured standing authority: %t, %v", found, err)
-	}
-	installation.Disable()
-	if err := store.Save(t.Context(), installation); err != nil {
-		t.Fatal(err)
-	}
-	current, found, err = authorities.Fingerprint(t.Context(), ref)
-	if err != nil || !found || current != before {
-		t.Fatalf("disabling the same code advanced its standing authority: %t, %v", found, err)
-	}
-}
-
-func mustRemoteToolName(t *testing.T, text string) mcpserver.RemoteToolName {
-	t.Helper()
-	name, err := mcpserver.ParseRemoteToolName(text)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return name
-}
-
-func TestMCPDefinitionsStayStableWhenBackendAvailabilityChanges(t *testing.T) {
-	releases, store, users := testReleaseStore(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"broken":{"type":"stdio","command":"fixture","cwd":"${PLUGIN_DATA}/work"},"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
-	release, err := publishPackage(t.Context(), releases, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Enable(release); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Save(t.Context(), installation); err != nil {
-		t.Fatal(err)
-	}
-	registry, err := plugins.NewRegistry(users, store, releases, emptySelections{}, emptyCompositions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	definitions, err := registry.Definitions(t.Context())
-	if err != nil || len(definitions) != 2 {
-		t.Fatalf("definitions = %+v, %v", definitions, err)
-	}
-	realization, err := releases.Realize(t.Context(), installation, release)
-	if err != nil || realization.Release != plugins.ReleaseAvailable || !slices.Equal(realization.UnavailableBackends, []mcpserver.ServerName{mustServerName(t, "broken")}) {
-		t.Fatalf("backend observation = %+v, %v", realization, err)
-	}
-	if _, err := os.Stat(releases.dataRoot(installation.ID())); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("definition or observation read prepared the backend: %v", err)
-	}
-	if err := releases.Prepare(t.Context(), installation, release); err != nil {
-		t.Fatalf("prepare = %v", err)
-	}
-	prepared, err := registry.Definitions(t.Context())
-	if err != nil || !reflect.DeepEqual(prepared, definitions) {
-		t.Fatalf("backend preparation changed desired definitions: %+v, %v", prepared, err)
-	}
-	after, err := releases.Realize(t.Context(), installation, release)
-	if err != nil || after.Release != plugins.ReleaseAvailable || len(after.UnavailableBackends) != 0 {
-		t.Fatalf("prepared backend observation = %+v, %v", after, err)
-	}
-}
-
-func TestMaterializationFreezesBytesAndDetectsTampering(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "original"})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = os.WriteFile(filepath.Join(source, "notes.txt"), []byte("changed"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
-	if err != nil || string(got) != "original" {
-		t.Fatalf("immutable resource = %q, %v", got, err)
-	}
-	root, _ := r.Root(release.Digest())
-	file := filepath.Join(root, "notes.txt")
-	if err = os.Chmod(file, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err = os.WriteFile(file, []byte("tampered"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes); err == nil {
-		t.Fatal("served a changed content-addressed resource")
-	}
-}
-
-func TestColdResourceReadAfterAdmissionPressure(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "original"})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for index := range 2*plugin.MaxInstallations + 1 {
-		if err := os.WriteFile(filepath.Join(source, "notes.txt"), []byte(fmt.Sprintf("replacement %d", index)), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := publishPackage(t.Context(), r, source); err != nil {
-			t.Fatal(err)
-		}
-	}
-	content, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes)
-	if err != nil || string(content) != "original" {
-		t.Fatalf("cold immutable resource = %q, %v", content, err)
-	}
-}
-func TestPortableFailuresRemainIndependent(t *testing.T) {
-	for _, extension := range []string{`"invalid"`, `{"io.github.tangerg.flame":{"apiVersion":9}}`, `{"io.github.tangerg.flame":{"apiVersion":1,"unknown":true}}`, `{"other.vendor":{"anything":true}}`} {
-		t.Run(extension, func(t *testing.T) {
-			r := testReleases(t)
-			manifest := strings.TrimSuffix(portableManifest, "}") + `,"extensions":` + extension + `}`
-			source := writePackage(t, map[string]string{"plugin.json": manifest, "mcp.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"good":{"type":"stdio","command":"test-server"},"broken":{"type":"unknown"}}}`, "skills/review/SKILL.md": "---\nname: review\ndescription: Review a result\n---\nRead the results carefully.\n"})
-			release, err := publishPackage(t.Context(), r, source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(release.Declaration().Servers) != 1 || len(release.Declaration().Skills) != 1 || len(release.Declaration().Diagnostics) == 0 {
-				t.Fatalf("component admission = %+v", release)
-			}
-		})
-	}
-}
-
-func TestVerifiedResourceRetainsItsDirectoryAuthority(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "original"})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	verified, _, err := r.verifiedRoot(t.Context(), installation.Selected())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = verified.Close() })
-	directory, err := r.Root(release.Digest())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := relocateTestRelease(directory, directory+"-retired"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(directory, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(directory, "notes.txt"), []byte("replacement"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	content, err := read(t.Context(), verified, "notes.txt", maxPackageBytes)
-	if err != nil || string(content) != "original" {
-		t.Fatalf("verified resource = %q, %v; want original directory", content, err)
-	}
-	if _, err := r.readResource(t.Context(), installation, "notes.txt", maxPackageBytes); !errors.Is(err, plugin.ErrUnavailable) {
-		t.Fatalf("replacement release admission = %v, want unavailable", err)
-	}
-}
-func TestInstallationDefinitionsReflectAdmission(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"good":{"type":"stdio","command":"test-server","args":["${PLUGIN_ROOT}","${PLUGIN_DATA}"],"cwd":"${PLUGIN_ROOT}"}}}`})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	i, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := r.Definitions(t.Context(), i, release)
-	if err != nil || len(before) != 1 || before[0].Enabled {
-		t.Fatalf("unadmitted projection = %+v, %v", before, err)
-	}
-	if err = i.Enable(release); err != nil {
-		t.Fatal(err)
-	}
-	if err := r.Prepare(t.Context(), i, release); err != nil {
-		t.Fatal(err)
-	}
-	after, err := r.Definitions(t.Context(), i, release)
-	if err != nil || len(after) != 1 || !after[0].Enabled || after[0].Source.Origin() != mustInstallationOrigin(t, i.ID()) || after[0].Args[0] != after[0].Dir {
-		t.Fatalf("admitted projection = %+v, %v", after, err)
-	}
-}
-
-func TestMCPUnionPresenceCannotCrossTransportOrHideNull(t *testing.T) {
-	for _, component := range []string{`{"type":"stdio","command":"server","url":""}`, `{"type":"stdio","command":"server","env":null}`, `{"type":"streamable-http","url":"https://example.test/mcp","args":[]}`, `{"type":"stdio","command":"server","env":{"BAD=KEY":"value"}}`} {
-		t.Run(component, func(t *testing.T) {
-			releases := testReleases(t)
-			source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"good":{"type":"stdio","command":"server"},"bad":` + component + `}}`})
-			release, err := publishPackage(t.Context(), releases, source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(release.Declaration().Servers) != 1 || release.Declaration().Servers[0].Name.String() != "good" || len(release.Declaration().Diagnostics) != 1 {
-				t.Fatalf("transport admission: %+v", release)
-			}
-		})
-	}
-}
-
-func TestShippedTrajectoryPackageIsAdmittedWithoutExecutingCode(t *testing.T) {
-	releases := testReleases(t)
-	source, err := filepath.Abs("../../../../../plugins/trajectory/package")
-	if err != nil {
-		t.Fatal(err)
-	}
-	release, err := publishPackage(t.Context(), releases, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(release.Declaration().Themes) != 1 || len(release.Declaration().Skills) != 1 || len(release.Declaration().Diagnostics) != 0 {
-		t.Fatalf("example admission: %+v", release)
-	}
-}
-
-func TestOverlappingAdmissionsShareAnImmutableRelease(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "shared content"})
-	ready := make(chan struct{})
-	type admission struct {
-		release plugin.Release
-		err     error
-	}
-	results := make(chan admission, 2)
-	for range 2 {
-		go func() {
-			<-ready
-			release, err := publishPackage(t.Context(), r, source)
-			results <- admission{release, err}
-		}()
-	}
-	close(ready)
-	first, second := <-results, <-results
-	if first.err != nil || second.err != nil || first.release.Digest() != second.release.Digest() {
-		t.Fatalf("overlapping admissions: %v, %v", first.err, second.err)
-	}
-	if _, err := r.verify(t.Context(), first.release.Digest()); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
-	for _, operation := range []string{"materialize", "cold definitions", "cold backends", "cold connection"} {
-		t.Run(operation, func(t *testing.T) {
-			r, store, _ := testReleaseStore(t)
-			source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
-			root, err := os.OpenRoot(source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			digest, _, err := treeDigest(t.Context(), root)
-			if err := errors.Join(err, root.Close()); err != nil {
-				t.Fatal(err)
-			}
-			admitted, err := plugin.NewRelease(digest, plugin.Declaration{Name: "test.content", Diagnostics: []plugin.Diagnostic{{Component: plugin.Component{Kind: plugin.ComponentMCPServer, Name: "backend"}, Code: plugin.DiagnosticInvalidDeclaration}}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := r.catalog.Admit(t.Context(), admitted); err != nil {
-				t.Fatal(err)
-			}
-			materialized, err := publishPackage(t.Context(), r, source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if operation == "materialize" {
-				if len(materialized.Declaration().Servers) != 0 || len(materialized.Declaration().Diagnostics) != 1 {
-					t.Fatalf("reinterpreted an admitted release: %+v", materialized)
-				}
-				return
-			}
-			installation, err := plugin.New(testsupport.InstallationID(t), source, admitted)
-			if err != nil {
-				t.Fatal(err)
-			}
-			release := admitted
-			if err := installation.Enable(release); err != nil {
-				t.Fatal(err)
-			}
-			if err := store.Save(t.Context(), installation); err != nil {
-				t.Fatal(err)
-			}
-			cold, err := New(r.directory, r.catalog)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if operation == "cold definitions" {
-				servers, err := cold.Definitions(t.Context(), installation, release)
-				if err != nil || len(servers) != 0 {
-					t.Fatalf("definitions introduced an unadmitted backend: %+v, %v", servers, err)
-				}
-				return
-			}
-			if operation == "cold connection" {
-				_, found, err := cold.Connection(t.Context(), installation, release, mustServerName(t, "backend"))
-				if found || err != nil {
-					t.Fatalf("connection introduced an unadmitted backend: %v, %v", found, err)
-				}
-				return
-			}
-			backends, err := cold.Realize(t.Context(), installation, release)
-			if err != nil || backends.Release != plugins.ReleaseAvailable || len(backends.UnavailableBackends) != 0 {
-				t.Fatalf("cold validation introduced an unadmitted backend: %+v, %v", backends, err)
-			}
-		})
-	}
-}
-
-func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{
-		"plugin.json": `{"$schema":"` + manifestSchema + `","name":"test.content","extensions":{"` + plugin.Namespace + `":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
-		"io.github.tangerg.flame/declaration.json": flameDeclaration(`"inputs":[{"id":"tenant","server":"backend","target":"header","key":"x-tenant","secret":true}]`),
-		"mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp","headers":{"X-Tenant":"fixed"}}}}`,
-	})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(release.Declaration().Servers) != 1 || len(release.Declaration().Inputs) != 0 || len(release.Declaration().Diagnostics) != 1 || release.Declaration().Diagnostics[0].Component != (plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}) {
-		t.Fatalf("configuration admission did not isolate the invalid input: %+v", release)
-	}
-	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installation.Enable(release); err != nil {
-		t.Fatal(err)
-	}
-	servers, err := r.Definitions(t.Context(), installation, release)
-	if err != nil || len(servers) != 1 || servers[0].Headers["X-Tenant"] != "fixed" {
-		t.Fatalf("independent backend was withdrawn: %+v, %v", servers, err)
-	}
-}
-
-func TestOversizedFileAdmissionRetiresStaging(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "oversized": ""})
-	if err := os.Truncate(filepath.Join(source, "oversized"), maxPackageBytes+1); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := publishPackage(t.Context(), r, source); err == nil {
-		t.Fatal("admitted an oversized file")
-	}
-	entries, err := os.ReadDir(r.directory)
-	if err != nil || len(entries) != 0 {
-		t.Fatalf("retained failed staging: %v, %v", entries, err)
 	}
 }
 
@@ -815,139 +473,4 @@ func TestInvalidRendererDoesNotWithdrawIndependentContributions(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestBackendRealizationIsPureAndIsolatesDirectoryFailures(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"good":{"type":"stdio","command":"server"},"broken":{"type":"stdio","command":"server","cwd":"${PLUGIN_DATA}/blocked/work"}}}`})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	i, err := plugin.New(testsupport.InstallationID(t), source, release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if observed, err := r.Realize(t.Context(), i, release); err != nil || observed.Release != plugins.ReleaseAvailable {
-		t.Fatalf("initial observation = %+v, %v", observed, err)
-	}
-	data := r.dataRoot(i.ID())
-	if _, err := os.Stat(data); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("read created data root: %v", err)
-	}
-	if err := i.Enable(release); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(data, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(data, "blocked"), []byte("file"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := r.Prepare(t.Context(), i, release); err == nil {
-		t.Fatal("preparation concealed a directory failure")
-	}
-	backends, err := r.Realize(t.Context(), i, release)
-	if err != nil || backends.Release != plugins.ReleaseAvailable || !slices.Equal(backends.UnavailableBackends, []mcpserver.ServerName{mustServerName(t, "broken")}) {
-		t.Fatalf("isolated realization = %+v, %v", backends, err)
-	}
-}
-
-func TestBackendPreparationDoesNotWriteThroughAReplacedDataNamespace(t *testing.T) {
-	for _, operation := range []string{"installation", "connection"} {
-		t.Run(operation, func(t *testing.T) {
-			r := testReleases(t)
-			source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"server"}}}`})
-			release, err := publishPackage(t.Context(), r, source)
-			if err != nil {
-				t.Fatal(err)
-			}
-			installation, err := plugin.New(testsupport.InstallationID(t), source, release)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := installation.Enable(release); err != nil {
-				t.Fatal(err)
-			}
-			outside := t.TempDir()
-			namespace := filepath.Dir(r.dataRoot(installation.ID()))
-			if err := os.Symlink(outside, namespace); err != nil {
-				t.Fatal(err)
-			}
-			if operation == "installation" {
-				if err := r.Prepare(t.Context(), installation, release); err == nil {
-					t.Fatal("preparation accepted a replaced data namespace")
-				}
-			} else if _, _, err := r.Connection(t.Context(), installation, release, mustServerName(t, "backend")); err == nil {
-				t.Fatal("connection accepted a replaced data namespace")
-			}
-			if entries, err := os.ReadDir(outside); err != nil || len(entries) != 0 {
-				t.Fatalf("preparation wrote outside its data owner: %v, %v", entries, err)
-			}
-		})
-	}
-}
-
-func mustServerName(t *testing.T, raw string) mcpserver.ServerName {
-	t.Helper()
-	name, err := mcpserver.ParseServerName(raw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return name
-}
-
-func mustInstallationOrigin(t *testing.T, id identity.InstallationID) mcpserver.Origin {
-	t.Helper()
-	origin, err := mcpserver.InstallationOrigin(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return origin
-}
-
-// The portable mcp.json spelling is translated once, at this boundary, into
-// the MCP registry vocabulary the release declares. The registry spelling is
-// not a portable spelling and is isolated like any unknown transport.
-func TestPortableServerSpellingIsTranslatedAtTheBoundary(t *testing.T) {
-	r := testReleases(t)
-	source := writePackage(t, map[string]string{
-		"plugin.json": portableManifest,
-		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"local":{"type":"stdio","command":"./bin/server","cwd":"${PLUGIN_ROOT}/bin"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"},"registry":{"type":"streamableHttp","url":"https://example.test/mcp"}}}`,
-		"bin/server":  "#!/bin/sh\n",
-	})
-	release, err := publishPackage(t.Context(), r, source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	declaration := release.Declaration()
-	want := []plugin.Server{
-		{Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "./bin/server", Dir: "${PLUGIN_ROOT}/bin"},
-		{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
-	}
-	if !reflect.DeepEqual(declaration.Servers, want) {
-		t.Fatalf("translated servers = %+v, want %+v", declaration.Servers, want)
-	}
-	isolated := plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentMCPServer, Name: "registry"}, Code: plugin.DiagnosticInvalidDeclaration}
-	if !slices.Contains(declaration.Diagnostics, isolated) {
-		t.Fatalf("registry spelling was not isolated: %+v", declaration.Diagnostics)
-	}
-}
-
-// publishPackage admits and publishes a package the way an installation change
-// does.
-func publishPackage(ctx context.Context, r *Releases, source string) (plugin.Release, error) {
-	candidate, err := r.Materialize(ctx, source)
-	if err != nil {
-		return plugin.Release{}, err
-	}
-	release, err := candidate.Publish(ctx)
-	return release, errors.Join(err, candidate.Discard())
-}
-
-func flameDeclaration(fields string) string {
-	if fields != "" {
-		fields = "," + fields
-	}
-	return `{"protocol":"` + flameextension.Protocol + `"` + fields + `}`
 }

@@ -35,7 +35,7 @@ func (s scheduleReceiptTool) SourceFingerprint() identity.Digest {
 func (s scheduleReceiptTool) InstallationActivation() (plugin.Activation, error) {
 	id, _ := s.configuration.Source.Origin().Installation()
 	digest, _, _ := s.configuration.Source.Release()
-	return plugin.Activation{Identity: testsupport.Digest("schedule receipt activation"), Dependencies: []plugin.Dependency{{InstallationID: id, Digest: digest}}}, nil
+	return testsupport.ServerActivation("schedule receipt activation", "schedules", plugin.Dependency{InstallationID: id, Digest: digest}), nil
 }
 
 func (s scheduleReceiptTool) MCPToolIdentity() (string, string) {
@@ -49,13 +49,13 @@ type scheduleReceiptProbe struct {
 	context atomic.Pointer[context.Context]
 }
 
-func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, identity.Digest, identity.Digest) (bool, error) {
+func (*scheduleReceiptProbe) AwaitOriginalToolSource(context.Context, domaintool.Ref, identity.Digest, identity.Digest, plugin.Activation) (bool, error) {
 	return true, nil
 }
-func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, identity.Digest) (bool, error) {
+func (s *scheduleReceiptProbe) OwnsToolSource(context.Context, domaintool.Ref, identity.Digest, plugin.Activation) (bool, error) {
 	return s.owned, nil
 }
-func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ identity.Digest, _, _ string) (*chat.ToolOutput, error) {
+func (s *scheduleReceiptProbe) OriginalToolResult(ctx context.Context, _ domaintool.Ref, _, _ identity.Digest, _ plugin.Activation, _, _ string) (*chat.ToolOutput, error) {
 	s.calls.Add(1)
 	s.context.Store(new(ctx))
 	return s.query(ctx)

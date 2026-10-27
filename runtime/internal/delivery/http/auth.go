@@ -20,7 +20,7 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if r.Method == http.MethodOptions || isAuthBypassPath(r.URL.Path) {
+		if r.Method == http.MethodOptions || isAuthBypassPath(r.URL.Path) || r.URL.Path == PluginControlPath {
 			next.ServeHTTP(w, r)
 			return
 		}

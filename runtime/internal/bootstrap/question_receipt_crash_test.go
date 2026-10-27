@@ -120,7 +120,7 @@ func TestAcceptedQuestionReceiptCrashHelper(t *testing.T) {
 	for _, question := range pending.Data[0].Interrupts {
 		request.Responses = append(request.Responses, protocol.InterruptResponse{ItemID: question.ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"chosen"}}}})
 	}
-	result := acceptedCommandEndpoint(t, api, stores).Invoke(ctx, delivery.RunsResume, request, options)
+	result := host.Endpoint().Invoke(ctx, delivery.RunsResume, request, options)
 	if result.Failure != nil {
 		t.Fatal(result.Failure)
 	}

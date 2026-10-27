@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/samber/lo"
 )
 

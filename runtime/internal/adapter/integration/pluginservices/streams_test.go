@@ -7,16 +7,17 @@ import (
 	"iter"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
+
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -31,10 +32,10 @@ type streamFixture struct {
 	request     plugins.CallRequest
 	store       *toolInstallationStore
 	host        *persistencefixture.Stores
-	hostPath    string
+	managed     *managedFixture
 	invocations atomic.Int32
 	mu          sync.Mutex
-	receipt     pluginsdk.Receipt
+	receipt     qimumcp.Receipt
 	digest      string
 }
 
@@ -118,15 +119,15 @@ func TestTypedStreamInputIsRefusedBeforeBindingAndLeavesIdentityAvailable(t *tes
 func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	t.Helper()
 	f := &streamFixture{}
-	kind := extension.Mutation
+	kind := portable.Mutation
 	if mode == "query" {
-		kind = extension.Query
+		kind = portable.Query
 	}
-	method, err := pluginsdk.NewStreamingMethod[streamInput, string, bool](pluginsdk.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
+	method, err := qimumcp.NewStreamingMethod[streamInput, string, bool](qimumcp.MethodConfig{Name: "records.stream", Kind: kind, Target: "installation", Description: "Stream owned records."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := extension.NewCapability(extension.CapabilityConfig{Reference: "records", Composition: extension.Selection, Scope: "installation"}, method.Descriptor())
+	contract, err := portable.NewCapability(portable.CapabilityConfig{Reference: "records", Composition: portable.Selection, Scope: "installation"}, method.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,64 +149,64 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	}
 	f.store = &toolInstallationStore{snapshot: plugin.Snapshot{Installation: installation, Selected: release}}
 	remote := sdk.NewServer(&sdk.Implementation{Name: "streaming-records"}, nil)
-	backend, err := pluginsdk.NewBackend(remote)
+	backend, err := qimumcp.NewBackend(remote)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[streamInput]) iter.Seq2[pluginsdk.StreamValue[string, bool], error] {
-		return func(yield func(pluginsdk.StreamValue[string, bool], error) bool) {
+	if err := method.RegisterServer(backend, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[streamInput]) iter.Seq2[qimumcp.StreamValue[string, bool], error] {
+		return func(yield func(qimumcp.StreamValue[string, bool], error) bool) {
 			f.invocations.Add(1)
 			if mode == "query" && command.ID != "" {
-				yield(pluginsdk.StreamValue[string, bool]{}, errors.New("query carried a command identity"))
+				yield(qimumcp.StreamValue[string, bool]{}, errors.New("query carried a command identity"))
 				return
 			}
-			if !yield(pluginsdk.StreamValue[string, bool]{Chunk: new("known partial")}, nil) {
+			if !yield(qimumcp.StreamValue[string, bool]{Chunk: new("known partial")}, nil) {
 				return
 			}
 			if mode == "query" {
-				yield(pluginsdk.StreamValue[string, bool]{Result: new(true)}, nil)
+				yield(qimumcp.StreamValue[string, bool]{Result: new(true)}, nil)
 				return
 			}
 			if mode == "unknown" {
-				yield(pluginsdk.StreamValue[string, bool]{}, errors.New("lost owner outcome"))
+				yield(qimumcp.StreamValue[string, bool]{}, errors.New("lost owner outcome"))
 				return
 			}
 			if mode == "refusal" {
 				input, err := command.RequestInput()
 				if err != nil {
-					yield(pluginsdk.StreamValue[string, bool]{}, err)
+					yield(qimumcp.StreamValue[string, bool]{}, err)
 					return
 				}
 				f.mu.Lock()
 				f.digest = input.Digest()
-				f.receipt = pluginsdk.Receipt{Found: true, Reply: []byte(`{"failure":{"code":"refused","message":"owner refused"}}`)}
+				f.receipt = qimumcp.Receipt{Found: true, Reply: []byte(`{"failure":{"code":"refused","message":"owner refused"}}`)}
 				f.mu.Unlock()
-				yield(pluginsdk.StreamValue[string, bool]{}, &extension.Refusal{Code: "refused", Message: "owner refused"})
+				yield(qimumcp.StreamValue[string, bool]{}, &portable.Refusal{Code: "refused", Message: "owner refused"})
 				return
 			}
 			input, err := command.RequestInput()
 			if err != nil {
-				yield(pluginsdk.StreamValue[string, bool]{}, err)
+				yield(qimumcp.StreamValue[string, bool]{}, err)
 				return
 			}
 			f.mu.Lock()
 			f.digest = input.Digest()
-			f.receipt = pluginsdk.Receipt{Found: true, Reply: []byte(`{"value":true}`)}
+			f.receipt = qimumcp.Receipt{Found: true, Reply: []byte(`{"value":true}`)}
 			f.mu.Unlock()
-			yield(pluginsdk.StreamValue[string, bool]{Result: new(true)}, nil)
+			yield(qimumcp.StreamValue[string, bool]{Result: new(true)}, nil)
 		}
 	}); err != nil {
 		t.Fatal(err)
 	}
-	lookup, err := pluginsdk.ReceiptQuery()
+	lookup, err := qimumcp.ReceiptQuery()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := lookup.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ReceiptRequest]) (pluginsdk.Receipt, error) {
+	if err := lookup.RegisterServer(backend, nil, func(_ context.Context, _ *sdk.ServerSession, command qimumcp.Command[qimumcp.ReceiptRequest]) (qimumcp.Receipt, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if f.receipt.Found && command.Input.InputDigest != f.digest {
-			return pluginsdk.Receipt{}, errors.New("original input changed")
+			return qimumcp.Receipt{}, errors.New("original input changed")
 		}
 		return f.receipt, nil
 	}); err != nil {
@@ -220,37 +221,16 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	endpoint := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
 	t.Cleanup(endpoint.Close)
 	server := mcpserver.Server{Source: source, Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: endpoint.URL}
-	callbacks := pluginsdk.NewCallbacks()
+	callbacks := qimumcp.NewCallbacks()
 	t.Cleanup(func() { _ = callbacks.Close() })
 	if err := callbacks.PublishRPC(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "unexpected host call", http.StatusBadRequest)
 	})); err != nil {
 		t.Fatal(err)
 	}
-	pool, err := mcp.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, toolSourceRegistry{server}, callbacks, nil, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
-	attempt, err := pool.BeginConnect(t.Context(), server.ID())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer attempt.Close()
-	if err := attempt.Run(); err != nil {
-		t.Fatal(err)
-	}
-	f.hostPath = filepath.Join(t.TempDir(), "host.db")
-	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = f.host.Close() })
-	routing, err := plugins.NewCommands(f.host.PluginCommands, plugins.NewAdmission())
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.calls, err = NewCommandCalls(f.store, f.host.ProviderSelections, f.host.PluginCompositions, pool, routing, nil)
+	f.managed = newManagedFixture(t, f.store, server, callbacks, nil)
+	f.host = f.managed.Stores
+	f.calls, err = NewCommandCalls(f.managed.Host, f.store, f.host.ProviderSelections, f.host.PluginCompositions, f.managed.Pool, f.managed.Routing, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,8 +238,19 @@ func newStreamFixture(t *testing.T, mode string) *streamFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: extension.Target{Scope: "installation", Reference: installation.ID().String()}}
+	f.request = plugins.CallRequest{Installation: installation.ID(), Digest: release.Digest(), Contribution: "records", Contract: contract, Method: "records.stream", Input: input, Target: portable.Target{Scope: "installation", Reference: installation.ID().String()}}
 	return f
+}
+
+func (f *streamFixture) reopen(t *testing.T) {
+	t.Helper()
+	f.managed.reopen(t)
+	f.host = f.managed.Stores
+	var err error
+	f.calls, err = NewCommandCalls(f.managed.Host, f.store, f.host.ProviderSelections, f.host.PluginCompositions, f.managed.Pool, f.managed.Routing, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func (f *streamFixture) run(t *testing.T, ctx context.Context) ([]plugins.StreamEvent, error) {
@@ -289,21 +280,7 @@ func TestInstalledStreamObservesFinalAndRestoresOnlyOriginalReceipt(t *testing.T
 	if err != nil || !found || row.Snapshot().Phase != plugin.CommandObserved {
 		t.Fatalf("original route=%+v %v", row, err)
 	}
-	if err := f.host.Close(); err != nil {
-		t.Fatal(err)
-	}
-	f.host, err = persistencefixture.Open(t, t.Context(), filepath.Dir(f.hostPath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	routing, err := plugins.NewCommands(f.host.PluginCommands, plugins.NewAdmission())
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.calls, err = NewCommandCalls(f.store, f.host.ProviderSelections, f.host.PluginCompositions, f.calls.pool, routing, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f.reopen(t)
 	events, err = f.run(t, ctx)
 	if err != nil || len(events) != 1 || events[0].Kind != plugins.StreamResult || f.invocations.Load() != 1 {
 		t.Fatalf("receipt restore repeated stream: %+v %v calls=%d", events, err, f.invocations.Load())
@@ -340,7 +317,7 @@ func TestInstalledStreamKnownRefusalObservesAndRestoresOriginalReceipt(t *testin
 	ctx := operation.Bind(t.Context(), "records.stream", "refused")
 	for range 2 {
 		_, err := f.run(t, ctx)
-		if refusal, known := errors.AsType[*extension.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, pluginsdk.ErrStreamUnconfirmed) {
+		if refusal, known := errors.AsType[*portable.Refusal](err); !known || refusal.Code != "refused" || errors.Is(err, plugin.ErrCommandUnconfirmed) || errors.Is(err, qimumcp.ErrStreamUnconfirmed) {
 			t.Fatalf("known refusal became uncertain: %v", err)
 		}
 	}
@@ -375,7 +352,7 @@ func TestInstalledStreamOriginalOriginAndInputCannotChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	changed := operation.Adopt(t.Context(), operation.Identity(ctx), extension.Automatic, "")
-	if _, err := f.run(t, changed); !errors.Is(err, extension.ErrInvocationConflict) {
+	if _, err := f.run(t, changed); !errors.Is(err, portable.ErrInvocationConflict) {
 		t.Fatalf("changed origin admitted: %v", err)
 	}
 	input, err := jsonvalue.Parse([]byte(`{"changed":true}`))
@@ -383,7 +360,7 @@ func TestInstalledStreamOriginalOriginAndInputCannotChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.request.Input = input
-	if _, err := f.run(t, ctx); !errors.Is(err, extension.ErrInvocationConflict) || f.invocations.Load() != 1 {
+	if _, err := f.run(t, ctx); !errors.Is(err, portable.ErrInvocationConflict) || f.invocations.Load() != 1 {
 		t.Fatalf("changed input admitted: %v calls=%d", err, f.invocations.Load())
 	}
 }
@@ -394,7 +371,7 @@ func TestInstalledStreamWithdrawalCannotReplayAtAnotherOwner(t *testing.T) {
 	if _, err := f.run(t, ctx); !errors.Is(err, plugin.ErrCommandUnconfirmed) {
 		t.Fatal(err)
 	}
-	f.store.snapshot.Installation.Disable()
+	f.store.disable(t)
 	if _, err := f.run(t, ctx); !errors.Is(err, plugin.ErrCommandUnconfirmed) || !errors.Is(err, plugin.ErrUnavailable) || f.invocations.Load() != 1 {
 		t.Fatalf("withdrawn original retargeted: %v calls=%d", err, f.invocations.Load())
 	}
@@ -406,7 +383,7 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if call.Kind() != extension.Query {
+	if call.Kind() != portable.Query {
 		t.Fatal("query stream became a command")
 	}
 	for range 2 {
@@ -435,7 +412,7 @@ func TestInstalledQueryStreamHasNoCommandRouteOrReceipt(t *testing.T) {
 	}
 }
 
-func TestPreparedCommandRefusesAnotherActivationWithTheSameReleases(t *testing.T) {
+func TestPreparedCommandRefusesChangedSetupWithTheSameReleases(t *testing.T) {
 	f := newStreamFixture(t, "complete")
 	ctx := operation.Bind(t.Context(), "records.stream", "original-graph")
 	call, err := f.calls.PrepareStream(ctx, f.request)
@@ -443,16 +420,27 @@ func TestPreparedCommandRefusesAnotherActivationWithTheSameReleases(t *testing.T
 		t.Fatal(err)
 	}
 	prepared := call.(*installedStream)
-	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) extension.Target { return f.request.Target }, true)
+	record, err := f.calls.admitCommandRoute(ctx, f.request.Method, f.request.Input, prepared.accepts, prepared.resolve, func(plugins.ContributionBinding) portable.Target { return f.request.Target }, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	changed := record
-	changed.Activation.Identity = testsupport.Digest("another composition in the same releases")
-	if err := f.calls.admitDispatch(ctx, changed); !errors.Is(err, plugin.ErrStale) {
+	binding, err := plugins.DecodeActivation(record.Activation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding.Units[0].Configuration = qimu.Hash([]byte("another setup in the same release"))
+	changed.Activation, err = plugins.ProjectActivation(binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admit := func(record plugin.CommandBinding) error {
+		return f.host.Admission.Admit(ctx, func(ctx context.Context) error { return f.calls.admitDispatch(ctx, record) })
+	}
+	if err := admit(changed); !errors.Is(err, qimu.ErrStaleBinding) {
 		t.Fatalf("same-release graph change admitted: %v", err)
 	}
-	if err := f.calls.admitDispatch(ctx, record); err != nil {
+	if err := admit(record); err != nil {
 		t.Fatalf("original graph refused: %v", err)
 	}
 	if f.invocations.Load() != 0 {

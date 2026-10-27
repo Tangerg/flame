@@ -6,8 +6,10 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -20,10 +22,10 @@ import (
 )
 
 type Memory struct {
-	contract      *extension.Capability
+	contract      *portable.Capability
 	installations plugins.Store
 	pool          *mcp.Pool
-	callbacks     *pluginsdk.Callbacks
+	callbacks     *qimumcp.Callbacks
 	utility       models.AuxiliaryResolver
 	embedder      func(context.Context) (models.TextEmbedder, error)
 	history       conversationReader
@@ -36,7 +38,7 @@ type conversationReader interface {
 type MemoryConfig struct {
 	Installations plugins.Store
 	Connections   *mcp.Pool
-	Callbacks     *pluginsdk.Callbacks
+	Callbacks     *qimumcp.Callbacks
 	Utility       models.AuxiliaryResolver
 	Embeddings    func(context.Context) (models.TextEmbedder, error)
 	Conversation  conversationReader
@@ -55,7 +57,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	if config.Commands == nil {
 		return nil, errors.New("memory: command routing is required")
 	}
-	contract, err := extension.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	contract, err := portable.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -64,13 +66,16 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 
 func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.MemoryPromptItem, error) {
 	ctx = operation.Start(ctx, extension.Automatic, "memory.context", uuid.NewString())
-	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
+	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
 	values, err := query[memorycontract.ItemsV2Input, memorycontract.ItemsV2Output](ctx, location, session, memorycontract.ItemsV2Method, memorycontract.ItemsV2Input{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
@@ -83,13 +88,16 @@ func (m *Memory) Items(ctx context.Context, scope, project string) ([]execution.
 	return memoryPromptItems(memorycontract.ItemsV2Output(values))
 }
 func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]execution.MemoryPromptItem, error) {
-	location, session, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
+	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	session := borrowed.Session()
 	ctx, err = queryContext(ctx, location)
 	if err != nil {
 		return nil, err
@@ -107,7 +115,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	if embedder != nil {
 		space = embedder.ID()
 	}
-	metadata, err := pluginsdk.CallbackMetadata(grant)
+	metadata, err := qimumcp.CallbackMetadata(grant)
 	if err != nil {
 		return nil, err
 	}
@@ -127,13 +135,15 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) ([]
 	return memoryPromptItems(memorycontract.ItemsV2Output(values))
 }
 func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
-	binding, _, err := contributionSession(ctx, m.installations, m.commands.selections, m.pool, m.contract)
+	binding, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
+	defer borrowed.Close()
+	ctx = borrowed.Context()
 	messages, err := m.history.Read(ctx, input.SessionID)
 	if err != nil {
 		return fmt.Errorf("memory: capture committed conversation: %w", err)
@@ -154,7 +164,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 			releaseModel()
 			return sdk.ParamsBase{}, nil, err
 		}
-		metadata, err := pluginsdk.CallbackMetadata(grant)
+		metadata, err := qimumcp.CallbackMetadata(grant)
 		if err != nil {
 			release()
 			releaseModel()

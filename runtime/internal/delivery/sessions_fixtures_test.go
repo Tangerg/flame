@@ -1315,25 +1315,31 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 	stores := inertRuntimeStores{}
 	state := s.runStore()
 	cfg := segment.Config{
-		Compactions:           unexpectedDeliveryCompactions{},
-		ContextState:          s,
-		Interrupts:            nonNilRunsegmentInterrupts(s.interrupts, stores),
-		Sessions:              nonNilRunsegmentSessions(s.sess, stores),
-		Transcript:            nonNilRunsegmentTranscript(s.hist, stores),
-		ItemReplacer:          nonNilRunsegmentItems(s.hist, stores),
-		ModelInvocations:      stores,
-		ToolInvocations:       stores,
-		Conversation:          stubMessageCounter{rt: s},
-		State:                 state,
-		RunProgress:           runProgressFor(state),
-		ExecutorCheckpoints:   stores,
-		ExecutionTrees:        stores,
-		ChildRunStarts:        stores,
-		ActorAuthority:        inertSegmentActor{},
-		CommandAcceptances:    inertSegmentCommandAcceptances{},
-		GoalRuns:              inertSegmentGoalRuns{},
-		ToolResults:           inertSegmentToolResults{},
-		Tx:                    s.RunInTx,
+		Compactions:         unexpectedDeliveryCompactions{},
+		ContextState:        s,
+		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
+		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
+		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
+		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),
+		ModelInvocations:    stores,
+		ToolInvocations:     stores,
+		Conversation:        stubMessageCounter{rt: s},
+		State:               state,
+		RunProgress:         runProgressFor(state),
+		ExecutorCheckpoints: stores,
+		ExecutionTrees:      stores,
+		ChildRunStarts:      stores,
+		ActorAuthority:      inertSegmentActor{},
+		CommandAcceptances:  inertSegmentCommandAcceptances{},
+		GoalRuns:            inertSegmentGoalRuns{},
+		ToolResults:         inertSegmentToolResults{},
+		Tx:                  s.RunInTx,
+		PluginBindings: func(ctx context.Context, _ string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
+			if len(checkpoint.Bindings) != 0 || len(checkpoint.Resources) != 0 {
+				return errors.New("delivery fixture has no plugin binding authority")
+			}
+			return s.RunInTx(ctx, fn)
+		},
 		RememberedRules:       inertSegmentRememberedRules{},
 		AcceptedContinuations: inertDeliveryAcceptedContinuations{},
 	}

@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -72,7 +72,7 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 	if name.Load().(string) == "" {
 		t.Fatal("installed search tool is missing")
 	}
-	contracts, err := extension.ParseCapability([]byte(testsupport.WebCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.WebCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestWebInstalledSecretsBelongToInstallationAndModelReadsHaveDefiniteRefusal
 	if err != nil {
 		t.Fatal(err)
 	}
-	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Identity().String(), Method: testsupport.WebSearchV1Method, Input: input.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
+	typed := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "web-operations", Contract: contracts.Identity().String(), Method: testsupport.WebSearchV1Method, Input: input.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}, "").(*protocol.CallPluginResponse)
 	if typed.Failure == nil || typed.Failure.Code != "search_not_configured" {
 		t.Fatalf("parent credentials became installation authority: %+v", typed)
 	}

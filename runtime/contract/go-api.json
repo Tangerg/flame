@@ -1,23 +1,6 @@
 {
   "packages": [
     {
-      "path": "github.com/Tangerg/flame/packages/go-sdk/cancellation",
-      "imports": [
-        "context",
-        "io"
-      ],
-      "functions": [
-        {
-          "name": "Err",
-          "signature": "func(ctx context.Context) error"
-        },
-        {
-          "name": "Reader",
-          "signature": "func(ctx context.Context, r io.Reader) io.Reader"
-        }
-      ]
-    },
-    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/capture",
       "functions": [
         {
@@ -62,9 +45,9 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/client",
       "imports": [
         "context",
-        "github.com/Tangerg/flame/packages/go-sdk/extension",
-        "github.com/Tangerg/flame/packages/go-sdk/plugin",
         "github.com/Tangerg/flame/packages/go-sdk/protocol",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
         "iter"
       ],
       "variables": [
@@ -84,11 +67,11 @@
       "functions": [
         {
           "name": "BindPluginMethod",
-          "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *plugin.Method[P, R]) (*PluginMethod[P, R], error)"
+          "signature": "func[P, R any](caller PluginCaller, binding PluginBinding, method *mcp.Method[P, R]) (*PluginMethod[P, R], error)"
         },
         {
           "name": "BindPluginStreamingMethod",
-          "signature": "func[P, C, R any](caller PluginStreamer, binding PluginBinding, method *plugin.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error)"
+          "signature": "func[P, C, R any](caller PluginStreamer, binding PluginBinding, method *mcp.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error)"
         },
         {
           "name": "Connect",
@@ -96,15 +79,15 @@
         },
         {
           "name": "ConnectCallback",
-          "signature": "func(ctx context.Context, ref plugin.CallbackRef) (*Client, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef) (*Client, error)"
         },
         {
           "name": "NewPluginCallbackCaller",
-          "signature": "func(activation plugin.CallbackRef) (*PluginCallbackCaller, error)"
+          "signature": "func(activation mcp.CallbackRef) (*PluginCallbackCaller, error)"
         },
         {
           "name": "ResolvePointValues",
-          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *extension.Point, target extension.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
+          "signature": "func[T any](ctx context.Context, caller PointResolver, contract *portable.Point, target portable.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error)"
         }
       ],
       "types": [
@@ -112,6 +95,10 @@
           "name": "Client",
           "kind": "struct",
           "methods": [
+            {
+              "name": "AcquirePluginComponent",
+              "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
+            },
             {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
@@ -135,6 +122,10 @@
             {
               "name": "Close",
               "signature": "func() error"
+            },
+            {
+              "name": "ClosePluginBrowserRealm",
+              "signature": "func(ctx context.Context, request protocol.ClosePluginBrowserRealmRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ConfigurePlugin",
@@ -361,6 +352,10 @@
               "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
             },
             {
+              "name": "OpenPluginBrowserRealm",
+              "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
+            },
+            {
               "name": "OpenPluginResources",
               "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
@@ -540,11 +535,11 @@
             },
             {
               "name": "Contract",
-              "type": "*extension.Capability"
+              "type": "*portable.Capability"
             },
             {
               "name": "Target",
-              "type": "extension.Target"
+              "type": "portable.Target"
             }
           ]
         },
@@ -598,7 +593,7 @@
           "methods": [
             {
               "name": "Stream",
-              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[plugin.StreamValue[C, R], error]"
+              "signature": "func(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[mcp.StreamValue[C, R], error]"
             }
           ]
         },
@@ -679,246 +674,6 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/go-sdk/contractgen",
-      "constants": [
-        {
-          "name": "RefPrefix",
-          "type": "untyped string",
-          "value": "\"#/$defs/\""
-        },
-        {
-          "name": "SchemaDialect",
-          "type": "untyped string",
-          "value": "\"https://json-schema.org/draft/2020-12/schema\""
-        },
-        {
-          "name": "SchemaTypeArray",
-          "type": "SchemaType",
-          "value": "\"array\""
-        },
-        {
-          "name": "SchemaTypeBoolean",
-          "type": "SchemaType",
-          "value": "\"boolean\""
-        },
-        {
-          "name": "SchemaTypeInteger",
-          "type": "SchemaType",
-          "value": "\"integer\""
-        },
-        {
-          "name": "SchemaTypeNull",
-          "type": "SchemaType",
-          "value": "\"null\""
-        },
-        {
-          "name": "SchemaTypeNumber",
-          "type": "SchemaType",
-          "value": "\"number\""
-        },
-        {
-          "name": "SchemaTypeObject",
-          "type": "SchemaType",
-          "value": "\"object\""
-        },
-        {
-          "name": "SchemaTypeString",
-          "type": "SchemaType",
-          "value": "\"string\""
-        }
-      ],
-      "functions": [
-        {
-          "name": "NewTypeScript",
-          "signature": "func(definitions Definitions) *TypeScript"
-        },
-        {
-          "name": "PropertyKey",
-          "signature": "func(name string) string"
-        },
-        {
-          "name": "QuoteAll",
-          "signature": "func(values []string) []string"
-        }
-      ],
-      "types": [
-        {
-          "name": "Definitions",
-          "kind": "defined",
-          "underlying": "map[string]*Schema"
-        },
-        {
-          "name": "Schema",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Ref",
-              "type": "string",
-              "tag": "json:\"$ref,omitempty\""
-            },
-            {
-              "name": "Type",
-              "type": "SchemaType",
-              "tag": "json:\"type,omitempty\""
-            },
-            {
-              "name": "Format",
-              "type": "string",
-              "tag": "json:\"format,omitempty\""
-            },
-            {
-              "name": "ContentEncoding",
-              "type": "string",
-              "tag": "json:\"contentEncoding,omitempty\""
-            },
-            {
-              "name": "Enum",
-              "type": "[]string",
-              "tag": "json:\"enum,omitempty\""
-            },
-            {
-              "name": "MinLength",
-              "type": "*int",
-              "tag": "json:\"minLength,omitzero\""
-            },
-            {
-              "name": "MaxLength",
-              "type": "*int",
-              "tag": "json:\"maxLength,omitzero\""
-            },
-            {
-              "name": "Const",
-              "type": "string",
-              "tag": "json:\"const,omitempty\""
-            },
-            {
-              "name": "Pattern",
-              "type": "string",
-              "tag": "json:\"pattern,omitempty\""
-            },
-            {
-              "name": "TypeScriptType",
-              "type": "string",
-              "tag": "json:\"-\""
-            },
-            {
-              "name": "Minimum",
-              "type": "*int64",
-              "tag": "json:\"minimum,omitzero\""
-            },
-            {
-              "name": "ExclusiveMinimum",
-              "type": "*int64",
-              "tag": "json:\"exclusiveMinimum,omitzero\""
-            },
-            {
-              "name": "Maximum",
-              "type": "*int64",
-              "tag": "json:\"maximum,omitzero\""
-            },
-            {
-              "name": "MinItems",
-              "type": "*int",
-              "tag": "json:\"minItems,omitzero\""
-            },
-            {
-              "name": "MaxItems",
-              "type": "*int",
-              "tag": "json:\"maxItems,omitzero\""
-            },
-            {
-              "name": "MinProperties",
-              "type": "*int",
-              "tag": "json:\"minProperties,omitzero\""
-            },
-            {
-              "name": "UniqueItems",
-              "type": "bool",
-              "tag": "json:\"uniqueItems,omitzero\""
-            },
-            {
-              "name": "Items",
-              "type": "*Schema",
-              "tag": "json:\"items,omitzero\""
-            },
-            {
-              "name": "Properties",
-              "type": "map[string]any",
-              "tag": "json:\"properties,omitempty\""
-            },
-            {
-              "name": "AdditionalProps",
-              "type": "any",
-              "tag": "json:\"additionalProperties,omitzero\""
-            },
-            {
-              "name": "PropertyNames",
-              "type": "*Schema",
-              "tag": "json:\"propertyNames,omitzero\""
-            },
-            {
-              "name": "UnevaluatedProps",
-              "type": "*bool",
-              "tag": "json:\"unevaluatedProperties,omitzero\""
-            },
-            {
-              "name": "Required",
-              "type": "[]string",
-              "tag": "json:\"required,omitempty\""
-            },
-            {
-              "name": "OneOf",
-              "type": "[]*Schema",
-              "tag": "json:\"oneOf,omitempty\""
-            },
-            {
-              "name": "AnyOf",
-              "type": "[]*Schema",
-              "tag": "json:\"anyOf,omitempty\""
-            },
-            {
-              "name": "AllOf",
-              "type": "[]*Schema",
-              "tag": "json:\"allOf,omitempty\""
-            },
-            {
-              "name": "If",
-              "type": "*Schema",
-              "tag": "json:\"if,omitzero\""
-            },
-            {
-              "name": "Then",
-              "type": "*Schema",
-              "tag": "json:\"then,omitzero\""
-            }
-          ]
-        },
-        {
-          "name": "SchemaType",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "TypeScript",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Definition",
-              "signature": "func(name string, node *Schema) string"
-            },
-            {
-              "name": "ObjectBody",
-              "signature": "func(node *Schema, substitute string) string"
-            },
-            {
-              "name": "TypeOf",
-              "signature": "func(node *Schema) string"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "path": "github.com/Tangerg/flame/packages/go-sdk/exactint",
       "constants": [
         {
@@ -979,59 +734,23 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/extension",
       "imports": [
-        "encoding/json/jsontext",
-        "github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+        "github.com/Tangerg/flame/qimu/portable"
       ],
       "constants": [
         {
           "name": "Automatic",
-          "type": "Origin",
+          "type": "portable.Origin",
           "value": "\"automatic\""
         },
         {
-          "name": "CanonicalKeys",
-          "type": "PointOrdering",
-          "value": "\"canonicalKeys\""
-        },
-        {
-          "name": "Collection",
-          "type": "Composition",
-          "value": "\"collection\""
-        },
-        {
-          "name": "Decoration",
-          "type": "Composition",
-          "value": "\"decoration\""
-        },
-        {
-          "name": "ExplicitList",
-          "type": "PointOrdering",
-          "value": "\"explicitList\""
-        },
-        {
           "name": "Human",
-          "type": "Origin",
+          "type": "portable.Origin",
           "value": "\"human\""
         },
         {
           "name": "Model",
-          "type": "Origin",
+          "type": "portable.Origin",
           "value": "\"model\""
-        },
-        {
-          "name": "Mutation",
-          "type": "MethodKind",
-          "value": "\"command\""
-        },
-        {
-          "name": "Protocol",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/backend/2026-10-15.3\""
-        },
-        {
-          "name": "Query",
-          "type": "MethodKind",
-          "value": "\"query\""
         },
         {
           "name": "ScopeCall",
@@ -1042,399 +761,12 @@
           "name": "ScopeInstallation",
           "type": "untyped string",
           "value": "\"installation\""
-        },
-        {
-          "name": "Selection",
-          "type": "Composition",
-          "value": "\"selection\""
-        }
-      ],
-      "variables": [
-        {
-          "name": "ErrInvocationConflict",
-          "type": "error"
         }
       ],
       "functions": [
         {
-          "name": "AdmitCapability",
-          "signature": "func(descriptor CapabilityDescriptor) (*Capability, error)"
-        },
-        {
-          "name": "AdmitMethod",
-          "signature": "func(descriptor MethodDescriptor) (*Method, error)"
-        },
-        {
-          "name": "AdmitPoint",
-          "signature": "func(descriptor PointDescriptor) (*Point, error)"
-        },
-        {
-          "name": "MethodKindFor",
-          "signature": "func(encoded []byte, name string) (MethodKind, error)"
-        },
-        {
-          "name": "NewCapability",
-          "signature": "func(config CapabilityConfig, methods ...MethodDescriptor) (*Capability, error)"
-        },
-        {
-          "name": "ParseCapability",
-          "signature": "func(data []byte) (*Capability, error)"
-        },
-        {
-          "name": "ParsePoint",
-          "signature": "func(data []byte) (*Point, error)"
-        },
-        {
-          "name": "ValidExportName",
-          "signature": "func(name string) bool"
-        }
-      ],
-      "types": [
-        {
-          "name": "Capability",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Descriptor",
-              "signature": "func() CapabilityDescriptor"
-            },
-            {
-              "name": "Identity",
-              "signature": "func() jsonvalue.Value"
-            },
-            {
-              "name": "Method",
-              "signature": "func(name string) (*Method, bool)"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityConfig",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Reference",
-              "type": "string"
-            },
-            {
-              "name": "Composition",
-              "type": "Composition"
-            },
-            {
-              "name": "Scope",
-              "type": "string"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Protocol",
-              "type": "string",
-              "tag": "json:\"protocol\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            },
-            {
-              "name": "Composition",
-              "type": "Composition",
-              "tag": "json:\"composition\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Methods",
-              "type": "[]MethodDescriptor",
-              "tag": "json:\"methods\""
-            }
-          ]
-        },
-        {
-          "name": "Composition",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Invocation",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Origin",
-              "type": "Origin",
-              "tag": "json:\"origin\""
-            },
-            {
-              "name": "Parent",
-              "type": "string",
-              "tag": "json:\"parent,omitzero\""
-            },
-            {
-              "name": "Target",
-              "type": "Target",
-              "tag": "json:\"target\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Method",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Descriptor",
-              "signature": "func() MethodDescriptor"
-            },
-            {
-              "name": "Identity",
-              "signature": "func() jsonvalue.Value"
-            },
-            {
-              "name": "Kind",
-              "signature": "func() MethodKind"
-            },
-            {
-              "name": "Name",
-              "signature": "func() string"
-            },
-            {
-              "name": "ValidateChunk",
-              "signature": "func(chunk jsontext.Value) error"
-            },
-            {
-              "name": "ValidateInput",
-              "signature": "func(input jsonvalue.Value) error"
-            },
-            {
-              "name": "ValidateOutput",
-              "signature": "func(output jsontext.Value) error"
-            }
-          ]
-        },
-        {
-          "name": "MethodDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Kind",
-              "type": "MethodKind",
-              "tag": "json:\"kind\""
-            },
-            {
-              "name": "Target",
-              "type": "string",
-              "tag": "json:\"target\""
-            },
-            {
-              "name": "Description",
-              "type": "string",
-              "tag": "json:\"description\""
-            },
-            {
-              "name": "Input",
-              "type": "jsontext.Value",
-              "tag": "json:\"input\""
-            },
-            {
-              "name": "Output",
-              "type": "jsontext.Value",
-              "tag": "json:\"output\""
-            },
-            {
-              "name": "Stream",
-              "type": "jsontext.Value",
-              "tag": "json:\"stream,omitzero\""
-            }
-          ]
-        },
-        {
-          "name": "MethodKind",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Origin",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
-          "name": "Point",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Applicable",
-              "signature": "func(context PointContext) (bool, error)"
-            },
-            {
-              "name": "Compose",
-              "signature": "func(values []PointValue, order []string) ([]PointValue, error)"
-            },
-            {
-              "name": "Definition",
-              "signature": "func() PointDescriptor"
-            },
-            {
-              "name": "Identity",
-              "signature": "func() jsonvalue.Value"
-            },
-            {
-              "name": "ValidateValue",
-              "signature": "func(value jsonvalue.Value) error"
-            }
-          ]
-        },
-        {
-          "name": "PointContext",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Target",
-              "type": "Target",
-              "tag": "json:\"target\""
-            },
-            {
-              "name": "Attributes",
-              "type": "jsontext.Value",
-              "tag": "json:\"attributes\""
-            }
-          ]
-        },
-        {
-          "name": "PointDescriptor",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Protocol",
-              "type": "string",
-              "tag": "json:\"protocol\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            },
-            {
-              "name": "Composition",
-              "type": "Composition",
-              "tag": "json:\"composition\""
-            },
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Optional",
-              "type": "bool",
-              "tag": "json:\"optional\""
-            },
-            {
-              "name": "Ordering",
-              "type": "PointOrdering",
-              "tag": "json:\"ordering\""
-            },
-            {
-              "name": "Value",
-              "type": "jsontext.Value",
-              "tag": "json:\"value\""
-            },
-            {
-              "name": "Applicability",
-              "type": "jsontext.Value",
-              "tag": "json:\"applicability\""
-            }
-          ]
-        },
-        {
-          "name": "PointOrdering",
-          "kind": "defined",
-          "underlying": "string",
-          "methods": [
-            {
-              "name": "JSONSchemaEnum",
-              "signature": "func() []string"
-            }
-          ]
-        },
-        {
-          "name": "PointValue",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Key",
-              "type": "string"
-            },
-            {
-              "name": "Data",
-              "type": "jsonvalue.Value"
-            }
-          ]
-        },
-        {
-          "name": "Refusal",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Code",
-              "type": "string",
-              "tag": "json:\"code\""
-            },
-            {
-              "name": "Message",
-              "type": "string",
-              "tag": "json:\"message\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "Target",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "string",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Reference",
-              "type": "string",
-              "tag": "json:\"reference\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
+          "name": "ValidateInvocation",
+          "signature": "func(invocation portable.Invocation) error"
         }
       ]
     },
@@ -1836,151 +1168,6 @@
         {
           "name": "Validate",
           "signature": "func(values ...time.Time) error"
-        }
-      ]
-    },
-    {
-      "path": "github.com/Tangerg/flame/packages/go-sdk/jsonvalue",
-      "imports": [
-        "encoding/json",
-        "encoding/json/jsontext",
-        "encoding/json/v2",
-        "reflect"
-      ],
-      "functions": [
-        {
-          "name": "DecodeValue",
-          "signature": "func(raw jsontext.Value, dst any, path string) error"
-        },
-        {
-          "name": "Deref",
-          "signature": "func(t reflect.Type) reflect.Type"
-        },
-        {
-          "name": "Embeds",
-          "signature": "func(owner reflect.Type) []reflect.Type"
-        },
-        {
-          "name": "Encode",
-          "signature": "func[T any](value T) (Value, error)"
-        },
-        {
-          "name": "FieldNames",
-          "signature": "func(owner reflect.Type) []string"
-        },
-        {
-          "name": "Fields",
-          "signature": "func(owner reflect.Type) []Field"
-        },
-        {
-          "name": "GoPath",
-          "signature": "func(root reflect.Type, path string) (selector string, leaf Field, ok bool)"
-        },
-        {
-          "name": "HasPath",
-          "signature": "func(root reflect.Type, path string) error"
-        },
-        {
-          "name": "LookupField",
-          "signature": "func(owner reflect.Type, name string) (Field, bool)"
-        },
-        {
-          "name": "MapPath",
-          "signature": "func(parent string, key string) string"
-        },
-        {
-          "name": "Number",
-          "signature": "func(literal string) json.Number"
-        },
-        {
-          "name": "Numbers",
-          "signature": "func() json.Options"
-        },
-        {
-          "name": "Parse",
-          "signature": "func(data []byte) (Value, error)"
-        },
-        {
-          "name": "PathFields",
-          "signature": "func(root reflect.Type, path string) ([]Field, bool)"
-        },
-        {
-          "name": "UnmarshalNonNull",
-          "signature": "func(raw []byte, target any) error"
-        }
-      ],
-      "types": [
-        {
-          "name": "Field",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string"
-            },
-            {
-              "name": "Type",
-              "type": "reflect.Type"
-            },
-            {
-              "name": "GoName",
-              "type": "string"
-            },
-            {
-              "name": "Optional",
-              "type": "bool"
-            }
-          ]
-        },
-        {
-          "name": "ShapeError",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Field",
-              "type": "string"
-            },
-            {
-              "name": "Detail",
-              "type": "string"
-            }
-          ],
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
-            }
-          ]
-        },
-        {
-          "name": "Value",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Digest",
-              "signature": "func() string"
-            },
-            {
-              "name": "JSON",
-              "signature": "func() jsontext.Value"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
         }
       ]
     },
@@ -2407,48 +1594,21 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/plugin",
       "imports": [
         "context",
-        "encoding/json/jsontext",
-        "github.com/Tangerg/flame/packages/go-sdk/extension",
-        "github.com/Tangerg/flame/packages/go-sdk/jsonvalue",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/flame/qimu/jsonvalue",
+        "github.com/Tangerg/flame/qimu/mcp",
+        "github.com/Tangerg/flame/qimu/portable",
         "github.com/Tangerg/go-sdk/mcp",
         "github.com/Tangerg/scope/core/chat",
         "github.com/Tangerg/scope/core/tool",
         "github.com/invopop/jsonschema",
-        "io",
-        "iter",
-        "net/http"
+        "iter"
       ],
       "constants": [
         {
-          "name": "ActivateMethod",
+          "name": "DeclarationProtocol",
           "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/operations.activate\""
-        },
-        {
-          "name": "CallbackMetadataKey",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/callback.v1\""
-        },
-        {
-          "name": "DescribeMethod",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/operations.describe\""
-        },
-        {
-          "name": "InvocationHeader",
-          "type": "untyped string",
-          "value": "\"Flame-Invocation\""
-        },
-        {
-          "name": "InvocationMetadataKey",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/invocation\""
-        },
-        {
-          "name": "InvokeMethod",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/operations.invoke\""
+          "value": "\"io.github.tangerg.flame/plugin/1\""
         },
         {
           "name": "ModelCanceled",
@@ -2466,21 +1626,6 @@
           "value": "\"failed\""
         },
         {
-          "name": "ReceiptMethod",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/commands.get\""
-        },
-        {
-          "name": "SetupMethod",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/operations.setup\""
-        },
-        {
-          "name": "StreamMetadataKey",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/stream.v1\""
-        },
-        {
           "name": "ToolCommandPrefix",
           "type": "untyped string",
           "value": "\"tool:\""
@@ -2494,83 +1639,24 @@
           "name": "ToolReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/tools.getResult\""
-        },
-        {
-          "name": "ValidateMethod",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/operations.validate\""
-        }
-      ],
-      "variables": [
-        {
-          "name": "ErrInvalidInput",
-          "type": "error"
-        },
-        {
-          "name": "ErrStaleCall",
-          "type": "error"
-        },
-        {
-          "name": "ErrStreamUnconfirmed",
-          "type": "error"
         }
       ],
       "functions": [
         {
-          "name": "Activate",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession) error"
-        },
-        {
-          "name": "CallHost",
-          "signature": "func[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id string, input P) (R, error)"
-        },
-        {
           "name": "CallModel",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) (*chat.Response, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, request *chat.Request) (*chat.Response, error)"
         },
         {
           "name": "CallSelectedModel",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) (*chat.Response, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, input ModelCallRequest) (*chat.Response, error)"
         },
         {
           "name": "CallTextEmbedding",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, texts []string) (TextEmbeddings, error)"
-        },
-        {
-          "name": "CallbackFromContext",
-          "signature": "func(ctx context.Context) (CallbackRef, error)"
-        },
-        {
-          "name": "CallbackMetadata",
-          "signature": "func(ref CallbackRef) (mcp.ParamsBase, error)"
-        },
-        {
-          "name": "DecodeReply",
-          "signature": "func[T any](data []byte) (T, error)"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, texts []string) (TextEmbeddings, error)"
         },
         {
           "name": "DefiniteToolFailure",
           "signature": "func(cause error) error"
-        },
-        {
-          "name": "Describe",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession) (Description, error)"
-        },
-        {
-          "name": "EncodeReply",
-          "signature": "func[T any](value T, err error, classify func(error) string) (jsonvalue.Value, error)"
-        },
-        {
-          "name": "ImplementMethod",
-          "signature": "func[P, R any](owner *extension.Capability, name string) (*Method[P, R], error)"
-        },
-        {
-          "name": "ImplementStreamingMethod",
-          "signature": "func[P, C, R any](owner *extension.Capability, name string) (*StreamingMethod[P, C, R], error)"
-        },
-        {
-          "name": "InvocationFromContext",
-          "signature": "func(ctx context.Context) (extension.Invocation, error)"
         },
         {
           "name": "InvocationID",
@@ -2578,159 +1664,91 @@
         },
         {
           "name": "ModelContextContract",
-          "signature": "func() (*extension.Capability, error)"
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "ModelContextMethod",
-          "signature": "func() (*Method[ModelContextRequest, ModelContextResult], error)"
+          "signature": "func() (*mcp.Method[ModelContextRequest, ModelContextResult], error)"
         },
         {
           "name": "ModelInputContract",
-          "signature": "func() (*extension.Capability, error)"
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "ModelInputMethod",
-          "signature": "func() (*Method[ModelInputRequest, chat.Request], error)"
+          "signature": "func() (*mcp.Method[ModelInputRequest, chat.Request], error)"
         },
         {
           "name": "ModelMethod",
-          "signature": "func() (*Method[chat.Request, ModelResult], error)"
+          "signature": "func() (*mcp.Method[chat.Request, ModelResult], error)"
         },
         {
           "name": "ModelObserverContract",
-          "signature": "func() (*extension.Capability, error)"
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "ModelSelectionContract",
-          "signature": "func() (*extension.Capability, error)"
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "ModelSelectionMethod",
-          "signature": "func() (*Method[ModelSelectionRequest, ModelSelection], error)"
+          "signature": "func() (*mcp.Method[ModelSelectionRequest, ModelSelection], error)"
         },
         {
           "name": "ModelStreamMethod",
-          "signature": "func() (*StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error)"
-        },
-        {
-          "name": "NewBackend",
-          "signature": "func(server *mcp.Server) (*Backend, error)"
-        },
-        {
-          "name": "NewBinding",
-          "signature": "func(session *mcp.ClientSession, descriptor extension.MethodDescriptor) (*Binding, error)"
-        },
-        {
-          "name": "NewCallback",
-          "signature": "func[P, R any](method *Method[P, R], classify func(error) string, handler func(context.Context, Command[P]) (R, error)) (Callback, error)"
-        },
-        {
-          "name": "NewCallbacks",
-          "signature": "func() *Callbacks"
-        },
-        {
-          "name": "NewCapabilityBinding",
-          "signature": "func(session *mcp.ClientSession, name string, contract *extension.Capability) (*CapabilityBinding, error)"
-        },
-        {
-          "name": "NewMethod",
-          "signature": "func[P, R any](config MethodConfig) (*Method[P, R], error)"
+          "signature": "func() (*mcp.StreamingMethod[chat.Request, chat.ResponseDelta, ModelResult], error)"
         },
         {
           "name": "NewModelCallback",
-          "signature": "func(call func(context.Context, Command[chat.Request]) (*chat.Response, error)) (Callback, error)"
+          "signature": "func(call func(context.Context, mcp.Command[chat.Request]) (*chat.Response, error)) (mcp.Callback, error)"
         },
         {
           "name": "NewModelStreamCallback",
-          "signature": "func(stream func(context.Context, Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (Callback, error)"
+          "signature": "func(stream func(context.Context, mcp.Command[chat.Request]) iter.Seq2[*chat.ResponseDelta, error]) (mcp.Callback, error)"
         },
         {
           "name": "NewSelectedModelCallback",
-          "signature": "func(call func(context.Context, Command[ModelCallRequest]) (*chat.Response, error)) (Callback, error)"
+          "signature": "func(call func(context.Context, mcp.Command[ModelCallRequest]) (*chat.Response, error)) (mcp.Callback, error)"
         },
         {
           "name": "NewSelectedModelStreamCallback",
-          "signature": "func(stream func(context.Context, Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (Callback, error)"
-        },
-        {
-          "name": "NewStreamingCallback",
-          "signature": "func[P, C, R any](method *StreamingMethod[P, C, R], handler func(context.Context, Command[P]) iter.Seq2[StreamValue[C, R], error]) (Callback, error)"
-        },
-        {
-          "name": "NewStreamingMethod",
-          "signature": "func[P, C, R any](config MethodConfig) (*StreamingMethod[P, C, R], error)"
+          "signature": "func(stream func(context.Context, mcp.Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (mcp.Callback, error)"
         },
         {
           "name": "NewTextEmbeddingCallback",
-          "signature": "func(call func(context.Context, Command[[]string]) (TextEmbeddings, error)) (Callback, error)"
+          "signature": "func(call func(context.Context, mcp.Command[[]string]) (TextEmbeddings, error)) (mcp.Callback, error)"
         },
         {
           "name": "NewToolReceipt",
           "signature": "func(output chat.ToolOutput, failed bool) (ToolReceipt, error)"
         },
         {
-          "name": "ReadReceipt",
-          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, id string, method string, input P) (R, bool, error)"
-        },
-        {
           "name": "ReadToolReceipt",
           "signature": "func(ctx context.Context, session *mcp.ClientSession, callID string, remote string, admitted jsonvalue.Value) (*chat.ToolOutput, error)"
-        },
-        {
-          "name": "ReceiptQuery",
-          "signature": "func() (*Method[ReceiptRequest, Receipt], error)"
-        },
-        {
-          "name": "RegisterClient",
-          "signature": "func(client *mcp.Client) error"
         },
         {
           "name": "RegisterTools",
           "signature": "func(server *mcp.Server, tools ...tool.Tool) error"
         },
         {
-          "name": "RequestInput",
-          "signature": "func(ctx context.Context) (jsonvalue.Value, error)"
-        },
-        {
-          "name": "Resolve",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string) (*Binding, error)"
-        },
-        {
-          "name": "ResolveCapability",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string, required *extension.Capability) (*CapabilityBinding, error)"
-        },
-        {
           "name": "SelectedModelMethod",
-          "signature": "func() (*Method[ModelCallRequest, ModelResult], error)"
+          "signature": "func() (*mcp.Method[ModelCallRequest, ModelResult], error)"
         },
         {
           "name": "SelectedModelStreamMethod",
-          "signature": "func() (*StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error)"
-        },
-        {
-          "name": "SetUp",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, contributions []SetupContribution, metadata mcp.ParamsBase) error"
-        },
-        {
-          "name": "StreamDeliveryContract",
-          "signature": "func() (extension.MethodDescriptor, error)"
-        },
-        {
-          "name": "StreamHost",
-          "signature": "func[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id string, input P) iter.Seq2[StreamValue[C, R], error]"
+          "signature": "func() (*mcp.StreamingMethod[ModelCallRequest, chat.ResponseDelta, ModelResult], error)"
         },
         {
           "name": "StreamModel",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, request *chat.Request) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, request *chat.Request) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "StreamSelectedModel",
-          "signature": "func(ctx context.Context, ref CallbackRef, id string, input ModelCallRequest) iter.Seq2[StreamValue[chat.ResponseDelta, ModelResult], error]"
+          "signature": "func(ctx context.Context, ref mcp.CallbackRef, id string, input ModelCallRequest) iter.Seq2[mcp.StreamValue[chat.ResponseDelta, ModelResult], error]"
         },
         {
           "name": "TextEmbeddingMethod",
-          "signature": "func() (*Method[[]string, TextEmbeddings], error)"
+          "signature": "func() (*mcp.Method[[]string, TextEmbeddings], error)"
         },
         {
           "name": "ToolCommandID",
@@ -2742,15 +1760,15 @@
         },
         {
           "name": "ToolProposalContract",
-          "signature": "func() (*extension.Capability, error)"
+          "signature": "func() (*portable.Capability, error)"
         },
         {
           "name": "ToolProposalMethod",
-          "signature": "func() (*Method[chat.ToolCall, chat.ToolCall], error)"
+          "signature": "func() (*mcp.Method[chat.ToolCall, chat.ToolCall], error)"
         },
         {
           "name": "ToolReceiptQuery",
-          "signature": "func() (*Method[ReceiptRequest, ToolReceipt], error)"
+          "signature": "func() (*mcp.Method[mcp.ReceiptRequest, ToolReceipt], error)"
         },
         {
           "name": "ValidateModelInput",
@@ -2761,318 +1779,11 @@
           "signature": "func(original chat.ToolCall, transformed chat.ToolCall) error"
         },
         {
-          "name": "VerifyCapabilities",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, required []CapabilityExport) error"
-        },
-        {
-          "name": "WithInvocation",
-          "signature": "func(ctx context.Context, invocation extension.Invocation) (context.Context, error)"
-        },
-        {
           "name": "WithToolContext",
           "signature": "func(ctx context.Context, captured ToolContext) (context.Context, error)"
         }
       ],
       "types": [
-        {
-          "name": "ActivationResource",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "Close",
-              "signature": "func() error"
-            },
-            {
-              "name": "Start",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Backend",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "BindCapability",
-              "signature": "func(name string, contract *extension.Capability) error"
-            },
-            {
-              "name": "Close",
-              "signature": "func() error"
-            },
-            {
-              "name": "OnSetup",
-              "signature": "func(handler func(context.Context, Setup) (io.Closer, error)) error"
-            },
-            {
-              "name": "Publish",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Binding",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Contract",
-              "signature": "func() jsonvalue.Value"
-            },
-            {
-              "name": "Descriptor",
-              "signature": "func() extension.MethodDescriptor"
-            },
-            {
-              "name": "Invoke",
-              "signature": "func(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, error)"
-            },
-            {
-              "name": "InvokeWithMetadata",
-              "signature": "func(ctx context.Context, id string, input jsonvalue.Value, metadata mcp.ParamsBase) (jsonvalue.Value, error)"
-            },
-            {
-              "name": "ReadReceipt",
-              "signature": "func(ctx context.Context, id string, input jsonvalue.Value) (jsonvalue.Value, bool, error)"
-            },
-            {
-              "name": "StreamWithMetadata",
-              "signature": "func(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id string, input jsonvalue.Value, metadata mcp.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error]"
-            },
-            {
-              "name": "ValidateInput",
-              "signature": "func(ctx context.Context, input jsonvalue.Value) error"
-            }
-          ]
-        },
-        {
-          "name": "BoundMethod",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Call",
-              "signature": "func(ctx context.Context, input P) (R, error)"
-            },
-            {
-              "name": "CallCommand",
-              "signature": "func(ctx context.Context, id string, input P) (R, error)"
-            },
-            {
-              "name": "CallWithMetadata",
-              "signature": "func(ctx context.Context, input P, metadata mcp.ParamsBase) (R, error)"
-            },
-            {
-              "name": "ReadReceipt",
-              "signature": "func(ctx context.Context, id string, input P) (R, bool, error)"
-            }
-          ]
-        },
-        {
-          "name": "Callback",
-          "kind": "struct"
-        },
-        {
-          "name": "CallbackLimits",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MaxRequestBytes",
-              "type": "int64"
-            },
-            {
-              "name": "MaxResponseBytes",
-              "type": "int64"
-            }
-          ]
-        },
-        {
-          "name": "CallbackRef",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Endpoint",
-              "type": "string",
-              "tag": "json:\"endpoint\""
-            },
-            {
-              "name": "Credential",
-              "type": "string",
-              "tag": "json:\"credential\""
-            },
-            {
-              "name": "Call",
-              "type": "string",
-              "tag": "json:\"call\""
-            },
-            {
-              "name": "MaxResponseBytes",
-              "type": "int64",
-              "tag": "json:\"maxResponseBytes\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Callbacks",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "AdmitSession",
-              "signature": "func(session *mcp.ClientSession)"
-            },
-            {
-              "name": "Close",
-              "signature": "func() error"
-            },
-            {
-              "name": "Open",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
-            },
-            {
-              "name": "OpenRPC",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error)"
-            },
-            {
-              "name": "OpenRPCWithInvocation",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, limits CallbackLimits, project func(context.Context, extension.Invocation) (context.Context, error)) (CallbackRef, func(), error)"
-            },
-            {
-              "name": "PublishRPC",
-              "signature": "func(handler http.Handler, callbacks ...Callback) error"
-            },
-            {
-              "name": "RevokeSession",
-              "signature": "func(session *mcp.ClientSession)"
-            },
-            {
-              "name": "WaitRPC",
-              "signature": "func(ctx context.Context) error"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityBinding",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Method",
-              "signature": "func(name string) (*Binding, error)"
-            }
-          ]
-        },
-        {
-          "name": "CapabilityExport",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Contract",
-              "type": "extension.CapabilityDescriptor",
-              "tag": "json:\"contract\""
-            }
-          ]
-        },
-        {
-          "name": "Command",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string"
-            },
-            {
-              "name": "Input",
-              "type": "T"
-            }
-          ],
-          "methods": [
-            {
-              "name": "RequestInput",
-              "signature": "func() (jsonvalue.Value, error)"
-            }
-          ]
-        },
-        {
-          "name": "Description",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Protocol",
-              "type": "string",
-              "tag": "json:\"protocol\""
-            },
-            {
-              "name": "Methods",
-              "type": "[]extension.MethodDescriptor",
-              "tag": "json:\"methods\""
-            },
-            {
-              "name": "Capabilities",
-              "type": "[]CapabilityExport",
-              "tag": "json:\"capabilities\""
-            }
-          ]
-        },
-        {
-          "name": "Method",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Bind",
-              "signature": "func(capability *CapabilityBinding) (*BoundMethod[P, R], error)"
-            },
-            {
-              "name": "Call",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, input P) (R, error)"
-            },
-            {
-              "name": "CallCommand",
-              "signature": "func(ctx context.Context, session *mcp.ClientSession, id string, input P) (R, error)"
-            },
-            {
-              "name": "Descriptor",
-              "signature": "func() extension.MethodDescriptor"
-            },
-            {
-              "name": "Name",
-              "signature": "func() string"
-            },
-            {
-              "name": "RegisterServer",
-              "signature": "func(backend *Backend, classify func(error) string, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
-            }
-          ]
-        },
-        {
-          "name": "MethodConfig",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string"
-            },
-            {
-              "name": "Kind",
-              "type": "extension.MethodKind"
-            },
-            {
-              "name": "Target",
-              "type": "string"
-            },
-            {
-              "name": "Description",
-              "type": "string"
-            }
-          ]
-        },
         {
           "name": "ModelCallBudget",
           "kind": "struct",
@@ -3307,173 +2018,6 @@
           ]
         },
         {
-          "name": "Receipt",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Found",
-              "type": "bool",
-              "tag": "json:\"found\""
-            },
-            {
-              "name": "Reply",
-              "type": "jsontext.Value",
-              "tag": "json:\"reply,omitzero\""
-            }
-          ]
-        },
-        {
-          "name": "ReceiptRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Method",
-              "type": "string",
-              "tag": "json:\"method\""
-            },
-            {
-              "name": "InputDigest",
-              "type": "string",
-              "tag": "json:\"inputDigest\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            },
-            {
-              "name": "Validate",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "Setup",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Contributions",
-              "signature": "func() ([]SetupContribution, error)"
-            }
-          ]
-        },
-        {
-          "name": "SetupBinding",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InstallationID",
-              "type": "string",
-              "tag": "json:\"installationId\""
-            },
-            {
-              "name": "Digest",
-              "type": "string",
-              "tag": "json:\"digest\""
-            },
-            {
-              "name": "Contribution",
-              "type": "string",
-              "tag": "json:\"contribution\""
-            },
-            {
-              "name": "Contract",
-              "type": "extension.CapabilityDescriptor",
-              "tag": "json:\"contract\""
-            }
-          ]
-        },
-        {
-          "name": "SetupContribution",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Background",
-              "type": "*extension.Target",
-              "tag": "json:\"background,omitzero\""
-            },
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Export",
-              "type": "string",
-              "tag": "json:\"export\""
-            },
-            {
-              "name": "Requires",
-              "type": "[]SetupDependency",
-              "tag": "json:\"requires\""
-            }
-          ]
-        },
-        {
-          "name": "SetupDependency",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "ID",
-              "type": "string",
-              "tag": "json:\"id\""
-            },
-            {
-              "name": "Contract",
-              "type": "extension.CapabilityDescriptor",
-              "tag": "json:\"contract\""
-            },
-            {
-              "name": "Optional",
-              "type": "bool",
-              "tag": "json:\"optional\""
-            },
-            {
-              "name": "Bindings",
-              "type": "[]SetupBinding",
-              "tag": "json:\"bindings\""
-            }
-          ]
-        },
-        {
-          "name": "StreamValue",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Chunk",
-              "type": "*C"
-            },
-            {
-              "name": "Result",
-              "type": "*R"
-            }
-          ]
-        },
-        {
-          "name": "StreamingMethod",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "Descriptor",
-              "signature": "func() extension.MethodDescriptor"
-            },
-            {
-              "name": "RegisterServer",
-              "signature": "func(backend *Backend, handler func(context.Context, *mcp.ServerSession, Command[P]) iter.Seq2[StreamValue[C, R], error]) error"
-            },
-            {
-              "name": "StreamWithMetadata",
-              "signature": "func(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id string, input P, metadata mcp.ParamsBase) iter.Seq2[StreamValue[C, R], error]"
-            }
-          ]
-        },
-        {
           "name": "TextEmbeddings",
           "kind": "struct",
           "fields": [
@@ -3548,7 +2092,7 @@
         {
           "name": "CapabilityJSON",
           "type": "untyped string",
-          "value": "\"{\\\"protocol\\\":\\\"io.github.tangerg.flame/backend/2026-10-15.3\\\",\\\"reference\\\":\\\"memory\\\",\\\"composition\\\":\\\"selection\\\",\\\"scope\\\":\\\"installation\\\",\\\"methods\\\":[{\\\"name\\\":\\\"flame.memory/add.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_AddInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_AddResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/delete.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ItemInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/items.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ItemsInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/list.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ListInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Page\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_MaintenanceInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_MaintenanceResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/review.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ReviewInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/search.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_SearchInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/update.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_UpdateInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}}]}\""
+          "value": "\"{\\\"protocol\\\":\\\"io.github.tangerg.qimu/portable/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"composition\\\":\\\"selection\\\",\\\"scope\\\":\\\"installation\\\",\\\"methods\\\":[{\\\"name\\\":\\\"flame.memory/add.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_AddInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_AddResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/delete.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ItemInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/items.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ItemsInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/list.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ListInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"maximum\\\":100,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Page\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"const\\\":512,\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"maxItems\\\":100,\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_MaintenanceInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Conversation\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_MaintenanceResult\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/review.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_ReviewInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_Ack\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},{\\\"name\\\":\\\"flame.memory/search.v2\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_SearchInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\"},\\\"type\\\":\\\"array\\\"}},{\\\"name\\\":\\\"flame.memory/update.v2\\\",\\\"kind\\\":\\\"command\\\",\\\"target\\\":\\\"installation\\\",\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0_UpdateInput\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemSnapshot\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096,\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"type\\\":\\\"number\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg_ItemID\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"maximum\\\":9007199254740991,\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"format\\\":\\\"date-time\\\",\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"}}]}\""
         },
         {
           "name": "DeleteV2Method",
@@ -4601,8 +3145,8 @@
       "imports": [
         "context",
         "database/sql",
-        "github.com/Tangerg/flame/packages/go-sdk/jsonvalue",
-        "github.com/Tangerg/flame/packages/go-sdk/plugin",
+        "github.com/Tangerg/flame/qimu/jsonvalue",
+        "github.com/Tangerg/flame/qimu/mcp",
         "github.com/Tangerg/go-sdk/mcp"
       ],
       "constants": [
@@ -4646,15 +3190,15 @@
         },
         {
           "name": "ReadReceipt",
-          "signature": "func(ctx context.Context, db *sql.DB, input plugin.ReceiptRequest) (plugin.Receipt, error)"
+          "signature": "func(ctx context.Context, db *sql.DB, input mcp.ReceiptRequest) (mcp.Receipt, error)"
         },
         {
           "name": "RegisterCommand",
-          "signature": "func[P, R any](server *plugin.Backend, db *sql.DB, method *plugin.Method[P, R], classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
+          "signature": "func[P, R any](server *mcp.Backend, db *sql.DB, method *mcp.Method[P, R], classify func(error) string, handler func(context.Context, *mcp.ServerSession, P) (R, error)) error"
         },
         {
           "name": "RegisterReceipts",
-          "signature": "func(server *plugin.Backend, db *sql.DB) error"
+          "signature": "func(server *mcp.Backend, db *sql.DB) error"
         },
         {
           "name": "ResumeCommand",
@@ -4682,7 +3226,7 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/protocol",
       "imports": [
         "encoding/json/jsontext",
-        "github.com/Tangerg/flame/packages/go-sdk/extension",
+        "github.com/Tangerg/flame/qimu/portable",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "time"
       ],
@@ -6785,6 +5329,36 @@
       ],
       "types": [
         {
+          "name": "AcquirePluginComponentRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PluginReleaseRequest",
+              "type": "PluginReleaseRequest"
+            },
+            {
+              "name": "OperationID",
+              "type": "string",
+              "tag": "json:\"operationId\""
+            },
+            {
+              "name": "ParentUseID",
+              "type": "string",
+              "tag": "json:\"parentUseId,omitzero\""
+            },
+            {
+              "name": "Realm",
+              "type": "PluginBrowserRealm",
+              "tag": "json:\"realm\""
+            },
+            {
+              "name": "ComponentID",
+              "type": "string",
+              "tag": "json:\"componentId\""
+            }
+          ]
+        },
+        {
           "name": "ActiveRunRef",
           "kind": "struct",
           "fields": [
@@ -7332,7 +5906,7 @@
             },
             {
               "name": "Target",
-              "type": "extension.Target",
+              "type": "portable.Target",
               "tag": "json:\"target\""
             }
           ]
@@ -7450,6 +6024,17 @@
               "name": "Version",
               "type": "string",
               "tag": "json:\"version\""
+            }
+          ]
+        },
+        {
+          "name": "ClosePluginBrowserRealmRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Realm",
+              "type": "PluginBrowserRealm",
+              "tag": "json:\"realm\""
             }
           ]
         },
@@ -9733,7 +8318,7 @@
             },
             {
               "name": "Caller",
-              "type": "extension.Invocation",
+              "type": "portable.Invocation",
               "tag": "json:\"caller\""
             },
             {
@@ -9954,6 +8539,27 @@
           ]
         },
         {
+          "name": "OpenPluginBrowserRealmRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "OperationID",
+              "type": "string",
+              "tag": "json:\"operationId\""
+            },
+            {
+              "name": "ResumeToken",
+              "type": "string",
+              "tag": "json:\"resumeToken\""
+            },
+            {
+              "name": "Resume",
+              "type": "*PluginBrowserRealm",
+              "tag": "json:\"resume,omitzero\""
+            }
+          ]
+        },
+        {
           "name": "OpenPluginResourcesRequest",
           "kind": "struct",
           "fields": [
@@ -10096,6 +8702,241 @@
               "name": "Status",
               "type": "PlanStatus",
               "tag": "json:\"status\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserAuthority",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserContractKind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserContractMode",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserContractRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\""
+            },
+            {
+              "name": "Digest",
+              "type": "PluginBrowserDigest",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Kind",
+              "type": "PluginBrowserContractKind",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "Mode",
+              "type": "PluginBrowserContractMode",
+              "tag": "json:\"mode\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserDigest",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginBrowserExecution",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Generation",
+              "type": "string",
+              "tag": "json:\"generation\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserLocalExport",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstanceID",
+              "type": "string",
+              "tag": "json:\"instanceId\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Contract",
+              "type": "PluginBrowserContractRef",
+              "tag": "json:\"contract\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserObjectRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Export",
+              "type": "PluginBrowserLocalExport",
+              "tag": "json:\"export\""
+            },
+            {
+              "name": "ObjectID",
+              "type": "string",
+              "tag": "json:\"objectId\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserRealm",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Epoch",
+              "type": "string",
+              "tag": "json:\"epoch\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserSession",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Authority",
+              "type": "PluginBrowserAuthority",
+              "tag": "json:\"authority\""
+            },
+            {
+              "name": "Realm",
+              "type": "PluginBrowserRealm",
+              "tag": "json:\"realm\""
+            },
+            {
+              "name": "Credential",
+              "type": "string",
+              "tag": "json:\"credential\""
+            },
+            {
+              "name": "ControlEndpoint",
+              "type": "string",
+              "tag": "json:\"controlEndpoint\""
+            },
+            {
+              "name": "MaximumMessageBytes",
+              "type": "int",
+              "tag": "json:\"maximumMessageBytes\""
+            },
+            {
+              "name": "ProofCapacity",
+              "type": "int",
+              "tag": "json:\"proofCapacity\""
+            },
+            {
+              "name": "PollIntervalMilliseconds",
+              "type": "int",
+              "tag": "json:\"pollIntervalMilliseconds\""
+            },
+            {
+              "name": "ComponentContract",
+              "type": "PluginBrowserContractRef",
+              "tag": "json:\"componentContract\""
+            }
+          ]
+        },
+        {
+          "name": "PluginBrowserUseGrant",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "ApprovalToken",
+              "type": "string",
+              "tag": "json:\"approvalToken\""
+            },
+            {
+              "name": "Authority",
+              "type": "PluginBrowserAuthority",
+              "tag": "json:\"authority\""
+            },
+            {
+              "name": "Realm",
+              "type": "PluginBrowserRealm",
+              "tag": "json:\"realm\""
+            },
+            {
+              "name": "Execution",
+              "type": "PluginBrowserExecution",
+              "tag": "json:\"execution\""
+            },
+            {
+              "name": "ScopeID",
+              "type": "string",
+              "tag": "json:\"scopeId\""
+            },
+            {
+              "name": "ScopeGeneration",
+              "type": "string",
+              "tag": "json:\"scopeGeneration\""
+            },
+            {
+              "name": "Objects",
+              "type": "[]PluginBrowserObjectRef",
+              "tag": "json:\"objects\""
             }
           ]
         },
@@ -11348,7 +10189,7 @@
             },
             {
               "name": "Target",
-              "type": "extension.Target",
+              "type": "portable.Target",
               "tag": "json:\"target\""
             },
             {
@@ -13717,59 +12558,6 @@
       ]
     },
     {
-      "path": "github.com/Tangerg/flame/packages/go-sdk/sqlite",
-      "imports": [
-        "context",
-        "database/sql"
-      ],
-      "functions": [
-        {
-          "name": "Connection",
-          "signature": "func(ctx context.Context, db *sql.DB) Executor"
-        },
-        {
-          "name": "InstallSchema",
-          "signature": "func(ctx context.Context, db *sql.DB, stmts []string) error"
-        },
-        {
-          "name": "OpenSchema",
-          "signature": "func(ctx context.Context, path string, statements []string) (*sql.DB, error)"
-        },
-        {
-          "name": "RunInTx",
-          "signature": "func(ctx context.Context, db *sql.DB, fn func(context.Context) error) error"
-        },
-        {
-          "name": "RunIndependentTx",
-          "signature": "func(ctx context.Context, db *sql.DB, fn func(context.Context) error) (err error)"
-        },
-        {
-          "name": "RunReadSnapshot",
-          "signature": "func(ctx context.Context, db *sql.DB, read func(context.Context) error) error"
-        }
-      ],
-      "types": [
-        {
-          "name": "Executor",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "ExecContext",
-              "signature": "func(ctx context.Context, query string, args ...any) (sql.Result, error)"
-            },
-            {
-              "name": "QueryContext",
-              "signature": "func(ctx context.Context, query string, args ...any) (*sql.Rows, error)"
-            },
-            {
-              "name": "QueryRowContext",
-              "signature": "func(ctx context.Context, query string, args ...any) *sql.Row"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "path": "github.com/Tangerg/flame/packages/local-runtime",
       "imports": [
         "context"
@@ -13814,6 +12602,10 @@
           "signature": "func(executable string) (Node, error)"
         },
         {
+          "name": "NodeTargets",
+          "signature": "func() ([]NodeTarget, error)"
+        },
+        {
           "name": "OpenToken",
           "signature": "func(path string) (*Token, error)"
         },
@@ -13824,6 +12616,10 @@
         {
           "name": "ResolveProductRoot",
           "signature": "func(userHome string, configuredRoot string) (string, error)"
+        },
+        {
+          "name": "RunnerExecutable",
+          "signature": "func(executable string) (string, error)"
         }
       ],
       "types": [
@@ -13858,12 +12654,38 @@
               "signature": "func() string"
             },
             {
+              "name": "ExecutableDigest",
+              "signature": "func() string"
+            },
+            {
               "name": "Identity",
               "signature": "func() string"
             },
             {
               "name": "Verify",
               "signature": "func(ctx context.Context) (err error)"
+            }
+          ]
+        },
+        {
+          "name": "NodeTarget",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "OS",
+              "type": "string"
+            },
+            {
+              "name": "Arch",
+              "type": "string"
+            },
+            {
+              "name": "Version",
+              "type": "string"
+            },
+            {
+              "name": "ExecutableDigest",
+              "type": "string"
             }
           ]
         },
@@ -13930,6 +12752,10 @@
           "kind": "struct",
           "methods": [
             {
+              "name": "AcquirePluginComponent",
+              "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
@@ -13952,6 +12778,10 @@
             {
               "name": "Close",
               "signature": "func() error"
+            },
+            {
+              "name": "ClosePluginBrowserRealm",
+              "signature": "func(ctx context.Context, request protocol.ClosePluginBrowserRealmRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ConfigurePlugin",
@@ -14176,6 +13006,10 @@
             {
               "name": "NotifyPluginChange",
               "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "OpenPluginBrowserRealm",
+              "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
               "name": "OpenPluginResources",

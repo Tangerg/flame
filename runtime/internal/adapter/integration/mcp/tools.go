@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -92,6 +93,16 @@ type Executable struct {
 	config  ServerConfig
 	owner   *connections
 	session *sdkmcp.ClientSession
+	held    *BorrowedSession
+}
+
+func (t Executable) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, err error) {
+	borrowed, err := t.BorrowSession(ctx)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	defer func() { err = errors.Join(err, borrowed.Close()) }()
+	return t.Tool.Call(borrowed.Context(), invocation)
 }
 
 // Current reports whether the session that admitted this executable is still
@@ -99,6 +110,9 @@ type Executable struct {
 // refusals; once its session is replaced or withdrawn, dispatching through it
 // would reach a closed transport instead of the current source.
 func (t Executable) Current() bool {
+	if t.held != nil {
+		return t.held.ctx.Err() == nil
+	}
 	return t.owner != nil && t.owner.current(t.config.ID(), t.session)
 }
 
@@ -106,15 +120,31 @@ func (t Executable) Unwrap() toolcontract.Tool          { return t.Tool }
 func (t Executable) SourceFingerprint() identity.Digest { return t.config.AuthorityFingerprint() }
 func (t Executable) SourceConfig() ServerConfig         { return t.config.Clone() }
 
-// CallbackSession binds collaborators to the connection generation that admitted this tool.
-func (t Executable) CallbackSession() (*sdkmcp.ClientSession, error) {
-	if !t.Current() {
-		return nil, fmt.Errorf("mcp: callback authority connection was withdrawn")
+// BorrowSession holds this executable's original Use while callback grants are
+// being prepared and used. The caller closes it after revoking those grants.
+func (t Executable) BorrowSession(ctx context.Context) (*BorrowedSession, error) {
+	if t.held != nil {
+		if t.held.ctx.Err() != nil {
+			return nil, ErrUnavailable
+		}
+		work, err := t.held.managed.use.Lifetime().Enter(ctx)
+		if err != nil {
+			return nil, err
+		}
+		borrowed := &BorrowedSession{ctx: work.Context(), session: t.session, work: work, managed: t.held.managed}
+		borrowed.ctx = context.WithValue(borrowed.ctx, borrowContextKey{}, borrowed)
+		return borrowed, nil
 	}
-	return t.session, nil
+	if !t.Current() {
+		return nil, ErrUnavailable
+	}
+	return t.owner.borrowSession(ctx, t.session)
 }
 
 func (t Executable) InstallationActivation() (plugin.Activation, error) {
+	if t.held != nil {
+		return t.held.Activation()
+	}
 	if t.owner == nil {
 		return plugin.Activation{}, ErrUnavailable
 	}

@@ -109,8 +109,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 			t.Fatal("unknown Tool did not retain the committed Runtime opening")
 		}
 		r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: session.ID}, "delete-original-tool-session")
-		r.close()
-		r = poMCPOpen(t, cfg)
+		r = reopenPluginRuntime(t, r, &cfg)
 		r.poMCPTools(server, scheduleToolsReady)
 		deadline := time.Now().Add(5 * time.Second)
 		for {

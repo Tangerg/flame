@@ -6,10 +6,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -31,12 +32,12 @@ func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) e
 	defer a.mu.Unlock()
 	if original, found := a.invocations[id]; found {
 		if original != (memoryModelInvocation{method: method, input: input}) {
-			return &extension.Refusal{Code: "command_conflict", Message: extension.ErrInvocationConflict.Error()}
+			return &portable.Refusal{Code: "command_conflict", Message: portable.ErrInvocationConflict.Error()}
 		}
-		return &extension.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
+		return &portable.Refusal{Code: "model_redelivery", Message: "memory: original model invocation cannot be redelivered"}
 	}
 	if len(a.invocations) == memorycontract.MaxModelCalls {
-		return &extension.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
+		return &portable.Refusal{Code: "model_budget", Message: "memory: model budget exhausted"}
 	}
 	// Providers have no owner receipt. Fence each identity before external I/O.
 	a.invocations[id] = memoryModelInvocation{method: method, input: input}
@@ -45,15 +46,15 @@ func (a *memoryModelAdmission) admit(id, method string, input jsonvalue.Value) e
 
 // Memory retains its own external-call budget; the model exchange is the public
 // Scope request/response contract, while its corpus embedding is a separate method.
-func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, session *sdk.ClientSession, model chat.Model, embed models.TextEmbedder) (pluginsdk.CallbackRef, func(), error) {
+func GrantMemoryModels(ctx context.Context, callbacks *qimumcp.Callbacks, session *sdk.ClientSession, model chat.Model, embed models.TextEmbedder) (qimumcp.CallbackRef, func(), error) {
 	if callbacks == nil {
-		return pluginsdk.CallbackRef{}, nil, errors.New("memory: callback owner is required")
+		return qimumcp.CallbackRef{}, nil, errors.New("memory: callback owner is required")
 	}
 	admission := &memoryModelAdmission{invocations: make(map[string]memoryModelInvocation)}
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginsdk.Command[chat.Request]) (*chat.Response, error) {
+	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command qimumcp.Command[chat.Request]) (*chat.Response, error) {
 		request := command.Input
 		if lo.IsNil(model) || !memoryModelRequest(request) {
-			return nil, &extension.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
+			return nil, &portable.Refusal{Code: "model_envelope", Message: "memory: model envelope refused"}
 		}
 		input, err := command.RequestInput()
 		if err != nil {
@@ -65,16 +66,16 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, sess
 		return model.Call(ctx, request.Clone())
 	})
 	if err != nil {
-		return pluginsdk.CallbackRef{}, nil, err
+		return qimumcp.CallbackRef{}, nil, err
 	}
-	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
+	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.JSON())) > memorycontract.MaxEmbeddingInputBytes {
-			return pluginsdk.TextEmbeddings{}, &extension.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+			return pluginsdk.TextEmbeddings{}, &portable.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(command.ID, "embedding", input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err
@@ -83,9 +84,9 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginsdk.Callbacks, sess
 		return pluginsdk.TextEmbeddings{Space: embed.ID(), Vectors: vectors}, err
 	})
 	if err != nil {
-		return pluginsdk.CallbackRef{}, nil, err
+		return qimumcp.CallbackRef{}, nil, err
 	}
-	return callbacks.Open(ctx, session, pluginsdk.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
+	return callbacks.Open(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
 }
 
 func memoryModelRequest(request chat.Request) bool {

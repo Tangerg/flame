@@ -1881,7 +1881,7 @@ func layerOf(rel string) string {
 	switch {
 	case rel == "." || inPackageTree(rel, "internal/bootstrap") || inPackageTree(rel, "internal/config"):
 		return ringComposition
-	case inPackageTree(rel, "cmd/contractgen"):
+	case inPackageTree(rel, "cmd/contractgen"), inPackageTree(rel, "cmd/pluginbrowsergen"):
 		return ringGenerator
 	case inPackageTree(rel, "cmd"):
 		return ringComposition

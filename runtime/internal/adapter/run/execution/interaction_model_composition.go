@@ -3,11 +3,12 @@ package execution
 import (
 	"context"
 	"errors"
+	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -16,6 +17,7 @@ import (
 
 type interactionCallComposition interface {
 	Pending([]plugins.ContributionBinding) bool
+	RestorationFailure([]plugins.ContributionBinding) (bool, error)
 	ResolveToolProposals(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateToolProposals(context.Context, []plugins.ContributionBinding) error
 	PrepareToolProposal(context.Context, []plugins.ContributionBinding, chat.ToolCall) (chat.ToolCall, error)
@@ -56,7 +58,7 @@ func contributionBindingsWire(bindings []plugins.ContributionBinding) []contribu
 	return values
 }
 
-func decodeContributionBindings(values []contributionBindingWire, contract *extension.Capability) ([]plugins.ContributionBinding, error) {
+func decodeContributionBindings(values []contributionBindingWire, contract *portable.Capability) ([]plugins.ContributionBinding, error) {
 	if contract == nil {
 		return nil, errors.New("execution: model composition contract is required")
 	}
@@ -84,7 +86,7 @@ func decodeContributionBindings(values []contributionBindingWire, contract *exte
 			return nil, errors.Join(err, errors.New("execution: model contribution contract changed"))
 		}
 		member := plugin.CompositionMember{Installation: installation, Contribution: contribution}
-		if seen[member] || !extension.ValidExportName(value.Export) {
+		if seen[member] || !portable.ValidExportName(value.Export) {
 			return nil, errors.New("execution: invalid model contribution binding")
 		}
 		seen[member] = true
@@ -107,4 +109,34 @@ func activationIdentities(activations []plugin.Activation) []string {
 		identities[i] = activation.Identity.String()
 	}
 	return identities
+}
+
+func (i *interactionSession) bindCompositionActivations(activations []plugin.Activation) error {
+	var err error
+	i.modelObservers, err = plugins.BindActivations(i.modelObservers, activations)
+	if err != nil {
+		return err
+	}
+	i.modelContexts, err = plugins.BindActivations(i.modelContexts, activations)
+	if err != nil {
+		return err
+	}
+	i.modelInputs, err = plugins.BindActivations(i.modelInputs, activations)
+	if err != nil {
+		return err
+	}
+	i.toolProposals, err = plugins.BindActivations(i.toolProposals, activations)
+	if err != nil {
+		return err
+	}
+	var selected []plugin.Activation
+	for _, binding := range i.compositionBindings() {
+		if !slices.ContainsFunc(selected, binding.Activation.Equal) {
+			selected = append(selected, binding.Activation.Clone())
+		}
+	}
+	i.state.mu.Lock()
+	i.compositionActivations = selected
+	i.state.mu.Unlock()
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/qimu"
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -77,7 +78,7 @@ func wireRunResumeErr(err error) error {
 		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound
-	case errors.Is(err, runs.ErrInstallationChanged):
+	case errors.Is(err, runs.ErrInstallationChanged), errors.Is(err, qimu.ErrStaleBinding):
 		return pluginChanged(err)
 	default:
 		return err

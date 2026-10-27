@@ -4,11 +4,11 @@ package plugins
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -18,13 +18,11 @@ import (
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
 	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
-	Save(context.Context, *plugin.Installation) error
-	Remove(context.Context, identity.InstallationID) error
+	Stage(context.Context, identity.InstallationID, identity.Digest) error
 }
 type packageSources interface {
 	Definitions(context.Context, *plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
 	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
-	Connection(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
 }
 
 // Reach is how far a single-server read realizes an installation's release.
@@ -48,6 +46,7 @@ type userServers interface {
 // Registry is the only MCP registry projection. Installation descriptors are
 // always derived from the installation owner; no editable server rows exist.
 type Registry struct {
+	framework     *qimu.Host
 	user          userServers
 	installations Store
 	packages      packageSources
@@ -55,11 +54,12 @@ type Registry struct {
 	compositions  CompositionStore
 }
 
-func NewRegistry(user userServers, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
+func NewRegistry(host *qimu.Host, user userServers, installations Store, packages packageSources, selections SelectionStore, compositions CompositionStore) (*Registry, error) {
 	for _, required := range []struct {
 		name  string
 		value any
 	}{
+		{"framework host", host},
 		{"user server store", user}, {"installation store", installations}, {"package sources", packages}, {"selection store", selections},
 		{"composition store", compositions},
 	} {
@@ -67,7 +67,35 @@ func NewRegistry(user userServers, installations Store, packages packageSources,
 			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
 		}
 	}
-	return &Registry{user: user, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
+	return &Registry{framework: host, user: user, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
+}
+
+func (r *Registry) Framework() *qimu.Host { return r.framework }
+
+// ComponentPlan prepares one immutable component export in its target Realm.
+// The Host revalidates the plan before the browser receives execution authority.
+func (r *Registry) ComponentPlan(ctx context.Context, realm qimu.RealmID, id identity.InstallationID, digest identity.Digest, component plugin.ContributionID) (*qimu.BindingPlan, error) {
+	snapshot, found, err := r.installations.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, plugin.ErrNotFound
+	}
+	if _, err := snapshot.Installation.AuthorizeComponent(snapshot.Selected, digest, component); err != nil {
+		return nil, err
+	}
+	contract, err := ComponentContract()
+	if err != nil {
+		return nil, err
+	}
+	return r.framework.PlanWith(ctx, realm, nil, qimu.ExportRef{
+		InstallationID: qimu.InstallationID(id.String()),
+		Release:        qimu.Digest(digest.String()),
+		UnitID:         ComponentUnit(component),
+		Export:         "component",
+		Contract:       contract.Ref(),
+	})
 }
 
 // Definitions projects desired configuration without observing executable bytes
@@ -123,51 +151,49 @@ func (r *Registry) Dispatchable(ctx context.Context, id mcpserver.ID) (mcpserver
 	return r.resolve(ctx, id, Dispatchable)
 }
 
-// Connection realizes the configuration a new connection launches with and
-// refuses an unknown or disabled server.
-func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.Launch, err error) {
-	var connection mcpapp.Launch
-	var found bool
-	if installationID, installed := id.Origin().Installation(); installed {
-		snapshot, exists, readErr := r.installations.Get(ctx, installationID)
-		if readErr != nil {
-			return mcpapp.Launch{}, fmt.Errorf("plugins: read installation %s: %w", installationID, readErr)
-		}
-		if !exists {
-			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
-		}
-		var requirements *plugin.RequiredBindings
-		if snapshot.Installation.ServerEnabled(id.Name()) {
-			requirements, err = resolveEntryRequirements(ctx, r.installations, r.selections, r.compositions, snapshot, id.Name())
-			if err != nil {
-				return mcpapp.Launch{}, err
-			}
-		}
-		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
-		if err == nil && found {
-			connection.Requirements = requirements
-			connection.Exports = make(map[string]jsonvalue.Value)
-			for _, contribution := range snapshot.Selected.Declaration().Contributions {
-				if contribution.Server == id.Name() {
-					connection.Exports[contribution.Export] = contribution.Contract
-					connection.Contributions = append(connection.Contributions, contribution)
-				}
-			}
-		}
-	} else {
-		connection.Server, found, err = r.user.Get(ctx, id.Name())
+// BackendPlan captures consumer choices once for Qimu admission of the complete
+// exact Unit graph, including an entry with no public export.
+func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (*qimu.BindingPlan, error) {
+	installationID, installed := id.Origin().Installation()
+	if !installed {
+		return nil, plugin.ErrInvalid
 	}
-	if err == nil && !found {
-		err = mcpapp.ErrUnknownServer
-	}
-	if err == nil && !connection.Server.Enabled {
-		err = mcpapp.ErrServerDisabled
-	}
+	observed, exists, err := r.installations.Get(ctx, installationID)
 	if err != nil {
-		if connection.Retire != nil {
-			err = errors.Join(err, connection.Retire.Close())
-		}
+		return nil, err
+	}
+	if !exists || !slices.ContainsFunc(observed.Selected.Declaration().Servers, func(server plugin.Server) bool { return server.Name == id.Name() }) {
+		return nil, mcpapp.ErrUnknownServer
+	}
+	catalog, err := readRequirementCatalog(ctx, r.installations, r.selections, r.compositions)
+	if err != nil {
+		return nil, err
+	}
+	root, found := catalog.installations[installationID]
+	if !found {
+		return nil, mcpapp.ErrUnknownServer
+	}
+	if !root.Installation.ServerEnabled(id.Name()) {
+		return nil, mcpapp.ErrServerDisabled
+	}
+	return catalog.plan(ctx, r.framework, root, id.Name())
+}
+
+// Connection supplies ordinary user-owned MCP configuration. Installed Units
+// are materialized only through BackendPlan and Qimu's execution profiles.
+func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (mcpapp.Launch, error) {
+	if _, installed := id.Origin().Installation(); installed {
+		return mcpapp.Launch{}, fmt.Errorf("%w: installed backend requires an approved Qimu Use", plugin.ErrInvalid)
+	}
+	server, found, err := r.user.Get(ctx, id.Name())
+	if err != nil {
 		return mcpapp.Launch{}, err
 	}
-	return connection, nil
+	if !found {
+		return mcpapp.Launch{}, mcpapp.ErrUnknownServer
+	}
+	if !server.Enabled {
+		return mcpapp.Launch{}, mcpapp.ErrServerDisabled
+	}
+	return mcpapp.Launch{Server: server}, nil
 }

@@ -7,8 +7,8 @@ import (
 	"iter"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"

@@ -29,7 +29,7 @@ type SkillUsageRecorder interface {
 //
 // Rebuilt per resolution because both the project directory and admitted source
 // selection belong to that execution. Existing tools never change libraries.
-func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills) ([]toolcontract.Tool, []plugin.Dependency, error) {
+func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills, retained []plugin.Dependency) ([]toolcontract.Tool, []plugin.Dependency, error) {
 	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
 	if recorder != nil {
 		// Wrap only the user source: the curator governs the user library, and
@@ -40,7 +40,7 @@ func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageR
 			return recordingSource{ResourceSource: user, recorder: recorder}
 		}
 	}
-	source, dependencies, err := promptsource.OverlaySkillSource(ctx, cwd, userDir, packages, decorateUser)
+	source, dependencies, err := promptsource.OverlaySkillSource(ctx, cwd, userDir, packages, decorateUser, retained)
 	if err != nil {
 		return nil, nil, fmt.Errorf("skill: build source: %w", err)
 	}

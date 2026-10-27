@@ -5,18 +5,26 @@ import (
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/qimu"
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
-	"github.com/Tangerg/flame/packages/go-sdk/sqlite"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
+	"github.com/Tangerg/flame/qimu/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-type pluginCommandStore struct{ db *sql.DB }
+type pluginCommandStore struct {
+	db     *sql.DB
+	commit func(context.Context, []byte, func(context.Context) error) error
+}
 
-func newPluginCommandStore(db *sql.DB) *pluginCommandStore { return &pluginCommandStore{db: db} }
+func newPluginCommandStore(db *sql.DB, commit func(context.Context, []byte, func(context.Context) error) error) *pluginCommandStore {
+	return &pluginCommandStore{db: db, commit: commit}
+}
 
 func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	var record plugin.CommandBinding
@@ -57,6 +65,42 @@ func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 }
 
 func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) error {
+	if command == nil || s.commit == nil {
+		return plugin.ErrInvalid
+	}
+	record := command.Snapshot()
+	if _, err := plugins.DecodeActivation(record.Activation); err != nil {
+		return err
+	}
+	encoded, err := json.Marshal(struct {
+		ID           string              `json:"id"`
+		Method       string              `json:"method"`
+		Input        string              `json:"input"`
+		Contract     string              `json:"contract"`
+		Installation string              `json:"installation"`
+		Release      string              `json:"release"`
+		Server       string              `json:"server"`
+		Contribution string              `json:"contribution"`
+		Export       string              `json:"export"`
+		Invocation   portable.Invocation `json:"invocation"`
+		Binding      string              `json:"binding"`
+		Phase        string              `json:"phase"`
+	}{record.ID, record.Method, record.Input.String(), record.Contract.String(), record.Provider.InstallationID.String(), record.Provider.Digest.String(), record.Server.String(), record.Contribution.String(), record.Export, record.Invocation, record.Activation.Binding.String(), string(record.Phase)})
+	if err != nil {
+		return err
+	}
+	request, err := json.Marshal(struct {
+		Kind     string      `json:"kind"`
+		Identity string      `json:"identity"`
+		Digest   qimu.Digest `json:"digest"`
+	}{"plugin.command", record.ID, qimu.Hash(encoded)})
+	if err != nil {
+		return err
+	}
+	return s.commit(ctx, request, func(ctx context.Context) error { return s.save(ctx, command) })
+}
+
+func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command) error {
 	if command == nil {
 		return plugin.ErrInvalid
 	}
@@ -91,12 +135,24 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 }
 
 func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?)`, plugin.CommandPrepared, plugin.CommandDispatched)
+	bindings, err := s.pendingBindings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var held []plugin.Dependency
+	for _, binding := range bindings {
+		held = append(held, binding.Dependencies...)
+	}
+	return plugin.CompactDependencies(held), nil
+}
+
+func (s *pluginCommandStore) pendingBindings(ctx context.Context) ([]plugin.Activation, error) {
+	rows, err := sqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?) ORDER BY id`, plugin.CommandPrepared, plugin.CommandDispatched)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var held []plugin.Dependency
+	var bindings []plugin.Activation
 	for rows.Next() {
 		var installation, release, source string
 		if err := rows.Scan(&installation, &release, &source); err != nil {
@@ -111,52 +167,18 @@ func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]
 		}) {
 			return nil, plugin.ErrInvalid
 		}
-		held = append(held, activation.Dependencies...)
+		bindings = append(bindings, activation)
 	}
-	return plugin.CompactDependencies(held), rows.Err()
-}
-
-type commandDependencyJSON struct {
-	Installation string `json:"installation"`
-	Digest       string `json:"digest"`
-}
-
-type commandActivationJSON struct {
-	Identity     string                  `json:"identity"`
-	Dependencies []commandDependencyJSON `json:"dependencies"`
+	return bindings, rows.Err()
 }
 
 func encodeCommandActivation(activation plugin.Activation) (string, error) {
-	values := make([]commandDependencyJSON, len(activation.Dependencies))
-	for i, dependency := range activation.Dependencies {
-		values[i] = commandDependencyJSON{dependency.InstallationID.String(), dependency.Digest.String()}
+	if _, err := plugins.DecodeActivation(activation); err != nil {
+		return "", err
 	}
-	encoded, err := json.Marshal(commandActivationJSON{Identity: activation.Identity.String(), Dependencies: values})
-	return string(encoded), err
+	return activation.Binding.String(), nil
 }
+
 func decodeCommandActivation(source string) (plugin.Activation, error) {
-	var value commandActivationJSON
-	if err := json.Unmarshal([]byte(source), &value, json.RejectUnknownMembers(true)); err != nil {
-		return plugin.Activation{}, err
-	}
-	identity, err := flameidentity.ParseDigest(value.Identity)
-	if err != nil {
-		return plugin.Activation{}, err
-	}
-	if len(value.Dependencies) == 0 {
-		return plugin.Activation{}, plugin.ErrInvalid
-	}
-	activation := plugin.Activation{Identity: identity, Dependencies: make([]plugin.Dependency, len(value.Dependencies))}
-	for i, dependency := range value.Dependencies {
-		id, err := flameidentity.ParseInstallation(dependency.Installation)
-		if err != nil {
-			return plugin.Activation{}, err
-		}
-		digest, err := flameidentity.ParseDigest(dependency.Digest)
-		if err != nil {
-			return plugin.Activation{}, err
-		}
-		activation.Dependencies[i] = plugin.Dependency{InstallationID: id, Digest: digest}
-	}
-	return activation, activation.Validate()
+	return plugins.ReadActivation([]byte(source))
 }

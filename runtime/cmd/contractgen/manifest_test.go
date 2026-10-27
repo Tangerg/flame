@@ -5,9 +5,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/contractgen"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -182,6 +182,7 @@ func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 		"liveness":        {method: "GET", path: "/v2/health/live", response: "schema.json#/$defs/LivenessStatus"},
 		"readiness":       {method: "GET", path: "/v2/health/ready", response: "schema.json#/$defs/ReadinessStatus"},
 		"pluginResources": {method: "GET", path: "/v2/plugin-resources/{lease}/*", projects: "plugins.readResource"},
+		"pluginControl":   {method: "POST", path: "/v2/qimu"},
 	}
 	if len(generated.HTTPEndpoints) != len(want) {
 		t.Fatalf("HTTP endpoints = %d, want %d", len(generated.HTTPEndpoints), len(want))

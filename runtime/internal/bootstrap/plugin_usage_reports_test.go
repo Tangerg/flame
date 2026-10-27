@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -26,22 +26,22 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build response-loss backend: %s: %v", output, err)
 	}
+	authorPluginPackage(t, source)
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := extension.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: testsupport.UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: extension.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: testsupport.UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: portable.Target{Scope: "installation", Reference: installed.ID}}
 	options := delivery.Options{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
 	if first.Failure == nil {
 		t.Fatal("lost backend response became a known success")
 	}
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	recovered := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
 	if recovered.Failure != nil {
@@ -65,7 +65,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "usagereports"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	contracts, err := extension.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.UsageReportsCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: extension.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: portable.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("report operation failed: %+v", result.Failure)
 		}
@@ -111,8 +111,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		t.Fatalf("capture lost core evidence or range: %+v", saved)
 	}
 	run("after-capture")
-	r.close()
-	r = poMCPOpen(t, cfg)
+	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	if restored := call(testsupport.UsageReportsGetV1Method, request, "").Output; restored != original {
 		t.Fatalf("saved evidence changed after later work and restart: %s", restored)

@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -12,7 +14,7 @@ import (
 func TestToolCallerFencesOriginalInvocationAndInstalledAuthority(t *testing.T) {
 	id := testsupport.InstallationID(t)
 	server := testsupport.InstallationMCPServer(id, "schedules")
-	value := plugin.ToolCallerSnapshot{Invocation: extension.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: extension.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
+	value := plugin.ToolCallerSnapshot{Invocation: portable.Invocation{ID: "logical-tool", Parent: "process:original", Origin: extension.Model, Target: portable.Target{Scope: extension.ScopeInstallation, Reference: id.String()}}, Tool: testsupport.MCPTool(server, "run_schedule"), Release: testsupport.Digest("release"), Authority: testsupport.Digest("authority")}
 	caller, err := plugin.NewToolCaller(value)
 	if err != nil {
 		t.Fatal(err)

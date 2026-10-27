@@ -40,9 +40,9 @@ func TestCheckpointDependencyQueryReadsOnlyTheProjection(t *testing.T) {
 	storage := newExecutorCheckpointStore(db)
 	dependency := plugin.Dependency{InstallationID: checkpointInstallation, Digest: testsupport.Digest("1")}
 	waiting := storedExecutorCheckpoint("member_waiting", "ses_waiting", "\x00not a continuation")
-	waiting.Installations = []plugin.Dependency{dependency}
+	waiting.Resources = []plugin.Dependency{dependency}
 	finished := storedExecutorCheckpoint("member_finished", "ses_finished", "{")
-	finished.Installations = []plugin.Dependency{{InstallationID: otherInstallation, Digest: testsupport.Digest("2")}}
+	finished.Resources = []plugin.Dependency{{InstallationID: otherInstallation, Digest: testsupport.Digest("2")}}
 	insertRunState(t, db, "run_waiting", "ses_waiting", "waiting")
 	insertRunState(t, db, "run_finished", "ses_finished", "terminal")
 	if err := store.SaveCheckpoint(t.Context(), waiting); err != nil {
@@ -64,19 +64,19 @@ func TestCheckpointDependencyQueryReadsOnlyTheProjection(t *testing.T) {
 		}
 	}
 	loaded, err := store.LoadCheckpoint(t.Context(), "member_waiting")
-	if err != nil || !slices.Equal(loaded.Installations, waiting.Installations) {
-		t.Fatalf("loaded dependencies = %+v, %v", loaded.Installations, err)
+	if err != nil || !slices.Equal(loaded.Resources, waiting.Resources) {
+		t.Fatalf("loaded dependencies = %+v, %v", loaded.Resources, err)
 	}
 
 	advanced := waiting.Clone()
-	advanced.Installations = nil
+	advanced.Resources = nil
 	if err := store.SaveCheckpoint(t.Context(), advanced); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := pendingDependsOn(t, storage, checkpointInstallation); err != nil || got {
 		t.Fatalf("advanced checkpoint retained a released dependency: %v, %v", got, err)
 	}
-	waiting.Installations = []plugin.Dependency{dependency}
+	waiting.Resources = []plugin.Dependency{dependency}
 	if err := store.SaveCheckpoint(t.Context(), waiting); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestCheckpointStoreRejectsNonCanonicalDependencies(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	dependency := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}
 	checkpoint := storedExecutorCheckpoint("member_duplicate", "ses_duplicate", "payload")
-	checkpoint.Installations = []plugin.Dependency{dependency, dependency}
+	checkpoint.Resources = []plugin.Dependency{dependency, dependency}
 	if err := store.SaveCheckpoint(t.Context(), checkpoint); err == nil {
 		t.Fatal("duplicate dependency projection was stored")
 	}
@@ -113,7 +113,7 @@ func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
 				t.Fatal(err)
 			}
 			insertRunState(t, db, "run_old", "ses_old", test.state)
-			if _, err := db.ExecContext(t.Context(), `DROP TABLE executor_checkpoint_installations`); err != nil {
+			if _, err := db.ExecContext(t.Context(), `DROP TABLE executor_checkpoint_resources`); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {

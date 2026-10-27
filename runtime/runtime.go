@@ -63,11 +63,16 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	runnerExecutable, err := localruntime.RunnerExecutable(executable)
+	if err != nil {
+		return nil, err
+	}
 	instance, _, err := bootstrap.OpenInstance(ctx, bootstrap.InstanceConfig{
 		UserHome:             resolved.UserHomePath,
 		DefaultWorkspacePath: resolved.DefaultWorkspacePath,
 		DataDirectory:        resolved.DataDirectory,
 		FirstPartyDirectory:  firstPartyDirectory,
+		RunnerExecutable:     runnerExecutable,
 		ConfigDirectories:    resolved.ConfigDirectories,
 		ServerInfo: protocol.ServerInfo{
 			Name:    identity.ProductName,

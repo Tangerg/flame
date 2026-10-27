@@ -10,7 +10,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -24,13 +27,13 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			if err != nil {
 				t.Fatal(err)
 			}
-			composition, store := installedCallCompositionFixture(t, contract, []string{"first", "second"}, func(backend *pluginsdk.Backend) {
+			composition, store := installedCallCompositionFixture(t, contract, []string{"first", "second"}, func(backend *qimumcp.Backend) {
 				method, err := pluginsdk.ModelInputMethod()
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginsdk.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
-					invocation, err := pluginsdk.InvocationFromContext(ctx)
+				if err := method.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command qimumcp.Command[pluginsdk.ModelInputRequest]) (chat.Request, error) {
+					invocation, err := qimumcp.InvocationFromContext(ctx)
 					if err != nil || invocation.ID != invocation.Target.Reference || invocation.Parent != "original-effect" || command.ID != "" {
 						return chat.Request{}, errors.New("input transformation lost original query attribution")
 					}
@@ -90,7 +93,7 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			original.Options.MaxOutputTokens = new(int64(64))
 			before := original.Clone()
 			for _, id := range []string{"input-first", "input-second"} {
-				ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: id}})
+				ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: id, Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: id}})
 				_, err := capture.Model().Call(ctx, original)
 				if (err == nil) != (mode == "ordered") {
 					t.Fatalf("transformed %s input admission: %v", mode, err)
@@ -106,8 +109,8 @@ func TestAuxiliaryInstalledInputTransformationRetainsOriginalOrderLifetimeAndFin
 			if !reflect.DeepEqual(original, before) {
 				t.Fatal("transformed input entered caller-owned conversation")
 			}
-			store.snapshot.Installation.Disable()
-			ctx, _ := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: extension.Target{Scope: "call", Reference: "withdrawn-input"}})
+			store.disable(t)
+			ctx, _ := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "withdrawn-input", Origin: extension.Automatic, Parent: "original-effect", Target: portable.Target{Scope: "call", Reference: "withdrawn-input"}})
 			if _, err := capture.Model().Call(ctx, original); err == nil {
 				t.Fatal("withdrawn transformer was invoked")
 			}

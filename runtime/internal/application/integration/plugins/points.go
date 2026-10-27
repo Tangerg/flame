@@ -5,8 +5,11 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/qimu"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
@@ -25,8 +28,8 @@ type PointBinding struct {
 
 // ResolvePoint admits consumer-owned values without executing a backend. Order
 // is an immutable projection supplied by the consuming composition owner.
-func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, target extension.PointContext, order []PointReference) ([]PointBinding, error) {
-	if contract == nil {
+func ResolvePoint(ctx context.Context, host *qimu.Host, store Store, contract *portable.Point, target portable.PointContext, order []PointReference) ([]PointBinding, error) {
+	if host == nil || contract == nil {
 		return nil, plugin.ErrInvalid
 	}
 	applicable, err := contract.Applicable(target)
@@ -38,8 +41,6 @@ func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, t
 		return nil, err
 	}
 	declared := false
-	bindings := map[string]PointBinding{}
-	var values []extension.PointValue
 	for _, snapshot := range snapshots {
 		if !snapshot.Installation.Enabled() {
 			continue
@@ -51,17 +52,11 @@ func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, t
 				declared = true
 			}
 		}
-		for _, value := range declaration.PointValues {
-			if value.Contract != contract.Identity() {
-				continue
+		if len(declaration.PointValues) > 0 {
+			unit := qimu.UnitRef{InstallationID: qimu.InstallationID(snapshot.Installation.ID().String()), Release: qimu.Digest(snapshot.Selected.Digest().String()), UnitID: PointValuesUnit}
+			if _, err := host.ActivateUnit(ctx, "", unit); err != nil {
+				return nil, FrameworkError(err)
 			}
-			reference := PointReference{Installation: snapshot.Installation.ID(), Contribution: value.ID}
-			key := reference.key()
-			if _, found := bindings[key]; found {
-				return nil, plugin.ErrInvalid
-			}
-			bindings[key] = PointBinding{Reference: reference, Digest: snapshot.Selected.Digest(), Value: value.Value}
-			values = append(values, extension.PointValue{Key: key, Data: value.Value})
 		}
 	}
 	if !declared {
@@ -69,6 +64,45 @@ func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, t
 	}
 	if !applicable {
 		return []PointBinding{}, nil
+	}
+	point, err := DataPoint(contract)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := host.Snapshot(ctx, point.Ref())
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	candidates, err := qimu.Candidates(snapshot, point)
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	bindings := make(map[string]PointBinding, len(candidates))
+	selectedByKey := make(map[string]qimu.Candidate[jsonvalue.Value, jsonvalue.Value], len(candidates))
+	values := make([]portable.PointValue, 0, len(candidates))
+	for _, candidate := range candidates {
+		source := candidate.Source()
+		installation, err := identity.ParseInstallation(source.InstallationID.String())
+		if err != nil {
+			return nil, err
+		}
+		contribution, err := plugin.ParseContributionID(source.Export)
+		if err != nil {
+			return nil, err
+		}
+		digest, err := identity.ParseDigest(source.Release.String())
+		if err != nil {
+			return nil, err
+		}
+		reference := PointReference{Installation: installation, Contribution: contribution}
+		key := reference.key()
+		if _, exists := bindings[key]; exists {
+			return nil, plugin.ErrInvalid
+		}
+		value := candidate.Metadata()
+		bindings[key] = PointBinding{Reference: reference, Digest: digest, Value: value}
+		selectedByKey[key] = candidate
+		values = append(values, portable.PointValue{Key: key, Data: value})
 	}
 	keys := make([]string, 0, len(order))
 	for _, reference := range order {
@@ -85,8 +119,21 @@ func ResolvePoint(ctx context.Context, store Store, contract *extension.Point, t
 		return nil, errors.Join(plugin.ErrUnavailable, err)
 	}
 	result := make([]PointBinding, 0, len(composed))
+	selected := make([]qimu.Candidate[jsonvalue.Value, jsonvalue.Value], 0, len(composed))
 	for _, value := range composed {
 		result = append(result, bindings[value.Key])
+		selected = append(selected, selectedByKey[value.Key])
+	}
+	selection, err := qimu.Select(snapshot, point, "flame-point/1", selected...)
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	plan, err := qimu.Capture(snapshot, selection.Ref())
+	if err != nil {
+		return nil, FrameworkError(err)
+	}
+	if err := host.Admission().Admit(ctx, func(admitted context.Context) error { return host.ValidateSelectionUnder(admitted, plan) }); err != nil {
+		return nil, FrameworkError(err)
 	}
 	return result, nil
 }

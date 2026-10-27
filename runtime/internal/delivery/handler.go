@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -20,6 +21,7 @@ type HandlerConfig struct {
 	PluginSelections   selectionUseCases
 	PluginCompositions compositionUseCases
 	PluginCalls        pluginCallUseCases
+	PluginBrowser      pluginbrowser.Service
 	Approvals          approvalUseCases
 	Models             modelUseCases
 	ModelEndpoints     endpointObservationUseCases
@@ -69,6 +71,7 @@ type Handler struct {
 	pluginSelections   selectionUseCases
 	pluginCompositions compositionUseCases
 	pluginCalls        pluginCallUseCases
+	pluginBrowser      pluginbrowser.Service
 	approvals          approvalUseCases
 	models             modelUseCases
 	modelEndpoints     endpointObservationUseCases
@@ -224,6 +227,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		pluginSelections:         cfg.PluginSelections,
 		pluginCompositions:       cfg.PluginCompositions,
 		pluginCalls:              cfg.PluginCalls,
+		pluginBrowser:            cfg.PluginBrowser,
 		approvals:                cfg.Approvals,
 		models:                   cfg.Models,
 		modelEndpoints:           cfg.ModelEndpoints,

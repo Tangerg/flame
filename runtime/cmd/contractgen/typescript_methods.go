@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/packages/go-sdk/contractgen"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/contractgen"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 

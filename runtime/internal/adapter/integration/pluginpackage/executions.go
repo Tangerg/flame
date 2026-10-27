@@ -4,265 +4,105 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
+	"runtime"
 	"slices"
-	"strings"
-	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/distribution"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-// executionContent is an immutable projection of admitted bytes, shared by
-// connections of one digest. users counts resource claims, never installation
-// admission or executable-manifest dependencies. MCP owns each claim's lifetime.
-type executionContent struct {
-	ready     chan struct{}
-	tree      *executionTree
-	err       error
-	abandoned bool
-	users     int
-}
-
-type executionTree struct {
-	path  string
-	root  *os.Root
-	lease *filesystem.DirectoryLease
-}
-
-func (t *executionTree) discard() error {
-	return errors.Join(t.root.Close(), removeSealed(t.path), t.lease.Release())
-}
-
-type executionLease struct {
-	path  string
-	close func() error
-}
-
-func (l *executionLease) Close() error { return l.close() }
-
-func (r *Releases) executionDirectory() string {
-	return filepath.Join(filepath.Dir(r.directory), "executions")
-}
-
-// ReclaimExecutions collects crash leftovers. A per-tree directory lease
-// protects every live copy. The namespace lease makes creation and collection one
-// atomic handoff; it is never held while copying package bytes.
-func (r *Releases) ReclaimExecutions(ctx context.Context) (err error) {
-	if err := r.validateDirectory(); err != nil {
-		return err
-	}
-	dir := r.executionDirectory()
-	if info, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
-		return err
-	} else if !info.IsDir() {
-		return errors.New("pluginpackage: execution namespace is not a directory")
-	}
-	namespace, err := filesystem.AcquireDirectoryLease(ctx, dir)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, namespace.Release()) }()
-	directory, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, directory.Close()) }()
-	for {
-		entries, readErr := directory.ReadDir(reclaimBatch)
-		for _, entry := range entries {
-			if cause := cancellation.Err(ctx); cause != nil {
-				return cause
-			}
-			if !entry.IsDir() || !strings.HasPrefix(entry.Name(), ".stage-") {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name())
-			lease, err := filesystem.TryDirectoryLease(path)
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			if lease == nil {
-				continue
-			}
-			if err := errors.Join(removeSealed(path), lease.Release()); err != nil {
-				return err
-			}
-		}
-		if errors.Is(readErr, io.EOF) {
-			return nil
-		}
-		if readErr != nil {
-			return readErr
-		}
-	}
-}
-
+// Connection transfers the original content lease to the real process owner.
+// There is no copied execution tree, second release digest or process cache.
 func (r *Releases) Connection(ctx context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName) (connection mcpapp.Launch, found bool, err error) {
 	server, found, err := r.Server(ctx, installation, release, name, plugins.Declared)
 	if err != nil || !found || !server.Enabled {
 		return mcpapp.Launch{Server: server}, found, err
 	}
-	root, err := r.currentRoot(ctx, release.Digest())
+	lease, err := r.content.Acquire(ctx, qimu.Digest(release.Digest().String()))
 	if err != nil {
 		return mcpapp.Launch{}, false, errors.Join(plugin.ErrUnavailable, err)
 	}
-	var lease *executionLease
+	transferred := false
 	defer func() {
-		err = errors.Join(err, root.Close())
+		if !transferred {
+			err = errors.Join(err, lease.Close())
+		}
 		if err != nil {
-			if lease != nil {
-				err = errors.Join(err, lease.Close())
-			}
-			connection, found = mcpapp.Launch{}, false
+			connection = mcpapp.Launch{}
+			found = false
 		}
 	}()
 	if server.Transport != mcpserver.TransportStdio {
 		return mcpapp.Launch{Server: server}, true, nil
 	}
-	lease, err = r.execution(ctx, release.Digest(), root)
+	directory, err := lease.Directory()
 	if err != nil {
-		return mcpapp.Launch{}, false, fmt.Errorf("%w: execution content: %w", plugin.ErrUnavailable, err)
+		return mcpapp.Launch{}, false, err
 	}
 	declaration := release.Declaration()
 	declared := declaration.Servers[slices.IndexFunc(declaration.Servers, func(s plugin.Server) bool { return s.Name == name })]
+	variant, err := selectedVariant(lease.Release().Manifest, declared.Name)
+	if err != nil {
+		return mcpapp.Launch{}, false, err
+	}
 	if err := r.prepareBackend(installation.ID(), declared); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: prepare server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
 	data := r.dataRoot(installation.ID())
-	executable, err := descriptorServer(installation, release, declaration, declared, lease.path, data)
+	executable, err := descriptorServer(installation, release, declaration, declared, directory, data)
 	if err != nil {
 		return mcpapp.Launch{}, false, err
 	}
-	if err := realizeBackend(ctx, executable, declared, lease.path, data); err != nil {
+	if err := realizeBackend(ctx, executable, declared, directory, data); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
-	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}, Retire: lease}, true, nil
-}
-
-func (r *Releases) execution(ctx context.Context, digest identity.Digest, source *os.Root) (*executionLease, error) {
-	for {
-		if cause := cancellation.Err(ctx); cause != nil {
-			return nil, cause
+	var expected identity.Digest
+	if declared.Managed != nil {
+		node, nodeErr := hostNode()
+		if nodeErr != nil {
+			return mcpapp.Launch{}, false, nodeErr
 		}
-		r.executionMu.Lock()
-		content := r.executions[digest]
-		build := content == nil
-		if build {
-			content = &executionContent{ready: make(chan struct{})}
-			r.executions[digest] = content
+		expected, err = identity.ParseDigest(node.ExecutableDigest())
+		if variant.Runtime == nil || qimu.Digest(expected.String()) != variant.Runtime.Digest {
+			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed interpreter differs from its original runtime pin", plugin.ErrUnavailable)
 		}
-		content.users++
-		r.executionMu.Unlock()
-		if build {
-			tree, err := r.copyExecution(ctx, source, digest)
-			r.executionMu.Lock()
-			content.tree, content.err = tree, err
-			content.abandoned = ctx.Err() != nil && (errors.Is(err, ctx.Err()) || errors.Is(err, context.Cause(ctx)))
-			if err != nil {
-				delete(r.executions, digest)
-			}
-			close(content.ready)
-			r.executionMu.Unlock()
+	} else {
+		command, packaged := declared.PackagedCommand()
+		if !packaged {
+			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed process entry must be a packaged executable", plugin.ErrInvalid)
 		}
-		if !build {
-			select {
-			case <-content.ready:
-			case <-ctx.Done():
-				return nil, errors.Join(cancellation.Err(ctx), r.releaseExecution(digest, content))
+		for _, artifact := range lease.Release().Manifest.Artifacts {
+			if artifact.Path == command && artifact.Executable {
+				expected, err = identity.ParseDigest(artifact.Digest.String())
+				break
 			}
 		}
-		if cause := cancellation.Err(ctx); cause != nil {
-			return nil, errors.Join(cause, content.err, r.releaseExecution(digest, content))
+		if err == nil {
+			err = expected.Validate()
 		}
-		if content.err != nil {
-			err := errors.Join(content.err, r.releaseExecution(digest, content))
-			// An abandoned creator has no outcome for another live caller.
-			// Only cancellation hands preparation over; content and I/O
-			// failures remain the shared outcome and are never retried.
-			if content.abandoned {
-				continue
+	}
+	if err != nil {
+		return mcpapp.Launch{}, false, err
+	}
+	transferred = true
+	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: executable.Command, ExpectedExecutable: expected, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}, Retire: lease}, true, nil
+}
+
+func selectedVariant(manifest distribution.Manifest, server mcpserver.ServerName) (distribution.Variant, error) {
+	for _, unit := range manifest.Units {
+		if unit.ID != plugins.BackendUnit(server) || unit.Profile != qimu.MCPProcess {
+			continue
+		}
+		for _, variant := range unit.Variants {
+			if variant.OS == runtime.GOOS && variant.Arch == runtime.GOARCH {
+				return variant, nil
 			}
-			return nil, err
 		}
-		return &executionLease{path: content.tree.path, close: sync.OnceValue(func() error { return r.releaseExecution(digest, content) })}, nil
 	}
-}
-
-func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest identity.Digest) (_ *executionTree, err error) {
-	dir := r.executionDirectory()
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
-	}
-	resolved, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return nil, err
-	}
-	if resolved != dir {
-		return nil, errors.New("pluginpackage: execution directory is redirected")
-	}
-	namespace, err := filesystem.AcquireDirectoryLease(ctx, dir)
-	if err != nil {
-		return nil, err
-	}
-	staged, err := newStaging(dir)
-	if err != nil {
-		return nil, errors.Join(err, namespace.Release())
-	}
-	lease, err := filesystem.TryDirectoryLease(staged.path)
-	if err == nil && lease == nil {
-		err = errors.New("pluginpackage: execution stage is already leased")
-	}
-	if err != nil {
-		return nil, errors.Join(err, staged.discard(), namespace.Release())
-	}
-	tree := &executionTree{path: staged.path, root: staged.root, lease: lease}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, tree.discard())
-		}
-	}()
-	if err := namespace.Release(); err != nil {
-		return nil, err
-	}
-	if err := staged.copyDirectory(ctx, source); err != nil {
-		return nil, err
-	}
-	if err := staged.seal(); err != nil {
-		return nil, err
-	}
-	actual, _, err := treeDigest(ctx, tree.root)
-	if err != nil {
-		return nil, err
-	}
-	if actual != digest {
-		return nil, errors.New("pluginpackage: execution content integrity mismatch")
-	}
-	return tree, nil
-}
-
-func (r *Releases) releaseExecution(digest identity.Digest, content *executionContent) error {
-	r.executionMu.Lock()
-	content.users--
-	last := content.users == 0 && content.tree != nil
-	if last {
-		delete(r.executions, digest)
-	}
-	r.executionMu.Unlock()
-	if last {
-		return content.tree.discard()
-	}
-	return nil
+	return distribution.Variant{}, fmt.Errorf("%w: package has no process entry for %s/%s", plugin.ErrUnavailable, runtime.GOOS, runtime.GOARCH)
 }

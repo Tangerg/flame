@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -45,7 +47,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	consumer := activate(consumerSource, "consumer")
 	consumerServer := wait(consumer, "reviews")
 	contribution := consumer.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: extension.Target{Scope: "installation", Reference: consumer.ID}}
+	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: portable.Target{Scope: "installation", Reference: consumer.ID}}
 	type analysis struct {
 		Review struct {
 			ID       string `json:"id"`
@@ -82,7 +84,15 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	}
 	read(1)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID}, "disable-analyzer")
-	read(0)
+	withdrawnPoint := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
+	withdrawn := r.must(delivery.PluginsResolvePoint, withdrawnPoint, "").(*protocol.Page[protocol.PluginPointBinding])
+	if len(withdrawn.Data) != 0 {
+		t.Fatalf("disabled analyzer remains publicly selectable: %+v", withdrawn.Data)
+	}
+	query := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	if !errors.Is(query.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("new query ignored its unavailable captured collaborator: %v", query.Failure)
+	}
 	mutation := request
 	mutation.Method = "io.github.tangerg.flame.examples/reviews.update"
 	mutation.Input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
@@ -103,6 +113,12 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID, Enabled: true}, "reenable-analyzer")
 	wait(analyzer, "analyzer")
+	retired := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	if !errors.Is(retired.Failure, protocol.ErrPluginUnavailable) {
+		t.Fatalf("old catalog observation was retargeted to a new instance: %v", retired.Failure)
+	}
+	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: consumerServer}, "refresh-original-consumer")
+	r.poMCPTools(&consumerServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	read(1)
 	// New point values cannot grant authority absent from the original setup.
 	second := activate(analyzerSource, "second-analyzer")

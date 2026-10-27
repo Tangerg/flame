@@ -8,9 +8,12 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -126,7 +129,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return nil, err
 	}
 	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.Relation())})
-	calling, err = pluginsdk.WithInvocation(calling, extension.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
+	calling, err = qimumcp.WithInvocation(calling, portable.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,7 @@ func (r releasedMCPToolStub) SourceConfig() mcp.ServerConfig {
 func (r releasedMCPToolStub) InstallationActivation() (plugin.Activation, error) {
 	id, _ := r.source.Origin().Installation()
 	digest, _, _ := r.source.Release()
-	return plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: []plugin.Dependency{{InstallationID: id, Digest: digest}}}, nil
+	return testsupport.ServerActivation("activation", r.server, plugin.Dependency{InstallationID: id, Digest: digest}), nil
 }
 
 // unrealizedMCPTool reports a remote identity without the connection that
@@ -79,13 +79,18 @@ func TestManifestProjectsEveryInstallationRelease(t *testing.T) {
 type transitiveMCPToolStub struct {
 	releasedMCPToolStub
 	activation *plugin.Activation
+	invoke     func(plugin.Activation) error
 }
 
 func (r transitiveMCPToolStub) InstallationActivation() (plugin.Activation, error) {
 	return r.activation.Clone(), nil
 }
 
-func TestManifestRetainsTransitiveReleasesAndRefusesAChangedGraph(t *testing.T) {
+func (r transitiveMCPToolStub) CallActivation(_ context.Context, original plugin.Activation, _ toolcontract.Invocation) (toolcontract.Result, error) {
+	return toolcontract.Result{}, r.invoke(original)
+}
+
+func TestManifestRetainsAndInvokesItsOriginalTransitiveGraph(t *testing.T) {
 	installation := testsupport.InstallationID(t)
 	root := plugin.Dependency{InstallationID: installation, Digest: testsupport.Digest("root")}
 	leaf := plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("leaf")}
@@ -93,8 +98,18 @@ func TestManifestRetainsTransitiveReleasesAndRefusesAChangedGraph(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := plugin.Activation{Identity: testsupport.Digest("activation"), Dependencies: plugin.CompactDependencies([]plugin.Dependency{root, leaf})}
-	executable := transitiveMCPToolStub{releasedMCPToolStub{mcpToolStub{name: "reviews_record", server: "reviews", remote: "record"}, source}, &activation}
+	activation := testsupport.ServerActivation("activation", "reviews", root, leaf)
+	original := activation.Clone()
+	var called plugin.Activation
+	var refusal error
+	executable := transitiveMCPToolStub{
+		releasedMCPToolStub: releasedMCPToolStub{mcpToolStub{name: "reviews_record", server: "reviews", remote: "record"}, source},
+		activation:          &activation,
+		invoke: func(binding plugin.Activation) error {
+			called = binding.Clone()
+			return refusal
+		},
+	}
 	telemetry, err := oteltool.NewMiddleware(oteltool.MiddlewareConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -103,9 +118,13 @@ func TestManifestRetainsTransitiveReleasesAndRefusesAChangedGraph(t *testing.T) 
 	if err != nil || !slices.Equal(manifest.Installations, activation.Dependencies) {
 		t.Fatalf("manifest lost transitive release: %v, %v", manifest.Installations, err)
 	}
-	activation.Identity = testsupport.Digest("same release with another binding")
-	if _, err := manifest.Visible[0].Call(t.Context(), toolcontract.Invocation{}); !errors.Is(err, plugin.ErrStale) {
-		t.Fatalf("changed activation graph dispatched: %v", err)
+	activation = testsupport.ServerActivation("another binding", "reviews", root)
+	if _, err := manifest.Visible[0].Call(t.Context(), toolcontract.Invocation{}); err != nil || !called.Equal(original) {
+		t.Fatalf("frozen Tool did not use its original graph: %+v, %v", called, err)
+	}
+	refusal = errors.New("original runtime instance is unavailable")
+	if _, err := manifest.Visible[0].Call(t.Context(), toolcontract.Invocation{}); !errors.Is(err, refusal) || !called.Equal(original) {
+		t.Fatalf("original refusal became a current-provider call: %+v, %v", called, err)
 	}
 	if !slices.Contains(manifest.Installations, leaf) {
 		t.Fatal("source change rewrote frozen dependencies")

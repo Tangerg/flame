@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -121,7 +121,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 			}
 		}
 	}
-	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: target.ID}}, protocol.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: target.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
@@ -827,7 +827,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	if err != nil {
 		t.Fatal(err)
 	}
-	contracts, err := extension.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
+	contracts, err := portable.ParseCapability([]byte(testsupport.SchedulesCapabilityJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -841,7 +841,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: extension.Target{Scope: "installation", Reference: installation.ID}}
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().JSON()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: portable.Target{Scope: "installation", Reference: installation.ID}}
 			}
 		}
 	}
@@ -855,7 +855,7 @@ func fixtureScheduleRun(fixture *liveDeepSeekFixture, request protocol.CallPlugi
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value testsupport.SchedulesRunNowV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
@@ -880,7 +880,7 @@ func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPl
 		return nil, err
 	}
 	if reply.Failure != nil {
-		return nil, &extension.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
+		return nil, &portable.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
 	var value testsupport.SchedulesCreateV1Output
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {

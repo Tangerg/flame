@@ -5,6 +5,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -117,6 +118,19 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if closeErr := host.Close(); closeErr != nil {
 		t.Fatalf("close first Runtime: %v", closeErr)
 	}
+	if err := cfg.stores.Close(); err != nil {
+		t.Fatalf("close first storage owner: %v", err)
+	}
+	cfg.stores, err = persistence.Open(ctx, persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	if err != nil {
+		t.Fatalf("reopen storage: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := cfg.stores.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	cfg.providerRegistry = cfg.stores.Providers
 	secondHost, err := assemble(ctx, cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
 	if err != nil {
 		t.Fatalf("second assemble: %v", err)

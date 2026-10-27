@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -10,16 +11,19 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/distribution"
+	"github.com/Tangerg/flame/qimu/runner"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/pluginhost"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
@@ -209,7 +213,7 @@ func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testin
 	}
 }
 
-func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing.T) {
+func TestAssemblyReclaimsStagedToolResultsAfterRecoveryAdmission(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
 	id := transcript.ToolResultID("STAGED234")
 	if err := cfg.stores.ToolResults.Stage(t.Context(), transcript.ToolResultStage{
@@ -226,8 +230,14 @@ func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing
 			t.Error(err)
 		}
 	})
+	if _, found, err := cfg.stores.ToolResults.Fetch(t.Context(), "ses_staged", id); err != nil || !found {
+		t.Fatalf("construction reclaimed before recovery admission: found=%v error=%v", found, err)
+	}
+	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	if _, found, err := cfg.stores.ToolResults.Fetch(t.Context(), "ses_staged", id); err != nil || found {
-		t.Fatalf("staged tool result after successful construction = (found %v, err %v), want (false, nil)", found, err)
+		t.Fatalf("staged tool result after admitted recovery = (found %v, err %v), want (false, nil)", found, err)
 	}
 }
 
@@ -242,7 +252,25 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 		t.Fatalf("installations = %+v, %v", installations, err)
 	}
 	installed := installations[0]
-	if err := cfg.stores.Installations.Remove(t.Context(), installed.Installation.ID()); err != nil {
+	framework := pluginhost.New(t, cfg.stores)
+	if err := framework.Host.Uninstall(t.Context(), qimu.InstallationID(installed.Installation.ID().String())); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := framework.Host.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	content, err := distribution.Open(distribution.Config{
+		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "qimu"), Admission: cfg.stores.Admission,
+		Trust: func(context.Context, distribution.Source, distribution.Manifest, distribution.Lock) error { return nil },
+		Retained: func(ctx context.Context, digest qimu.Digest) (bool, error) {
+			return retainedPluginContent(ctx, cfg.stores, digest)
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, pathErr := content.Path(qimu.Digest(installed.Selected.Digest().String()))
+	if err := errors.Join(pathErr, content.Close(t.Context())); err != nil {
 		t.Fatal(err)
 	}
 	feedback := cfg.stores.Feedback
@@ -253,10 +281,17 @@ func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *te
 	if _, err := cfg.stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); err != nil {
 		t.Fatalf("failed construction reclaimed the retained release: %v", err)
 	}
+	if _, err := os.Stat(root); err != nil {
+		t.Fatalf("failed construction reclaimed original content: %v", err)
+	}
 	cfg.stores.Feedback = feedback
+	reopenPluginStores(t, &cfg)
 	poMCPOpen(t, cfg)
-	if _, err := cfg.stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); !errors.Is(err, plugin.ErrNotFound) {
-		t.Fatalf("successful construction retained an unreferenced release: %v", err)
+	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("admitted startup retained unreferenced content: %v", err)
+	}
+	if _, err := cfg.stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); err != nil {
+		t.Fatalf("content collection erased historical declaration metadata: %v", err)
 	}
 }
 
@@ -379,8 +414,9 @@ func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	}
 	t.Cleanup(func() { _ = stores.Close() })
 	return assemblyConfig{
-		stores:   stores,
-		provider: "anthropic", model: "claude-test",
+		processRunner: testProcessRunner(t),
+		stores:        stores,
+		provider:      "anthropic", model: "claude-test",
 		approvalMode: approval.ModeSafe,
 		userHome:     t.TempDir(), defaultWorkspacePath: workspace,
 		skillsUserDir:    t.TempDir(),
@@ -472,4 +508,26 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	if err != nil || len(runs) != 1 || !failed || failure.Kind != run.FailureLost {
 		t.Fatalf("runs after assemble = (%+v, %v), want run_lost", runs, err)
 	}
+}
+
+func testProcessRunner(t *testing.T) *runner.Daemon {
+	t.Helper()
+	// The operating system limits Unix socket paths independently of test names.
+	directory, err := os.MkdirTemp("", "flame-runner-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	value, err := runner.NewDaemon(runner.DaemonConfig{Executable: testsupport.RunnerExecutable(t), Directory: directory, StartTimeout: 10 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := value.Close(ctx); err != nil {
+			t.Error(err)
+		}
+	})
+	return value
 }

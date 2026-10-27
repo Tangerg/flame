@@ -9,7 +9,10 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -22,8 +25,8 @@ type roleCallbackEmbedder struct {
 
 func (*roleCallbackEmbedder) ID() string { return "configured-space" }
 func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
-	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (extension.Target{Scope: "call", Reference: invocation.ID}) {
+	invocation, err := qimumcp.InvocationFromContext(ctx)
+	if err != nil || invocation.ID == "caller" || invocation.Origin != extension.Model || invocation.Parent != "caller" || invocation.Target != (portable.Target{Scope: "call", Reference: invocation.ID}) {
 		e.t.Errorf("ordinary embedding lost original ownership: %+v, %v", invocation, err)
 	}
 	e.calls.Add(1)
@@ -33,7 +36,7 @@ func (e *roleCallbackEmbedder) Embed(ctx context.Context, texts []string) ([][]f
 func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T) {
 	for _, state := range []string{"configured", "absent", "failed", "typed nil"} {
 		t.Run(state, func(t *testing.T) {
-			callbacks := pluginsdk.NewCallbacks()
+			callbacks := qimumcp.NewCallbacks()
 			t.Cleanup(func() {
 				if err := callbacks.Close(); err != nil {
 					t.Error(err)
@@ -61,13 +64,15 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 				t.Fatal(err)
 			}
 			session := new(sdk.ClientSession)
-			callbacks.AdmitSession(session)
-			ctx, err := pluginsdk.WithInvocation(t.Context(), extension.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: extension.Target{Scope: "installation", Reference: "author"}})
+			if err := callbacks.AdmitSession(session); err != nil {
+				t.Fatal(err)
+			}
+			ctx, err := qimumcp.WithInvocation(t.Context(), portable.Invocation{ID: "caller", Origin: extension.Model, Parent: "executing-owner", Target: portable.Target{Scope: "installation", Reference: "author"}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			ctx = executionctx.WithInvocationOwner(ctx, "executing-owner")
-			ref, release, err := callbacks.OpenRPC(ctx, session, pluginsdk.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
+			ref, release, err := callbacks.OpenRPC(ctx, session, qimumcp.CallbackLimits{MaxRequestBytes: 4096, MaxResponseBytes: 4096})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +84,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 						t.Fatalf("ordinary embedding = %+v, %v", vectors, err)
 					}
 				} else {
-					refusal, known := errors.AsType[*extension.Refusal](err)
+					refusal, known := errors.AsType[*portable.Refusal](err)
 					if err == nil || known != (state == "absent") || known && refusal.Code != "model_role_unconfigured" {
 						t.Fatalf("role absence and failure were merged: %v", err)
 					}
@@ -102,7 +107,7 @@ func TestOrdinaryCallbackPublishesEmbeddingRoleWithoutFeaturePolicy(t *testing.T
 				t.Fatal("over-budget input reached model resolution")
 			}
 			release()
-			if _, err := pluginsdk.CallTextEmbedding(t.Context(), ref, "retired", []string{"text"}); !errors.Is(err, pluginsdk.ErrStaleCall) {
+			if _, err := pluginsdk.CallTextEmbedding(t.Context(), ref, "retired", []string{"text"}); !errors.Is(err, qimumcp.ErrStaleCall) {
 				t.Fatalf("retired callback remained usable: %v", err)
 			}
 		})

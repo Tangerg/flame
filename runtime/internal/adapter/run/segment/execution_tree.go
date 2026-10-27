@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/qimu"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
@@ -37,14 +38,14 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 		}
 	}
 	defer func() {
-		if commitErr != nil {
+		if commitErr != nil && !errors.Is(commitErr, qimu.ErrRecoveryRequired) {
 			for _, commit := range commits {
 				commitErr = e.compensateFailedCommit(ctx, commit, commitErr)
 			}
 		}
 	}()
 	var applyErr error
-	err := e.runInTx(ctx, func(ctx context.Context) (err error) {
+	err := e.runCheckpointTx(ctx, update.Head.CommitID, tree.Context, func(ctx context.Context) (err error) {
 		defer func() { applyErr = err }()
 		if err := e.executionTrees.SaveExecutionTree(ctx, update); err != nil {
 			return err
@@ -85,6 +86,9 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	})
 	if err == nil {
 		return nil
+	}
+	if errors.Is(err, qimu.ErrRecoveryRequired) {
+		return err
 	}
 	if applyErr != nil {
 		return err

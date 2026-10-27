@@ -30,7 +30,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 	if err := i.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(t.Context(), i); err != nil {
+	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	name, err := i.ServerID(testsupport.ServerName("server"))
@@ -52,7 +52,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 		if err := transition(); err != nil {
 			t.Fatal(err)
 		}
-		if err := store.Save(t.Context(), i); err != nil {
+		if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 			t.Fatal(err)
 		}
 		visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
@@ -60,7 +60,7 @@ func TestInstallationTransitionsPreserveStandingRulesUntilSourceRemoval(t *testi
 			t.Fatalf("standing deny lost: %+v, %v", visible, err)
 		}
 	}
-	if err := store.Remove(t.Context(), i.ID()); err != nil {
+	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	visible, err := rules.Visible(t.Context(), "", "", approval.MaximumVisibleRules)
@@ -98,7 +98,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(t.Context(), i); err != nil {
+	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	target := func(selected plugin.Release) mcpserver.OAuthTarget {
@@ -124,7 +124,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 		if err := i.Select(selected, candidate); err != nil {
 			t.Fatal(err)
 		}
-		if err := store.Save(t.Context(), i); err != nil {
+		if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -148,7 +148,7 @@ func TestInstallationCredentialsFollowTheirRecipient(t *testing.T) {
 	if values := i.Snapshot().Values; len(values) != 0 {
 		t.Fatalf("a changed endpoint kept its secret input: %v", values)
 	}
-	if err := store.Remove(t.Context(), i.ID()); err != nil {
+	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"mcp_oauth_sessions": 0})
@@ -189,7 +189,7 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 			t.Fatal(transition)
 		}
 	}
-	if err := store.Save(t.Context(), i); err != nil {
+	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	restored, found, err := store.Get(t.Context(), i.ID())
@@ -212,7 +212,7 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 			t.Fatalf("schema admitted an invalid installation state: %s", statement)
 		}
 	}
-	if err := store.Remove(t.Context(), i.ID()); err != nil {
+	if _, err := db.ExecContext(t.Context(), `DELETE FROM plugin_installations WHERE id=?`, i.ID().String()); err != nil {
 		t.Fatal(err)
 	}
 	requireRows(t, db, map[string]int{"plugin_installation_values": 0, "plugin_installation_disabled": 0, "mcp_sources": 0})
@@ -263,7 +263,7 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 			for _, err := range []error{
 				installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue("value"), "header": plugin.SetValue("value")}}),
 				installation.Enable(release),
-				store.Save(t.Context(), installation),
+				store.projectRecord(t.Context(), installation.Snapshot()),
 			} {
 				if err != nil {
 					t.Fatal(err)
@@ -301,7 +301,7 @@ func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Save(t.Context(), i); err != nil {
+	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
 		t.Fatal(err)
 	}
 	replacement := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "replacement"}}})

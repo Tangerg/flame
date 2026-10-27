@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,8 +8,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -21,24 +22,13 @@ import (
 
 func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) {
 	t.Setenv("FLAME_HOME", t.TempDir())
-	host, api, stores := openProtocolRuntimeWithStores(t, newReplyStub("unused"))
+	host, _, stores := openProtocolRuntimeWithStores(t, newReplyStub("unused"))
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		endpoint.BeginShutdown()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := endpoint.AwaitShutdown(ctx); err != nil {
-			t.Error(err)
-		}
-	})
+	endpoint := host.Endpoint()
 	options := delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	created := endpoint.Invoke(t.Context(), delivery.SessionsCreate, protocol.CreateSessionRequest{}, options)
 	if created.Failure != nil {
@@ -69,7 +59,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: extension.Invocation{ID: id, Origin: extension.Human, Target: extension.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Kind: modelref.EndpointChat, Caller: portable.Invocation{ID: id, Origin: extension.Human, Target: portable.Target{Scope: "call", Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: request}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

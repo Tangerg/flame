@@ -40,7 +40,8 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 	}
 	err := s.saveCheckpointRecord(ctx, executorCheckpointRecord{
 		ToolResultIDs: slices.Clone(checkpoint.ToolResultIDs),
-		Installations: slices.Clone(checkpoint.Installations),
+		Bindings:      checkpoint.Clone().Bindings,
+		Resources:     slices.Clone(checkpoint.Resources),
 		RootMemberID:  checkpoint.RootMemberID,
 		Payload:       append([]byte(nil), checkpoint.Payload...),
 		BuildID:       checkpoint.BuildID,
@@ -56,11 +57,11 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: slices.Clone(record.ToolResultIDs),
-		Installations: slices.Clone(record.Installations),
-		RootMemberID:  record.RootMemberID,
-		Payload:       append([]byte(nil), record.Payload...),
-		BuildID:       record.BuildID,
-		SessionID:     record.SessionID,
+		Bindings:      cloneActivations(record.Bindings), Resources: slices.Clone(record.Resources),
+		RootMemberID: record.RootMemberID,
+		Payload:      append([]byte(nil), record.Payload...),
+		BuildID:      record.BuildID,
+		SessionID:    record.SessionID,
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("persistence: load executor checkpoint: %w", err)
@@ -73,7 +74,7 @@ func (s *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, ses
 	if err != nil || !found {
 		return runs.ExecutorCheckpoint{}, found, translateCheckpointStorageError(err)
 	}
-	checkpoint := runs.ExecutorCheckpoint{ToolResultIDs: slices.Clone(record.ToolResultIDs), Installations: slices.Clone(record.Installations), RootMemberID: record.RootMemberID, SessionID: record.SessionID, Payload: slices.Clone(record.Payload), BuildID: record.BuildID}
+	checkpoint := runs.ExecutorCheckpoint{ToolResultIDs: slices.Clone(record.ToolResultIDs), Bindings: cloneActivations(record.Bindings), Resources: slices.Clone(record.Resources), RootMemberID: record.RootMemberID, SessionID: record.SessionID, Payload: slices.Clone(record.Payload), BuildID: record.BuildID}
 	return checkpoint, true, checkpoint.Validate()
 }
 

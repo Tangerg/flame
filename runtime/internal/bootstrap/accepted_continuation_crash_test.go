@@ -22,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -120,7 +119,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint := acceptedCommandEndpoint(t, api, stores)
+	endpoint := host.Endpoint()
 	startOptions := acceptedCommandOptions()
 	startOptions.IdempotencyKey = "start-crash-fixture"
 	startResult := endpoint.Invoke(ctx, delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "write after approval"}}}, startOptions)
@@ -150,7 +149,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		cfg.approvalMode = approval.ModeSafe
 		host, api = buildProtocolRuntime(t, cfg, home)
 		defer host.Close()
-		endpoint = acceptedCommandEndpoint(t, api, stores)
+		endpoint = host.Endpoint()
 		stored, found, err := stores.Interrupts.Get(ctx, started.RunID)
 		if err != nil || !found {
 			t.Fatalf("cold waiting handoff=%t,%v", found, err)
@@ -191,15 +190,6 @@ const acceptedCommandKey = "resume-crash"
 func acceptedCommandOptions() delivery.Options {
 	return delivery.Options{IdempotencyKey: acceptedCommandKey, IdempotencyNamespace: testsupport.IdempotencyNamespace,
 		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
-}
-
-func acceptedCommandEndpoint(t *testing.T, api *delivery.Handler, stores *persistence.Bundle) *delivery.Endpoint {
-	t.Helper()
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency, IdempotencyNamespace: testsupport.IdempotencyNamespace})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return endpoint
 }
 
 func acceptedResumeRequest(runID, itemID string) protocol.ResumeRunRequest {
@@ -252,7 +242,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 		}
 	})
 	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, accepted.RootRunID())
-	endpoint := acceptedCommandEndpoint(t, api, stores)
+	endpoint := host.Endpoint()
 	lookup := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: acceptedCommandKey, Operation: protocol.RunCommandResume}
 	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, lookup, delivery.Options{})
 	if err != nil || ack.SegmentID != record.Acceptance.SegmentID || ack.UserItemID != accepted.InputItemID || ack.Run == nil || ack.Run.Status != protocol.RunStatusFinished {
@@ -370,7 +360,7 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(directory.DatabasePath()))
+				db, err := sql.Open("sqlite", directory.DatabasePath())
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -407,12 +397,6 @@ func TestAcceptedRevivalRejectsUnsafeBoundaries(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			// Revival is the post-callback-RPC recovery phase; this unsafe boundary
-			// has no plugin-backed effect, so rejection resolves without a live plugin
-			// session. Production runs it after publishing delivery.
-			if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-				t.Fatalf("recover uncertain executions: %v", err)
-			}
 			value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID()})
 			if err != nil || value.Outcome == nil || value.Outcome.Type != expected {
 				t.Fatalf("Run=%+v,outcome=%+v,%v", value, value.Outcome, err)
@@ -480,7 +464,7 @@ func TestColdResumeWriterFailurePreservesCommandAcceptance(t *testing.T) {
 	if err := errors.Join(err, db.Close()); err != nil {
 		t.Fatal(err)
 	}
-	endpoint := acceptedCommandEndpoint(t, api, stores)
+	endpoint := host.Endpoint()
 	request := acceptedResumeRequest(pending[0].RootRunID, pending[0].Bindings[0].InterruptItemID)
 	accepted := endpoint.Invoke(t.Context(), delivery.RunsResume, request, acceptedCommandOptions())
 	if accepted.Failure != nil {

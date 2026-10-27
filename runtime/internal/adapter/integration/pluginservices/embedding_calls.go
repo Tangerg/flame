@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/samber/lo"
@@ -13,11 +14,11 @@ import (
 
 // EmbeddingRoleCallback publishes the configured role on ordinary installed
 // callbacks. A feature's optional fallback and work budget stay with its caller.
-func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, error)) (pluginsdk.Callback, error) {
+func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, error)) (qimumcp.Callback, error) {
 	if resolve == nil {
-		return pluginsdk.Callback{}, errors.New("embedding call: role resolver is required")
+		return qimumcp.Callback{}, errors.New("embedding call: role resolver is required")
 	}
-	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginsdk.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
+	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command qimumcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		if command.ID == executionctx.InvocationOwner(ctx) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: independent invocation cannot claim its executing owner identity")
 		}
@@ -26,7 +27,7 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if model == nil {
-			return pluginsdk.TextEmbeddings{}, &extension.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
+			return pluginsdk.TextEmbeddings{}, &portable.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
 		}
 		if lo.IsNil(model) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")

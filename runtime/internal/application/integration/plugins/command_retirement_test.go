@@ -19,7 +19,7 @@ func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.
 		t.Fatal(err)
 	}
 	store := db.PluginCommands
-	commands, err := plugins.NewCommands(store, plugins.NewAdmission())
+	commands, err := plugins.NewCommands(store, db.Admission)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestPreparedCommandRetiresAcrossRestartWithoutLosingItsIdentity(t *testing.
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store = db.PluginCommands
-	commands, err = plugins.NewCommands(store, plugins.NewAdmission())
+	commands, err = plugins.NewCommands(store, db.Admission)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestCommandDispatchAndRetirementHaveExactlyOneWinner(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			store := db.PluginCommands
-			admission := plugins.NewAdmission()
+			admission := db.Admission
 			commands, err := plugins.NewCommands(store, admission)
 			if err != nil {
 				t.Fatal(err)

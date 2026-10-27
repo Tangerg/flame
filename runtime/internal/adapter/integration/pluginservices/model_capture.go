@@ -9,9 +9,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -31,7 +30,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		return models.SelectedChat{}, nil, errors.New("model composition: model and admission owner are required")
 	}
 	var capture *modelCapture
-	err := o.admission.Under(ctx, func() error {
+	err := o.admission.Admit(ctx, func(ctx context.Context) error {
 		bindings, err := o.Resolve(ctx)
 		if err != nil {
 			return err
@@ -44,7 +43,19 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		if err != nil {
 			return err
 		}
-		activations, err := o.Activations(ctx, append(append(slices.Clone(bindings), contexts...), inputs...))
+		activations, err := o.activationsUnder(ctx, append(append(slices.Clone(bindings), contexts...), inputs...))
+		if err != nil {
+			return err
+		}
+		bindings, err = plugins.BindActivations(bindings, activations)
+		if err != nil {
+			return err
+		}
+		contexts, err = plugins.BindActivations(contexts, activations)
+		if err != nil {
+			return err
+		}
+		inputs, err = plugins.BindActivations(inputs, activations)
 		if err != nil {
 			return err
 		}
@@ -75,16 +86,39 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 
 func (o *CallComposition) Activations(ctx context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
 	var activations []plugin.Activation
+	err := o.admission.Admit(ctx, func(ctx context.Context) error {
+		var err error
+		activations, err = o.activationsUnder(ctx, bindings)
+		return err
+	})
+	return activations, err
+}
+
+func (o *CallComposition) activationsUnder(ctx context.Context, bindings []plugins.ContributionBinding) ([]plugin.Activation, error) {
+	var activations []plugin.Activation
 	for _, binding := range bindings {
-		activation, err := o.calls.pool.InstallationActivation(ctx, binding.ServerID)
+		var activation plugin.Activation
+		var err error
+		if binding.Activation != nil {
+			activation, err = plugins.OriginalActivation([]plugin.Activation{*binding.Activation}, binding.InstallationID, binding.Digest, binding.ServerName)
+		} else {
+			activation, err = o.calls.pool.InstallationActivation(ctx, binding.ServerID)
+		}
 		if err != nil {
-			if errors.Is(err, mcp.ErrUnavailable) {
-				return nil, errors.Join(plugin.ErrUnavailable, err)
-			}
 			return nil, err
 		}
 		if !slices.Contains(activation.Dependencies, plugin.Dependency{InstallationID: binding.InstallationID, Digest: binding.Digest}) {
 			return nil, plugin.ErrStale
+		}
+		if slices.ContainsFunc(activations, activation.Equal) {
+			continue
+		}
+		original, err := plugins.DecodeActivation(activation)
+		if err != nil {
+			return nil, err
+		}
+		if err := o.calls.framework.ValidateBindingUnder(ctx, original); err != nil {
+			return nil, plugins.FrameworkError(err)
 		}
 		activations = append(activations, activation)
 	}
@@ -134,14 +168,14 @@ type modelCapture struct {
 }
 
 func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil || invocation.Target.Scope != extension.ScopeCall {
 		return nil, nil, errors.Join(err, errors.New("model composition: model call identity is required"))
 	}
 	c.mu.Lock()
 	if c.closed || c.lifetime.Err() != nil {
 		c.mu.Unlock()
-		return nil, nil, errors.Join(pluginsdk.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
+		return nil, nil, errors.Join(qimumcp.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
 	}
 	c.active.Add(1)
 	c.mu.Unlock()
@@ -258,7 +292,7 @@ func (c *modelCapture) close() {
 	}
 	c.closed = true
 	c.mu.Unlock()
-	c.cancel(pluginsdk.ErrStaleCall)
+	c.cancel(qimumcp.ErrStaleCall)
 	c.active.Wait()
 	c.release()
 	o := c.owner
@@ -269,7 +303,7 @@ func (c *modelCapture) close() {
 }
 
 func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection) (context.Context, func(context.Context, error) error, error) {
-	invocation, err := pluginsdk.InvocationFromContext(ctx)
+	invocation, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

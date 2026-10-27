@@ -13,7 +13,7 @@ import (
 func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) {
 	for _, catalog := range []releaseCatalog{nil, (*persistence.ReleaseStore)(nil)} {
 		directory := filepath.Join(t.TempDir(), "releases")
-		releases, err := New(directory, catalog)
+		releases, err := New(nil, directory, catalog)
 		if err == nil || releases != nil {
 			t.Fatalf("invalid release store constructed: %v, %v", releases, err)
 		}

@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
+	"github.com/Tangerg/flame/qimu/portable"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -55,7 +57,7 @@ func (o *observedInteractionModel) Call(
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
 	ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-	ctx, err = pluginsdk.WithInvocation(ctx, extension.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: callID}})
+	ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err})
 	}
@@ -94,7 +96,7 @@ func (o *observedInteractionModel) Stream(
 		}
 		dispatchedAt := time.Now()
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.Relation()), callID)
-		ctx, err = pluginsdk.WithInvocation(ctx, extension.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: extension.Target{Scope: extension.ScopeCall, Reference: callID}})
+		ctx, err = qimumcp.WithInvocation(ctx, portable.Invocation{ID: callID, Origin: extension.Automatic, Parent: invocation.EffectID().String(), Target: portable.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &corechat.CallFailure{Kind: corechat.CallFailureNotExecuted, Cause: err}))
 			return

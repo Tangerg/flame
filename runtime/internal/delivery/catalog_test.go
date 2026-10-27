@@ -95,6 +95,16 @@ func TestReplayPolicyCoversEveryCommand(t *testing.T) {
 	}
 }
 
+func TestBrowserLifecycleKeepsCredentialAndUseReplayWithItsOriginalOwner(t *testing.T) {
+	t.Parallel()
+	for _, name := range []Name{PluginsOpenBrowserRealm, PluginsAcquireComponent, PluginsCloseBrowserRealm} {
+		method, found := Contract().Lookup(name)
+		if !found || method.Operation != OperationCommand || method.Idempotency != idempotencyOwnerResponse || !method.Idempotency.OwnsOutcome() {
+			t.Errorf("%s must re-enter the browser owner without generic credential or Use result caching", name)
+		}
+	}
+}
+
 func TestRunReplayCursorPolicyNamesOnlyReplayableRunStreams(t *testing.T) {
 	t.Parallel()
 

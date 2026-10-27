@@ -203,7 +203,7 @@ func TestPublishedAttemptRetainsSuccessAfterCallerCancellation(t *testing.T) {
 		Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"),
 		Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL,
 	}}
-	c := &connections{lifetime: t.Context(), client: newClient()}
+	c := newTestConnections(t)
 	t.Cleanup(func() {
 		if err := c.shutdown(context.WithoutCancel(t.Context())); err != nil {
 			t.Error(err)

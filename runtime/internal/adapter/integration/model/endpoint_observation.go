@@ -7,7 +7,7 @@ import (
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	qimumcp "github.com/Tangerg/flame/qimu/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -78,7 +78,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if request.Options.Model != "" && request.Options.Model != m.selection.Model() {
 		return modelref.EndpointInvocation{}, errors.New("model: request cannot replace the captured endpoint selection")
 	}
-	caller, err := pluginsdk.InvocationFromContext(ctx)
+	caller, err := qimumcp.InvocationFromContext(ctx)
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}

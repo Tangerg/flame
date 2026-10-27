@@ -9,22 +9,16 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/cancellation"
+	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, directory string) error {
-	packages, err := pluginpackage.New(filepath.Join(stores.DataDirectory, "plugins", "releases"), stores.PluginReleases)
-	if err != nil {
-		return err
-	}
-	if err := packages.RecoverStaging(ctx); err != nil {
-		return err
-	}
-	return plugins.Initialize(ctx, stores.Installations, packages, func() ([]string, error) {
+func initializeFirstPartyPlugins(ctx context.Context, stores *persistence.Bundle, host *qimu.Host, packages *pluginpackage.Releases, directory string) error {
+	return plugins.Initialize(ctx, host, stores.Installations, packages, func() ([]string, error) {
 		return distributionSources(ctx, directory)
 	}, stores.ProviderSelections, []plugins.DefaultProvider{
 		{Role: "memory", Package: "flame.memory", Contribution: "memory-provider"},

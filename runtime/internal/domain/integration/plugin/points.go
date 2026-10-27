@@ -3,8 +3,8 @@ package plugin
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	"github.com/Tangerg/flame/packages/go-sdk/jsonvalue"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
+	"github.com/Tangerg/flame/qimu/portable"
 )
 
 type Point struct {
@@ -24,7 +24,7 @@ func (b *Builder) AdmitPoint(value Point) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := extension.ParsePoint(value.Contract.JSON())
+	contract, err := portable.ParsePoint(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point contract: %v", err)
 	}
@@ -40,7 +40,7 @@ func (b *Builder) AdmitPointValue(value PointValue) error {
 	if err := value.ID.Validate(); err != nil {
 		return err
 	}
-	contract, err := extension.ParsePoint(value.Contract.JSON())
+	contract, err := portable.ParsePoint(value.Contract.JSON())
 	if err != nil {
 		return refuse(DiagnosticInvalidDeclaration, "invalid point value contract: %v", err)
 	}
