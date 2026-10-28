@@ -47,9 +47,13 @@ function SendButton() {
     <IconButton
       icon={iconGlyph("stop")}
       iconSize={16}
+      focusableWhenDisabled
       disabled={!stop || !runtimeAvailable}
       aria-label={t("composer.action.stop")}
-      onClick={() => stop?.()}
+      onClick={() => {
+        const restoreFocus = captureComposerFocus(composerAccess);
+        if (stop?.()) restoreFocus();
+      }}
       variant={primary ? "primary" : "ghost"}
       round
     />
@@ -59,6 +63,7 @@ function SendButton() {
     <IconButton
       icon={iconGlyph("arrow-up")}
       iconSize={16}
+      focusableWhenDisabled
       disabled={!enabled}
       aria-label={label}
       onClick={submit}

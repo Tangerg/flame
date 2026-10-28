@@ -41,6 +41,12 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+Accepted Composer Stop returns to the captured input without consuming its draft
+or moving its selection. Refused Stop keeps its action context; later focus and
+input replacement remain with the existing captured-focus owner. Send, Steer and
+Stop use the shared focusable-disabled contract while commands are unavailable.
+The Runtime retains cancellation admission and Run settlement ownership.
+
 The empty conversation owns keeping its focused control inside its scroll
 viewport when the window, text or surrounding content reflows. Its existing
 spacing token supplies focus clearance. Native keyboard return reveals that

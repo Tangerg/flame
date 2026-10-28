@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `cad71edc8`, which preserves captured-resource link identity and reading. Subagent completion now retains the same task entry or surviving header, and unavailable cancellation controls retain focus while refusing activation. Native verification and cleanup are complete under **Subagent completion and unavailable-action focus**. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `473dc7cbd`, which retains focus through subagent completion and unavailable actions. Accepted Composer Stop now returns to the original editable draft; unavailable Send, Steer and Stop preserve their keyboard context. Native verification and cleanup are complete under **Stop and command availability preserve authoring**. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -49,10 +49,11 @@ failures retain their identity, original bytes and recorded status, published as
 and keeps fitting origin/control groups together, published as `5c6d10496`.
 Native playback and return are qualified and published as `487d59c14`.
 Resource-link identity and reading affordance are published as `cad71edc8`.
-The following subagent batch qualifies completion, unavailable controls, nested
-reader scope, source return and continued editing. Its publication fetch finds
-zero incoming main commits at `cad71edc8`; no repeated merge or broad unrelated
-verification is needed.
+Subagent completion, unavailable controls, nested reader scope, source return
+and continued editing are published as `473dc7cbd`. The Composer follow-up
+qualifies accepted Stop, refused commands, disabled toolbar navigation and
+continued drafting. Its publication fetch finds zero incoming main commits at
+`473dc7cbd`; no repeated merge or broad unrelated verification is needed.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -5588,6 +5589,115 @@ Flame's actual navigation/history, registered input target and retained-view
 lifetimes supply the implementation contracts. Existing Base UI modal semantics
 and better-series focus/layout guidance preserve bounded tasks, source returns,
 typography, semantic colors and the approved visual system.
+
+### Stop and command availability preserve authoring
+
+The original `473dc7cbd7e078aeb46cb8891457e3eed09d97ed` native workspace
+retains its draft but focuses BODY after Stop removes the toolbar action.
+Accepted Stop also leaves focus on the old action before asynchronous Run
+settlement. Native disabling can similarly retire the focused Send, Steer or
+Stop control when its command capability becomes unavailable.
+
+`composer/send.tsx` now captures the existing Composer focus lease before Stop
+and delivers it only when the Session-owned capability returns acceptance.
+The original input, value and selection remain authoritative. Refusal keeps the
+action context; later outside focus or a replaced registered input defeats the
+existing lease. Settlement remains with Runtime and does not schedule another
+focus effect. Both submit variants and Stop use the existing shared
+focusable-disabled contract. There is no new draft, completion state, wrapper,
+timer, copied command predicate or navigation behavior.
+
+The visual fixture adds explicit `root-stop=settled|unavailable` modes. The
+settled scene requires one unfinished captured root Run, projects its canceled
+outcome through the normal refresh entrance, and replays the scene's canonical
+item frames so partial recorded evidence remains present. The unavailable scene
+refuses Stop and updates the existing fixture connection projection. A local
+invocation counter checks repeated input. These are isolated graphical facts,
+not live cancellation or provider-execution qualification.
+
+Read-only ZCode `ConversationComposer.tsx` routes Stop through its distinct
+`onStop` operation, while HeroUI's disabled-button example informs visual state.
+Neither establishes Flame's acceptance or focus policy. Flame's existing
+Composer focus and command contracts supply those guarantees. The existing
+ChatGPT/ArcUI/Radix/Ace research and six better-interface domains retain their
+previous scope.
+
+| Domain        | Inspected behavior                                                        | Scoped result                                                        |
+| ------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Accessibility | Native Tab, Return/Space, disabled toolbar actions and same input target  | Accepted Stop returns to editing; refused actions keep their context |
+| Layout        | Split source reading, narrow window, Dock retreat and 200% Composer       | Input and affected controls remain reachable                         |
+| Writing       | Existing localized Send, Steer, Stop, connection and outcome labels       | No added helper copy or status model                                 |
+| Typography    | EN 14 px and ZH 18 px, mixed-language evidence and original drafts        | Existing scale, wrapping and insertion point retained                |
+| Colors        | Light Orange and dark custom-blue focus/disabled states                   | Existing tokens retained; no new contrast measurement                |
+| UI            | Tool/source return, Stop acceptance/refusal and immediate continued input | Existing reading, authoring and command owners remain separate       |
+
+Nine new regressions exercise empty/nonempty accepted Stop, accepted Stop before
+settlement, later outside focus, refusal, all three unavailable toolbar actions
+and a retired Stop capability. The final cases drive the actual connection
+projection and installed Slot contribution; an initial inert hook stub did not
+re-render that contribution and was removed. Against the original Send component,
+**seven fail / two pass**; the exact candidate bytes are restored afterward.
+Final **seven files / 89 tests** pass in **2.07 s**, covering Composer, submission,
+focus/state ports, action layout, Run commands and canonical fixture snapshots.
+Web typecheck, lint, formatting, design-system, chrome, eight locales and layers
+pass. Exact component reproduction, `make check-native` including Desktop
+test/vet/build and the supported Wails v3 build, production module linking and
+all **409** CSS variables pass. The existing duplicate `-lobjc` warning remains.
+The unchanged full frontend, shared-UI and backend/Runtime suites are not rerun;
+no complete Web-aggregate pass is inferred.
+
+Actual native qualification uses CUA for every pointer, key, scroll, resize and
+zoom input. The private passive observer reads only:
+
+- EN/light/14 px/Orange: expand the Read result, enter its current file and
+  Escape back to the same Open the current file action. Six forward Tabs from
+  Composer reach Stop; Return restores the same input node with the original
+  **27-character** draft and end caret. Immediate input continues it to **47
+  characters** without another click.
+- The unavailable EN scene retains focused Stop with `aria-disabled=true` and
+  native `disabled=false`; Return/Space leave its invocation count at **one**.
+  Forward Tab exits to the Dock splitter. Five Tabs from Composer reach the
+  disabled Steer action, whose Return/Space retain the original draft. It remains
+  editable as `Keep the offline draft. Continue offline.` Plain reverse Tab
+  again does not move from disabled Stop on this host; no new reverse-navigation
+  guarantee is claimed.
+- ZH/dark/18 px/custom blue `#2F6BFF`: resize to **1125 × 734**, then 200% reaches
+  **562 × 367 CSS px / DPR 4**. After reading by wheel, five Tabs reach Stop.
+  Space restores the same **empty** input at selection **0–0**, without inserting
+  a stray space. The disabled Send is still reachable by five Tabs and refuses
+  Return/Space. The new draft `继续核对工具结果。` retains its **9–9** caret after
+  Actual Size restores the Dock.
+- A final EN native control omits the observer entirely. Its **614** assets
+  differ only in the two HTML entrances and generate **zero** observation
+  requests. Source/Escape return, pointer Stop, original input focus and direct
+  continuation to `Keep this final review draft. Continue after Stop.` pass by
+  native AX and pixels; no clean-build DOM measurements are claimed.
+
+An unrelated initial pasted value is excluded; the accepted light run begins
+only after the intended draft is visibly confirmed. Current-file content is a
+fixture placeholder, so only identity, source navigation and return are qualified.
+VoiceOver speech, IME, clipboard copying, real Runtime cancellation/recovery and
+a fresh motion/contrast matrix remain unverified. No palette, type, protocol or
+persistence migration is required. This scoped repair does not certify the
+whole product or all eight goal CHECK dimensions as complete.
+
+All **five** private native instances are retired, the bundle unregistered and
+loopback server closed. Cleanup removes **seven** new output/cache roots and
+**three** exact profile roots, restores **four** original files and modes, and
+rechecks **18** output-presence and **five** profile baselines, both original
+UI-cache files and the empty Web Vite-temp directory. All **6,265** inputs match
+the qualified source hashes; only the Send component, its new regression file
+and the explicit visual fixture differ from the frozen base. All **32** installed
+resources and **two** read-only references remain unchanged. The private root
+`flame-composer-actions-mjBVmK` is absent. The round-trip-verified in-memory gzip
+retains **47** flat UTF-8 records, **23,470,709** uncompressed bytes and
+**1,877,686** compressed bytes; SHA-256
+`8e3fef27b602e10bd340538c6f2ac8f0e193bcf6df767165fcca908f6eace018`.
+
+Continue from another observed existing task or reading surface. Preserve the
+accepted Stop/input lease, command-refusal semantics and scoped verification
+cadence; do not add a second Run-settlement or focus owner. The continuous UI
+goal remains active, and the primary checkout's parallel work is preserved.
 
 ### Native workbench command and caret qualification
 

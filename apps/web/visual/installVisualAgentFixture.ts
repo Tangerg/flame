@@ -327,8 +327,41 @@ export async function installVisualAgentFixture(
       userItemId: "item_visual_submitted",
     });
   });
+  const rootStopPresentation = new URLSearchParams(location.search).get("root-stop");
+  let rootStopInvocations = 0;
   store.setStop(VISUAL_SESSION_ID, () => {
     document.documentElement.dataset.visualStoppedRoot = VISUAL_ROOT_RUN_ID;
+    document.documentElement.dataset.visualRootStopCalls = String(++rootStopInvocations);
+    if (rootStopPresentation === "unavailable") {
+      installVisualRuntimeServiceStatusPort(visual, "unavailable");
+      return false;
+    }
+    if (rootStopPresentation === "settled") {
+      const root = snapshot.runs[0];
+      if (
+        snapshot.runs.length !== 1 ||
+        root?.id !== VISUAL_ROOT_RUN_ID ||
+        root.status === "finished"
+      )
+        throw new Error("The stop fixture requires one unfinished captured root Run");
+      const finished = {
+        ...root,
+        status: "finished" as const,
+        finishedAt: "2026-07-31T08:02:00.000Z",
+        outcome: { type: "canceled" as const, detail: "The isolated fixture stopped this Run." },
+      };
+      delete finished.activeSegmentId;
+      snapshot.runs = [finished];
+      snapshot.pendingInterruptSets = [];
+      const stoppedView = AGENT_SESSION_TAIL_EVENTS[state].reduce(
+        reduceAgentEvent,
+        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      );
+      const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+      if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, stoppedView)) {
+        throw new Error("Failed to publish the captured root outcome");
+      }
+    }
     return true;
   });
   store.setResume(VISUAL_SESSION_ID, (runId, responses, onSettled) => {
