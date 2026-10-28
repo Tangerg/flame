@@ -62,6 +62,8 @@ The coordinator discovers Go members from `go.work` and npm members from root
 non-native check runs only its pure `cmd/bridgegen` and `internal/bridge` packages;
 full native verification still requires macOS. CI runs clean workspace
 installation and checks on macOS and Linux, plus the macOS native job.
+Verification targets use `/tmp` as their temporary root so Runtime fixture
+sockets fit the platform's Unix address limit.
 Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
 workspace substitution cannot hide missing dependencies. Package tests run
 serially; process-backed fixtures own their compiler and backend concurrency,
