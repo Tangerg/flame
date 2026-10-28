@@ -29,7 +29,8 @@
     "v0.1.0-qimu.20261027.2": "64768df65197ef46bdb07b31114f2024134ec0c0",
     "v0.1.0-qimu.20261027.3": "79054e9a22f40549b694a2cb3b1e8adf794f7272",
     "v0.1.0-qimu.20261027.4": "86ef90823afa6794144da0b46033edf8cf479f73",
-    "v0.1.0-qimu.20261027.5": "a83c01b1d15a0bebccd2d4b5f83c1f5f9d9e9bde"
+    "v0.1.0-qimu.20261027.5": "a83c01b1d15a0bebccd2d4b5f83c1f5f9d9e9bde",
+    "v0.1.0-qimu.20261028.1": "f36de0be9338a7fa776dd2bfeba335002104178f"
   },
   "github.com/Tangerg/flame/plugins": {
     "v0.1.0-architecture.20261026.3": "16d3bfa89e76615a92d01a140e677c23d353bfc5",
