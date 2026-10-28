@@ -1,6 +1,7 @@
 package jsonvalue
 
 import (
+	"encoding"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
@@ -19,6 +20,18 @@ func validateType(target reflect.Type, visited map[reflect.Type]bool) error {
 	if target == nil {
 		return errors.New("json: value type is required")
 	}
+	// Pointer cycles consume no JSON structure; field and element recursion does.
+	pointers := make(map[reflect.Type]bool)
+	for target.Kind() == reflect.Pointer {
+		if customDecoder(target) {
+			return nil
+		}
+		if pointers[target] {
+			return fmt.Errorf("json: recursive pointer type %s has no value shape", target)
+		}
+		pointers[target] = true
+		target = target.Elem()
+	}
 	if visited[target] {
 		return nil
 	}
@@ -27,7 +40,7 @@ func validateType(target reflect.Type, visited map[reflect.Type]bool) error {
 		return nil
 	}
 	switch target.Kind() {
-	case reflect.Pointer, reflect.Slice, reflect.Array:
+	case reflect.Slice, reflect.Array:
 		return validateType(target.Elem(), visited)
 	case reflect.Map:
 		if target.Key().Kind() != reflect.String {
@@ -61,7 +74,21 @@ func opaqueType(target reflect.Type) bool {
 
 func customDecoder(target reflect.Type) bool {
 	for _, candidate := range []reflect.Type{target, reflect.PointerTo(target)} {
-		if candidate.Implements(reflect.TypeFor[json.Unmarshaler]()) || candidate.Implements(reflect.TypeFor[json.UnmarshalerFrom]()) {
+		if candidate.Implements(reflect.TypeFor[json.Unmarshaler]()) ||
+			candidate.Implements(reflect.TypeFor[json.UnmarshalerFrom]()) ||
+			candidate.Implements(reflect.TypeFor[encoding.TextUnmarshaler]()) {
+			return true
+		}
+	}
+	return false
+}
+
+func customEncoder(target reflect.Type) bool {
+	for _, candidate := range []reflect.Type{target, reflect.PointerTo(target)} {
+		if candidate.Implements(reflect.TypeFor[json.Marshaler]()) ||
+			candidate.Implements(reflect.TypeFor[json.MarshalerTo]()) ||
+			candidate.Implements(reflect.TypeFor[encoding.TextMarshaler]()) ||
+			candidate.Implements(reflect.TypeFor[encoding.TextAppender]()) {
 			return true
 		}
 	}
@@ -89,7 +116,7 @@ func declaredFields(owner reflect.Type, visiting map[reflect.Type]bool) ([]Field
 			if embedded.Kind() == reflect.Pointer {
 				embedded = embedded.Elem()
 			}
-			if embedded.Kind() != reflect.Struct || customDecoder(embedded) {
+			if embedded.Kind() != reflect.Struct || customEncoder(embedded) || customDecoder(embedded) {
 				return nil, nil, fmt.Errorf("json field %s.%s: embedding requires a plain struct", owner, field.Name)
 			}
 			children, nested, err := declaredFields(embedded, visiting)
@@ -129,6 +156,9 @@ func validateFieldTag(field reflect.StructField, embedded bool) error {
 	}
 	_, options, _ := strings.Cut(tag, ",")
 	for option := range strings.SplitSeq(options, ",") {
+		if embedded && option != "" {
+			return fmt.Errorf("embedded field cannot declare option %q", option)
+		}
 		if option != "" && option != "omitzero" && option != "omitempty" {
 			return fmt.Errorf("unsupported field option %q", option)
 		}

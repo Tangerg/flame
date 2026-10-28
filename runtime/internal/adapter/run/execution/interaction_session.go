@@ -72,7 +72,7 @@ type interactionState struct {
 	restoreTree                agent.TreeSnapshot
 	toolMetadata               map[string]toolResultMetadata
 	mu                         sync.Mutex
-	pendingSteers              map[agent.SignalID]pendingInteractionSteer
+	pendingSteers              map[agent.SignalID]runs.PreparedSteer
 	pendingContinuation        *pendingInteractionContinuation
 	process                    *agent.Process
 	admittedProcessID          agent.ProcessID
@@ -89,12 +89,6 @@ type interactionState struct {
 	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren           map[agent.ProcessID]*managedDelegateCall
 	durableContextWasCompacted bool
-}
-
-type pendingInteractionSteer struct {
-	itemID     string
-	content    []transcript.ContentBlock
-	acceptance *runs.CommandAcceptance
 }
 
 // pendingInteractionContinuation is Runtime-owned input that already has a
@@ -147,7 +141,7 @@ func newInteractionSession(
 		toolResults:     config.OriginalToolResults,
 		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
-			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
+			pendingSteers:    make(map[agent.SignalID]runs.PreparedSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
 			delegateChildren: make(map[agent.ProcessID]*managedDelegateCall),
 		},

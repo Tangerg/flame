@@ -17,6 +17,9 @@ type Field struct {
 }
 
 func Fields(owner reflect.Type) []Field {
+	if err := ValidateType(owner); err != nil {
+		panic(err)
+	}
 	fields, _, err := declaredFields(owner, make(map[reflect.Type]bool))
 	if err != nil {
 		panic(err)
@@ -25,6 +28,9 @@ func Fields(owner reflect.Type) []Field {
 }
 
 func Embeds(owner reflect.Type) []reflect.Type {
+	if err := ValidateType(owner); err != nil {
+		panic(err)
+	}
 	_, embedded, err := declaredFields(Deref(owner), make(map[reflect.Type]bool))
 	if err != nil {
 		panic(err)
@@ -106,13 +112,13 @@ type wireTagOptions struct {
 
 func wireNameOf(field reflect.StructField) (string, wireTagOptions) {
 	tag, tagged := field.Tag.Lookup("json")
-	if field.Anonymous && (!tagged || tag == "") {
+	name, rest, hasOptions := strings.Cut(tag, ",")
+	if field.Anonymous && name == "" {
 		return "", wireTagOptions{embedded: true}
 	}
 	if !field.IsExported() {
 		return "", wireTagOptions{}
 	}
-	name, rest, hasOptions := strings.Cut(tag, ",")
 	options := wireTagOptions{}
 	for option := range strings.SplitSeq(rest, ",") {
 		if option == "omitempty" || option == "omitzero" {

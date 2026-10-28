@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/google/uuid"
 )
 
+// A retained command is still only intent until its exact Scope receipt commits
+// with the product acceptance. Checkpoints must preserve that original intent.
 type PreparedSteer struct {
 	ItemID     string
 	Input      []transcript.ContentBlock
@@ -21,6 +24,16 @@ func (p PreparedSteer) Clone() PreparedSteer {
 		p.Acceptance = new(p.Acceptance.Clone())
 	}
 	return p
+}
+
+func (p PreparedSteer) Equal(other PreparedSteer) bool {
+	if p.ItemID != other.ItemID || !slices.EqualFunc(p.Input, other.Input, transcript.ContentBlock.Equal) {
+		return false
+	}
+	if (p.Acceptance == nil) != (other.Acceptance == nil) {
+		return false
+	}
+	return p.Acceptance == nil || p.Acceptance.Equal(*other.Acceptance)
 }
 
 // Steer addresses the Segment the command names through execution control.

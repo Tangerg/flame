@@ -78,7 +78,11 @@ func validateStructShape(raw jsontext.Value, target reflect.Type, path string) e
 	if err := json.Unmarshal(raw, &object); err != nil {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
-	for _, field := range Fields(target) {
+	fields, _, err := declaredFields(target, make(map[reflect.Type]bool))
+	if err != nil {
+		return err
+	}
+	for _, field := range fields {
 		value, present := object[field.Name]
 		if !present {
 			if !field.Optional {

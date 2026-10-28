@@ -28,7 +28,7 @@ func TestTypeScriptPublishesUnconditionalRequirements(t *testing.T) {
 		},
 		values: make(map[reflect.Type][]dispatch.FieldConstraint),
 	}
-	body := contractgen.NewTypeScript(nil).ObjectBody(set.object(shape), "")
+	body := contractgen.NewTypeScript(nil).ObjectBody(set.object(shape, nil), "")
 	if strings.Contains(body, "createdAt?") || !strings.Contains(body, "createdAt: string;") {
 		t.Fatalf("TypeScript body = %q, want required createdAt", body)
 	}

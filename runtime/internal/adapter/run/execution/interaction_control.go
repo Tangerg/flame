@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -21,16 +20,6 @@ func steerSignalID(itemID string) (agent.SignalID, error) {
 		return agent.SignalID{}, err
 	}
 	return agent.ParseSignalID("steer:" + itemID)
-}
-
-func (p pendingInteractionSteer) matches(prepared runs.PreparedSteer) bool {
-	if p.itemID != prepared.ItemID || !slices.EqualFunc(p.content, prepared.Input, transcript.ContentBlock.Equal) {
-		return false
-	}
-	if (p.acceptance == nil) != (prepared.Acceptance == nil) {
-		return false
-	}
-	return p.acceptance == nil || p.acceptance.Equal(*prepared.Acceptance)
 }
 
 // Application retains the exact user note. Scope receives a bounded diagnostic
@@ -121,7 +110,7 @@ func (i *interactionSession) submitSteer(
 	i.state.mu.Lock()
 	prior, present := i.state.pendingSteers[signalID]
 	i.state.mu.Unlock()
-	if present && !prior.matches(prepared) {
+	if present && !prior.Equal(prepared) {
 		return "", runs.ErrCommandKeyConflict
 	}
 	committed, err := i.committedTree(ctx, process.Relation().RootID())
@@ -144,9 +133,7 @@ func (i *interactionSession) submitSteer(
 	}
 	if !present {
 		i.state.mu.Lock()
-		i.state.pendingSteers[signalID] = pendingInteractionSteer{
-			itemID: itemID, content: transcript.CloneContent(prepared.Input), acceptance: prepared.Acceptance,
-		}
+		i.state.pendingSteers[signalID] = prepared.Clone()
 		i.state.mu.Unlock()
 	}
 	accepted, deliverErr := process.DeliverSignals(
@@ -212,8 +199,8 @@ func (i *interactionSession) commitAppliedInputs(
 			return fmt.Errorf("execution: model attribution names unknown steer Signal %s", signalID)
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content: transcript.CloneContent(pending.content),
-			ItemID:  pending.itemID,
+			Content: transcript.CloneContent(pending.Input),
+			ItemID:  pending.ItemID,
 		})
 	}
 	var continuation pendingInteractionContinuation

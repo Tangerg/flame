@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -22,11 +23,11 @@ func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pending := map[agent.SignalID]pendingInteractionSteer{
-		firstID: {itemID: "item_first", content: []transcript.ContentBlock{{
+	pending := map[agent.SignalID]runs.PreparedSteer{
+		firstID: {ItemID: "item_first", Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
 		}}},
-		secondID: {itemID: "item_second", content: []transcript.ContentBlock{{
+		secondID: {ItemID: "item_second", Input: []transcript.ContentBlock{{
 			Kind: transcript.TextContent, Text: "revise",
 		}}},
 	}

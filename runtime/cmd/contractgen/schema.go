@@ -118,6 +118,28 @@ func (s *schemaSet) registerEnum(t reflect.Type, values []string) {
 // walk returns the schema for a Go type, defining it in the bundle if it is a
 // named type worth referencing.
 func (s *schemaSet) walk(t reflect.Type) (node *contractgen.Schema) {
+	if _, walked := s.walked[t]; !walked {
+		if err := jsonvalue.ValidateType(t); err != nil {
+			panic(fmt.Sprintf("contractgen: invalid wire type: %v", err))
+		}
+	}
+	return s.walkAdmitted(t, nil)
+}
+
+func (s *schemaSet) walkAdmitted(t reflect.Type, collections map[reflect.Type]bool) (node *contractgen.Schema) {
+	// Only named objects reserve references before descending. Collection-only
+	// cycles have no definition that could stop their expansion.
+	switch t.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
+		if collections[t] {
+			panic(fmt.Sprintf("contractgen: recursive collection %s requires a named object reference", t))
+		}
+		if collections == nil {
+			collections = make(map[reflect.Type]bool)
+		}
+		collections[t] = true
+		defer delete(collections, t)
+	}
 	defer func() {
 		if s.walked == nil {
 			s.walked = make(map[reflect.Type]*contractgen.Schema)
@@ -135,7 +157,7 @@ func (s *schemaSet) walk(t reflect.Type) (node *contractgen.Schema) {
 	}
 	switch t.Kind() {
 	case reflect.Pointer:
-		return s.walk(t.Elem())
+		return s.walkAdmitted(t.Elem(), collections)
 	case reflect.Interface:
 		return &contractgen.Schema{}
 	case reflect.Bool:
@@ -158,15 +180,15 @@ func (s *schemaSet) walk(t reflect.Type) (node *contractgen.Schema) {
 		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
 			return &contractgen.Schema{Type: contractgen.SchemaTypeString, ContentEncoding: "base64"}
 		}
-		return &contractgen.Schema{Type: contractgen.SchemaTypeArray, Items: s.walk(t.Elem())}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeArray, Items: s.walkAdmitted(t.Elem(), collections)}
 	case reflect.Map:
 		if t.Key().Kind() != reflect.String {
 			panic(fmt.Sprintf("contractgen: %s has a non-string map key; that is not JSON", t))
 		}
-		return &contractgen.Schema{Type: contractgen.SchemaTypeObject, AdditionalProps: s.walk(t.Elem())}
+		return &contractgen.Schema{Type: contractgen.SchemaTypeObject, AdditionalProps: s.walkAdmitted(t.Elem(), collections)}
 	case reflect.Struct:
 		if t.Name() == "" {
-			return s.object(t)
+			return s.object(t, collections)
 		}
 		return s.define(t, nil)
 	default:
@@ -209,7 +231,7 @@ func (s *schemaSet) defineEmbedded(t reflect.Type) {
 func (s *schemaSet) reserve(t reflect.Type, body *contractgen.Schema) {
 	s.origin[defName(t)] = t
 	if body == nil {
-		body = s.object(t)
+		body = s.object(t, nil)
 	}
 	s.defs[defName(t)] = body
 }
@@ -217,7 +239,7 @@ func (s *schemaSet) reserve(t reflect.Type, body *contractgen.Schema) {
 // object walks a struct's fields. Optionality starts with the json tag, then an
 // unconditional requirement may narrow an omittable field into a required wire
 // fact.
-func (s *schemaSet) object(t reflect.Type) *contractgen.Schema {
+func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *contractgen.Schema {
 	out := &contractgen.Schema{Type: contractgen.SchemaTypeObject, Properties: make(map[string]any)}
 	// Flattened fields still have a public named owner and its wire validator.
 	for i := range t.NumField() {
@@ -233,7 +255,7 @@ func (s *schemaSet) object(t reflect.Type) *contractgen.Schema {
 		}
 	}
 	for _, field := range jsonvalue.Fields(t) {
-		node := s.walk(field.Type)
+		node := s.walkAdmitted(field.Type, collections)
 		// A value constraint on a directly-owned field narrows it in place; the
 		// declared constraint and the generated Go check read the same statement.
 		if node.Ref == "" {

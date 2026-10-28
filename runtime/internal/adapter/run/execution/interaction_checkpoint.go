@@ -103,7 +103,7 @@ type interactionCheckpointState struct {
 	callsByProcess      map[agent.ProcessID]map[string]int
 	contextByProcess    map[agent.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
-	pendingSteers       map[agent.SignalID]pendingInteractionSteer
+	pendingSteers       map[agent.SignalID]runs.PreparedSteer
 	pendingContinuation *pendingInteractionContinuation
 }
 
@@ -152,7 +152,7 @@ func encodeInteractionCheckpointPayload(
 	usageByProcess map[agent.ProcessID]map[string]accounting.ModelUsage,
 	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
-	pendingSteers map[agent.SignalID]pendingInteractionSteer,
+	pendingSteers map[agent.SignalID]runs.PreparedSteer,
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
@@ -258,7 +258,7 @@ func encodeInteractionModelContexts(
 }
 
 func encodeInteractionPendingSteers(
-	pending map[agent.SignalID]pendingInteractionSteer,
+	pending map[agent.SignalID]runs.PreparedSteer,
 ) ([]interactionPendingSteerWire, error) {
 	values := make([]interactionPendingSteerWire, 0, len(pending))
 	for signalID, steer := range pending {
@@ -276,19 +276,19 @@ func encodeInteractionPendingSteers(
 
 func encodeInteractionPendingSteer(
 	signalID agent.SignalID,
-	steer pendingInteractionSteer,
+	steer runs.PreparedSteer,
 ) (interactionPendingSteerWire, error) {
-	if err := identity.ValidateItem(steer.itemID); err != nil {
+	if err := identity.ValidateItem(steer.ItemID); err != nil {
 		return interactionPendingSteerWire{}, err
 	}
 	if !signalID.Valid() {
 		return interactionPendingSteerWire{}, errors.New("pending steer has an invalid Signal identity")
 	}
-	if len(steer.content) == 0 {
+	if len(steer.Input) == 0 {
 		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s has no product content", signalID)
 	}
-	content := make([]interactionContentBlockWire, len(steer.content))
-	for index, block := range steer.content {
+	content := make([]interactionContentBlockWire, len(steer.Input))
+	for index, block := range steer.Input {
 		value, err := encodeInteractionContentBlock(block)
 		if err != nil {
 			return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s content %d: %w", signalID, index, err)
@@ -296,19 +296,19 @@ func encodeInteractionPendingSteer(
 		content[index] = value
 	}
 	wire := interactionPendingSteerWire{
-		SignalID: signalID.String(), ItemID: steer.itemID, Content: content,
+		SignalID: signalID.String(), ItemID: steer.ItemID, Content: content,
 	}
-	if steer.acceptance != nil {
-		if err := steer.acceptance.Validate(); err != nil {
+	if steer.Acceptance != nil {
+		if err := steer.Acceptance.Validate(); err != nil {
 			return interactionPendingSteerWire{}, err
 		}
-		expected := steer.acceptance.Clone()
-		expected.Operation, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, steer.itemID, steer.content
-		expectedSignal, err := steerSignalID(steer.itemID)
-		if err != nil || !expected.Equal(*steer.acceptance) || signalID != expectedSignal {
+		expected := steer.Acceptance.Clone()
+		expected.Operation, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, steer.ItemID, steer.Input
+		expectedSignal, err := steerSignalID(steer.ItemID)
+		if err != nil || !expected.Equal(*steer.Acceptance) || signalID != expectedSignal {
 			return interactionPendingSteerWire{}, errors.New("pending steer command does not name its attributed input")
 		}
-		wire.Command = &interactionSteerCommandWire{Key: steer.acceptance.Key, Fingerprint: steer.acceptance.Fingerprint, SessionID: steer.acceptance.SessionID, RunID: steer.acceptance.RunID, SegmentID: steer.acceptance.SegmentID}
+		wire.Command = &interactionSteerCommandWire{Key: steer.Acceptance.Key, Fingerprint: steer.Acceptance.Fingerprint, SessionID: steer.Acceptance.SessionID, RunID: steer.Acceptance.RunID, SegmentID: steer.Acceptance.SegmentID}
 	}
 	return wire, nil
 }
@@ -586,8 +586,8 @@ func decodeInteractionModelContexts(
 
 func decodeInteractionPendingSteers(
 	values []interactionPendingSteerWire,
-) (map[agent.SignalID]pendingInteractionSteer, error) {
-	pending := make(map[agent.SignalID]pendingInteractionSteer, len(values))
+) (map[agent.SignalID]runs.PreparedSteer, error) {
+	pending := make(map[agent.SignalID]runs.PreparedSteer, len(values))
 	previous := ""
 	for _, value := range values {
 		signalID, steer, err := value.decode(previous)
@@ -602,36 +602,36 @@ func decodeInteractionPendingSteers(
 
 func (w interactionPendingSteerWire) decode(
 	previousSignalID string,
-) (agent.SignalID, pendingInteractionSteer, error) {
+) (agent.SignalID, runs.PreparedSteer, error) {
 	var zeroSignalID agent.SignalID
 	if err := identity.ValidateItem(w.ItemID); err != nil {
-		return zeroSignalID, pendingInteractionSteer{}, err
+		return zeroSignalID, runs.PreparedSteer{}, err
 	}
 	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
-		return zeroSignalID, pendingInteractionSteer{}, errors.New("not in canonical order")
+		return zeroSignalID, runs.PreparedSteer{}, errors.New("not in canonical order")
 	}
 	signalID, err := agent.ParseSignalID(w.SignalID)
 	if err != nil {
-		return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf("pending steer identity: %w", err)
+		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer identity: %w", err)
 	}
 	content := make([]transcript.ContentBlock, len(w.Content))
 	for index, block := range w.Content {
 		content[index], err = block.decode()
 		if err != nil {
-			return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf(
+			return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf(
 				"pending steer %s content %d: %w", signalID, index, err,
 			)
 		}
 	}
-	pending := pendingInteractionSteer{itemID: w.ItemID, content: content}
+	pending := runs.PreparedSteer{ItemID: w.ItemID, Input: content}
 	if w.Command != nil {
 		expectedSignal, err := steerSignalID(w.ItemID)
 		if err != nil || signalID != expectedSignal {
-			return zeroSignalID, pendingInteractionSteer{}, errors.New("pending steer command does not name its Signal")
+			return zeroSignalID, runs.PreparedSteer{}, errors.New("pending steer command does not name its Signal")
 		}
-		pending.acceptance = &runs.CommandAcceptance{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint, Operation: runs.CommandSteerInput, SessionID: w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID, UserItemID: w.ItemID, SteerInput: transcript.CloneContent(content)}
-		if err := pending.acceptance.Validate(); err != nil {
-			return zeroSignalID, pendingInteractionSteer{}, err
+		pending.Acceptance = &runs.CommandAcceptance{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint, Operation: runs.CommandSteerInput, SessionID: w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID, UserItemID: w.ItemID, SteerInput: transcript.CloneContent(content)}
+		if err := pending.Acceptance.Validate(); err != nil {
+			return zeroSignalID, runs.PreparedSteer{}, err
 		}
 	}
 	return signalID, pending, nil

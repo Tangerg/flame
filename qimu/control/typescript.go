@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/qimu"
+	"github.com/Tangerg/flame/qimu/contractgen"
+	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
 
 //go:generate go run ../cmd/controlgen -out ../sdk/src/protocol.generated.ts
@@ -36,6 +38,9 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 	types := make(map[string]reflect.Type)
 	var collect func(reflect.Type) error
 	collect = func(t reflect.Type) error {
+		if t.Name() != "" && (t.Kind() == reflect.Slice || t.Kind() == reflect.Array || t.Kind() == reflect.Map) {
+			return fmt.Errorf("control: unsupported named collection %s", t)
+		}
 		if t.Kind() == reflect.Pointer || t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
 			return collect(t.Elem())
 		}
@@ -50,8 +55,8 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 		}
 		types[t.Name()] = t
 		if t.Kind() == reflect.Struct {
-			for i := range t.NumField() {
-				if err := collect(t.Field(i).Type); err != nil {
+			for _, field := range jsonvalue.Fields(t) {
+				if err := collect(field.Type); err != nil {
 					return err
 				}
 			}
@@ -59,6 +64,9 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 		return nil
 	}
 	for _, root := range roots {
+		if err := jsonvalue.ValidateType(root); err != nil {
+			return fmt.Errorf("control: invalid wire type: %w", err)
+		}
 		if err := collect(root); err != nil {
 			return err
 		}
@@ -124,21 +132,16 @@ func writeTypeScript(out io.Writer, includeProtocol bool, roots ...reflect.Type)
 			continue
 		}
 		fmt.Fprintf(&result, "export interface %s {\n", name)
-		for i := range t.NumField() {
-			field := t.Field(i)
-			tag := strings.Split(field.Tag.Get("json"), ",")
-			if tag[0] == "" || tag[0] == "-" {
-				return fmt.Errorf("control: missing wire field name for %s.%s", name, field.Name)
-			}
+		for _, field := range jsonvalue.Fields(t) {
 			value, err := render(field.Type)
 			if err != nil {
 				return err
 			}
 			optional := ""
-			if slices.Contains(tag, "omitempty") {
+			if field.Optional {
 				optional = "?"
 			}
-			fmt.Fprintf(&result, "  readonly %s%s: %s;\n", tag[0], optional, value)
+			fmt.Fprintf(&result, "  readonly %s%s: %s;\n", contractgen.PropertyKey(field.Name), optional, value)
 		}
 		result.WriteString("}\n\n")
 	}
