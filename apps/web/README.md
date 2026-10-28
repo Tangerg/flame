@@ -41,6 +41,15 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+The empty conversation owns keeping its focused control inside its scroll
+viewport when the window, text or surrounding content reflows. Its existing
+spacing token supplies focus clearance. Native keyboard return reveals that
+control; an active pointer press stays in place. Deliberate scrolling or later
+outside focus retires automatic reveal. The hook neither focuses another node
+nor changes the draft or selection, and retires when the transcript starts or
+the view becomes hidden. Transcript reading and shared Panel focus retain their
+separate owners.
+
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content
