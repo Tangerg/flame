@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `9b8a297bb`, which publishes named captured-image failure feedback. Contextual original-history reading and the complete-reader height bound are published as `20bc1b30d`, named source readers as `65043ca10`, and Computer editing/return as `3cc13e9a8`. Embedded media now keeps its captured URI with its preview and focused controls; blank URI text readers retain a meaningful name. Native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `5c6d10496`, which preserves captured media origins and named source reading. Native captured-audio playback, error isolation, original evidence, keyboard return and draft continuity are now qualified without changing the production player. The new fixture extends that repeatable native scene. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -46,8 +46,8 @@ evidence and refresh action together; complete CodeBlocks fit beneath the existi
 sticky clearances at large zoom, published as `20bc1b30d`. Captured-image preview
 failures retain their identity, original bytes and recorded status, published as
 `9b8a297bb`. Embedded-resource reading now retains its URI beside captured media
-and keeps fitting origin/control groups together. The publication fetch finds no
-incoming commits.
+and keeps fitting origin/control groups together, published as `5c6d10496`.
+Native playback and return now have their own qualification below.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -7244,9 +7244,75 @@ The private root `flame-computer-resource-yhyTan` is absent. The round-tripped
 in-memory gzip retains **41** flat UTF-8 records (**6,770,899** uncompressed bytes),
 SHA-256 `2e5cc6625cbcde6024491f2806a3f9fb7c37bceaebe004d09ac34c58fa7f687b`.
 
-Native audio playback/error behavior and remaining Dock/material tasks remain
-review candidates. Choose any follow-up from fresh source and native evidence,
-preserving the completed origin, source, image and history contracts.
+### Native captured-audio playback and return
+
+At `5c6d10496`, the original `audio controls preload="none"` path had not yet
+been exercised through actual decoding. Fresh Wails evidence establishes that
+WebKit already shows an accessible **Error**, retains the active player and leaves
+adjacent media independent. Refresh keeps the same media nodes and decoder state.
+No production defect is established on this path; the production component,
+translations, Runtime semantics and shared UI remain unchanged.
+
+The Computer fixture now offers `media=unreadable-audio`: one captured WAV
+resource with canonical base64 containing invalid audio and its retained URI,
+followed by the existing valid silent PCM WAV. The result is read without opening
+a control lease. This is an explicit graphical fixture outside the shipped router,
+using the normally published component and isolated Runtime SDK transport.
+
+Read-only ZCode `packages/ui/src/components/ai-elements/audio-player.tsx` delegates
+playback to its media element and composes its controls; that source is not evidence
+for Flame's native failure behavior. Actual WebKit supplies that evidence here.
+Better-series accessibility, layout, typography, writing, color and UI principles
+support preserving the existing named media, captured origin, native controls and
+return path. No additional player framework or competing decoder state is needed.
+
+Verification and boundaries:
+
+- The existing **49 Computer tests** pass, as do Web type/lint/format, exact
+  component-resource reproduction, production module links and CSS variables.
+  `make check-native` passes Desktop test/vet/build and the supported Wails
+  production build. Full frontend and unrelated backend/Runtime suites are not
+  rerun for this fixture-only addition; their earlier scoped receipts remain above.
+  No new test is presented as a failing production regression.
+- English/light/14/explicit Orange actual Wails starts both players with
+  `preload=none`, ready state **0** and no error. Clicking the invalid audio's
+  native Play shows **Error** and media error code **4** while retaining that
+  player. The neighboring **76-byte**, PCM16, 8 kHz silent WAV independently
+  reaches ready state **4**, duration/current time **0.002 s** and no error.
+  These are controlled media facts, not a playback-quality or performance claim.
+- Refresh retains both exact media nodes, the recorded outcome status and the
+  unsubmitted lease draft **960**. The full original result selects exactly
+  **344 characters**. Reverse Tab/Enter closes the raw source and record, returning
+  to its disclosure trigger; the existing draft then continues to **961**.
+- Chinese/dark/18/custom blue passes the same task at **1125 × 734** native size
+  and **200%** page zoom (**562 × 367**, DPR 4). The URI/player focus unit occupies
+  **(24, 88.5, 514.5, 95)** and the player **(24, 152.5, 250, 31)**, fully below
+  the retained record actions. Exact source selection, independent decoding,
+  refresh and keyboard return pass. Actual Size is restored before exit. Native
+  control wording follows this macOS WebKit installation, including **Error**.
+- A fresh English/light/14/Orange production control without the passive observer
+  reproduces error, neighboring playback, refresh, exact **344-character** native
+  selection, keyboard return and **960 → 961** drafting. Its **614** assets match
+  the observed scene except the two HTML observer entries. It produces **zero**
+  observer events or requests. CUA supplies all input; the observer only reads.
+  No live Flame Computer engine, Runtime admission, authorization, OS grant, native
+  clipboard write, VoiceOver, OS IME or forced-colors scene is qualified. No browser
+  or performance suite, Claude CLI or subagent is used.
+
+Cleanup retires all **three** private app instances, unregisters the bundle and
+closes the listener. It removes **seven** new output/cache roots and **three**
+private profile/temp paths, restores **four** original files/modes, and restores
+all **18** output-presence and **five** profile baselines. All **6,264** frozen
+non-Markdown inputs retain their qualified state; only the fixture differs from
+base. All **32** installed resources remain byte-identical. The read-only reference
+retains its hash. The private root `flame-computer-audio-DOwYhH` is absent. The
+round-tripped in-memory gzip contains **36** flat UTF-8 records (**3,818,162**
+uncompressed bytes), SHA-256
+`35286b2488afbe851c53100531319329553af98ceb7d2896a7d7fbadfc35be91`.
+
+Continue with a fresh Dock/material task, including resource-link identity and
+interaction if source evidence warrants it. Do not repeat these resolved media,
+source, origin or history tasks without new evidence.
 
 ## Approval argument review and submission
 

@@ -58,6 +58,30 @@ export async function createComputerConsoleFixture(locale: string) {
         }),
       });
     }
+  } else if (media === "unreadable-audio") {
+    records.set("recorded-unreadable-audio", {
+      id: "recorded-unreadable-audio",
+      kind: "tool",
+      method: "computer_js",
+      admittedAt: "2026-10-29T00:00:00.000Z",
+      dispatched: true,
+      settled: true,
+      inputJSON: '{"code":"recorded audio"}',
+      invocationJSON: '{"origin":"model"}',
+      outcomeJSON: JSON.stringify({
+        content: [
+          {
+            type: "resource",
+            resource: {
+              uri: "memory://captures/2026-10-29/review/unreadable-audio-with-retained-source-identity.wav",
+              mimeType: "audio/wav",
+              blob: "aW52YWxpZCBXQVY=",
+            },
+          },
+          { type: "audio", mimeType: "audio/wav", data: capturedAudio },
+        ],
+      }),
+    });
   } else if (media === "resources") {
     records.set("recorded-resources", {
       id: "recorded-resources",
