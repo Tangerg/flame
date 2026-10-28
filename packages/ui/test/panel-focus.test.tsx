@@ -6,10 +6,16 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { FormActions, FormGroup, Panel } from "../dist/index.js";
+import {
+  ContentVisibility,
+  FormActions,
+  FormGroup,
+  Panel,
+} from "../dist/index.js";
 
 let rectangles: Map<Element, DOMRect>;
 let revealed: Element[];
+let observations: { callback: ResizeObserverCallback; nodes: Set<Element> }[];
 const nativeScroll = Object.getOwnPropertyDescriptor(
   HTMLElement.prototype,
   "scrollIntoView",
@@ -18,6 +24,25 @@ const nativeScroll = Object.getOwnPropertyDescriptor(
 beforeEach(() => {
   rectangles = new Map();
   revealed = [];
+  observations = [];
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      readonly nodes = new Set<Element>();
+      constructor(readonly callback: ResizeObserverCallback) {
+        observations.push(this);
+      }
+      observe(node: Element) {
+        this.nodes.add(node);
+      }
+      unobserve(node: Element) {
+        this.nodes.delete(node);
+      }
+      disconnect() {
+        this.nodes.clear();
+      }
+    },
+  );
   vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
     600,
   );
@@ -36,6 +61,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   if (nativeScroll)
     Object.defineProperty(
@@ -69,16 +95,19 @@ function scene(
         {input}
       </div>
     );
-  const view = render(
-    <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
-      <Panel
-        label="Appearance"
-        controls={sticky ? <button>Refresh</button> : undefined}
-      >
-        {content}
-      </Panel>
-    </div>,
+  const frame = (visible: boolean) => (
+    <ContentVisibility visible={visible}>
+      <div data-testid="viewport" style={{ overflowY: "auto", height: 300 }}>
+        <Panel
+          label="Appearance"
+          controls={sticky ? <button>Refresh</button> : undefined}
+        >
+          {content}
+        </Panel>
+      </div>
+    </ContentVisibility>
   );
+  const view = render(frame(true));
   const unit =
     kind === "group" ? screen.getByRole("group") : screen.getByTestId("unit");
   const field = screen.getByRole(kind === "trigger" ? "button" : "textbox", {
@@ -93,7 +122,25 @@ function scene(
     )!;
     rectangles.set(controls, new DOMRect(0, 200, 800, 50));
   }
-  return { unit, field };
+  return {
+    unit,
+    field,
+    viewport: screen.getByTestId("viewport"),
+    hide: () => view.rerender(frame(false)),
+    unmount: view.unmount,
+  };
+}
+
+function resize(node: Element) {
+  act(() => {
+    for (const observation of observations) {
+      if (observation.nodes.has(node))
+        observation.callback(
+          [{ target: node } as ResizeObserverEntry],
+          {} as ResizeObserver,
+        );
+    }
+  });
 }
 
 it.each(["unit", "label", "group"] as const)(
@@ -207,6 +254,175 @@ it("does not let an old press suppress keyboard return after focus leaves the bo
   act(() => field.focus());
   outside.remove();
   expect(revealed).toEqual([unit]);
+});
+
+it("keeps a visible field, draft and selection through host viewport reflow", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  const input = field as HTMLInputElement;
+  input.value = "Continue the unfinished setup";
+  input.setSelectionRange(3, 9, "backward");
+  act(() => input.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+  expect(document.activeElement).toBe(field);
+  expect(input.value).toBe("Continue the unfinished setup");
+  expect([
+    input.selectionStart,
+    input.selectionEnd,
+    input.selectionDirection,
+  ]).toEqual([3, 9, "backward"]);
+});
+
+it("keeps a fitting label and field below a moved viewport edge", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 250, 800, 250));
+  resize(viewport);
+  expect(revealed).toEqual([unit]);
+});
+
+it("does not move focus that still fits after a viewport resize", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 250));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(field);
+});
+
+it("keeps its reading witness through a zero-displacement reflow notification", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  rectangles.set(unit, new DOMRect(0, 340, 300, 400));
+  rectangles.set(field, new DOMRect(0, 380, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 150));
+  fireEvent.scroll(viewport);
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+});
+
+it("keeps focus through scroll anchoring before the resized frame is observed", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  viewport.scrollTop = 80;
+  rectangles.set(unit, new DOMRect(0, 340, 300, 400));
+  rectangles.set(field, new DOMRect(0, 380, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 150));
+  fireEvent.scroll(viewport);
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+});
+
+it("responds to native window reflow before an element observer notifies", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  fireEvent(window, new Event("resize"));
+  expect(revealed).toEqual([field]);
+});
+
+it("does not pull a reader back after a deliberate wheel gesture", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  fireEvent.wheel(viewport, { deltaY: 200 });
+  rectangles.set(unit, new DOMRect(0, 430, 300, 100));
+  rectangles.set(field, new DOMRect(0, 440, 200, 32));
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 200));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(field);
+});
+
+it("retires focus follow when a moved scrollbar leaves the field behind", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  viewport.scrollTop = 150;
+  rectangles.set(unit, new DOMRect(0, 530, 300, 100));
+  rectangles.set(field, new DOMRect(0, 540, 200, 32));
+  fireEvent.scroll(viewport);
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 200));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+});
+
+it("preserves a later outside focus during host reflow", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  const outside = document.createElement("button");
+  document.body.append(outside);
+  act(() => outside.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(outside);
+  outside.remove();
+});
+
+it("does not reveal a retained inactive owner when its controls resize", () => {
+  const { unit, field, hide } = scene("unit", true);
+  rectangles.set(unit, new DOMRect(0, 270, 300, 100));
+  rectangles.set(field, new DOMRect(0, 280, 200, 32));
+  act(() => field.focus());
+  hide();
+  const controls = document.querySelector('[data-slot="panel-controls"]')!;
+  rectangles.set(controls, new DOMRect(0, 200, 800, 150));
+  resize(controls);
+  expect(revealed).toEqual([]);
+});
+
+it("defers reflow movement while the focused control's press is unfinished", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  fireEvent.pointerDown(field);
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  fireEvent.pointerUp(field);
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+});
+
+it("retires a cancelled pointer press before subsequent reflow", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  fireEvent.pointerDown(field);
+  act(() => field.focus());
+  fireEvent.pointerCancel(field);
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  resize(viewport);
+  expect(revealed).toEqual([field]);
+});
+
+it("keeps the visible beginning of an oversized field still through reflow", () => {
+  const { unit, field, viewport } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 500));
+  rectangles.set(field, new DOMRect(0, 240, 200, 420));
+  act(() => field.focus());
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 200));
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  expect(document.activeElement).toBe(field);
+});
+
+it("retires its viewport observation when the panel unmounts", () => {
+  const { unit, field, viewport, unmount } = scene();
+  rectangles.set(unit, new DOMRect(0, 220, 300, 100));
+  act(() => field.focus());
+  unmount();
+  rectangles.set(viewport, new DOMRect(0, 200, 400, 40));
+  resize(viewport);
+  expect(revealed).toEqual([]);
 });
 
 function actionScene() {

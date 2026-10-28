@@ -80,19 +80,26 @@ Its explicit `header` slot holds introductory content, `controls` holds the one
 sticky action and filter zone, and children hold the scrolling content. The host
 keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
-`Panel` measures only its own controls,
-projects their height on its root, and uses it to keep focused content and anchors
+`Panel` projects only its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
 Body focus also respects the host's clipped viewport. A wrapping native label
 or a container marked `data-focus-unit` keeps its label and focused control
 together when the complete unit fits below the sticky controls and disclosure
 header. `FormGroup` and the application's `SettingRow` declare this boundary at
 their existing roots. The nearest unit wins; taller units still reveal the
-focused control's beginning after native autofocus or a control-zone resize.
+focused control's beginning after native autofocus or reflow. The panel observes
+its content, controls and clipped host ancestors, including hosts without a
+control zone. Native window resize also rechecks the current reading frame.
+The existing active field stays visible through layout and page-zoom changes
+without refocusing it or changing its value or text selection. A wheel gesture
+or a moved scrollbar that leaves the field behind retires that follow; reflow
+notifications without scroll displacement do not. Later outside focus, inactive
+retained content and unmount also retire the reading witness.
 Pointer-caused focus leaves the pressed control in place so activation can
-finish before any row reveal. The body consumes the pressed target once,
+finish before any row reveal, including reflow during the press.
+The body retains the pressed target until pointerup or cancellation,
 including wrapping labels and slider focus proxies; unrelated autofocus still
-reveals its own unit. Leaving the body clears an unconsumed press.
+reveals its own unit. Leaving the body clears the press.
 `FormActions.feedback` keeps asynchronous results in the same focus unit as its
 actions. A changed result reuses the Panel reveal rule only while focus remains
 inside that group; later outside focus is left alone. Oversized feedback retains

@@ -22,11 +22,13 @@ is on `codex/ui-feedback-local-1026`. Targeted Diff reads and accepted compariso
 context are published to main as `f9241b46b`, with receipt `8a16a1824`. Paired
 Diff reading is published as `3a5cdba36`, and Settings task continuity as
 `d3f7ff83e`. Schedules receipt navigation and command focus are published as
-`5be573459`. The current color-editing batch has completed module/native
-qualification and cleanup under **Custom color editing and native keyboard entry**
-below. Next trace retained field visibility through native zoom against actual
-production bootstrap and scrolling owners; the private fixture finding is not yet
-a qualified production defect. Preserve the separate exact-Run and Skills object
+`5be573459`. Paired custom-color editing and native keyboard color entry are
+published as `9014e9689`. Shared Panel viewport reflow now passes the complete
+production-entry qualification and cleanup under **Settings focus and pointer
+activation** below. Next inspect unavailable-Runtime startup: the isolated
+production entry continues showing a loading work index while Connection reports
+the private origin unavailable. Trace the existing connection/query owners before
+changing that presentation. Preserve the separate exact-Run and Skills object
 contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -1969,13 +1971,13 @@ dependency or public API change.
 
 Native pointer QA rejected the first candidate: revealing a row during pointer
 focus moved the font trigger between pointerdown and pointerup, swallowing its
-first click. Panel now retains only the pending pressed Element and consumes it
-on the next focus event. A press on that control, its child, wrapping native label
-or existing slider focus proxy leaves activation at the pressed position.
-Unrelated programmatic autofocus still reveals its own field; leaving the body
-clears an unconsumed press. Keyboard/programmatic reveal and geometry changes
-retain the existing shared path. No global modality owner, timer, retry, pointer
-capture or prevented native event is added.
+first click. Panel retains only the pending pressed Element until pointerup or
+cancellation. A press on that control, its child, wrapping native label or existing
+slider focus proxy leaves activation at the pressed position, including reflow
+during the press. Unrelated programmatic autofocus still reveals its own field;
+leaving the body clears the press. Keyboard/programmatic reveal and geometry
+changes retain the same shared path. No global modality owner, timer, retry,
+pointer capture or prevented native event is added.
 
 This follows better-accessibility's visible-focus/200% guidance and
 better-layout's complete reading groups, retaining the existing component and
@@ -2098,6 +2100,109 @@ decoding. Primary parallel work, user data, installed dependencies, global cache
 and read-only references remain untouched. This documentation receipt changes no
 accepted product input; publication is followed by fresh remote, cleanliness and
 preservation checks.
+
+**Production viewport reflow qualification (2026-10-28)**
+
+This follow-up starts from published `9014e9689` and confirms the color batch's
+remaining focus finding against the complete production Web entry and actual
+Wails bootstrap. The registered Settings page uses Panel without a controls
+slot. Panel previously observed only its own controls, so the production owner
+had no geometry notification when the viewport changed around an already focused
+field. Adding a local Appearance scroll effect would leave the shared cause.
+
+Panel now observes its content, controls and clipped host ancestors; native window
+resize also rechecks its reading frame. The original focused Element is the
+reading witness. Reflow reveals its nearest fitting label/unit, or the control's
+beginning when the unit is too tall, through the existing scroll path. No focus,
+input, selection, draft or preference transition is synthesized. Native fractional
+scroll edges use a half-CSS-pixel tolerance. An oversized field whose beginning
+is visible stays still.
+
+A wheel gesture retires follow. A moved scrollbar that leaves the field behind
+does too; a zero-displacement notification or changed frame can instead precede
+native reflow and keeps the witness. Later outside focus, inactive retained
+content and unmount retire it. The original controls-height projection remains
+independent of retained visibility. Pointerup/cancellation retires the pending
+press, and reflow cannot move the pressed control before activation finishes.
+Existing feedback and Disclosure callers retain the same Panel context contract;
+the transcript reading owner is unchanged.
+
+| Severity | Location                                                                     | Before                                                                                                 | After                                                                                                       | Why                                                                                                 |
+| -------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| MEDIUM   | packages/ui/src/panel.tsx:309; features/settings/public/SettingsPage.tsx:138 | Native 200% can leave the current setting outside its clipped viewport until the next focus transition | The existing active field stays visible through reflow; deliberate reading and later focus remain respected | Preserve the keyboard editing task and complete label/control context during text/viewport resizing |
+
+The better-accessibility visible-focus/200% task and better-layout reading-group
+guidance apply to this same owner. Typography is exercised at actual 14/18px;
+English/Chinese labels, quiet filled controls, Orange/Purple, light/dark and the
+existing Cotton5 material retain their owners. There is no new copy, palette,
+radius, motion, wrapper, dependency, timer, prevented native event or business
+state. This is a bounded interaction repair, not whole-product WCAG or award-level
+acceptance. The repeatedly changed Panel path now has direct reflow/lifetime
+coverage; revisit shared-reader extraction only if another proven consumer needs
+the same follow contract. Do not migrate the independently owned transcript reader
+for superficial similarity.
+
+The initial reflow baseline exposes **5 failures / 23 passes**. A later native
+window-event regression fails alone on the interim candidate before its listener
+is added. An inconsistent mock unit/child rectangle is corrected before that
+additional baseline and is not counted as a product failure. Final focused
+verification passes **32 tests**. Coverage includes host/window resizing,
+scroll-anchoring order, zero-displacement scroll, manual wheel/scrollbar intent,
+fitting/tall units, later focus, hidden owners, pointerup/cancellation, unmount,
+unchanged drafts/selections and the existing form-feedback paths.
+
+All serial module gates pass: shared UI **10 files / 185 tests** and its independent
+packed consumer; Component SDK **5 tests**; Plugins **28 Node tests** and **4 files /
+43 component tests**; full Web **428 files / 4,054 tests** and every subsequent
+owner, style, token, locale, resource and production-bundle gate. Supported
+`make check-native` passes Desktop test/vet/build, Web staging and Wails production
+build. The existing duplicate `-lobjc` warning is non-fatal. All **15** tracked
+installed/sample component entries retain their accepted hashes.
+
+Native qualification uses three stopped generations of one independent bundle,
+one private home and one private loopback origin that returns unavailable without
+forwarding any Runtime request. The old-Panel control is compiled from the
+published source, substituted only in its private build. Both measured builds
+use the actual production entry, not visual fixtures; observation is passive.
+CUA supplies all interaction.
+
+- Old production Panel, Chinese14/light/Orange: Interface size retains focus at
+  **y=879.296875** after a minimum-window resize and twenty native Zoom In actions,
+  outside the **173.796875..362.5** Settings viewport; its scrollTop remains **0**.
+- Fixed production Panel, the same path at **560 × 364 / DPR4 / 200%**: the same
+  field stays focused at **y=243.796875**, with the existing tabpanel at **636**.
+  BODY/HTML remain at **0**. An intentional wheel to the beginning followed by
+  another zoom leaves that reading position at **0** and does not pull back.
+- The actual Connection URL field retains its unsubmitted local draft and native
+  **23..33** selection, `unfinished`, through 200%. Category return preserves
+  that draft; typing continues to `-continued`. No Apply executes. Moving later
+  to Settings search and zooming leaves focus there and retains the original draft.
+- English18/dark/Purple/Cotton5: Code size stays focused at **y=250.296875**, with
+  the Settings viewport at **897**. Enter opens its native combo/list. Scrolling
+  its trigger fully out dismisses the list, keeps **Follow UI**, and returns focus
+  to the Settings tabpanel at **1459**, with BODY/HTML still **0**.
+- The observation-free production build repeats first pointer opening, Escape
+  return, minimum-window/200% visible Code size, Enter/Escape and Tab onward to
+  unchanged Font smoothing. All **496 non-HTML files** match across the **497-file**
+  observed/clean builds; only `index.html` differs. The clean run emits **zero**
+  observer records. It does not supply independent DOM geometry measurements.
+
+VoiceOver speech, OS IME, fresh 320px/RTL/forced-colors GUI, arbitrary native zoom
+levels, live Runtime/Run/provider work and a separate minimum-macOS machine remain
+unqualified. No browser visual suite or performance benchmark runs. Scoped result:
+**Approve** for the exercised reflow, focus, reading-intent and draft contracts.
+
+Cleanup unregisters the bundle, retires all three generations and closes the
+passive server. It removes **9** newly created output/cache roots and **3** owned
+Library/temp paths; restores all **4** original files and modes; and preserves all
+**14** output-presence and **5** Library baselines. All **5,920** frozen non-Markdown
+inputs match, including **5,918** outside the two owned source changes. The exact
+root `flame-panel-reflow-1028-7wcTgx` is absent after identity/source guards. Its
+in-memory gzip round-trips before and after deletion and retains **41** flat UTF-8
+records, **64** passive observations, three generation receipts and source,
+resource, asset and native hash maps; **1,019,550 bytes**, SHA-256
+`31b2ef9cafefcde443a5e8a67bfb5ad6a91a0990425cfc87067dc1dd1c18496f`.
+The primary checkout, user data, references and unrelated processes remain intact.
 
 ### Paper texture and reading surfaces
 
@@ -17303,13 +17408,13 @@ uses the existing read-only visual fixture. Live provider/Run execution, VoiceOv
 speech, OS IME, forced colors/RTL and a separate minimum-macOS machine are not
 qualified. No browser visual suite or performance benchmark is run.
 
-One separate native reading candidate remains: after zoom alone, the previously
-focused field can retain DOM focus below the viewport until the next Tab
-transition. The latter reveals the target and completes this color task. Trace
-production bootstrap, viewport observation and the actual scroll owner before
-changing a shared reader or native chrome; do not call that gap repaired here.
-Also inspect preset identity for valid uppercase accent values before normalizing
-stored choices: the current comparison still uses raw hex casing.
+This color batch separately observes an already focused field below the viewport
+after zoom alone; the next Tab reveals it. The later production-entry follow-up
+under **Settings focus and pointer activation** confirms the shared Panel cause
+and qualifies its repair. That later receipt supplies the new coverage; this
+color task retains its original verification boundary. Preset identity for valid
+uppercase accent values still needs inspection before normalizing stored choices:
+the current comparison uses raw hex casing.
 
 Cleanup unregisters the bundle, retires all six process generations and closes the
 passive local observer. It removes **8** newly created output/cache roots and **4**

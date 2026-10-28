@@ -13,6 +13,7 @@ import {
 } from "react";
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
+import { useContentVisible } from "./content-visibility";
 import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
@@ -255,6 +256,25 @@ type PanelDensity = "compact" | "page";
 
 const PanelHostContext = createContext<PanelDensity | null>(null);
 
+interface PanelFocusFrame {
+  top: number;
+  bottom: number;
+  width: number;
+  contentHeight: number;
+  unit: Element;
+}
+
+function withinPanelFrame(bounds: DOMRect, frame: PanelFocusFrame) {
+  // Native page zoom reports fractional CSS pixels at a rounded scroll offset.
+  return (
+    frame.bottom > frame.top &&
+    bounds.top >= frame.top - 0.5 &&
+    (bounds.height > frame.bottom - frame.top
+      ? bounds.top < frame.bottom
+      : bounds.bottom <= frame.bottom + 0.5)
+  );
+}
+
 export function PanelHost({
   density = "compact",
   children,
@@ -285,55 +305,90 @@ export function Panel({
   const controlsRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const pressedTarget = useRef<Element | null>(null);
+  const readingFocus = useRef<{
+    target: Element;
+    frame: PanelFocusFrame;
+  } | null>(null);
+  const visible = useContentVisible();
   const hasControls = Boolean(controls);
-  const keepBodyFocusVisible = useCallback((target: Element | null) => {
-    const panel = panelRef.current;
-    const controls = controlsRef.current;
-    const body = bodyRef.current;
-    if (!panel || !target || !body?.contains(target)) return;
-    let visibleTop = 0;
-    let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
-    for (
-      let parent = panel.parentElement;
-      parent;
-      parent = parent.parentElement
-    ) {
-      if (getComputedStyle(parent).overflowY !== "visible") {
-        visibleTop = Math.max(visibleTop, parent.getBoundingClientRect().top);
-        visibleBottom = Math.min(
-          visibleBottom,
-          parent.getBoundingClientRect().bottom,
-        );
-      }
-    }
-    const stickyHeaderHeight =
-      Number.parseFloat(
-        getComputedStyle(target).getPropertyValue("--disclosure-header-height"),
-      ) || 0;
-    const focusTop =
-      Math.max(
-        visibleTop,
-        controls?.getBoundingClientRect().bottom ?? visibleTop,
-      ) + stickyHeaderHeight;
-    let focusUnit = target;
-    const readingUnit = target.closest("label, [data-focus-unit]");
-    if (readingUnit && body.contains(readingUnit)) {
-      const scrollMargin =
-        Number.parseFloat(
-          getComputedStyle(readingUnit).scrollMarginBlockStart,
-        ) || 0;
-      if (
-        readingUnit.getBoundingClientRect().height <=
-        visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
+  const bodyFocusFrame = useCallback(
+    (target: Element | null) => {
+      const panel = panelRef.current;
+      const controls = controlsRef.current;
+      const body = bodyRef.current;
+      if (!visible || !panel || !target || !body?.contains(target)) return null;
+      const panelBounds = panel.getBoundingClientRect();
+      let visibleWidth = panelBounds.width;
+      let visibleTop = 0;
+      let visibleBottom = panel.ownerDocument.documentElement.clientHeight;
+      for (
+        let parent = panel.parentElement;
+        parent;
+        parent = parent.parentElement
       ) {
-        focusUnit = readingUnit;
+        if (getComputedStyle(parent).overflowY !== "visible") {
+          const bounds = parent.getBoundingClientRect();
+          visibleTop = Math.max(visibleTop, bounds.top);
+          visibleBottom = Math.min(visibleBottom, bounds.bottom);
+          visibleWidth = Math.min(visibleWidth, bounds.width);
+        }
       }
-    }
-    const bounds = focusUnit.getBoundingClientRect();
-    if (bounds.top < focusTop || bounds.bottom > visibleBottom) {
-      focusUnit.scrollIntoView({ block: "start", inline: "nearest" });
-    }
-  }, []);
+      const stickyHeaderHeight =
+        Number.parseFloat(
+          getComputedStyle(target).getPropertyValue(
+            "--disclosure-header-height",
+          ),
+        ) || 0;
+      const focusTop =
+        Math.max(
+          visibleTop,
+          controls?.getBoundingClientRect().bottom ?? visibleTop,
+        ) + stickyHeaderHeight;
+      let focusUnit = target;
+      const readingUnit = target.closest("label, [data-focus-unit]");
+      if (readingUnit && body.contains(readingUnit)) {
+        const scrollMargin =
+          Number.parseFloat(
+            getComputedStyle(readingUnit).scrollMarginBlockStart,
+          ) || 0;
+        if (
+          readingUnit.getBoundingClientRect().height <=
+          visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
+        ) {
+          focusUnit = readingUnit;
+        }
+      }
+      return {
+        top: focusTop,
+        bottom: visibleBottom,
+        width: visibleWidth,
+        contentHeight: panelBounds.height,
+        unit: focusUnit,
+      };
+    },
+    [visible],
+  );
+  const keepBodyFocusVisible = useCallback(
+    (target: Element | null) => {
+      const frame = bodyFocusFrame(target);
+      if (!frame || !target) return null;
+      const pressed = pressedTarget.current;
+      const pointerFocus =
+        pressed &&
+        (target.contains(pressed) ||
+          pressed.closest("label, [data-focus-proxy]")?.contains(target));
+      // Moving a pressed control before pointerup can swallow its activation.
+      if (
+        !pointerFocus &&
+        frame.bottom > frame.top &&
+        !withinPanelFrame(frame.unit.getBoundingClientRect(), frame)
+      ) {
+        frame.unit.scrollIntoView({ block: "start", inline: "nearest" });
+      }
+      return frame;
+    },
+    [bodyFocusFrame],
+  );
   const panelLayout = useMemo(
     () => ({
       controlsRef: hasControls ? controlsRef : null,
@@ -350,8 +405,6 @@ export function Panel({
         "--panel-controls-height",
         `${controls?.getBoundingClientRect().height ?? 0}px`,
       );
-      // Controls can resize in the same commit that autofocus places a field.
-      keepBodyFocusVisible(panel.ownerDocument.activeElement);
     };
     measure();
     if (!controls) return;
@@ -361,7 +414,91 @@ export function Panel({
       observer.disconnect();
       panel.style.setProperty("--panel-controls-height", "0px");
     };
-  }, [hasControls, keepBodyFocusVisible]);
+  }, [hasControls]);
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const body = bodyRef.current;
+    if (!visible || !panel || !body) return;
+    const document = panel.ownerDocument;
+    const initial = document.activeElement;
+    const initialFrame = keepBodyFocusVisible(initial);
+    readingFocus.current =
+      initial && initialFrame ? { target: initial, frame: initialFrame } : null;
+    const scrollPositions = new Map<HTMLElement, number>();
+    for (
+      let parent = panel.parentElement;
+      parent;
+      parent = parent.parentElement
+    ) {
+      if (getComputedStyle(parent).overflowY !== "visible")
+        scrollPositions.set(parent, parent.scrollTop);
+    }
+    const reveal = () => {
+      const reading = readingFocus.current;
+      if (!reading) return;
+      if (
+        reading.target !== document.activeElement ||
+        !body.contains(reading.target)
+      ) {
+        readingFocus.current = null;
+        return;
+      }
+      const frame = keepBodyFocusVisible(reading.target);
+      if (frame) reading.frame = frame;
+    };
+    const retire = () => {
+      readingFocus.current = null;
+    };
+    const clearPress = () => {
+      pressedTarget.current = null;
+    };
+    const onScroll = (event: Event) => {
+      const viewport = event.currentTarget as HTMLElement;
+      const moved = viewport.scrollTop !== scrollPositions.get(viewport);
+      scrollPositions.set(viewport, viewport.scrollTop);
+      const reading = readingFocus.current;
+      if (!moved || !reading) return;
+      const frame = bodyFocusFrame(reading.target);
+      if (!frame) return;
+      // Reflow and scroll anchoring can notify before ResizeObserver delivery.
+      if (
+        frame.top !== reading.frame.top ||
+        frame.bottom !== reading.frame.bottom ||
+        frame.width !== reading.frame.width ||
+        frame.contentHeight !== reading.frame.contentHeight
+      )
+        return;
+      if (!withinPanelFrame(reading.target.getBoundingClientRect(), frame))
+        retire();
+    };
+    const observer = new ResizeObserver(reveal);
+    observer.observe(panel, { box: "border-box" });
+    if (controlsRef.current)
+      observer.observe(controlsRef.current, { box: "border-box" });
+    for (const viewport of scrollPositions.keys()) {
+      observer.observe(viewport, { box: "border-box" });
+      viewport.addEventListener("scroll", onScroll, { passive: true });
+    }
+    const wheelScope = scrollPositions.keys().next().value ?? panel;
+    wheelScope.addEventListener("wheel", retire, {
+      passive: true,
+      capture: true,
+    });
+    document.addEventListener("pointerup", clearPress, true);
+    document.addEventListener("pointercancel", clearPress, true);
+    document.defaultView?.addEventListener("resize", reveal);
+    return () => {
+      observer.disconnect();
+      for (const viewport of scrollPositions.keys())
+        viewport.removeEventListener("scroll", onScroll);
+      wheelScope.removeEventListener("wheel", retire, true);
+      document.removeEventListener("pointerup", clearPress, true);
+      document.removeEventListener("pointercancel", clearPress, true);
+      document.defaultView?.removeEventListener("resize", reveal);
+      retire();
+      clearPress();
+    };
+  }, [visible, hasControls, bodyFocusFrame, keepBodyFocusVisible]);
   return (
     <section
       {...props}
@@ -395,20 +532,10 @@ export function Panel({
                 event.target instanceof Element ? event.target : null;
             }}
             onFocus={(event) => {
-              const pressed = pressedTarget.current;
-              pressedTarget.current = null;
-              // Scrolling before pointerup would move the control away from the
-              // pressed position and swallow the click it is activating.
-              if (
-                pressed &&
-                (event.target.contains(pressed) ||
-                  pressed
-                    .closest("label, [data-focus-proxy]")
-                    ?.contains(event.target))
-              ) {
-                return;
-              }
-              keepBodyFocusVisible(event.target);
+              const frame = keepBodyFocusVisible(event.target);
+              readingFocus.current = frame
+                ? { target: event.target, frame }
+                : null;
             }}
             onBlurCapture={(event) => {
               const next = event.relatedTarget;
@@ -416,6 +543,7 @@ export function Panel({
                 next instanceof Node && event.currentTarget.contains(next)
               )) {
                 pressedTarget.current = null;
+                readingFocus.current = null;
               }
             }}
             {...stylex.props(styles.body)}
