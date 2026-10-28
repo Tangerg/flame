@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import {
   createTranslator,
   failureText,
@@ -20,6 +28,7 @@ import {
   PanelHeader,
   PanelSection,
   RecordBody,
+  RecordForm,
   RecordGroup,
   Select,
   TextArea,
@@ -64,20 +73,23 @@ function ExecuteForm({
   ready,
   pending,
   execute,
+  editor,
   t,
 }: {
   surface: Surface;
   ready: boolean;
   pending: boolean;
   execute(input: ExecuteInput): Promise<boolean>;
+  editor: RefObject<HTMLTextAreaElement | null>;
   t: Translate;
 }) {
   const [tool, setTool] = useState<ExecuteInput["tool"]>("js");
   const [argumentsJSON, setArgumentsJSON] = useState("{}");
   const [review, setReview] = useState<ExecuteInput>();
   const [error, setError] = useState<string>();
-  const editor = useRef<HTMLTextAreaElement>(null);
+  const errorId = useId();
   const cancel = useRef<HTMLButtonElement>(null);
+  const editorTarget = useCallback(() => editor.current, [editor]);
   useEffect(() => {
     if (review) cancel.current?.focus();
   }, [review]);
@@ -103,19 +115,19 @@ function ExecuteForm({
       });
     } catch (cause) {
       setError(failureText(cause));
+      editor.current?.focus();
     }
   }
 
   return (
     <RecordGroup>
       <Metadata>{t("execute.help")}</Metadata>
-      {error && (
-        <div role="alert">
-          <RecordBody>{error}</RecordBody>
-        </div>
-      )}
       {review ? (
-        <RecordGroup role="region" aria-label={t("execute.review")}>
+        <RecordForm
+          role="region"
+          aria-label={t("execute.review")}
+          opener={editorTarget}
+        >
           <Callout kind="warning">
             {t(
               review.tool === "js_reset"
@@ -139,7 +151,6 @@ function ExecuteForm({
               disabled={pending}
               onClick={() => {
                 setReview(undefined);
-                requestAnimationFrame(() => editor.current?.focus());
               }}
             >
               {t("execute.back")}
@@ -156,7 +167,7 @@ function ExecuteForm({
               {t("execute.confirm")}
             </Button>
           </Toolbar>
-        </RecordGroup>
+        </RecordForm>
       ) : (
         <RecordGroup>
           <Select
@@ -177,13 +188,23 @@ function ExecuteForm({
               ref={editor}
               font="mono"
               value={argumentsJSON}
-              onChange={(event) => setArgumentsJSON(event.target.value)}
+              onChange={(event) => {
+                setArgumentsJSON(event.target.value);
+                setError(undefined);
+              }}
               rows={8}
               spellCheck={false}
               maxLength={LIMITS.maxInputBytes}
-              disabled={!ready || pending}
+              readOnly={!ready || pending}
+              invalid={error !== undefined}
+              aria-describedby={error ? errorId : undefined}
             />
           </FormField>
+          {error && (
+            <div id={errorId} role="alert">
+              <RecordBody>{error}</RecordBody>
+            </div>
+          )}
           <Button disabled={!ready || pending} onClick={prepare}>
             {t("execute.review")}
           </Button>
@@ -213,6 +234,12 @@ export function Computer({ context }: { context: ComponentContext }) {
   const state = useComputer(context);
   const [lease, setLease] = useState(String(LIMITS.defaultLeaseSeconds));
   const [leaseError, setLeaseError] = useState(false);
+  const editor = useRef<HTMLTextAreaElement>(null);
+  const refresh = useRef<HTMLButtonElement>(null);
+  const approvalReturnTarget = useCallback(
+    () => editor.current ?? refresh.current,
+    [],
+  );
   const session = state.snapshot?.session;
   const active =
     session !== undefined &&
@@ -259,6 +286,7 @@ export function Computer({ context }: { context: ComponentContext }) {
       controls={
         <Toolbar label={t("controls.label")}>
           <Button
+            ref={refresh}
             disabled={state.read?.loading}
             onClick={() => void state.refresh()}
           >
@@ -460,6 +488,7 @@ export function Computer({ context }: { context: ComponentContext }) {
             approval={session.approval}
             pending={state.busy(methods.reply)}
             respond={(input) => state.submit(methods.reply, input)}
+            opener={approvalReturnTarget}
             t={t}
           />
         </PanelSection>
@@ -480,6 +509,7 @@ export function Computer({ context }: { context: ComponentContext }) {
               ready={ready}
               pending={state.busy(methods.execute)}
               execute={(input) => state.submit(methods.execute, input)}
+              editor={editor}
               t={t}
             />
           )}

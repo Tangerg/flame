@@ -12,6 +12,7 @@ import {
   FormSection,
   Metadata,
   RecordBody,
+  RecordForm,
   RecordGroup,
   Select,
   TextField,
@@ -185,11 +186,13 @@ export function ApprovalForm({
   approval,
   pending,
   respond,
+  opener,
   t,
 }: {
   approval: Approval;
   pending: boolean;
   respond(input: ReplyInput): Promise<boolean>;
+  opener(): HTMLElement | null;
   t: Translate;
 }) {
   const permission = useMemo(
@@ -243,7 +246,7 @@ export function ApprovalForm({
   }
 
   return (
-    <RecordGroup aria-label={t("approval.title")}>
+    <RecordForm aria-label={t("approval.title")} opener={opener}>
       <Callout kind="important">
         <RecordBody>{request.message}</RecordBody>
       </Callout>
@@ -310,6 +313,7 @@ export function ApprovalForm({
         <Button
           variant="primary"
           disabled={disabled}
+          focusableWhenDisabled
           onClick={() => void answer("accept")}
         >
           {t(native ? "approval.once" : "approval.accept")}
@@ -317,6 +321,7 @@ export function ApprovalForm({
         {native?.persist.includes("session") && (
           <Button
             disabled={disabled}
+            focusableWhenDisabled
             onClick={() => void answer("accept", "session")}
           >
             {t("approval.session")}
@@ -325,21 +330,30 @@ export function ApprovalForm({
         {native?.persist.includes("always") && (
           <Button
             disabled={disabled}
+            focusableWhenDisabled
             onClick={() => void answer("accept", "always")}
           >
             {t("approval.always")}
           </Button>
         )}
-        <Button disabled={disabled} onClick={() => void answer("decline")}>
+        <Button
+          disabled={disabled}
+          focusableWhenDisabled
+          onClick={() => void answer("decline")}
+        >
           {t("approval.decline")}
         </Button>
-        <Button disabled={disabled} onClick={() => void answer("cancel")}>
+        <Button
+          disabled={disabled}
+          focusableWhenDisabled
+          onClick={() => void answer("cancel")}
+        >
           {t("approval.cancel")}
         </Button>
       </Toolbar>
       <Disclosure title={t("approval.original")}>
         <Source value={approval.requestJSON} label={t("approval.original")} />
       </Disclosure>
-    </RecordGroup>
+    </RecordForm>
   );
 }

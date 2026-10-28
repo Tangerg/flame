@@ -70,6 +70,14 @@ reset, paginated original history, raw input/outcome inspection, image/audio
 presentation and recovery of original uncertain Runtime commands. Stop and close
 remain available while an unrelated action is running or awaiting a reply.
 
+Manual JSON validation identifies and focuses the arguments field. Returning from
+review preserves the draft; waiting or unconfirmed operations keep it selectable
+and read-only. Review and permission forms use the shared form focus boundary:
+retirement returns to the surviving editor, or status controls when no editor is
+available, only while that form still owns focus. Pending permission actions stay
+focusable without admitting another response. Captured targets, original command
+identity and permission authority remain with their existing owners.
+
 ## Supported deployment boundary
 
 The direct adapter supports macOS on Apple Silicon and Linux ARM64/x86-64 with

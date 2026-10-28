@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Updated: 2026-10-28. Shared-control source commit `c435c71c9` is published to remote main and verified. Resting fields now use quiet filled surfaces; pending form activation, single-value selector semantics, clipped-anchor retirement and retained-menu reopening are repaired at their existing owners. Native acceptance and cleanup are complete. The whole-product UI goal remains unfinished.
+Current source continues from captured upstream `e8bbe836c`, including main's three Computer integration commits. Session search readiness and entry focus are published as `646819ab3`. The Computer console editing and operation-return task below has completed scoped native qualification and cleanup. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -33,13 +33,13 @@ available Sessions, published as `3f7794d38`; see **Work-index snapshot readines
 The empty conversation retains visible editing focus through native reflow,
 published as `d5f9a5e89`; see **Empty-conversation focus during reflow**. The ordinary
 Retry continuity and its visible painted host are published as `1cceecdd1`; see
-**Sidebar Retry focus and painted host**. The Search row now uses the shared
-keyboard perimeter while retaining its resting fill. Native qualification is
-pending because CUA reports the Mac locked; the required manual-unlock question
-is pending. See **Search-entry keyboard focus**. Do not publish or claim native
-acceptance before its dialog/return path is inspected. The subsequent source
-finding is SessionSearch treating an absent Session snapshot as an empty list.
-Preserve the
+**Sidebar Retry focus and painted host**. Session search readiness and entry focus
+are published as `646819ab3`, including completed native dialog/return qualification
+and cleanup; see **Session search readiness and entry focus**. The resumed batch
+fast-forwards three main commits through `e8bbe836c`; its later publication fetch
+finds zero incoming commits. Computer manual execution now retains field feedback,
+drafts, readable pending arguments and logical focus through review and permission
+retirement. See **Computer console editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -6808,6 +6808,88 @@ system. Better-writing guidance favors the existing localized action over an
 indefinite loading signal; better-accessibility/layout review retains Base UI's
 keyboard/focus behavior, shared chip sizing, semantic surfaces and Orange/custom
 accent roles. Static Ace references supply no selection or focus evidence.
+
+## Computer console editing and operation return
+
+Main's new Computer component exposed a complete task break: invalid JSON left
+focus on Review without identifying its field, Confirm removed the focused
+review control, and a disabled arguments field could not be read or selected
+while execution was pending. The Back animation-frame job could also overwrite
+later outside focus. Actual Wails reproduced both invalid-input and Confirm focus
+loss. The subsequent simulated permission reply also lost focus on retirement.
+
+`plugins/computer/component/component.tsx` now associates validation with the
+arguments field, focuses that field on failure and clears stale feedback when
+editing resumes. The shared `RecordForm` owns review retirement and resolves the
+newly mounted editor after Back or Confirm. Pending and unconfirmed arguments are
+read-only, selectable and focusable; existing readiness and command guards still
+prevent editing or another execution. `approval.tsx` uses the same boundary and
+shared focusable-disabled actions. Retirement returns to the surviving editor,
+or status controls when no editor is available, only while the retired form owns
+focus. Later outside focus remains authoritative. Original targets, permission
+content, command admission, journal identity and recovery owners are unchanged.
+
+The existing form surface/inset gives review and permission tasks a visible
+boundary while preserving the Panel reading axis, Facts wrapping, code typography,
+semantic warning text and Orange/custom-blue actions. Better-series accessibility,
+layout, typography, color, writing and UI guidance informs this scope. Read-only
+ZCode alert-dialog composition and HeroUI controlled-textarea examples reinforce
+the explicit completion boundary and field-description relationship. Existing
+Radix research informs focus return; existing Arc/Ace research informs restrained
+states and spacing, without claiming static artwork proves keyboard behavior.
+No dependency, font, decorative accent rail or new motion is introduced.
+
+The Computer graphical fixture previously rendered outside a bounded scroll
+host. It now uses the production `AgentWorkspaceView` and `ScrollArea` inside
+a viewport-sized fixture frame. Native wheel scrolling reaches the full original
+result and its raw-detail disclosures; returning to arguments retains the draft.
+The initial failure captures predate this fixture-host repair and are evidence
+for focus/validation, not for production scrolling geometry.
+
+Verification and boundaries:
+
+- Execution regression first fails eight cases against the captured implementation;
+  the two held permission-reply cases also fail before their repair. The final Web
+  frontend project passes **431 files / 4,069 tests**, including **29 Computer
+  console tests**. Coverage includes invalid JSON/array/null, corrected drafts,
+  later outside focus, pending/unknown commands, original-key recovery, single
+  reply and return when captured context is unavailable. The shared RecordForm
+  ownership regression passes independently.
+- Plugin checks pass type/lint/format, **43 script tests**, **16 files / 274
+  backend/contract tests**, i18n and resource consistency. Their configured
+  **one file / 13 tests** remain skipped. Web type/lint/format and every remaining
+  package check from Knip through production bundle/module linkage pass.
+  The aggregate Web command fails before Runtime assertions because the offline
+  `node-v24.22.1-darwin-arm64.tar.gz` prerequisite is absent; its **49 Runtime cases
+  do not run**. Its temporary environment is removed. This is not a fully passing
+  aggregate Web check. `make check-native` passes Desktop test/vet/build and the
+  supported Wails production build; existing SDK linker diagnostics remain visible.
+- Actual Wails with the generated published component and an isolated SDK
+  transport qualifies mouse/keyboard validation, review/Back, Confirm, selectable
+  read-only arguments, simulated permission retirement, wheel reading and continued
+  editing. Scenes cover English/light/14 px/Orange and Chinese/dark/18 px/custom
+  blue, native **1,125 × 734** resizing and **200%** zoom (**562 × 367**, DPR 4).
+  Actual Size is restored. The clean English/light/14 px control retains the
+  private blue accent and passes the same focus/read-only path with **zero observer
+  events or requests**. All **614** fixed/control assets agree except the two HTML
+  entries containing the passive observer. Earlier pre-host assets have separate
+  manifests. No real Computer engine or OS permission is started or granted;
+  live Runtime admission and engine outcomes, VoiceOver, OS IME and forced-colors
+  remain outside this qualification. No browser or performance suite runs.
+
+Cleanup retires every owned native instance, unregisters the private bundle,
+closes the passive listener, removes **nine** new output/cache roots and **three**
+private profile/temp paths, and restores **four** original files with their modes.
+All **18** output-presence and **five** profile baselines are restored. All
+**6,264** frozen non-Markdown inputs retain their admitted state; only the five
+explicit source/test/fixture/resource paths differ from captured main. Exactly
+one of **32** resource files changes: the normally rebuilt Computer ESM. The
+private root `flame-computer-console-Y3voUb` is absent. The round-tripped in-memory
+gzip contains **46** flat UTF-8 records (**6,887,154** uncompressed bytes), SHA-256
+`4844b0c29fbee3d6529f376d737fcbb35500d6663a4848cb8f6257cc501655a3`.
+Parallel primary-checkout work remains preserved. Next inspect long captured
+outcomes and their reading/return task before selecting another scoped repair;
+this batch does not claim complete Computer-console or whole-product acceptance.
 
 ## Approval argument review and submission
 

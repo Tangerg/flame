@@ -62,7 +62,7 @@ function fixture(value = initial) {
   const outcomes = new Map<string, unknown>();
   const records = new Map<string, OperationRecord>();
   let executeMode: "success" | "unknown" | "held" = "success";
-  let blocked: { resolve(value: Response): void; id: string | number } | undefined;
+  let blocked: { resolve(value: Response): void; id: string | number; key: string } | undefined;
   let unavailableLookup = false;
   let unavailableContext = false;
   let instructions = "Use the isolated fixture controls only.";
@@ -71,6 +71,7 @@ function fixture(value = initial) {
   let heldContext: { arrived: Promise<void>; release(): void } | undefined;
   let contextGate: Promise<void> | undefined;
   let contextArrived: (() => void) | undefined;
+  let replyGate: Promise<void> | undefined;
 
   function publish(next: Snapshot) {
     snapshot = structuredClone(next);
@@ -231,6 +232,7 @@ function fixture(value = initial) {
         blocked = undefined;
       }
     } else if (params.method === methods.reply) {
+      await replyGate;
       if (input.requestId !== snapshot.session?.approval?.id)
         return success({
           failure: { code: "permission_retired", message: "the original permission request ended" },
@@ -255,7 +257,7 @@ function fixture(value = initial) {
           },
         });
         return await new Promise<Response>((resolve, reject) => {
-          blocked = { resolve, id: request.id };
+          blocked = { resolve, id: request.id, key };
           init?.signal?.addEventListener("abort", () => reject(init.signal!.reason), {
             once: true,
           });
@@ -284,6 +286,29 @@ function fixture(value = initial) {
     setExecuteMode(value: typeof executeMode) {
       executeMode = value;
     },
+    finishExecution() {
+      if (!blocked) throw new Error("fixture execution is not pending");
+      const original = blocked;
+      blocked = undefined;
+      const result = outcomes.get(original.key);
+      if (result === undefined) throw new Error("fixture execution outcome is missing");
+      records.set(original.key, {
+        ...records.get(original.key)!,
+        settled: true,
+        outcomeJSON: stringifyJSON({ value: result }),
+      });
+      publish({
+        ...snapshot,
+        session: { ...snapshot.session!, state: "ready", operation: undefined },
+      });
+      original.resolve(
+        Response.json({
+          jsonrpc: "2.0",
+          id: original.id,
+          result: { output: stringifyJSON(result) },
+        }),
+      );
+    },
     setLookupUnavailable(value: boolean) {
       unavailableLookup = value;
     },
@@ -308,6 +333,11 @@ function fixture(value = initial) {
       contextArrived = arrived.resolve;
       heldContext = { arrived: arrived.promise, release: gate.resolve };
       return heldContext;
+    },
+    holdReply() {
+      const gate = Promise.withResolvers<void>();
+      replyGate = gate.promise;
+      return gate.resolve;
     },
   };
 }
@@ -376,6 +406,104 @@ async function review(code = "await fixture.perform();") {
   fireEvent.click(screen.getByRole("button", { name: "Review operation" }));
   return screen.findByRole("button", { name: "Execute reviewed operation" });
 }
+
+it.each(["[]", "null", "{"])(
+  "identifies invalid arguments %s at the editable field and retains the corrected draft",
+  async (value) => {
+    const setup = rig();
+    setup.mount();
+    const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+    fireEvent.change(editor, { target: { value } });
+    const prepare = screen.getByRole("button", { name: "Review operation" });
+    act(() => prepare.focus());
+    fireEvent.click(prepare);
+    const failure = await screen.findByRole("alert");
+    expect(editor.getAttribute("aria-invalid")).toBe("true");
+    expect(editor.getAttribute("aria-describedby")).toBe(failure.id);
+    expect(document.activeElement).toBe(editor);
+    expect(setup.server.originals.size).toBe(0);
+
+    const draft = JSON.stringify({ code: "await fixture.perform();" });
+    fireEvent.change(editor, { target: { value: draft } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(editor.getAttribute("aria-invalid")).not.toBe("true");
+    expect(editor.getAttribute("aria-describedby")).toBeNull();
+    fireEvent.click(prepare);
+    const back = await screen.findByRole("button", { name: "Back to editor" });
+    expect(document.activeElement).toBe(back);
+    fireEvent.click(back);
+    const restored = (await screen.findByRole("textbox", {
+      name: "Tool arguments (JSON)",
+    })) as HTMLTextAreaElement;
+    await waitFor(() => expect(document.activeElement).toBe(restored));
+    expect(restored.value).toBe(draft);
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("does not reclaim later console focus after returning from review", async () => {
+  const setup = rig();
+  setup.mount();
+  await review();
+  fireEvent.click(screen.getByRole("button", { name: "Back to editor" }));
+  const outside = screen.getByRole("button", { name: "End control lease" });
+  act(() => outside.focus());
+  await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+  expect(document.activeElement).toBe(outside);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it.each(["editor", "later control"])(
+  "keeps the arguments readable during execution and preserves %s focus on settlement",
+  async (destination) => {
+    const setup = rig();
+    setup.server.setExecuteMode("held");
+    setup.mount();
+    const execute = await review();
+    act(() => execute.focus());
+    fireEvent.click(execute);
+    await screen.findByRole("button", { name: "Stop current operation" });
+    const editor = screen.getByRole("textbox", {
+      name: "Tool arguments (JSON)",
+    }) as HTMLTextAreaElement;
+    await waitFor(() => expect(document.activeElement).toBe(editor));
+    expect(editor.readOnly).toBe(true);
+    expect(editor.disabled).toBe(false);
+    expect(editor.value).toBe(JSON.stringify({ code: "await fixture.perform();" }));
+    expect(screen.getByRole("button", { name: "Review operation" }).hasAttribute("disabled")).toBe(
+      true,
+    );
+    expect(setup.server.originals.size).toBe(1);
+
+    const target =
+      destination === "editor" ? editor : screen.getByRole("button", { name: "End control lease" });
+    act(() => {
+      target.focus();
+      setup.server.finishExecution();
+    });
+    await waitFor(() => expect(editor.readOnly).toBe(false));
+    expect(document.activeElement).toBe(target);
+    expect(editor.value).toBe(JSON.stringify({ code: "await fixture.perform();" }));
+    expect(setup.server.originals.size).toBe(1);
+  },
+);
+
+it("retains focus and readable arguments when the original execution outcome is unknown", async () => {
+  const setup = rig();
+  setup.server.setExecuteMode("unknown");
+  setup.mount();
+  const execute = await review();
+  act(() => execute.focus());
+  fireEvent.click(execute);
+  await screen.findByRole("button", { name: "Check original outcome" });
+  const editor = screen.getByRole("textbox", {
+    name: "Tool arguments (JSON)",
+  }) as HTMLTextAreaElement;
+  await waitFor(() => expect(document.activeElement).toBe(editor));
+  expect(editor.readOnly).toBe(true);
+  expect(editor.disabled).toBe(false);
+  expect(setup.server.originals.size).toBe(1);
+});
 
 function nativeApproval(id = "permission-1", persist = ["session"]): Approval {
   return {
@@ -458,6 +586,55 @@ it("keeps a cancelled original approval distinct from a replacement with the sam
   };
   expect(input.requestId).toBe("permission-2");
   expect(JSON.parse(input.responseJSON)).toEqual({ action: "decline" });
+});
+
+it.each(["editor", "outside action"])(
+  "preserves permission reply focus until retirement and returns to %s",
+  async (destination) => {
+    const server = fixture({
+      ...initial,
+      session: { ...initial.session!, approval: nativeApproval() },
+    });
+    const release = server.holdReply();
+    onTestFinished(() => release());
+    const setup = rig(server);
+    setup.mount();
+    const editor = await screen.findByRole<HTMLTextAreaElement>("textbox", {
+      name: "Tool arguments (JSON)",
+    });
+    const decline = screen.getByRole<HTMLButtonElement>("button", { name: "Decline" });
+    decline.focus();
+    fireEvent.click(decline);
+    await waitFor(() => expect(decline.getAttribute("aria-disabled")).toBe("true"));
+    expect(decline.disabled).toBe(false);
+    expect(document.activeElement).toBe(decline);
+    fireEvent.click(decline);
+    const outside = screen.getByRole<HTMLButtonElement>("button", { name: "Refresh outcomes" });
+    if (destination === "outside action") outside.focus();
+    await act(async () => release());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
+    expect(document.activeElement).toBe(destination === "editor" ? editor : outside);
+    expect(
+      [...server.originals.values()].filter((item) => item.method === methods.reply),
+    ).toHaveLength(1);
+  },
+);
+
+it("returns a retired permission to status controls when the captured editor is unavailable", async () => {
+  const server = fixture({
+    ...initial,
+    session: { ...initial.session!, approval: nativeApproval() },
+  });
+  server.setContextUnavailable(true);
+  const setup = rig(server);
+  setup.mount();
+  const decline = await screen.findByRole<HTMLButtonElement>("button", { name: "Decline" });
+  await screen.findByRole("alert");
+  expect(screen.queryByRole("textbox", { name: "Tool arguments (JSON)" })).toBeNull();
+  decline.focus();
+  fireEvent.click(decline);
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Decline" })).toBeNull());
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Refresh status" }));
 });
 
 it("validates requested form fields and preserves exact numeric input until its owner admits it", async () => {
@@ -577,9 +754,12 @@ it("recovers the original unknown command after remount without another command 
   await screen.findByRole("button", { name: "Check original outcome" });
   expect(
     (await screen.findByRole("textbox", { name: "Tool arguments (JSON)" })).hasAttribute(
-      "disabled",
+      "readonly",
     ),
   ).toBe(true);
+  expect(screen.getByRole("button", { name: "Review operation" }).hasAttribute("disabled")).toBe(
+    true,
+  );
   setup.server.setLookupUnavailable(true);
   fireEvent.click(screen.getByRole("button", { name: "Check original outcome" }));
   await waitFor(() =>

@@ -1,4 +1,7 @@
 import type { PluginComponent, ComponentContext } from "@flame/component-sdk";
+import * as stylex from "@stylexjs/stylex";
+import { ScrollArea } from "@/ui/index";
+import { AgentWorkspaceView } from "@/ui/agent/index";
 import { createFlameClient, createHttpTransport } from "@flame/runtime-client";
 import { stringifyJSON } from "@qimu/sdk/json";
 import type { CallPluginRequest, ServerCapabilities } from "@flame/runtime-client/wire";
@@ -11,6 +14,10 @@ const digest = "c".repeat(64);
 const host = { hostname: "isolated-desktop.example", platform: "linux", arch: "x64" };
 const capturedImage =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
+
+const styles = stylex.create({
+  frame: { display: "flex", height: "100dvh", minHeight: 0, minWidth: 0 },
+});
 
 function frame(value: unknown) {
   return `event: message\ndata: ${JSON.stringify(value)}\n\n`;
@@ -294,7 +301,15 @@ export async function createComputerConsoleFixture(locale: string) {
     },
   };
   return {
-    node: <Computer context={context} />,
+    node: (
+      <div {...stylex.props(styles.frame)}>
+        <AgentWorkspaceView>
+          <ScrollArea>
+            <Computer context={context} />
+          </ScrollArea>
+        </AgentWorkspaceView>
+      </div>
+    ),
     client,
     close: async () => {
       owner.abort();
