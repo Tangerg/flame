@@ -60,7 +60,7 @@ export function buildWorkIndex({
     else byDirectory.set(key, [session]);
   }
 
-  const groups: WorkGroup[] = (projects ?? []).map((project) => {
+  const groups: WorkGroup[] | undefined = projects?.map((project) => {
     const owned = byDirectory.get(project.id) ?? [];
     byDirectory.delete(project.id);
     return {

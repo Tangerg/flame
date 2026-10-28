@@ -22,14 +22,15 @@ export function useWorkIndex(): WorkIndex {
     () => buildWorkIndex({ projects: projects.data, sessions }),
     [projects.data, sessions],
   );
+  const groups = content?.groups;
 
   return {
-    groups: content?.groups,
+    groups,
     recents: content?.recents,
     activeSessionId,
     activeCwd,
-    isLoading: projects.isLoading && !content,
-    error: projects.isError && !content ? projects.error : undefined,
+    isLoading: projects.isPending && groups === undefined,
+    error: projects.isError && groups === undefined ? projects.error : undefined,
     retry: () => void projects.refetch(),
   };
 }
