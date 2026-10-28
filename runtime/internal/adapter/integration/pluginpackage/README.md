@@ -40,6 +40,11 @@ digest comes from the original artifact inventory or the distribution's pinned
 Node selection. The process owner retains this lease until original process exit
 is proven. There is no copied execution directory or second lifecycle cache.
 
+The configured data directory captures its physical parent at construction;
+parent path aliases cannot retarget later preparation. The data namespace and
+installation leaves still refuse symbolic-link redirection. Metadata projection
+does not create private data directories.
+
 Installed process entries are packaged native executables or declared managed
 Node entries. A native release has one target OS and architecture; realization
 refuses hosts without that variant. Managed entries name the exact qualified

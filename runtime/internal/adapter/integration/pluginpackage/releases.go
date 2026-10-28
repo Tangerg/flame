@@ -42,7 +42,11 @@ func New(content *distribution.Store, dataDirectory string, catalog releaseCatal
 	if content == nil || lo.IsNil(catalog) || !filepath.IsAbs(dataDirectory) {
 		return nil, errors.New("pluginpackage: content store, absolute data directory and release catalog are required")
 	}
-	return &Releases{content: content, dataDirectory: filepath.Clean(dataDirectory), catalog: catalog}, nil
+	parent, err := filesystem.CanonicalPath(filepath.Dir(dataDirectory))
+	if err != nil {
+		return nil, fmt.Errorf("pluginpackage: resolve data directory parent: %w", err)
+	}
+	return &Releases{content: content, dataDirectory: filepath.Join(parent, filepath.Base(dataDirectory)), catalog: catalog}, nil
 }
 
 // Root is a display projection, not a content claim. Reads and process launch
