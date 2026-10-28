@@ -1,8 +1,8 @@
 # First-party portable packages
 
 Memory, Schedules, Knowledge base, GitHub, Model router, Guardrails, Web research,
-Saved usage reports, Generated interfaces, Native sandbox and File watch are complete
-optional backends. Memory, Schedules, Saved usage reports and Generated interfaces use
+Saved usage reports, Generated interfaces, Computer use, Native sandbox and File watch are complete
+optional backends. Memory, Schedules, Saved usage reports, Generated interfaces and Computer use expose
 ordinary public components; the remaining packages are backend-only.
 MCP model Tools and human Runtime commands
 enter the same existing backend owners. A component does not create a second store.
@@ -14,6 +14,15 @@ document; OpenUI owns local draft values. Queries and confirmed commands use rea
 captured plugin bindings and the existing Runtime command journal. Followups enter
 the original Session through the shared Agent input owner. Isolated HTML previews
 have no Runtime bridge. See [`genui/README.md`](genui/README.md).
+
+Computer use (`computer`) directly loads a selected installed CUA engine on
+the Runtime host. Its public workspace component owns no permission or execution
+state: it observes the backend's human-authorized control lease, exact live
+permission requests and original command receipts. The backend serializes desktop
+execution, retains original media, ends each upstream control turn, and retires
+uncertain processes without replay. Installing the plugin does not launch a
+desktop engine. Operator-console isolation and the real native prerequisites are
+described in [`computer/README.md`](computer/README.md).
 
 Each source plugin uses `backend/`, `component/` and `package/` for the capabilities it actually has. The Flame namespace in `package/plugin.json` references one local declaration file.
 That strict declaration names each independent contribution ID, its contract file,
@@ -157,6 +166,17 @@ module artifacts; SDK source and manifests are never rewritten or trimmed.
 versions, verified local materials and isolated offline execution. UI-backed
 projects consume packed SDK/UI/icons packages and their own npm lock. JS
 independent installation is separate from the Go offline guarantee.
+
+Managed feature authors define exactly one `contracts/<name>.json` or
+`contracts/<name>.ts` for each declared `<name>.generated.json` resource. A TypeScript
+source exports its descriptor as the default value; it may derive schemas from the
+same types used by its backend. Repository and exported-author generation share
+one implementation. The generator uses the public exact JSON codec, preserves
+wide numeric bounds, and publishes staged resources only after the development
+tool succeeds. Independent descriptors require separate projection directories;
+a component's generated method file has one descriptor owner. Tool-only backends
+need no descriptor or contract generator. Native backends retain their Go-owned
+generation path.
 
 In the independent author directory:
 

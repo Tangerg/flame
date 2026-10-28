@@ -1,0 +1,1131 @@
+{
+  "protocol": "io.github.tangerg.qimu/portable/1",
+  "reference": "flame.computer.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.computer/close.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Human-only: revoke the exact control session, cancel pending permissions and execution, and join its original engine. Already dispatched external effects cannot be undone.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "operationId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "requestJSON": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "sessionId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "operationId",
+              "requestJSON"
+            ],
+            "type": "object"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "operation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "startedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "js",
+                  "js_reset"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "tool",
+              "startedAt"
+            ],
+            "type": "object"
+          },
+          "reason": {
+            "enum": [
+              "user",
+              "expired",
+              "shutdown",
+              "engine",
+              "cleanup",
+              "startup",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "opening",
+              "ready",
+              "executing",
+              "stopping",
+              "closed",
+              "faulted"
+            ],
+            "type": "string"
+          },
+          "surfaceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workerId",
+          "state",
+          "openedAt",
+          "expiresAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/context.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the current worker identity and original runtime instructions and js/js_reset schemas before execution. This never opens a session or grants application access.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "host": {
+            "additionalProperties": false,
+            "properties": {
+              "arch": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "hostname": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "platform": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "hostname",
+              "platform",
+              "arch"
+            ],
+            "type": "object"
+          },
+          "instructions": {
+            "maxLength": 262144,
+            "minLength": 1,
+            "type": "string"
+          },
+          "serverJSON": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "surfaceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "toolsJSON": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "workerId",
+          "surfaceDigest",
+          "expiresAt",
+          "instructions",
+          "toolsJSON",
+          "serverJSON",
+          "host"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/execute.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Execute js or js_reset on the exact accepted worker and surface. Arguments follow the captured upstream schema. An observed result is durable; transport loss never authorizes replay. Reset discards the original JavaScript heap.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "argumentsJSON": {
+            "maxLength": 262144,
+            "minLength": 2,
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "surfaceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "tool": {
+            "enum": [
+              "js",
+              "js_reset"
+            ],
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "workerId",
+          "surfaceDigest",
+          "tool",
+          "argumentsJSON"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cleanup": {
+            "enum": [
+              "ended",
+              "unconfirmed"
+            ],
+            "type": "string"
+          },
+          "commandId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "commandId",
+          "result",
+          "cleanup"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/history.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read original operation headers in admission order, newest first. This is a projection of durable receipts, not an execution log with a second owner.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "before": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "admittedAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "dispatched": {
+                  "type": "boolean"
+                },
+                "id": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "tool",
+                    "command"
+                  ],
+                  "type": "string"
+                },
+                "method": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "settled": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "method",
+                "admittedAt",
+                "dispatched",
+                "settled"
+              ],
+              "type": "object"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "next": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/open.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Human-only: open one exclusive computer-control session on the Runtime host for the stated lease. Existing sessions are not replaced; expiry cancels and closes the engine.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "leaseSeconds": {
+            "maximum": 3600,
+            "minimum": 60,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "leaseSeconds"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "operationId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "requestJSON": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "sessionId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "operationId",
+              "requestJSON"
+            ],
+            "type": "object"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "operation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "startedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "js",
+                  "js_reset"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "tool",
+              "startedAt"
+            ],
+            "type": "object"
+          },
+          "reason": {
+            "enum": [
+              "user",
+              "expired",
+              "shutdown",
+              "engine",
+              "cleanup",
+              "startup",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "opening",
+              "ready",
+              "executing",
+              "stopping",
+              "closed",
+              "faulted"
+            ],
+            "type": "string"
+          },
+          "surfaceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workerId",
+          "state",
+          "openedAt",
+          "expiresAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/read.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the actual Runtime host and current computer-control session. This does not start an engine or authorize computer access.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "host": {
+            "additionalProperties": false,
+            "properties": {
+              "arch": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "hostname": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "platform": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "hostname",
+              "platform",
+              "arch"
+            ],
+            "type": "object"
+          },
+          "session": {
+            "additionalProperties": false,
+            "properties": {
+              "approval": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "operationId": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "requestJSON": {
+                    "maxLength": 65536,
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "operationId",
+                  "requestJSON"
+                ],
+                "type": "object"
+              },
+              "expiresAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "openedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "operation": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "startedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "tool": {
+                    "enum": [
+                      "js",
+                      "js_reset"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "tool",
+                  "startedAt"
+                ],
+                "type": "object"
+              },
+              "reason": {
+                "enum": [
+                  "user",
+                  "expired",
+                  "shutdown",
+                  "engine",
+                  "cleanup",
+                  "startup",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "opening",
+                  "ready",
+                  "executing",
+                  "stopping",
+                  "closed",
+                  "faulted"
+                ],
+                "type": "string"
+              },
+              "surfaceDigest": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "workerId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "workerId",
+              "state",
+              "openedAt",
+              "expiresAt"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "host",
+          "configured"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/reply.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "responseJSON": {
+            "maxLength": 65536,
+            "minLength": 2,
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "requestId",
+          "responseJSON"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "boolean"
+      }
+    },
+    {
+      "name": "flame.computer/result.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read original input, identity and the one observed outcome. An absent outcome means unconfirmed; this method never executes or infers desktop effects.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "admittedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dispatched": {
+            "type": "boolean"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "inputJSON": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "invocationJSON": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "tool",
+              "command"
+            ],
+            "type": "string"
+          },
+          "method": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "outcomeJSON": {
+            "maxLength": 16777216,
+            "type": "string"
+          },
+          "settled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "method",
+          "admittedAt",
+          "dispatched",
+          "settled",
+          "inputJSON",
+          "invocationJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/stop.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "operationId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sessionId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "operationId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "approval": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "operationId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "requestJSON": {
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "sessionId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "operationId",
+              "requestJSON"
+            ],
+            "type": "object"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "openedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "operation": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "startedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "tool": {
+                "enum": [
+                  "js",
+                  "js_reset"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "tool",
+              "startedAt"
+            ],
+            "type": "object"
+          },
+          "reason": {
+            "enum": [
+              "user",
+              "expired",
+              "shutdown",
+              "engine",
+              "cleanup",
+              "startup",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "opening",
+              "ready",
+              "executing",
+              "stopping",
+              "closed",
+              "faulted"
+            ],
+            "type": "string"
+          },
+          "surfaceDigest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "workerId": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workerId",
+          "state",
+          "openedAt",
+          "expiresAt"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.computer/watch.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "boolean"
+      },
+      "stream": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "host": {
+            "additionalProperties": false,
+            "properties": {
+              "arch": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "hostname": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "platform": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "hostname",
+              "platform",
+              "arch"
+            ],
+            "type": "object"
+          },
+          "session": {
+            "additionalProperties": false,
+            "properties": {
+              "approval": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "operationId": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "requestJSON": {
+                    "maxLength": 65536,
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "operationId",
+                  "requestJSON"
+                ],
+                "type": "object"
+              },
+              "expiresAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "openedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "operation": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "startedAt": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "tool": {
+                    "enum": [
+                      "js",
+                      "js_reset"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "tool",
+                  "startedAt"
+                ],
+                "type": "object"
+              },
+              "reason": {
+                "enum": [
+                  "user",
+                  "expired",
+                  "shutdown",
+                  "engine",
+                  "cleanup",
+                  "startup",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              "state": {
+                "enum": [
+                  "opening",
+                  "ready",
+                  "executing",
+                  "stopping",
+                  "closed",
+                  "faulted"
+                ],
+                "type": "string"
+              },
+              "surfaceDigest": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "workerId": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "workerId",
+              "state",
+              "openedAt",
+              "expiresAt"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "host",
+          "configured"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

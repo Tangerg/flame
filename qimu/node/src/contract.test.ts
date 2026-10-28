@@ -86,6 +86,42 @@ describe("published Go contract conformance", () => {
     ])
       expect(() => validate(value)).toThrow();
   });
+  it("allows absent optional properties while enforcing present and required values", () => {
+    const validate = compileSchema({
+      type: "object",
+      required: ["id"],
+      additionalProperties: false,
+      properties: {
+        id: { type: "string" },
+        reason: { type: "string", enum: ["user", "expired"] },
+        marker: { const: "accepted" },
+        timeout_ms: { type: "integer", minimum: 1 },
+        operation: {
+          type: "object",
+          required: ["id"],
+          additionalProperties: false,
+          properties: { id: { type: "string" }, tag: { const: "running" } },
+        },
+      },
+    });
+    for (const value of [
+      { id: "session" },
+      { id: "session", operation: { id: "operation" } },
+      { id: "session", reason: "user", marker: "accepted", timeout_ms: 1 },
+    ])
+      expect(() => validate(value)).not.toThrow();
+    for (const value of [
+      undefined,
+      {},
+      { id: "session", reason: null },
+      { id: "session", reason: "invalid" },
+      { id: "session", marker: "invalid" },
+      { id: "session", timeout_ms: 0 },
+      { id: "session", operation: {} },
+      { id: "session", operation: { id: "operation", tag: "invalid" } },
+    ])
+      expect(() => validate(value)).toThrow();
+  });
   it("refuses unsupported or malformed schemas at construction", () => {
     for (const schema of [
       { type: "typo" },

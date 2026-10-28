@@ -83,6 +83,7 @@ const fixture =
   requestedFixture === "agent" ||
   requestedFixture === "workspace" ||
   requestedFixture === "shell" ||
+  requestedFixture === "computer" ||
   requestedFixture === "atoms"
     ? requestedFixture
     : "foundation";
@@ -221,7 +222,7 @@ async function installVisualRuntimeClient(
 }
 
 async function fixtureNode(): Promise<ReactNode> {
-  if (fixture === "foundation" || fixture === "atoms") {
+  if (fixture === "foundation" || fixture === "atoms" || fixture === "computer") {
     const [
       { default: flameLight },
       { default: flameDark },
@@ -240,6 +241,20 @@ async function fixtureNode(): Promise<ReactNode> {
       ...builtinVisualStyles,
     ]) {
       await loadPluginsForTest(plugin);
+    }
+    if (fixture === "computer") {
+      const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
+      const computer = await createComputerConsoleFixture(requestedLocale);
+      currentRuntimeClient = computer.client;
+      await loadPluginsForTest(
+        definePlugin({
+          name: "flame.visual.computer",
+          setup(ctx) {
+            ctx.cleanup(computer.close);
+          },
+        }),
+      );
+      return computer.node;
     }
     if (fixture === "atoms") {
       const { VisualAtomsFixture, VisualInputContractFixture } =

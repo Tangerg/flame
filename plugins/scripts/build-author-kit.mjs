@@ -239,6 +239,10 @@ try {
       new URL("./author-generate.mjs", import.meta.url),
       join(output, "generate.mjs"),
     );
+    await cp(
+      new URL("./contracts.mjs", import.meta.url),
+      join(output, "contracts.mjs"),
+    );
   }
   const component = await exists(join(output, "component/component.tsx"));
   if (component || managed) {

@@ -46,7 +46,8 @@
     "check:styles": "node scripts/check-dead-styles.mjs",
     "browser:dev": "vite --config vite.visual.config.ts",
     "browser:test": "playwright test --config playwright.browser.config.ts",
-    "browser:genui": "playwright test --config playwright.genui.config.ts"
+    "browser:genui": "playwright test --config playwright.genui.config.ts",
+    "browser:computer": "playwright test --config playwright.computer.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

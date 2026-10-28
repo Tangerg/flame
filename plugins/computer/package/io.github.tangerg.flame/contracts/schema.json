@@ -1,0 +1,1047 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Method_flame_2ecomputer_2fclose_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fclose_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "operationId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "requestJSON": {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            "sessionId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "operationId",
+            "requestJSON"
+          ],
+          "type": "object"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "openedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "startedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "tool": {
+              "enum": [
+                "js",
+                "js_reset"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "tool",
+            "startedAt"
+          ],
+          "type": "object"
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "expired",
+            "shutdown",
+            "engine",
+            "cleanup",
+            "startup",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "opening",
+            "ready",
+            "executing",
+            "stopping",
+            "closed",
+            "faulted"
+          ],
+          "type": "string"
+        },
+        "surfaceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "state",
+        "openedAt",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fcontext_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fcontext_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "host": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "hostname": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "platform": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "hostname",
+            "platform",
+            "arch"
+          ],
+          "type": "object"
+        },
+        "instructions": {
+          "maxLength": 262144,
+          "minLength": 1,
+          "type": "string"
+        },
+        "serverJSON": {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "surfaceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "toolsJSON": {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "workerId",
+        "surfaceDigest",
+        "expiresAt",
+        "instructions",
+        "toolsJSON",
+        "serverJSON",
+        "host"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fexecute_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "argumentsJSON": {
+          "maxLength": 262144,
+          "minLength": 2,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "surfaceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "tool": {
+          "enum": [
+            "js",
+            "js_reset"
+          ],
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "workerId",
+        "surfaceDigest",
+        "tool",
+        "argumentsJSON"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fexecute_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "cleanup": {
+          "enum": [
+            "ended",
+            "unconfirmed"
+          ],
+          "type": "string"
+        },
+        "commandId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "result": {
+          "additionalProperties": {},
+          "propertyNames": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "commandId",
+        "result",
+        "cleanup"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fhistory_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "limit"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fhistory_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "admittedAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "dispatched": {
+                "type": "boolean"
+              },
+              "id": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "tool",
+                  "command"
+                ],
+                "type": "string"
+              },
+              "method": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "settled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "admittedAt",
+              "dispatched",
+              "settled"
+            ],
+            "type": "object"
+          },
+          "maxItems": 50,
+          "type": "array"
+        },
+        "next": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fopen_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "leaseSeconds": {
+          "maximum": 3600,
+          "minimum": 60,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "leaseSeconds"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fopen_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "operationId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "requestJSON": {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            "sessionId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "operationId",
+            "requestJSON"
+          ],
+          "type": "object"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "openedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "startedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "tool": {
+              "enum": [
+                "js",
+                "js_reset"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "tool",
+            "startedAt"
+          ],
+          "type": "object"
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "expired",
+            "shutdown",
+            "engine",
+            "cleanup",
+            "startup",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "opening",
+            "ready",
+            "executing",
+            "stopping",
+            "closed",
+            "faulted"
+          ],
+          "type": "string"
+        },
+        "surfaceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "state",
+        "openedAt",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fread_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fread_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "configured": {
+          "type": "boolean"
+        },
+        "host": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "hostname": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "platform": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "hostname",
+            "platform",
+            "arch"
+          ],
+          "type": "object"
+        },
+        "session": {
+          "additionalProperties": false,
+          "properties": {
+            "approval": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "operationId": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "requestJSON": {
+                  "maxLength": 65536,
+                  "type": "string"
+                },
+                "sessionId": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "operationId",
+                "requestJSON"
+              ],
+              "type": "object"
+            },
+            "expiresAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "openedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "operation": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "startedAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "tool": {
+                  "enum": [
+                    "js",
+                    "js_reset"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "tool",
+                "startedAt"
+              ],
+              "type": "object"
+            },
+            "reason": {
+              "enum": [
+                "user",
+                "expired",
+                "shutdown",
+                "engine",
+                "cleanup",
+                "startup",
+                "cancelled"
+              ],
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "opening",
+                "ready",
+                "executing",
+                "stopping",
+                "closed",
+                "faulted"
+              ],
+              "type": "string"
+            },
+            "surfaceDigest": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "workerId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "workerId",
+            "state",
+            "openedAt",
+            "expiresAt"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "host",
+        "configured"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2freply_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "responseJSON": {
+          "maxLength": 65536,
+          "minLength": 2,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "requestId",
+        "responseJSON"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2freply_2ev1Output": {
+      "type": "boolean"
+    },
+    "Method_flame_2ecomputer_2fresult_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fresult_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "admittedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "dispatched": {
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "inputJSON": {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        "invocationJSON": {
+          "maxLength": 262144,
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "tool",
+            "command"
+          ],
+          "type": "string"
+        },
+        "method": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "outcomeJSON": {
+          "maxLength": 16777216,
+          "type": "string"
+        },
+        "settled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "method",
+        "admittedAt",
+        "dispatched",
+        "settled",
+        "inputJSON",
+        "invocationJSON"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fstop_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "operationId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sessionId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "operationId"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fstop_2ev1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "approval": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "operationId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "requestJSON": {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            "sessionId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "operationId",
+            "requestJSON"
+          ],
+          "type": "object"
+        },
+        "expiresAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "openedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "operation": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "startedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "tool": {
+              "enum": [
+                "js",
+                "js_reset"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "tool",
+            "startedAt"
+          ],
+          "type": "object"
+        },
+        "reason": {
+          "enum": [
+            "user",
+            "expired",
+            "shutdown",
+            "engine",
+            "cleanup",
+            "startup",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "opening",
+            "ready",
+            "executing",
+            "stopping",
+            "closed",
+            "faulted"
+          ],
+          "type": "string"
+        },
+        "surfaceDigest": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "workerId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "state",
+        "openedAt",
+        "expiresAt"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fwatch_2ev1Chunk": {
+      "additionalProperties": false,
+      "properties": {
+        "configured": {
+          "type": "boolean"
+        },
+        "host": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "hostname": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "platform": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "hostname",
+            "platform",
+            "arch"
+          ],
+          "type": "object"
+        },
+        "session": {
+          "additionalProperties": false,
+          "properties": {
+            "approval": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "operationId": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "requestJSON": {
+                  "maxLength": 65536,
+                  "type": "string"
+                },
+                "sessionId": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "operationId",
+                "requestJSON"
+              ],
+              "type": "object"
+            },
+            "expiresAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "openedAt": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "operation": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "startedAt": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "tool": {
+                  "enum": [
+                    "js",
+                    "js_reset"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "tool",
+                "startedAt"
+              ],
+              "type": "object"
+            },
+            "reason": {
+              "enum": [
+                "user",
+                "expired",
+                "shutdown",
+                "engine",
+                "cleanup",
+                "startup",
+                "cancelled"
+              ],
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "opening",
+                "ready",
+                "executing",
+                "stopping",
+                "closed",
+                "faulted"
+              ],
+              "type": "string"
+            },
+            "surfaceDigest": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "workerId": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "workerId",
+            "state",
+            "openedAt",
+            "expiresAt"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "host",
+        "configured"
+      ],
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fwatch_2ev1Input": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "Method_flame_2ecomputer_2fwatch_2ev1Output": {
+      "type": "boolean"
+    }
+  }
+}

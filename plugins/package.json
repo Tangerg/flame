@@ -11,7 +11,7 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "test": "node --test scripts/*.test.mjs && node scripts/test-backends.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run check:i18n && npm run check:resources",
-    "generate": "npm run build"
+    "generate": "node scripts/generate-contracts.mjs && npm run build"
   },
   "dependencies": {
     "@flame/backend-sdk": "^0.1.0",
@@ -19,6 +19,7 @@
     "@flame/icons": "*",
     "@flame/runtime-client": "*",
     "@flame/ui": "*",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@js-temporal/polyfill": "^0.5.1",
     "@openuidev/lang-core": "1.0.1",
     "@openuidev/react-lang": "1.0.1",
@@ -34,7 +35,6 @@
     "@qimu/node": "*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.32.2",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",

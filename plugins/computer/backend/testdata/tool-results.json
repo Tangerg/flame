@@ -1,0 +1,730 @@
+[
+  {
+    "name": "empty success",
+    "result": {
+      "content": []
+    },
+    "expected": {}
+  },
+  {
+    "name": "empty text elided",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": ""
+        }
+      ]
+    },
+    "expected": {}
+  },
+  {
+    "name": "plain text",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "observed 界"
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "observed 界"
+        }
+      ]
+    }
+  },
+  {
+    "name": "text annotations and exact metadata",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "result",
+          "annotations": {
+            "audience": ["assistant"],
+            "priority": 0.5,
+            "lastModified": "2026-10-28T00:00:00Z"
+          },
+          "_meta": {
+            "provider/value": 9007199254740993
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "result",
+          "metadata": {
+            "mcp/content": {
+              "type": "text",
+              "_meta": {
+                "provider/value": 9007199254740993
+              },
+              "annotations": {
+                "audience": ["assistant"],
+                "lastModified": "2026-10-28T00:00:00Z",
+                "priority": 0.5
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "zero annotations",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "result",
+          "annotations": {
+            "audience": [],
+            "priority": 0
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "result",
+          "metadata": {
+            "mcp/content": {
+              "type": "text",
+              "annotations": {
+                "priority": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "image original detail",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "data": "AQID",
+          "_meta": {
+            "codex/imageDetail": "original"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "image/png",
+            "source": {
+              "kind": "bytes",
+              "bytes": "AQID"
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "image",
+              "_meta": {
+                "codex/imageDetail": "original"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "audio",
+    "result": {
+      "content": [
+        {
+          "type": "audio",
+          "mimeType": "audio/wav",
+          "data": "BAU="
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "audio/wav",
+            "source": {
+              "kind": "bytes",
+              "bytes": "BAU="
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "audio"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "explicit resource link",
+    "result": {
+      "content": [
+        {
+          "type": "resource_link",
+          "name": "report",
+          "uri": "https://example.com/report.pdf",
+          "mimeType": "application/pdf",
+          "title": "Report",
+          "description": "Summary",
+          "size": 0,
+          "icons": [
+            {
+              "src": "https://example.com/icon.png",
+              "mimeType": "image/png",
+              "sizes": ["48x48"],
+              "theme": "light"
+            }
+          ],
+          "annotations": {
+            "audience": ["user"]
+          },
+          "_meta": {
+            "origin": "record"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "application/pdf",
+            "source": {
+              "kind": "uri",
+              "uri": "https://example.com/report.pdf"
+            },
+            "name": "report"
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "resource_link",
+              "_meta": {
+                "origin": "record"
+              },
+              "annotations": {
+                "audience": ["user"],
+                "priority": 0
+              },
+              "title": "Report",
+              "description": "Summary",
+              "size": 0,
+              "icons": [
+                {
+                  "src": "https://example.com/icon.png",
+                  "mimeType": "image/png",
+                  "sizes": ["48x48"],
+                  "theme": "light"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "inferred resource link",
+    "result": {
+      "content": [
+        {
+          "type": "resource_link",
+          "name": "picture",
+          "uri": "https://example.com/IMAGE.PNG?download=1"
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "image/png",
+            "source": {
+              "kind": "uri",
+              "uri": "https://example.com/IMAGE.PNG?download=1"
+            },
+            "name": "picture"
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "resource_link",
+              "mimeTypeInferred": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "opaque resource link",
+    "result": {
+      "content": [
+        {
+          "type": "resource_link",
+          "name": "opaque",
+          "uri": "urn:example:42"
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "application/octet-stream",
+            "source": {
+              "kind": "uri",
+              "uri": "urn:example:42"
+            },
+            "name": "opaque"
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "resource_link",
+              "mimeTypeInferred": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "embedded text resource",
+    "result": {
+      "content": [
+        {
+          "type": "resource",
+          "resource": {
+            "uri": "file:///original/report.txt",
+            "mimeType": "text/plain",
+            "text": "report text",
+            "_meta": {
+              "version": 3
+            }
+          },
+          "_meta": {
+            "origin": "capture"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "report text",
+          "metadata": {
+            "mcp/content": {
+              "type": "resource",
+              "_meta": {
+                "origin": "capture"
+              },
+              "resource": {
+                "uri": "file:///original/report.txt",
+                "mimeType": "text/plain",
+                "_meta": {
+                  "version": 3
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "embedded binary resource inferred",
+    "result": {
+      "content": [
+        {
+          "type": "resource",
+          "resource": {
+            "uri": "file:///original/report.pdf",
+            "blob": "AQID",
+            "_meta": {
+              "version": 3
+            }
+          },
+          "_meta": {
+            "origin": "capture"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "application/pdf",
+            "source": {
+              "kind": "bytes",
+              "bytes": "AQID"
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "resource",
+              "_meta": {
+                "origin": "capture"
+              },
+              "resource": {
+                "uri": "file:///original/report.pdf",
+                "_meta": {
+                  "version": 3
+                }
+              },
+              "mimeTypeInferred": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "embedded binary resource explicit",
+    "result": {
+      "content": [
+        {
+          "type": "resource",
+          "resource": {
+            "uri": "memory:report",
+            "mimeType": "application/octet-stream",
+            "blob": "AQID"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "application/octet-stream",
+            "source": {
+              "kind": "bytes",
+              "bytes": "AQID"
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "resource",
+              "resource": {
+                "uri": "memory:report"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "structured exact content",
+    "result": {
+      "content": [],
+      "structuredContent": {
+        "id": 9007199254740993,
+        "fraction": 0.25,
+        "nested": [null, [], {}]
+      },
+      "_meta": {
+        "server/trace": "retained but not tool content"
+      }
+    },
+    "expected": {
+      "details": {
+        "fraction": 0.25,
+        "id": 9007199254740993,
+        "nested": [null, [], {}]
+      }
+    }
+  },
+  {
+    "name": "failure with image",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "data": "AQID"
+        },
+        {
+          "type": "text",
+          "text": "action failed"
+        }
+      ],
+      "structuredContent": {
+        "status": "failed"
+      },
+      "isError": true
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "image/png",
+            "source": {
+              "kind": "bytes",
+              "bytes": "AQID"
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "image"
+            }
+          }
+        },
+        {
+          "kind": "text",
+          "text": "action failed"
+        }
+      ],
+      "details": {
+        "status": "failed"
+      }
+    }
+  },
+  {
+    "name": "empty failure",
+    "result": {
+      "content": [],
+      "isError": true
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "mcp: tool \"js\" reported failure"
+        }
+      ]
+    }
+  },
+  {
+    "name": "portable text metadata",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "quoted",
+          "_meta": {
+            "provider/value": 1,
+            "scope/content": {
+              "metadata": {
+                "original": {
+                  "valid": true
+                }
+              },
+              "citations": [
+                {
+                  "source": {
+                    "kind": "uri",
+                    "value": "https://example.com/source"
+                  },
+                  "title": "Source",
+                  "quote": "words"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "text",
+          "text": "quoted",
+          "citations": [
+            {
+              "source": {
+                "kind": "uri",
+                "value": "https://example.com/source"
+              },
+              "title": "Source",
+              "quote": "words"
+            }
+          ],
+          "metadata": {
+            "mcp/content": {
+              "type": "text",
+              "_meta": {
+                "provider/value": 1
+              }
+            },
+            "original": {
+              "valid": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "portable image metadata",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "data": "AQID",
+          "_meta": {
+            "scope/content": {
+              "metadata": {
+                "original": true
+              },
+              "name": "image name",
+              "media_id": "image-1",
+              "media_metadata": {
+                "original/image": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "expected": {
+      "content": [
+        {
+          "kind": "media",
+          "media": {
+            "mime": "image/png",
+            "source": {
+              "kind": "bytes",
+              "bytes": "AQID"
+            },
+            "id": "image-1",
+            "name": "image name",
+            "metadata": {
+              "original/image": true
+            }
+          },
+          "metadata": {
+            "mcp/content": {
+              "type": "image"
+            },
+            "original": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "empty image refused",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "data": ""
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "invalid media mime refused",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "not-a-mime",
+          "data": "AQID"
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "empty resource refused",
+    "result": {
+      "content": [
+        {
+          "type": "resource",
+          "resource": {
+            "uri": "file:///empty.txt",
+            "text": ""
+          }
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "metadata key refused",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "nonempty",
+          "_meta": {
+            "": 1
+          }
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "empty text with metadata refused",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "",
+          "_meta": {
+            "origin": 1
+          }
+        }
+      ]
+    },
+    "rejected": true
+  },
+  {
+    "name": "portable media citation refused",
+    "result": {
+      "content": [
+        {
+          "type": "image",
+          "mimeType": "image/png",
+          "data": "AQID",
+          "_meta": {
+            "scope/content": {
+              "citations": [
+                {
+                  "source": {
+                    "kind": "reference",
+                    "value": "source"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "rejected": true
+  }
+]

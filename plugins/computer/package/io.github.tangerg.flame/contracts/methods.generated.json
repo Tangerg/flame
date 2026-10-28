@@ -1,0 +1,83 @@
+[
+  {
+    "name": "flame.computer/close.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Human-only: revoke the exact control session, cancel pending permissions and execution, and join its original engine. Already dispatched external effects cannot be undone.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fclose_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fclose_2ev1Output"
+  },
+  {
+    "name": "flame.computer/context.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the current worker identity and original runtime instructions and js/js_reset schemas before execution. This never opens a session or grants application access.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fcontext_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fcontext_2ev1Output"
+  },
+  {
+    "name": "flame.computer/execute.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Execute js or js_reset on the exact accepted worker and surface. Arguments follow the captured upstream schema. An observed result is durable; transport loss never authorizes replay. Reset discards the original JavaScript heap.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fexecute_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fexecute_2ev1Output"
+  },
+  {
+    "name": "flame.computer/history.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read original operation headers in admission order, newest first. This is a projection of durable receipts, not an execution log with a second owner.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fhistory_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fhistory_2ev1Output"
+  },
+  {
+    "name": "flame.computer/open.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Human-only: open one exclusive computer-control session on the Runtime host for the stated lease. Existing sessions are not replaced; expiry cancels and closes the engine.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fopen_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fopen_2ev1Output"
+  },
+  {
+    "name": "flame.computer/read.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the actual Runtime host and current computer-control session. This does not start an engine or authorize computer access.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fread_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fread_2ev1Output"
+  },
+  {
+    "name": "flame.computer/reply.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2freply_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2freply_2ev1Output"
+  },
+  {
+    "name": "flame.computer/result.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read original input, identity and the one observed outcome. An absent outcome means unconfirmed; this method never executes or infers desktop effects.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fresult_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fresult_2ev1Output"
+  },
+  {
+    "name": "flame.computer/stop.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fstop_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fstop_2ev1Output"
+  },
+  {
+    "name": "flame.computer/watch.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session.",
+    "input": "schema.json#/$defs/Method_flame_2ecomputer_2fwatch_2ev1Input",
+    "output": "schema.json#/$defs/Method_flame_2ecomputer_2fwatch_2ev1Output",
+    "stream": "schema.json#/$defs/Method_flame_2ecomputer_2fwatch_2ev1Chunk"
+  }
+]

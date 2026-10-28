@@ -56,7 +56,7 @@ async function exists(path) {
     throw error;
   }
 }
-function resourcePath(value) {
+export function resourcePath(value) {
   if (
     typeof value !== "string" ||
     value.includes("\\") ||

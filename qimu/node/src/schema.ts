@@ -143,11 +143,12 @@ export function compileSchema(source: unknown): (value: unknown) => void {
     }) as CustomProperty;
   }
   validator.attributes.enum = ((value: unknown, schema: Schema) =>
+    value === undefined ||
     schema.enum!.some((candidate: unknown) => equal(value, candidate))
       ? ""
       : "enum constraint failed") as CustomProperty;
   validator.attributes.const = ((value: unknown, schema: Schema) =>
-    equal(value, schema.const)
+    value === undefined || equal(value, schema.const)
       ? ""
       : "const constraint failed") as CustomProperty;
   validator.attributes.uniqueItems = ((value: unknown, schema: Schema) => {

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.computer",
+  "version": "1.0.0",
+  "description": "Control desktop applications and browsers through a directly loaded CUA engine, with Flame-owned lifecycle, human leases, live permissions, original media and durable execution receipts.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "declaration": "io.github.tangerg.flame/declaration.json"
+    }
+  }
+}

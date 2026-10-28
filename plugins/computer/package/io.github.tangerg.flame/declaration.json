@@ -1,0 +1,60 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "managedBackends": [
+    { "id": "computer", "runtime": "node", "entry": "backend/start.mjs" }
+  ],
+  "inputs": [
+    {
+      "id": "cua-application",
+      "server": "computer",
+      "target": "env",
+      "key": "FLAME_COMPUTER_APPLICATION",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "browser-enabled",
+      "server": "computer",
+      "target": "env",
+      "key": "FLAME_COMPUTER_BROWSER",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "audio-enabled",
+      "server": "computer",
+      "target": "env",
+      "key": "FLAME_COMPUTER_AUDIO",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "desktop-environment",
+      "server": "computer",
+      "target": "env",
+      "key": "FLAME_COMPUTER_DESKTOP_ENVIRONMENT",
+      "secret": true,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "computer-control",
+      "server": "computer",
+      "export": "control",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "computer",
+      "title": "Computer use",
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "Computer",
+      "contribution": "computer-control",
+      "material": "terminal"
+    }
+  ]
+}
