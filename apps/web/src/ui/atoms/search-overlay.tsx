@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { type ReactElement, type ReactNode } from "react";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { isImeKey } from "@flame/ui";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
@@ -53,6 +53,7 @@ interface SearchOverlayProps {
   placeholder: string;
   options: (query: string) => readonly SearchOption[];
   empty: ReactNode;
+  feedback?: ReactElement | null;
 }
 
 interface Delivery {
@@ -74,6 +75,7 @@ export function SearchOverlay({
   placeholder,
   options,
   empty,
+  feedback,
 }: SearchOverlayProps) {
   const [wasOpen, setWasOpen] = useState(open);
   const [opener, setOpener] = useState<HTMLElement | null>(() =>
@@ -141,6 +143,7 @@ export function SearchOverlay({
             placeholder={placeholder}
             options={options}
             empty={empty}
+            feedback={feedback}
             onChoose={(option) => {
               if (!open || choice.current) return;
               choice.current = {
@@ -168,6 +171,7 @@ function SearchOverlayContent({
   placeholder,
   options,
   empty,
+  feedback,
   onChoose,
 }: SearchOverlayContentProps) {
   const [query, setQuery] = useState("");
@@ -176,7 +180,7 @@ function SearchOverlayContent({
   const baseId = useId();
   const listboxId = `${baseId}-list`;
 
-  const rows = options(query);
+  const rows = feedback == null ? options(query) : [];
   const active = rows.length === 0 ? 0 : Math.min(Math.max(highlight, 0), rows.length - 1);
   const activeId = rows.length === 0 ? undefined : `${baseId}-${active}`;
   const activeKey = rows[active]?.key;
@@ -195,7 +199,7 @@ function SearchOverlayContent({
           // oxlint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={open}
           role="combobox"
-          aria-expanded
+          aria-expanded={feedback == null}
           aria-controls={listboxId}
           aria-activedescendant={activeId}
           value={query}
@@ -222,29 +226,33 @@ function SearchOverlayContent({
         />
         <Kbd>esc</Kbd>
       </div>
-      <div
-        ref={listRef}
-        id={listboxId}
-        role="listbox"
-        aria-label={label}
-        {...stylex.props(styles.list)}
-      >
-        {rows.length === 0
-          ? empty
-          : rows.map((option, index) => (
-              <OptionRow
-                key={option.key}
-                id={`${baseId}-${index}`}
-                layout="flex"
-                size="lg"
-                tabIndex={-1}
-                selected={index === active}
-                onPointerMove={() => setHighlight(index)}
-                onClick={() => onChoose(option)}
-              >
-                {option.children}
-              </OptionRow>
-            ))}
+      <div {...stylex.props(styles.list)}>
+        <div
+          ref={listRef}
+          id={listboxId}
+          role="listbox"
+          aria-label={label}
+          hidden={feedback != null}
+        >
+          {feedback == null &&
+            (rows.length === 0
+              ? empty
+              : rows.map((option, index) => (
+                  <OptionRow
+                    key={option.key}
+                    id={`${baseId}-${index}`}
+                    layout="flex"
+                    size="lg"
+                    tabIndex={-1}
+                    selected={index === active}
+                    onPointerMove={() => setHighlight(index)}
+                    onClick={() => onChoose(option)}
+                  >
+                    {option.children}
+                  </OptionRow>
+                )))}
+        </div>
+        {feedback}
       </div>
     </div>
   );

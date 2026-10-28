@@ -3,8 +3,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n/index";
-import { Icon } from "@/ui/index";
-import { SearchOverlay } from "@/ui/index";
+import { DataError, Icon, SearchOverlay, SkeletonList } from "@/ui/index";
 import { EmptyState, vocab } from "@flame/ui";
 
 import { useAgentSessions } from "@/features/agent/public/session";
@@ -26,7 +25,7 @@ export function SessionSearch() {
   const t = useT();
   const open = useSessionSearchStore((state) => state.open);
   const setOpen = useSessionSearchStore((state) => state.setOpen);
-  const { data: sessions } = useAgentSessions();
+  const { data: sessions, isError, error, refetch } = useAgentSessions();
 
   return (
     <SearchOverlay
@@ -34,6 +33,15 @@ export function SessionSearch() {
       onOpenChange={setOpen}
       label={t("sessionSearch.label")}
       placeholder={t("sessionSearch.placeholder")}
+      feedback={
+        sessions !== undefined ? undefined : isError ? (
+          <div role="alert">
+            <DataError failure={error} onRetry={() => void refetch()} size="compact" />
+          </div>
+        ) : (
+          <SkeletonList label={t("common.loading")} variant="compact" />
+        )
+      }
       empty={
         <EmptyState
           icon={iconGlyph("chat")}
@@ -43,19 +51,21 @@ export function SessionSearch() {
         />
       }
       options={(query) =>
-        matchSessions(sessions ?? [], query).map((session) => ({
-          key: session.id,
-          onSelect: () => agentAccess.selectAgentSession(session.id),
-          children: (
-            <>
-              <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
-              <span {...stylex.props(cmd.label, vocab.truncate)}>{session.title}</span>
-              <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
-                {formatRelative(session.time)}
-              </span>
-            </>
-          ),
-        }))
+        sessions === undefined
+          ? []
+          : matchSessions(sessions, query).map((session) => ({
+              key: session.id,
+              onSelect: () => agentAccess.selectAgentSession(session.id),
+              children: (
+                <>
+                  <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
+                  <span {...stylex.props(cmd.label, vocab.truncate)}>{session.title}</span>
+                  <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
+                    {formatRelative(session.time)}
+                  </span>
+                </>
+              ),
+            }))
       }
     />
   );

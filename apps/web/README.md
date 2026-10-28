@@ -65,6 +65,20 @@ The host stays outside the natural Tab order. Its painted child surface inherits
 the host outline, so the existing inset keyboard indicator remains visible above
 that surface without introducing another focus target or color rule.
 
+The search navigation row already has its resting fill, so it uses the shared
+document keyboard perimeter. Its fill, pointer states, label and dialog action
+retain their owners. Other navigation looks retain their existing focus-fill
+policy.
+
+Session search waits for a defined Session snapshot before reporting no matches.
+Its existing query owns pending, first-read error and retry; accepted results stay
+available through background failure. The shared overlay presents non-result
+feedback outside its listbox, with no active option while that list is hidden.
+The same query input stays mounted through these changes. Retrying hands focus
+to the surviving dialog through DataError's existing host rule; settlement does
+not reclaim later focus. Dialog dismissal and reopening retain their existing
+return-focus and query-reset contracts.
+
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation

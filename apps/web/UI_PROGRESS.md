@@ -32,11 +32,14 @@ a paused first read from a known empty snapshot while preserving independently
 available Sessions, published as `3f7794d38`; see **Work-index snapshot readiness**.
 The empty conversation retains visible editing focus through native reflow,
 published as `d5f9a5e89`; see **Empty-conversation focus during reflow**. The ordinary
-Retry action now hands focus to its named surviving sidebar; see **Sidebar Retry
-focus and painted host**. Native/source inspection identifies the Search trigger's
-indistinguishable resting/focused fill in `ui/agent/navigation-row.tsx`: its search
-look keeps the ordinary row's outline-suppression marker. Next restore the shared
-keyboard indicator for that filled variant and qualify its dialog/return path. Preserve the
+Retry continuity and its visible painted host are published as `1cceecdd1`; see
+**Sidebar Retry focus and painted host**. The Search row now uses the shared
+keyboard perimeter while retaining its resting fill. Native qualification is
+pending because CUA reports the Mac locked; the required manual-unlock question
+is pending. See **Search-entry keyboard focus**. Do not publish or claim native
+acceptance before its dialog/return path is inspected. The subsequent source
+finding is SessionSearch treating an absent Session snapshot as an empty list.
+Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -17604,6 +17607,125 @@ suppresses the shared outline. `SidebarActions` is its sole product search-look
 caller; the other usage is the existing row test. This task does not approve that
 separate control; qualify its shared marker policy and search-dialog return next.
 The goal remains active.
+
+### Session search readiness and entry focus
+
+The preceding native Retry qualification reaches the Search trigger on the next
+Tab without a visible perimeter. Its source explains that result:
+`ui/agent/navigation-row.tsx:137` unconditionally marks every row for fill-only
+focus. The search look already uses `surface.hover` at rest, and keyboard focus
+chooses the same fill. The shared stylesheet therefore removes its outline
+without supplying a distinguishable focused appearance.
+
+The existing search look now omits that suppression marker. The shared document
+focus owner supplies the keyboard perimeter, including its existing inset and
+forced-colors policy. Resting fill, pointer operation, hover tracking, accessible
+name, shortcut, dialog action and every other row look remain intact.
+`SidebarActions` is the sole product caller of this look; the other caller is the
+existing navigation-row test fixture.
+
+Source inspection then identifies a second defect in this same task:
+`SessionSearch.tsx` maps `sessions ?? []` into "No session matches" before a
+first Session snapshot exists. It conceals both a paused first read and an actual
+failure. The unfinished focus candidate is expanded into the complete search
+flow, with its initial checks and assets retained as historical prequalification.
+
+The canonical Session query remains the sole snapshot and request owner. Search
+projects its absent snapshot as shared loading or DataError feedback, including
+the existing Retry; only a defined collection can produce no matches. Accepted
+results remain available through background reads and failure. Shared
+`SearchOverlay` accepts a non-result feedback element outside its listbox. That
+list keeps its ID but is hidden during feedback, with no active descendant or
+expanded suggestions. The dialog and query input remain mounted. DataError's
+existing nearest-host handoff moves a retiring Retry's focus to the dialog before
+refetch; settlement does not move it again. Existing modal dismissal, action
+delivery, IME handling and reopen reset retain their owners. The other product
+consumer, CommandMenu, remains synchronous and passes its current regressions.
+There is no new request, state machine, focus handler, theme rule, dependency or
+UI copy.
+
+Better-accessibility's visible focus and focus-return guidance, the shared UI
+README's actual input-modality contract, and the
+[WAI combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/)
+guide the keyboard and option semantics. Read-only HeroUI
+`combo-box/asynchronous-loading.tsx` and
+`autocomplete/allows-empty-collection.tsx` supply examples of request feedback and
+an explicitly accepted empty collection. Their React Aria implementation is not
+copied into Flame's Base UI/StyleX boundary.
+
+New real-query regressions expose **6 failures / 2 passes** on the preceding
+implementation. After repair, all **8** pass: paused unknown data, first accepted
+empty data, Retry into empty/results/failure, later input focus/selection,
+accepted results through background failure, and Escape during retry followed
+by late results and reopening. Together with current Session search/matching,
+SearchOverlay and CommandMenu tests, **5 files / 36 tests** pass. Before the final
+main synchronization, the frontend passes **430 files / 4,041 tests**, along
+with Web typecheck, lint, formatting, all **22 Web owner/resource/build gates**
+and supported `make check-native`, in serial execution. No attribute-only test
+is added for the reversible row marker policy.
+
+Actual Wails qualification accepts **104** observation records after **four**
+setup records, including **five** loading frames. In light ZH 14px/Orange, Tab
+paints the Search entry perimeter; Return opens the real query input. Both
+keyboard and pointer Retry keep the query and hand focus to the surviving named
+dialog. Pending becomes the actual error without claiming no matches. Escape
+returns to the opener; reopening resets the query. Actual Settings choose dark,
+Purple and UI 18px. Resizing the native window to **1125×734** and using native
+200% page zoom reports **562×367 CSS pixels**, DPR 4. The dialog remains inside
+that viewport at `[21.25, 96, 520, 232]`, with root scroll `[0, 0]` and its visible
+1.5px Purple perimeter. The Search entry retains its independent inset perimeter.
+
+The shared CommandMenu's direction keys reveal later commands in that small,
+scaled viewport. Filtering Settings and pressing Enter dismisses the modal before
+the actual Settings view takes focus. This qualifies the changed result-list
+viewport as well as Session search's non-result feedback.
+
+The ordinary production control contains **497** files, identical to supported
+Web output and native staging. All **496 non-HTML files** equal the observed
+build; only `index.html` loses the added passive observer. In the actual Wails
+control, dark/Purple/UI18 Search entry, keyboard and pointer retry, retained
+`Production control`/`Pointer control` queries, Escape return and reopen reset
+pass. It emits **zero** additional observation records. Neither generation seeds
+queries or forwards requests; its isolated loopback Runtime is deliberately
+unavailable. Accepted empty/results and background-settlement ordering are covered
+by real-query regressions, not claimed as a live provider/Session-selection run.
+
+The earlier Mac lock is resolved by manual unlock. A later tool-kernel reset
+interrupts only the control-asset copy: all **108** saved records are recovered,
+the **36** unfinished assets are copied and checked against their frozen hashes,
+and all **5,925** pre-merge source inputs remain exact. A transient window lookup
+failure is checked against the still-live native process; it is not restarted.
+The subsequent fresh lock is resolved before the ordinary control runs.
+
+The requested final synchronization captures **31** main commits through
+`d4ac5b7b12e91136588a53b699a65fecc074739a`. All four owned source/test files remain
+byte-identical. Root `npm ci` selects that main's Qimu workspaces and lock without
+changing manifests. Post-merge verification passes **8 files / 55 tests**, Web
+typecheck/lint, layer and production-module checks, and supported
+`make check-native`. The rebuilt current native host serves **501** ordinary
+production assets, byte-identical to supported Web output and native staging.
+Actual Wails again opens Search, retains `Merged main control` through keyboard
+Retry with visible dialog focus, and returns to Search on Escape. It has no
+additional observer. The final source freeze covers **6,190** non-Markdown inputs,
+with **6,186** unchanged outside the four owned source/test paths against captured
+main. The earlier full frontend result is scoped to the pre-merge source; it is
+not relabeled as a new aggregate result. The broader Runtime lifecycle suite is
+not rerun after incoming Runtime/Qimu changes; prior failures remain historical.
+
+All **four** native generations are stopped. Final cleanup removes **seven**
+recreated output/cache roots and **three** private Library/temp paths, restores
+all **four** original files and modes, and matches all **14** output-presence and
+**five** Library/temp baselines. The exact bundle is unregistered and the passive
+server is closed. The guarded private root is absent. The roundtripped in-memory
+gzip retains **67** flat UTF-8 records, source and asset maps, the **108** saved
+observation records, scoped native/control receipts and final cleanup evidence.
+It is **1,898,318 bytes**, SHA-256:
+`76f34203af6993af529fa396c3d203ca8eb6fe796a1a8cbdea913232f6f6e474`.
+
+VoiceOver audio, fresh forced-colors/RTL OS runs, browser/performance suites and
+Claude CLI are not run. This approves the inspected Search flow, without a
+whole-product award-tier claim. The user requests a milestone pause after this
+qualified batch is published to main.
 
 ### Pinned Session row identity
 
