@@ -1,12 +1,19 @@
 import { trace } from "@opentelemetry/api";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { setupObservability } from "@/lib/observability/setup";
 import { useTelemetryStore } from "@/lib/observability/stores";
 
 const disposals: (() => Promise<void>)[] = [];
+beforeEach(() => {
+  vi.stubEnv("OTEL_TRACES_SAMPLER", "always_on");
+});
 afterEach(async () => {
-  await Promise.all(disposals.splice(0).map((dispose) => dispose()));
-  useTelemetryStore.getState().clear();
+  try {
+    await Promise.all(disposals.splice(0).map((dispose) => dispose()));
+  } finally {
+    useTelemetryStore.getState().clear();
+    vi.unstubAllEnvs();
+  }
 });
 
 const options = { serviceName: "session-test", serviceVersion: "1" };

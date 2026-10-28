@@ -12,6 +12,7 @@ export async function presentationFacts(repository = root) {
   const entry = join(repository, "tooling/presentation-entry.ts");
   const source = `
 import { PRODUCT_NAME, PRODUCT_SLUG } from "@/app/product";
+import { FLAME_ORANGE } from "@/lib/brandColor";
 import { desktopProduct } from ${JSON.stringify(join(repository, "apps/desktop/build/product.mjs"))};
 import { defaultAppearance } from "@/features/theme/kit/appearance";
 import { APPEARANCE_STORAGE_KEY, THEME_PAINT_STORAGE_KEY, THEME_CLASS_PREFIX } from "@/features/theme/kit/documentTheme";
@@ -30,6 +31,7 @@ const palette = (scheme) => ({
 const withoutPrefix = (values) => Object.fromEntries(Object.entries(values).map(([key, value]) => [key.replace(/^--/, ""), value]));
 export default {
   product: { name: PRODUCT_NAME, slug: PRODUCT_SLUG, ...desktopProduct },
+  brand: { orange: FLAME_ORANGE },
   light: palette("light"),
   dark: palette("dark"),
   defaults: {
@@ -214,6 +216,14 @@ export async function presentationOutputs(repository = root) {
         "apps/web/src/styles/presentation.generated.css",
         stylesheet(facts),
         "css",
+      ),
+    ],
+    [
+      "apps/web/src/lib/brand.generated.stylex.ts",
+      await formatted(
+        "apps/web/src/lib/brand.generated.stylex.ts",
+        `// ${generated}\nimport * as stylex from "@stylexjs/stylex";\n\nexport const brandColor = stylex.defineVars(${JSON.stringify(facts.brand)});\n`,
+        "typescript",
       ),
     ],
     ["apps/desktop/product.generated.go", nativeSource(facts)],

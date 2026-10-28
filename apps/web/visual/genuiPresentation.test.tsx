@@ -607,41 +607,35 @@ it.each([
 
 const releaseModules = import.meta.glob<{ GenUIResult: PluginComponent }>(
   "../../../plugins/genui/package/io.github.tangerg.flame/components/component.js",
+  { eager: true },
 );
-async function releasedComponent(): Promise<PluginComponent> {
-  const load = Object.values(releaseModules)[0];
-  if (!load) throw new Error("genui test requires its built release component");
-  return (await load()).GenUIResult;
-}
+const releasedComponent = Object.values(releaseModules)[0]?.GenUIResult;
+if (!releasedComponent) throw new Error("genui test requires its built release component");
 
 it.each([
-  ["authored component", async () => GenUIResult],
+  ["authored component", GenUIResult],
   ["published ESM", releasedComponent],
-] as const)(
-  "passes a trusted %s failure through OpenUI to the host inspector",
-  async (_name, load) => {
-    const Entry = await load();
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = JSON.stringify(report);
-    const capturedReport = (locale: string) => (
-      <ComponentBoundary
-        scope="GenUI captured result"
-        fallback={<pre aria-label="Captured source">{result}</pre>}
-      >
-        <Entry context={capturedContext(result, locale)} />
-      </ComponentBoundary>
-    );
-    const rendered = testClient.render(capturedReport("en"));
-    expect(screen.getByRole("region", { name: report.title })).toBeTruthy();
-    vi.spyOn(ui, "Stats").mockImplementation(() => {
-      throw new Error("recorded metric rendering failed");
-    });
-    rendered.rerender(capturedReport("zh"));
-    expect(screen.getByRole("alert")).toBeTruthy();
-    expect(screen.getByLabelText("Captured source").textContent).toBe(result);
-    expect(screen.queryByRole("region", { name: report.title })).toBeNull();
-  },
-);
+] as const)("passes a trusted %s failure through OpenUI to the host inspector", (_name, Entry) => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const result = JSON.stringify(report);
+  const capturedReport = (locale: string) => (
+    <ComponentBoundary
+      scope="GenUI captured result"
+      fallback={<pre aria-label="Captured source">{result}</pre>}
+    >
+      <Entry context={capturedContext(result, locale)} />
+    </ComponentBoundary>
+  );
+  const rendered = testClient.render(capturedReport("en"));
+  expect(screen.getByRole("region", { name: report.title })).toBeTruthy();
+  vi.spyOn(ui, "Stats").mockImplementation(() => {
+    throw new Error("recorded metric rendering failed");
+  });
+  rendered.rerender(capturedReport("zh"));
+  expect(screen.getByRole("alert")).toBeTruthy();
+  expect(screen.getByLabelText("Captured source").textContent).toBe(result);
+  expect(screen.queryByRole("region", { name: report.title })).toBeNull();
+});
 
 it("renders the recorded first frame on the server without component context I/O", () => {
   const html = renderToStaticMarkup(

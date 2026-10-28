@@ -16,6 +16,7 @@ export const hostModuleSpecifiers = Object.freeze([
   "@flame/ui/floating-surface",
   "@flame/ui/glyph-swap",
   "@flame/ui/icon-button",
+  "@flame/ui/icon-scale",
   "@flame/ui/panel",
   "@flame/ui/select",
   "@flame/ui/text-field",

@@ -281,7 +281,7 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.durableDraftTexts().has("shared")).toBe(false);
   });
 
-  it("hydrates only the restored endpoint after renderer replacement and discards unscoped state", async () => {
+  it("hydrates only the restored endpoint after renderer replacement and leaves unscoped state unowned", async () => {
     const targets = installTargets("cold-renderer");
     selectAgentSession(testClient.agent.dependencies, "shared");
     composer().setValue("cold draft on A");
@@ -325,9 +325,9 @@ describe("Runtime target authoring ownership", () => {
       path: "src/B.ts",
       line: 2,
     });
-    expect(localStorage.getItem("flame.agent-session")).toBeNull();
-    expect(localStorage.getItem("flame.composer")).toBeNull();
-    expect(localStorage.getItem("flame.context-dock")).toBeNull();
+    expect(localStorage.getItem("flame.agent-session")).toBe(unscopedAgent);
+    expect(localStorage.getItem("flame.composer")).toBe(unscopedComposer);
+    expect(localStorage.getItem("flame.context-dock")).toBe(unscopedDock);
   });
 });
 

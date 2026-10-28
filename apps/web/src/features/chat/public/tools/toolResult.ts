@@ -4,7 +4,7 @@ import { isJSONNumber, parseJSON, projectNumber } from "@qimu/sdk/json";
 
 export interface CommandResult {
   exitCode?: number;
-  output: string;
+  output?: string;
 }
 
 export interface PatchResult {
@@ -87,9 +87,14 @@ export function patchToolResult(raw: unknown): PatchResult | undefined {
 
 export function commandToolResult(raw: unknown): CommandResult | undefined {
   const value = readToolResultObject(raw);
-  if (typeof value?.output !== "string") return undefined;
+  if (!value) return undefined;
+  const output = typeof value.output === "string" ? value.output : undefined;
   const exitCode = readRepresentableNumber(value.exitCode);
-  return { output: value.output, ...(exitCode === undefined ? {} : { exitCode }) };
+  if (output === undefined && exitCode === undefined) return undefined;
+  return {
+    ...(output === undefined ? {} : { output }),
+    ...(exitCode === undefined ? {} : { exitCode }),
+  };
 }
 
 export function webSearchToolResult(raw: unknown): WebSearchResult | undefined {

@@ -241,6 +241,10 @@ function fixture(
         const proof = message.input as CloseProof;
         validateProof(proof);
         proofs.push(proof);
+        if (proof.scopeKind === "execution" && !ready) {
+          requested = false;
+          prepared.reject(new Error("component execution retired before publication"));
+        }
         if (loseProof) {
           loseProof = false;
           throw new Error("proof acknowledgement lost");
@@ -427,9 +431,10 @@ it("retains the artifact origin captured before a pending lease crosses reconnec
     {},
     `data:text/javascript,${encodeURIComponent('throw new Error("resource crossed Runtime origin")')}#`,
   );
+  scene.unmount();
   resourcesReady.resolve();
   await replacement;
-  await screen.findByText("Native panel");
   expect(f.source.evaluations).toBe(1);
-  scene.unmount();
+  expect(f.closeResources).toHaveBeenCalledOnce();
+  expect(f.proofs.some((proof) => proof.scopeKind === "execution")).toBe(true);
 });

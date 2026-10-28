@@ -53,3 +53,8 @@ it("projects numeric result fields only when their values remain exact", () => {
     output: "ok",
   });
 });
+
+it("retains an exit receipt when command output arrived through the stream", () => {
+  expect(commandToolResult({ exitCode: 0 })).toEqual({ exitCode: 0 });
+  expect(commandToolResult({ output: 7, exitCode: "0" })).toBeUndefined();
+});

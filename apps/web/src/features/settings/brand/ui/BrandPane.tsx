@@ -5,7 +5,7 @@ import { Button, CARD_SURFACE, PanelSection, useCopyFeedback } from "@flame/ui";
 import { color, face, layout, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { brandAssets } from "@/lib/brand";
 import { FLAME_ORANGE } from "@/lib/brand";
-import { brandColor } from "@/lib/brand.stylex";
+import { brandColor } from "@/lib/brand.generated.stylex";
 import { useT } from "@/lib/i18n/index";
 import { notifyError } from "@/features/notifications/public/notifications";
 import { Icon } from "@/ui/index";

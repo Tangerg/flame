@@ -6,37 +6,97 @@ import { expect, it } from "vitest";
 import { ExactNumber, stringifyJSON } from "@qimu/sdk/json";
 import { StdioTransport } from "./transport.ts";
 
-it("every close joins the original pending write and keeps its failure listener", async () => {
-  const writing = Promise.withResolvers<(error?: Error | null) => void>();
-  const output = new Writable({
-    write(_chunk, _encoding, complete) {
-      writing.resolve(complete);
-    },
-  });
-  const input = new PassThrough();
-  const transport = new StdioTransport(input, output, 1024);
-  let failures = 0;
-  transport.onerror = () => {
-    failures++;
-  };
-  await transport.start();
-  const sent = transport
-    .send({ jsonrpc: "2.0", method: "notice" })
-    .catch((error: unknown) => error);
-  const complete = await writing.promise;
-  let closed = false;
-  const first = transport.close();
-  const second = transport.close().then(() => {
-    closed = true;
-  });
-  await Promise.resolve();
-  expect(closed).toBe(false);
-  complete(new Error("original write failed"));
-  expect(await sent).toBeInstanceOf(Error);
-  await Promise.all([first, second]);
-  expect(closed).toBe(true);
-  expect(failures).toBe(1);
-});
+it.each([true, false])(
+  "every close joins the original pending write and keeps its failure listener (autoDestroy=%s)",
+  async (autoDestroy) => {
+    const writing = Promise.withResolvers<(error?: Error | null) => void>();
+    const output = new Writable({
+      autoDestroy,
+      write(_chunk, _encoding, complete) {
+        writing.resolve(complete);
+      },
+    });
+    const input = new PassThrough();
+    const transport = new StdioTransport(input, output, 1024);
+    let failures = 0;
+    let notifications = 0;
+    transport.onerror = () => {
+      failures++;
+    };
+    transport.onclose = () => {
+      notifications++;
+    };
+    await transport.start();
+    const sent = transport
+      .send({ jsonrpc: "2.0", method: "notice" })
+      .catch((error: unknown) => error);
+    const complete = await writing.promise;
+    let closed = false;
+    const first = transport.close();
+    const second = transport.close().then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    expect(notifications).toBe(0);
+    complete(new Error("original write failed"));
+    expect(await sent).toBeInstanceOf(Error);
+    await Promise.all([first, second]);
+    expect(closed).toBe(true);
+    expect(failures).toBe(1);
+    expect(notifications).toBe(1);
+    expect(output.listenerCount("error")).toBe(0);
+  },
+);
+
+it.each([true, false])(
+  "joins delayed stream destruction before reporting close (emitClose=%s)",
+  async (emitClose) => {
+    const writing = Promise.withResolvers<(error?: Error | null) => void>();
+    const destroying = Promise.withResolvers<(error?: Error | null) => void>();
+    const failure = new Error("original write failed");
+    const output = new Writable({
+      emitClose,
+      write(_chunk, _encoding, complete) {
+        writing.resolve(complete);
+      },
+      destroy(error, complete) {
+        expect(error).toBe(failure);
+        destroying.resolve(complete);
+      },
+    });
+    const transport = new StdioTransport(new PassThrough(), output, 1024);
+    const failures: Error[] = [];
+    let notifications = 0;
+    transport.onerror = (error) => failures.push(error);
+    transport.onclose = () => {
+      notifications++;
+    };
+    await transport.start();
+    const sent = transport
+      .send({ jsonrpc: "2.0", method: "notice" })
+      .catch((error: unknown) => error);
+    const completeWrite = await writing.promise;
+    let closed = false;
+    const closing = transport.close().then(() => {
+      closed = true;
+    });
+    completeWrite(failure);
+    const completeDestroy = await destroying.promise;
+    await Promise.resolve();
+    expect(closed).toBe(false);
+    expect(notifications).toBe(0);
+    expect(failures).toHaveLength(0);
+    completeDestroy(failure);
+    expect(await sent).toBe(failure);
+    await closing;
+    expect(closed).toBe(true);
+    expect(notifications).toBe(1);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.cause).toBe(failure);
+    expect(output.listenerCount("error")).toBe(0);
+  },
+);
 
 it.each([
   Buffer.from(
