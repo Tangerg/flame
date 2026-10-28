@@ -683,6 +683,8 @@ html.theme-dark {
 
 .agent-drawer-surface {
   position: relative;
+  outline: inherit;
+  outline-offset: inherit;
   display: flex;
   width: 100%;
   height: 100%;

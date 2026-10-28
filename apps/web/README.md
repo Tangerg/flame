@@ -41,6 +41,15 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+The empty conversation owns keeping its focused control inside its scroll
+viewport when the window, text or surrounding content reflows. Its existing
+spacing token supplies focus clearance. Native keyboard return reveals that
+control; an active pointer press stays in place. Deliberate scrolling or later
+outside focus retires automatic reveal. The hook neither focuses another node
+nor changes the draft or selection, and retires when the transcript starts or
+the view becomes hidden. Transcript reading and shared Panel focus retain their
+separate owners.
+
 The work index treats a first pending project read as loading even when its
 network request is paused. The sidebar and project menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content
@@ -48,6 +57,13 @@ stays available during a background read or failure. Project groups remain
 unknown until a project snapshot exists, even when recent Sessions arrive first.
 Their recent rows remain available beside the project's loading or error state. Query
 retries and canonical project/Session data retain their existing owners.
+
+The named work index is also the surviving programmatic focus destination when
+its focused Retry action retires into loading. The existing DataError handoff
+finds that host before requesting the read; settlement does not move focus again.
+The host stays outside the natural Tab order. Its painted child surface inherits
+the host outline, so the existing inset keyboard indicator remains visible above
+that surface without introducing another focus target or color rule.
 
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme

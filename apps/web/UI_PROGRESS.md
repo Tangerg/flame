@@ -27,11 +27,16 @@ published as `9014e9689`. Shared Panel viewport reflow is published as `0c906971
 with its complete production-entry qualification and cleanup under **Settings
 focus and pointer activation** below. Startup connection recovery is published as
 `903da7409`; its existing notice/action remains reachable before the first Session
-snapshot. See **Startup connection recovery**. The work index now distinguishes
+snapshot. See **Startup connection recovery**. The work index distinguishes
 a paused first read from a known empty snapshot while preserving independently
-available Sessions; see **Work-index snapshot readiness**. Next repair the observed
-empty-conversation focus/reflow gap at native 200%, then the ordinary Retry
-action's focus retirement through its existing host/DataView owners. Preserve the
+available Sessions, published as `3f7794d38`; see **Work-index snapshot readiness**.
+The empty conversation retains visible editing focus through native reflow,
+published as `d5f9a5e89`; see **Empty-conversation focus during reflow**. The ordinary
+Retry action now hands focus to its named surviving sidebar; see **Sidebar Retry
+focus and painted host**. Native/source inspection identifies the Search trigger's
+indistinguishable resting/focused fill in `ui/agent/navigation-row.tsx`: its search
+look keeps the ordinary row's outline-suppression marker. Next restore the shared
+keyboard indicator for that filled variant and qualify its dialog/return path. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
@@ -611,6 +616,114 @@ screenshot digests**, gzip SHA-256
 This documentation receipt changes no accepted product source. Primary user data,
 parallel work, dependencies, global compiler caches and reference resources are
 preserved.
+
+### Empty-conversation focus during reflow
+
+The work-index native qualification exposed an existing empty-page defect:
+after 200% zoom the same focused input sat at **[32, 457.21875, 494.5, 41]**,
+below the conversation viewport. Manual scrolling recovered it. That published
+`ChatStream` source is unchanged at `3f7794d38`, so its native receipt remains
+the control; the new regression also reproduces the failure without another
+baseline application build.
+
+`ChatStream.tsx:268` now identifies the actual empty-page scroll owner.
+`useEmptyConversationFocus.ts:3` observes that viewport and its existing children,
+retaining a visible focused control through viewport and composition reflow.
+It uses an absolute, immediate offset only in that viewport and the shared
+**8 px** spacing token as scroll padding. Native fractional offsets round toward
+visible content. Deliberate wheel/scroll movement, later outside focus, hidden
+content and the started transcript retire this behavior. Active pointer presses
+stay in place. There is no new draft, focus target, query, timer, animation,
+Runtime policy or transcript-follow owner.
+
+Better-layout/accessibility guidance supplies the visible-focus/reflow contract.
+The local HeroUI ScrollShadow is an actual scroll-surface presentation component;
+it does not own focus following. ZCode's actual LexicalChatInput retains bounded
+editor scrolling and imperative editor focus; it is not evidence for Flame's
+outer empty-page behavior. Flame's native failure and the actual scroll owner
+determine this repair. The approved companion, heading, reading width, typography,
+surface colors, quiet fields and layout hierarchy remain intact.
+
+| Severity | Location                                                                     | Before                                                               | After                                                                  | Why                                                                         |
+| -------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| HIGH     | `shell/workbench/panel/ChatStream.tsx:268`; `useEmptyConversationFocus.ts:3` | Reflow leaves the focused authored input entirely below the viewport | The same control stays visible until the reader deliberately leaves it | Visible focus and continued editing at 200%; WCAG 2.4.11 / resize-text task |
+
+The initial check lacks the intentionally cleaned shared-package outputs and
+collects no tests; the normal icon/UI build restores that prerequisite. The
+accepted baseline has **2 failures / 17 passes**, exposing both viewport and
+sibling-content reflow. Eight new composed cases cover successive fractional
+reflow, sibling geometry, wheel and scrollbar intent, later/hidden focus, started
+transcript retirement, keyboard return and pointer activation. The notification
+test now identifies its own observer rather than mistaking the new viewport
+observer for it; its original geometry assertions remain unchanged. Final focused
+verification passes **3 files / 35 tests** and Web typecheck.
+
+Actual Wails qualification uses the eager production root over a private
+home/assets/origin, a canonical prewarmed Session and query-network pause before
+mounting. No later query writes or live Runtime/provider execution occur. CUA owns
+every native action; the observer only reads DOM, geometry, selection and query
+facts. Its collector is rebound to a stable captured object before fresh input
+focus and all accepted zoom actions; earlier records do not qualify editing.
+
+- English18/Purple is selected through real Settings, with actual light/dark
+  toggles. At **720 × 450 / DPR4 / 200%**, input node **15** is **[32, 401,
+  654, 41]** inside the empty viewport **[0, 220, 720, 230]**.
+- Native corner resizing reaches **1122 × 730**, or **561 × 365 / DPR4** at
+  200%. The same input is **[32, 315.3984375, 495, 41]**, above the viewport's
+  **365 px** end with its clearance. The synthetic draft and **[0,44]** selection
+  survive. BODY/HTML remain **[0,0]**.
+- Deliberate wheel movement to scroll **0**, followed by 195% zoom, leaves that
+  selected input below the viewport. It is intentionally not reclaimed.
+  Shift+Tab reveals Connection settings; Enter opens the real category. Escape
+  and the existing Notices → Connection → Composer order return to node **15**,
+  now visible at **[31.9952, 324.7035, 509.3910, 40.9936]**. Native Tab resets
+  selection to **[0,0]**; selection retention is not claimed for that path.
+- Native Command+Right and paste append ` Continue.`. Light-theme reflow repeats
+  the visible **561 × 365 / 200%** result with the same input and continued
+  draft. Actual Size restores **1122 × 730** and continued editing. The measured
+  generation contains **118** captured records, including pre-qualification
+  setup records, then exits with native Quit.
+- The observation-free control repeats selected-draft zoom, corner resize,
+  Connection entry/return and continued paste (` Clean.`), then Actual Size and
+  Quit. Its **497 files** retain all **496 non-HTML** candidate hashes; only
+  `index.html` differs, and it emits **zero** observer records. Its geometry is
+  visual/AX evidence rather than independent DOM measurements.
+
+The final ordinary production entry removes the Session input, query pause and
+observer. Its real failed-read state keeps Retry and Connection settings; pointer
+entry, Escape and the next Tab retain that recovery path. It emits no observer
+records and exits with native Quit. This cold root has no first Session snapshot,
+so it correctly withholds the composed empty editor; the preceding private input
+qualifies that editor's actual task. All three variants use the same host binary.
+All **497 ordinary production files** also match the supported Web output and
+the native staging directory byte for byte.
+
+Final serial verification passes Web typecheck, lint, formatting, **429 frontend
+files / 4,029 tests**, all **22 Web owner/resource/build gates** and supported
+`make check-native`. All **5,924** frozen non-Markdown inputs match, including
+**5,921** unchanged outside two existing source edits and one added hook. All
+**15** installed/sample component resources retain their accepted hashes.
+Cleanup confirms three native generations stopped, unregisters the private
+bundle and closes its passive server. It removes **7** new checkout output/cache
+paths and **3** owned Library/temp paths, restores all **4** original files and
+modes, and matches all **14** output and **5** Library presence baselines. The
+private root `flame-empty-focus-1028-NiNvuS` is absent. A round-tripped in-memory
+gzip retains **43** flat UTF-8 records, all private/official/staged asset hashes,
+three native hashes and preservation/cleanup receipts; SHA-256
+`32ec914f24f33c9d2ebe8f618b506cefc706c989c75bc3bde5b26368dd231038`.
+The primary checkout, user data, unrelated processes and reference sources remain
+preserved. No browser visual suite or performance benchmark runs.
+
+Runtime integration is not rerun for this focused Web change. The preceding
+batch's final aggregate **4/49** and isolated **2/49** failures remain recorded
+under **Work-index snapshot readiness**; this batch does not claim an aggregate
+Web/Runtime pass or a repair to those unchanged Runtime contracts.
+
+**Approve** for the inspected focused-empty-page task. Fresh VoiceOver speech,
+OS IME, 320px/RTL/forced-colors GUI, arbitrary zoom levels, the started transcript
+in native GUI and a separate minimum-macOS host remain unqualified. Existing
+composed tests preserve transcript/question/notification integration. The whole
+UI goal remains active; the next observed repair is sidebar Retry retirement.
 
 ### Project choice identity
 
@@ -17335,7 +17448,8 @@ renders both collections.
   **[32, 457.21875, 494.5, 41]**, below the main viewport. Manual main scrolling
   reveals it at **[32, 259.71875, 494.5, 41]**, with BODY/HTML still **0**. This is
   a separate existing empty-conversation focus/reflow defect and is not accepted
-  as a 200%-focus pass. It takes priority in the next batch.
+  as a 200%-focus pass. **Empty-conversation focus during reflow** above records
+  the follow-up repair and its own native qualification.
 - The complete observation-free partial control repeats **Loading** beside the
   recent Session, retained draft, Connection entry and return through the existing
   Conversation notices region to Connection settings. All **496 non-HTML files**
@@ -17376,9 +17490,10 @@ performance benchmark runs.
 The ordinary Retry path also supplies a separate existing focus finding: its
 focused button retires into the loading branch, and the subsequent failure
 leaves DOM focus on BODY (the native AX document). This pending-state repair
-preserves that owner rather than adding a local focus workaround. Trace and
-repair the actual host/DataView retirement boundary after the empty-conversation
-reflow follow-up.
+preserves that owner rather than adding a local focus workaround. The
+**Sidebar Retry focus and painted host** follow-up below repairs that actual
+host boundary. The empty-conversation reflow follow-up is independently qualified
+above.
 
 The remaining **22 Web owner/resource/build gates** and final supported
 `make check-native` pass in serial execution. Cleanup confirms all **12** native
@@ -17394,6 +17509,101 @@ their accepted hashes. The failed setup fixture is also absent. The private root
 bundle hashes, the rejected/interim evidence and all preservation/cleanup receipts;
 SHA-256 `93feb0ff00181df62da29c3869e6e45beab08dae38810e4cb59ac1b8b4eb9eac`.
 The primary checkout, user data and read-only references remain untouched.
+
+### Sidebar Retry focus and painted host
+
+The preceding native project-read failure retires its focused Retry action into
+loading and leaves focus on BODY. `ui/atoms/data-error.tsx` already owns a
+synchronous handoff to its surviving focusable host. The sidebar supplied no
+such host. `ui/agent/sidebar.tsx:8` now lets its existing named ASIDE receive that
+programmatic focus with `tabIndex=-1` and the shared inset-focus contract. It adds
+no natural Tab stop, retry state, handler, copy or new query/command owner.
+
+Native inspection rejects the first two-attribute candidate's focus painting:
+DOM/AX correctly focus the ASIDE, whose computed outline is solid, but its painted
+child obscures that perimeter. `styles/globals.css:684` now makes the existing
+`.agent-drawer-surface` inherit the semantic host's outline and offset. It projects
+the same focus fact above its own background. Focus remains on one named ASIDE;
+the surface has no added focusability, label or color policy. The perimeter
+retires when focus leaves the host. Resting surfaces and child-control focus
+retain their existing shared owners.
+
+Better-accessibility's meaningful focus destination and visible indicator guide
+the task. The responsible Flame DataError and sidebar paint/semantic split provide
+the actual contract. Existing HeroUI/Radix research supplies the general
+focus-return principle; it does not justify adding another retry mechanism or
+changing this error into a dialog.
+
+| Severity | Location                                           | Before                                                                                     | After                                                                              | Why                                               |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------- |
+| HIGH     | `ui/agent/sidebar.tsx:8`; `styles/globals.css:684` | Retry loses its keyboard context; the initial programmatic host's focus outline is covered | One named surviving host retains context and visibly paints its existing perimeter | Focus order and visible focus, WCAG 2.4.3 / 2.4.7 |
+
+Four real Query/composed regressions exercise accepted empty data, accepted
+project rows, repeated failure and later sidebar focus during a pending retry.
+The baseline has **3 failures / 22 passes in 2 files**, with BODY in place of the
+expected named work index. Focused final verification passes **3 files / 29
+tests** plus Web typecheck. Shared DataView focus and callback-ownership assertions
+remain intact. No source or test assertion is weakened to pass.
+
+Actual Wails qualification uses ordinary first project reads over a private
+unavailable HTTP origin. There are no prewarmed query records, query-network
+pauses, later query writes or forwarded requests. Every UI action uses CUA; the
+passive observer reads DOM/focus/styles and cannot advance the query.
+
+- The first candidate's **15** frames qualify logical pointer/keyboard handoff
+  only. Its missing visible perimeter is retained as rejected painting evidence.
+- The complete candidate records **71** frames. Chinese14/light/Orange keyboard
+  Retry focuses the named ASIDE; both it and its surface compute the same
+  **1.5 px solid rgb(216,98,49), offset -2 px** outline, visibly drawn in native
+  screenshots. Normal initial Tab order still skips that programmatic host.
+- Real Settings selects Chinese18/Purple; the real theme toggle selects dark.
+  Pointer Retry and subsequent Search → Tools → Retry / Enter retain the current
+  ASIDE. Its surface inherits **rgb(127,82,255)**; the native perimeter is visible.
+  No successful live Runtime recovery is claimed.
+- Native resize reaches **1123 × 731**. At **561 × 365 / DPR4 / 200%**, the same
+  retained ASIDE is **[0,0,561.5,131.578125]**, with a visible perimeter and
+  BODY/HTML at **[0,0]**. Project rows are folded in this layout; fresh Retry
+  activation there is not claimed. Tab reaches Search; Actual Size preserves that
+  later focus and the sidebar surface returns to `outline-style:none`.
+- The ordinary observation-free production control repeats pointer Retry,
+  normal keyboard navigation, Enter handoff with visible Purple perimeter and
+  the next Tab to Search, then native Quit. All **496 non-HTML files** match
+  across **497-file** final observed/clean builds; only `index.html` differs,
+  and the clean generation emits **zero** observer records.
+
+Final serial checks pass Web typecheck, lint, formatting, **429 frontend files /
+4,033 tests**, all **22 Web owner/resource/build gates** and supported
+`make check-native`. All **497** ordinary clean files match both the supported Web
+output and native staging byte for byte. All **5,924** frozen non-Markdown inputs
+match, including **5,921** unchanged outside the three owned source edits; all
+**15** installed/sample component resources retain their accepted hashes.
+
+All three native generations are stopped, the private bundle is unregistered and
+the passive server is closed. Cleanup removes **7** new checkout output/cache
+paths and **3** owned Library/temp paths, restores all **4** original files and
+modes, and matches all **14** output and **5** Library presence baselines. The
+private root `flame-sidebar-retry-1028-EtAWRz` is absent. Its round-tripped in-memory
+gzip retains **37** flat UTF-8 records, first/final/clean/official/staged asset maps,
+three native hashes, the rejected painting evidence and preservation/cleanup
+receipts; SHA-256
+`2c0707a2553d67057e016d5e41c14875550001f64f688bbcd330494ae3c307cd`.
+The primary checkout, user data, unrelated processes and read-only references
+remain preserved. No browser visual suite or performance benchmark runs.
+
+Accepted empty/project settlement and later focus are deterministic composed
+evidence, not successful native backend recovery. Fresh VoiceOver speech, OS IME,
+forced-colors/RTL/320px GUI and a separate minimum-macOS host remain unqualified.
+The unchanged Runtime integration is not rerun for this focused host change;
+the prior final aggregate **4/49** and isolated **2/49** failures remain recorded
+under **Work-index snapshot readiness**, without an aggregate Web/Runtime pass
+claim.
+**Approve** for the inspected Retry continuity and visible host. The next Tab's
+Search cue has a separate confirmed cause: `AgentRow` uses `surface.hover` for
+both its resting search look and keyboard focus while `data-chrome-focus`
+suppresses the shared outline. `SidebarActions` is its sole product search-look
+caller; the other usage is the existing row test. This task does not approve that
+separate control; qualify its shared marker policy and search-dialog return next.
+The goal remains active.
 
 ### Pinned Session row identity
 

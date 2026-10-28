@@ -30,6 +30,7 @@ import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex"
 import { ScrollRegion, vocab } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
 import { useAgentShellElement } from "@/ui/agent/index";
+import { useEmptyConversationFocus } from "@/features/shell/workbench/panel/useEmptyConversationFocus";
 import {
   NOTIFICATION_BOTTOM_PROPERTY,
   NOTIFICATION_TOP_PROPERTY,
@@ -68,6 +69,7 @@ const cst = stylex.create({
     gap: space.s5,
     overflowY: "auto",
     overscrollBehavior: "contain",
+    scrollPaddingBlock: space.s2,
     paddingBottom: "var(--notification-empty-inset)",
   },
   identity: {
@@ -166,6 +168,7 @@ export function ChatStream({ onSend }: Props) {
 
   const paneRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<HTMLDivElement>(null);
+  const emptyViewportRef = useRef<HTMLDivElement>(null);
   const composerOverlayRef = useRef<HTMLDivElement>(null);
   const jumpRef = useRef<HTMLDivElement>(null);
   const emptyHeadingRef = useRef<HTMLDivElement>(null);
@@ -218,6 +221,8 @@ export function ChatStream({ onSend }: Props) {
     };
   }, [started, visible, shell]);
 
+  useEmptyConversationFocus(emptyViewportRef, !started && visible);
+
   // Only this host survives the question-to-Composer replacement.
   const questionFocusRef = useRef<{ element: Element; sessionId: string } | null>(null);
   const questionPending = pendingQuestion !== null;
@@ -260,6 +265,7 @@ export function ChatStream({ onSend }: Props) {
       <ChatBanners sessionId={sessionId} />
       <div ref={layoutRef} {...stylex.props(sh.paneAnchored, !started && cst.emptyQuery)}>
         <div
+          ref={emptyViewportRef}
           data-slot={!started ? "empty-conversation-layout" : undefined}
           {...stylex.props(sh.paneAnchored, !started && cst.empty)}
         >

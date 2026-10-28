@@ -173,8 +173,12 @@ function measureStream() {
   vi.stubGlobal("ResizeObserver", TestResizeObserver);
   vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(600);
   return (input: Element) => {
+    const emptyViewport = input.closest('[data-slot="empty-conversation-layout"]');
     const observer = observers.find(
-      (entry) => entry.active && [...entry.nodes].filter((node) => node.contains(input)).length > 1,
+      (entry) =>
+        entry.active &&
+        (!emptyViewport || !entry.nodes.has(emptyViewport)) &&
+        [...entry.nodes].filter((node) => node.contains(input)).length > 1,
     )!;
     expect(observer).toBeTruthy();
     const ancestors = [...observer.nodes].filter((node) => node.contains(input));
@@ -185,7 +189,7 @@ function measureStream() {
     const jump = [...observer.nodes].find(
       (node) => !node.contains(input) && node.querySelector('[aria-label="Jump to bottom"]'),
     );
-    return { observer, layout, overlay, jump };
+    return { observer, layout, overlay, jump, observers };
   };
 }
 
@@ -267,6 +271,163 @@ describe("ChatStream notification space", () => {
     expect(shell.style.getPropertyValue("--notification-bottom")).toBe("0px");
     expect(screen.getByRole("textbox", { name: "Message composer" })).toBe(draft);
     expect(draft.value).toBe("Keep this authored draft");
+  });
+});
+
+describe("empty conversation focus during reflow", () => {
+  function scenario() {
+    material.rows = [];
+    const measured = measureStream();
+    const view = mount();
+    const draft = screen.getByRole<HTMLTextAreaElement>("textbox", { name: "Message composer" });
+    const viewport = view.container.querySelector<HTMLElement>(
+      '[data-slot="empty-conversation-layout"]',
+    )!;
+    const { layout, observers } = measured(draft);
+    const shape = {
+      top: 46,
+      height: 554,
+      width: 600,
+      content: 650,
+      targetTop: 340,
+      targetHeight: 41,
+    };
+    viewport.style.scrollPaddingTop = "8px";
+    viewport.style.scrollPaddingBottom = "8px";
+    vi.spyOn(viewport, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, shape.top, shape.width, shape.height),
+    );
+    vi.spyOn(viewport, "scrollHeight", "get").mockImplementation(() => shape.content);
+    vi.spyOn(draft, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(32, shape.targetTop - viewport.scrollTop, 494, shape.targetHeight),
+    );
+    vi.spyOn(draft, "getClientRects").mockImplementation(
+      () => [draft.getBoundingClientRect()] as unknown as DOMRectList,
+    );
+    const scrollTo = vi.fn((options: ScrollToOptions) => {
+      viewport.scrollTop = Math.max(0, Math.trunc(options.top ?? viewport.scrollTop));
+    });
+    Object.defineProperty(viewport, "scrollTo", { configurable: true, value: scrollTo });
+    act(() => {
+      screen.getByRole("button", { name: "Later control" }).focus();
+      draft.focus({ preventScroll: true });
+      draft.setSelectionRange(5, 10, "backward");
+    });
+    const resize = () => {
+      for (const observer of observers) {
+        if (observer.active && (observer.nodes.has(viewport) || observer.nodes.has(layout)))
+          observer.notify();
+      }
+    };
+    return { ...view, draft, viewport, shape, scrollTo, resize };
+  }
+
+  it("keeps the authored input visible through successive viewport reflows", () => {
+    const s = scenario();
+    s.shape.height = 233;
+    s.shape.width = 560;
+    s.shape.targetTop = 457.21875;
+    fireEvent.scroll(s.viewport);
+    s.resize();
+    expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(271);
+    expect(s.draft.getBoundingClientRect().top).toBeGreaterThanOrEqual(54);
+
+    s.shape.height = 180;
+    fireEvent.scroll(s.viewport);
+    s.resize();
+    expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(218);
+    expect(document.activeElement).toBe(s.draft);
+    expect(s.draft.value).toBe("Keep this authored draft");
+    expect([s.draft.selectionStart, s.draft.selectionEnd, s.draft.selectionDirection]).toEqual([
+      5,
+      10,
+      "backward",
+    ]);
+    expect(document.body.scrollTop).toBe(0);
+    expect(document.documentElement.scrollTop).toBe(0);
+  });
+
+  it("keeps focus when a sibling changes the centered composition without resizing the viewport", () => {
+    const s = scenario();
+    s.shape.content = 1000;
+    s.shape.targetTop = 700;
+    fireEvent.scroll(s.viewport);
+    s.resize();
+    expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(592);
+    expect(document.activeElement).toBe(s.draft);
+  });
+
+  it.each(["wheel", "scroll"])(
+    "respects a reader who deliberately moves away with %s",
+    (method) => {
+      const s = scenario();
+      if (method === "wheel") fireEvent.wheel(s.viewport);
+      s.viewport.scrollTop = 420;
+      fireEvent.scroll(s.viewport);
+      s.shape.height = 180;
+      s.resize();
+      expect(s.scrollTo).not.toHaveBeenCalled();
+      expect(s.viewport.scrollTop).toBe(420);
+      expect(document.activeElement).toBe(s.draft);
+    },
+  );
+
+  it("leaves later focus outside the conversation and hidden content alone", () => {
+    const s = scenario();
+    const outside = screen.getByRole("button", { name: "Later control" });
+    act(() => outside.focus());
+    s.shape.height = 180;
+    s.resize();
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(outside);
+
+    s.showRows([], false);
+    s.resize();
+    s.showRows([]);
+    s.resize();
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(outside);
+  });
+
+  it("does not move an already visible input or follow the started transcript", () => {
+    const s = scenario();
+    s.resize();
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    s.showRows([userRow()]);
+    s.shape.height = 180;
+    s.resize();
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(s.draft);
+  });
+
+  it("reveals returned keyboard focus without moving a pointer target during its press", () => {
+    const s = scenario();
+    const outside = screen.getByRole("button", { name: "Later control" });
+    act(() => outside.focus());
+    s.shape.height = 233;
+    s.shape.targetTop = 260;
+    fireEvent.pointerDown(s.draft);
+    act(() => s.draft.focus({ preventScroll: true }));
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    fireEvent.pointerUp(s.draft);
+    act(() => {
+      outside.focus();
+      s.draft.focus({ preventScroll: true });
+    });
+    expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(271);
+    expect(document.activeElement).toBe(s.draft);
+  });
+
+  it("keeps an active pointer press in place when its surroundings reflow", () => {
+    const s = scenario();
+    fireEvent.pointerDown(s.draft);
+    s.shape.height = 233;
+    s.resize();
+    expect(s.scrollTo).not.toHaveBeenCalled();
+    fireEvent.pointerUp(s.draft);
+    s.resize();
+    expect(s.draft.getBoundingClientRect().bottom).toBeLessThanOrEqual(271);
+    expect(document.activeElement).toBe(s.draft);
   });
 });
 

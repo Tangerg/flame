@@ -13,6 +13,8 @@ import {
 import { queryClient } from "@/lib/queryClient";
 import { contributeForTest } from "@/test/kernel";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { AgentSidebar } from "@/ui/agent/sidebar";
+import { AgentWorkIndexBody } from "@/ui/agent/index";
 
 const actions = vi.hoisted(() => ({
   canCreateSessionInFolder: true,
@@ -162,4 +164,64 @@ it("replaces pending with a real failure and lets the existing Retry accept an e
   await screen.findByText("No projects");
   expect(screen.queryByText("Couldn't load projects")).toBeNull();
   expect(readProjects).toHaveBeenCalledTimes(2);
+});
+
+async function mountFailedSidebar() {
+  client.render(
+    <AgentSidebar label="Work index">
+      <button>Search sessions</button>
+      <AgentWorkIndexBody>
+        <ProjectsSection />
+      </AgentWorkIndexBody>
+      <button>Settings</button>
+    </AgentSidebar>,
+  );
+  act(() => onlineManager.setOnline(true));
+  await screen.findByText("Couldn't load projects");
+  return screen.getByRole("complementary", { name: "Work index" });
+}
+
+it.each(["empty", "projects", "failure"] as const)(
+  "keeps Retry focus in the named work index through pending and %s settlement",
+  async (outcome) => {
+    const host = await mountFailedSidebar();
+    const response = Promise.withResolvers<WorkspaceProjectSummary[]>();
+    readProjects.mockReturnValueOnce(response.promise);
+    const retry = screen.getByRole("button", { name: "Retry" });
+    act(() => retry.focus());
+    fireEvent.click(retry);
+    await screen.findByRole("status");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(document.activeElement).toBe(host);
+    act(() => {
+      if (outcome === "failure") response.reject(new Error("Runtime unavailable"));
+      else response.resolve(outcome === "empty" ? [] : [project]);
+    });
+    await screen.findByText(
+      outcome === "failure"
+        ? "Couldn't load projects"
+        : outcome === "empty"
+          ? "No projects"
+          : "Flame",
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(document.activeElement).toBe(host);
+  },
+);
+
+it("keeps later sidebar focus when the pending Retry fails again", async () => {
+  await mountFailedSidebar();
+  const response = Promise.withResolvers<WorkspaceProjectSummary[]>();
+  readProjects.mockReturnValueOnce(response.promise);
+  const retry = screen.getByRole("button", { name: "Retry" });
+  act(() => retry.focus());
+  fireEvent.click(retry);
+  await screen.findByRole("status");
+  const settings = screen.getByRole("button", { name: "Settings" });
+  act(() => {
+    settings.focus();
+    response.reject(new Error("Runtime unavailable"));
+  });
+  await screen.findByText("Couldn't load projects");
+  expect(document.activeElement).toBe(settings);
 });
