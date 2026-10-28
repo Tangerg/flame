@@ -25,11 +25,14 @@ Diff reading is published as `3a5cdba36`, and Settings task continuity as
 `5be573459`. Paired custom-color editing and native keyboard color entry are
 published as `9014e9689`. Shared Panel viewport reflow is published as `0c9069714`,
 with its complete production-entry qualification and cleanup under **Settings
-focus and pointer activation** below. Startup connection recovery now retains
-the existing notice and action before the first Session snapshot; see **Startup
-connection recovery**. Next trace the observed work-index empty/loading
-transition through its existing navigation/query owners. Preserve the separate
-exact-Run and Skills object contract limits already recorded below.
+focus and pointer activation** below. Startup connection recovery is published as
+`903da7409`; its existing notice/action remains reachable before the first Session
+snapshot. See **Startup connection recovery**. The work index now distinguishes
+a paused first read from a known empty snapshot while preserving independently
+available Sessions; see **Work-index snapshot readiness**. Next repair the observed
+empty-conversation focus/reflow gap at native 200%, then the ordinary Retry
+action's focus retirement through its existing host/DataView owners. Preserve the
+separate exact-Run and Skills object contract limits already recorded below.
 The user resumed the paused goal.
 Completed batches are verified, explicitly committed and pushed to main under the
 goal publication policy. Preserve parallel work in the primary checkout. Do not
@@ -17228,6 +17231,169 @@ no effects/timers/listeners leak. One real mental-model gap was fixed:
   the title). The dialog now shows the session title as its `description`
   (`session.title.trim() || t("session.untitled")`), so the target object is
   unambiguous — directly serving the brief's "which object does this act on" axis.
+
+### Work-index snapshot readiness
+
+`features/navigation/application/useWorkIndex.ts:32` previously projected query
+request activity as the loading state. An absent project snapshot with a paused
+request therefore became the sidebar's "No projects" state, and the same
+projection removed the project menu's Loading row. The combined-content check
+also hid a first project-read failure when Sessions arrived first.
+`buildWorkIndex.ts:63` and `domain/workIndex.ts:44` now preserve absent project
+groups as unknown. The hook projects that collection's existing pending/error
+status independently of available recent Sessions. A defined empty project
+snapshot remains a real empty result. Accepted grouping, selection, query retries,
+commands and Runtime authority retain their owners. No local loading state or
+generic DataView policy is introduced.
+
+| Severity | Location                                                                                                              | Before                                                                                                            | After                                                                                            | Why                                                                |
+| -------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| MEDIUM   | `features/navigation/application/useWorkIndex.ts:32`; `buildWorkIndex.ts:63`; Sidebar Projects; Composer project menu | A paused read or independently available Session data claims an empty project collection and can hide its failure | The project collection retains its own pending/error state while recent Sessions remain readable | Distinguish each unknown collection from its accepted empty result |
+
+HeroUI's actual local table empty-state example takes an explicit empty
+collection. ZCode's actual `project-sidebar/ProjectTaskRows.tsx` receives an
+already supplied task collection and owns its empty presentation; it is not a
+query-readiness reference. Better-writing/accessibility guidance supplies truthful
+state, existing localized names and continued keyboard context. Flame's query
+owner and composed production consumers determine this repair. The existing
+Projects heading, compact three-row Skeleton, output/busy semantics, reduced-motion
+rule, reading width, icons, typography, quiet fills and semantic color tokens
+remain intact. No new text, surface, animation or brand asset is added.
+
+Real TanStack Query regressions use its existing offline manager in the isolated
+test client, canonical registered data provider and actual cache. They exercise
+paused reads, accepted empty data, menu selection/trigger return, background
+failure with retained row/focus, and Retry accepting an empty snapshot. An initial
+menu assertion incorrectly expected "Loading…" rather than the existing "Loading"
+and is corrected before the accepted baseline; production copy is unchanged.
+That baseline exposes **3 failures / 23 passes**. The first candidate passes
+**4 files / 26 tests**. A further real arrival-order regression exposes **4
+failures / 25 passes**: known recent Sessions still mask unknown or failed
+projects. Complete focused verification passes **4 files / 29 tests** plus Web
+typecheck. Existing grouping assertions retain their expected values after the
+intentional unknown-groups type change. The composed test now lives at the
+repository's declared cross-feature test root, `features/workIndexReadiness.test.tsx`,
+and uses the public navigation facade. The initial inner-navigation placement
+violated two private-context boundaries; no guard exception is added.
+
+The final aggregate Web check passes typecheck, lint, formatting and all **429
+frontend files / 4,021 tests**. Its Runtime integration file has **4 failures /
+45 passes**: the Memory page test and three CLI dispatch/exit waits time out.
+An isolated unchanged Runtime rerun has **2 failures / 47 passes**, both waiting
+for the Schedules MCP source after restart. The earlier isolated run passed
+**49/49** before the complete projection repair; that historical result does not
+replace these final failures. The Runtime file, its dependencies and deadlines
+are unchanged. No tests are skipped or assertions weakened, and the aggregate
+check is not reported as passing.
+
+Actual Wails qualification uses the production entry, private assets/home/origin,
+and an explicit in-memory query-network pause before the root mounts. This is an
+isolated input, not a claim about a live machine's network condition. The passive
+observer reads DOM/styles/geometry/focus and canonical query facts; it cannot
+advance the query. Every native UI action uses CUA. Initial single-query candidate
+evidence below predates the complete independent-snapshot repair and retains that
+scope:
+
+- The published-owner control records `projects: pending/paused`, absent data and
+  no error while Chinese14/light/Orange displays **无项目**. The valid control
+  retains **7** observed frames with that contradiction.
+- The candidate records the same canonical facts with **加载中**, an existing busy
+  output at **[12, 202, 251, 96]**, and no empty claim. Actual Settings changes to
+  English18/dark/Purple (`#7f52ff`) return to **Loading** in that same compact
+  layout. The captured candidate contains **89** records and **zero** empty frames.
+- Native corner resizing reaches **1121 × 729**. At **560 × 364 / DPR4 / 200%**,
+  the existing responsive chrome folds the project body; its visible Connection
+  settings action still enters the actual category and Escape/Tab returns to
+  that action. Main is **[0, 131.21875, 560.5, 233.28125]**; BODY/HTML remain at
+  **0**. This does not claim that the folded project rows are visually exposed.
+- The observation-free paused-query build repeats Loading, pointer Connection
+  entry and Escape/Tab return. All **496 non-HTML files** match across its
+  **497-file** measured/clean builds, with **zero** observer records.
+- Removing the private pause restores the ordinary production root. It moves
+  from loading into its actual failed-read state, Retry produces the same real
+  failure, and **23** captured records contain no false empty claim. Connection
+  entry and Escape/Tab return remain valid. Its separate observation-free
+  production control repeats that recovery path; again **496 non-HTML files**
+  match, only `index.html` differs, and it emits **zero** observer records.
+
+The complete projection's additional native qualification supplies one synthetic
+Session through the canonical query's prewarmed `initialData`, with no subsequent
+query writes. This explicit fixture input survives provider-registration resets.
+The real project query remains paused without data, and the same production root
+renders both collections.
+
+- The published builder/hook control shows **No projects** beside **Available
+  conversation**. Two accepted passive frames confirm Session success/idle with
+  one record and project pending/paused with absent data and no error.
+- The complete candidate shows **Loading** beside the same recent Session in
+  English18/light/Purple and dark/Purple. Its **70** captured records contain
+  **zero** empty claims. Actual Connection entry and return retain the original
+  draft `Prepare a note while projects load.`. A later, separately confirmed Tab
+  reaches the input and native paste continues editing. Native End inserts the
+  continuation at the beginning, so no end-caret retention or append claim is made.
+- At **560 × 364 / DPR4 / 200%**, the retained focused input initially sits at
+  **[32, 457.21875, 494.5, 41]**, below the main viewport. Manual main scrolling
+  reveals it at **[32, 259.71875, 494.5, 41]**, with BODY/HTML still **0**. This is
+  a separate existing empty-conversation focus/reflow defect and is not accepted
+  as a 200%-focus pass. It takes priority in the next batch.
+- The complete observation-free partial control repeats **Loading** beside the
+  recent Session, retained draft, Connection entry and return through the existing
+  Conversation notices region to Connection settings. All **496 non-HTML files**
+  match across **497-file** builds; only `index.html` differs and **zero** observer
+  records are emitted.
+- An ordinary, unpaused project read with the same prewarmed Session reaches a
+  real `RpcConnectionError`, absent project data and idle/error query state.
+  **Couldn't load projects** and Retry appear beside **Available conversation**.
+  Keyboard Retry preserves that row while the failure returns. Its **22** records
+  contain **zero** false empty frames; the existing Retry focus-retirement finding
+  is reproduced by keyboard as well as pointer activation.
+
+The final ordinary production control removes both prewarmed Session data and
+the network pause. It shows the actual first-read failure with Retry, retains
+Connection settings entry and Escape/Tab return in English18/dark/Purple, and
+makes no claim about live Runtime data. Its measured/comparison and clean builds
+each contain **497 files**: all **496 non-HTML files** match, only `index.html`
+differs, and the clean control emits **zero** observer records. The passive
+production comparison build supplies asset parity only; it is not another
+measured native run.
+
+The first private dynamic-import bootstrap delayed production CSS and is excluded
+from visual/geometry acceptance. The accepted controls instead keep the eager
+production entry and CSS path. A tool-runtime replacement later retires the
+passive server and in-memory bindings; the on-disk receipts remain. Before final
+checks, all four untouched original files are revalidated against their earlier
+SHA-256/mode, that interim one-line production diff is revalidated against
+published main, and guarded backups/source maps are recovered in the private root. The
+interruption-recovery app generation is separately retired before the clean run.
+
+Known empty arrival, retained rows and menu selection use deterministic component
+evidence; the unavailable native origin supplies no live Runtime recovery,
+accepted project snapshot, Session creation or provider execution. VoiceOver
+speech, OS IME, fresh 320px/RTL/forced-colors GUI, arbitrary zoom levels and a
+separate minimum-macOS host remain unqualified. No browser visual suite or
+performance benchmark runs.
+
+The ordinary Retry path also supplies a separate existing focus finding: its
+focused button retires into the loading branch, and the subsequent failure
+leaves DOM focus on BODY (the native AX document). This pending-state repair
+preserves that owner rather than adding a local focus workaround. Trace and
+repair the actual host/DataView retirement boundary after the empty-conversation
+reflow follow-up.
+
+The remaining **22 Web owner/resource/build gates** and final supported
+`make check-native` pass in serial execution. Cleanup confirms all **12** native
+generations stopped, unregisters the private bundle and closes its passive server.
+It removes **8** new checkout outputs/cache paths and **3** owned Library/temp
+paths, restores all **4** original files and modes, and matches all **14** output
+and **5** Library presence baselines. All **5,923** qualified non-Markdown inputs
+match, including **5,918** unchanged outside the four existing source edits and
+one added composed test; all **15** installed/sample component resources retain
+their accepted hashes. The failed setup fixture is also absent. The private root
+`flame-work-pending-1028-RLVVsy` is absent. Its round-tripped in-memory gzip retains
+**100** flat UTF-8 records, six complete **497-file** asset maps, three native
+bundle hashes, the rejected/interim evidence and all preservation/cleanup receipts;
+SHA-256 `93feb0ff00181df62da29c3869e6e45beab08dae38810e4cb59ac1b8b4eb9eac`.
+The primary checkout, user data and read-only references remain untouched.
 
 ### Pinned Session row identity
 

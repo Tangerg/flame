@@ -41,6 +41,14 @@ conversation region, with the same recovery action next in the Tab order. Once
 Session data arrives, the existing Composer presents connection feedback and
 retains its draft and focus through later connection status changes.
 
+The work index treats a first pending project read as loading even when its
+network request is paused. The sidebar and project menu use that one navigation
+projection. A known empty snapshot can show the empty state; accepted content
+stays available during a background read or failure. Project groups remain
+unknown until a project snapshot exists, even when recent Sessions arrive first.
+Their recent rows remain available beside the project's loading or error state. Query
+retries and canonical project/Session data retain their existing owners.
+
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation

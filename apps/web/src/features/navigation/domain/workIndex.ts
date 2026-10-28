@@ -41,7 +41,7 @@ export function workGroupHasRunning(group: WorkGroup): boolean {
 }
 
 export interface WorkIndexContent {
-  groups: WorkGroup[];
+  groups: WorkGroup[] | undefined;
   recents: WorkSession[];
 }
 

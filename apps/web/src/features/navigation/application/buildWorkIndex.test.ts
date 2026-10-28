@@ -34,14 +34,23 @@ describe("buildWorkIndex", () => {
     expect(buildWorkIndex({ projects: undefined, sessions: [] })).toBeUndefined();
   });
 
+  it("retains recent sessions without inventing an empty project snapshot", () => {
+    const content = buildWorkIndex({
+      projects: undefined,
+      sessions: [session({ id: "available" })],
+    });
+    expect(content?.groups).toBeUndefined();
+    expect(content?.recents.map((item) => item.id)).toEqual(["available"]);
+  });
+
   it("groups sessions under the project that owns their directory", () => {
     const content = buildWorkIndex({
       projects: [project({ id: "/repo/scope", name: "scope", sessionCount: 1 })],
       sessions: [session({ id: "a", cwd: "/repo/scope" })],
     });
 
-    expect(content?.groups.map((group) => group.project.id)).toEqual(["/repo/scope"]);
-    expect(content?.groups[0]?.sessions.map((item) => item.id)).toEqual(["a"]);
+    expect(content?.groups?.map((group) => group.project.id)).toEqual(["/repo/scope"]);
+    expect(content?.groups?.[0]?.sessions.map((item) => item.id)).toEqual(["a"]);
     expect(content?.recents).toEqual([]);
   });
 
@@ -51,8 +60,8 @@ describe("buildWorkIndex", () => {
       sessions: [],
     });
 
-    expect(content?.groups.map((group) => group.project.id)).toEqual(["/repo/scope"]);
-    expect(content?.groups[0]?.sessions).toEqual([]);
+    expect(content?.groups?.map((group) => group.project.id)).toEqual(["/repo/scope"]);
+    expect(content?.groups?.[0]?.sessions).toEqual([]);
   });
 
   it("sends sessions no project claims to recents, newest first", () => {
@@ -66,7 +75,7 @@ describe("buildWorkIndex", () => {
       ],
     });
 
-    expect(content?.groups[0]?.sessions.map((item) => item.id)).toEqual(["owned"]);
+    expect(content?.groups?.[0]?.sessions.map((item) => item.id)).toEqual(["owned"]);
     expect(content?.recents.map((item) => item.id)).toEqual(["loose", "scratch", "other"]);
   });
 
@@ -85,7 +94,7 @@ describe("buildWorkIndex", () => {
       ],
     });
 
-    expect(content?.groups[0]?.sessions.map((item) => item.id)).toEqual([
+    expect(content?.groups?.[0]?.sessions.map((item) => item.id)).toEqual([
       "favorite",
       "recent",
       "middle",
