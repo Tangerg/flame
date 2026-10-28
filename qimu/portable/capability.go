@@ -1,7 +1,6 @@
 package portable
 
 import (
-	json "encoding/json/v2"
 	"errors"
 	"slices"
 	"strings"
@@ -48,7 +47,7 @@ func ParseCapability(data []byte) (*Capability, error) {
 		return nil, err
 	}
 	var descriptor CapabilityDescriptor
-	if err := json.Unmarshal(data, &descriptor, json.RejectUnknownMembers(true)); err != nil {
+	if err := jsonvalue.DecodeValue(data, &descriptor, "capability"); err != nil {
 		return nil, err
 	}
 	return AdmitCapability(descriptor)

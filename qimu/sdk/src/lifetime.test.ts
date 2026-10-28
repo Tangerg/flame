@@ -147,6 +147,20 @@ describe("structured lifetime", () => {
     expect(order).toEqual(["independent", "provider"]);
   });
 
+  it("refuses dependencies that would deadlock an ancestor's exit", async () => {
+    const parent = new Lifetime("parent");
+    const child = parent.branch("child");
+    const outside = new Lifetime("outside");
+    expect(() => parent.dependsOn(child)).toThrow("dependency cycle");
+    parent.dependsOn(outside);
+    expect(() => outside.dependsOn(child)).toThrow("dependency cycle");
+    const outcomes = await Promise.all([parent.wait(), outside.wait()]);
+    expect(outcomes.map((outcome) => outcome.status)).toEqual([
+      "released",
+      "released",
+    ]);
+  });
+
   it("rejects capacity before dispatch without evicting unresolved work", async () => {
     const owner = new Lifetime("owner", {
       tasks: 1,

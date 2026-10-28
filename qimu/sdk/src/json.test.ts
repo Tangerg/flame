@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { ExactNumber, parseJSON, stringifyJSON } from "./json";
+import {
+  ExactNumber,
+  parseJSON,
+  stringifyJSON,
+  compareJSONNumbers,
+  equalJSON,
+  isJSONInteger,
+} from "./json";
 
 describe("feature JSON values", () => {
   it("round-trips the same feature numeric corpus as the Go transport", () => {
@@ -81,5 +88,38 @@ describe("feature JSON values", () => {
     expect(stringifyJSON({ optional: undefined, values: holes })).toBe(
       '{"values":[null,null,null]}',
     );
+  });
+});
+
+describe("exact numeric semantics", () => {
+  it.each([
+    ["1e-9007199254740992", "0", 1],
+    ["-1e-9007199254740992", "0", -1],
+    ["1e9007199254740992", "9e9007199254740991", 1],
+    ["123e-2", "1.2300", 0],
+    ["-123e-2", "-1.24", 1],
+    ["0e999999999999999999999999", "-0", 0],
+    ["100e999999999999999999999999", "1e1000000000000000000000001", 0],
+  ] as const)(
+    "compares %s and %s without rounding",
+    (left, right, expected) => {
+      const a = new ExactNumber(left),
+        b = new ExactNumber(right);
+      expect(compareJSONNumbers(a, b)).toBe(expected);
+      expect(compareJSONNumbers(b, a)).toBe(expected === 0 ? 0 : -expected);
+      expect(equalJSON(a, b)).toBe(expected === 0);
+    },
+  );
+
+  it.each([
+    ["1e-9007199254740992", false],
+    ["1e9007199254740992", true],
+    ["0e-999999999999999999999999", true],
+    ["12.00", true],
+    ["120e-1", true],
+    ["120e-2", false],
+    ["-0.001", false],
+  ] as const)("classifies integer %s exactly", (literal, expected) => {
+    expect(isJSONInteger(new ExactNumber(literal))).toBe(expected);
   });
 });

@@ -78,7 +78,7 @@ func (h *Host) ValidateUse(ctx context.Context, use *Use) error {
 }
 
 func (h *Host) Acquire(ctx context.Context, plan *BindingPlan, config UseConfig) (*Use, error) {
-	if plan == nil || config.Owner == nil {
+	if ctx == nil || plan == nil || config.Owner == nil {
 		return nil, ErrInvalid
 	}
 	if config.Parent != nil {
@@ -427,7 +427,7 @@ func BorrowInstance(ctx context.Context, use *Use, source UnitRef, call func(con
 }
 
 func WithPlan(ctx context.Context, host *Host, plan *BindingPlan, scope ScopeGrant, call func(*Use) error) (err error) {
-	if call == nil {
+	if ctx == nil || host == nil || plan == nil || call == nil {
 		return ErrInvalid
 	}
 	owner := NewLifetime(context.WithoutCancel(ctx))

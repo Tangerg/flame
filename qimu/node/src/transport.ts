@@ -15,7 +15,7 @@ export class StdioTransport implements Transport {
   readonly #output: Writable;
   readonly #maximumFrameBytes: number;
   #started = false;
-  #closed = false;
+  #closing?: Promise<void>;
   #buffer = Buffer.alloc(0);
   #writing: Promise<void> = Promise.resolve();
 
@@ -46,7 +46,7 @@ export class StdioTransport implements Transport {
         const source = new TextDecoder("utf-8", { fatal: true }).decode(frame);
         const message = JSONRPCMessageSchema.parse(parseJSON(source));
         this.onmessage?.(message);
-        if (this.#closed) break;
+        if (this.#closing) break;
         offset = end + 1;
       }
     } catch (cause) {
@@ -64,7 +64,7 @@ export class StdioTransport implements Transport {
     void this.close();
   };
   async start(): Promise<void> {
-    if (this.#started || this.#closed)
+    if (this.#started || this.#closing)
       throw new Error("plugin: transport already started or closed");
     this.#started = true;
     this.#input.on("data", this.#read);
@@ -73,13 +73,13 @@ export class StdioTransport implements Transport {
     this.#output.on("error", this.#error);
   }
   async send(message: JSONRPCMessage): Promise<void> {
-    if (this.#closed) throw new Error("plugin: transport is closed");
+    if (this.#closing) throw new Error("plugin: transport is closed");
     const encoded = stringifyJSON(message);
     if (Buffer.byteLength(encoded) > this.#maximumFrameBytes)
       throw new Error("plugin: MCP frame capacity exceeded");
     const frame = encoded + "\n";
     const write = this.#writing.then(async () => {
-      if (this.#closed) throw new Error("plugin: transport is closed");
+      if (this.#closing) throw new Error("plugin: transport is closed");
       await new Promise<void>((resolve, reject) =>
         this.#output.write(frame, (error) =>
           error ? reject(error) : resolve(),
@@ -89,15 +89,16 @@ export class StdioTransport implements Transport {
     this.#writing = write.catch(() => {});
     return write;
   }
-  async close(): Promise<void> {
-    if (this.#closed) return;
-    this.#closed = true;
+  close(): Promise<void> {
+    if (this.#closing) return this.#closing;
+    this.#closing = this.#writing.finally(() => {
+      this.#output.off("error", this.#error);
+    });
     this.#input.off("data", this.#read);
     this.#input.off("end", this.#end);
     this.#input.off("error", this.#error);
-    this.#output.off("error", this.#error);
     this.#input.pause();
     this.onclose?.();
-    await this.#writing;
+    return this.#closing;
   }
 }

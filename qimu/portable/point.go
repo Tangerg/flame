@@ -2,7 +2,6 @@ package portable
 
 import (
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -51,7 +50,7 @@ func ParsePoint(data []byte) (*Point, error) {
 		return nil, err
 	}
 	var descriptor PointDescriptor
-	if err := json.Unmarshal(data, &descriptor, json.RejectUnknownMembers(true)); err != nil {
+	if err := jsonvalue.DecodeValue(data, &descriptor, "point"); err != nil {
 		return nil, err
 	}
 	return AdmitPoint(descriptor)

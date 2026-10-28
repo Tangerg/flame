@@ -301,7 +301,7 @@ func (h *Host) prepareExports(instance *Instance, exports []ExportValue) ([]*pub
 			}
 			export.Durable = false
 		}
-		if export.Contract.Kind != EventKind && export.Value == nil {
+		if export.Contract.Kind != EventKind && nilValue(export.Value) {
 			return nil, fmt.Errorf("%w: nil actual export", ErrContractMismatch)
 		}
 		if export.Contract.Kind != EventKind && definition.valueType != nil {

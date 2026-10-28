@@ -48,11 +48,13 @@ type Method struct {
 }
 
 func validToken(value string) bool {
-	return value != "" && len(value) <= 256 && utf8.ValidString(value) && !strings.ContainsFunc(value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) })
+	return value != "" && len(value) <= ProfileLimits().MaxTokenBytes && utf8.ValidString(value) && !strings.ContainsFunc(value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) })
 }
 
+func ValidMethodName(value string) bool { return validToken(value) }
+
 func AdmitMethod(descriptor MethodDescriptor) (*Method, error) {
-	if !validToken(descriptor.Name) || !validToken(descriptor.Target) {
+	if !ValidMethodName(descriptor.Name) || !validToken(descriptor.Target) {
 		return nil, errors.New("capability: method and target are required bounded tokens")
 	}
 	if descriptor.Kind != Query && descriptor.Kind != Mutation {

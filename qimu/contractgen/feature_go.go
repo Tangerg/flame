@@ -16,8 +16,11 @@ import (
 type featureGoOptions struct{ Package, Prefix string }
 
 type featureGo struct {
-	names    map[string]string
-	usesTime bool
+	names      map[string]string
+	enums      map[string][]string
+	namedEnums map[string]bool
+	declared   map[string]bool
+	usesTime   bool
 }
 
 // Go types are projections of the same admitted schemas as TS. Constraints stay
@@ -26,13 +29,23 @@ func (f *featureArtifacts) goProjection(output featureGoOptions) ([]byte, error)
 	if !token.IsIdentifier(output.Package) || (output.Prefix != "" && (!token.IsIdentifier(output.Prefix) || !unicode.IsUpper([]rune(output.Prefix)[0]))) {
 		return nil, fmt.Errorf("feature Go package and optional exported prefix must be identifiers")
 	}
-	emitter := featureGo{names: map[string]string{}}
-	for name := range f.definitions {
-		emitter.names[name] = output.Prefix + name
+	emitter, aliases, err := f.goNames(output.Prefix)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range slices.Sorted(maps.Keys(f.definitions)) {
+		if aliases[name] == "" {
+			if err := emitter.declare(emitter.names[name]); err != nil {
+				return nil, err
+			}
+		}
 	}
 	var body strings.Builder
 	for _, name := range slices.Sorted(maps.Keys(f.definitions)) {
-		value, err := emitter.typ(f.definitions[name])
+		if aliases[name] != "" {
+			continue
+		}
+		value, err := emitter.typ(f.definitions[name], emitter.names[name], true)
 		if err != nil {
 			return nil, fmt.Errorf("feature Go %s: %w", name, err)
 		}
@@ -41,6 +54,9 @@ func (f *featureArtifacts) goProjection(output featureGoOptions) ([]byte, error)
 	prefix := output.Prefix
 	descriptor, err := json.Marshal(f.capability.Descriptor(), json.Deterministic(true))
 	if err != nil {
+		return nil, err
+	}
+	if err := emitter.declare(prefix + "CapabilityJSON"); err != nil {
 		return nil, err
 	}
 	fmt.Fprintf(&body, "const %sCapabilityJSON = %s\n\n", prefix, strconv.Quote(string(descriptor)))
@@ -52,14 +68,29 @@ func (f *featureArtifacts) goProjection(output featureGoOptions) ([]byte, error)
 			return nil, fmt.Errorf("feature Go operation name collision: %s", method.Name)
 		}
 		seen[name] = true
+		if err := emitter.declare(prefix + name + "Method"); err != nil {
+			return nil, err
+		}
 		fmt.Fprintf(&body, "const %s%sMethod = %s\n", prefix, name, strconv.Quote(method.Name))
 		for _, value := range []struct{ suffix, path string }{{"Input", method.Input}, {"Output", method.Output}} {
 			source := strings.TrimPrefix(value.path, "schema.json"+RefPrefix)
-			fmt.Fprintf(&body, "type %s%s%s %s\n", output.Prefix, name, value.suffix, emitter.names[source])
+			exported := output.Prefix + name + value.suffix
+			if exported != emitter.names[source] {
+				if err := emitter.declare(exported); err != nil {
+					return nil, err
+				}
+				fmt.Fprintf(&body, "type %s %s\n", exported, emitter.names[source])
+			}
 		}
 		if method.Stream != "" {
 			source := strings.TrimPrefix(method.Stream, "schema.json"+RefPrefix)
-			fmt.Fprintf(&body, "type %s%sChunk %s\n", output.Prefix, name, emitter.names[source])
+			exported := output.Prefix + name + "Chunk"
+			if exported != emitter.names[source] {
+				if err := emitter.declare(exported); err != nil {
+					return nil, err
+				}
+				fmt.Fprintf(&body, "type %s %s\n", exported, emitter.names[source])
+			}
 		}
 		body.WriteString("\n")
 	}
@@ -68,8 +99,30 @@ func (f *featureArtifacts) goProjection(output featureGoOptions) ([]byte, error)
 	if emitter.usesTime {
 		result.WriteString("import \"time\"\n\n")
 	}
+	for _, name := range slices.Sorted(maps.Keys(emitter.enums)) {
+		if !emitter.namedEnums[name] {
+			fmt.Fprintf(&result, "type %s string\n\n", name)
+		}
+		result.WriteString("const (\n")
+		for _, value := range emitter.enums[name] {
+			constant := name + goFeatureIdentifier(value)
+			if err := emitter.declare(constant); err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(&result, "%s %s = %s\n", constant, name, strconv.Quote(value))
+		}
+		result.WriteString(")\n\n")
+	}
 	result.WriteString(body.String())
 	return format.Source([]byte(result.String()))
+}
+
+func (e *featureGo) declare(name string) error {
+	if e.declared[name] {
+		return fmt.Errorf("feature Go declaration name collision: %s", name)
+	}
+	e.declared[name] = true
+	return nil
 }
 
 func goFeatureIdentifier(value string) string {
@@ -93,7 +146,7 @@ func goFeatureIdentifier(value string) string {
 	return name
 }
 
-func (e *featureGo) typ(raw jsontext.Value) (string, error) {
+func (e *featureGo) typ(raw jsontext.Value, path string, named bool) (string, error) {
 	var fields map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		return "", err
@@ -124,17 +177,34 @@ func (e *featureGo) typ(raw jsontext.Value) (string, error) {
 	case "number":
 		return "float64", nil
 	case "string":
+		values, err := featureStringEnum(fields)
+		if err != nil {
+			return "", err
+		}
+		if values != nil {
+			if !named {
+				if err := e.declare(path); err != nil {
+					return "", err
+				}
+			}
+			e.enums[path] = values
+			e.namedEnums[path] = named
+			if named {
+				return "string", nil
+			}
+			return path, nil
+		}
 		if string(fields["format"]) == `"date-time"` {
 			e.usesTime = true
 			return "time.Time", nil
 		}
 		return "string", nil
 	case "array":
-		value, err := e.typ(fields["items"])
+		value, err := e.typ(fields["items"], path+"Item", false)
 		return "[]" + value, err
 	case "object":
 		if additional := fields["additionalProperties"]; len(additional) != 0 && string(additional) != "false" {
-			value, err := e.typ(additional)
+			value, err := e.typ(additional, path+"Value", false)
 			return "map[string]" + value, err
 		}
 		var properties map[string]jsontext.Value
@@ -158,7 +228,7 @@ func (e *featureGo) typ(raw jsontext.Value) (string, error) {
 				return "", fmt.Errorf("Go field name collision: %s", name)
 			}
 			names[field] = true
-			value, err := e.typ(properties[name])
+			value, err := e.typ(properties[name], path+field, false)
 			if err != nil {
 				return "", err
 			}
@@ -190,4 +260,97 @@ func featureUnsigned(fields map[string]jsontext.Value) bool {
 		}
 	}
 	return false
+}
+
+// A schema reference keeps one Go representation. Public method names replace
+// opaque source-definition keys without introducing a second enum declaration.
+func (f *featureArtifacts) goNames(prefix string) (featureGo, map[string]string, error) {
+	emitter := featureGo{names: make(map[string]string), enums: make(map[string][]string), namedEnums: make(map[string]bool), declared: make(map[string]bool)}
+	aliases := make(map[string]string)
+	for name, raw := range f.definitions {
+		var fields map[string]jsontext.Value
+		if err := json.Unmarshal(raw, &fields); err != nil {
+			return emitter, nil, err
+		}
+		if reference := fields["$ref"]; len(reference) != 0 {
+			var value string
+			if err := json.Unmarshal(reference, &value); err != nil {
+				return emitter, nil, err
+			}
+			aliases[name] = strings.TrimPrefix(value, RefPrefix)
+		}
+		emitter.names[name] = prefix + name
+	}
+	resolve := func(name string) (string, error) {
+		seen := make(map[string]bool)
+		for aliases[name] != "" {
+			if seen[name] {
+				return "", fmt.Errorf("feature Go reference cycle at %s", name)
+			}
+			seen[name] = true
+			name = aliases[name]
+		}
+		if _, found := f.definitions[name]; !found {
+			return "", fmt.Errorf("feature Go unresolved reference %s", name)
+		}
+		return name, nil
+	}
+	preferred := make(map[string]bool)
+	for _, method := range f.methods {
+		name := goFeatureIdentifier(method.Name[strings.LastIndex(method.Name, "/")+1:])
+		for _, projection := range []struct{ suffix, path string }{{"Input", method.Input}, {"Output", method.Output}, {"Chunk", method.Stream}} {
+			if projection.path == "" {
+				continue
+			}
+			canonical, err := resolve(strings.TrimPrefix(projection.path, "schema.json"+RefPrefix))
+			if err != nil {
+				return emitter, nil, err
+			}
+			if !preferred[canonical] {
+				emitter.names[canonical] = prefix + name + projection.suffix
+				preferred[canonical] = true
+			}
+		}
+	}
+	for name := range aliases {
+		canonical, err := resolve(name)
+		if err != nil {
+			return emitter, nil, err
+		}
+		emitter.names[name] = emitter.names[canonical]
+	}
+	return emitter, aliases, nil
+}
+
+func featureStringEnum(fields map[string]jsontext.Value) ([]string, error) {
+	var values []string
+	if raw := fields["enum"]; len(raw) != 0 {
+		if err := json.Unmarshal(raw, &values); err != nil {
+			return nil, fmt.Errorf("feature Go string enum: %w", err)
+		}
+	}
+	var conjunctions []map[string]jsontext.Value
+	if raw := fields["allOf"]; len(raw) != 0 {
+		if err := json.Unmarshal(raw, &conjunctions); err != nil {
+			return nil, err
+		}
+	}
+	for _, constraint := range conjunctions {
+		members, err := featureStringEnum(constraint)
+		if err != nil {
+			return nil, err
+		}
+		if members == nil {
+			continue
+		}
+		if values == nil {
+			values = members
+		} else {
+			values = slices.DeleteFunc(values, func(value string) bool { return !slices.Contains(members, value) })
+		}
+	}
+	if values != nil && len(values) == 0 {
+		return nil, fmt.Errorf("feature Go string enum has no admitted values")
+	}
+	return values, nil
 }

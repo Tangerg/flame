@@ -10,18 +10,12 @@ const (
 	// productRootName is FLAME_HOME's default leaf under a user's home. Every
 	// local surface — the Runtime process, the CLI, a trusted desktop client —
 	// resolves the same root, so it is spelled once.
-	productRootName = ".flame"
-	// runtimeStateName separates Runtime-owned durability from the rest of the
-	// product root. README states the layout: Runtime state lives under
-	// $FLAME_HOME/runtime.
+	productRootName  = ".flame"
 	runtimeStateName = "runtime"
 	databaseFilename = "flame-qimu.db"
 	localTokenName   = "local-token"
 )
 
-// ErrInvalidDataDirectory identifies a path that cannot own local Runtime
-// durability. Callers only receive a DataDirectory after its absolute-path
-// invariant has been established.
 var ErrInvalidDataDirectory = errors.New("invalid local Runtime data directory")
 
 // DataDirectory is the canonical local deployment root shared by the Runtime
@@ -31,7 +25,6 @@ type DataDirectory struct {
 	path string
 }
 
-// DataDirectoryAt validates an explicitly configured deployment root.
 func DataDirectoryAt(path string) (DataDirectory, error) {
 	if path == "" {
 		return DataDirectory{}, invalidDataDirectory("path is required")
@@ -74,17 +67,12 @@ func ResolveProductRoot(userHome, configuredRoot string) (string, error) {
 	return filepath.Join(userHome, productRootName), nil
 }
 
-// Path returns the absolute deployment root, or an empty string for the invalid
-// zero value.
 func (d DataDirectory) Path() string { return d.path }
 
-// DatabasePath returns the Runtime database owned by this deployment root.
 func (d DataDirectory) DatabasePath() string {
 	return d.join(databaseFilename)
 }
 
-// LocalTokenPath returns the durable credential shared with trusted local
-// clients.
 func (d DataDirectory) LocalTokenPath() string {
 	return d.join(localTokenName)
 }

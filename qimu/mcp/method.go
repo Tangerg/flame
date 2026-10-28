@@ -89,7 +89,7 @@ func decodeMethodInput[T any](data jsontext.Value) (T, jsonvalue.Value, error) {
 	if err != nil {
 		return input, jsonvalue.Value{}, err
 	}
-	if err := json.Unmarshal(data, &input, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(data, &input, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 		return input, jsonvalue.Value{}, err
 	}
 	return input, admitted, nil
@@ -121,7 +121,7 @@ func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 			}
 		}
 		value = new(T)
-		if err := json.Unmarshal(decoded.Value, value, json.RejectUnknownMembers(true)); err != nil {
+		if err := json.Unmarshal(decoded.Value, value, json.RejectUnknownMembers(true), jsonvalue.Numbers()); err != nil {
 			return err
 		}
 	}
@@ -182,8 +182,11 @@ func RegisterClient(client *sdk.Client) error {
 		sdk.AddSendingCustomMethod[*protocolParams, *methodResult[Description]](client, DescribeMethod),
 	)
 }
+
+const MaxCommandIDBytes = 256
+
 func ValidateCommandID(id string) error {
-	if id == "" || len(id) > 256 || !utf8.ValidString(id) {
+	if id == "" || len(id) > MaxCommandIDBytes || !utf8.ValidString(id) {
 		return errors.New("plugin: bounded logical command identity is required")
 	}
 	return nil

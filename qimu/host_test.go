@@ -102,6 +102,9 @@ func TestExactSlotsAndFrozenOptionalAbsence(t *testing.T) {
 		if err != nil || found {
 			return nil, errors.New("optional binding changed")
 		}
+		if _, found, err := qimu.OptionalImport(setup, "optional", qimu.Contract[string]{}); !errors.Is(err, qimu.ErrInvalid) || found {
+			return nil, errors.New("optional absence admitted an undeclared contract")
+		}
 		return []qimu.ExportValue{qimu.Provide("text", service, leftValue+rightValue)}, nil
 	}})
 	root := source("consumer", consumer, "main", "text", service.Ref())
@@ -143,6 +146,16 @@ func TestExactSlotsAndFrozenOptionalAbsence(t *testing.T) {
 	}
 	if err := host.Replace(ctx, "consumer", consumer, nil); err != nil {
 		t.Fatalf("returned Use.Close still retained installation: %v", err)
+	}
+}
+
+func TestOptionalImportRefusesMissingSetup(t *testing.T) {
+	contract, err := qimu.NewContract[string]("example.optional", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := qimu.OptionalImport(nil, "optional", contract); !errors.Is(err, qimu.ErrInvalid) || found {
+		t.Fatalf("missing setup was accepted: found=%v, %v", found, err)
 	}
 }
 

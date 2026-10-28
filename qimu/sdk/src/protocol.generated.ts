@@ -2,6 +2,8 @@
 
 export const PROTOCOL = "io.github.tangerg.qimu/control/1" as const;
 
+export const MAX_NAME_BYTES = 256 as const;
+
 export interface AcquireRequest {
   readonly operationId: string;
   readonly snapshotId: string;

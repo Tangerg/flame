@@ -2,10 +2,37 @@ package portable
 
 import (
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"testing"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 )
+
+func TestPointDecodingDoesNotInventOptionality(t *testing.T) {
+	contract := testPoint(t, Collection, false, CanonicalKeys)
+	for _, absent := range []bool{false, true} {
+		data, err := json.Marshal(contract.Definition())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var descriptor map[string]jsontext.Value
+		if err := json.Unmarshal(data, &descriptor); err != nil {
+			t.Fatal(err)
+		}
+		if absent {
+			delete(descriptor, "optional")
+		} else {
+			descriptor["optional"] = jsontext.Value("null")
+		}
+		data, err = json.Marshal(descriptor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParsePoint(data); err == nil {
+			t.Fatalf("missing optionality acquired false semantics: %s", data)
+		}
+	}
+}
 
 func testPoint(t *testing.T, composition Composition, optional bool, ordering PointOrdering) *Point {
 	t.Helper()

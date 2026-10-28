@@ -1,5 +1,4 @@
 import { parseTree, printParseErrorCode, visit, type Node } from "jsonc-parser";
-import { Decimal } from "decimal.js";
 
 // Unicode mode consumes a valid surrogate pair as one code point.
 const unpairedSurrogate = /\p{Surrogate}/u;
@@ -85,19 +84,67 @@ export function isJSONNumber(value: unknown): value is JSONNumber {
   );
 }
 
+// Exponents stay textual evidence; comparison must neither expand them nor
+// underflow a nonzero value into another value's identity.
+class DecimalValue {
+  readonly negative: boolean;
+  readonly digits: string;
+  readonly exponent: bigint;
+
+  constructor(value: JSONNumber) {
+    if (!isJSONNumber(value))
+      throw new TypeError("numeric comparison requires a JSON number");
+    const literal = value.toString();
+    const exponentAt = literal.search(/[eE]/);
+    const mantissa = exponentAt < 0 ? literal : literal.slice(0, exponentAt);
+    const pointAt = mantissa.indexOf(".");
+    const fraction = pointAt < 0 ? 0 : mantissa.length - pointAt - 1;
+    const coefficient = mantissa.replace("-", "").replace(".", "");
+    this.digits = coefficient.replace(/^0+/, "").replace(/0+$/, "");
+    this.negative = this.digits.length > 0 && literal.startsWith("-");
+    const trailingZeros =
+      coefficient.length - coefficient.replace(/0+$/, "").length;
+    this.exponent =
+      this.digits.length === 0
+        ? 0n
+        : (exponentAt < 0 ? 0n : BigInt(literal.slice(exponentAt + 1))) -
+          BigInt(fraction) +
+          BigInt(trailingZeros);
+  }
+
+  compare(other: DecimalValue): number {
+    if (this.negative !== other.negative) return this.negative ? -1 : 1;
+    let magnitude: number;
+    if (this.digits.length === 0 || other.digits.length === 0) {
+      magnitude = Math.sign(this.digits.length - other.digits.length);
+    } else {
+      const leftOrder = BigInt(this.digits.length) + this.exponent;
+      const rightOrder = BigInt(other.digits.length) + other.exponent;
+      if (leftOrder !== rightOrder) magnitude = leftOrder < rightOrder ? -1 : 1;
+      else {
+        const width = Math.max(this.digits.length, other.digits.length);
+        const left = this.digits.padEnd(width, "0");
+        const right = other.digits.padEnd(width, "0");
+        magnitude = left === right ? 0 : left < right ? -1 : 1;
+      }
+    }
+    return magnitude === 0 ? 0 : this.negative ? -magnitude : magnitude;
+  }
+
+  isInteger(): boolean {
+    return this.exponent >= 0n;
+  }
+}
+
 export function compareJSONNumbers(
   left: JSONNumber,
   right: JSONNumber,
 ): number {
-  const a = new Decimal(left.toString()),
-    b = new Decimal(right.toString());
-  if (!a.isFinite() || !b.isFinite())
-    throw new RangeError("JSON numeric comparison capacity exceeded");
-  return a.comparedTo(b);
+  return new DecimalValue(left).compare(new DecimalValue(right));
 }
 
 export function isJSONInteger(value: unknown): boolean {
-  return isJSONNumber(value) && new Decimal(value.toString()).isInteger();
+  return isJSONNumber(value) && new DecimalValue(value).isInteger();
 }
 
 export function equalJSON(left: unknown, right: unknown): boolean {

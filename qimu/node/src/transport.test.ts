@@ -1,10 +1,42 @@
-import { PassThrough } from "node:stream";
+import { PassThrough, Writable } from "node:stream";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { z } from "zod";
 import { expect, it } from "vitest";
 import { ExactNumber, stringifyJSON } from "@qimu/sdk/json";
 import { StdioTransport } from "./transport.ts";
+
+it("every close joins the original pending write and keeps its failure listener", async () => {
+  const writing = Promise.withResolvers<(error?: Error | null) => void>();
+  const output = new Writable({
+    write(_chunk, _encoding, complete) {
+      writing.resolve(complete);
+    },
+  });
+  const input = new PassThrough();
+  const transport = new StdioTransport(input, output, 1024);
+  let failures = 0;
+  transport.onerror = () => {
+    failures++;
+  };
+  await transport.start();
+  const sent = transport
+    .send({ jsonrpc: "2.0", method: "notice" })
+    .catch((error: unknown) => error);
+  const complete = await writing.promise;
+  let closed = false;
+  const first = transport.close();
+  const second = transport.close().then(() => {
+    closed = true;
+  });
+  await Promise.resolve();
+  expect(closed).toBe(false);
+  complete(new Error("original write failed"));
+  expect(await sent).toBeInstanceOf(Error);
+  await Promise.all([first, second]);
+  expect(closed).toBe(true);
+  expect(failures).toBe(1);
+});
 
 it.each([
   Buffer.from(

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"iter"
 	"net/http"
+	"reflect"
 
 	"github.com/Tangerg/flame/qimu/jsonvalue"
 	"github.com/Tangerg/flame/qimu/portable"
@@ -37,6 +38,12 @@ func ImplementStreamingMethod[P, C, R any](owner *portable.Capability, name stri
 	if len(method.Descriptor().Stream) == 0 {
 		return nil, errors.New("plugin: unary contract requires a unary implementation")
 	}
+	if err := validateMethodCodecs[P, R](name); err != nil {
+		return nil, err
+	}
+	if err := jsonvalue.ValidateType(reflect.TypeFor[C]()); err != nil {
+		return nil, fmt.Errorf("plugin: %s chunk codec: %w", name, err)
+	}
 	return &StreamingMethod[P, C, R]{contract: method}, nil
 }
 
@@ -44,6 +51,9 @@ func NewStreamingMethod[P, C, R any](config MethodConfig) (*StreamingMethod[P, C
 	base, err := NewMethod[P, R](config)
 	if err != nil {
 		return nil, err
+	}
+	if err := jsonvalue.ValidateType(reflect.TypeFor[C]()); err != nil {
+		return nil, fmt.Errorf("plugin: %s chunk codec: %w", config.Name, err)
 	}
 	chunk, err := jsonschema.For[C]()
 	if err != nil {
@@ -259,13 +269,13 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 				err = method.contract.ValidateChunk(frame.Value)
 				if err == nil {
 					item.Chunk = new(C)
-					err = json.Unmarshal(frame.Value, item.Chunk, json.RejectUnknownMembers(true))
+					err = json.Unmarshal(frame.Value, item.Chunk, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 				}
 			case "result":
 				err = method.contract.ValidateOutput(frame.Value)
 				if err == nil {
 					item.Result = new(R)
-					err = json.Unmarshal(frame.Value, item.Result, json.RejectUnknownMembers(true))
+					err = json.Unmarshal(frame.Value, item.Result, json.RejectUnknownMembers(true), jsonvalue.Numbers())
 				}
 				final = true
 			case "error":

@@ -187,7 +187,7 @@ type Host struct {
 }
 
 func NewHost(ctx context.Context, config HostConfig) (*Host, error) {
-	if ctx == nil {
+	if ctx == nil || config.Installations != nil && nilValue(config.Installations) || config.ExecutionProtection != nil && nilValue(config.ExecutionProtection) {
 		return nil, ErrInvalid
 	}
 	if config.Admission == nil {
@@ -220,9 +220,6 @@ func NewHost(ctx context.Context, config HostConfig) (*Host, error) {
 	if config.MaxInstallations < 1 || config.MaxPublications < 1 || config.MaxPublicationOperations < 1 || config.WatchCapacity < 1 || config.MaxWatches < 1 || config.MaxUses < 1 || config.MaxEventRoutes < 1 {
 		return nil, ErrInvalid
 	}
-	if config.Lifetime == nil {
-		config.Lifetime = NewLifetime(ctx)
-	}
 	h := &Host{admission: config.Admission, lifetime: config.Lifetime, epoch: config.Epoch, identity: &authorityIdentity{}, drivers: make(map[Profile]Driver), contracts: make(map[ContractRef]*declaration), contractNames: make(map[string]ContractRef), installations: make(map[InstallationID]*installed), instances: make(map[instanceKey]*Instance), allInstances: make(map[string]*Instance), catalog: make(map[ContractRef]*pointStore), uses: make(map[string]*Use), watches: make(map[*Watch]struct{}), store: config.Installations, protection: config.ExecutionProtection, maxPublications: config.MaxPublications, maxPublicationOperations: config.MaxPublicationOperations, watchCapacity: config.WatchCapacity}
 	h.routes = make(map[string]*eventRoute)
 	h.maxEventRoutes = config.MaxEventRoutes
@@ -234,10 +231,11 @@ func NewHost(ctx context.Context, config HostConfig) (*Host, error) {
 			return nil, err
 		}
 	}
-	for _, owner := range config.UseOwners {
-		if err := h.admission.RegisterUseOwner(owner); err != nil {
-			return nil, err
-		}
+	if err := h.admission.registerUseOwners(config.UseOwners); err != nil {
+		return nil, err
+	}
+	if h.lifetime == nil {
+		h.lifetime = NewLifetime(ctx)
 	}
 	return h, nil
 }
@@ -254,7 +252,7 @@ func randomID() (string, error) {
 }
 
 func (h *Host) RegisterDriver(driver Driver) error {
-	if driver == nil {
+	if nilValue(driver) {
 		return ErrInvalid
 	}
 	profile := driver.Profile()
@@ -285,7 +283,7 @@ func (h *Host) Register(declarations ...Declaration) error {
 	names := make(map[string]ContractRef, len(declarations))
 	definitions := make(map[ContractRef]*declaration, len(declarations))
 	for _, token := range declarations {
-		if token == nil || token.definition() == nil {
+		if nilValue(token) || token.definition() == nil {
 			return ErrInvalid
 		}
 		definition := token.definition()

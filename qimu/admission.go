@@ -145,6 +145,9 @@ func NewAdmissionWithLimits(limits AdmissionLimits) (*Admission, error) {
 }
 
 func contextError(ctx context.Context) error {
+	if ctx == nil {
+		return ErrInvalid
+	}
 	if err := ctx.Err(); err != nil {
 		return errors.Join(err, context.Cause(ctx))
 	}
@@ -373,22 +376,37 @@ func (a *Admission) Recover(ctx context.Context, restore func() error) error {
 }
 
 func (a *Admission) RegisterUseOwner(owner UseOwner) error {
-	if owner == nil {
-		return ErrInvalid
-	}
-	id := owner.ID()
-	if !validName(id) {
-		return ErrInvalid
+	return a.registerUseOwners([]UseOwner{owner})
+}
+
+func (a *Admission) registerUseOwners(owners []UseOwner) error {
+	pending := make(map[string]UseOwner, len(owners))
+	for _, owner := range owners {
+		if nilValue(owner) {
+			return ErrInvalid
+		}
+		id := owner.ID()
+		if !ValidName(id) {
+			return ErrInvalid
+		}
+		if _, exists := pending[id]; exists {
+			return fmt.Errorf("%w: duplicate use owner %s", ErrInvalid, id)
+		}
+		pending[id] = owner
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if _, exists := a.owners[id]; exists {
-		return fmt.Errorf("%w: duplicate use owner %s", ErrInvalid, id)
+	for id := range pending {
+		if _, exists := a.owners[id]; exists {
+			return fmt.Errorf("%w: duplicate use owner %s", ErrInvalid, id)
+		}
 	}
-	if len(a.owners) >= a.limits.MaxUseOwners {
+	if len(a.owners)+len(pending) > a.limits.MaxUseOwners {
 		return fmt.Errorf("%w: use owners", ErrCapacity)
 	}
-	a.owners[id] = owner
+	for id, owner := range pending {
+		a.owners[id] = owner
+	}
 	return nil
 }
 
@@ -534,6 +552,23 @@ func (a *Admission) openScope(id ScopeID) (ScopeGrant, error) {
 		return ScopeGrant{}, fmt.Errorf("%w: scopes", ErrCapacity)
 	}
 	if !state.open {
+		state.generation++
+		state.open = true
+		a.scopes[id] = state
+	}
+	return ScopeGrant{owner: a, id: id, generation: state.generation}, nil
+}
+
+// Restoring committed enabled state cannot revoke a later local fence. A cold
+// scope has no earlier grant to preserve, so only that case starts a generation.
+func (a *Admission) restoreScope(id ScopeID) (ScopeGrant, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	state, exists := a.scopes[id]
+	if !exists {
+		if len(a.scopes) >= a.limits.MaxScopes {
+			return ScopeGrant{}, fmt.Errorf("%w: scopes", ErrCapacity)
+		}
 		state.generation++
 		state.open = true
 		a.scopes[id] = state

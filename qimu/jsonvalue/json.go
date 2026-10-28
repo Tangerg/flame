@@ -10,17 +10,24 @@ import (
 	"slices"
 )
 
-// DecodeValue preserves authored shape before typed validation can erase it.
+// Decode into a fresh value so a refused shape cannot partially change its owner.
 func DecodeValue(raw jsontext.Value, dst any, path string) error {
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && Deref(reflect.TypeOf(dst).Elem()).Kind() != reflect.Interface {
-		return fmt.Errorf("%s must be an object, got null", path)
+	destination := reflect.ValueOf(dst)
+	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {
+		return fmt.Errorf("%s: destination must be a non-nil pointer", path)
 	}
-	if err := json.Unmarshal(raw, dst, json.RejectUnknownMembers(true), Numbers()); err != nil {
+	target := destination.Type().Elem()
+	if err := ValidateType(target); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	value := reflect.New(target)
+	if err := json.Unmarshal(raw, value.Interface(), json.RejectUnknownMembers(true), Numbers()); err != nil {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
-	if err := validateValueShape(raw, reflect.TypeOf(dst).Elem(), ""); err != nil {
-		return fmt.Errorf("%s.%w", path, err)
+	if err := validateValueShape(raw, target, ""); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
 	}
+	destination.Elem().Set(value.Elem())
 	return nil
 }
 
@@ -42,13 +49,13 @@ func validateValueShape(raw jsontext.Value, target reflect.Type, path string) er
 	for target.Kind() == reflect.Pointer {
 		target = target.Elem()
 	}
-	if target == reflect.TypeFor[jsontext.Value]() || target.Kind() == reflect.Interface {
+	if opaqueType(target) {
 		return nil
 	}
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return &ShapeError{Field: path, Detail: "must not be null"}
 	}
-	if reflect.PointerTo(target).Implements(reflect.TypeFor[json.Unmarshaler]()) {
+	if customDecoder(target) {
 		return nil
 	}
 

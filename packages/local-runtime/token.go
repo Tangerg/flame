@@ -14,12 +14,11 @@ import (
 
 const (
 	rawTokenBytes         = 32
-	encodedTokenBytes     = 43
 	tokenCandidatePattern = ".local-token-*"
 )
 
-// ErrInvalidToken identifies durable token material that cannot be trusted as
-// the canonical credential published by OpenToken.
+var encodedTokenBytes = base64.RawURLEncoding.EncodedLen(rawTokenBytes)
+
 var ErrInvalidToken = errors.New("invalid local Runtime token")
 
 // Token is a validated local Runtime credential and the durable path that owns
@@ -36,7 +35,6 @@ type Token struct {
 // which is the value that disables the gate.
 func (t *Token) Value() string { return t.value }
 
-// Path returns the absolute durable credential path.
 func (t *Token) Path() string { return t.path }
 
 // OpenToken loads the credential owned by path, creating and atomically
@@ -94,9 +92,6 @@ func OpenToken(path string) (*Token, error) {
 	return &Token{value: value, path: path}, nil
 }
 
-// ReadToken validates and reads exactly one canonical 32-byte credential. It
-// rejects links, replacements, non-private modes, padding, surrounding
-// whitespace, and every file size other than the 43-byte raw URL encoding.
 func ReadToken(path string) (*Token, error) {
 	path, err := cleanTokenPath(path)
 	if err != nil {
@@ -133,13 +128,13 @@ func readOpenedTokenFile(path string, file *os.File, pathInfo os.FileInfo) (*Tok
 		return nil, validationErr
 	}
 
-	var encoded [encodedTokenBytes + 1]byte
+	encoded := make([]byte, encodedTokenBytes+1)
 	n, err := io.ReadFull(file, encoded[:])
 	if n != encodedTokenBytes || !errors.Is(err, io.ErrUnexpectedEOF) {
 		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil, fmt.Errorf("local Runtime token: read: %w", err)
 		}
-		return nil, invalidToken("file must contain exactly 43 bytes")
+		return nil, invalidToken(fmt.Sprintf("file must contain exactly %d bytes", encodedTokenBytes))
 	}
 	after, err := file.Stat()
 	if err != nil {
@@ -188,8 +183,8 @@ func validateTokenFile(info os.FileInfo) error {
 	if permissions := info.Mode().Perm(); permissions != 0o600 {
 		return invalidToken(fmt.Sprintf("permissions are %04o, want 0600", permissions))
 	}
-	if info.Size() != encodedTokenBytes {
-		return invalidToken("file must contain exactly 43 bytes")
+	if info.Size() != int64(encodedTokenBytes) {
+		return invalidToken(fmt.Sprintf("file must contain exactly %d bytes", encodedTokenBytes))
 	}
 	return nil
 }

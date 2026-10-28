@@ -32,6 +32,8 @@ type RealmID string
 type Profile string
 type Digest string
 
+const MaxNameBytes = 256
+
 const (
 	NativeGo       Profile = "native-go"
 	MCPProcess     Profile = "mcp-process"
@@ -43,13 +45,13 @@ func (Profile) Values() []string {
 	return []string{string(NativeGo), string(MCPProcess), string(BrowserJS), string(StaticResource)}
 }
 
-func validName(value string) bool {
-	return value != "" && len(value) <= 256 && utf8.ValidString(value) &&
+func ValidName(value string) bool {
+	return value != "" && len(value) <= MaxNameBytes && utf8.ValidString(value) &&
 		!strings.ContainsFunc(value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) })
 }
 
 func validateName(kind, value string) error {
-	if !validName(value) {
+	if !ValidName(value) {
 		return fmt.Errorf("%w: %s", ErrInvalid, kind)
 	}
 	return nil

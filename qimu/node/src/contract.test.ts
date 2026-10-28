@@ -5,11 +5,27 @@ import {
   canonicalJSON,
   digestJSON,
   Method,
+  validCommand,
+  validToken,
   type MethodDescriptor,
   type CapabilityDescriptor,
 } from "./contract.ts";
 import { compileSchema } from "./schema.ts";
 import wire from "./protocol.generated.json";
+
+it("uses the Go-owned byte budgets for protocol tokens and command identities", () => {
+  expect(validCommand("a".repeat(wire.constants.maxCommandIDBytes))).toBe(true);
+  expect(validCommand("a".repeat(wire.constants.maxCommandIDBytes + 1))).toBe(
+    false,
+  );
+  expect(validToken("a".repeat(wire.limits.maxTokenBytes))).toBe(true);
+  expect(validToken("a".repeat(wire.limits.maxTokenBytes + 1))).toBe(false);
+  expect(validCommand("two words")).toBe(true);
+  expect(validToken("two words")).toBe(false);
+  expect(
+    validToken("界".repeat(Math.floor(wire.limits.maxTokenBytes / 3) + 1)),
+  ).toBe(false);
+});
 
 describe("published Go contract conformance", () => {
   for (const vector of wire.inputs)

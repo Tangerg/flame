@@ -415,6 +415,9 @@ func (h *Host) Restore(ctx context.Context, records []InstallationRecord, plugin
 	return h.admission.Maintenance(ctx, func() error {
 		h.mu.Lock()
 		defer h.mu.Unlock()
+		if h.closed {
+			return ErrClosed
+		}
 		if len(h.allInstances) != 0 || len(h.uses) != 0 {
 			return ErrInUse
 		}
@@ -454,9 +457,15 @@ func (h *Host) Restore(ctx context.Context, records []InstallationRecord, plugin
 				continue
 			}
 			var err error
-			entry.scope, err = h.admission.openScope(installationScope(entry.record.ID))
+			entry.scope, err = h.admission.restoreScope(installationScope(entry.record.ID))
 			if err != nil {
 				return err
+			}
+		}
+		for id := range h.installations {
+			entry := restored[id]
+			if entry == nil || !entry.record.Enabled {
+				h.admission.FenceScope(installationScope(id))
 			}
 		}
 		h.installations = restored
