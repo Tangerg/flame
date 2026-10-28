@@ -26,40 +26,41 @@ describe("appearance defaults", () => {
   });
 });
 
-describe("paper preference persistence", () => {
-  it("retains existing appearance choices when the new paper fields are absent", async () => {
-    const state: Partial<AppearancePreference> = { ...store.getInitialState() };
-    delete state.paperTexture;
-    delete state.paperTextureStrength;
-    Object.assign(state, {
-      theme: "custom",
-      accent: "#7f52ff",
-      customTheme: { bg: "#f2ede4", fg: "#202020" },
-      uiFont: "Georgia",
-      fontSize: 18,
-      codeFontSize: 16,
-      motionScale: 0,
-    });
-    localStorage.setItem("flame.appearance", JSON.stringify({ state, version: 0 }));
-    await store.persist.rehydrate();
-    expect(store.getState()).toMatchObject({
-      ...state,
-      paperTexture: "off",
-      paperTextureStrength: 3,
-    });
-  });
+describe("appearance preference persistence", () => {
+  it.each(["codeFontSize", "paperTexture", "paperTextureStrength"] as const)(
+    "refuses an incomplete appearance record missing %s",
+    async (missing) => {
+      const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state: Partial<AppearancePreference> = {
+        ...store.getInitialState(),
+        theme: "custom",
+        accent: "#7f52ff",
+        customTheme: { bg: "#f2ede4", fg: "#202020" },
+        uiFont: "Georgia",
+        fontSize: 18,
+        codeFontSize: 16,
+        motionScale: 0,
+      };
+      delete state[missing];
+      localStorage.setItem("flame.appearance", JSON.stringify({ state, version: 0 }));
+      await store.persist.rehydrate();
+      expect(warning).toHaveBeenCalledOnce();
+      expect(store.getState()).toEqual(store.getInitialState());
+    },
+  );
 
-  it("restores the selected paper and strength from the actual storage adapter", async () => {
+  it("restores complete current preferences from the actual storage adapter", async () => {
+    store.getState().setTheme("custom");
+    store.getState().setAccent("#7f52ff");
+    store.getState().setCodeFontSize(16);
     store.getState().setPaperTexture("cotton");
     store.getState().setPaperTextureStrength(5);
+    const retained = store.getState();
     const saved = localStorage.getItem("flame.appearance")!;
     store.setState(store.getInitialState());
     localStorage.setItem("flame.appearance", saved);
     await store.persist.rehydrate();
-    expect(store.getState()).toMatchObject({
-      paperTexture: "cotton",
-      paperTextureStrength: 5,
-    });
+    expect(store.getState()).toEqual(retained);
   });
 
   it.each([

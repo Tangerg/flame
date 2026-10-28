@@ -5,7 +5,6 @@ import { rehydrateOrDefault } from "@/lib/persistedStore";
 import { type Paired } from "@/lib/persistedStore";
 import {
   defaultAppearance,
-  DEFAULT_PAPER_TEXTURE_STRENGTH,
   PAPER_TEXTURES,
   UI_DENSITY_MODES,
   type AppearanceEdit,
@@ -24,13 +23,13 @@ const appearancePersistSchema = z.object({
   uiFont: z.string(),
   codeFont: z.string(),
   fontSize: z.number().nullable(),
-  codeFontSize: z.number().nullable().default(null),
+  codeFontSize: z.number().nullable(),
   fontSmoothing: z.boolean(),
   density: z.enum(UI_DENSITY_MODES),
   radiusScale: z.number(),
   motionScale: z.number(),
-  paperTexture: z.enum(PAPER_TEXTURES).default("off"),
-  paperTextureStrength: z.number().int().min(1).max(5).default(DEFAULT_PAPER_TEXTURE_STRENGTH),
+  paperTexture: z.enum(PAPER_TEXTURES),
+  paperTextureStrength: z.number().int().min(1).max(5),
 });
 
 const _paired: Paired<AppearancePreference, z.infer<typeof appearancePersistSchema>> = true;
