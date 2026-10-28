@@ -58,7 +58,8 @@ test("declared author contributions still require their contract generator", () 
       await assert.rejects(
         run(process.execPath, [join(directory, "generate.mjs")]),
         (error) =>
-          /flame-sdk/.test(error.stderr) && /ENOENT/.test(error.stderr),
+          /tools[/\\]qimu(?:\.exe)?/.test(error.stderr) &&
+          /ENOENT/.test(error.stderr),
       );
     },
   ));
