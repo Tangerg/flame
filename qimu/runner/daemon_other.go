@@ -10,3 +10,5 @@ import (
 func detachDaemon(*exec.Cmd) error {
 	return errors.New("runner: daemon isolation is unsupported on this platform")
 }
+
+func interruptedExit(error) bool { return false }

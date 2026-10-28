@@ -203,9 +203,15 @@ func (d *Daemon) closeOriginal() error {
 		return d.exitErr
 	default:
 	}
-	if err := d.command.Process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
-		return err
+	signalErr := d.command.Process.Signal(os.Interrupt)
+	if signalErr != nil && !errors.Is(signalErr, os.ErrProcessDone) {
+		return signalErr
 	}
 	<-d.exited
+	// Startup can end before the executable installs a signal handler. Only
+	// normalize our delivered stop after the original Wait proves that exit.
+	if signalErr == nil && interruptedExit(d.exitErr) {
+		return nil
+	}
 	return d.exitErr
 }

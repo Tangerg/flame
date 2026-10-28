@@ -15,6 +15,11 @@ before creating state or interpreting it as a missing authority. Configure a
 shorter private state directory; the runner does not create another temporary
 socket namespace or silently switch transports.
 
+Daemon `Close` joins its original process even when startup has not completed.
+An interrupt delivered by that close is an expected stop only after the original
+Wait observes the matching exit. A process that already crashed keeps its original
+exit diagnostic.
+
 The client API is `Dial`, `Identity`, `Fence`, `Launch`, `Attach`, `Inspect`,
 `CloseAttempt` and `ProveAbsent`. `Identity` identifies the actual runner incarnation. Record that
 identity as the execution Realm, and verify the returned running observation before
