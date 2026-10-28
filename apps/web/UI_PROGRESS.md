@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `473dc7cbd`, which retains focus through subagent completion and unavailable actions. Accepted Composer Stop now returns to the original editable draft; unavailable Send, Steer and Stop preserve their keyboard context. Native verification and cleanup are complete under **Stop and command availability preserve authoring**. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `eaf7f6f0f`, which preserves authoring after accepted Stop and keeps unavailable commands in keyboard order. Native reverse-navigation qualification now distinguishes pure keyboard input from pointer activation followed by disabling; see **Native disabled-button navigation conditions**. No production component change is warranted by that comparison. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -50,10 +50,13 @@ and keeps fitting origin/control groups together, published as `5c6d10496`.
 Native playback and return are qualified and published as `487d59c14`.
 Resource-link identity and reading affordance are published as `cad71edc8`.
 Subagent completion, unavailable controls, nested reader scope, source return
-and continued editing are published as `473dc7cbd`. The Composer follow-up
-qualifies accepted Stop, refused commands, disabled toolbar navigation and
-continued drafting. Its publication fetch finds zero incoming main commits at
-`473dc7cbd`; no repeated merge or broad unrelated verification is needed.
+and continued editing are published as `473dc7cbd`. The Composer follow-up is
+published as `eaf7f6f0f` and qualifies accepted Stop, refused commands, disabled
+toolbar navigation and continued drafting. Its native reverse-navigation
+follow-up compares plain HTML, shared and upstream controls, then qualifies the
+pure keyboard path in the actual workspace. The publication fetch finds zero
+incoming main commits at `eaf7f6f0f`; no repeated merge or broad unrelated
+verification is needed.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -5698,6 +5701,100 @@ Continue from another observed existing task or reading surface. Preserve the
 accepted Stop/input lease, command-refusal semantics and scoped verification
 cadence; do not add a second Run-settlement or focus owner. The continuous UI
 goal remains active, and the primary checkout's parallel work is preserved.
+
+### Native disabled-button navigation conditions
+
+The previous Subagent and Composer receipts leave plain reverse Tab unresolved
+after a pointer-activated action becomes unavailable. Frozen source
+`eaf7f6f0f57bc9c5b390f290f7b59a0a2813e11d` already passes Tab and Shift+Tab
+through its shared button boundary. The installed Base UI implementation also
+exempts Tab from its disabled-key cancellation. This follow-up identifies the
+observed input conditions before considering another focus or keyboard owner.
+
+A private Wails window compares four actual controls: an ordinary HTML button
+with `aria-disabled`, Flame ButtonPrimitive, Flame IconButton and the upstream
+Base UI Button. Each has ordinary Before and After buttons. The static scene
+starts disabled; the second scene uses normal React local state to disable only
+the target that receives a real CUA click. Neither scene installs a focus,
+keyboard-navigation or scroll handler. A separate passive observer records
+capture/bubble events and subsequent active elements without canceling events,
+changing DOM state or driving input. Current installed dependency sources remain
+read-only. Existing Radix/better-interface focus guidance informs the contract;
+the native comparison, rather than a static design reference, supplies evidence.
+
+All four static controls accept forward Tab and reverse Shift+Tab. Their
+**eight** observed keydown records are trusted, bubbled and unprevented. In the
+click-to-disable scene, the first reverse Tab remains on the clicked target in
+**all four** controls, including ordinary HTML; a second reverse attempt on the
+HTML control has the same result. Forward Tab reaches After, reverse Tab returns
+to the target, and the next reverse Tab reaches Before. All **17** observed Tab
+keydown records are trusted, bubbled and unprevented. The pointer sequence is
+therefore not evidence of a Flame-specific interception. It remains a limitation
+of this observed CUA/native-host sequence; its internal platform cause, physical
+keyboard behavior and other operating systems are not established. Do not add a
+manual focus loop, modifier workaround or second navigation state to hide it.
+
+The same pure keyboard path passes in the actual captured workspace:
+
+- ZH/dark/18 px/custom blue `#2F6BFF`: confirm the draft
+  `保留反向导航草稿。`, inspect the Read result, open its current file and Escape
+  to the exact originating action. Resize to **1125 × 734** and zoom to **200%**
+  (**562 × 367 CSS px / DPR 4**). Six Tabs from Composer reach Stop. Return
+  invokes the unavailable fixture once and retains focused Stop with native
+  `disabled=false` and `aria-disabled=true`. Shift+Tab reaches disabled Steer;
+  its Return is prevented and sends nothing. Further reverse Tabs reach Approval
+  and the same input. Actual Size retains the draft, which is edited directly to
+  `保留反向导航草稿。继续。`. The final fixture counter remains **one**, with no
+  submitted input.
+- A clean EN/light/14 px/Orange production build omits the observer. Its **614**
+  assets differ only in the two HTML entrances and issue **zero** observation
+  requests. Native AX and pixels confirm Read → current file → Escape to the
+  originating action, six Tabs to Stop, Return refusal, Shift+Tab to disabled
+  Steer, refused Return, and five reverse Tabs to the original Composer. Direct
+  input continues exactly as
+  `Keep native keyboard context. Continue after return.`. No clean-build DOM
+  measurements or invocation count are inferred.
+
+One initial unrelated pasted value is excluded; the accepted ZH run starts after
+the intended draft is visibly confirmed. A `typeText` attempt with no observed
+input is likewise excluded. These input observations do not establish a product
+draft defect. The file body remains a fixture placeholder, so source identity
+and return, not filesystem correctness, are qualified. Real Runtime execution,
+IME, VoiceOver speech, fresh contrast/motion measurements and a complete
+whole-product visual review remain outside this receipt.
+
+| Domain        | Scoped result                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Accessibility | Pure keyboard reverse navigation passes; pointer-to-disabled condition is explicitly bounded    |
+| Layout        | Narrow 200% workspace retains the affected toolbar and return path                              |
+| Writing       | Existing localized actions and unavailable-connection feedback remain unchanged                 |
+| Typography    | Existing EN 14 px and ZH 18 px drafts, source text and native scaling retain their owners       |
+| Colors        | Light Orange and dark blue states use existing semantic tokens; no new contrast result claimed  |
+| UI            | Reading, source return, command refusal and immediate continued editing pass in native contexts |
+
+No production or test source changes. Icon/UI prerequisite builds, the private
+native controls, both actual production Web variants and supported macOS 13
+Wails builds pass. Existing shared Button regressions pass: **one file / 28
+tests**, **1.13 s**. The clean Web build takes **1.85 s**, with the existing
+nonfatal chunk warning. Full Web/UI aggregates, packed-consumer, Runtime and
+`make check-native` are not rerun for this unchanged source; earlier receipts
+retain their frozen scope.
+
+All **four** native instances are retired, the bundle unregistered and loopback
+server closed. Cleanup removes **three** new output/cache roots and **three**
+exact profile roots, restores **four** original files and modes, and rechecks
+**18** output-presence and **five** profile baselines. Both original UI-cache
+files and the empty Web Vite-temp directory remain intact. All **6,265** source
+inputs, **32** installed resources and **three** read-only dependency sources
+retain their hashes. The private root `flame-button-nav-Fo87yn` is absent. The
+round-trip-verified in-memory gzip retains **25** flat UTF-8 records,
+**5,018,005** uncompressed bytes and **857,453** compressed bytes; SHA-256
+`16737826b81bc9f958a7c204f5750de0d8e7d984973395feabce1644dc9024c3`.
+
+Continue with another observed content/Dock reading task. Preserve command
+ownership, ordinary native navigation and the accepted draft/focus leases;
+this comparison does not justify another button rewrite. Primary-checkout
+parallel work remains untouched, and the continuous UI goal remains active.
 
 ### Native workbench command and caret qualification
 
