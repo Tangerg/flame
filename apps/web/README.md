@@ -306,7 +306,12 @@ Composer clearance after window or page-zoom changes. Pointer focus keeps its
 pressed position; modal completion continues to own focus restoration.
 Reveals use absolute instant offsets so WebKit's painted reading position agrees
 with layout after native page zoom.
-They include the target's CSS scroll margins while testing actual content against
+The shared reading-unit rule keeps a fitting declared group's heading with its
+focused option, ahead of that option's wrapping label. Oversized units fall back
+to the label or control. The same rule protects a fitting caption during pending
+follow and later reflow; deliberate scrolling or outside focus retires that
+witness. The current viewport remains the scope boundary, including nested readers.
+Reveals include the target's CSS scroll margins while testing actual content against
 ancestor clips. Native scroll notifications without a changed reading offset do
 not retire focus before pending content reflow is observed. Disclosure clearance
 persists while the native menu owns focus. Goal identities use a root-relative

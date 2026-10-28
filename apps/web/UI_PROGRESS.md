@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `fd7c0b0ca`, which preserves local reading focus when a Tool result is replaced. Generated forms now return invalid submissions to the first available error field and connect choice errors to their controls; see **Generated-form error recovery**. Native verification, regression checks and resource retirement are complete. The next observed issue is keeping a fitting composite field's heading within the conversation reading frame. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `d9c325bd6`, which returns invalid generated forms to the first available error field. Fitting choice groups now retain their headings in the conversation reading frame and shared Panel; see **Generated-form error recovery** and **Fitting choice groups in the reading frame**. Native verification, regression checks and resource retirement are complete. Continue observing complete content/Dock tasks before choosing another repair. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -58,8 +58,10 @@ pure keyboard path in the actual workspace, published as `244c5d270`. The next
 result-presentation repair keeps completed evidence, its local actions, source
 return and continued drafting together, published as `fd7c0b0ca`. The generated-form
 follow-up qualifies invalid submission, ordered correction, local acceptance,
-choice feedback and continued authoring. Its publication fetch finds zero incoming
-main commits at `fd7c0b0ca`; merging reports already up to date. No unrelated
+choice feedback and continued authoring, published as `d9c325bd6`. The fitting-unit
+follow-up qualifies composite headings, pointer selection, keyboard return and
+zoom reflow. Its publication fetch finds zero incoming main commits at `d9c325bd6`;
+merging reports already up to date. No unrelated
 Runtime integration suite is repeated for this presentation repair.
 See **Computer console
 editing and operation return**. Preserve the
@@ -2007,7 +2009,7 @@ evidence rather than native Flame qualification.
 | Domain        | Inspected outcome                                                                                 | Limit                                                            |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Accessibility | Invalid input and choices receive logical focus; field errors have explicit descriptions.         | VoiceOver announcements are not verified.                        |
-| Layout        | Long forms, wheel reading, narrow workspaces and 200% correction remain operable.                 | A composite heading can still clip above the conversation frame. |
+| Layout        | Long forms, wheel reading, narrow workspaces and 200% correction remain operable.                 | Fitting composite headings are qualified in the follow-up below. |
 | Typography    | EN 14 px and ZH 18 px retain complete field errors and result text.                               | Other scripts and OS IME are not newly qualified.                |
 | Colors        | Native invalid edges coexist with the existing keyboard perimeter in Orange/light and blue/dark.  | No new contrast or arbitrary-theme matrix is claimed.            |
 | UI            | Ordered correction, valid acceptance, reset, Select selection and return retain the current task. | Existing motion and reduced-motion owners are unchanged.         |
@@ -2073,11 +2075,99 @@ contains **63** UTF-8 records, **15,509,972** uncompressed bytes and **2,265,495
 bytes; SHA-256 `3d90cd4d0087936baf582cdb66d27b46026158253be4457d0d880651c6988d02`.
 The primary checkout, user data and unrelated processes remain untouched.
 
-The form correction tasks are approved within these bounds. The next observed
-reading issue is **not fixed here**: when submission returns to a composite choice
-at 200%, its caption can start above the conversation header even though the option
-and inline error remain visible. Inspect the existing conversation reading-frame
-owner and shared focus-unit contract next. The whole-product UI goal remains open.
+The form correction tasks are approved within these bounds. Subsequent native
+inspection finds a composite caption above the conversation header even though
+its option remains visible. The reading-frame follow-up below repairs that
+separate boundary. The whole-product UI goal remains open.
+
+### Fitting choice groups in the reading frame
+
+At main `d9c325bd6be5e0e1ee35a0ac195d86e75ffda639`, repeated invalid submission
+returns focus to the correct checkbox, but its **Capabilities** group begins at
+**y = 31 CSS px**, above the safe reading top of **70 px**. The **132.5 px** group
+fits the available **136 px** frame. The conversation reader tests only the
+focused widget. Shared Panel also lets an option's wrapping label outrank the
+declared group and its caption.
+
+`packages/ui/src/reading-unit.ts` now owns candidate priority for both readers:
+the nearest fitting declared `data-focus-unit`, then its wrapping label, then
+the focused control. Each viewport still owns its geometry, clipping and scroll
+offset. `readingFollow.ts` includes the control's existing CSS clearance in the
+chosen context, retires queued following that would hide its heading, and keeps
+that context visible during reflow. Deliberate scrolling and later outside focus
+retire the witness. Impossible enclosing clips and oversized units retain the
+control fallback; nested readers retain their own scope. Panel preserves its
+sticky controls, clipped host and pointer-press policy. No new focus destination,
+business state, timer or GenUI-specific scroll workaround is introduced.
+
+Read-only HeroUI evidence is its actual `checkbox-group.tsx` and
+`checkbox-group.stories.tsx`, where the caption and options form one decision.
+The better-interface review preserves the existing type scale, quiet filled
+surfaces, Orange/custom-blue semantic states and motion owners. The improvement
+is spatial context during correction and continued reading; no explanatory
+copy or decorative treatment is added. These references do not establish native
+Flame behavior.
+
+Four isolated Wails instances qualify the original and final task paths through
+the unchanged installed GenUI resource and captured-result component lifecycle:
+
+- ZH/dark/18 px/custom blue, **562 × 367 CSS px / DPR 4 / 200%**: the exact
+  repeated-submission path now places the complete group at **y = 70 px**.
+  Wheel reading leaves its heading at **33.5 px**; a held pointer click selects
+  Computer use without changing the **861 px** reading offset. Tab to Code mode
+  restores the complete group while preserving the actual checkbox focus.
+- Reducing the height leaves a fitting **133.5 px** frame. A native zoom step to
+  **205%**, **548 × 355 CSS px**, makes the group larger than the approximately
+  **125 px** frame: its focused option remains visible. Returning to 200% restores
+  the complete group at **70 px** with the same focus and selection. Ordered
+  radio correction and acceptance retain Apply focus. Workspace Diff, file-list
+  return and explicit full-width material Close preserve the report and draft.
+- EN/light/14 px/Flame Orange: repeated invalid submission, keyboard choice
+  correction and acceptance pass. Full-width file reading reaches the actual body
+  by Tab and returns through Close; report selections and the original Composer
+  text remain available for editing.
+- The final instance removes the passive observer. At 200% it repeats invalid
+  submission, held pointer selection, keyboard correction and acceptance, then
+  restores Actual Size and continues the original draft as
+  `Continue after reading the whole choice group. Continue.`. All **614** assets
+  match the observed final build except the two HTML entries containing the
+  observer. The clean instance emits **zero** observation requests or events.
+
+All UI input uses native CUA. Passive observations read geometry, focus and
+styles only. Private accepted inputs require the three existing choice fields
+and declare no operations. The override changes fixture data only; the installed
+GenUI renderer remains byte-identical.
+These local actions do not qualify live provider or Runtime command execution.
+VoiceOver, OS IME, forced colors, RTL and other-platform GUIs are not newly run.
+
+Before the repair, two Panel and three reading counterexamples fail against the
+original implementation. Final verification passes **5 Web files / 128 tests**,
+**3 installed-component files / 29 tests**, and the complete UI check
+(**10 files / 189 tests** plus one independently packed UI/icons consumer).
+Web typecheck, lint, design-system/token/chrome checks, production bundle checks,
+installed-module linking and `make check-native` pass. The first module-link
+invocation exits because the production `dist/index.html` prerequisite has not
+been built; running the production bundle and then module linking passes.
+The normal component builder leaves all **32** installed resources byte-identical.
+Checks and builds run serially. Browser suites, performance benchmarks, Claude
+CLI, subagents and unrelated Runtime integration suites do not run. There is no
+dependency, persisted-data or execution-contract migration.
+
+All four native instances are stopped, their bundle is unregistered and the
+loopback observer is closed. Cleanup removes **8** new output/cache roots and
+**3** owned profile paths, restores **4** original files and modes, and passes all
+**18** output and **5** profile baselines. All **6,267** qualified non-Markdown
+inputs, **32** installed resources, two read-only reference files and the original
+UI/Web cache contents remain intact. The private root
+`flame-reading-units-dU7xJ6` is absent. The round-tripped in-memory archive retains
+**62** UTF-8 records, **46,512,828** uncompressed bytes and **4,181,582** gzip bytes;
+SHA-256 `072b28aa0a6e34d9a6756a093811838812d27f9b8c98508b3c37c5b13febdec2`.
+The primary checkout, user data and unrelated processes remain untouched.
+
+The fitting-unit correction is approved within these bounds. Next inspect other
+composed report controls and their original-evidence return path in the actual
+content/Dock workspace; choose another repair only from a concrete failure.
+The whole-product UI goal remains active.
 
 ### Command focus and visible pane boundaries
 

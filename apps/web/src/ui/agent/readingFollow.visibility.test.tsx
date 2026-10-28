@@ -6,7 +6,7 @@ prepareTestClient(() => {
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { useReadingFocusVisibility } from "./readingFollow";
+import { stopFollowOnReadingFocus, useReadingFocusVisibility } from "./readingFollow";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StickToBottomInstance } from "use-stick-to-bottom";
@@ -52,7 +52,10 @@ function scenario() {
       <>
         <input aria-label="Later draft" defaultValue="Keep this draft" />
         <div ref={attached ? follow.scrollRef : undefined}>
-          <div ref={attached ? follow.contentRef : undefined}>
+          <div
+            ref={attached ? follow.contentRef : undefined}
+            onFocus={(event) => stopFollowOnReadingFocus(event, follow)}
+          >
             <div data-testid="nested">
               <button>Read original evidence</button>
             </div>
@@ -152,6 +155,141 @@ afterEach(() => {
 });
 
 describe("reading focus geometry", () => {
+  it("reveals a fitting group heading before the focused option's own label", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    const label = document.createElement("label");
+    s.nested.append(label);
+    label.append(s.target);
+    vi.spyOn(label, "getBoundingClientRect").mockImplementation(s.bounds);
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.viewport.scrollTop = 140;
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.nested.getBoundingClientRect().top).toBe(20);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps the lower edge of a fitting unit above the Composer even while its control is visible", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.height = 320;
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.nested.getBoundingClientRect().bottom).toBe(240);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps a fitting unit together as the reading frame shrinks", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    fireEvent.focusIn(s.target);
+    s.shape.height = 300;
+
+    s.resize();
+
+    expect(s.nested.getBoundingClientRect().bottom).toBe(220);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("preserves the focused control's CSS clearance when revealing its fitting context", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    s.target.style.scrollMarginTop = "80px";
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.viewport.scrollTop = 140;
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.bounds().top).toBe(100);
+    expect(s.nested.getBoundingClientRect().top).toBe(40);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("falls back to the focused control when its complete unit exceeds the reading frame", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    s.shape.height = 160;
+    fireEvent.focusIn(s.target);
+    expect(s.bounds().bottom).toBe(80);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("leaves a group heading behind after deliberate scrolling while the option remains visible", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    fireEvent.focusIn(s.target);
+    fireEvent.wheel(s.viewport, { deltaY: 140 });
+    s.viewport.scrollTop = 140;
+    fireEvent.scroll(s.viewport);
+    s.shape.height = 380;
+    s.resize();
+    expect(s.viewport.scrollTop).toBe(140);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps the caption around a nested reading region without testing it against its own inner clip", () => {
+    const s = scenario();
+    s.content.dataset.focusUnit = "";
+    s.nested.style.overflowY = "auto";
+    vi.spyOn(s.content, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 150 - s.viewport.scrollTop, 600, 150),
+    );
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.height = 320;
+    act(() => s.target.focus({ preventScroll: true }));
+    expect(s.content.getBoundingClientRect().bottom).toBe(240);
+    expect(s.nested.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("uses the control when a group cannot fit its enclosing clip", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    const clip = document.createElement("div");
+    clip.style.overflowY = "hidden";
+    s.content.append(clip);
+    clip.append(s.nested);
+    vi.spyOn(clip, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 150 - s.viewport.scrollTop, 600, 60),
+    );
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.shape.top = 180;
+    s.shape.height = 260;
+    act(() => s.target.focus({ preventScroll: true }));
+    expect(s.viewport.scrollTop).toBe(24);
+    expect(s.nested.scrollTop).toBe(0);
+    expect(document.activeElement).toBe(s.target);
+  });
+
+  it("keeps group context inside the current reading viewport", () => {
+    const s = scenario();
+    const outside = s.viewport.parentElement!;
+    outside.dataset.focusUnit = "";
+    vi.spyOn(outside, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 5, 600, 100));
+    fireEvent.focusIn(s.target);
+    expect(s.order).toEqual([]);
+    expect(s.viewport.scrollTop).toBe(0);
+  });
+
+  it("retires queued following that would hide a group's heading while leaving its option visible", () => {
+    const s = scenario();
+    s.nested.dataset.focusUnit = "";
+    act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
+    s.viewport.scrollTop = 100;
+    s.follow.state.isAtBottom = true;
+    s.follow.state.targetScrollTop = 140;
+
+    act(() => s.target.focus({ preventScroll: true }));
+
+    expect(s.order).toEqual(["follow retired"]);
+    expect(s.viewport.scrollTop).toBe(100);
+    expect(document.activeElement).toBe(s.target);
+  });
+
   it("keeps returned focus beyond its CSS disclosure clearance", () => {
     const s = scenario();
     act(() => screen.getByRole("textbox", { name: "Later draft" }).focus());
@@ -444,6 +582,7 @@ describe("reading focus geometry", () => {
 
   it("preserves a later draft focus, value and selection", () => {
     const s = scenario();
+    s.nested.dataset.focusUnit = "";
     const draft = screen.getByRole<HTMLInputElement>("textbox", { name: "Later draft" });
     act(() => {
       draft.focus();

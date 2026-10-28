@@ -15,6 +15,7 @@ import {
 import { CARD_SURFACE } from "./control-surface";
 import { PanelLayoutContext } from "./panel-layout";
 import { useContentVisible } from "./content-visibility";
+import { readingUnitFor } from "./reading-unit";
 import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
@@ -345,20 +346,16 @@ export function Panel({
           visibleTop,
           controls?.getBoundingClientRect().bottom ?? visibleTop,
         ) + stickyHeaderHeight;
-      let focusUnit = target;
-      const readingUnit = target.closest("label, [data-focus-unit]");
-      if (readingUnit && body.contains(readingUnit)) {
+      const focusUnit = readingUnitFor(target, body, (unit) => {
         const scrollMargin =
-          Number.parseFloat(
-            getComputedStyle(readingUnit).scrollMarginBlockStart,
-          ) || 0;
-        if (
-          readingUnit.getBoundingClientRect().height <=
-          visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
-        ) {
-          focusUnit = readingUnit;
-        }
-      }
+          Number.parseFloat(getComputedStyle(unit).scrollMarginBlockStart) || 0;
+        const height = unit.getBoundingClientRect().height;
+        return (
+          height > 0 &&
+          height <=
+            visibleBottom - Math.max(focusTop, visibleTop + scrollMargin)
+        );
+      });
       return {
         top: focusTop,
         bottom: visibleBottom,

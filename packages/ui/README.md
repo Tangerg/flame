@@ -82,12 +82,13 @@ keeps its existing scroll viewport. The panel does not shrink inside a column
 host: its canvas and sticky-control boundary extend through the complete content.
 `Panel` projects only its own controls' measured height on its root to keep focused content and anchors
 clear of the controls; wrapped controls update through `ResizeObserver`.
-Body focus also respects the host's clipped viewport. A wrapping native label
-or a container marked `data-focus-unit` keeps its label and focused control
-together when the complete unit fits below the sticky controls and disclosure
-header. `FormGroup` and the application's `SettingRow` declare this boundary at
-their existing roots. The nearest unit wins; taller units still reveal the
-focused control's beginning after native autofocus or reflow. The panel observes
+Body focus also respects the host's clipped viewport. `readingUnitFor` gives
+Panel and transcript readers the same context rule: use the nearest declared
+`data-focus-unit` when it fits, then the wrapping native label, then the control.
+An option's label cannot hide the heading of its fitting group. Each reader owns
+its available frame and scrolling. `FormGroup` and the application's `SettingRow`
+declare this boundary at their existing roots. Taller units retain the focused
+control's beginning after native autofocus or reflow. The panel observes
 its content, controls and clipped host ancestors, including hosts without a
 control zone. Native window resize also rechecks the current reading frame.
 The existing active field stays visible through layout and page-zoom changes

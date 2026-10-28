@@ -1,9 +1,11 @@
 import { type FocusEvent, type MouseEvent, useLayoutEffect } from "react";
 import { type StickToBottomInstance } from "use-stick-to-bottom";
+import { readingUnitFor } from "@flame/ui";
 type ReadingFollow = Pick<StickToBottomInstance, "scrollRef" | "state" | "stopScroll">;
 
 // Native zoom reports fractional CSS pixels.
 const EDGE_TOLERANCE = 0.5;
+const CLIPPING_OVERFLOW = ["auto", "scroll", "hidden", "clip"];
 
 function readingTargetBounds(target: Element) {
   const bounds = target.getBoundingClientRect();
@@ -19,15 +21,53 @@ function readingTargetBounds(target: Element) {
   };
 }
 
-function withinSafeReading(target: Element, viewport: HTMLElement) {
-  const bounds = readingTargetBounds(target);
+function readingFocusContext(target: Element, viewport: HTMLElement) {
+  const focused = readingTargetBounds(target);
+  // A larger unit must retain the focused control's own reserved clearance.
+  const contextBounds = (unit: Element) => {
+    const bounds = readingTargetBounds(unit);
+    const top = Math.min(bounds.top, focused.top);
+    const bottom = Math.max(bounds.bottom, focused.bottom);
+    return {
+      top,
+      bottom,
+      height: bottom - top,
+      marginStart: bounds.marginStart + bounds.top - top,
+      marginEnd: bounds.marginEnd + bottom - bounds.bottom,
+    };
+  };
+  const frame = safeReadingBounds(viewport);
+  const unit = readingUnitFor(target, viewport, (candidate) => {
+    const height = candidate.getBoundingClientRect().height;
+    if (height <= 0 || contextBounds(candidate).height > frame.bottom - frame.top) return false;
+    for (
+      let parent = candidate.parentElement;
+      parent && parent !== viewport;
+      parent = parent.parentElement
+    ) {
+      if (
+        CLIPPING_OVERFLOW.includes(getComputedStyle(parent).overflowY) &&
+        height > parent.getBoundingClientRect().height
+      )
+        return false;
+    }
+    return true;
+  });
+  return { unit, bounds: unit === target ? focused : contextBounds(unit) };
+}
+
+function withinSafeReading(
+  target: Element,
+  viewport: HTMLElement,
+  bounds = readingTargetBounds(target),
+) {
   let { top, bottom } = safeReadingBounds(viewport);
   for (
     let parent = target.parentElement;
     parent && parent !== viewport;
     parent = parent.parentElement
   ) {
-    if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(parent).overflowY)) {
+    if (CLIPPING_OVERFLOW.includes(getComputedStyle(parent).overflowY)) {
       const clip = parent.getBoundingClientRect();
       // Scroll margins reserve viewport space; ancestor clips still test the actual target.
       top = Math.max(top, clip.top - bounds.marginStart);
@@ -62,13 +102,12 @@ export function useReadingFocusVisibility(
       frame = safeReadingBounds(viewport);
       observedScrollTop = viewport.scrollTop;
       const active = content.ownerDocument.activeElement;
-      witness =
-        active &&
-        active !== content &&
-        content.contains(active) &&
-        withinSafeReading(active, viewport)
-          ? active
-          : null;
+      witness = null;
+      if (active && active !== content && content.contains(active)) {
+        const { unit, bounds } = readingFocusContext(active, viewport);
+        if (withinSafeReading(active, viewport) && withinSafeReading(unit, viewport, bounds))
+          witness = active;
+      }
     };
     const retire = () => {
       witness = null;
@@ -103,8 +142,8 @@ export function useReadingFocusVisibility(
         retire();
         return;
       }
-      if (withinSafeReading(target, viewport)) return;
-      const bounds = readingTargetBounds(target);
+      const { unit, bounds } = readingFocusContext(target, viewport);
+      if (withinSafeReading(target, viewport) && withinSafeReading(unit, viewport, bounds)) return;
       const { top, bottom } = frame;
       if (bottom <= top) return;
       const alignStart = bounds.height > bottom - top || bounds.top < top;
@@ -184,7 +223,7 @@ export function stopFollowOnReadingFocus(
   if (target === event.currentTarget || !viewport?.contains(target) || !state.isAtBottom) return;
   const movement = state.targetScrollTop - viewport.scrollTop;
   if (movement <= 0) return;
-  const bounds = readingTargetBounds(target);
+  const { bounds } = readingFocusContext(target, viewport);
   const { top, bottom } = safeReadingBounds(viewport);
   // Native focus can reveal its target before a queued resize-follow tick.
   if (bounds.top - movement < top || bounds.bottom - movement > bottom) stopScroll();

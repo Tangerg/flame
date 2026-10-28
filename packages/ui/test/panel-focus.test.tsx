@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   ContentVisibility,
   CodeBlock,
+  Checkbox,
   FormActions,
   FormGroup,
   Panel,
@@ -74,11 +75,17 @@ afterEach(() => {
 });
 
 function scene(
-  kind: "unit" | "label" | "group" | "trigger" = "unit",
+  kind: "unit" | "label" | "group" | "trigger" | "choice" = "unit",
   sticky = false,
 ) {
   const input =
-    kind === "trigger" ? (
+    kind === "choice" ? (
+      <Checkbox
+        checked={false}
+        onCheckedChange={() => {}}
+        label="Generative UI"
+      />
+    ) : kind === "trigger" ? (
       <button aria-label="Interface font">
         <span>System</span>
       </button>
@@ -88,8 +95,10 @@ function scene(
   const content =
     kind === "label" ? (
       <label data-testid="unit">Interface font{input}</label>
-    ) : kind === "group" ? (
-      <FormGroup label="Interface font">{input}</FormGroup>
+    ) : kind === "group" || kind === "choice" ? (
+      <FormGroup label={kind === "choice" ? "Capabilities" : "Interface font"}>
+        {input}
+      </FormGroup>
     ) : (
       <div data-focus-unit="" data-testid="unit">
         <span>Interface font</span>
@@ -110,13 +119,20 @@ function scene(
   );
   const view = render(frame(true));
   const unit =
-    kind === "group" ? screen.getByRole("group") : screen.getByTestId("unit");
-  const field = screen.getByRole(kind === "trigger" ? "button" : "textbox", {
-    name: "Interface font",
-  });
+    kind === "group" || kind === "choice"
+      ? screen.getByRole("group")
+      : screen.getByTestId("unit");
+  const field = screen.getByRole(
+    kind === "choice" ? "checkbox" : kind === "trigger" ? "button" : "textbox",
+    {
+      name: kind === "choice" ? "Generative UI" : "Interface font",
+    },
+  );
   rectangles.set(screen.getByTestId("viewport"), new DOMRect(0, 200, 800, 300));
   rectangles.set(unit, new DOMRect(0, 180, 300, 100));
   rectangles.set(field, new DOMRect(0, 240, 200, 32));
+  if (kind === "choice")
+    rectangles.set(field.closest("label")!, new DOMRect(0, 240, 300, 32));
   if (sticky) {
     const controls = view.container.querySelector(
       '[data-slot="panel-controls"]',
@@ -227,6 +243,27 @@ it("uses the nearest native label inside a larger unit", () => {
   rectangles.set(label, new DOMRect(0, 180, 300, 100));
   act(() => field.focus());
   expect(revealed).toEqual([label]);
+});
+
+it("keeps a fitting choice group's heading with its focused option", () => {
+  const { unit, field } = scene("choice");
+  act(() => field.focus());
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(field);
+  expect(field.getAttribute("aria-checked")).toBe("false");
+});
+
+it("preserves a choice press before revealing the group on a later keyboard return", () => {
+  const { unit, field, viewport } = scene("choice");
+  fireEvent.pointerDown(field.closest("label")!);
+  act(() => field.focus());
+  resize(viewport);
+  expect(revealed).toEqual([]);
+  fireEvent.pointerUp(field);
+  act(() => field.blur());
+  act(() => field.focus());
+  expect(revealed).toEqual([unit]);
+  expect(document.activeElement).toBe(field);
 });
 
 it("keeps the pressed control still until pointer activation finishes", () => {

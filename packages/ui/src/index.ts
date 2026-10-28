@@ -113,6 +113,7 @@ export {
 export { copyText, useCopyFeedback } from "./clipboard";
 export { isImeKey } from "./keyboard";
 export { copyWholeReader, selectAllInReader } from "./reader-selection";
+export { readingUnitFor } from "./reading-unit";
 export { TaskListItem } from "./task-list-item";
 export { Callout, readCalloutMarker, type CalloutKind } from "./callout";
 export { ImageNotice } from "./image-notice";
