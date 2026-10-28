@@ -15,6 +15,9 @@ const host = { hostname: "isolated-desktop.example", platform: "linux", arch: "x
 const capturedImage =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
 
+const capturedAudio =
+  "UklGRkQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+
 const styles = stylex.create({
   frame: { display: "flex", height: "100dvh", minHeight: 0, minWidth: 0 },
 });
@@ -35,7 +38,8 @@ export async function createComputerConsoleFixture(locale: string) {
   const encoder = new TextEncoder();
   let snapshot: Snapshot = { host, configured: true };
   const records = new Map<string, OperationRecord>();
-  if (new URLSearchParams(location.search).get("media") === "unreadable") {
+  const media = new URLSearchParams(location.search).get("media");
+  if (media === "unreadable") {
     for (const [id, data] of [
       ["recorded-unreadable-image", "aW52YWxpZCBQTkc="],
       ["recorded-valid-image", capturedImage],
@@ -54,6 +58,45 @@ export async function createComputerConsoleFixture(locale: string) {
         }),
       });
     }
+  } else if (media === "resources") {
+    records.set("recorded-resources", {
+      id: "recorded-resources",
+      kind: "tool",
+      method: "computer_js",
+      admittedAt: "2026-10-29T00:00:00.000Z",
+      dispatched: true,
+      settled: true,
+      inputJSON: '{"code":"recorded resources"}',
+      invocationJSON: '{"origin":"model"}',
+      outcomeJSON: JSON.stringify({
+        content: [
+          {
+            type: "resource",
+            resource: {
+              uri: "memory://captures/2026-10-29/review/desktop-window-with-source-context-and-retained-original-identity.png",
+              mimeType: "image/png",
+              blob: capturedImage,
+            },
+          },
+          {
+            type: "resource",
+            resource: {
+              uri: "memory://captures/2026-10-29/review/audio-stream-with-source-context-and-retained-original-identity.wav",
+              mimeType: "audio/wav",
+              blob: capturedAudio,
+            },
+          },
+          {
+            type: "resource",
+            resource: {
+              uri: "memory://captures/2026-10-29/review/notes.txt",
+              mimeType: "text/plain",
+              text: "Captured source remains literal.\n",
+            },
+          },
+        ],
+      }),
+    });
   }
   const commands = new Map<string, CallPluginRequest>();
   const outcomes = new Map<string, unknown>();

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `20bc1b30d`, which publishes contextual original-history reading and the complete-reader height bound. Named captured-source readers are published as `65043ca10`, Computer editing/return as `3cc13e9a8`, and Session search readiness as `646819ab3`. Captured-image decode failures now have readable, named feedback while preserving original bytes and recorded operation status; native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `9b8a297bb`, which publishes named captured-image failure feedback. Contextual original-history reading and the complete-reader height bound are published as `20bc1b30d`, named source readers as `65043ca10`, and Computer editing/return as `3cc13e9a8`. Embedded media now keeps its captured URI with its preview and focused controls; blank URI text readers retain a meaningful name. Native qualification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -44,8 +44,10 @@ reading, local selection, wrapping, source names and fitting caption/body focus,
 published as `65043ca10`. Original-history inspection now keeps the selected record,
 evidence and refresh action together; complete CodeBlocks fit beneath the existing
 sticky clearances at large zoom, published as `20bc1b30d`. Captured-image preview
-failures retain their identity, original bytes and recorded status. The publication
-fetch finds no incoming commits.
+failures retain their identity, original bytes and recorded status, published as
+`9b8a297bb`. Embedded-resource reading now retains its URI beside captured media
+and keeps fitting origin/control groups together. The publication fetch finds no
+incoming commits.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -7159,9 +7161,92 @@ ESM changes among **32** installed resources. The private root
 flat UTF-8 records (**5,559,398** uncompressed bytes), SHA-256
 `a1b9bbd7e103954b40bba3d8160aa702dd3266ba07204d87072dce3b93d9951b`.
 
-Next inspect remaining recorded audio/resource reading paths from fresh native
-evidence. Treat them as review candidates, preserve existing media and receipt
-owners, and do not repeat these resolved image or history investigations.
+The following resource-origin qualification continues the recorded-material
+comparison. Audio playback and remaining material paths still require fresh
+evidence; do not repeat these resolved image or history investigations.
+
+### Embedded-resource origin and reading scope
+
+Actual Wails showed a text resource's URI in its source caption while image/audio
+resources lost that same identity when converted to media. Only the text URI
+appeared in the initial three-resource scene. The original envelope retained all
+three URIs, but primary reading required opening JSON to identify the media.
+Empty or whitespace-only text URIs also produced unnamed source regions.
+
+`plugins/computer/component/result.tsx` now derives the available URI once, keeping
+its exact original value when present. Embedded media renders that value in the
+shared selectable `RecordBody`, beside the preview. Its source remains the
+captured data URI, and the origin does not become a link or current-file lookup.
+The existing `RecordGroup` declares one Panel focus unit so a fitting URI and
+focused audio control enter the viewport together. No geometry observer, focus
+timer, navigation state, token or shared component API is added. Text resources
+keep their existing named source caption without a repeated URI; missing/blank
+URIs use the existing localized resource label. Their captured text is untouched.
+
+Read-only comparison with the existing Markdown image source boundary reinforces
+captured bytes rather than live URI retrieval. Existing shared RecordBody
+selection and Panel focus-unit contracts supply the presentation behavior.
+Better-series task scope, writing, typography, layout and accessibility guidance
+informs the visible origin and meaningful reader name. Earlier gallery, source,
+history and theme qualifications remain unchanged.
+
+The `media=resources` fixture adds one original record containing a captured PNG,
+a small PCM WAV payload and literal text, each with a distinct captured URI. It
+uses the published component and real SDK with an isolated transport. No lease or
+operation is invoked. The WAV is fixture data; audio playback is not qualified.
+
+Verification:
+
+- **Four** new cases fail before the repair; final Computer acceptance passes
+  **49** tests. Image/audio origins remain beside their original data URLs, create
+  no navigation link and preserve exact original-envelope text. Text origins keep
+  one named caption. Missing, empty and whitespace-only URI readers retain their
+  literal text and the generic resource name. Historical mutations remain zero.
+- Web type/lint/format, the full plugin check (**43** scripts, **16 files / 274**
+  backend/contract cases; configured **one file / 13 cases** skipped), normal
+  resource build/reproduction, CSS variables and production module links pass.
+  `make check-native` passes Desktop test/vet/build and supported Wails production
+  build. Shared UI, SDK, Runtime and Go sources are unchanged. The full frontend
+  and unrelated Runtime project are not rerun for this local repair; the prior
+  **431 files / 4,080 tests** remain the qualification of base `20bc1b30d`.
+- Actual English/light/14/explicit Orange Wails presents all **three** origins.
+  Native paragraph selection includes the complete image URI with native paragraph
+  separators. Tab enters the audio control with its complete origin, and reverse
+  Tab/Enter returns to the same record. The original **726-character** envelope
+  remains exactly selectable. The captured image decodes to **1 × 1**.
+- Chinese/dark/18/custom blue passes at **1125 × 734** native size and **200%**
+  page zoom (**562 × 367** CSS viewport, DPR 4). The fitting audio origin/control
+  group occupies **514.5 × 95 px** at **(24, 88.5)**; the control is at **y=152.5**,
+  so both remain fully visible beneath the sticky record header. The full envelope
+  still selects exactly. The named text reader preserves all **33** characters,
+  including its trailing newline, in DOM and browser selection. Native AX's
+  selected-text rendering omits that trailing newline; it is not used as a byte
+  assertion. Keyboard return preserves lease draft **960**, which continues to
+  **961** without an authorization action.
+- A fresh English/light/14/explicit Orange native control without the observer
+  shows all origins, permits complete native URI selection, keeps the current
+  audio origin visible, returns by keyboard and continues the preserved draft.
+  It sends **zero** observer events/requests. Its **614** assets match the observed
+  build except their two HTML entries. Exact envelope and newline assertions
+  belong to the observed pass and controlled tests.
+- All native input uses CUA; the observer only reads. Audio retains `preload=none`
+  and is not played. Live Runtime admission, Flame Computer engine control, OS
+  grants, native clipboard writes, VoiceOver, OS IME and forced colors are not
+  qualified. No browser/performance suite, Claude CLI or subagent is used.
+
+Cleanup retires four owned app instances, unregisters the bundle and closes the
+listener. It removes **eight** new output/cache roots and **three** private
+profile/temp paths, restores **four** original files/modes and all **18** output
+presence/**five** profile baselines. All **6,264** non-Markdown inputs retain their
+qualified state; **four** explicit source/test/resource paths change from base.
+Only the normally rebuilt Computer ESM changes among **32** installed resources.
+The private root `flame-computer-resource-yhyTan` is absent. The round-tripped
+in-memory gzip retains **41** flat UTF-8 records (**6,770,899** uncompressed bytes),
+SHA-256 `2e5cc6625cbcde6024491f2806a3f9fb7c37bceaebe004d09ac34c58fa7f687b`.
+
+Native audio playback/error behavior and remaining Dock/material tasks remain
+review candidates. Choose any follow-up from fresh source and native evidence,
+preserving the completed origin, source, image and history contracts.
 
 ## Approval argument review and submission
 

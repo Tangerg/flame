@@ -1195,6 +1195,74 @@ it("keeps an adjacent captured image available after another image fails in Chin
   expect(setup.server.originals.size).toBe(0);
 });
 
+it.each(["image", "audio"] as const)(
+  "keeps a captured %s resource URI and original bytes together",
+  async (kind) => {
+    const setup = rig();
+    const uri = `memory://captures/2026-10-29/retained-original-${kind}`;
+    const mimeType = kind === "image" ? "image/png" : "audio/wav";
+    const blob = kind === "image" ? png : "UklGRg==";
+    const original = {
+      ...recordedTool("captured-resource"),
+      outcomeJSON: JSON.stringify({
+        content: [{ type: "resource", resource: { uri, mimeType, blob } }],
+      }),
+    };
+    setup.server.records.set(original.id, original);
+    setup.mount();
+    fireEvent.click(await screen.findByRole("button", { name: original.id }));
+    const media =
+      kind === "image"
+        ? await screen.findByRole("img", { name: "Captured image 1" })
+        : await screen.findByLabelText("Captured audio 1");
+    expect(screen.getByText(uri)).not.toBeNull();
+    expect(media.getAttribute("src")).toBe(`data:${mimeType};base64,${blob}`);
+    expect(screen.queryByRole("link", { name: uri })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Exact recorded outcome" }));
+    expect(screen.getByRole("region", { name: "Exact recorded outcome" }).textContent).toBe(
+      original.outcomeJSON,
+    );
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("keeps a text resource's URI in its existing named source caption", async () => {
+  const setup = rig();
+  const uri = "memory://captures/notes.txt";
+  const text = "Literal captured text.\n";
+  setup.server.records.set("text-resource", {
+    ...recordedTool("text-resource"),
+    outcomeJSON: JSON.stringify({
+      content: [{ type: "resource", resource: { uri, mimeType: "text/plain", text } }],
+    }),
+  });
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "text-resource" }));
+  expect((await screen.findByRole("region", { name: uri })).textContent).toBe(text);
+  expect(screen.getAllByText(uri)).toHaveLength(1);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it.each([undefined, "", " \t "])(
+  "names a text resource reader when its URI is absent or blank (%j)",
+  async (uri) => {
+    const setup = rig();
+    const text = " \nOriginal content.\n";
+    setup.server.records.set("unnamed-resource", {
+      ...recordedTool("unnamed-resource"),
+      outcomeJSON: JSON.stringify({
+        content: [{ type: "resource", resource: { uri, text } }],
+      }),
+    });
+    setup.mount();
+    fireEvent.click(await screen.findByRole("button", { name: "unnamed-resource" }));
+    expect((await screen.findByRole("region", { name: "Recorded resource" })).textContent).toBe(
+      text,
+    );
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
 it("reads original evidence next to its expanded record and keeps the editor draft", async () => {
   const setup = rig();
   setup.server.records.set("first-operation", recordedTool("first-operation"));

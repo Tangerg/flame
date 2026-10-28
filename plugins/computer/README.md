@@ -89,6 +89,12 @@ failure replace the broken image. Original bytes remain in the recorded outcome;
 this display failure does not change the operation's recorded status or affect
 other images in the result.
 
+Embedded image and audio resources keep their captured URI beside the preview as
+selectable source identity. The URI does not replace their captured bytes or become
+a live navigation action. Text resources retain their named source caption, using
+the resource label when the URI is missing or blank. A fitting media group keeps
+its URI with focused controls inside the Panel viewport.
+
 History expands the selected original record in place. Its identity, recorded
 status and refresh action remain with the detail; the same disclosure returns to
 the surrounding records. Rereading keeps existing evidence and focus, marks

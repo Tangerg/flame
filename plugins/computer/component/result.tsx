@@ -151,31 +151,34 @@ function Content({
   }
   if (value.type === "resource" && object(value.resource)) {
     const resource = value.resource;
+    const uri =
+      typeof resource.uri === "string" && resource.uri.trim()
+        ? resource.uri
+        : undefined;
     if (typeof resource.text === "string")
       return (
         <Source
           t={t}
           value={resource.text}
-          label={
-            typeof resource.uri === "string"
-              ? resource.uri
-              : t("result.resource")
-          }
+          label={uri ?? t("result.resource")}
         />
       );
     if (typeof resource.mimeType === "string") {
       const kind = resource.mimeType.startsWith("image/") ? "image" : "audio";
       if (mediaURL(resource.mimeType, resource.blob, kind))
         return (
-          <Content
-            value={{
-              type: kind,
-              mimeType: resource.mimeType,
-              data: resource.blob,
-            }}
-            index={index}
-            t={t}
-          />
+          <RecordGroup data-focus-unit="">
+            {uri && <RecordBody>{uri}</RecordBody>}
+            <Content
+              value={{
+                type: kind,
+                mimeType: resource.mimeType,
+                data: resource.blob,
+              }}
+              index={index}
+              t={t}
+            />
+          </RecordGroup>
         );
     }
   }
