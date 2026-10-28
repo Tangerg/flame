@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `eaf7f6f0f`, which preserves authoring after accepted Stop and keeps unavailable commands in keyboard order. Native reverse-navigation qualification now distinguishes pure keyboard input from pointer activation followed by disabling; see **Native disabled-button navigation conditions**. No production component change is warranted by that comparison. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `244c5d270`, which qualifies native disabled-button navigation conditions. Tool results now retain a local keyboard context when completion or a contribution update replaces the focused presentation; see **Result presentation and local reading focus**. Native verification, regression checks and resource retirement are complete. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -54,9 +54,11 @@ and continued editing are published as `473dc7cbd`. The Composer follow-up is
 published as `eaf7f6f0f` and qualifies accepted Stop, refused commands, disabled
 toolbar navigation and continued drafting. Its native reverse-navigation
 follow-up compares plain HTML, shared and upstream controls, then qualifies the
-pure keyboard path in the actual workspace. The publication fetch finds zero
-incoming main commits at `eaf7f6f0f`; no repeated merge or broad unrelated
-verification is needed.
+pure keyboard path in the actual workspace, published as `244c5d270`. The next
+result-presentation repair keeps completed evidence, its local actions, source
+return and continued drafting together. Its publication fetch finds zero incoming
+main commits at `244c5d270`; no repeated merge or unrelated integration check is
+needed.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -15538,6 +15540,139 @@ That receipt changes no tested product source.
 **Approve** for contributed Tool activation outcomes in the inspected domains.
 The continuous-zoom follow-up is now resolved below. This is not
 whole-application or award-tier completion.
+
+### Result presentation and local reading focus
+
+Frozen base `244c5d27028a6f3a3ef6beb8cd3d385522e98033` loses the focused
+generic result when a running Tool completes and gains enhanced presentation.
+The isolated component falls to BODY. Actual Wails then applies the existing
+MessageBlock protection and focuses the whole assistant message; the next Tab
+starts at the Tool-group summary instead of continuing within the result.
+The recorded source and Composer draft remain intact, so this is a local reading
+continuity defect, not failed execution or lost authored data.
+
+`features/chat/tools/ui/ToolInspector.tsx` now owns a surviving, named Result
+group around only the result presentation. A pre-mutation layout snapshot captures
+the focused reader or control for the same visible Run/Tool identity. After the
+update, the group receives focus only when that source was removed and BODY
+still owns focus. A connected reader, separate Arguments, later outside focus,
+new content's own focus, hidden/inert material and replacement Tool identities
+retain their existing owners. No delayed focus request survives the commit.
+Absent generic results expose no empty group. The programmatic target adds no
+natural Tab stop, painted surface, keyboard handler, timer or lifecycle state.
+Its inset focus outline uses the existing frame's `radius.lg` token; an early
+candidate's rectangular outline is corrected before final native acceptance.
+
+The generic-versus-enhanced selector, settled captured component lifetime,
+complete arguments, statuses, errors, copy actions, disclosure and source-return
+history remain unchanged. This boundary responds to Tool/contribution updates;
+each renderer still owns its internal controls. No Runtime, protocol, persisted
+data, dependency or installed-resource migration is introduced.
+
+Read-only ZCode `ToolCallBlocks/ToolLayout.tsx` separates the task summary and its
+supporting content. HeroUI's actual DisclosureGroup example associates each
+trigger with a bounded body. These inform composition, not Flame's focus policy.
+The native reproduction and existing visible-content/same-identity contracts
+determine the repair; the six better-interface domains guide its review.
+
+| Severity | Location             | Before                                                        | After                                                     | Why                                              |
+| -------- | -------------------- | ------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------ |
+| MEDIUM   | ToolInspector result | Completion removes the focused reader and restarts navigation | The same result context survives, with local actions next | Preserve logical reading context and focus order |
+
+Fourteen new regressions cover focused reader/Copy/Wrap retirement, contribution
+arrival and withdrawal, unchanged streaming reader/position, surviving Arguments,
+later draft focus, another Tool, visibility/hidden/inert retirement and a new
+renderer that claims focus itself. Missing running/failed bodies expose no empty
+Result group. The first dedicated regression fails on the original implementation
+with BODY focused; its native counterpart confirms the outer-message fallback.
+Existing baseline **two files / 16 tests** passes. A first candidate passes
+**three files / 28 tests**; the final full frontend passes **433 files / 4,128
+tests**, including all fourteen new cases. Initial new-test type inference and
+unnecessary test-region tabindex errors are corrected without weakening checks
+or assertions.
+
+The complete Web command initially stops at the Runtime suite because its
+offline Node archive is absent. The existing checksum owner prepares the selected
+Node 24.22.1 artifact. A second run reaches that suite but the default long macOS
+temporary path exceeds its Unix socket boundary; teardown also reports the
+failed original-runner shutdown. With the repository's `/tmp` convention,
+the unchanged Runtime project passes **49 / 49 tests in 87.72 s**. All **22**
+remaining declared Web gates pass serially in **23.94 s**, including resource
+reproduction, production module linking, bundle limits and all **409** CSS
+variables. Typecheck, lint and formatting pass before the final frontend run.
+`make check-native` passes Desktop test/vet/build and the supported Wails v3
+macOS build. Existing loopback connection diagnostics, chunk-size warning and
+duplicate `-lobjc` warning remain nonfatal. Verification is reported per command;
+both initial environment failures remain recorded.
+
+Actual native acceptance uses CUA for every pointer, key, wheel, resize and zoom
+input. A private, visible fixture button queues one canonical captured
+`item.completed` event after 20 seconds; the initial Item is its running form.
+The existing production fold and installed result composition handle the event.
+The private observer only reads and posts to its owned loopback server; it never
+focuses, changes a value, cancels input or advances a product store.
+
+- EN/light/14 px/Orange: the generic result loses its reader on completion, but
+  the same Result group receives focus. Tab reaches Find immediately. Filtering
+  `Commit`, Escape to Result, keyboard current-file entry and Escape to the exact
+  source action pass. Draft continuation remains exact. A first pointer attempt
+  that only reveals controls is excluded from successful navigation evidence.
+- ZH/dark/18 px/custom blue `#2F6BFF`: **1125 × 734** native geometry at **200%**
+  reaches **562 × 367 CSS px / DPR 4**. Completion while the original PRE is
+  focused transfers to the same Result group; its observed radius is **10 px**
+  and its existing inset outline is **1.5 px**. Tab reaches localized Find;
+  filtering and Escape return to the actual reader. Actual Size preserves
+  `保持结果阅读位置。继续。`. A separate final scene places focus at Arguments
+  before completion and preserves that later destination; it then qualifies
+  full-width current-file reading, Escape source return and
+  `工具完成后保留阅读草稿。继续核对。`. An initial offscreen pointer focus and
+  the earlier mixed reverse/forward sequence are not counted as visible result
+  handoff acceptance.
+- Two clean EN native scenes omit the observer. Their **615** assets differ
+  from the final observed build only in the two HTML entrances and emit **zero**
+  observation requests. AX and pixels confirm generic-reader completion → same
+  Result group → Tab Find → filter → Escape → current file → Escape opener →
+  `Keep the final reading draft. Continue after return.`. At 200%, a real wheel
+  reveals source lines **4–6**, including the closing brace, without taking
+  focus from the group. Tab still enters Find; Actual Size and direct editing
+  produce `Keep the scroll review draft. Continue after scrolling.`. No clean
+  DOM measurements, exact caret or exact scroll-offset claim is inferred.
+
+The current-file body is the fixture placeholder, so only identity, navigation
+and return are qualified. These inert graphical captures do not qualify native
+live Tool execution. VoiceOver speech, OS IME, other platforms, arbitrary
+renderer-internal focus transitions and a fresh full motion/contrast matrix
+remain unverified. No browser visual suite or performance benchmark runs.
+Unchanged full shared-UI, CLI and backend suites are not restarted.
+
+| Domain        | Scoped result                                                                                   |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| Accessibility | Same-result focus, local Tab order, later-focus guards and native source return pass            |
+| Layout        | Split/full-width source reading and 200% result-tail access retain their existing scroll owners |
+| Writing       | Existing localized Result/Find/action names carry the context; no added helper copy             |
+| Typography    | EN 14 px and ZH 18 px source/drafts retain the existing scale and wrapping                      |
+| Colors        | Orange/custom-blue focus uses existing semantic tokens; no fresh contrast measurement claimed   |
+| UI            | Completion continues reading in place, with the shared frame corner and no new motion           |
+
+All **six** private native instances are retired, the bundle unregistered and
+server closed. Cleanup removes **eight** new checkout output/cache paths,
+including the newly prepared Node archive, and **three** exact profile roots.
+The failed long-path Runtime test's single orphan directory is removed only
+after its processes exit; the passing short-path fixture retires its own data.
+All **four** original files/modes, **18** output-presence and **five** profile
+baselines, both original UI-cache files and the empty Web Vite-temp directory
+are preserved. All **6,266** qualified inputs retain their hashes; only the
+ToolInspector source and its new focus regression differ from the frozen base.
+All **32** installed resources and **two** read-only references remain unchanged.
+The private root `flame-tool-focus-Nsa4Cj` is absent. The round-trip-verified
+in-memory gzip retains **41** flat UTF-8 records, **14,596,669** uncompressed bytes
+and **1,791,325** compressed bytes; SHA-256
+`824f7c4aa5319d4e8fcf52c11401380dbe1685335ee1021cb105d34689e08a50`.
+
+Approve for the inspected result-presentation transition and reading-return task.
+The whole-product UI goal remains active. Continue from another observed content
+or Dock task, preserving this local boundary and the existing message-level
+fallback; do not make a result enhancement a second Tool lifecycle owner.
 
 ### Reading focus through geometry changes
 

@@ -247,6 +247,12 @@ Result extensions replace only the result body,
 so the host's secondary Arguments disclosure survives enhanced presentation,
 failure and withdrawal without losing its open state. Copy arguments uses the
 same complete capture; no Tool is replayed to inspect it.
+Tool and contribution updates keep one named, programmatically focusable result
+context. When the same visible Tool replaces its focused reader or
+control, that surviving context receives focus only if the old target was removed
+and no other target claimed it. Existing readers, Arguments, later outside focus,
+hidden material and replacement Tool identities retain their own focus. The group
+adds no Tab stop, deferred restoration or result lifecycle state.
 
 Selected subagent readers keep the complete task purpose and sibling identity
 visible in their header. Overview rows retain their compact summaries; retained
