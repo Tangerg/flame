@@ -62,6 +62,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	assertUnresolvedInstallationIsHeld(t, r, first)
 	r.poMCPTools(server(first), memoryToolsReady)
 	r.must(delivery.PluginsCall, request, "uncertain")
+	r.poMCPTools(server(second), memoryToolsReady)
 	page := readMemoryPage(r, memorycontract.ListV2Input{Scope: "user"})
 	if len(page.Data) != 0 {
 		t.Fatalf("original recovery mutated selected replacement: %+v", page.Data)
