@@ -60,7 +60,8 @@
     "v0.1.0-qimu.20261027.4": "9da28f3051c583a062e9b44048af0c063d7066a5",
     "v0.1.0-qimu.20261027.5": "4322f51a693a5d0f10936d53d9bb4d1e1feede9a",
     "v0.1.0-qimu.20261028.1": "19909521a974895aa1c1e05f4d196b98fb2078dc",
-    "v0.1.0-qimu.20261028.2": "383fda3fb4ccc2f74364f26012ca4cfc09b42dd0"
+    "v0.1.0-qimu.20261028.2": "383fda3fb4ccc2f74364f26012ca4cfc09b42dd0",
+    "v0.1.0-qimu.20261028.3": "5e82556f2f682b4250e6c3ebafb73467caa5a9f2"
   },
   "github.com/Tangerg/flame/apps/cli": {
     "v0.1.0-architecture.20261026.2": "2a8d0965feab1910047347f87d486331110c9ced",
