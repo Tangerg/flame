@@ -77,7 +77,7 @@ require (
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.0-qimu.20261028.1
 	github.com/Tangerg/flame/packages/local-runtime v0.1.0-qimu.20261027.2
-	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.1
+	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/a2a v0.58.0
 	github.com/Tangerg/scope/agent v0.58.0
