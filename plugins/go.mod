@@ -3,7 +3,6 @@ module github.com/Tangerg/flame/plugins
 go 1.27.3
 
 require (
-	github.com/Tangerg/scope/mcp v0.58.0 // indirect
 	github.com/Tangerg/scope/models/catalog v0.58.0 // indirect
 	github.com/Tangerg/scope/otel v0.58.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
@@ -44,6 +43,7 @@ require (
 	github.com/Tangerg/flame/qimu v0.1.0-qimu.20261028.2
 	github.com/Tangerg/go-sdk v1.8.1-scope.3
 	github.com/Tangerg/scope/core v0.58.0
+	github.com/Tangerg/scope/mcp v0.58.0
 	github.com/Tangerg/scope/tools v0.58.0
 	github.com/google/uuid v1.6.0
 	github.com/invopop/jsonschema v0.14.0
