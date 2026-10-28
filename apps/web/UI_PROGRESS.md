@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-Current source continues from main `5c6d10496`, which preserves captured media origins and named source reading. Native captured-audio playback, error isolation, original evidence, keyboard return and draft continuity are now qualified without changing the production player. The new fixture extends that repeatable native scene. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
+Current source continues from main `487d59c14`, which qualifies captured-audio playback and return. Captured resource links now retain a meaningful name, visible shared link styling, selectable destination and fitting focus scope; a URI used as the name appears once. Native verification and cleanup are complete below. Preserve the shared quiet filled controls and existing theme owners. The whole-product UI goal remains active and unfinished.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -47,7 +47,8 @@ sticky clearances at large zoom, published as `20bc1b30d`. Captured-image previe
 failures retain their identity, original bytes and recorded status, published as
 `9b8a297bb`. Embedded-resource reading now retains its URI beside captured media
 and keeps fitting origin/control groups together, published as `5c6d10496`.
-Native playback and return now have their own qualification below.
+Native playback and return are qualified and published as `487d59c14`.
+Resource-link identity and reading affordance now have their own repair below.
 See **Computer console
 editing and operation return**. Preserve the
 separate exact-Run and Skills object contract limits already recorded below.
@@ -7310,9 +7311,89 @@ round-tripped in-memory gzip contains **36** flat UTF-8 records (**3,818,162**
 uncompressed bytes), SHA-256
 `35286b2488afbe851c53100531319329553af98ceb7d2896a7d7fbadfc35be91`.
 
-Continue with a fresh Dock/material task, including resource-link identity and
-interaction if source evidence warrants it. Do not repeat these resolved media,
-source, origin or history tasks without new evidence.
+### Captured resource-link identity and reading affordance
+
+At `487d59c14`, a string-valued empty title overrides a valid captured name.
+The installed MCP `BaseMetadataSchema` permits that optional string. Actual Wails
+renders both fixture links at **zero height**, leaving only muted URI text.
+WebKit AX substitutes destination names, but the captured human-readable name is
+absent from the interface. Five added regressions fail before the repair.
+
+`plugins/computer/component/result.tsx` now uses the first nonblank title, name or
+URI as its label. Presence checks do not trim or rewrite the retained value.
+The existing `RecordBody`, prose link and `link-destination` contracts provide
+selectable text, semantic accent ink, underlining and a quieter separate URI.
+When the URI already names the link, it appears once. A fitting link/origin group
+uses the Panel's existing focus-unit reveal. Non-HTTP(S) schemes remain plain
+captured text under the unchanged URL policy. Original JSON, recorded status,
+command admission and external navigation semantics retain their existing owners.
+
+Read-only HeroUI `link/basic.tsx` and `link/underline-and-offset.tsx` demonstrate
+visible action labels and underline treatments. Flame reuses its own shared prose
+rules in `packages/ui/src/globals.css`; it imports no other component system.
+Better-series accessibility, layout, typography, color, writing and UI principles
+support the meaningful label, literal source identity, wrapping, quiet hierarchy
+and native keyboard return. No new state, token, shared API, CSS override, icon,
+motion controller, SDK or Runtime contract is introduced.
+
+The explicit `media=links` fixture contains a named resource with an empty title
+and another with whitespace-only display fields. Their original result contains
+**330 characters**, including the empty values. It uses the ordinary published
+component and isolated Runtime SDK transport without opening a control lease.
+
+Verification and boundaries:
+
+- Baseline Computer acceptance has **5 failures / 50 passes**. Final acceptance
+  passes **55 tests**. New coverage checks empty/whitespace titles, URI fallback,
+  duplicate removal, exact nonblank title preservation, passive local resources,
+  exact original evidence and retained drafting without historical commands.
+- Plugin check passes type/lint/format, **43 scripts**, **16 files / 274 backend
+  and contract tests**, i18n and resource reproduction. Its configured **one file /
+  13 cases** remain skipped. Web type/lint/format, production module links and
+  CSS variables pass. `make check-native` passes Desktop test/vet/build and the
+  supported Wails production build. Full frontend and unrelated Runtime suites
+  are not rerun for this local renderer change; their earlier scoped receipts
+  remain above.
+- English/light/14/Orange actual Wails shows the captured name and underlined
+  shared accent ink. The distinct URI selects in full, with only the native
+  paragraph separator outside it. Refresh keeps the same two link nodes. The
+  source reader selects the exact **330-character** original outcome. Keyboard
+  return reaches the same named link, then the collapsed record trigger; the
+  retained lease draft continues from **960 to 961**.
+- On this macOS WebKit configuration, ordinary Tab omits hyperlinks both before
+  and after the repair. **Option+Tab** enters each visible link in order; reverse
+  Tab returns to Refresh and the original record. The platform navigation rule
+  is preserved rather than attributed to the empty-label defect. No external
+  destination is activated during qualification.
+- Chinese/dark/18/custom blue passes at **1125 × 734** native size and **200%**
+  page zoom (**562 × 367**, DPR 4). The complete named-link/source unit occupies
+  **(24, 88.5, 514.5, 78)**. The URI-only link wraps in its **514.5 × 52** unit.
+  Both retain visible blue link ink and keyboard focus beneath the record actions.
+  Wrapped URI selection, refresh, exact original selection and the complete return
+  and drafting path pass. Actual Size is restored before exit.
+- A fresh English/light/14/Orange production control without the observer passes
+  named and URI-only link entry, source selection, refresh, exact **330-character**
+  native selection, keyboard return and continued drafting. All **614** assets
+  match the observed fixed build except the two HTML observer entries. It emits
+  **zero** observer events or requests. CUA supplies all input; the observer only
+  reads. External-browser handoff, live Runtime admission, Flame Computer engine
+  control, OS grants, native clipboard writes, VoiceOver, OS IME and forced colors
+  remain unqualified. No browser/performance suite, Claude CLI or subagent runs.
+
+Cleanup retires all **four** private app instances, unregisters the bundle and
+closes the listener. It removes **eight** new output/cache roots and **three**
+private profile/temp paths, restores **four** original files/modes, and restores
+all **18** output-presence and **five** profile baselines. All **6,264** frozen
+non-Markdown inputs retain their qualified state; **four** explicit source/test/
+fixture/resource paths differ from base. Only the normally rebuilt Computer ESM
+changes among **32** installed resources. Both read-only references retain their
+hashes. The private root `flame-computer-links-cw8L4Q` is absent. The round-tripped
+in-memory gzip retains **48** flat UTF-8 records (**4,454,826** uncompressed bytes),
+SHA-256 `b81670a8bde5e189938e9d198e03387356f08a8458da7b74fd05251b4c665c50`.
+
+Continue with a fresh content/Dock task from current source and native evidence.
+Preserve these completed Computer media, source, origin and history contracts;
+their qualification does not declare whole-product acceptance.
 
 ## Approval argument review and submission
 

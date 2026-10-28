@@ -95,6 +95,12 @@ a live navigation action. Text resources retain their named source caption, usin
 the resource label when the URI is missing or blank. A fitting media group keeps
 its URI with focused controls inside the Panel viewport.
 
+Resource links use the first nonblank captured title, name or URI without changing
+the original value. Shared prose styling makes a safe HTTP(S) destination visibly
+actionable. A distinct URI stays selectable beside its label; a URI already used
+as the label is shown once. Other URI schemes stay readable without acquiring a
+navigation action. The original outcome and recorded status remain authoritative.
+
 History expands the selected original record in place. Its identity, recorded
 status and refresh action remain with the detail; the same disclosure returns to
 the surrounding records. Rereading keeps existing evidence and focus, marks

@@ -58,6 +58,33 @@ export async function createComputerConsoleFixture(locale: string) {
         }),
       });
     }
+  } else if (media === "links") {
+    records.set("recorded-resource-links", {
+      id: "recorded-resource-links",
+      kind: "tool",
+      method: "computer_js",
+      admittedAt: "2026-10-29T00:00:00.000Z",
+      dispatched: true,
+      settled: true,
+      inputJSON: '{"code":"recorded resource links"}',
+      invocationJSON: '{"origin":"model"}',
+      outcomeJSON: JSON.stringify({
+        content: [
+          {
+            type: "resource_link",
+            title: "",
+            name: "Workspace report — 原始说明",
+            uri: "https://example.invalid/review/captured-workspace-report-with-retained-source.md",
+          },
+          {
+            type: "resource_link",
+            title: " \t ",
+            name: " ",
+            uri: "https://example.invalid/review/another-captured-file-with-original-identity-and-no-display-title.md",
+          },
+        ],
+      }),
+    });
   } else if (media === "unreadable-audio") {
     records.set("recorded-unreadable-audio", {
       id: "recorded-unreadable-audio",

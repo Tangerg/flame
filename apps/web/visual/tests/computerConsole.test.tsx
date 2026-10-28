@@ -1195,6 +1195,102 @@ it("keeps an adjacent captured image available after another image fails in Chin
   expect(setup.server.originals.size).toBe(0);
 });
 
+it.each(["", " \t\n "])(
+  "keeps a resource link named when its optional title is blank (%j)",
+  async (title) => {
+    const setup = rig();
+    const uri = "https://example.invalid/captured-report.md";
+    const original = {
+      ...recordedTool("named-resource-link"),
+      outcomeJSON: JSON.stringify({
+        content: [{ type: "resource_link", title, name: "Workspace report", uri }],
+      }),
+    };
+    setup.server.records.set(original.id, original);
+    setup.mount();
+    const editor = await screen.findByRole("textbox", { name: "Tool arguments (JSON)" });
+    const draft = '{"code":"Continue reviewing the original report."}';
+    fireEvent.change(editor, { target: { value: draft } });
+    fireEvent.click(await screen.findByRole("button", { name: original.id }));
+    const link = await screen.findByRole("link", { name: "Workspace report" });
+    expect(link.getAttribute("href")).toBe(uri);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(screen.getByText(uri)).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Exact recorded outcome" }));
+    expect(screen.getByRole("region", { name: "Exact recorded outcome" }).textContent).toBe(
+      original.outcomeJSON,
+    );
+    expect((editor as HTMLTextAreaElement).value).toBe(draft);
+    expect(setup.server.originals.size).toBe(0);
+  },
+);
+
+it("uses the original URI once when a resource link has no display name", async () => {
+  const setup = rig();
+  const uri = "https://example.invalid/review/original-resource-without-display-name.md";
+  setup.server.records.set("unnamed-resource-link", {
+    ...recordedTool("unnamed-resource-link"),
+    outcomeJSON: JSON.stringify({
+      content: [{ type: "resource_link", title: " \t ", name: " \n ", uri }],
+    }),
+  });
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "unnamed-resource-link" }));
+  expect((await screen.findByRole("link", { name: uri })).getAttribute("href")).toBe(uri);
+  expect(screen.getAllByText(uri)).toHaveLength(1);
+  expect(setup.server.originals.size).toBe(0);
+});
+
+it("does not repeat a resource URI that already names its link", async () => {
+  const setup = rig();
+  const uri = "https://example.invalid/captured-report.md";
+  setup.server.records.set("uri-resource-link", {
+    ...recordedTool("uri-resource-link"),
+    outcomeJSON: JSON.stringify({ content: [{ type: "resource_link", name: uri, uri }] }),
+  });
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "uri-resource-link" }));
+  await screen.findByRole("link", { name: uri });
+  expect(screen.getAllByText(uri)).toHaveLength(1);
+});
+
+it("preserves the original nonblank resource title and destination", async () => {
+  const setup = rig();
+  const title = "  Workspace report — 原始说明  ";
+  const uri = "https://example.invalid/captured-report.md";
+  setup.server.records.set("titled-resource-link", {
+    ...recordedTool("titled-resource-link"),
+    outcomeJSON: JSON.stringify({
+      content: [{ type: "resource_link", title, name: "report.md", uri }],
+    }),
+  });
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "titled-resource-link" }));
+  const link = await screen.findByRole("link", { name: "Workspace report — 原始说明" });
+  expect(link.textContent).toBe(title);
+  expect(link.getAttribute("href")).toBe(uri);
+  expect(screen.getAllByText(uri)).toHaveLength(1);
+});
+
+it("keeps a named local resource readable without creating a navigation action", async () => {
+  const setup = rig();
+  const uri = "file:///original/workspace/report.md";
+  setup.server.records.set("local-resource-link", {
+    ...recordedTool("local-resource-link"),
+    outcomeJSON: JSON.stringify({
+      content: [{ type: "resource_link", title: "", name: "Local workspace report", uri }],
+    }),
+  });
+  setup.mount();
+  fireEvent.click(await screen.findByRole("button", { name: "local-resource-link" }));
+  const detail = await screen.findByRole("region", { name: "Inspected original operation" });
+  expect(within(detail).getByText("Local workspace report")).not.toBeNull();
+  expect(within(detail).getByText(uri)).not.toBeNull();
+  expect(within(detail).queryByRole("link")).toBeNull();
+  expect(setup.server.originals.size).toBe(0);
+});
+
 it.each(["image", "audio"] as const)(
   "keeps a captured %s resource URI and original bytes together",
   async (kind) => {

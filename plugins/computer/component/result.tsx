@@ -185,21 +185,27 @@ function Content({
   if (value.type === "resource_link" && typeof value.uri === "string") {
     const href = externalURL(value.uri);
     const label =
-      typeof value.title === "string"
-        ? value.title
-        : typeof value.name === "string"
-          ? value.name
-          : value.uri;
+      [value.title, value.name, value.uri].find(
+        (candidate): candidate is string =>
+          typeof candidate === "string" && candidate.trim() !== "",
+      ) ?? t("result.resource");
     return (
-      <RecordGroup>
-        {href ? (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            {label}
-          </a>
-        ) : (
-          <RecordBody>{label}</RecordBody>
-        )}
-        <Metadata>{value.uri}</Metadata>
+      <RecordGroup data-prose="" data-focus-unit="">
+        <RecordBody>
+          {href ? (
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {label}
+            </a>
+          ) : (
+            label
+          )}
+          {value.uri.trim() !== "" && label !== value.uri && (
+            <>
+              <br />
+              <span data-slot="link-destination">{value.uri}</span>
+            </>
+          )}
+        </RecordBody>
         {typeof value.description === "string" && (
           <RecordBody>{value.description}</RecordBody>
         )}
