@@ -5,7 +5,7 @@ export function AgentSidebar({ label, children }: { label: string; children: Rea
   return (
     <>
       <div className="agent-drawer-gap" aria-hidden />
-      <aside aria-label={label} className="agent-drawer">
+      <aside aria-label={label} className="agent-drawer" tabIndex={-1} data-focus-inset="">
         <div className="agent-drawer-surface">{children}</div>
       </aside>
     </>

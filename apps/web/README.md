@@ -58,6 +58,13 @@ unknown until a project snapshot exists, even when recent Sessions arrive first.
 Their recent rows remain available beside the project's loading or error state. Query
 retries and canonical project/Session data retain their existing owners.
 
+The named work index is also the surviving programmatic focus destination when
+its focused Retry action retires into loading. The existing DataError handoff
+finds that host before requesting the read; settlement does not move focus again.
+The host stays outside the natural Tab order. Its painted child surface inherits
+the host outline, so the existing inset keyboard indicator remains visible above
+that surface without introducing another focus target or color rule.
+
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
 visual style owns these values; modules do not remove borders locally. Validation
